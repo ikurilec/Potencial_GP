@@ -945,7 +945,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '1.9.1';
+var APP_VERSION = '1.9.2';
 
 // ── GLOBÁLNY ERROR HANDLER (iba log, neruší užívateľa) ──
 window.addEventListener('error', function(ev){
@@ -3624,7 +3624,7 @@ function mgrRenderVisits(){
     var cas = v.cas || '';
     var noteIco = v.poznamka ? '<span class="mgr-vnote-ico" title="Obsahuje poznámku">📝</span>' : '';
     var originalIdx = visits.indexOf(v);
-    return '<div class="mgr-vitem" onclick="mgrOpenVisit('+originalIdx+')">' +
+    return '<div class="mgr-vitem" data-vidx="'+originalIdx+'">' +
       '<div class="mgr-vseg '+scenar+'"></div>' +
       '<div class="mgr-vbody">' +
         '<div class="mgr-vdoc">'+mgrEscape(v.lekar||'—')+noteIco+'</div>' +
@@ -3639,18 +3639,61 @@ function mgrRenderVisits(){
       '</div>' +
     '</div>';
   }).join('');
-  document.getElementById('mgr-vlist').innerHTML = html;
+  var listEl = document.getElementById('mgr-vlist');
+  listEl.innerHTML = html;
+
+  // Event delegation — pripojíme klik handler LEN RAZ, aj keď sa zoznam re-renderuje
+  if(!listEl._clickBound){
+    listEl._clickBound = true;
+    listEl.addEventListener('click', function(ev){
+      var item = ev.target.closest ? ev.target.closest('.mgr-vitem') : null;
+      if(!item){
+        // fallback pre starší Safari
+        var n = ev.target;
+        while(n && n !== listEl && !(n.classList && n.classList.contains('mgr-vitem'))) n = n.parentNode;
+        if(n && n.classList && n.classList.contains('mgr-vitem')) item = n;
+      }
+      mgrShowToast('Klik zachytený');
+      if(!item){
+        mgrShowToast('CHYBA: klik nebol na .mgr-vitem');
+        return;
+      }
+      var idxStr = item.getAttribute('data-vidx');
+      var idx = parseInt(idxStr, 10);
+      if(isNaN(idx)){
+        mgrShowToast('CHYBA: zlý data-vidx = '+idxStr);
+        return;
+      }
+      mgrOpenVisit(idx);
+    });
+  }
+}
+
+// Viditeľný toast dolu na obrazovke — pre diagnostiku klikov
+function mgrShowToast(msg){
+  var t = document.getElementById('mgr-toast');
+  if(!t){
+    t = document.createElement('div');
+    t.id = 'mgr-toast';
+    t.style.cssText = 'position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#0F172A;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:500;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.4);max-width:80vw;text-align:center;pointer-events:none;opacity:0;transition:opacity .2s';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._hideTimer);
+  t._hideTimer = setTimeout(function(){ t.style.opacity = '0'; }, 2500);
 }
 
 // Otvor kartu návštevy v detail-overlay (reuse existujúceho UI ako openDetail)
 function mgrOpenVisit(idx){
   try {
+  mgrShowToast('Otváram kartu idx='+idx);
   var username = MGR_STATE.currentRep;
-  if(!username) { alert('[debug] currentRep chýba'); return; }
+  if(!username) { mgrShowToast('CHYBA: currentRep chýba'); return; }
   var data = MGR_STATE.reps[username];
-  if(!data) { alert('[debug] žiadne data pre '+username); return; }
+  if(!data) { mgrShowToast('CHYBA: žiadne data pre '+username); return; }
   var item = data.visits[idx];
-  if(!item) { alert('[debug] žiadna návšteva idx='+idx); return; }
+  if(!item) { mgrShowToast('CHYBA: žiadna návšteva idx='+idx); return; }
 
   if(window.console && console.log){
     console.log('[mgr] klik na návštevu:', item);
@@ -3672,7 +3715,7 @@ function mgrOpenVisit(idx){
   var segDiv = document.getElementById('detail-seg');
 
   if(!cr || !icon || !label || !sub || !segDiv){
-    alert('[debug] v HTML chýba niektorý z: detail-result, detail-icon, detail-label, detail-sub, detail-seg');
+    mgrShowToast('CHYBA: chýba detail-result alebo iný element');
     return;
   }
 
@@ -3744,14 +3787,14 @@ function mgrOpenVisit(idx){
 
   var overlay = document.getElementById('detail-overlay');
   if(!overlay){
-    alert('[debug] detail-overlay element sa nenašiel v HTML');
+    mgrShowToast('CHYBA: detail-overlay element sa nenašiel');
     return;
   }
   overlay.className = 'detail-overlay show';
 
   } catch(err){
     if(window.console && console.error) console.error('[mgr] mgrOpenVisit chyba:', err);
-    alert('Nepodarilo sa otvoriť kartu lekára:\n' + (err && err.message ? err.message : err) + '\n\n(detail je v konzole)');
+    mgrShowToast('CHYBA pri otváraní: ' + (err && err.message ? err.message : err));
   }
 }
 
@@ -3850,7 +3893,7 @@ document.addEventListener('DOMContentLoaded', function(){
   <div class="login-footer">
     <div class="login-footer-logo">GEDEON RICHTER</div>
     <div class="login-footer-text">Interný nástroj · len pre medicínskych reprezentantov</div>
-    <div class="login-version">ver. 1.9.1 · 2026</div>
+    <div class="login-version">ver. 1.9.2 · 2026</div>
   </div>
 
 </div>
