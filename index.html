@@ -1840,7 +1840,7 @@ function updateBadge(count, animate) {
     return;
   }
   badge.style.display = 'flex';
-  badge.textContent = count + (count === 1 ? ' lekár' : count < 5 ? ' lekári' : ' lekárov');
+  badge.textContent = count + (count === 1 ? ' lekár' : count < 5 ? ' lekári' : ' lekárov') + ' 📋';
   if(animate) {
     badge.parentNode.classList.add('bump');
     setTimeout(function(){ badge.parentNode.classList.remove('bump'); }, 650);
@@ -1848,7 +1848,19 @@ function updateBadge(count, animate) {
 }
 
 function initCounter() {
+  // Najprv zobraz lokálny počet, potom aktualizuj zo Sheets
   updateBadge(getCounter(), false);
+  var session = getSession();
+  if(session && session.username) {
+    fetch(SCRIPT_URL + '?action=getHistory&reprezentant=' + encodeURIComponent(session.username))
+      .then(function(r){ return r.json(); })
+      .then(function(rows) {
+        if(Array.isArray(rows)) {
+          updateBadge(rows.length, false);
+        }
+      })
+      .catch(function(){});
+  }
 }
 
 
@@ -2181,6 +2193,7 @@ function openHistory() {
           poznamka: item.poznamka || ''
         });
       });
+      updateBadge(_histAllItems.length, false);
       renderHistItems(_histAllItems);
     })
     .catch(function() {
