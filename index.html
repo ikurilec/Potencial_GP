@@ -1721,7 +1721,9 @@ function hasFormData() {
   });
 }
 
+var _isLoggingOut = false;
 window.addEventListener('beforeunload', function(e) {
+  if(_isLoggingOut) return;
   if(hasFormData() && !_formSubmitted) {
     e.preventDefault();
     e.returnValue = 'Máš nevyplnené údaje. Naozaj chceš odísť?';
@@ -2839,6 +2841,7 @@ function closeLogoutConfirm() {
 }
 
 function confirmLogout() {
+  _isLoggingOut = true;
   clearSession();
   location.reload();
 }
