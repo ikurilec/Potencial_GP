@@ -1980,6 +1980,9 @@ function saveNoteClick() {
 function deleteNote() {
   var wrap = document.getElementById('detail-note-wrap');
   if(!wrap || !wrap._item) return;
+  // Zobraz loading stav
+  var deleteBtn = wrap.querySelector('.note-btn-delete');
+  if(deleteBtn){ deleteBtn.textContent = 'Vymazávam...'; deleteBtn.disabled = true; }
   wrap._item.poznamka = '';
   saveNote(wrap._item, '', function(){
     renderNoteSection(wrap._item);
