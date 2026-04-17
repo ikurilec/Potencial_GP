@@ -377,9 +377,9 @@
           <div class="info-input-wrap">
             <input class="info-input" type="text" id="lekar" placeholder="napr. MUDr. Gedeon Richter" onfocus="var el=this;if(!el.value){el.value='MUDr. ';setTimeout(function(){el.setSelectionRange(el.value.length,el.value.length);},0);}else{setTimeout(function(){el.setSelectionRange(el.value.length,el.value.length);},0);}" onblur="var v=this.value.trim();var TITLES=['mudr.', 'mddr.', 'rndr.', 'phdr.', 'judr.', 'ing.', 'mgr.', 'doc.', 'prof.', 'bc.', 'mvdr.', 'paeddr.'];if(v===''||v.split(' ').every(function(w){return TITLES.indexOf(w.toLowerCase())!==-1;})){this.value='';setIcon('lekar','none');}else{var words=v.split(' ').filter(function(w){return w.length>0;});var realWords=words.filter(function(w){return TITLES.indexOf(w.toLowerCase())===-1;});setIcon('lekar',realWords.length>=2?'ok':'err');}" oninput="capAfterSpace(this);var v=this.value.trim();var TITLES=['mudr.', 'mddr.', 'rndr.', 'phdr.', 'judr.', 'ing.', 'mgr.', 'doc.', 'prof.', 'bc.', 'mvdr.', 'paeddr.'];var words=v.split(' ').filter(function(w){return w.length>0;});var realWords=words.filter(function(w){return TITLES.indexOf(w.toLowerCase())===-1;});setIcon('lekar',realWords.length>=2?'ok':'none');">
             <span class="field-icon hidden" id="icon-lekar"></span>
+          </div>
         </div>
         <input type="hidden" id="reprezentant" value="">
-      </div>
         <div class="info-field">
           <div class="info-label">Okres pracoviska lek&#225;ra</div>
           <div class="ac-wrap">
@@ -502,8 +502,6 @@
       </div>
     </div>
   </div>
-</div>
-
 </div>
 
   <div class="submit-wrap">
@@ -2739,6 +2737,31 @@ function clearSession() {
   } catch(e){}
 }
 
+// ── Región reprezentantov (len pre fallback ak session nemá región) ──
+var USERS_LOCAL = {
+  'j.bohovic':    { region: 'BAMA' },
+  'v.hatinova':   { region: 'BASE' },
+  'v.hromadkova': { region: 'TN'   },
+  'z.lescis':     { region: 'DS'   },
+  'j.krkoska':    { region: 'MT'   },
+  'i.kozakova':   { region: 'NR'   },
+  'k.czidor':     { region: 'LV'   },
+  'o.rad':        { region: 'RS'   },
+  'l.mackova':    { region: 'PP'   },
+  'z.lapsan':     { region: 'PO'   },
+  'm.sabol':      { region: 'MI'   },
+  'ke.rep':       { region: 'KE'   },
+};
+
+function loginSuccess(username, name, role, region) {
+  var user = { username: username, name: name, role: role, region: region || '' };
+  setSession(user);
+  haptic('success');
+  document.getElementById('login-screen').classList.remove('show');
+  updateHdrForUser(user);
+  initTutorial();
+}
+
 function doLogin() {
   var userEl = document.getElementById('login-user');
   var passEl = document.getElementById('login-pass');
@@ -2757,24 +2780,16 @@ function doLogin() {
     return;
   }
 
-  // Zobraz loading
   btn.disabled = true;
   btn.textContent = 'Prihlasujem...';
 
-  // Overenie cez Google Sheets
   fetch(SCRIPT_URL + '?action=login&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password))
     .then(function(r){ return r.json(); })
     .then(function(data) {
       btn.disabled = false;
       btn.textContent = 'Prihlásiť sa →';
-
       if(data.ok) {
-        var user = { username: username, name: data.name, role: data.role };
-        setSession(user);
-        haptic('success');
-        document.getElementById('login-screen').classList.remove('show');
-        updateHdrForUser(user);
-        initTutorial();
+        loginSuccess(username, data.name, data.role, data.region);
       } else {
         errEl.classList.add('show');
         userEl.classList.add('err');
@@ -2785,7 +2800,7 @@ function doLogin() {
     .catch(function() {
       btn.disabled = false;
       btn.textContent = 'Prihlásiť sa →';
-      errEl.textContent = 'Chyba pripojenia. Skontroluj internet.';
+      errEl.textContent = 'Nie je pripojenie na internet. Skontroluj sieť a skús znova.';
       errEl.classList.add('show');
     });
 }
@@ -2819,7 +2834,12 @@ function confirmLogout() {
 
 function updateHdrForUser(user) {
   var subEl = document.querySelector('.hdr-sub');
-  if(subEl) subEl.textContent = user.name + (user.role === 'admin' ? ' · Admin' : ' · Medicínsky reprezentant');
+  var roleLabel = user.role === 'admin' ? 'Admin' : user.role === 'pm' ? 'PM' : user.role === 'bum' ? 'BUM' : user.role === 'am' ? 'AM' : 'Medicínsky reprezentant';
+  var regionPart = user.region ? ' · ' + user.region : '';
+  if(subEl) subEl.textContent = user.name + ' · ' + roleLabel + regionPart;
+  // Nastav region do skrytého poľa
+  var regEl = document.getElementById('reprezentant');
+  if(regEl && user.region) regEl.value = user.region;
 }
 
 function refreshSession() {
@@ -2846,9 +2866,12 @@ function refreshSession() {
 function initLogin() {
   var session = getSession();
   if(session && session.username) {
-    // Už prihlásený
+    // Ak session nemá region, doplň z lokálneho zoznamu
+    if(!session.region && USERS_LOCAL[session.username]) {
+      session.region = USERS_LOCAL[session.username].region || '';
+      setSession(session);
+    }
     updateHdrForUser(session);
-    // Obnov region po načítaní
     setTimeout(function(){ updateHdrForUser(session); }, 300);
   } else {
     // Zobraziť login
