@@ -329,96 +329,15 @@
   .tutorial-back{width:100%;padding:10px;background:none;border:none;color:#94A3B8;font-size:13px;font-family:inherit;cursor:pointer;font-weight:500}
   .tutorial-preskocit{display:block;margin:6px auto 0;background:none;border:none;color:#CBD5E1;font-size:11px;font-family:inherit;cursor:pointer;font-weight:500}
   .tutorial-hero-login-title{font-size:26px;font-weight:800;letter-spacing:-.03em;color:#fff;text-align:center;line-height:1.2}
-
-  /* ── Manažérsky panel ── */
-  #manager-panel{display:none}
-  #manager-panel.show{display:block}
-  .mp-card{background:#fff;border-radius:14px;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,.07);border:1px solid rgba(0,0,0,.07);overflow:hidden}
-  .mp-accent{height:4px;background:linear-gradient(90deg,#2563EB,#60A5FA)}
-  .mp-inner{padding:18px 20px}
-  .mp-title{font-size:16px;font-weight:700;color:#0C1E35;margin-bottom:3px}
-  .mp-sub{font-size:12px;color:#94A3B8;margin-bottom:18px}
-  .mp-stats{display:flex;gap:8px;margin-bottom:16px}
-  .mp-chip{flex:1;background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:10px;padding:10px 8px;text-align:center}
-  .mp-chip-num{font-size:20px;font-weight:800;color:#0C1E35}
-  .mp-chip-label{font-size:10px;color:#94A3B8;font-weight:500;margin-top:2px}
-  .mp-chip.green .mp-chip-num{color:#16A34A}
-  .mp-chip.orange .mp-chip-num{color:#D97706}
-  .mp-chip.red .mp-chip-num{color:#DC2626}
-  .mp-rep-grid{display:flex;flex-direction:column;gap:8px}
-  .mp-rep-btn{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;background:#F8FAFC;border-radius:11px;border:1.5px solid #E2E8F0;cursor:pointer;transition:all .18s;-webkit-tap-highlight-color:transparent}
-  .mp-rep-btn:hover{background:#EFF6FF;border-color:#93C5FD;transform:translateY(-1px);box-shadow:0 4px 12px rgba(37,99,235,.1)}
-  .mp-rep-btn:active{transform:translateY(0)}
-  .mp-rep-left{display:flex;flex-direction:column;gap:3px}
-  .mp-rep-name{font-size:13px;font-weight:700;color:#0C1E35}
-  .mp-rep-region{font-size:11px;color:#64748B;font-weight:500}
-  .mp-rep-right{display:flex;align-items:center;gap:8px}
-  .mp-rep-count{font-size:12px;font-weight:700;color:#2563EB;background:#EFF6FF;padding:4px 12px;border-radius:20px;white-space:nowrap}
-  .mp-rep-arrow{color:#94A3B8;font-size:16px}
-  .mp-hist-header{display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #E2E8F0}
-  .mp-back-btn{background:#EFF6FF;border:none;color:#2563EB;font-size:12px;font-weight:700;padding:7px 14px;border-radius:9px;cursor:pointer;font-family:inherit;flex-shrink:0}
-  .mp-back-btn:hover{background:#DBEAFE}
-  .mp-rep-title{font-size:14px;font-weight:700;color:#0C1E35}
-  .mp-rep-badge{font-size:11px;color:#64748B;font-weight:500;margin-top:2px}
-  .mp-search{width:100%;border:1.5px solid #E2E8F0;border-radius:10px;padding:10px 14px;font-size:16px;font-family:inherit;color:#0C1E35;outline:none;margin-bottom:14px;background:#F8FAFC}
-  .mp-search:focus{border-color:#93C5FD;background:#fff;box-shadow:0 0 0 3px rgba(37,99,235,.08)}
-  .mp-loading{text-align:center;padding:32px 20px;color:#94A3B8;font-size:13px}
-  .mp-empty{text-align:center;padding:40px 20px;color:#94A3B8}
-  .mp-empty-icon{font-size:36px;margin-bottom:10px}
-  .mp-empty-text{font-size:13px}
-  .mp-detail-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:1500;align-items:flex-end;justify-content:center}
-  .mp-detail-overlay.show{display:flex}
-  .mp-detail-box{background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:660px;max-height:85vh;overflow-y:auto;padding:20px;animation:slideUp .3s ease}
-  .mp-det-close{float:right;background:none;border:none;font-size:20px;color:#94A3B8;cursor:pointer;line-height:1}
-  .mp-det-title{font-size:15px;font-weight:700;color:#0C1E35;margin-bottom:4px}
-  .mp-det-sub{font-size:11px;color:#94A3B8;margin-bottom:14px}
-  .mp-det-result{border-radius:12px;padding:16px;margin-bottom:12px;text-align:center}
-  .mp-det-result.res-yes{background:#F0FDF4;border:1.5px solid #86EFAC}
-  .mp-det-result.res-orange{background:#FFFBEB;border:1.5px solid #FDE68A}
-  .mp-det-result.res-no{background:#FFF5F5;border:1.5px solid #FECACA}
-  .mp-det-icon{font-size:28px;margin-bottom:6px}
-  .mp-det-label{font-size:16px;font-weight:800;color:#0C1E35}
-  .mp-det-sublabel{font-size:11px;color:#64748B;margin-top:3px}
-  .mp-seg-box{background:#F8FAFC;border-radius:10px;padding:12px 14px;margin-bottom:10px}
-  .mp-seg-row{display:flex;gap:6px;align-items:baseline;margin-bottom:5px}
-  .mp-seg-lbl{font-size:10px;font-weight:700;opacity:.65;text-transform:uppercase;letter-spacing:.05em;flex-shrink:0}
-  .mp-seg-val{font-size:12px;font-weight:700;color:#0C1E35}
-  .mp-note-box{background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:10px;padding:12px 14px;margin-top:8px}
-  .mp-note-label{font-size:10px;font-weight:700;color:#92400E;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
-  .mp-note-text{font-size:13px;color:#78350F;line-height:1.5}
-  .mp-note-empty{font-size:12px;color:#94A3B8;font-style:italic}
 </style>
 </head>
 <body>
 
 
 
-<div class="mp-detail-overlay" id="mp-detail-overlay" onclick="if(event.target===this)mpCloseDetail()">
-  <div class="mp-detail-box">
-    <button class="mp-det-close" onclick="mpCloseDetail()">✕</button>
-    <div class="mp-det-title" id="mp-det-name"></div>
-    <div class="mp-det-sub" id="mp-det-sub"></div>
-    <div class="mp-det-result" id="mp-det-result">
-      <div class="mp-det-icon" id="mp-det-icon"></div>
-      <div class="mp-det-label" id="mp-det-label"></div>
-      <div class="mp-det-sublabel" id="mp-det-sublabel"></div>
-    </div>
-    <div class="mp-seg-box" id="mp-det-seg" style="display:none">
-      <div class="mp-seg-row"><span class="mp-seg-lbl">Frekvencia:</span><span class="mp-seg-val" id="mp-det-freq"></span></div>
-      <div class="mp-seg-row"><span class="mp-seg-lbl">Cieľ:</span><span class="mp-seg-val" id="mp-det-ciel"></span></div>
-    </div>
-    <div class="mp-note-box">
-      <div class="mp-note-label">📝 Poznámka</div>
-      <div id="mp-det-note"></div>
-    </div>
-  </div>
-</div>
-
-
 <div class="offline-bar" id="offline-bar">&#9888; Bez pripojenia na internet &#8212; d&#225;ta sa neodo&#353;l&#250;</div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
-
 
 <div class="hdr">
   <div class="hdr-row">
@@ -443,64 +362,6 @@
   </div>
   </div>
 </div>
-
-<!-- MANAŽÉRSKY PANEL -->
-<div id="manager-panel">
-  <div class="mp-card">
-    <div class="mp-accent"></div>
-    <div class="mp-inner">
-      <div id="mp-view-list">
-        <div class="mp-title" id="mp-panel-title">&#128101; Prehľad tímu</div>
-        <div class="mp-sub" id="mp-panel-sub">Kliknite na reprezentanta pre zobrazenie jeho histórie</div>
-        <div class="mp-stats">
-          <div class="mp-chip"><div class="mp-chip-num" id="mp-stat-total">&#8212;</div><div class="mp-chip-label">Celkom lekárov</div></div>
-          <div class="mp-chip green"><div class="mp-chip-num" id="mp-stat-reps">&#8212;</div><div class="mp-chip-label">Reprezentanti</div></div>
-          <div class="mp-chip orange"><div class="mp-chip-num" id="mp-stat-active">&#8212;</div><div class="mp-chip-label">Aktívni dnes</div></div>
-        </div>
-        <div class="mp-rep-grid" id="mp-rep-grid"><div class="mp-loading">&#9203; Načítavam údaje...</div></div>
-      </div>
-      <div id="mp-view-history" style="display:none">
-        <div class="mp-hist-header">
-          <button class="mp-back-btn" onclick="mpShowList()">&#8592; Späť</button>
-          <div>
-            <div class="mp-rep-title" id="mp-hist-rep-name"></div>
-            <div class="mp-rep-badge" id="mp-hist-rep-badge"></div>
-          </div>
-        </div>
-        <div class="mp-stats" id="mp-hist-stats" style="display:none">
-          <div class="mp-chip"><div class="mp-chip-num" id="mp-hs-total">0</div><div class="mp-chip-label">Celkom</div></div>
-          <div class="mp-chip green"><div class="mp-chip-num" id="mp-hs-green">0</div><div class="mp-chip-label">TOP/Udržať</div></div>
-          <div class="mp-chip orange"><div class="mp-chip-num" id="mp-hs-orange">0</div><div class="mp-chip-label">Zvýšiť</div></div>
-          <div class="mp-chip red"><div class="mp-chip-num" id="mp-hs-red">0</div><div class="mp-chip-label">Vyradiť</div></div>
-        </div>
-        <input class="mp-search" type="text" placeholder="&#128269;  Hľadaj lekára alebo okres..." id="mp-hist-search" oninput="mpFilterHist()">
-        <div id="mp-hist-body"></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- DETAIL OVERLAY PRE PANEL -->
-<div class="mp-detail-overlay" id="mp-detail-overlay" onclick="if(event.target===this)mpCloseDetail()">
-  <div class="mp-detail-box">
-    <button class="mp-det-close" onclick="mpCloseDetail()">&#10005;</button>
-    <div class="mp-det-title" id="mp-det-name"></div>
-    <div class="mp-det-sub" id="mp-det-sub"></div>
-    <div class="mp-det-result" id="mp-det-result">
-      <div class="mp-det-icon" id="mp-det-icon"></div>
-      <div class="mp-det-label" id="mp-det-label"></div>
-      <div class="mp-det-sublabel" id="mp-det-sublabel"></div>
-    </div>
-    <div class="mp-seg-box" id="mp-det-seg" style="display:none">
-      <div class="mp-seg-row"><span class="mp-seg-lbl">Frekvencia:</span><span class="mp-seg-val" id="mp-det-freq"></span></div>
-      <div class="mp-seg-row"><span class="mp-seg-lbl">Cieľ:</span><span class="mp-seg-val" id="mp-det-ciel"></span></div>
-    </div>
-    <div class="mp-note-box">
-      <div class="mp-note-label">&#128221; Poznámka</div>
-      <div id="mp-det-note"></div>
-    </div>
-  </div>
-
 
 <div class="progress-wrap" id="progress-wrap">
     <div class="progress-header">
@@ -2925,220 +2786,15 @@ var USERS_LOCAL = {
   'ke.rep':       { region: 'KE'   },
 };
 
-
-// ── MANAŽÉRSKY PANEL ──
-var MP_ALL_REPS = [
-  {login:'j.bohovic',    name:'Jaroslava Bohovičová', region:'BAMA', team:'west'},
-  {login:'v.hatinova',   name:'Viktória Hatinová',    region:'BASE', team:'west'},
-  {login:'v.hromadkova', name:'Vladimíra Hromádková', region:'TN',   team:'west'},
-  {login:'z.lescis',     name:'Zuzana Leščišinová',   region:'DS',   team:'west'},
-  {login:'j.krkoska',    name:'Juraj Krkoška',        region:'MT',   team:'west'},
-  {login:'i.kozakova',   name:'Ida Kozáková',         region:'NR',   team:'west'},
-  {login:'k.czidor',     name:'Katarína Czidor',      region:'LV',   team:'east'},
-  {login:'o.rad',        name:'Olexandra Rad',        region:'RS',   team:'east'},
-  {login:'l.mackova',    name:'Lenka Mačáková',       region:'PP',   team:'east'},
-  {login:'z.lapsan',     name:'Zuzana Lapšanská',     region:'PO',   team:'east'},
-  {login:'m.sabol',      name:'Michal Sabol',         region:'MI',   team:'east'},
-  {login:'ke.rep',       name:'KE Reprezentant',      region:'KE',   team:'east'},
-];
-
-var MP_SEGMENTS = {
-  'top':       {label:'TOP',      cls:'res-yes',    icon:'✅', freq:'Max. 2× za kvartál', ciel:'Udržať a posilniť preskripciu'},
-  'udrzat':    {label:'UDRŽAŤ',  cls:'res-yes',    icon:'✅', freq:'Max. 2× za kvartál', ciel:'Udržať preskripciu preparátov'},
-  'zvysit':    {label:'ZVÝŠIŤ', cls:'res-orange', icon:'⚠️', freq:'Min. 2× za kvartál', ciel:'Zvýšiť preskripciu preparátov'},
-  'zvysit3':   {label:'ZVÝŠIŤ', cls:'res-orange', icon:'⚠️', freq:'Min. 3× za kvartál', ciel:'Aktívne zvyšovať preskripciu'},
-  'frekvencia':{label:'1× za Q', cls:'res-orange', icon:'⚠️', freq:'1× za kvartál',      ciel:'Udržať minimálnu frekvenciu'},
-  'vyradit':   {label:'VYRADIŤ',cls:'res-no',     icon:'🚫', freq:'Nevyžaduje sa',       ciel:'Zvážiť vyradenie z targetu'},
-};
-
-var mpCounts = {}, mpHistItems = [], mpVisibleReps = [];
-
-function mpGetReps(role, login) {
-  if(role === 'am' && login === 'am.west') return MP_ALL_REPS.filter(function(r){ return r.team==='west'; });
-  if(role === 'am' && login === 'am.east') return MP_ALL_REPS.filter(function(r){ return r.team==='east'; });
-  return MP_ALL_REPS;
-}
-
-function initManagerPanel() {
-  var panel = document.getElementById('manager-panel');
-  if(panel) panel.classList.add('show');
-  // Skry formulár a progress bar
-  ['progress-wrap','rec','submit-wrap','thankyou','hdr-badge-wrap'].forEach(function(id){
-    var el=document.getElementById(id); if(el) el.style.display='none';
-  });
-  document.querySelectorAll('.card,.info-card').forEach(function(el){ el.style.display='none'; });
-
-  var session = getSession();
-  var role = session ? session.role : '';
-  var login = session ? session.username : '';
-
-  if(login === 'am.west') {
-    document.getElementById('mp-panel-title').textContent = '👥 Tím West';
-    document.getElementById('mp-panel-sub').textContent = '6 reprezentantov — západná časť Slovenska';
-  } else if(login === 'am.east') {
-    document.getElementById('mp-panel-title').textContent = '👥 Tím East';
-    document.getElementById('mp-panel-sub').textContent = '6 reprezentantov — východná časť Slovenska';
-  } else {
-    document.getElementById('mp-panel-title').textContent = '👥 Prehľad tímu';
-    document.getElementById('mp-panel-sub').textContent = 'Všetci reprezentanti — Slovensko';
-  }
-
-  mpVisibleReps = mpGetReps(role, login);
-  document.getElementById('mp-stat-reps').textContent = mpVisibleReps.length;
-  mpRenderGrid();
-  mpLoadCounts();
-}
-
-function mpLoadCounts() {
-  var loaded=0, totalAll=0;
-  var today=new Date(), todayKey=today.getFullYear()+'-'+(today.getMonth()+1)+'-'+today.getDate();
-  var activeToday=new Set();
-  mpVisibleReps.forEach(function(rep) {
-    fetch(SCRIPT_URL+'?action=getHistory&reprezentant='+encodeURIComponent(rep.login))
-      .then(function(r){return r.json();})
-      .then(function(rows){
-        var cnt=Array.isArray(rows)?rows.length:0;
-        mpCounts[rep.login]=cnt; totalAll+=cnt;
-        if(Array.isArray(rows)) rows.forEach(function(row){
-          var ds=String(row.datum||''),dk='';
-          if(ds.indexOf('T')!==-1){var d=new Date(ds);dk=d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
-          else if(ds.indexOf('.')!==-1){dk=ds.split('.').reverse().join('-');}
-          else dk=ds;
-          if(dk===todayKey) activeToday.add(rep.login);
-        });
-      })
-      .catch(function(){mpCounts[rep.login]=0;})
-      .finally(function(){
-        loaded++;
-        mpRenderGrid();
-        if(loaded===mpVisibleReps.length){
-          document.getElementById('mp-stat-total').textContent=totalAll;
-          document.getElementById('mp-stat-active').textContent=activeToday.size;
-        }
-      });
-  });
-}
-
-function mpRenderGrid() {
-  var grid=document.getElementById('mp-rep-grid'); if(!grid) return;
-  grid.innerHTML=mpVisibleReps.map(function(rep, idx){
-    var cnt=mpCounts[rep.login]!==undefined?mpCounts[rep.login]:'...';
-    return '<div class="mp-rep-btn" onclick="mpShowHistoryByIdx('+idx+')">'+
-      '<div class="mp-rep-left"><div class="mp-rep-name">'+rep.name+'</div><div class="mp-rep-region">'+rep.region+'</div></div>'+
-      '<div class="mp-rep-right"><div class="mp-rep-count">'+cnt+' lekárov</div><div class="mp-rep-arrow">›</div></div></div>';
-  }).join('');
-}
-
-function mpShowHistoryByIdx(idx) {
-  var rep = mpVisibleReps[idx];
-  if(!rep) return;
-  mpShowHistory(rep.login, rep.name, rep.region);
-}
-
-function mpShowHistory(login, name, region) {
-  document.getElementById('mp-view-list').style.display='none';
-  document.getElementById('mp-view-history').style.display='block';
-  document.getElementById('mp-hist-rep-name').textContent=name;
-  document.getElementById('mp-hist-rep-badge').textContent=region+' · '+(mpCounts[login]||0)+' lekárov';
-  document.getElementById('mp-hist-search').value='';
-  document.getElementById('mp-hist-body').innerHTML='<div class="mp-loading">⏳ Načítavam históriu...</div>';
-  document.getElementById('mp-hist-stats').style.display='none';
-  mpHistItems=[];
-  fetch(SCRIPT_URL+'?action=getHistory&reprezentant='+encodeURIComponent(login))
-    .then(function(r){return r.json();})
-    .then(function(rows){
-      if(!Array.isArray(rows)||rows.length===0){
-        document.getElementById('mp-hist-body').innerHTML='<div class="mp-empty"><div class="mp-empty-icon">📋</div><div class="mp-empty-text">Žiadne záznamy.</div></div>';
-        return;
-      }
-      rows=rows.map(function(item){
-        var ds=String(item.datum||'');
-        if(ds.indexOf('T')!==-1){var d=new Date(ds);item.dateStr=d.getDate()+'.'+(d.getMonth()+1)+'.'+d.getFullYear();item.dateKey=d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
-        else if(ds.indexOf('.')!==-1){item.dateStr=ds;item.dateKey=ds.split('.').reverse().join('-');}
-        else{item.dateStr=ds;item.dateKey=ds;}
-        var cas=String(item.cas||'');
-        if(cas.indexOf('T')!==-1){var cd=new Date(cas);item.cas=('0'+cd.getHours()).slice(-2)+':'+('0'+cd.getMinutes()).slice(-2);}
-        return item;
-      });
-      rows.sort(function(a,b){return (b.dateKey+b.cas)>(a.dateKey+a.cas)?1:-1;});
-      mpHistItems=rows;
-      var cntG=0,cntO=0,cntR=0;
-      rows.forEach(function(r){var s=r.scenar||'';if(s==='top'||s==='udrzat')cntG++;else if(s==='vyradit')cntR++;else cntO++;});
-      document.getElementById('mp-hs-total').textContent=rows.length;
-      document.getElementById('mp-hs-green').textContent=cntG;
-      document.getElementById('mp-hs-orange').textContent=cntO;
-      document.getElementById('mp-hs-red').textContent=cntR;
-      document.getElementById('mp-hist-stats').style.display='flex';
-      mpRenderHistItems(rows);
-    })
-    .catch(function(){document.getElementById('mp-hist-body').innerHTML='<div class="mp-loading">Chyba načítania.</div>';});
-}
-
-function mpRenderHistItems(items) {
-  var html='',lastDate='';
-  var today=new Date(),todayKey=today.getFullYear()+'-'+(today.getMonth()+1)+'-'+today.getDate();
-  items.forEach(function(item,idx){
-    if(item.dateKey!==lastDate){
-      var label=item.dateStr||item.dateKey;
-      if(item.dateKey===todayKey) label='Dnes · '+label;
-      html+='<div class="hist-date-group">'+label+'</div>';
-      lastDate=item.dateKey;
-    }
-    var seg=MP_SEGMENTS[item.scenar]||{label:'—',cls:'',icon:'—'};
-    var tagCls=seg.cls==='res-yes'?'green':seg.cls==='res-orange'?'orange':seg.cls==='res-no'?'red':'';
-    html+='<div class="hist-item" onclick="mpOpenDetail('+idx+')">'+
-      '<div class="hist-item-top"><div class="hist-item-name">'+(item.lekar||'—')+'</div>'+
-      '<div class="hist-item-tag '+tagCls+'">'+seg.label+'</div></div>'+
-      '<div class="hist-item-sub">'+(item.okres||'—')+' · '+(item.dateStr||'')+' · '+(item.cas||'')+'</div>'+
-      (item.poznamka?'<div class="hist-item-note">📝 '+item.poznamka+'</div>':'')+
-    '</div>';
-  });
-  document.getElementById('mp-hist-body').innerHTML=html||'<div class="mp-empty"><div class="mp-empty-icon">📋</div><div class="mp-empty-text">Žiadne záznamy.</div></div>';
-}
-
-function mpOpenDetail(idx) {
-  var item=mpHistItems[idx]; if(!item) return;
-  var seg=MP_SEGMENTS[item.scenar]||{label:'—',cls:'',icon:'—',freq:'—',ciel:'—'};
-  document.getElementById('mp-det-name').textContent=item.lekar||'—';
-  document.getElementById('mp-det-sub').textContent=(item.okres||'—')+' · '+(item.dateStr||'')+' · '+(item.cas||'');
-  document.getElementById('mp-det-result').className='mp-det-result '+(seg.cls||'');
-  document.getElementById('mp-det-icon').textContent=seg.icon||'—';
-  document.getElementById('mp-det-label').textContent=seg.label;
-  document.getElementById('mp-det-sublabel').textContent='Ročný potenciál · '+(item.rocny_potential?item.rocny_potential+' bal./rok':'—');
-  if(seg.freq&&seg.freq!=='—'){
-    document.getElementById('mp-det-freq').textContent=seg.freq;
-    document.getElementById('mp-det-ciel').textContent=seg.ciel;
-    document.getElementById('mp-det-seg').style.display='block';
-  } else { document.getElementById('mp-det-seg').style.display='none'; }
-  var noteEl=document.getElementById('mp-det-note');
-  if(item.poznamka){noteEl.className='mp-note-text';noteEl.textContent=item.poznamka;}
-  else{noteEl.className='mp-note-empty';noteEl.textContent='Žiadna poznámka';}
-  document.getElementById('mp-detail-overlay').classList.add('show');
-}
-
-function mpCloseDetail() { document.getElementById('mp-detail-overlay').classList.remove('show'); }
-function mpFilterHist() {
-  var q=document.getElementById('mp-hist-search').value.trim().toLowerCase();
-  mpRenderHistItems(q?mpHistItems.filter(function(i){return (i.lekar||'').toLowerCase().indexOf(q)!==-1||(i.okres||'').toLowerCase().indexOf(q)!==-1;}):mpHistItems);
-}
-function mpShowList() {
-  document.getElementById('mp-view-history').style.display='none';
-  document.getElementById('mp-view-list').style.display='block';
-  mpHistItems=[];
-}
-
 function loginSuccess(username, name, role, region) {
   var user = { username: username, name: name, role: role, region: region || '' };
   setSession(user);
   haptic('success');
   document.getElementById('login-screen').classList.remove('show');
   updateHdrForUser(user);
-  if(['admin','bum','boss','am'].indexOf(role) !== -1) {
-    initManagerPanel();
-  } else {
-    initTutorial();
-    refreshBadgeFromSheets(username);
-  }
+  initTutorial();
+  // Aktualizuj badge zo Sheets
+  refreshBadgeFromSheets(username);
 }
 
 function doLogin() {
@@ -3214,7 +2870,7 @@ function confirmLogout() {
 
 function updateHdrForUser(user) {
   var subEl = document.querySelector('.hdr-sub');
-  var roleLabel = user.role === 'admin' ? 'Admin' : user.role === 'pm' ? 'PM' : user.role === 'bum' ? 'BUM' : user.role === 'boss' ? 'Boss' : user.role === 'am' ? 'AM' : 'Medicínsky reprezentant';
+  var roleLabel = user.role === 'admin' ? 'Admin' : user.role === 'pm' ? 'PM' : user.role === 'bum' ? 'BUM' : user.role === 'am' ? 'AM' : 'Medicínsky reprezentant';
   var regionPart = user.region ? ' · ' + user.region : '';
   if(subEl) subEl.textContent = user.name + ' · ' + roleLabel + regionPart;
   // Nastav region do skrytého poľa
@@ -3261,12 +2917,7 @@ function initLogin() {
     }
     updateHdrForUser(session);
     setTimeout(function(){ updateHdrForUser(session); }, 300);
-    if(['admin','bum','boss','am'].indexOf(session.role) !== -1) {
-      initManagerPanel();
-    } else {
-      refreshBadgeFromSheets(session.username);
-      initTutorial();
-    }
+    refreshBadgeFromSheets(session.username);
   } else {
     // Zobraziť login
     document.getElementById('login-screen').classList.add('show');
