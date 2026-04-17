@@ -274,7 +274,7 @@
   .note-label{font-size:10px;font-weight:600;color:#92400E;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px}
   .note-text{font-size:12px;color:#78350F;line-height:1.5;white-space:pre-wrap}
   .note-empty{font-size:12px;color:#D97706;font-style:italic}
-  .note-textarea{width:100%;border-radius:8px;border:1.5px solid #FDE68A;background:#fff;font-size:13px;font-family:inherit;color:#1A2A3A;padding:8px 10px;outline:none;resize:none;min-height:72px;box-sizing:border-box;transition:border-color .2s}
+  .note-textarea{width:100%;border-radius:8px;border:1.5px solid #FDE68A;background:#fff;font-size:16px;font-family:inherit;color:#1A2A3A;padding:8px 10px;outline:none;resize:none;min-height:72px;box-sizing:border-box;transition:border-color .2s}
   .note-textarea:focus{border-color:#D97706;box-shadow:0 0 0 3px rgba(217,119,6,.1)}
   .note-btns{display:flex;gap:8px;margin-top:8px}
   .note-btn-save{flex:1;padding:9px;border-radius:8px;border:none;background:#D97706;color:#fff;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer}
@@ -378,31 +378,7 @@
             <input class="info-input" type="text" id="lekar" placeholder="napr. MUDr. Gedeon Richter" onfocus="var el=this;if(!el.value){el.value='MUDr. ';setTimeout(function(){el.setSelectionRange(el.value.length,el.value.length);},0);}else{setTimeout(function(){el.setSelectionRange(el.value.length,el.value.length);},0);}" onblur="var v=this.value.trim();var TITLES=['mudr.', 'mddr.', 'rndr.', 'phdr.', 'judr.', 'ing.', 'mgr.', 'doc.', 'prof.', 'bc.', 'mvdr.', 'paeddr.'];if(v===''||v.split(' ').every(function(w){return TITLES.indexOf(w.toLowerCase())!==-1;})){this.value='';setIcon('lekar','none');}else{var words=v.split(' ').filter(function(w){return w.length>0;});var realWords=words.filter(function(w){return TITLES.indexOf(w.toLowerCase())===-1;});setIcon('lekar',realWords.length>=2?'ok':'err');}" oninput="capAfterSpace(this);var v=this.value.trim();var TITLES=['mudr.', 'mddr.', 'rndr.', 'phdr.', 'judr.', 'ing.', 'mgr.', 'doc.', 'prof.', 'bc.', 'mvdr.', 'paeddr.'];var words=v.split(' ').filter(function(w){return w.length>0;});var realWords=words.filter(function(w){return TITLES.indexOf(w.toLowerCase())===-1;});setIcon('lekar',realWords.length>=2?'ok':'none');">
             <span class="field-icon hidden" id="icon-lekar"></span>
         </div>
-        <div class="info-field">
-          <div class="info-label">Región</div>
-          <div class="info-input-wrap">
-            <select class="info-input" id="reprezentant" style="cursor:pointer;padding-right:40px" onchange="validateField('reprezentant');if(this.value){haptic('selection');
-    var mestoEl=document.getElementById('mesto');
-    var mestoVal=mestoEl?mestoEl.value.trim():'';
-    var okInReg=REGION_OKRESY[this.value]&&REGION_OKRESY[this.value].indexOf(mestoVal)!==-1;
-    if(mestoVal&&!okInReg){mestoEl.value='';setIcon('mesto','none');updateProgress();}
-    var mestoEl2=document.getElementById('mesto');if(mestoEl2)setTimeout(function(){mestoEl2.focus();},150);}" >
-            <option value="" disabled selected>Vyberte región</option>
-            <option value="BAMA">BAMA</option>
-            <option value="BASE">BASE</option>
-            <option value="DS">DS</option>
-            <option value="KE">KE</option>
-            <option value="LV">LV</option>
-            <option value="MI">MI</option>
-            <option value="MT">MT</option>
-            <option value="NR">NR</option>
-            <option value="PO">PO</option>
-            <option value="PP">PP</option>
-            <option value="RS">RS</option>
-            <option value="TN">TN</option>
-          </select>
-            <span class="field-icon hidden" id="icon-reprezentant"></span>
-        </div>
+        <input type="hidden" id="reprezentant" value="">
       </div>
         <div class="info-field">
           <div class="info-label">Okres pracoviska lek&#225;ra</div>
@@ -1496,7 +1472,7 @@ function initAutosave() {
   } catch(e) {}
 
   // Attach save listeners to all inputs
-  var ids = ['lekar','mesto','reprezentant','kapitacia-n','afl1-n','sup1-n','vid1-n','cav-n'];
+  var ids = ['lekar','mesto','kapitacia-n','afl1-n','sup1-n','vid1-n','cav-n'];
   ids.forEach(function(id) {
     var el = document.getElementById(id);
     if(el) {
@@ -1884,7 +1860,7 @@ function initCounter() {
 
 // Attach progress listeners
 function initProgress() {
-  var ids = ['lekar','mesto','reprezentant','kapitacia-n','afl1-n','sup1-n','vid1-n','cav-n'];
+  var ids = ['lekar','mesto','kapitacia-n','afl1-n','sup1-n','vid1-n','cav-n'];
   ids.forEach(function(id) {
     var el = document.getElementById(id);
     if(el) {
@@ -2052,9 +2028,17 @@ var _histAllItems = []; // [{dateKey, dateStr, lekar, okres, cas, scenar}]
 
 function timeAgo(dateKey, cas) {
   try {
-    var parts = dateKey.split('-');
-    var year = parseInt(parts[0]), month = parseInt(parts[1])-1, day = parseInt(parts[2]);
-    var casParts = (cas || '00:00').split(':');
+    var year, month, day;
+    if(dateKey && dateKey.indexOf('.') !== -1) {
+      // Format D.M.YYYY
+      var parts = dateKey.split('.');
+      day = parseInt(parts[0]); month = parseInt(parts[1])-1; year = parseInt(parts[2]);
+    } else {
+      // Format YYYY-M-D
+      var parts = (dateKey||'').split('-');
+      year = parseInt(parts[0]); month = parseInt(parts[1])-1; day = parseInt(parts[2]);
+    }
+    var casParts = (cas || '00:00').toString().split(':');
     var visitDate = new Date(year, month, day, parseInt(casParts[0])||0, parseInt(casParts[1])||0);
     var now = new Date();
     var diffMs = now - visitDate;
@@ -2182,9 +2166,12 @@ function openHistory() {
         var rawCas = item.cas || '';
         var casStr = rawCas;
         try {
-          var dc = new Date(rawCas);
-          if(!isNaN(dc.getTime())) {
-            casStr = ('0'+dc.getHours()).slice(-2) + ':' + ('0'+dc.getMinutes()).slice(-2);
+          // Sheets moze vrátiť čas ako Date objekt alebo ISO string
+          if(typeof rawCas === 'object' || (typeof rawCas === 'string' && rawCas.length > 5 && rawCas.indexOf('T') !== -1)) {
+            var dc = new Date(rawCas);
+            if(!isNaN(dc.getTime())) {
+              casStr = ('0'+dc.getHours()).slice(-2) + ':' + ('0'+dc.getMinutes()).slice(-2);
+            }
           }
         } catch(e) {}
         // Normalize dateKey to YYYY-M-D for proper sorting
@@ -2719,15 +2706,37 @@ function initTutorial() {
 var SESSION_KEY = 'potencial_gp_session';
 
 function getSession() {
-  try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch(e){ return null; }
+  try {
+    // Priorita: sessionStorage (zatvorenie prehliadača = odhlásenie)
+    var data = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null');
+    if(!data) {
+      // Fallback na localStorage — ale len ak nie je starší ako 8 hodín
+      data = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+    }
+    if(!data) return null;
+    // Kontrola 8 hodín nečinnosti
+    var maxAge = 8 * 60 * 60 * 1000; // 8 hodín v ms
+    if(data.loginTime && (Date.now() - data.loginTime) > maxAge) {
+      clearSession();
+      return null;
+    }
+    return data;
+  } catch(e){ return null; }
 }
 
 function setSession(user) {
-  try { localStorage.setItem(SESSION_KEY, JSON.stringify(user)); } catch(e){}
+  try {
+    user.loginTime = Date.now();
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(user));
+    localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+  } catch(e){}
 }
 
 function clearSession() {
-  try { localStorage.removeItem(SESSION_KEY); } catch(e){}
+  try {
+    sessionStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(SESSION_KEY);
+  } catch(e){}
 }
 
 function doLogin() {
@@ -2813,11 +2822,34 @@ function updateHdrForUser(user) {
   if(subEl) subEl.textContent = user.name + (user.role === 'admin' ? ' · Admin' : ' · Medicínsky reprezentant');
 }
 
+function refreshSession() {
+  // Obnov čas aktivity
+  try {
+    var data = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null') ||
+               JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+    if(data) {
+      data.loginTime = Date.now();
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(data));
+      localStorage.setItem(SESSION_KEY, JSON.stringify(data));
+    }
+  } catch(e){}
+}
+
+// Obnov session pri každej interakcii
+['click','touchstart','keydown'].forEach(function(ev) {
+  document.addEventListener(ev, function() {
+    var s = getSession();
+    if(s) refreshSession();
+  }, {passive: true});
+});
+
 function initLogin() {
   var session = getSession();
   if(session && session.username) {
     // Už prihlásený
     updateHdrForUser(session);
+    // Obnov region po načítaní
+    setTimeout(function(){ updateHdrForUser(session); }, 300);
   } else {
     // Zobraziť login
     document.getElementById('login-screen').classList.add('show');
@@ -2902,7 +2934,7 @@ document.addEventListener('DOMContentLoaded', function(){
   <div class="login-footer">
     <div class="login-footer-logo">GEDEON RICHTER</div>
     <div class="login-footer-text">Interný nástroj · len pre medicínskych reprezentantov</div>
-    <div class="login-version">ver. 1.3 · 2026</div>
+    <div class="login-version">ver. 1.5 · 2026</div>
   </div>
 
 </div>
