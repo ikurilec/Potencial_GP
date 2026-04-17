@@ -419,6 +419,31 @@
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
 
+
+<div class="hdr">
+  <div class="hdr-row">
+    <div style="flex:1;min-width:0">
+      <div class="hdr-title">Potenci&#225;l v&#353;eobecn&#233;ho lek&#225;ra</div>
+      <div class="hdr-sub">Medic&#237;nsky reprezentant &#8212; kalkula&#269;ka potenci&#225;lu</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+  <div class="hdr-dots" style="margin-top:0">
+        <div class="hdr-dot"><div class="dot" style="background:#34D399"></div>Vidonorm</div>
+        <div class="hdr-dot"><div class="dot" style="background:#60A5FA"></div>Aflamil</div>
+        <div class="hdr-dot"><div class="dot" style="background:#C084FC"></div>Suprax</div>
+        <div class="hdr-dot"><div class="dot" style="background:#FCD34D"></div>Cavinton Forte</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:6px">
+  <button class="logout-btn" onclick="doLogout()">⎋ Odhlásiť</button>
+  <div class="hdr-badge-wrap" id="hdr-badge-wrap" onclick="openHistory()">
+    <div class="hdr-badge" id="hdr-badge"></div>
+    <span class="hdr-hist-link">📋 História</span>
+  </div>
+  </div>
+    </div>
+  </div>
+  </div>
+</div>
+
 <!-- MANAŽÉRSKY PANEL -->
 <div id="manager-panel">
   <div class="mp-card">
@@ -475,31 +500,7 @@
       <div id="mp-det-note"></div>
     </div>
   </div>
-</div>
 
-<div class="hdr">
-  <div class="hdr-row">
-    <div style="flex:1;min-width:0">
-      <div class="hdr-title">Potenci&#225;l v&#353;eobecn&#233;ho lek&#225;ra</div>
-      <div class="hdr-sub">Medic&#237;nsky reprezentant &#8212; kalkula&#269;ka potenci&#225;lu</div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
-  <div class="hdr-dots" style="margin-top:0">
-        <div class="hdr-dot"><div class="dot" style="background:#34D399"></div>Vidonorm</div>
-        <div class="hdr-dot"><div class="dot" style="background:#60A5FA"></div>Aflamil</div>
-        <div class="hdr-dot"><div class="dot" style="background:#C084FC"></div>Suprax</div>
-        <div class="hdr-dot"><div class="dot" style="background:#FCD34D"></div>Cavinton Forte</div>
-  </div>
-  <div style="display:flex;align-items:center;gap:6px">
-  <button class="logout-btn" onclick="doLogout()">⎋ Odhlásiť</button>
-  <div class="hdr-badge-wrap" id="hdr-badge-wrap" onclick="openHistory()">
-    <div class="hdr-badge" id="hdr-badge"></div>
-    <span class="hdr-hist-link">📋 História</span>
-  </div>
-  </div>
-    </div>
-  </div>
-  </div>
-</div>
 
 <div class="progress-wrap" id="progress-wrap">
     <div class="progress-header">
@@ -2961,8 +2962,8 @@ function mpGetReps(role, login) {
 function initManagerPanel() {
   var panel = document.getElementById('manager-panel');
   if(panel) panel.classList.add('show');
-  // Skry formulár
-  ['progress-wrap','rec','submit-wrap','thankyou'].forEach(function(id){
+  // Skry formulár a progress bar
+  ['progress-wrap','rec','submit-wrap','thankyou','hdr-badge-wrap'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.querySelectorAll('.card,.info-card').forEach(function(el){ el.style.display='none'; });
