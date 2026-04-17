@@ -71,6 +71,89 @@
   .update-bar-icon{display:inline-block;margin-right:6px;animation:updatePulse 1.6s ease-in-out infinite}
   @keyframes updateSlide{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
   @keyframes updatePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+  /* ═══ MANAGER MODE ═══ */
+  .mgr-view{display:none}
+  body.manager-mode .mgr-view{display:block}
+  body.manager-mode .progress-wrap,
+  body.manager-mode .info-card,
+  body.manager-mode .rec,
+  body.manager-mode .card,
+  body.manager-mode .thankyou,
+  body.manager-mode .hdr-badge-wrap{display:none !important}
+  .mgr-role-pill{background:rgba(255,255,255,.13);color:#fff;padding:5px 11px;border-radius:20px;font-size:10.5px;font-weight:700;letter-spacing:.04em;white-space:nowrap;text-transform:uppercase;display:inline-flex;align-items:center;gap:5px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .mgr-role-pill:active{background:rgba(255,255,255,.22)}
+  .mgr-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:12px}
+  .mgr-stat{background:#fff;border-radius:10px;padding:11px 6px;text-align:center;box-shadow:0 2px 8px rgba(10,25,50,.08);border:1px solid rgba(0,0,0,.04)}
+  .mgr-stat-num{font-size:20px;font-weight:700;color:#1A2A3A;font-family:'Outfit','SF Pro Display',-apple-system,sans-serif;line-height:1}
+  .mgr-stat-lbl{font-size:10px;color:#64748B;margin-top:4px;text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+  .mgr-toolbar{background:#fff;border-radius:10px;padding:5px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.05);display:flex;gap:3px}
+  .mgr-tb-btn{flex:1;padding:8px 4px;border-radius:7px;border:none;background:transparent;color:#64748B;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s;-webkit-tap-highlight-color:transparent}
+  .mgr-tb-btn.active{background:#0C1E35;color:#fff}
+  .mgr-list{display:flex;flex-direction:column;gap:9px}
+  .mgr-card{background:#fff;border-radius:12px;padding:14px 14px 12px;box-shadow:0 2px 10px rgba(0,0,0,.06);border:1px solid rgba(0,0,0,.05);cursor:pointer;transition:transform .15s,box-shadow .2s;display:flex;align-items:flex-start;gap:12px;-webkit-tap-highlight-color:transparent}
+  .mgr-card:active{transform:scale(.985);box-shadow:0 1px 4px rgba(0,0,0,.04)}
+  .mgr-avatar{width:42px;height:42px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;font-family:'Outfit','SF Pro Display',-apple-system,sans-serif;letter-spacing:.02em}
+  .mgr-body{flex:1;min-width:0}
+  .mgr-name{font-size:14px;font-weight:700;color:#1A2A3A;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mgr-meta{font-size:11.5px;color:#64748B;display:flex;gap:5px;align-items:center;margin-bottom:6px}
+  .mgr-dot{width:7px;height:7px;border-radius:50%;background:#10B981;flex-shrink:0}
+  .mgr-dot.warn{background:#F59E0B}
+  .mgr-dot.stale{background:#EF4444}
+  .mgr-dot.none{background:#94A3B8}
+  .mgr-dot.err{background:#DC2626}
+  .mgr-counts{font-size:11px;color:#8A97A6;margin-bottom:7px}
+  .mgr-counts strong{color:#1A2A3A;font-weight:700}
+  .mgr-segs{display:flex;gap:4px;flex-wrap:wrap}
+  .mgr-chip{font-size:10px;padding:2px 7px;border-radius:9px;font-weight:700;white-space:nowrap;letter-spacing:.02em}
+  .mgr-chip-top{background:#D1FAE5;color:#047857}
+  .mgr-chip-udrzat{background:#CCFBF1;color:#0F766E}
+  .mgr-chip-zvysit3{background:#FED7AA;color:#9A3412}
+  .mgr-chip-zvysit{background:#FEF3C7;color:#92400E}
+  .mgr-chip-frekvencia{background:#E0E7FF;color:#4338CA}
+  .mgr-chip-vyradit{background:#FEE2E2;color:#991B1B}
+  .mgr-chev{color:#CBD5E1;font-size:26px;font-weight:300;flex-shrink:0;align-self:center;line-height:1;margin-top:-2px}
+  .mgr-empty{background:#fff;border-radius:12px;padding:36px 20px;text-align:center;color:#64748B;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+  .mgr-empty-ico{font-size:34px;margin-bottom:10px;display:block;opacity:.5}
+  .mgr-empty-title{font-size:14px;font-weight:600;margin-bottom:4px;color:#1A2A3A}
+  .mgr-empty-sub{font-size:12px}
+  .mgr-loading{text-align:center;padding:40px 20px;color:#64748B;font-size:13px}
+  .mgr-spinner{display:inline-block;width:28px;height:28px;border:3px solid #E2E8F0;border-top-color:#2563EB;border-radius:50%;animation:mgrSpin .8s linear infinite;margin-bottom:10px}
+  @keyframes mgrSpin{to{transform:rotate(360deg)}}
+  .mgr-detail{display:none;animation:mgrSlide .28s cubic-bezier(.16,1,.3,1)}
+  .mgr-detail.show{display:block}
+  @keyframes mgrSlide{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}
+  .mgr-back{display:inline-flex;align-items:center;gap:6px;background:#fff;border:none;padding:9px 14px 9px 10px;border-radius:22px;color:#2563EB;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:10px;font-family:inherit;box-shadow:0 1px 4px rgba(0,0,0,.06);transition:transform .15s;-webkit-tap-highlight-color:transparent}
+  .mgr-back:active{transform:scale(.96)}
+  .mgr-dhdr{background:linear-gradient(135deg,#0C1E35,#1A3A5C);border-radius:14px;padding:16px 18px;margin-bottom:10px;color:#fff;display:flex;align-items:center;gap:13px;box-shadow:0 8px 24px rgba(10,25,50,.25)}
+  .mgr-davatar{width:52px;height:52px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px;flex-shrink:0;font-family:'Outfit',sans-serif;letter-spacing:.02em;box-shadow:inset 0 0 0 2px rgba(255,255,255,.25)}
+  .mgr-dname{font-size:16px;font-weight:700;margin-bottom:2px;font-family:'Outfit',sans-serif}
+  .mgr-dsub{font-size:11.5px;color:#7AABCC;letter-spacing:.02em}
+  .mgr-dstats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+  .mgr-dstat{background:#fff;border-radius:10px;padding:10px 4px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+  .mgr-dstat-num{font-size:18px;font-weight:700;color:#1A2A3A;font-family:'Outfit',sans-serif;line-height:1}
+  .mgr-dstat-lbl{font-size:9px;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-top:3px;font-weight:600}
+  .mgr-segsum{background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.04);display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+  .mgr-segsum-lbl{font-size:10.5px;color:#64748B;font-weight:600;margin-right:4px;text-transform:uppercase;letter-spacing:.05em}
+  .mgr-vsearch{background:#fff;border-radius:10px;margin-bottom:8px;box-shadow:0 2px 8px rgba(0,0,0,.05);display:flex;align-items:center;padding-left:12px}
+  .mgr-vsearch-ico{color:#94A3B8;font-size:15px}
+  .mgr-vsearch input{flex:1;border:none;padding:11px 14px 11px 8px;border-radius:10px;font-size:14px;font-family:inherit;outline:none;color:#1A2A3A;background:transparent}
+  .mgr-vlist{display:flex;flex-direction:column;gap:7px}
+  .mgr-vitem{background:#fff;border-radius:10px;padding:11px 12px 11px 0;box-shadow:0 1px 4px rgba(0,0,0,.05);border:1px solid rgba(0,0,0,.04);display:flex;gap:10px;align-items:stretch;overflow:hidden;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .15s}
+  .mgr-vitem:active{transform:scale(.99)}
+  .mgr-vseg{width:4px;flex-shrink:0}
+  .mgr-vseg.top,.mgr-vseg.udrzat{background:#10B981}
+  .mgr-vseg.zvysit3,.mgr-vseg.zvysit,.mgr-vseg.frekvencia{background:#F59E0B}
+  .mgr-vseg.vyradit{background:#EF4444}
+  .mgr-vbody{flex:1;min-width:0;padding:1px 0}
+  .mgr-vdoc{font-size:13.5px;font-weight:700;color:#1A2A3A;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mgr-vmeta{font-size:11px;color:#64748B;display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+  .mgr-vmeta .sep{opacity:.4}
+  .mgr-vseg-lbl{font-size:10px;font-weight:700;padding:2px 7px;border-radius:9px;letter-spacing:.02em;white-space:nowrap}
+  .mgr-vnote-ico{margin-left:3px;font-size:11px;opacity:.7}
+  /* Read-only poznámka v detaile pre manažéra */
+  body.manager-mode .note-btn-edit,
+  body.manager-mode .note-btn-delete,
+  body.manager-mode #detail-note-wrap button{display:none !important}
   .info-card{background:#fff;border-radius:14px;margin-bottom:32px;box-shadow:0 2px 12px rgba(0,0,0,.07);border:1px solid rgba(0,0,0,.07);overflow:visible}
   .info-accent{height:3px;background:linear-gradient(90deg,#0C1E35,#1A3A5C)}
   .info-inner{padding:18px 20px 20px}
@@ -370,6 +453,50 @@
   </div>
     </div>
   </div>
+  </div>
+</div>
+
+<!-- ═══ MANAGER VIEW (zobrazí sa iba keď sa prihlási BUM/admin/boss/AM West/AM East) ═══ -->
+<div class="mgr-view" id="mgr-view">
+  <!-- Dashboard — zoznam reprezentantov -->
+  <div class="mgr-list-wrap" id="mgr-list-wrap">
+    <div class="mgr-stats">
+      <div class="mgr-stat"><div class="mgr-stat-num" id="mgr-stat-reps">—</div><div class="mgr-stat-lbl">Reprezent.</div></div>
+      <div class="mgr-stat"><div class="mgr-stat-num" id="mgr-stat-week">—</div><div class="mgr-stat-lbl">Týždeň</div></div>
+      <div class="mgr-stat"><div class="mgr-stat-num" id="mgr-stat-month">—</div><div class="mgr-stat-lbl">Mesiac</div></div>
+    </div>
+    <div class="mgr-toolbar">
+      <button class="mgr-tb-btn active" data-sort="activity" onclick="mgrSetSort('activity')">Podľa aktivity</button>
+      <button class="mgr-tb-btn" data-sort="volume" onclick="mgrSetSort('volume')">Podľa počtu</button>
+      <button class="mgr-tb-btn" data-sort="name" onclick="mgrSetSort('name')">A–Z</button>
+    </div>
+    <div class="mgr-list" id="mgr-list">
+      <div class="mgr-loading"><div class="mgr-spinner"></div><div>Načítavam dáta reprezentantov zo Sheets...</div></div>
+    </div>
+  </div>
+
+  <!-- Detail reprezentanta — zoznam jeho návštev -->
+  <div class="mgr-detail" id="mgr-detail">
+    <button class="mgr-back" onclick="mgrCloseRep()">&larr; Späť na zoznam</button>
+    <div class="mgr-dhdr">
+      <div class="mgr-davatar" id="mgr-davatar">—</div>
+      <div style="flex:1;min-width:0">
+        <div class="mgr-dname" id="mgr-dname"></div>
+        <div class="mgr-dsub" id="mgr-dsub"></div>
+      </div>
+    </div>
+    <div class="mgr-dstats">
+      <div class="mgr-dstat"><div class="mgr-dstat-num" id="mgr-ds-total">0</div><div class="mgr-dstat-lbl">Celkom</div></div>
+      <div class="mgr-dstat"><div class="mgr-dstat-num" id="mgr-ds-month">0</div><div class="mgr-dstat-lbl">Mesiac</div></div>
+      <div class="mgr-dstat"><div class="mgr-dstat-num" id="mgr-ds-week">0</div><div class="mgr-dstat-lbl">Týždeň</div></div>
+      <div class="mgr-dstat"><div class="mgr-dstat-num" id="mgr-ds-today">0</div><div class="mgr-dstat-lbl">Dnes</div></div>
+    </div>
+    <div class="mgr-segsum" id="mgr-segsum"></div>
+    <div class="mgr-vsearch">
+      <span class="mgr-vsearch-ico">🔍</span>
+      <input type="text" id="mgr-vsearch" placeholder="Hľadať lekára alebo okres..." oninput="mgrRenderVisits()">
+    </div>
+    <div class="mgr-vlist" id="mgr-vlist"></div>
   </div>
 </div>
 
@@ -789,7 +916,7 @@
 // ╔══════════════════════════════════════════════════════════════╗
 // ║  VERZIA APLIKÁCIE — pri každom update zmeniť aj vo version.json ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '1.6';
+var APP_VERSION = '1.7';
 
 // ── CHECK NOVEJ VERZIE NA SERVERI ──
 // Fetchne version.json a porovná. Ak server má novšiu verziu, zobrazí banner.
@@ -2917,6 +3044,12 @@ function loginSuccess(username, name, role, region) {
   haptic('success');
   document.getElementById('login-screen').classList.remove('show');
   updateHdrForUser(user);
+  // Skontroluj či je to manažér (BUM/admin/boss/AM West/AM East)
+  var mgrRole = mgrDetectRole(user);
+  if(mgrRole){
+    mgrEnter(mgrRole);
+    return;
+  }
   initTutorial();
   // Aktualizuj badge zo Sheets
   refreshBadgeFromSheets(username);
@@ -3041,6 +3174,12 @@ function initLogin() {
       setSession(session);
     }
     updateHdrForUser(session);
+    // Ak je to manažér, vstúp rovno do manažérskeho režimu
+    var mgrRole = mgrDetectRole(session);
+    if(mgrRole){
+      mgrEnter(mgrRole);
+      return;
+    }
     setTimeout(function(){ updateHdrForUser(session); }, 300);
     refreshBadgeFromSheets(session.username);
   } else {
@@ -3055,6 +3194,488 @@ document.addEventListener('DOMContentLoaded', function(){
   var passEl = document.getElementById('login-pass');
   if(userEl) userEl.addEventListener('keydown', function(e){ if(e.key==='Enter') { var p=document.getElementById('login-pass'); if(p) p.focus(); } });
   if(passEl) passEl.addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
+});
+
+// ═══════════════════════════════════════════════════════════
+//   MANAGER MODE — dashboard pre BUM / admin / boss / AM West / AM East
+// ═══════════════════════════════════════════════════════════
+
+// Username → Celé meno (pre zobrazenie v karte)
+var MGR_REP_NAMES = {
+  'j.bohovic':    'Jaroslava Bohovičová',
+  'v.hatinova':   'Viktória Hatinová',
+  'v.hromadkova': 'Vladimíra Hromádková',
+  'z.lescis':     'Zuzana Leščišinová',
+  'j.krkoska':    'Juraj Krkoška',
+  'i.kozakova':   'Ida Kozáková',
+  'k.czidor':     'Katarína Czidor',
+  'o.rad':        'Olexandra Rad',
+  'l.mackova':    'Lenka Mačáková',
+  'z.lapsan':     'Zuzana Lapšanská',
+  'm.sabol':      'Michal Sabol',
+  'ke.rep':       'KE Reprezentant'
+};
+var MGR_AM_WEST = ['j.bohovic','v.hatinova','v.hromadkova','z.lescis','j.krkoska','i.kozakova'];
+var MGR_AM_EAST = ['k.czidor','o.rad','l.mackova','z.lapsan','m.sabol','ke.rep'];
+var MGR_ALL = MGR_AM_WEST.concat(MGR_AM_EAST);
+
+var MGR_ROLE_CFG = {
+  bum:    { label:'BUM',     title:'Všetci reprezentanti',      reps:MGR_ALL },
+  admin:  { label:'ADMIN',   title:'Všetci reprezentanti',      reps:MGR_ALL },
+  boss:   { label:'BOSS',    title:'Všetci reprezentanti',      reps:MGR_ALL },
+  amwest: { label:'AM WEST', title:'Reprezentanti West',        reps:MGR_AM_WEST },
+  ameast: { label:'AM EAST', title:'Reprezentanti East',        reps:MGR_AM_EAST }
+};
+
+var MGR_SEG_LBL = { top:'TOP', udrzat:'UDRŽAŤ', zvysit3:'ZVÝŠIŤ 3×', zvysit:'ZVÝŠIŤ 2×', frekvencia:'FREKVENCIA', vyradit:'VYRADIŤ' };
+
+var MGR_STATE = { role:null, sort:'activity', reps:{}, currentRep:null };
+
+// Explicitný whitelist manažérskych účtov (zodpovedá login sheetu)
+// Kľúč = username, hodnota = manažérska rola v tejto appke
+// Keď pribudne nový manažér, pridaj ho sem:
+var MGR_USERS = {
+  'e.starostova': 'bum',     // Eva Starostová — BUM, vidí všetkých
+  'admin':        'admin',   // Ivan Kurilec — admin, vidí všetkých
+  'z.halasz':     'boss',    // Zoltán Halász — boss, vidí všetkých
+  'am.west':      'amwest',  // AM West — vidí len reps West
+  'am.east':      'ameast'   // AM East — vidí len reps East
+};
+
+// Detekcia manažérskej role — jednoduchý lookup, žiadne heuristiky
+function mgrDetectRole(user){
+  if(!user) return null;
+  var u = String(user.username || '').toLowerCase().trim();
+  return MGR_USERS[u] || null;
+}
+
+// Vstup do manažérskeho módu
+function mgrEnter(roleKey){
+  var cfg = MGR_ROLE_CFG[roleKey];
+  if(!cfg) return;
+  MGR_STATE.role = roleKey;
+  document.body.classList.add('manager-mode');
+
+  // Customizuj hlavičku
+  var titleEl = document.querySelector('.hdr-title');
+  var subEl = document.querySelector('.hdr-sub');
+  var session = getSession() || {};
+  if(titleEl) titleEl.textContent = 'Manažérsky pohľad';
+  if(subEl) subEl.textContent = (session.name || session.username || '') + ' · ' + cfg.label + ' · ' + cfg.title;
+
+  // Skroluj na vrch
+  window.scrollTo(0, 0);
+
+  mgrLoadData();
+}
+
+// Paralelný load všetkých histórií cez existujúci getHistory endpoint
+function mgrLoadData(){
+  var cfg = MGR_ROLE_CFG[MGR_STATE.role];
+  if(!cfg) return;
+
+  var promises = cfg.reps.map(function(username){
+    return fetch(SCRIPT_URL + '?action=getHistory&reprezentant=' + encodeURIComponent(username))
+      .then(function(r){ return r.json(); })
+      .then(function(rows){
+        return { username:username, rows:Array.isArray(rows)?rows:[], error:false };
+      })
+      .catch(function(){
+        return { username:username, rows:[], error:true };
+      });
+  });
+
+  Promise.all(promises).then(function(results){
+    results.forEach(function(res){
+      MGR_STATE.reps[res.username] = {
+        visits: mgrNormalizeVisits(res.rows),
+        error: res.error
+      };
+    });
+    mgrRenderList();
+  });
+}
+
+// Normalizácia (ako v existujúcom openHistory, aby boli formáty rovnaké)
+function mgrNormalizeVisits(rows){
+  var out = rows.map(function(item){
+    var rawDate = item.datum || '';
+    var dateStr = rawDate, ts = 0;
+    try {
+      var d = new Date(rawDate);
+      if(!isNaN(d.getTime())){
+        dateStr = d.getDate() + '.' + (d.getMonth()+1) + '.' + d.getFullYear();
+        ts = d.getTime();
+      }
+    } catch(e){}
+    var rawCas = item.cas || '';
+    var casStr = (typeof rawCas === 'string') ? rawCas : '';
+    try {
+      if(typeof rawCas === 'object' || (typeof rawCas === 'string' && rawCas.length > 5 && rawCas.indexOf('T') !== -1)){
+        var dc = new Date(rawCas);
+        if(!isNaN(dc.getTime())){
+          casStr = ('0'+dc.getHours()).slice(-2) + ':' + ('0'+dc.getMinutes()).slice(-2);
+        }
+      }
+    } catch(e){}
+    // Enrich timestamp s časom ak je k dispozícii
+    if(ts > 0 && typeof casStr === 'string' && /^\d{1,2}:\d{2}/.test(casStr)){
+      var hm = casStr.split(':');
+      ts = ts + parseInt(hm[0],10)*3600000 + parseInt(hm[1],10)*60000;
+    }
+    var dParts = (typeof rawDate === 'string') ? rawDate.split('.') : [];
+    var dk = (dParts.length === 3) ? dParts[2]+'-'+dParts[1]+'-'+dParts[0] : (typeof rawDate === 'string' ? rawDate : '');
+    return Object.assign({}, item, {
+      dateKey: dk,
+      dateStr: dateStr,
+      cas: casStr,
+      ts: ts || 0,
+      lekar: item.lekar || '',
+      okres: item.okres || '',
+      scenar: item.scenar || '',
+      poznamka: item.poznamka || ''
+    });
+  });
+  out.sort(function(a,b){ return (b.ts||0) - (a.ts||0); });
+  return out;
+}
+
+function mgrSetSort(s){
+  MGR_STATE.sort = s;
+  document.querySelectorAll('.mgr-tb-btn').forEach(function(b){
+    b.classList.toggle('active', b.getAttribute('data-sort') === s);
+  });
+  mgrRenderList();
+}
+
+// ── Utility ──
+function mgrInitials(name){
+  var p = String(name).split(' ').filter(function(x){return x.length;});
+  if(p.length >= 2) return (p[0][0] + p[1][0]).toUpperCase();
+  return String(name).slice(0,2).toUpperCase();
+}
+function mgrHash(str){ var h=2166136261; for(var i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
+function mgrAvatarColor(name){
+  var h = mgrHash(String(name));
+  var palette = [['#2563EB','#1E40AF'],['#059669','#047857'],['#DC2626','#991B1B'],['#9333EA','#6B21A8'],['#EA580C','#C2410C'],['#0891B2','#0E7490'],['#CA8A04','#854D0E'],['#DB2777','#9D174D']];
+  var c = palette[h % palette.length];
+  return 'linear-gradient(135deg,' + c[0] + ',' + c[1] + ')';
+}
+function mgrTimeAgo(ts){
+  if(!ts) return '';
+  var diff = Date.now() - ts;
+  if(diff < 0) diff = 0;
+  var mins = Math.floor(diff/60000);
+  if(mins < 2) return 'pred chvíľou';
+  if(mins < 60) return 'pred ' + mins + ' min';
+  var hrs = Math.floor(mins/60);
+  if(hrs < 24) return 'pred ' + hrs + ' h';
+  var days = Math.floor(hrs/24);
+  if(days === 1) return 'pred 1 dňom';
+  if(days < 7) return 'pred ' + days + ' dňami';
+  var wks = Math.floor(days/7);
+  if(wks === 1) return 'pred týždňom';
+  if(wks < 5) return 'pred ' + wks + ' týždňami';
+  var mons = Math.floor(days/30);
+  if(mons === 1) return 'pred mesiacom';
+  return 'pred ' + mons + ' mesiacmi';
+}
+function mgrCountSince(visits, msBack){
+  var cutoff = Date.now() - msBack;
+  var c = 0;
+  for(var i=0;i<visits.length;i++){
+    var t = visits[i].ts || 0;
+    if(t >= cutoff) c++;
+    else if(t > 0) break; // visits sú zoradené, stop
+  }
+  return c;
+}
+function mgrCountToday(visits){
+  var d = new Date(); d.setHours(0,0,0,0);
+  var cutoff = d.getTime();
+  var c = 0;
+  for(var i=0;i<visits.length;i++){
+    var t = visits[i].ts || 0;
+    if(t >= cutoff) c++;
+    else if(t > 0) break;
+  }
+  return c;
+}
+function mgrSegCounts(visits){
+  var counts = {top:0,udrzat:0,zvysit3:0,zvysit:0,frekvencia:0,vyradit:0};
+  visits.forEach(function(v){
+    if(v.scenar && counts[v.scenar] !== undefined) counts[v.scenar]++;
+  });
+  return counts;
+}
+function mgrActClass(visits){
+  if(!visits.length) return 'none';
+  var firstTs = visits[0].ts || 0;
+  if(!firstTs) return 'none';
+  var days = (Date.now() - firstTs) / (24*60*60*1000);
+  if(days < 3) return '';
+  if(days < 10) return 'warn';
+  return 'stale';
+}
+function mgrEscape(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── Render dashboardu ──
+function mgrRenderList(){
+  var cfg = MGR_ROLE_CFG[MGR_STATE.role];
+  if(!cfg) return;
+  var reps = cfg.reps.slice();
+
+  var WEEK = 7*24*60*60*1000, MONTH = 30*24*60*60*1000;
+  var weekTotal = 0, monthTotal = 0;
+  reps.forEach(function(u){
+    var data = MGR_STATE.reps[u];
+    if(!data) return;
+    weekTotal  += mgrCountSince(data.visits, WEEK);
+    monthTotal += mgrCountSince(data.visits, MONTH);
+  });
+  document.getElementById('mgr-stat-reps').textContent  = reps.length;
+  document.getElementById('mgr-stat-week').textContent  = weekTotal;
+  document.getElementById('mgr-stat-month').textContent = monthTotal;
+
+  // Sort
+  if(MGR_STATE.sort === 'name'){
+    reps.sort(function(a,b){
+      return (MGR_REP_NAMES[a]||a).localeCompare(MGR_REP_NAMES[b]||b,'sk');
+    });
+  } else if(MGR_STATE.sort === 'volume'){
+    reps.sort(function(a,b){
+      var va = (MGR_STATE.reps[a]||{visits:[]}).visits.length;
+      var vb = (MGR_STATE.reps[b]||{visits:[]}).visits.length;
+      return vb - va;
+    });
+  } else {
+    reps.sort(function(a,b){
+      var da = MGR_STATE.reps[a];
+      var db = MGR_STATE.reps[b];
+      var ta = (da && da.visits[0]) ? (da.visits[0].ts || 0) : 0;
+      var tb = (db && db.visits[0]) ? (db.visits[0].ts || 0) : 0;
+      if(!ta && !tb) return 0;
+      if(!ta) return 1;
+      if(!tb) return -1;
+      return tb - ta;
+    });
+  }
+
+  var html = reps.map(function(u){
+    var name = MGR_REP_NAMES[u] || u;
+    var nameEsc = mgrEscape(name);
+    var data = MGR_STATE.reps[u];
+    if(!data){
+      return '<div class="mgr-card" style="opacity:.6"><div class="mgr-avatar" style="background:#CBD5E1">'+mgrInitials(name)+'</div><div class="mgr-body"><div class="mgr-name">'+nameEsc+'</div><div class="mgr-meta"><span class="mgr-dot none"></span>Načítavam...</div></div><div class="mgr-chev">›</div></div>';
+    }
+    if(data.error){
+      return '<div class="mgr-card"><div class="mgr-avatar" style="background:linear-gradient(135deg,#DC2626,#991B1B)">'+mgrInitials(name)+'</div><div class="mgr-body"><div class="mgr-name">'+nameEsc+'</div><div class="mgr-meta"><span class="mgr-dot err"></span>Chyba pri načítaní zo Sheets</div><div class="mgr-counts">Skontroluj pripojenie a skús obnoviť</div></div><div class="mgr-chev">›</div></div>';
+    }
+    var visits = data.visits;
+    var act = mgrActClass(visits);
+    var counts = mgrSegCounts(visits);
+    var lastTxt = (visits.length && visits[0].ts) ? mgrTimeAgo(visits[0].ts) : 'Žiadna aktivita';
+    var wk = mgrCountSince(visits, WEEK);
+    var mo = mgrCountSince(visits, MONTH);
+
+    var segs = '';
+    ['top','udrzat','zvysit3','zvysit','frekvencia','vyradit'].forEach(function(sk){
+      if(counts[sk] > 0){
+        segs += '<span class="mgr-chip mgr-chip-'+sk+'">'+MGR_SEG_LBL[sk]+' '+counts[sk]+'</span>';
+      }
+    });
+    if(!segs) segs = '<span style="font-size:11px;color:#94A3B8;font-style:italic">Žiadne záznamy zatiaľ</span>';
+
+    return '<div class="mgr-card" onclick="mgrOpenRep(\''+u.replace(/\'/g,"\\'")+'\')">' +
+      '<div class="mgr-avatar" style="background:'+mgrAvatarColor(name)+'">'+mgrInitials(name)+'</div>' +
+      '<div class="mgr-body">' +
+        '<div class="mgr-name">'+nameEsc+'</div>' +
+        '<div class="mgr-meta"><span class="mgr-dot '+act+'"></span>'+lastTxt+'</div>' +
+        '<div class="mgr-counts">Celkom: <strong>'+visits.length+'</strong> · týždeň: <strong>'+wk+'</strong> · mesiac: <strong>'+mo+'</strong></div>' +
+        '<div class="mgr-segs">'+segs+'</div>' +
+      '</div>' +
+      '<div class="mgr-chev">›</div>' +
+    '</div>';
+  }).join('');
+
+  document.getElementById('mgr-list').innerHTML = html || '<div class="mgr-empty"><span class="mgr-empty-ico">👥</span><div class="mgr-empty-title">Žiadni reprezentanti</div></div>';
+}
+
+// ── Detail reprezentanta ──
+function mgrOpenRep(username){
+  MGR_STATE.currentRep = username;
+  document.getElementById('mgr-list-wrap').style.display = 'none';
+  document.getElementById('mgr-detail').classList.add('show');
+
+  var data = MGR_STATE.reps[username];
+  var visits = (data && data.visits) || [];
+  var name = MGR_REP_NAMES[username] || username;
+
+  document.getElementById('mgr-dname').textContent = name;
+  var region = MGR_AM_WEST.indexOf(username)!==-1 ? 'Región West' : 'Región East';
+  document.getElementById('mgr-dsub').textContent = region + ' · ' + visits.length + ' záznamov · @' + username;
+
+  var av = document.getElementById('mgr-davatar');
+  av.textContent = mgrInitials(name);
+  av.style.background = mgrAvatarColor(name);
+
+  var WEEK = 7*24*60*60*1000, MONTH = 30*24*60*60*1000;
+  document.getElementById('mgr-ds-total').textContent = visits.length;
+  document.getElementById('mgr-ds-month').textContent = mgrCountSince(visits, MONTH);
+  document.getElementById('mgr-ds-week').textContent  = mgrCountSince(visits, WEEK);
+  document.getElementById('mgr-ds-today').textContent = mgrCountToday(visits);
+
+  var counts = mgrSegCounts(visits);
+  var sumHtml = '<span class="mgr-segsum-lbl">Segmenty:</span>';
+  var anySeg = false;
+  ['top','udrzat','zvysit3','zvysit','frekvencia','vyradit'].forEach(function(sk){
+    if(counts[sk] > 0){
+      sumHtml += '<span class="mgr-chip mgr-chip-'+sk+'">'+MGR_SEG_LBL[sk]+' '+counts[sk]+'</span>';
+      anySeg = true;
+    }
+  });
+  if(!anySeg) sumHtml += '<span style="font-size:11.5px;color:#94A3B8;font-style:italic;margin-left:3px">zatiaľ žiadne</span>';
+  document.getElementById('mgr-segsum').innerHTML = sumHtml;
+
+  document.getElementById('mgr-vsearch').value = '';
+  mgrRenderVisits();
+  window.scrollTo(0, 0);
+}
+
+function mgrRenderVisits(){
+  var username = MGR_STATE.currentRep;
+  if(!username) return;
+  var data = MGR_STATE.reps[username];
+  var visits = (data && data.visits) || [];
+  var q = (document.getElementById('mgr-vsearch').value || '').toLowerCase().trim();
+  var filtered = q ? visits.filter(function(v){
+    return String(v.lekar||'').toLowerCase().indexOf(q) !== -1 ||
+           String(v.okres||'').toLowerCase().indexOf(q) !== -1;
+  }) : visits;
+
+  if(!filtered.length){
+    var txt = q ? 'Žiadne zhody' : 'Žiadne záznamy';
+    var sub = q ? 'Skús iný vyhľadávací výraz.' : 'Reprezentant zatiaľ nezapísal žiadnu návštevu.';
+    document.getElementById('mgr-vlist').innerHTML = '<div class="mgr-empty"><span class="mgr-empty-ico">📋</span><div class="mgr-empty-title">'+txt+'</div><div class="mgr-empty-sub">'+sub+'</div></div>';
+    return;
+  }
+
+  var html = filtered.map(function(v){
+    var scenar = v.scenar || '';
+    var dateStr = v.dateStr || '';
+    var cas = v.cas || '';
+    var noteIco = v.poznamka ? '<span class="mgr-vnote-ico" title="Obsahuje poznámku">📝</span>' : '';
+    var originalIdx = visits.indexOf(v);
+    return '<div class="mgr-vitem" onclick="mgrOpenVisit('+originalIdx+')">' +
+      '<div class="mgr-vseg '+scenar+'"></div>' +
+      '<div class="mgr-vbody">' +
+        '<div class="mgr-vdoc">'+mgrEscape(v.lekar||'—')+noteIco+'</div>' +
+        '<div class="mgr-vmeta">' +
+          (scenar ? '<span class="mgr-vseg-lbl mgr-chip-'+scenar+'">'+(MGR_SEG_LBL[scenar]||scenar)+'</span>' : '') +
+          (scenar ? '<span class="sep">·</span>' : '') +
+          '<span>📍 '+mgrEscape(v.okres||'—')+'</span>' +
+          '<span class="sep">·</span>' +
+          '<span>'+mgrEscape(dateStr)+(cas?' · '+mgrEscape(cas):'')+'</span>' +
+          (v.ts ? '<span class="sep">·</span><span style="color:#94A3B8">'+mgrTimeAgo(v.ts)+'</span>' : '') +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+  document.getElementById('mgr-vlist').innerHTML = html;
+}
+
+// Otvor kartu návštevy v detail-overlay (reuse existujúceho UI ako openDetail)
+function mgrOpenVisit(idx){
+  var username = MGR_STATE.currentRep;
+  if(!username) return;
+  var data = MGR_STATE.reps[username];
+  if(!data) return;
+  var item = data.visits[idx];
+  if(!item) return;
+
+  var seg = SEGMENTS[item.scenar];
+  var crClass = (item.scenar === 'vyradit') ? 'res-no'
+              : (item.scenar === 'frekvencia' || item.scenar === 'zvysit' || item.scenar === 'zvysit3') ? 'res-orange'
+              : 'res-yes';
+  var msgClass = (item.scenar === 'vyradit') ? 'msg-red'
+               : (item.scenar === 'frekvencia' || item.scenar === 'zvysit' || item.scenar === 'zvysit3') ? 'msg-orange'
+               : 'msg-green';
+
+  var cr = document.getElementById('detail-result');
+  var icon = document.getElementById('detail-icon');
+  var label = document.getElementById('detail-label');
+  var sub = document.getElementById('detail-sub');
+  var segDiv = document.getElementById('detail-seg');
+
+  cr.className = 'confirm-result ' + crClass;
+  icon.textContent = '✓';
+  label.textContent = item.lekar || '—';
+  var rname = MGR_REP_NAMES[username] || username;
+  sub.textContent = (item.okres || '—') + ' · ' + (item.dateStr || '') + (item.cas ? ' · ' + item.cas : '') + ' · ' + rname;
+
+  var prev = cr.querySelector('.scenario-msg');
+  if(prev) prev.remove();
+
+  if(seg){
+    var msg = document.createElement('div');
+    msg.className = 'scenario-msg ' + msgClass;
+    msg.style.textAlign = 'left';
+    msg.innerHTML =
+      '<div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-bottom:8px;text-align:center">' +
+        (msgClass==='msg-green' ? '✅' : msgClass==='msg-orange' ? '⚠️' : '🚫') + '&nbsp;Odporúčanie' +
+      '</div>' +
+      '<div style="display:flex;gap:6px;align-items:baseline;margin-bottom:5px">' +
+        '<span style="font-size:10px;font-weight:700;opacity:.65;text-transform:uppercase;letter-spacing:.05em;flex-shrink:0">Frekvencia:</span>' +
+        '<span style="font-size:12px;font-weight:700">' + seg.frekvencia + '</span>' +
+      '</div>' +
+      '<div style="display:flex;gap:6px;align-items:baseline">' +
+        '<span style="font-size:10px;font-weight:700;opacity:.65;text-transform:uppercase;letter-spacing:.05em;flex-shrink:0">Cieľ:</span>' +
+        '<span style="font-size:12px;font-weight:600;line-height:1.4">' + seg.ciel + '</span>' +
+      '</div>';
+    cr.appendChild(msg);
+
+    var actionsHtml = seg.akcia.map(function(a){
+      return '<div class="conf-seg-action"><span class="conf-seg-bullet">›</span><span class="conf-seg-text">'+mgrEscape(a)+'</span></div>';
+    }).join('');
+    segDiv.innerHTML =
+      '<div class="conf-seg-divider"></div>' +
+      '<div class="conf-seg">' +
+        '<div class="conf-seg-section-lbl">Čo robiť</div>' +
+        actionsHtml +
+      '</div>';
+    segDiv.style.display = 'block';
+  } else {
+    segDiv.style.display = 'none';
+  }
+
+  // Read-only poznámka (bez edit/delete tlačidiel)
+  var noteWrap = document.getElementById('detail-note-wrap');
+  if(item.poznamka){
+    noteWrap.innerHTML =
+      '<div class="conf-seg-divider"></div>' +
+      '<div style="padding:0 0 4px">' +
+        '<div class="note-label" style="margin-bottom:6px">📝 Poznámka reprezentanta</div>' +
+        '<div class="note-wrap"><div class="note-text">' + mgrEscape(item.poznamka) + '</div></div>' +
+      '</div>';
+  } else {
+    noteWrap.innerHTML = '';
+  }
+
+  document.getElementById('detail-overlay').className = 'detail-overlay show';
+}
+
+function mgrCloseRep(){
+  document.getElementById('mgr-detail').classList.remove('show');
+  document.getElementById('mgr-list-wrap').style.display = 'block';
+  MGR_STATE.currentRep = null;
+  window.scrollTo(0, 0);
+}
+
+// Obnov dáta keď sa manažér vráti z pozadia (nové poznámky, nové záznamy)
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState === 'visible' && MGR_STATE.role){
+    mgrLoadData();
+  }
 });
 
 document.addEventListener('DOMContentLoaded', function(){
@@ -3138,7 +3759,7 @@ document.addEventListener('DOMContentLoaded', function(){
   <div class="login-footer">
     <div class="login-footer-logo">GEDEON RICHTER</div>
     <div class="login-footer-text">Interný nástroj · len pre medicínskych reprezentantov</div>
-    <div class="login-version">ver. 1.6. · 2026</div>
+    <div class="login-version">ver. 1.7 · 2026</div>
   </div>
 
 </div>
