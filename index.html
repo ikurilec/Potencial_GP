@@ -938,12 +938,39 @@
 
 <script>
 // ╔══════════════════════════════════════════════════════════════╗
-// ║  VERZIA APLIKÁCIE — pri každom update zmeniť aj vo version.json ║
+// ║  VERZIA APLIKÁCIE                                              ║
+// ║  Pri každom nasadení novej verzie zmeniť:                     ║
+// ║    1) toto číslo APP_VERSION                                   ║
+// ║    2) ver. X.Y · 2026 v login footeri                          ║
+// ║    3) version.json na GitHube → {"version":"X.Y"}              ║
+// ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '1.8.1';
+var APP_VERSION = '1.9.1';
 
-// ── CHECK NOVEJ VERZIE NA SERVERI ──
-// Fetchne version.json a porovná. Ak server má novšiu verziu, zobrazí banner.
+// ── GLOBÁLNY ERROR HANDLER (iba log, neruší užívateľa) ──
+window.addEventListener('error', function(ev){
+  if(window.console && console.error) console.error('[global error]', ev.message, ev.filename+':'+ev.lineno);
+});
+
+// ── ODREGISTRUJ STARÉ SERVICE WORKERY ──
+// SW sme používali v minulých verziách, ale spôsoboval cache problémy.
+// Už ho nechceme — tichá deregistrácia ak tam ešte je.
+if('serviceWorker' in navigator){
+  try {
+    navigator.serviceWorker.getRegistrations().then(function(regs){
+      regs.forEach(function(r){ r.unregister(); });
+    }).catch(function(){});
+    if('caches' in window){
+      caches.keys().then(function(names){
+        names.forEach(function(n){ caches.delete(n); });
+      }).catch(function(){});
+    }
+  } catch(e){}
+}
+
+// ── UPDATE BANNER ──
+// Fetchne version.json zo servera a porovná s APP_VERSION v tomto HTML.
+// Ak server má novšiu, zobrazí zelený banner hore.
 function checkForUpdate(){
   if(!navigator.onLine) return;
   try {
@@ -954,7 +981,7 @@ function checkForUpdate(){
           showUpdateBanner();
         }
       })
-      .catch(function(){ /* tichý fail — nechceme rušiť reprezentanta */ });
+      .catch(function(){ /* offline / 404 — ignoruj */ });
   } catch(e){}
 }
 
@@ -962,10 +989,11 @@ function showUpdateBanner(){
   var bar = document.getElementById('update-bar');
   if(!bar || bar.classList.contains('show')) return;
   bar.classList.add('show');
-  // Haptic feedback ak je dostupný
   try { if(navigator.vibrate) navigator.vibrate(30); } catch(e){}
 }
 
+// Klik na banner → tvrdý reload s cache-bust URL parametrom.
+// Bez SW, bez caches API — čisto cez prehliadač.
 function applyUpdate(){
   var bar = document.getElementById('update-bar');
   if(bar){
@@ -973,10 +1001,8 @@ function applyUpdate(){
     bar.style.cursor = 'default';
     bar.onclick = null;
   }
-
+  // Zmaž cache API (ak tam niečo zostalo zo starého SW) a potom hard reload
   var tasks = [];
-
-  // 1) Zmazať všetky cache (SW aj browser)
   if('caches' in window){
     tasks.push(
       caches.keys().then(function(names){
@@ -984,71 +1010,18 @@ function applyUpdate(){
       }).catch(function(){})
     );
   }
-
-  // 2) Povedať SW aby skipol waiting (ak čaká nový)
-  if('serviceWorker' in navigator && navigator.serviceWorker.controller){
-    try { navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' }); } catch(e){}
-  }
-
   var done = function(){
-    // Hard reload s cache-bust URL parametrom — zabije aj GitHub Pages 10min cache
-    var base = window.location.pathname + (window.location.search ? '' : '');
-    var url = window.location.pathname + '?v=' + Date.now();
-    window.location.replace(url);
+    // Cache-bust query param donúti prehliadač stiahnuť HTML nanovo zo servera
+    window.location.replace(window.location.pathname + '?v=' + Date.now());
   };
-
-  if(tasks.length){
-    Promise.all(tasks).then(done, done);
-  } else {
-    done();
-  }
+  if(tasks.length) Promise.all(tasks).then(done, done); else done();
 }
 
-// ── SERVICE WORKER REGISTRÁCIA ──
-if('serviceWorker' in navigator){
-  window.addEventListener('load', function(){
-    navigator.serviceWorker.register('sw.js').then(function(reg){
-      // Checkni update hneď po registrácii
-      try { reg.update(); } catch(e){}
-
-      reg.addEventListener('updatefound', function(){
-        var nw = reg.installing;
-        if(!nw) return;
-        nw.addEventListener('statechange', function(){
-          if(nw.state === 'installed' && navigator.serviceWorker.controller){
-            // Inštalovala sa nová verzia SW — zobraz banner
-            showUpdateBanner();
-          }
-        });
-      });
-    }).catch(function(err){
-      if(window.console && console.log) console.log('SW register error:', err);
-    });
-
-    // Ak sa controller zmení (nový SW prebral kontrolu), reloadni
-    var reloadedAlready = false;
-    navigator.serviceWorker.addEventListener('controllerchange', function(){
-      if(reloadedAlready) return;
-      reloadedAlready = true;
-      // Nechceme automatický reload — iba ak user explicitne klikol
-    });
-  });
-}
-
-// ── KONTROLA PRI ŠTARTE A PRI OTVORENÍ Z POZADIA ──
-// (Kritické pre home-screen PWA — reprezentant otvorí appku z plochy a musíme mu ukázať update)
-setTimeout(checkForUpdate, 1200);
+// Kontrola pri štarte (s oneskorením aby nebrzdila načítanie)
+// a pri návrate appky z pozadia (kritické pre home-screen PWA)
+setTimeout(checkForUpdate, 1500);
 document.addEventListener('visibilitychange', function(){
-  if(document.visibilityState === 'visible'){
-    checkForUpdate();
-    if('serviceWorker' in navigator){
-      try {
-        navigator.serviceWorker.getRegistration().then(function(reg){
-          if(reg) reg.update().catch(function(){});
-        }).catch(function(){});
-      } catch(e){}
-    }
-  }
+  if(document.visibilityState === 'visible') checkForUpdate();
 });
 window.addEventListener('online', function(){ checkForUpdate(); });
 
@@ -3877,7 +3850,7 @@ document.addEventListener('DOMContentLoaded', function(){
   <div class="login-footer">
     <div class="login-footer-logo">GEDEON RICHTER</div>
     <div class="login-footer-text">Interný nástroj · len pre medicínskych reprezentantov</div>
-    <div class="login-version">ver. 1.8.1 · 2026</div>
+    <div class="login-version">ver. 1.9.1 · 2026</div>
   </div>
 
 </div>
