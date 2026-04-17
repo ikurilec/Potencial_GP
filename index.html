@@ -446,7 +446,7 @@
   <div class="card-accent" style="background:linear-gradient(90deg,#2563EB,#60A5FA)"></div>
   <div class="card-inner">
     <div class="prod-name">Aflamil</div>
-    <div class="prod-type">Ak&#250;tny produkt &nbsp;&middot;&nbsp; bal./mes.</div>
+    <div class="prod-type">Ak&#250;tny produkt &nbsp;&middot;&nbsp; bal. / mes.</div>
     <div class="row">
       <div>
         <div class="flbl">Počet predpísaných balení / mesiac</div>
@@ -464,7 +464,7 @@
   <div class="card-accent" style="background:linear-gradient(90deg,#7C3ABE,#C084FC)"></div>
   <div class="card-inner">
     <div class="prod-name">Suprax</div>
-    <div class="prod-type">Ak&#250;tny produkt &nbsp;&middot;&nbsp; bal./mes.</div>
+    <div class="prod-type">Ak&#250;tny produkt &nbsp;&middot;&nbsp; bal. / mes.</div>
     <div class="row">
       <div>
         <div class="flbl">Počet predpísaných balení / mesiac</div>
@@ -734,7 +734,7 @@
       <div class="tutorial-hero-sub">Zaznač si dôležité informácie</div>
     </div>
     <div class="tutorial-body">
-      <div class="tutorial-text">Voliteľné pole na spodku formulára. Zapiš napr. preferencie lekára alebo čo si treba zapamätať.</div>
+      <div class="tutorial-text">Voliteľné pole ako posledná časť formulára. Zapiš napr. preferencie lekára alebo čo si treba zapamätať.</div>
       <div class="tutorial-text" style="margin-top:8px;color:#64748B;font-size:12px">💡 Poznámky nájdeš aj v histórii po kliknutí na lekára.</div>
     </div>
     <div class="tutorial-footer">
@@ -969,7 +969,10 @@ function potvrdit(){
 
   // Check all required
   var lekarValid = lekar && lekarRealWords.length >= 2;
-  var repValid = !!rep;
+  // Región nie je povinný pre PM, BUM, AM, admin
+  var session = getSession();
+  var roleNoRegion = session && ['pm','bum','am','admin'].indexOf(session.role) !== -1;
+  var repValid = !!rep || roleNoRegion;
 
   if(!lekarValid || !repValid || !mestoValid) {
     smsg.className='smsg smsg-err';
