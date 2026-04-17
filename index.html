@@ -384,7 +384,7 @@
           <div class="info-label">Okres pracoviska lek&#225;ra</div>
           <div class="ac-wrap">
             <div class="info-input-wrap">
-              <input class="info-input" type="text" id="mesto" placeholder="napr. Bratislava I" autocomplete="off" oninput="acInput(this);validateField('mesto')" onkeydown="acKey(event)" onfocus="acShowAll(this)" onblur="setTimeout(function(){var list=document.getElementById('ac-list');if(list)list.style.display='none';var el=document.getElementById('mesto');var v=(el?el.value.trim():'').toLowerCase();var exact=OKRESY.some(function(o){return o.toLowerCase()===v;});setIcon('mesto',exact?'ok':v?'err':'none');},250)">
+              <input class="info-input" type="text" id="mesto" placeholder="napr. Bratislava I" autocomplete="off" oninput="acInput(this);validateField('mesto')" onkeydown="acKey(event)" onfocus="acShowAll(this)" onblur="setTimeout(function(){var list=document.getElementById('ac-list');if(list)list.style.display='none';var el=document.getElementById('mesto');var v=(el?el.value.trim():'').toLowerCase();var exact=OKRESY.some(function(o){return o.toLowerCase()===v;});setIcon('mesto',exact?'ok':v?'err':'none');updateProgress();},250)">
               <span class="field-icon hidden" id="icon-mesto"></span>
             </div>
             <div class="ac-list" id="ac-list" style="display:none"></div>
@@ -498,7 +498,7 @@
     <div class="row">
       <div>
         <div class="flbl">Poznámka</div>
-        <textarea id="poznamka" placeholder="Napr. preferuje ráno, ohlásiť sa deň vopred, pekná ambulancia..." rows="3" style="width:100%;border-radius:9px;border:1.5px solid #E2E8F0;background:#fff;font-size:15px;font-family:inherit;color:#1A2A3A;padding:10px 13px;outline:none;resize:none;transition:border-color .18s,box-shadow .18s;box-shadow:inset 0 1px 3px rgba(0,0,0,.04)" onfocus="this.style.borderColor='#F59E0B';this.style.boxShadow='0 0 0 3px rgba(245,158,11,.11)'" onblur="this.style.borderColor='#E2E8F0';this.style.boxShadow='inset 0 1px 3px rgba(0,0,0,.04)'"></textarea>
+        <textarea id="poznamka" placeholder="Napr. preferuje ráno, ohlásiť sa deň vopred, pekná ambulancia..." rows="3" style="width:100%;border-radius:9px;border:1.5px solid #E2E8F0;background:#fff;font-size:16px;font-family:inherit;color:#1A2A3A;padding:10px 13px;outline:none;resize:none;transition:border-color .18s,box-shadow .18s;box-shadow:inset 0 1px 3px rgba(0,0,0,.04)" onfocus="this.style.borderColor='#F59E0B';this.style.boxShadow='0 0 0 3px rgba(245,158,11,.11)'" onblur="this.style.borderColor='#E2E8F0';this.style.boxShadow='inset 0 1px 3px rgba(0,0,0,.04)'"></textarea>
       </div>
     </div>
   </div>
@@ -1654,15 +1654,15 @@ function acSelect(val) {
   list.innerHTML = '';
   setIcon('mesto', 'ok');
   acIdx = -1;
-  mestoEl.blur(); // hide keyboard on mobile
   // Auto-fill region
   var reg = getRegionForOkres(val);
   if(reg) setRegion(reg);
+  updateProgress();
   setTimeout(function(){
     var kap = document.getElementById('kapitacia-n');
     if(kap) kap.focus();
-  }, 150);
-  updateProgress();
+    updateProgress();
+  }, 200);
 }
 
 function acKey(e) {
@@ -1848,19 +1848,19 @@ function updateBadge(count, animate) {
 }
 
 function initCounter() {
-  // Najprv zobraz lokálny počet, potom aktualizuj zo Sheets
   updateBadge(getCounter(), false);
-  var session = getSession();
-  if(session && session.username) {
-    fetch(SCRIPT_URL + '?action=getHistory&reprezentant=' + encodeURIComponent(session.username))
-      .then(function(r){ return r.json(); })
-      .then(function(rows) {
-        if(Array.isArray(rows)) {
-          updateBadge(rows.length, false);
-        }
-      })
-      .catch(function(){});
-  }
+}
+
+function refreshBadgeFromSheets(username) {
+  if(!username) return;
+  fetch(SCRIPT_URL + '?action=getHistory&reprezentant=' + encodeURIComponent(username))
+    .then(function(r){ return r.json(); })
+    .then(function(rows) {
+      if(Array.isArray(rows)) {
+        updateBadge(rows.length, false);
+      }
+    })
+    .catch(function(){});
 }
 
 
@@ -2769,6 +2769,8 @@ function loginSuccess(username, name, role, region) {
   document.getElementById('login-screen').classList.remove('show');
   updateHdrForUser(user);
   initTutorial();
+  // Aktualizuj badge zo Sheets
+  refreshBadgeFromSheets(username);
 }
 
 function doLogin() {
@@ -2890,6 +2892,7 @@ function initLogin() {
     }
     updateHdrForUser(session);
     setTimeout(function(){ updateHdrForUser(session); }, 300);
+    refreshBadgeFromSheets(session.username);
   } else {
     // Zobraziť login
     document.getElementById('login-screen').classList.add('show');
