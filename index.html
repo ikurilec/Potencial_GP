@@ -2687,7 +2687,12 @@ function tutorialSkip() {
   localStorage.setItem(TUTORIAL_KEY, '1');
   var overlay = document.getElementById('tutorial-overlay');
   if(overlay) overlay.classList.remove('show');
+  var scrollY = parseInt(document.body.dataset.scrollY || '0');
   document.body.style.overflow = '';
+  document.body.style.position = '';
+  document.body.style.top = '';
+  document.body.style.width = '';
+  window.scrollTo(0, scrollY);
 }
 
 function initTutorial() {
@@ -2696,7 +2701,12 @@ function initTutorial() {
   if(localStorage.getItem(TUTORIAL_KEY)) return; // už videl tutoriál
   var overlay = document.getElementById('tutorial-overlay');
   if(overlay) overlay.classList.add('show');
+  var scrollY = window.scrollY;
   document.body.style.overflow = 'hidden';
+  document.body.style.position = 'fixed';
+  document.body.style.top = '-' + scrollY + 'px';
+  document.body.style.width = '100%';
+  document.body.dataset.scrollY = scrollY;
   // Animácia ikony na prvom kroku
   setTimeout(function(){
     var track = document.getElementById('tutorial-track');
