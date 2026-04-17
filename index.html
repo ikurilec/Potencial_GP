@@ -154,6 +154,29 @@
   body.manager-mode .note-btn-edit,
   body.manager-mode .note-btn-delete,
   body.manager-mode #detail-note-wrap button{display:none !important}
+  /* ═══ PRODUKTOVÝ PANEL v karte lekára (manažér) ═══ */
+  .prod-panel{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;margin-bottom:14px}
+  .prod-panel-top{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;background:#fff;border-bottom:1px solid #E2E8F0}
+  .prod-kap-lbl{font-size:9.5px;color:#64748B;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+  .prod-kap-val{font-size:16px;font-weight:700;color:#1A2A3A;font-family:'Outfit','SF Pro Display',-apple-system,sans-serif;margin-top:1px}
+  .prod-kap-val small{font-size:11px;font-weight:500;color:#64748B;margin-left:3px}
+  .prod-kategoria{font-size:15px;font-weight:700;padding:6px 13px;border-radius:8px;font-family:'Outfit','SF Pro Display',-apple-system,sans-serif;letter-spacing:.05em}
+  .prod-kategoria.kat-A{background:#D1FAE5;color:#047857}
+  .prod-kategoria.kat-B{background:#FED7AA;color:#9A3412}
+  .prod-kategoria.kat-C{background:#FEE2E2;color:#991B1B}
+  .prod-rows{padding:6px 0}
+  .prod-row{display:flex;align-items:center;gap:10px;padding:8px 14px}
+  .prod-row:not(:last-child){border-bottom:1px dashed #E2E8F0}
+  .prod-row.zero{opacity:.42}
+  .prod-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .prod-name{flex:1;font-size:13px;font-weight:600;color:#1A2A3A}
+  .prod-count{font-size:12px;color:#64748B;min-width:70px;text-align:right}
+  .prod-count strong{color:#1A2A3A;font-weight:700}
+  .prod-eur{font-size:13px;font-weight:700;color:#1A2A3A;font-family:'Outfit','SF Pro Display',-apple-system,sans-serif;min-width:60px;text-align:right}
+  .prod-row.zero .prod-count,.prod-row.zero .prod-eur,.prod-row.zero .prod-count strong{color:#94A3B8}
+  .prod-total{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;background:linear-gradient(135deg,#0C1E35,#1A3A5C);color:#fff}
+  .prod-total-lbl{font-size:10.5px;color:#7AABCC;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+  .prod-total-val{font-size:19px;font-weight:700;font-family:'Outfit','SF Pro Display',-apple-system,sans-serif;letter-spacing:.01em}
   .info-card{background:#fff;border-radius:14px;margin-bottom:32px;box-shadow:0 2px 12px rgba(0,0,0,.07);border:1px solid rgba(0,0,0,.07);overflow:visible}
   .info-accent{height:3px;background:linear-gradient(90deg,#0C1E35,#1A3A5C)}
   .info-inner{padding:18px 20px 20px}
@@ -732,6 +755,7 @@
         <div class="confirm-result-sub" id="detail-sub"></div>
       </div>
       <div class="confirm-inner">
+        <div id="mgr-detail-prod-panel" style="display:none"></div>
         <div id="detail-seg"></div>
         <div id="detail-note-wrap"></div>
         <hr style="border:none;border-top:1px solid #E2E8F0;margin:4px 0 14px">
@@ -916,7 +940,7 @@
 // ╔══════════════════════════════════════════════════════════════╗
 // ║  VERZIA APLIKÁCIE — pri každom update zmeniť aj vo version.json ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '1.7';
+var APP_VERSION = '1.8';
 
 // ── CHECK NOVEJ VERZIE NA SERVERI ──
 // Fetchne version.json a porovná. Ak server má novšiu verziu, zobrazí banner.
@@ -2489,6 +2513,9 @@ function closeHistory() {
 function openDetail(idx) {
   var item = _histDetailItems[idx];
   if(!item) return;
+  // Schovaj produktový panel (ten je iba pre manažérov cez mgrOpenVisit)
+  var prodPanel = document.getElementById('mgr-detail-prod-panel');
+  if(prodPanel){ prodPanel.style.display = 'none'; prodPanel.innerHTML = ''; }
   var seg = SEGMENTS[item.scenar];
   var crClass = (item.scenar==='vyradit') ? 'res-no'
               : (item.scenar==='frekvencia'||item.scenar==='zvysit'||item.scenar==='zvysit3') ? 'res-orange'
@@ -3422,6 +3449,61 @@ function mgrActClass(visits){
 }
 function mgrEscape(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+// ── Produktový panel pre kartu lekára (manažér) ──
+function mgrNum(n){ var v = Number(n); return isNaN(v) ? 0 : Math.max(0, v); }
+function mgrFmtInt(n){
+  // Slovak thousand separator (non-breaking space)
+  return Math.round(mgrNum(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '\u00A0');
+}
+function mgrFmtEur(n){ return mgrFmtInt(n) + ' €'; }
+function mgrPluralBal(n){
+  var v = Math.round(mgrNum(n));
+  if(v === 1) return 'balenie';
+  if(v >= 2 && v <= 4) return 'balenia';
+  return 'balení';
+}
+function mgrBuildProductsPanel(item){
+  var kap = mgrNum(item.kapitacia);
+  var kat = String(item.kategoria || '').toUpperCase().trim();
+  if(!kat || (kat !== 'A' && kat !== 'B' && kat !== 'C')){
+    // fallback — odvodiť z kapitácie ako v pôvodnom kóde
+    kat = (kap <= 1500) ? 'C' : (kap <= 1999) ? 'B' : 'A';
+  }
+  var products = [
+    { key:'vidonorm',  name:'Vidonorm',       color:'#34D399' },
+    { key:'aflamil',   name:'Aflamil',        color:'#60A5FA' },
+    { key:'suprax',    name:'Suprax',         color:'#C084FC' },
+    { key:'cavinton',  name:'Cavinton Forte', color:'#FCD34D' }
+  ];
+  var rowsHtml = products.map(function(p){
+    var n = mgrNum(item[p.key + '_n']);
+    var eur = mgrNum(item[p.key + '_eur']);
+    var nInt = Math.round(n);
+    var zeroCls = (nInt === 0) ? ' zero' : '';
+    return '<div class="prod-row'+zeroCls+'">' +
+      '<span class="prod-dot" style="background:'+p.color+'"></span>' +
+      '<span class="prod-name">'+p.name+'</span>' +
+      '<span class="prod-count"><strong>'+nInt+'</strong> '+mgrPluralBal(nInt)+'</span>' +
+      '<span class="prod-eur">'+mgrFmtEur(eur)+'</span>' +
+    '</div>';
+  }).join('');
+  var rocny = mgrNum(item.rocny_potential);
+  return '<div class="prod-panel">' +
+    '<div class="prod-panel-top">' +
+      '<div>' +
+        '<div class="prod-kap-lbl">Kapitácia</div>' +
+        '<div class="prod-kap-val">'+mgrFmtInt(kap)+'<small>pacientov</small></div>' +
+      '</div>' +
+      '<div class="prod-kategoria kat-'+kat+'">'+kat+'</div>' +
+    '</div>' +
+    '<div class="prod-rows">'+rowsHtml+'</div>' +
+    '<div class="prod-total">' +
+      '<div class="prod-total-lbl">Ročný potenciál</div>' +
+      '<div class="prod-total-val">'+mgrFmtEur(rocny)+'</div>' +
+    '</div>' +
+  '</div>';
+}
+
 // ── Render dashboardu ──
 function mgrRenderList(){
   var cfg = MGR_ROLE_CFG[MGR_STATE.role];
@@ -3616,6 +3698,13 @@ function mgrOpenVisit(idx){
   var rname = MGR_REP_NAMES[username] || username;
   sub.textContent = (item.okres || '—') + ' · ' + (item.dateStr || '') + (item.cas ? ' · ' + item.cas : '') + ' · ' + rname;
 
+  // Produktový panel (kapitácia, produkty, ročný potenciál)
+  var prodPanel = document.getElementById('mgr-detail-prod-panel');
+  if(prodPanel){
+    prodPanel.innerHTML = mgrBuildProductsPanel(item);
+    prodPanel.style.display = 'block';
+  }
+
   var prev = cr.querySelector('.scenario-msg');
   if(prev) prev.remove();
 
@@ -3762,7 +3851,7 @@ document.addEventListener('DOMContentLoaded', function(){
   <div class="login-footer">
     <div class="login-footer-logo">GEDEON RICHTER</div>
     <div class="login-footer-text">Interný nástroj · len pre medicínskych reprezentantov</div>
-    <div class="login-version">ver. 1.7 · 2026</div>
+    <div class="login-version">ver. 1.8 · 2026</div>
   </div>
 
 </div>
