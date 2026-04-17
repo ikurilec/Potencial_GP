@@ -1735,7 +1735,7 @@ window.addEventListener('beforeunload', function(e) {
 // ── progress bar ──
 function updateProgress() {
   var score = 0;
-  var total = 5; // lekar, okres, region, kapitacia, aspon1produkt
+  var total = 4; // lekar, okres, kapitacia, aspon1produkt (región je automatický)
 
   // Lekár - min 3 slová
   var lekar = (document.getElementById('lekar')||{}).value || '';
@@ -1745,10 +1745,6 @@ function updateProgress() {
   // Okres - musí byť platný (icon ok)
   var mestoIcon = document.getElementById('icon-mesto');
   if(mestoIcon && mestoIcon.classList.contains('ok')) score++;
-
-  // Región
-  var rep = document.getElementById('reprezentant');
-  if(rep && rep.value) score++;
 
   // Kapitácia - platná len ak je 1–9999
   var kap = document.getElementById('kapitacia-n');
@@ -2864,6 +2860,14 @@ function refreshSession() {
 });
 
 function initLogin() {
+  // Zobraz správu o aktualizácii ak treba
+  if(localStorage.getItem('potencial_gp_update_msg') === '1') {
+    localStorage.removeItem('potencial_gp_update_msg');
+    var subEl = document.getElementById('login-card-sub');
+    if(subEl) {
+      subEl.innerHTML = '<span style="color:#16A34A;font-weight:700">🔄 Aplikácia bola aktualizovaná</span><br><span style="color:#94A3B8;font-size:11px">Prihlás sa znova pre pokračovanie</span>';
+    }
+  }
   var session = getSession();
   if(session && session.username) {
     // Ak session nemá region, doplň z lokálneho zoznamu
@@ -2888,6 +2892,18 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 
 document.addEventListener('DOMContentLoaded', function(){
+  // ── Kontrola verzie appky ──
+  var APP_VERSION = '1.5';
+  var storedVersion = localStorage.getItem('potencial_gp_version');
+  if(storedVersion && storedVersion !== APP_VERSION) {
+    // Nová verzia — odhlásiť a informovať
+    clearSession();
+    localStorage.setItem('potencial_gp_version', APP_VERSION);
+    localStorage.setItem('potencial_gp_update_msg', '1');
+  } else {
+    localStorage.setItem('potencial_gp_version', APP_VERSION);
+  }
+
   initLogin();
   initTutorial();
   initAutosave();
@@ -2927,7 +2943,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
   <div class="login-card">
     <div class="login-card-title">Vitaj späť 👋</div>
-    <div class="login-card-sub">Prihlás sa do svojho účtu</div>
+    <div class="login-card-sub" id="login-card-sub">Prihlás sa do svojho účtu</div>
 
     <div class="login-field">
       <label class="login-label">Prihlasovacie meno</label>
