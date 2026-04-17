@@ -54,7 +54,6 @@
   .btn-add:hover .btn-circle{background:#DBEAFE;color:#2563EB}
   .cav-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   @media(max-width:480px){.cav-row{grid-template-columns:1fr}}
-
   .offline-bar{display:none;background:#DC2626;color:#fff;text-align:center;font-size:13px;font-weight:500;padding:10px 16px;position:sticky;top:0;z-index:1000}
   .offline-bar.show{display:block}
   .send-bar{display:none;background:linear-gradient(135deg,#1E40AF,#2563EB);color:#fff;text-align:center;font-size:14px;font-weight:500;padding:14px 20px;position:sticky;top:0;z-index:998;box-shadow:0 2px 12px rgba(30,64,175,.35)}
@@ -70,6 +69,7 @@
   .info-label{font-size:10px;font-weight:600;color:#64748B;letter-spacing:.06em;text-transform:uppercase}
   .info-input{height:44px;padding:0 13px;border-radius:9px;border:1.5px solid #E2E8F0;background:#F8FAFC;font-size:16px;font-family:inherit;color:#1A2A3A;outline:none;transition:border-color .18s;width:100%;-webkit-appearance:none}
   .info-input:focus{border-color:#3B82F6;background:#fff;box-shadow:0 0 0 3px rgba(59,130,246,.11)}
+  .info-input.has-error{border-color:#FCA5A5;background:#FFF5F5}
   .restore-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.45);z-index:1001;align-items:center;justify-content:center}
   .restore-overlay.show{display:flex}
   .restore-box{background:#fff;border-radius:16px;padding:24px;max-width:300px;width:88%;box-shadow:0 20px 60px rgba(0,0,0,.25);text-align:center;animation:slideUp .3s ease}
@@ -79,21 +79,17 @@
   .restore-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .restore-no{padding:11px;border-radius:9px;border:1.5px solid #E2E8F0;background:#F8FAFC;color:#64748B;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer}
   .restore-yes{padding:11px;border-radius:9px;border:none;background:#2563EB;color:#fff;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer}
-
   .info-input-wrap{position:relative;display:flex;align-items:center;width:100%}
   .info-input-wrap .info-input{padding-right:40px}
   .field-icon{position:absolute;right:13px;font-size:18px;pointer-events:none;transition:opacity .2s}
   .field-icon.ok{color:#16A34A}
   .field-icon.err{color:#DC2626}
   .field-icon.hidden{display:none}
-
-
   .hdr-badge-wrap{display:flex;flex-direction:row;align-items:center;gap:0;background:linear-gradient(135deg,#F59E0B,#EF4444);border-radius:20px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25);overflow:hidden;flex-shrink:0}
   .hdr-badge-wrap:hover{opacity:.9}
   .hdr-hist-link{font-size:11px;font-weight:600;color:#fff;padding:5px 8px;letter-spacing:.01em;border-left:1px solid rgba(255,255,255,.3);white-space:nowrap}
   .hdr-badge{color:#fff;font-size:10px;font-weight:700;padding:5px 6px 5px 8px;letter-spacing:.01em;white-space:nowrap}
   .hdr-badge.bump{transform:none}
-
   .progress-wrap{background:#fff;border-radius:12px;padding:10px 16px 12px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.06);border:1px solid #E2E8F0;transition:background .4s ease,border-radius .4s ease,border-color .4s ease,box-shadow .4s ease,backdrop-filter .4s ease,margin .4s ease}
   .progress-wrap.sticky{position:sticky;top:0;z-index:997;border-radius:0 0 12px 12px;background:rgba(255,255,255,.35);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:none;border-bottom:1px solid rgba(255,255,255,.3);box-shadow:0 2px 12px rgba(0,0,0,.08);margin-bottom:0}
   .progress-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
@@ -102,7 +98,6 @@
   .progress-track{height:6px;background:#E2E8F0;border-radius:3px;overflow:hidden}
   .progress-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,#EF4444,#F59E0B,#10B981);background-size:500% 100%;transition:width .4s cubic-bezier(.4,0,.2,1);}
   .progress-fill.complete{background:#059669}
-
   .hdr-hist-btn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:#fff;font-size:12px;font-weight:600;font-family:inherit;padding:6px 12px;border-radius:20px;cursor:pointer;transition:background .2s;white-space:nowrap}
   .hdr-hist-btn:hover{background:rgba(255,255,255,0.25)}
   .hist-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:1500;align-items:flex-start;justify-content:center;padding-top:60px}
@@ -113,7 +108,10 @@
   .hist-date{font-size:12px;color:#94A3B8;margin-top:2px}
   .hist-close{background:none;border:none;font-size:22px;color:#94A3B8;cursor:pointer;line-height:1;padding:0 4px}
   .hist-body{overflow-y:auto;flex:1;padding:8px 0}
-  .hist-empty{text-align:center;padding:40px 20px;color:#94A3B8;font-size:14px}
+  .hist-empty{text-align:center;padding:48px 24px;color:#94A3B8;font-size:13px;line-height:1.6}
+  .hist-empty-icon{font-size:44px;margin-bottom:12px;display:block;opacity:.6}
+  .hist-empty-title{font-size:15px;font-weight:700;color:#64748B;margin-bottom:6px}
+  .hist-empty-sub{font-size:12px;color:#94A3B8}
   .hist-search-wrap{padding:10px 14px;border-bottom:1px solid #E2E8F0;position:sticky;top:0;background:#fff;z-index:1}
   .hist-search{width:100%;height:38px;padding:0 12px 0 34px;border-radius:9px;border:1.5px solid #E2E8F0;background:#F8FAFC;font-size:14px;font-family:inherit;color:#1A2A3A;outline:none;box-sizing:border-box}
   .hist-search:focus{border-color:#3B82F6;background:#fff;box-shadow:0 0 0 3px rgba(59,130,246,.1)}
@@ -137,7 +135,6 @@
   .hist-item-seg-row{display:flex;gap:5px;align-items:baseline;margin-bottom:2px}
   .hist-item-seg-key{font-size:10px;font-weight:700;opacity:.6;text-transform:uppercase;letter-spacing:.04em;flex-shrink:0}
   .hist-item-seg-val{font-size:11px;font-weight:600;color:#334155;line-height:1.35}
-
   .send-popup{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center}
   .send-popup.show{display:flex}
   .send-box{background:#fff;border-radius:16px;padding:28px 24px;max-width:300px;width:88%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:slideUp .3s ease}
@@ -152,9 +149,8 @@
   .ac-item strong{color:#2563EB}
   .submit-wrap{margin-top:6px;padding:0 0 8px}
   .submit-wrap{position:fixed;bottom:0;left:0;right:0;z-index:990}
-  .submit-inner{max-width:660px;margin:0 auto;padding:10px 12px;background:rgba(255,255,255,.25);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);border-top:1px solid rgba(255,255,255,.2);transition:background .3s ease, border .3s ease}
-  @media(max-width:660px){.submit-inner{max-width:100%;padding:8px 12px}}
-  .submit-inner-content{width:100%}
+  .submit-inner{background:rgba(234,236,242,.9);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-top:1px solid rgba(255,255,255,.5);padding:10px 14px;display:flex;justify-content:center}
+  .submit-inner-content{width:100%;max-width:632px}
   .submit-wrap.at-bottom{position:relative;bottom:auto;left:auto;right:auto;background:transparent}
   .submit-wrap.at-bottom .submit-inner{background:transparent;border-top:none;backdrop-filter:none;-webkit-backdrop-filter:none;padding:8px 16px}
   .btn-submit{width:100%;padding:16px;border-radius:50px;border:none;background:rgba(22,163,74,.45);color:rgba(255,255,255,.95);font-size:16px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .3s ease, border-radius .3s ease, color .3s ease;-webkit-tap-highlight-color:transparent}
@@ -226,7 +222,6 @@
   .hdr-logo{width:85px;height:auto;opacity:.95;display:block}
   @media(max-width:480px){.hdr-logo{width:68px}}
   .footer{text-align:center;font-size:11px;color:#8A97A6;margin-top:22px;padding-top:16px;border-top:1px solid #DDE3EC}
-
   /* ── LOGIN ── */
   .login-screen{display:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:4000;flex-direction:column;align-items:center;background:#EAECF2;overflow-y:auto}
   .login-screen.show{display:flex}
@@ -315,22 +310,19 @@
   .tutorial-hero-sub{font-size:12.5px;color:#64748B;line-height:1.5;text-align:center}
   .tutorial-body{padding:16px 24px 0}
   .tutorial-text{font-size:13px;color:#475569;line-height:1.6;margin-bottom:14px;text-align:left}
-  .tutorial-example{background:#F8FAFC;border-radius:12px;padding:10px 14px;margin-bottom:14px;text-align:left;width:100%;box-sizing:border-box;border:1px solid #E2E8F0}
-  .tutorial-example-row{display:flex;gap:8px;align-items:baseline;margin-bottom:5px}
+  .tutorial-example{background:#F8FAFC;border-radius:9px;padding:11px 13px;margin-bottom:14px;border:1px solid #EEF2F7}
+  .tutorial-example-row{display:flex;gap:6px;margin-bottom:5px;align-items:baseline}
   .tutorial-example-row:last-child{margin-bottom:0}
-  .tutorial-example-key{font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.06em;flex-shrink:0;min-width:60px}
-  .tutorial-example-val{font-size:12px;color:#1E293B;font-weight:600}
-  .tutorial-footer{padding:14px 24px 22px;display:flex;flex-direction:column;gap:8px;touch-action:pan-y;user-select:none;-webkit-user-select:none}
-  .tutorial-dots{display:flex;gap:5px;justify-content:center;margin-bottom:4px;padding:8px 20px}
-  .tutorial-dot{height:5px;border-radius:3px;background:#E2E8F0;transition:all .35s cubic-bezier(.4,0,.2,1);width:5px;border:none;padding:0;cursor:pointer;position:relative}
-  .tutorial-dot.active{width:22px;background:#0F172A}
-
-  .tutorial-next{padding:13px;border-radius:14px;border:none;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;letter-spacing:-.01em;transition:transform .15s,opacity .15s;color:#fff}
-  .tutorial-next:active{transform:scale(.97)}
-  .tutorial-back{padding:11px;border-radius:12px;border:1.5px solid #E2E8F0;background:#fff;color:#475569;font-size:13.5px;font-weight:600;font-family:inherit;cursor:pointer;transition:border-color .2s}
-  .tutorial-back:hover{border-color:#CBD5E1}
-  .tutorial-preskocit{padding:8px;border-radius:8px;border:none;background:transparent;color:#94A3B8;font-size:13px;font-weight:500;font-family:inherit;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
-  .tutorial-preskocit:hover{color:#64748B}
+  .tutorial-example-key{font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.05em;flex-shrink:0}
+  .tutorial-example-val{font-size:12px;color:#334155;font-weight:600}
+  .tutorial-footer{padding:14px 20px 20px;border-top:1px solid #F1F5F9;margin-top:8px}
+  .tutorial-dots{display:flex;justify-content:center;gap:6px;margin-bottom:14px}
+  .tutorial-dot{width:7px;height:7px;border-radius:50%;border:none;background:#E2E8F0;cursor:pointer;padding:0;transition:all .25s}
+  .tutorial-dot.active{background:#2563EB;width:22px;border-radius:4px}
+  .tutorial-next{width:100%;padding:13px;border-radius:12px;border:none;background:#0C1E35;color:#fff;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;margin-bottom:10px;letter-spacing:-.01em}
+  .tutorial-back{width:100%;padding:10px;background:none;border:none;color:#94A3B8;font-size:13px;font-family:inherit;cursor:pointer;font-weight:500}
+  .tutorial-preskocit{display:block;margin:6px auto 0;background:none;border:none;color:#CBD5E1;font-size:11px;font-family:inherit;cursor:pointer;font-weight:500}
+  .tutorial-hero-login-title{font-size:26px;font-weight:800;letter-spacing:-.03em;color:#fff;text-align:center;line-height:1.2}
 </style>
 </head>
 <body>
@@ -2112,7 +2104,7 @@ function renderHistItems(items) {
   if(!body) return;
   _histDetailItems = [];
   if(!items.length) {
-    body.innerHTML = '<div class="hist-empty">Žiadni lekári</div>';
+    body.innerHTML = '<div class="hist-empty"><span class="hist-empty-icon">📋</span><div class="hist-empty-title">Žiadni lekári</div><div class="hist-empty-sub">Zatiaľ si nezaznamenal žiadnu návštevu.<br>Pridaj prvého lekára!</div></div>';
     return;
   }
   // Group by dateKey
@@ -2169,7 +2161,7 @@ function openHistory() {
   overlay.className = 'hist-overlay show';
 
   // Načítaj zo Sheets
-  body.innerHTML = '<div class="hist-empty">Načítavam históriu...</div>';
+  body.innerHTML = '<div class="hist-empty"><span class="hist-empty-icon">⏳</span><div class="hist-empty-title">Načítavam históriu...</div></div>';
   var session = getSession();
   var username = session ? session.username : '';
 
@@ -2224,7 +2216,7 @@ function openHistory() {
         });
         renderHistItems(_histAllItems);
       } catch(e) {
-        body.innerHTML = '<div class="hist-empty">Chyba načítania histórie</div>';
+        body.innerHTML = '<div class="hist-empty"><span class="hist-empty-icon">⚠️</span><div class="hist-empty-title">Chyba načítania</div><div class="hist-empty-sub">Skontroluj pripojenie a skús znova.</div></div>';
       }
     });
 }
@@ -2722,21 +2714,7 @@ function initTutorial() {
     }
   }, 400);
 }
-// ── USERS ──
-var USERS = {
-  'j.bohovic':   { hash: 'GP#2026Jar!', name: 'Jaroslava Bohovičová', role: 'rep' },
-  'v.hatinova':  { hash: 'GP#2026Vik!', name: 'Viktória Hatinová',    role: 'rep' },
-  'v.hromadkova':{ hash: 'GP#2026Vla!', name: 'Vladimíra Hromádková', role: 'rep' },
-  'z.lescis':    { hash: 'GP#2026Zu1!', name: 'Zuzana Leščišinová',   role: 'rep' },
-  'j.krkoska':   { hash: 'GP#2026Jur!', name: 'Juraj Krkoška',        role: 'rep' },
-  'i.kozakova':  { hash: 'GP#2026Ida!', name: 'Ida Kozáková',         role: 'rep' },
-  'k.czidor':    { hash: 'GP#2026Kat!', name: 'Katarína Czidor',      role: 'rep' },
-  'o.rad':       { hash: 'GP#2026Ole!', name: 'Olexandra Rad',        role: 'rep' },
-  'l.mackova':   { hash: 'GP#2026Len!', name: 'Lenka Mačáková',       role: 'rep' },
-  'z.lapsan':    { hash: 'GP#2026Zu2!', name: 'Zuzana Lapšanská',     role: 'rep' },
-  'm.sabol':     { hash: 'GP#2026Mic!', name: 'Michal Sabol',         role: 'rep' },
-  'admin':       { hash: 'GP#2026ADM!', name: 'Ivan Kurilec',         role: 'admin' },
-};
+// ── USERS sú uložení v Google Sheets (hárok Pouzivatelia) ──
 
 var SESSION_KEY = 'potencial_gp_session';
 
@@ -2765,25 +2743,42 @@ function doLogin() {
   userEl.classList.remove('err');
   passEl.classList.remove('err');
 
-  var user = USERS[username];
-  if(!user || user.hash !== password) {
+  if(!username || !password) {
     errEl.classList.add('show');
-    userEl.classList.add('err');
-    passEl.classList.add('err');
-    haptic('error');
     return;
   }
 
-  // Prihlásenie úspešné
-  setSession({ username: username, name: user.name, role: user.role });
-  haptic('success');
-  document.getElementById('login-screen').classList.remove('show');
+  // Zobraz loading
+  btn.disabled = true;
+  btn.textContent = 'Prihlasujem...';
 
-  // Nastav meno reprezentanta v hlavičke
-  updateHdrForUser(user);
+  // Overenie cez Google Sheets
+  fetch(SCRIPT_URL + '?action=login&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password))
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      btn.disabled = false;
+      btn.textContent = 'Prihlásiť sa →';
 
-  // Spusti tutoriál
-  initTutorial();
+      if(data.ok) {
+        var user = { username: username, name: data.name, role: data.role };
+        setSession(user);
+        haptic('success');
+        document.getElementById('login-screen').classList.remove('show');
+        updateHdrForUser(user);
+        initTutorial();
+      } else {
+        errEl.classList.add('show');
+        userEl.classList.add('err');
+        passEl.classList.add('err');
+        haptic('error');
+      }
+    })
+    .catch(function() {
+      btn.disabled = false;
+      btn.textContent = 'Prihlásiť sa →';
+      errEl.textContent = 'Chyba pripojenia. Skontroluj internet.';
+      errEl.classList.add('show');
+    });
 }
 
 function toggleLoginEye() {
@@ -2820,9 +2815,9 @@ function updateHdrForUser(user) {
 
 function initLogin() {
   var session = getSession();
-  if(session && USERS[session.username]) {
+  if(session && session.username) {
     // Už prihlásený
-    updateHdrForUser(USERS[session.username]);
+    updateHdrForUser(session);
   } else {
     // Zobraziť login
     document.getElementById('login-screen').classList.add('show');
