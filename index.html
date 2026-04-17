@@ -940,7 +940,7 @@
 // ╔══════════════════════════════════════════════════════════════╗
 // ║  VERZIA APLIKÁCIE — pri každom update zmeniť aj vo version.json ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '1.8';
+var APP_VERSION = '1.8.1';
 
 // ── CHECK NOVEJ VERZIE NA SERVERI ──
 // Fetchne version.json a porovná. Ak server má novšiu verziu, zobrazí banner.
@@ -3671,12 +3671,18 @@ function mgrRenderVisits(){
 
 // Otvor kartu návštevy v detail-overlay (reuse existujúceho UI ako openDetail)
 function mgrOpenVisit(idx){
+  try {
   var username = MGR_STATE.currentRep;
-  if(!username) return;
+  if(!username) { alert('[debug] currentRep chýba'); return; }
   var data = MGR_STATE.reps[username];
-  if(!data) return;
+  if(!data) { alert('[debug] žiadne data pre '+username); return; }
   var item = data.visits[idx];
-  if(!item) return;
+  if(!item) { alert('[debug] žiadna návšteva idx='+idx); return; }
+
+  if(window.console && console.log){
+    console.log('[mgr] klik na návštevu:', item);
+    console.log('[mgr] fields:', Object.keys(item));
+  }
 
   var seg = SEGMENTS[item.scenar];
   var crClass = (item.scenar === 'vyradit') ? 'res-no'
@@ -3692,17 +3698,27 @@ function mgrOpenVisit(idx){
   var sub = document.getElementById('detail-sub');
   var segDiv = document.getElementById('detail-seg');
 
+  if(!cr || !icon || !label || !sub || !segDiv){
+    alert('[debug] v HTML chýba niektorý z: detail-result, detail-icon, detail-label, detail-sub, detail-seg');
+    return;
+  }
+
   cr.className = 'confirm-result ' + crClass;
   icon.textContent = '✓';
   label.textContent = item.lekar || '—';
   var rname = MGR_REP_NAMES[username] || username;
   sub.textContent = (item.okres || '—') + ' · ' + (item.dateStr || '') + (item.cas ? ' · ' + item.cas : '') + ' · ' + rname;
 
-  // Produktový panel (kapitácia, produkty, ročný potenciál)
-  var prodPanel = document.getElementById('mgr-detail-prod-panel');
-  if(prodPanel){
-    prodPanel.innerHTML = mgrBuildProductsPanel(item);
-    prodPanel.style.display = 'block';
+  // Produktový panel (kapitácia, produkty, ročný potenciál) — defenzívne
+  try {
+    var prodPanel = document.getElementById('mgr-detail-prod-panel');
+    if(prodPanel){
+      prodPanel.innerHTML = mgrBuildProductsPanel(item);
+      prodPanel.style.display = 'block';
+    }
+  } catch(prodErr){
+    if(window.console && console.error) console.error('[mgr] chyba produktového panela:', prodErr);
+    // Panel zlyhal, ale overlay sa má otvoriť aj tak
   }
 
   var prev = cr.querySelector('.scenario-msg');
@@ -3753,7 +3769,17 @@ function mgrOpenVisit(idx){
     noteWrap.innerHTML = '';
   }
 
-  document.getElementById('detail-overlay').className = 'detail-overlay show';
+  var overlay = document.getElementById('detail-overlay');
+  if(!overlay){
+    alert('[debug] detail-overlay element sa nenašiel v HTML');
+    return;
+  }
+  overlay.className = 'detail-overlay show';
+
+  } catch(err){
+    if(window.console && console.error) console.error('[mgr] mgrOpenVisit chyba:', err);
+    alert('Nepodarilo sa otvoriť kartu lekára:\n' + (err && err.message ? err.message : err) + '\n\n(detail je v konzole)');
+  }
 }
 
 function mgrCloseRep(){
@@ -3851,7 +3877,7 @@ document.addEventListener('DOMContentLoaded', function(){
   <div class="login-footer">
     <div class="login-footer-logo">GEDEON RICHTER</div>
     <div class="login-footer-text">Interný nástroj · len pre medicínskych reprezentantov</div>
-    <div class="login-version">ver. 1.8 · 2026</div>
+    <div class="login-version">ver. 1.8.1 · 2026</div>
   </div>
 
 </div>
