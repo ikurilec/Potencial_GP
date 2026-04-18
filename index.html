@@ -1056,7 +1056,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.2.6';
+var APP_VERSION = '2.2.8';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -3156,7 +3156,7 @@ function tutorialSkip() {
   document.body.style.position = '';
   document.body.style.top = '';
   document.body.style.width = '';
-  window.scrollTo(0, scrollY);
+  window.scrollTo(0, 0);
   // Zobraziť What's New po dokončení tutoriálu (pre nových používateľov)
   var session = getSession();
   var isManager = session && (['admin','bum','boss','pm','am'].indexOf(session.role) !== -1);
@@ -3267,6 +3267,7 @@ function loginSuccess(username, name, role, region) {
   initTutorial();
   refreshBadgeFromSheets(username);
   try { mgrDedupUnique(); } catch(e){}
+  window.scrollTo({top: 0, behavior: 'instant'});
 }
 
 function doLogin() {
@@ -3639,16 +3640,27 @@ function mgrEscape(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'
 // ── Produktový panel pre kartu lekára (manažér) ──
 function mgrNum(n){
   if(n === null || n === undefined || n === '') return 0;
-  // Ak Sheets vrátil ISO dátum string namiesto čísla (napr. "3461-03-31T22:00:00.000Z")
-  // znamená to že pôvodná hodnota bola rok — vezmeme rok
+  // Sheets niekedy posiela čísla ako ISO dátum string
   if(typeof n === 'string' && /^\d{1,4}-\d{2}-\d{2}T/.test(n)){
-    var yr = parseInt(n.substring(0, n.indexOf('-')), 10);
-    // Ak rok > 1900 a vyzerá ako reálna hodnota (nie 1899 = prázdna bunka)
-    if(!isNaN(yr) && yr > 1900) return yr;
-    if(!isNaN(yr) && yr <= 1900) return 0;
+    try {
+      var d = new Date(n);
+      if(!isNaN(d.getTime())){
+        var yr = d.getUTCFullYear();
+        // Dátum v "normálnom" rozsahu (1899-2100) = malé číslo uložené ako dátum
+        // Vypočítame pôvodný Excel serial number = počet dní od 1899-12-30
+        if(yr >= 1899 && yr <= 2100){
+          var epoch = new Date('1899-12-30T00:00:00.000Z');
+          var days = Math.round((d.getTime() - epoch.getTime()) / 86400000);
+          return Math.max(0, days);
+        }
+        // Rok > 2100 = pravdepodobne veľká hodnota uložená ako dátum (napr. 3461)
+        // Starý fixBrokenColumns to uložil tak že rok = pôvodná hodnota
+        if(yr > 2100) return yr;
+      }
+    } catch(e){}
+    return 0;
   }
   if(typeof n === 'string'){
-    // "45,00" → "45.00", "45 €" → "45"
     n = n.replace(/\s/g, '').replace(/,/g, '.').replace(/[^0-9.\-]/g, '');
   }
   var v = Number(n);
@@ -4082,7 +4094,7 @@ var WN_KEY = 'potencial_vl_wn_v2_2b'; // zmeniť pri každom novom oznámení
 var WN_CONTENT_REP = {
   icon: '🏆',
   title: 'Čo je nové v appke',
-  sub: 'Aktualizácia · ver. 2.2',
+  sub: 'Aktualizácia · ver. ' + APP_VERSION,
   items: [
     {
       icon: '🏆',
@@ -4102,7 +4114,7 @@ var WN_CONTENT_REP = {
 var WN_CONTENT_MGR = {
   icon: '📊',
   title: 'Čo je nové pre manažérov',
-  sub: 'Aktualizácia · ver. 2.2',
+  sub: 'Aktualizácia · ver. ' + APP_VERSION,
   items: [
     {
       icon: '🏆',
@@ -4169,6 +4181,7 @@ function wnShow(isManager){
 function wnClose(){
   var overlay = document.getElementById('wn-overlay');
   if(overlay) overlay.classList.remove('show');
+  window.scrollTo({top: 0, behavior: 'smooth'});
 }
 
 var LB_STATE = { period: 'month', data: null, loading: false };
@@ -4404,7 +4417,7 @@ function lbRender(){
   <div class="login-footer">
     <div class="login-footer-logo">GEDEON RICHTER</div>
     <div class="login-footer-text">Interný nástroj · len pre medicínskych reprezentantov</div>
-    <div class="login-version">ver. 2.2.6 · 2026</div>
+    <div class="login-version">ver. 2.2.8 · 2026</div>
   </div>
 
 </div>
