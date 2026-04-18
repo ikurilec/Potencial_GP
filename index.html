@@ -362,11 +362,11 @@
   .smsg{margin-top:10px;padding:13px 18px;border-radius:10px;font-size:13px;font-weight:500;text-align:center;display:none}
   .smsg-err{background:#FEE2E2;color:#7F1D1D;border:1px solid #FCA5A5;display:block}
   .smsg-warn{background:#FFFBEB;color:#92400E;border:1px solid #FCD34D;display:block}
-  .confirm-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center}
-  .detail-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:1500;align-items:center;justify-content:center}
+  .confirm-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}
+  .detail-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:1500;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}
   .detail-overlay.show{display:flex}
   .confirm-overlay.show{display:flex}
-  .confirm-box{background:#fff;border-radius:16px;padding:0 0 22px;max-width:390px;width:93%;max-height:82vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);text-align:center;animation:slideUp .3s ease}
+  .confirm-box{background:#fff;border-radius:16px;padding:0 0 22px;max-width:390px;width:100%;max-height:82vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);text-align:center;animation:slideUp .3s ease}
   @keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
   @keyframes badgeBounce{0%{transform:scale(1)}20%{transform:scale(1.25)}45%{transform:scale(0.92)}65%{transform:scale(1.15)}80%{transform:scale(0.97)}100%{transform:scale(1)}}
   .hdr-badge-wrap.bump{animation:badgeBounce .6s cubic-bezier(.34,1.56,.64,1) both}
@@ -850,7 +850,7 @@
   </div>
 
   <div class="confirm-overlay" id="confirm-overlay">
-    <div style="position:relative;width:93%;max-width:390px">
+    <div style="position:relative;width:100%;max-width:390px">
     <div class="confirm-box" id="confirm-box-rep">
       <div class="confirm-result" id="confirm-result">
         <span class="confirm-result-icon" id="confirm-result-icon">&#10003;</span>
@@ -872,7 +872,7 @@
   </div>
 
 <div class="detail-overlay" id="detail-overlay">
-  <div style="position:relative;width:93%;max-width:390px">
+  <div style="position:relative;width:100%;max-width:390px">
     <div class="confirm-box" id="confirm-box-scroll">
       <div class="confirm-result" id="detail-result">
         <span class="confirm-result-icon" id="detail-icon">✓</span>
@@ -1072,7 +1072,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.2.19';
+var APP_VERSION = '2.2.20';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -4461,7 +4461,7 @@ function lbRender(){
   <div class="login-footer">
     <div class="login-footer-logo">GEDEON RICHTER</div>
     <div class="login-footer-text">Interný nástroj · len pre medicínskych reprezentantov</div>
-    <div class="login-version">ver. 2.2.19 · 2026</div>
+    <div class="login-version">ver. 2.2.20 · 2026</div>
   </div>
 
 </div>
