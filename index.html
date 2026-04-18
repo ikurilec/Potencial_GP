@@ -1056,7 +1056,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.2.8';
+var APP_VERSION = '2.2.10';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -3646,16 +3646,17 @@ function mgrNum(n){
       var d = new Date(n);
       if(!isNaN(d.getTime())){
         var yr = d.getUTCFullYear();
-        // Dátum v "normálnom" rozsahu (1899-2100) = malé číslo uložené ako dátum
-        // Vypočítame pôvodný Excel serial number = počet dní od 1899-12-30
-        if(yr >= 1899 && yr <= 2100){
+        // Rok pred epochou (< 1899): Sheets interpretoval číslo ako rok (napr. 1730.7 → "1.7.1730")
+        // Rok sám osebe je najlepšia aproximácia pôvodnej hodnoty
+        if(yr < 1899) return yr > 0 ? yr : 0;
+        // Rok 1899-1929: malý serial → vypočítaj dni od epochy
+        if(yr < 1930){
           var epoch = new Date('1899-12-30T00:00:00.000Z');
           var days = Math.round((d.getTime() - epoch.getTime()) / 86400000);
           return Math.max(0, days);
         }
-        // Rok > 2100 = pravdepodobne veľká hodnota uložená ako dátum (napr. 3461)
-        // Starý fixBrokenColumns to uložil tak že rok = pôvodná hodnota
-        if(yr > 2100) return yr;
+        // Rok 1930+: fixBrokenColumns uložil rok ako hodnotu
+        return yr;
       }
     } catch(e){}
     return 0;
@@ -4417,7 +4418,7 @@ function lbRender(){
   <div class="login-footer">
     <div class="login-footer-logo">GEDEON RICHTER</div>
     <div class="login-footer-text">Interný nástroj · len pre medicínskych reprezentantov</div>
-    <div class="login-version">ver. 2.2.8 · 2026</div>
+    <div class="login-version">ver. 2.2.10 · 2026</div>
   </div>
 
 </div>
