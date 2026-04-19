@@ -1086,7 +1086,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.2.52';
+var APP_VERSION = '2.2.53';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -3611,29 +3611,42 @@ function mgrLoadReps(repList){
 
   var loginPromise = mgrFetchWithRetry(SCRIPT_URL + '?action=getLastLogins').catch(function(){ return {}; });
 
-  Promise.all([loginPromise, managersPromise]).then(function(meta){
+  // Jeden request pre všetky histórie naraz — najrýchlejšie
+  var allHistPromise = mgrFetchWithRetry(SCRIPT_URL + '?action=getAllHistory').catch(function(){ return null; });
+
+  Promise.all([loginPromise, managersPromise, allHistPromise]).then(function(meta){
     MGR_STATE.lastLogins = meta[0] || {};
     MGR_STATE.managers = meta[1] || [];
+    var allHist = meta[2];
 
-    // Sekvenčné načítanie — jeden rep po druhom s pauzou
-    var idx = 0;
-    function loadNext(){
-      if(idx >= repList.length) return;
-      var username = repList[idx++];
-      mgrFetchWithRetry(SCRIPT_URL + '?action=getHistory&reprezentant=' + encodeURIComponent(username))
-        .then(function(rows){
-          MGR_STATE.reps[username] = { visits: mgrNormalizeVisits(Array.isArray(rows)?rows:[]), error: false };
-        })
-        .catch(function(){
-          MGR_STATE.reps[username] = { visits: [], error: true };
-        })
-        .then(function(){
-          mgrRenderList();
-          return mgrDelay(600); // 600ms pauza medzi requestmi
-        })
-        .then(loadNext);
+    if(allHist && typeof allHist === 'object' && !Array.isArray(allHist)){
+      // Úspešné načítanie všetkých naraz
+      repList.forEach(function(username){
+        var rows = allHist[username] || [];
+        MGR_STATE.reps[username] = { visits: mgrNormalizeVisits(rows), error: false };
+      });
+      mgrRenderList();
+    } else {
+      // Fallback — načítaj postupne po jednom
+      var idx = 0;
+      function loadNext(){
+        if(idx >= repList.length) return;
+        var username = repList[idx++];
+        mgrFetchWithRetry(SCRIPT_URL + '?action=getHistory&reprezentant=' + encodeURIComponent(username))
+          .then(function(rows){
+            MGR_STATE.reps[username] = { visits: mgrNormalizeVisits(Array.isArray(rows)?rows:[]), error: false };
+          })
+          .catch(function(){
+            MGR_STATE.reps[username] = { visits: [], error: true };
+          })
+          .then(function(){
+            mgrRenderList();
+            return mgrDelay(400);
+          })
+          .then(loadNext);
+      }
+      loadNext();
     }
-    loadNext();
   });
 }
 
@@ -4723,7 +4736,7 @@ function lbRender(){
   <div class="login-footer">
     <div class="login-footer-logo">GEDEON RICHTER</div>
     <div class="login-footer-text">Interný nástroj · len pre medicínskych reprezentantov</div>
-    <div class="login-version">ver. 2.2.52 · 2026</div>
+    <div class="login-version">ver. 2.2.53 · 2026</div>
   </div>
 
 </div>
