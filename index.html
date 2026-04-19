@@ -74,6 +74,7 @@
   /* ═══ MANAGER MODE ═══ */
   .mgr-view{display:none}
   body.manager-mode .mgr-view{display:block}
+  body.overlay-open{overflow:hidden;position:fixed;width:100%;}
   body.manager-mode .progress-wrap,
   body.manager-mode .info-card,
   body.manager-mode .rec,
@@ -1086,7 +1087,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.2.29';
+var APP_VERSION = '2.2.30';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -1640,6 +1641,7 @@ function showConfirm(yes, scenario){
     segDiv.style.display = 'none';
   }
 
+  lockScroll();
   document.getElementById('confirm-overlay').className='confirm-overlay show';
   initScrollPill('confirm-box-rep', 'confirm-pill');
 }
@@ -1647,6 +1649,7 @@ function showConfirm(yes, scenario){
 var _stopFireworks = null;
 function closeConfirm(doNext){
   document.getElementById('confirm-overlay').className='confirm-overlay';
+  unlockScroll();
   resetForm();
   if(!doNext){
     document.getElementById('thankyou').className='thankyou show';
@@ -2608,6 +2611,7 @@ function filterHistory() {
 }
 
 function openHistory() {
+  lockScroll();
   var overlay = document.getElementById('hist-overlay');
   var body = document.getElementById('hist-body');
   var dateEl = document.getElementById('hist-date');
@@ -2764,6 +2768,7 @@ function closeDetail() {
   var overlay = document.getElementById('detail-overlay');
   if(!overlay) return;
   overlay.className = 'detail-overlay';
+  unlockScroll();
   // Vymaž inline styles ktoré sme nastavili v mgrOpenVisit (inak .show toggle nefunguje)
   overlay.style.display = '';
   overlay.style.position = '';
@@ -2784,6 +2789,20 @@ function pingLogin(username){
   fetch(SCRIPT_URL + '?action=pingLogin&reprezentant=' + encodeURIComponent(username), {
     cache: 'no-store'
   }).catch(function(){});
+}
+
+
+// ── SCROLL LOCK — blokuje scroll pozadia keď je overlay otvorený ──
+var _scrollLockY = 0;
+function lockScroll(){
+  _scrollLockY = window.scrollY;
+  document.body.classList.add('overlay-open');
+  document.body.style.top = '-' + _scrollLockY + 'px';
+}
+function unlockScroll(){
+  document.body.classList.remove('overlay-open');
+  document.body.style.top = '';
+  window.scrollTo(0, _scrollLockY);
 }
 
 // ── ROBUSTNÝ GLOBAL EVENT HANDLER pre všetky overlays ──
@@ -3968,7 +3987,18 @@ function mgrOpenRep(username){
   document.getElementById('mgr-segsum').innerHTML = sumHtml;
 
   document.getElementById('mgr-vsearch').value = '';
-  mgrRenderVisits();
+
+  // Ak dáta ešte nie sú načítané — zobraz loading
+  if(!data){
+    document.getElementById('mgr-vlist').innerHTML = '<div class="mgr-loading"><div class="mgr-spinner"></div><div>Načítavam záznamy...</div></div>';
+    // Skús znova za 1s
+    var waitInterval = setInterval(function(){
+      var d = MGR_STATE.reps[username];
+      if(d){ clearInterval(waitInterval); mgrRenderVisits(); }
+    }, 500);
+  } else {
+    mgrRenderVisits();
+  }
   window.scrollTo(0, 0);
 }
 
@@ -4157,6 +4187,7 @@ function mgrOpenVisit(idx){
     document.body.appendChild(overlay);
   }
 
+  lockScroll();
   overlay.className = 'detail-overlay show';
 
   // Backdrop click
@@ -4304,13 +4335,14 @@ function wnShow(isManager){
   bodyEl.innerHTML = html;
 
   overlay.classList.add('show');
+  lockScroll();
   wnMarkSeen();
 }
 
 function wnClose(){
   var overlay = document.getElementById('wn-overlay');
   if(overlay) overlay.classList.remove('show');
-  window.scrollTo({top: 0, behavior: 'smooth'});
+  unlockScroll();
 }
 
 var LB_STATE = { period: 'month', data: null, loading: false };
@@ -4336,6 +4368,7 @@ var LB_ALL_REPS = ['j.bohovic','v.hatinova','v.hromadkova','z.lescis','j.krkoska
 function openLeaderboard(){
   var overlay = document.getElementById('lb-overlay');
   if(!overlay) return;
+  lockScroll();
   overlay.className = 'lb-overlay show';
   lbLoadData();
 }
@@ -4343,6 +4376,7 @@ function openLeaderboard(){
 function closeLeaderboard(){
   var overlay = document.getElementById('lb-overlay');
   if(overlay) overlay.className = 'lb-overlay';
+  unlockScroll();
 }
 
 function lbSetPeriod(period, el){
@@ -4615,7 +4649,7 @@ function lbRender(){
   <div class="login-footer">
     <div class="login-footer-logo">GEDEON RICHTER</div>
     <div class="login-footer-text">Interný nástroj · len pre medicínskych reprezentantov</div>
-    <div class="login-version">ver. 2.2.29 · 2026</div>
+    <div class="login-version">ver. 2.2.30 · 2026</div>
   </div>
 
 </div>
