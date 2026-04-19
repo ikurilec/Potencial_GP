@@ -103,7 +103,7 @@
   @keyframes ptrSpin{to{transform:rotate(360deg)}}
   .ptr-arrow{font-size:20px;transition:transform .2s;display:inline-block;color:#64748B}
   .ptr-arrow.ready{transform:rotate(180deg)}
-  .lb-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:1500;align-items:flex-start;justify-content:center;padding-top:48px;overscroll-behavior:contain}
+  .lb-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:1500;align-items:flex-start;justify-content:center;padding-top:48px;overscroll-behavior:none;touch-action:pan-y}
   /* ── WHAT'S NEW overlay ── */
     /* Scroll indikátor — gradient fade dole keď je obsah dlhší */
   .confirm-box::-webkit-scrollbar,.lb-box::-webkit-scrollbar{width:4px}
@@ -133,7 +133,7 @@
   .wn-item-desc{font-size:12px;color:#64748B;line-height:1.4}
   .wn-btn{width:100%;background:linear-gradient(135deg,#1E40AF,#2563EB);color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;font-family:'Outfit',sans-serif;cursor:pointer;margin-top:16px;letter-spacing:.01em}
   .lb-overlay.show{display:flex}
-  .lb-box{background:#fff;border-radius:20px;width:93%;max-width:420px;max-height:82vh;overflow-y:auto;animation:slideUp .28s ease;overscroll-behavior:contain}
+  .lb-box{background:#fff;border-radius:20px;width:93%;max-width:420px;max-height:82vh;overflow-y:auto;animation:slideUp .28s ease;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
   .lb-hdr{background:#0C1E35;border-radius:20px 20px 0 0;padding:18px 20px 14px;display:flex;align-items:center;justify-content:space-between}
   .lb-hdr-title{font-size:16px;font-weight:700;color:#fff;font-family:'Outfit',sans-serif}
   .lb-hdr-sub{font-size:11px;color:#5B8DB8;margin-top:2px}
@@ -1086,7 +1086,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.2.54';
+var APP_VERSION = '2.2.55';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -4744,7 +4744,7 @@ function lbRender(){
   <div class="login-footer">
     <div class="login-footer-logo">GEDEON RICHTER</div>
     <div class="login-footer-text">Interný nástroj · len pre medicínskych reprezentantov</div>
-    <div class="login-version">ver. 2.2.54 · 2026</div>
+    <div class="login-version">ver. 2.2.55 · 2026</div>
   </div>
 
 </div>
