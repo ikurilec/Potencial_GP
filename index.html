@@ -4861,7 +4861,8 @@ function plnLoad(){
 }
 
 // Vypočíta % plnenie na základe plánu a predajov pre daného repa
-// Vracia: { pct: number|null, planTotal: number, predajTotal: number, byProduct: [{ name, plan, predaj, pct }] }
+// DÔLEŽITÉ: % sa počíta iba zo súčtu tých produktov, ktoré majú vyplnený plán > 0
+// Produkty bez plánu sa ignorujú (aby porovnávanie bolo férové)
 function plnCalcRep(repPlan, repPredaje, planProducts){
   if(!repPlan) repPlan = {};
   if(!repPredaje || !repPredaje.total) repPredaje = { total: {} };
@@ -4870,7 +4871,6 @@ function plnCalcRep(repPlan, repPredaje, planProducts){
   var predajTotal = 0;
   var byProduct = [];
 
-  // Iteruj len produkty z Plan (tie, ktoré majú plán)
   for(var i = 0; i < (planProducts || []).length; i++){
     var prodName = planProducts[i];
     var prodKey = String(prodName).trim().toLowerCase();
@@ -4878,8 +4878,13 @@ function plnCalcRep(repPlan, repPredaje, planProducts){
     if(pln === undefined || pln === null) pln = 0;
     var prd = repPredaje.total[prodKey];
     if(prd === undefined || prd === null) prd = 0;
-    planTotal += pln;
-    predajTotal += prd;
+
+    // Iba produkty s vyplneným plánom > 0 sa zarátavajú do súčtu
+    if(pln > 0){
+      planTotal += pln;
+      predajTotal += prd;
+    }
+
     byProduct.push({
       name: prodName,
       plan: pln,
