@@ -536,47 +536,6 @@
   .tutorial-back{width:100%;padding:10px;background:none;border:none;color:#94A3B8;font-size:13px;font-family:inherit;cursor:pointer;font-weight:500}
   .tutorial-preskocit{display:block;margin:6px auto 0;background:none;border:none;color:#CBD5E1;font-size:11px;font-family:inherit;cursor:pointer;font-weight:500}
   .tutorial-hero-login-title{font-size:26px;font-weight:800;letter-spacing:-.03em;color:#fff;text-align:center;line-height:1.2}
-
-  /* ═══ PLNENIE — admin only ═══ */
-  .pln-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:950;overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch}
-  .pln-overlay.show{display:block}
-  .pln-inner{max-width:660px;margin:0 auto}
-  .pln-back{display:inline-flex;align-items:center;gap:6px;background:#fff;border:none;padding:9px 14px 9px 10px;border-radius:22px;color:#2563EB;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:10px;font-family:inherit;box-shadow:0 1px 4px rgba(0,0,0,.06)}
-  .pln-q-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
-  .pln-q-tab{padding:9px 4px;border:none;background:transparent;font-size:12px;font-weight:700;color:#64748B;cursor:pointer;border-radius:9px;font-family:inherit;position:relative}
-  .pln-q-tab.active{background:#0C1E35;color:#fff}
-  .pln-q-tab.current::after{content:'';position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:#10B981}
-  .pln-q-tab.future{color:#CBD5E1;pointer-events:none}
-  .pln-sum{background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
-  .pln-sum-hdr{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
-  .pln-sum-lbl{font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
-  .pln-sum-val{font-size:30px;font-weight:800;font-family:'Outfit',sans-serif;line-height:1}
-  .pln-sum-val.g{color:#059669}.pln-sum-val.o{color:#D97706}.pln-sum-val.r{color:#DC2626}
-  .pln-sum-total{font-size:12px;color:#64748B;text-align:right}
-  .pln-sum-total strong{color:#0F172A;font-weight:800}
-  .pln-sum-prods{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;padding-top:10px;border-top:1px solid #F1F5F9}
-  .pln-sum-prod{background:#F8FAFC;border-radius:8px;padding:4px 9px;font-size:10.5px;color:#64748B;font-weight:600}
-  .pln-sum-prod strong{margin-left:4px;font-weight:800}
-  .pln-sum-prod strong.g{color:#059669}.pln-sum-prod strong.o{color:#D97706}.pln-sum-prod strong.r{color:#DC2626}
-  .pln-regions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
-  .pln-region{background:#fff;border-radius:12px;padding:11px 14px;text-align:center;box-shadow:0 1px 6px rgba(0,0,0,.05)}
-  .pln-region-lbl{font-size:10px;font-weight:700;color:#64748B;letter-spacing:.05em;text-transform:uppercase;margin-bottom:3px}
-  .pln-region-val{font-size:22px;font-weight:800;font-family:'Outfit',sans-serif;line-height:1}
-  .pln-section-lbl{font-size:10.5px;font-weight:700;color:#64748B;letter-spacing:.07em;text-transform:uppercase;margin:14px 4px 6px}
-  .pln-rep-list{display:flex;flex-direction:column;gap:6px}
-  .pln-rep{background:#fff;border-radius:10px;padding:11px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
-  .pln-rep-medal{width:24px;font-size:14px;text-align:center;flex-shrink:0;color:#94A3B8;font-weight:700}
-  .pln-rep-body{flex:1;min-width:0}
-  .pln-rep-name{font-size:13px;font-weight:700;color:#0F172A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .pln-rep-meta{font-size:10.5px;color:#94A3B8;margin-top:1px}
-  .pln-rep-pct{font-size:17px;font-weight:800;font-family:'Outfit',sans-serif;flex-shrink:0}
-  .pln-rep-pct.g{color:#059669}.pln-rep-pct.o{color:#D97706}.pln-rep-pct.r{color:#DC2626}.pln-rep-pct.none{color:#CBD5E1}
-  .pln-loading{text-align:center;padding:40px 20px;color:#64748B;font-size:13px}
-  .pln-empty{background:#fff;border-radius:12px;padding:28px 20px;text-align:center;color:#94A3B8;font-size:12px;font-style:italic}
-
-  /* Plnenie tlačidlo v admin toolbar */
-  .mgr-tb-btn-plnenie{background:linear-gradient(135deg,#059669,#10B981)!important;color:#fff!important;font-weight:700}
-  .mgr-tb-btn-plnenie:hover{opacity:.92}
 </style>
 </head>
 <body>
@@ -636,7 +595,6 @@
       <button class="mgr-tb-btn active" data-sort="activity" onclick="mgrSetSort('activity')">Podľa aktivity</button>
       <button class="mgr-tb-btn" data-sort="volume" onclick="mgrSetSort('volume')">Podľa počtu</button>
       <button class="mgr-tb-btn" data-sort="name" onclick="mgrSetSort('name')">A–Z</button>
-      <button class="mgr-tb-btn mgr-tb-btn-plnenie" id="mgr-tb-plnenie" onclick="plnOpen()" style="display:none">💊 Plnenie</button>
     </div>
     <div class="mgr-list" id="mgr-list">
       <div class="mgr-loading"><div class="mgr-spinner"></div><div>Načítavam dáta reprezentantov zo Sheets...</div></div>
@@ -888,24 +846,6 @@
     </div>
   </div>
 
-  <!-- ── PLNENIE OVERLAY (admin only) ── -->
-  <div class="pln-overlay" id="pln-overlay">
-    <div class="pln-inner">
-      <button class="pln-back" onclick="plnClose()">&larr; Späť</button>
-
-      <div class="pln-q-tabs" id="pln-q-tabs">
-        <button class="pln-q-tab" data-q="1" onclick="plnSwitchQ(1)">Q1</button>
-        <button class="pln-q-tab" data-q="2" onclick="plnSwitchQ(2)">Q2</button>
-        <button class="pln-q-tab" data-q="3" onclick="plnSwitchQ(3)">Q3</button>
-        <button class="pln-q-tab" data-q="4" onclick="plnSwitchQ(4)">Q4</button>
-      </div>
-
-      <div id="pln-content">
-        <div class="pln-loading"><div class="mgr-spinner"></div><div>Načítavam plnenie zo Sheets...</div></div>
-      </div>
-    </div>
-  </div>
-
   <div class="restore-overlay" id="restore-overlay">
     <div class="restore-box">
       <div class="restore-icon">📋</div>
@@ -1146,7 +1086,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.3.00';
+var APP_VERSION = '2.2.56';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -4764,301 +4704,6 @@ function lbRender(){
   }, 1000);
 })();
 
-// ═══════════════════════════════════════════════════════════════════
-// PLNENIE — admin only (v2.3.00)
-// ═══════════════════════════════════════════════════════════════════
-var PLN_STATE = { currentQ: 1, data: null, loading: false };
-var PLN_CURRENT_Q = 1; // Q1 default
-var PLN_YEAR = 2026;
-
-// Mapa username → meno + región (pre zobrazenie v zozname)
-var PLN_REP_INFO = {
-  'j.bohovic':    { name: 'Jaroslava Bohovičová', region: 'BAMA' },
-  'v.hatinova':   { name: 'Viera Hatinová',       region: 'BASE' },
-  'v.hromadkova': { name: 'Viera Hromadková',     region: 'TN'   },
-  'z.lescis':     { name: 'Zoran Leščiš',         region: 'DS'   },
-  'j.krkoska':    { name: 'Jozef Krkoška',        region: 'MT'   },
-  'i.kozakova':   { name: 'Ida Kozáková',         region: 'NR'   },
-  'k.czidor':     { name: 'Katarína Czidor',      region: 'LV'   },
-  'o.rad':        { name: 'Olexandra Rad',        region: 'RS'   },
-  'l.mackova':    { name: 'Lenka Mačáková',       region: 'PP'   },
-  'z.lapsan':     { name: 'Zuzana Lapšanská',     region: 'PO'   },
-  'm.sabol':      { name: 'Michal Sabol',         region: 'MI'   },
-  'ke.rep':       { name: 'KE Reprezentant',      region: 'KE'   }
-};
-
-// Zobraz Plnenie tlačidlo iba pre admina
-(function plnShowBtnIfAdmin(){
-  function check(){
-    var s = getSession();
-    if(s && s.role === 'admin'){
-      var btn = document.getElementById('mgr-tb-plnenie');
-      if(btn) btn.style.display = '';
-    }
-  }
-  // Skús hneď + pár retry-ov keďže session sa môže načítať s oneskorením
-  check();
-  setTimeout(check, 500);
-  setTimeout(check, 1500);
-  setTimeout(check, 3000);
-})();
-
-function plnOpen(){
-  var ov = document.getElementById('pln-overlay');
-  if(!ov) return;
-  ov.classList.add('show');
-  PLN_CURRENT_Q = 1;
-  plnUpdateQTabs();
-  plnLoad();
-}
-
-function plnClose(){
-  var ov = document.getElementById('pln-overlay');
-  if(ov) ov.classList.remove('show');
-}
-
-function plnSwitchQ(q){
-  if(PLN_STATE.loading) return;
-  PLN_CURRENT_Q = q;
-  plnUpdateQTabs();
-  plnLoad();
-}
-
-function plnUpdateQTabs(){
-  var now = new Date();
-  var curMonth = now.getMonth() + 1;
-  var curQ = Math.ceil(curMonth / 3);
-  document.querySelectorAll('#pln-q-tabs .pln-q-tab').forEach(function(btn){
-    var q = parseInt(btn.getAttribute('data-q'));
-    btn.classList.remove('active','current','future');
-    if(q === PLN_CURRENT_Q) btn.classList.add('active');
-    if(q === curQ && q !== PLN_CURRENT_Q) btn.classList.add('current');
-    if(q > curQ) btn.classList.add('future');
-  });
-}
-
-function plnLoad(){
-  PLN_STATE.loading = true;
-  var content = document.getElementById('pln-content');
-  content.innerHTML = '<div class="pln-loading"><div class="mgr-spinner"></div><div>Načítavam Q' + PLN_CURRENT_Q + ' ' + PLN_YEAR + '...</div></div>';
-
-  var url = SCRIPT_URL + '?action=getPlnenieAll&rok=' + PLN_YEAR + '&Q=' + PLN_CURRENT_Q;
-  fetch(url)
-    .then(function(r){ return r.json(); })
-    .then(function(data){
-      PLN_STATE.loading = false;
-      if(!data || !data.ok){
-        content.innerHTML = '<div class="pln-empty">⚠ Chyba načítavania dát</div>';
-        return;
-      }
-      PLN_STATE.data = data;
-      plnRender(data);
-    })
-    .catch(function(err){
-      PLN_STATE.loading = false;
-      content.innerHTML = '<div class="pln-empty">⚠ Chyba: ' + err.message + '</div>';
-    });
-}
-
-// Vypočíta % plnenie na základe plánu a predajov pre daného repa
-// DÔLEŽITÉ: % sa počíta iba zo súčtu tých produktov, ktoré majú vyplnený plán > 0
-// Produkty bez plánu sa ignorujú (aby porovnávanie bolo férové)
-function plnCalcRep(repPlan, repPredaje, planProducts){
-  if(!repPlan) repPlan = {};
-  if(!repPredaje || !repPredaje.total) repPredaje = { total: {} };
-
-  var planTotal = 0;
-  var predajTotal = 0;
-  var byProduct = [];
-
-  for(var i = 0; i < (planProducts || []).length; i++){
-    var prodName = planProducts[i];
-    var prodKey = String(prodName).trim().toLowerCase();
-    var pln = repPlan[prodKey];
-    if(pln === undefined || pln === null) pln = 0;
-    var prd = repPredaje.total[prodKey];
-    if(prd === undefined || prd === null) prd = 0;
-
-    // Iba produkty s vyplneným plánom > 0 sa zarátavajú do súčtu
-    if(pln > 0){
-      planTotal += pln;
-      predajTotal += prd;
-    }
-
-    byProduct.push({
-      name: prodName,
-      plan: pln,
-      predaj: prd,
-      pct: pln > 0 ? Math.round((prd / pln) * 100) : null
-    });
-  }
-
-  return {
-    pct: planTotal > 0 ? Math.round((predajTotal / planTotal) * 100) : null,
-    planTotal: planTotal,
-    predajTotal: predajTotal,
-    byProduct: byProduct
-  };
-}
-
-function plnPctClass(pct){
-  if(pct === null || pct === undefined) return 'none';
-  if(pct >= 90) return 'g';
-  if(pct >= 70) return 'o';
-  return 'r';
-}
-
-function plnFmt(v){
-  return Math.round(v || 0).toLocaleString('sk-SK');
-}
-
-function plnRender(data){
-  var content = document.getElementById('pln-content');
-  var planProducts = data.planProducts || [];
-  var plan = data.plan || {};
-  var predaje = data.predaje || {};
-
-  // Zozbieraj všetkých unikátnych repov (union Plan + Predaje)
-  var allReps = {};
-  Object.keys(plan).forEach(function(r){ allReps[r] = true; });
-  Object.keys(predaje).forEach(function(r){ allReps[r] = true; });
-  var repList = Object.keys(allReps);
-
-  // Vypočítaj plnenie pre každého
-  var repCalcs = [];
-  var totalPlan = 0, totalPredaj = 0;
-  var westPlan = 0, westPredaj = 0, eastPlan = 0, eastPredaj = 0;
-  var prodAgg = {}; // produkt → { plan, predaj }
-
-  repList.forEach(function(rep){
-    var calc = plnCalcRep(plan[rep], predaje[rep], planProducts);
-    var info = PLN_REP_INFO[rep] || { name: rep, region: '' };
-    repCalcs.push({ rep: rep, info: info, calc: calc });
-
-    // DÔLEŽITÉ: Rep bez plánu (planTotal = 0) sa NEZAPOČÍTAVA do celkových súm
-    // Inak by sa jeho predaje prirátali ku Slovensku/West/East, ale plán by chýbal → skreslí %
-    if(calc.planTotal > 0){
-      totalPlan += calc.planTotal;
-      totalPredaj += calc.predajTotal;
-
-      // West/East rozdelenie (podľa regiónu)
-      var westRegions = ['BAMA','BASE','DS','MT','NR','TN'];
-      var isWest = westRegions.indexOf(info.region) !== -1;
-      if(isWest){ westPlan += calc.planTotal; westPredaj += calc.predajTotal; }
-      else { eastPlan += calc.planTotal; eastPredaj += calc.predajTotal; }
-
-      // Agregácia per produkt — iba repi s plánom
-      calc.byProduct.forEach(function(bp){
-        if(!prodAgg[bp.name]) prodAgg[bp.name] = { plan: 0, predaj: 0 };
-        prodAgg[bp.name].plan += bp.plan;
-        prodAgg[bp.name].predaj += bp.predaj;
-      });
-    }
-  });
-
-  var totalPct = totalPlan > 0 ? Math.round((totalPredaj / totalPlan) * 100) : null;
-  var westPct = westPlan > 0 ? Math.round((westPredaj / westPlan) * 100) : null;
-  var eastPct = eastPlan > 0 ? Math.round((eastPredaj / eastPlan) * 100) : null;
-
-  // Zoraď repov od najvyššieho % (tí bez plánu idú dole)
-  repCalcs.sort(function(a, b){
-    var pa = a.calc.pct, pb = b.calc.pct;
-    if(pa === null && pb === null) return a.info.name.localeCompare(b.info.name);
-    if(pa === null) return 1;
-    if(pb === null) return -1;
-    return pb - pa;
-  });
-
-  // HTML
-  var html = '';
-
-  // 1) Celkový súhrn Slovenska
-  html += '<div class="pln-sum">';
-  html += '<div class="pln-sum-hdr">';
-  html += '<div><div class="pln-sum-lbl">Slovensko · Q' + data.Q + ' ' + data.rok + '</div>';
-  if(totalPct === null){
-    html += '<div class="pln-sum-val" style="color:#CBD5E1;font-size:20px">Nie sú dáta</div>';
-  } else {
-    html += '<div class="pln-sum-val ' + plnPctClass(totalPct) + '">' + totalPct + '%</div>';
-  }
-  html += '</div>';
-  if(totalPlan > 0){
-    html += '<div class="pln-sum-total"><strong>' + plnFmt(totalPredaj) + ' €</strong>';
-    html += '<div style="font-size:10.5px;color:#94A3B8;margin-top:1px">z plánu ' + plnFmt(totalPlan) + ' €</div></div>';
-  }
-  html += '</div>';
-
-  // Produktový rozpad
-  var prodNames = Object.keys(prodAgg);
-  if(prodNames.length > 0){
-    html += '<div class="pln-sum-prods">';
-    prodNames.forEach(function(pn){
-      var pp = prodAgg[pn];
-      var pct = pp.plan > 0 ? Math.round((pp.predaj / pp.plan) * 100) : null;
-      if(pct === null){
-        html += '<div class="pln-sum-prod">' + pn + ' <strong style="color:#CBD5E1">—</strong></div>';
-      } else {
-        html += '<div class="pln-sum-prod">' + pn + ' <strong class="' + plnPctClass(pct) + '">' + pct + '%</strong></div>';
-      }
-    });
-    html += '</div>';
-  }
-  html += '</div>';
-
-  // 2) West / East karty
-  html += '<div class="pln-regions">';
-  html += '<div class="pln-region"><div class="pln-region-lbl">West</div>';
-  if(westPct === null){
-    html += '<div class="pln-region-val" style="color:#CBD5E1;font-size:14px">Nie sú dáta</div>';
-  } else {
-    html += '<div class="pln-region-val ' + (plnPctClass(westPct)==='g'?'':'') + '" style="color:' + (westPct>=90?'#059669':westPct>=70?'#D97706':'#DC2626') + '">' + westPct + '%</div>';
-  }
-  html += '</div>';
-  html += '<div class="pln-region"><div class="pln-region-lbl">East</div>';
-  if(eastPct === null){
-    html += '<div class="pln-region-val" style="color:#CBD5E1;font-size:14px">Nie sú dáta</div>';
-  } else {
-    html += '<div class="pln-region-val" style="color:' + (eastPct>=90?'#059669':eastPct>=70?'#D97706':'#DC2626') + '">' + eastPct + '%</div>';
-  }
-  html += '</div>';
-  html += '</div>';
-
-  // 3) Zoznam repov
-  html += '<div class="pln-section-lbl">Poradie reprezentantov · Q' + data.Q + '</div>';
-  html += '<div class="pln-rep-list">';
-
-  if(repCalcs.length === 0){
-    html += '<div class="pln-empty">Žiadni reprezentanti s dátami pre Q' + data.Q + '</div>';
-  } else {
-    repCalcs.forEach(function(rc, idx){
-      var medal = '';
-      if(rc.calc.pct !== null){
-        if(idx === 0) medal = '🥇';
-        else if(idx === 1) medal = '🥈';
-        else if(idx === 2) medal = '🥉';
-        else medal = (idx + 1) + '.';
-      } else {
-        medal = '—';
-      }
-      var pctCls = plnPctClass(rc.calc.pct);
-      var pctTxt = rc.calc.pct === null ? '—' : rc.calc.pct + '%';
-
-      html += '<div class="pln-rep">';
-      html += '<div class="pln-rep-medal">' + medal + '</div>';
-      html += '<div class="pln-rep-body">';
-      html += '<div class="pln-rep-name">' + rc.info.name + '</div>';
-      html += '<div class="pln-rep-meta">' + rc.info.region + ' · ' + plnFmt(rc.calc.predajTotal) + ' € / ' + plnFmt(rc.calc.planTotal) + ' €</div>';
-      html += '</div>';
-      html += '<div class="pln-rep-pct ' + pctCls + '">' + pctTxt + '</div>';
-      html += '</div>';
-    });
-  }
-
-  html += '</div>';
-
-  content.innerHTML = html;
-}
-
 </script>
 
 <!-- ── LOGOUT CONFIRM ── -->
@@ -5121,7 +4766,7 @@ function plnRender(data){
   <div class="login-footer">
     <div class="login-footer-logo">GEDEON RICHTER</div>
     <div class="login-footer-text">Interný nástroj · len pre medicínskych reprezentantov</div>
-    <div class="login-version">ver. 2.3.00 · 2026</div>
+    <div class="login-version">ver. 2.2.56 · 2026</div>
   </div>
 
 </div>
