@@ -4935,21 +4935,25 @@ function plnRender(data){
     var info = PLN_REP_INFO[rep] || { name: rep, region: '' };
     repCalcs.push({ rep: rep, info: info, calc: calc });
 
-    totalPlan += calc.planTotal;
-    totalPredaj += calc.predajTotal;
+    // DÔLEŽITÉ: Rep bez plánu (planTotal = 0) sa NEZAPOČÍTAVA do celkových súm
+    // Inak by sa jeho predaje prirátali ku Slovensku/West/East, ale plán by chýbal → skreslí %
+    if(calc.planTotal > 0){
+      totalPlan += calc.planTotal;
+      totalPredaj += calc.predajTotal;
 
-    // West/East rozdelenie (podľa regiónu)
-    var westRegions = ['BAMA','BASE','DS','MT','NR','TN'];
-    var isWest = westRegions.indexOf(info.region) !== -1;
-    if(isWest){ westPlan += calc.planTotal; westPredaj += calc.predajTotal; }
-    else { eastPlan += calc.planTotal; eastPredaj += calc.predajTotal; }
+      // West/East rozdelenie (podľa regiónu)
+      var westRegions = ['BAMA','BASE','DS','MT','NR','TN'];
+      var isWest = westRegions.indexOf(info.region) !== -1;
+      if(isWest){ westPlan += calc.planTotal; westPredaj += calc.predajTotal; }
+      else { eastPlan += calc.planTotal; eastPredaj += calc.predajTotal; }
 
-    // Agregácia per produkt
-    calc.byProduct.forEach(function(bp){
-      if(!prodAgg[bp.name]) prodAgg[bp.name] = { plan: 0, predaj: 0 };
-      prodAgg[bp.name].plan += bp.plan;
-      prodAgg[bp.name].predaj += bp.predaj;
-    });
+      // Agregácia per produkt — iba repi s plánom
+      calc.byProduct.forEach(function(bp){
+        if(!prodAgg[bp.name]) prodAgg[bp.name] = { plan: 0, predaj: 0 };
+        prodAgg[bp.name].plan += bp.plan;
+        prodAgg[bp.name].predaj += bp.predaj;
+      });
+    }
   });
 
   var totalPct = totalPlan > 0 ? Math.round((totalPredaj / totalPlan) * 100) : null;
