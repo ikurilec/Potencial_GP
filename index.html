@@ -481,6 +481,14 @@
   .logout-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .logout-cancel{padding:12px;border-radius:12px;border:1.5px solid #E2E8F0;background:#fff;color:#64748B;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer}
   .logout-confirm{padding:12px;border-radius:12px;border:none;background:#DC2626;color:#fff;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer}
+  .session-expired-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.45);z-index:5000;align-items:center;justify-content:center}
+  .session-expired-overlay.show{display:flex}
+  .session-expired-box{background:#fff;border-radius:20px;padding:28px 24px;max-width:300px;width:88%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:slideUp .3s ease}
+  .session-expired-icon{font-size:36px;margin-bottom:10px}
+  .session-expired-title{font-size:16px;font-weight:800;color:#0F172A;margin-bottom:6px}
+  .session-expired-sub{font-size:13px;color:#64748B;margin-bottom:22px;line-height:1.5}
+  .session-expired-btns{display:grid;grid-template-columns:1fr;gap:10px}
+  .session-expired-confirm{padding:12px;border-radius:12px;border:none;background:#2563EB;color:#fff;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer}
   .logout-btn{display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;border:1px solid rgba(239,68,68,.4);background:rgba(239,68,68,.15);color:rgba(255,180,180,.9);font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .2s}
   .logout-btn:hover{background:rgba(239,68,68,.25)}
   .note-wrap{background:#FFFBEB;border-radius:10px;padding:10px 12px;margin:10px 0 4px;border:1px solid #FDE68A}
@@ -1396,6 +1404,17 @@ function potvrdit(){
   if(window._dupWarningActive){
     var warnEl = document.getElementById('lekar-dup-warn');
     if(warnEl) warnEl.scrollIntoView({behavior:'smooth', block:'center'});
+    haptic('error');
+    return;
+  }
+
+  // ── FIX B: Guard — session expired / missing ──
+  // Zabráni zápisu prázdneho "Reprezentant" poľa do HISTORY.
+  // Force-save rozpracovaného formulára, potom modál so session expiry hláškou.
+  var guardSession = getSession();
+  if(!guardSession || !guardSession.username){
+    saveDraft();
+    showSessionExpiredModal();
     haptic('error');
     return;
   }
@@ -3388,6 +3407,11 @@ function confirmLogout() {
   location.reload();
 }
 
+function showSessionExpiredModal() {
+  var overlay = document.getElementById('session-expired-overlay');
+  if(overlay) overlay.classList.add('show');
+}
+
 function updateHdrForUser(user) {
   var subEl = document.querySelector('.hdr-sub');
   var roleLabel = user.role === 'admin' ? 'Admin' : user.role === 'pm' ? 'PM' : user.role === 'bum' ? 'BUM' : user.role === 'am' ? 'AM' : 'Medicínsky reprezentant';
@@ -4593,7 +4617,7 @@ function lbRender(){
     if(!wrap || wrap.style.display === 'none') return false;
     if(!document.body.classList.contains('manager-mode')) return false;
     // Nespúšťaj PTR ak je otvorený nejaký overlay
-    var overlays = ['lb-overlay','detail-overlay','hist-overlay','wn-overlay','confirm-overlay'];
+    var overlays = ['lb-overlay','detail-overlay','hist-overlay','wn-overlay','confirm-overlay','session-expired-overlay'];
     for(var i=0;i<overlays.length;i++){
       var el = document.getElementById(overlays[i]);
       if(el && el.classList.contains('show')) return false;
@@ -4716,6 +4740,17 @@ function lbRender(){
     <div class="logout-btns">
       <button class="logout-cancel" onclick="closeLogoutConfirm()">Nie, zostanem</button>
       <button class="logout-confirm" onclick="confirmLogout()">Áno, odhlásiť</button>
+    </div>
+  </div>
+</div>
+
+<div class="session-expired-overlay" id="session-expired-overlay">
+  <div class="session-expired-box">
+    <div class="session-expired-icon">⏱️</div>
+    <div class="session-expired-title">Prihlásenie vypršalo</div>
+    <div class="session-expired-sub">Kvôli dlhšej nečinnosti ťa appka pre bezpečnosť odhlásila. Prihlás sa prosím znova — tvoj rozpracovaný záznam je uložený a po prihlásení sa ťa appka spýta, či v ňom chceš pokračovať.</div>
+    <div class="session-expired-btns">
+      <button type="button" class="session-expired-confirm" onclick="confirmLogout()">Prihlásiť sa znova</button>
     </div>
   </div>
 </div>
