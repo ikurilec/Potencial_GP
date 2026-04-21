@@ -544,6 +544,64 @@
   .tutorial-back{width:100%;padding:10px;background:none;border:none;color:#94A3B8;font-size:13px;font-family:inherit;cursor:pointer;font-weight:500}
   .tutorial-preskocit{display:block;margin:6px auto 0;background:none;border:none;color:#CBD5E1;font-size:11px;font-family:inherit;cursor:pointer;font-weight:500}
   .tutorial-hero-login-title{font-size:26px;font-weight:800;letter-spacing:-.03em;color:#fff;text-align:center;line-height:1.2}
+  /* ── PLNENIE (Predaje vs Plán) — admin sub-view, v2.3.0 ── */
+  .mgr-subtabs{display:flex;gap:6px;margin:0 0 10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  .mgr-subtab{flex:1;padding:9px 4px;border:none;background:transparent;font-size:12px;font-weight:700;color:#64748B;cursor:pointer;border-radius:9px;font-family:inherit;transition:all .15s;-webkit-tap-highlight-color:transparent}
+  .mgr-subtab.active{background:#0C1E35;color:#fff}
+  .mgr-plnenie-view{display:none}
+  body.mgr-subtab-plnenie .mgr-plnenie-view{display:block}
+  body.mgr-subtab-plnenie .mgr-list-wrap,
+  body.mgr-subtab-plnenie .mgr-detail{display:none !important}
+  .pl-q-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  .pl-q-tab{padding:10px 4px;border:none;background:transparent;font-size:12px;font-weight:700;color:#64748B;cursor:pointer;border-radius:8px;font-family:inherit;transition:all .15s;text-align:center;-webkit-tap-highlight-color:transparent;position:relative}
+  .pl-q-tab.active{background:#0C1E35;color:#fff}
+  .pl-q-tab.future{color:#E2E8F0;cursor:not-allowed;pointer-events:none;opacity:.6}
+  .pl-q-tab.current::after{content:'';position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:#10B981}
+  .pl-sum-big{background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+  .pl-sum-big-row{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;gap:10px}
+  .pl-sum-lbl{font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+  .pl-sum-big-val{font-size:30px;font-weight:800;line-height:1}
+  .pl-sum-big-val.pl-g{color:#059669}
+  .pl-sum-big-val.pl-o{color:#D97706}
+  .pl-sum-big-val.pl-r{color:#DC2626}
+  .pl-sum-big-val.pl-none{color:#94A3B8}
+  .pl-sum-big-total{font-size:11.5px;color:#64748B;font-weight:500}
+  .pl-sum-big-total strong{color:#0F172A;font-weight:700}
+  .pl-sum-big-plan{font-size:10.5px;color:#94A3B8;margin-top:1px}
+  .pl-sum-prods{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;padding-top:10px;border-top:0.5px solid #E2E8F0}
+  .pl-sum-prods:empty{display:none}
+  .pl-sum-prod{display:flex;justify-content:space-between;font-size:12px;font-weight:500;color:#334155}
+  .pl-sum-prod strong{font-weight:700}
+  .pl-sum-prod strong.pl-g{color:#059669}
+  .pl-sum-prod strong.pl-o{color:#D97706}
+  .pl-sum-prod strong.pl-r{color:#DC2626}
+  .pl-sum-prod strong.pl-none{color:#94A3B8}
+  .pl-regions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+  .pl-region-card{background:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 2px 8px rgba(0,0,0,.06);text-align:center}
+  .pl-region-lbl{font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
+  .pl-region-val{font-size:22px;font-weight:800;line-height:1}
+  .pl-region-val.pl-g{color:#059669}
+  .pl-region-val.pl-o{color:#D97706}
+  .pl-region-val.pl-r{color:#DC2626}
+  .pl-region-val.pl-none{color:#94A3B8}
+  .pl-section-lbl{font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.07em;margin:14px 2px 8px}
+  .pl-rep-list{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+  .pl-rep-card{display:flex;align-items:center;gap:12px;padding:13px 14px;border-top:0.5px solid #F1F5F9}
+  .pl-rep-card:first-child{border-top:none}
+  .pl-rep-medal{width:32px;font-size:17px;text-align:center;flex-shrink:0}
+  .pl-rep-medal.pl-rank{font-size:11px;color:#94A3B8;font-weight:700}
+  .pl-rep-avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700;color:#fff;flex-shrink:0}
+  .pl-rep-body{flex:1;min-width:0}
+  .pl-rep-name{font-size:13.5px;font-weight:700;color:#0F172A}
+  .pl-rep-meta{font-size:10.5px;color:#94A3B8;margin-top:2px;letter-spacing:.02em}
+  .pl-rep-pct{font-size:17px;font-weight:800;flex-shrink:0}
+  .pl-rep-pct.pl-g{color:#059669}
+  .pl-rep-pct.pl-o{color:#D97706}
+  .pl-rep-pct.pl-r{color:#DC2626}
+  .pl-rep-pct.pl-none{color:#94A3B8}
+  .pl-loading{padding:30px 14px;text-align:center;color:#64748B;font-size:13px}
+  .pl-loading .mgr-spinner{margin:0 auto 10px}
+  .pl-error{padding:30px 14px;text-align:center;color:#DC2626;font-size:13px}
 </style>
 </head>
 <body>
@@ -588,6 +646,12 @@
 
 <!-- ═══ MANAGER VIEW (zobrazí sa iba keď sa prihlási BUM/admin/boss/AM West/AM East) ═══ -->
 <div class="mgr-view" id="mgr-view">
+  <!-- Sub-tabs — Návštevy / Plnenie (admin Plnenie od v2.3.0) -->
+  <div class="mgr-subtabs">
+    <button type="button" class="mgr-subtab active" data-tab="visits" onclick="mgrSwitchSubtab('visits')">📋 Návštevy</button>
+    <button type="button" class="mgr-subtab" data-tab="plnenie" onclick="mgrSwitchSubtab('plnenie')">💊 Plnenie</button>
+  </div>
+
   <!-- Dashboard — zoznam reprezentantov -->
   <div class="mgr-list-wrap" id="mgr-list-wrap">
     <div class="ptr-indicator" id="ptr-indicator">
@@ -632,6 +696,43 @@
       <input type="text" id="mgr-vsearch" placeholder="Hľadať lekára alebo okres..." oninput="mgrRenderVisits()">
     </div>
     <div class="mgr-vlist" id="mgr-vlist"></div>
+  </div>
+
+  <!-- Plnenie view (admin) — v2.3.0 -->
+  <div class="mgr-plnenie-view" id="mgr-plnenie-view">
+    <div class="pl-q-tabs" id="pl-q-tabs">
+      <button type="button" class="pl-q-tab" data-q="1" onclick="plnenieSwitchQ(1)">Q1</button>
+      <button type="button" class="pl-q-tab" data-q="2" onclick="plnenieSwitchQ(2)">Q2</button>
+      <button type="button" class="pl-q-tab" data-q="3" onclick="plnenieSwitchQ(3)">Q3</button>
+      <button type="button" class="pl-q-tab" data-q="4" onclick="plnenieSwitchQ(4)">Q4</button>
+    </div>
+    <div class="pl-sum-big">
+      <div class="pl-sum-big-row">
+        <div>
+          <div class="pl-sum-lbl" id="pl-sum-lbl">Slovensko</div>
+          <div class="pl-sum-big-val pl-none" id="pl-sum-big-val">—</div>
+        </div>
+        <div style="text-align:right">
+          <div class="pl-sum-big-total" id="pl-sum-big-total">—</div>
+          <div class="pl-sum-big-plan" id="pl-sum-big-plan">—</div>
+        </div>
+      </div>
+      <div class="pl-sum-prods" id="pl-sum-prods"></div>
+    </div>
+    <div class="pl-regions">
+      <div class="pl-region-card">
+        <div class="pl-region-lbl">West</div>
+        <div class="pl-region-val pl-none" id="pl-region-west">—</div>
+      </div>
+      <div class="pl-region-card">
+        <div class="pl-region-lbl">East</div>
+        <div class="pl-region-val pl-none" id="pl-region-east">—</div>
+      </div>
+    </div>
+    <div class="pl-section-lbl">Poradie reprezentantov</div>
+    <div class="pl-rep-list" id="pl-rep-list">
+      <div class="pl-loading"><div class="mgr-spinner"></div><div>Načítavam dáta plnenia…</div></div>
+    </div>
   </div>
 </div>
 
@@ -1094,7 +1195,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.2.57';
+var APP_VERSION = '2.3.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -3571,6 +3672,13 @@ function mgrEnter(roleKey){
   var cfg = MGR_ROLE_CFG[roleKey];
   if(!cfg) return;
   MGR_STATE.role = roleKey;
+  // v2.3.0 — inicializácia Plnenie sub-tabu (default: Návštevy, aby nebola regresia)
+  MGR_STATE.subtab = 'visits';
+  document.body.classList.remove('mgr-subtab-plnenie');
+  PL_STATE.q = plnenieCurrentQ();
+  PL_STATE.loaded = false;
+  PL_STATE.data = null;
+  PL_STATE.aggregates = null;
   // Dynamicky zisti repov pre AM West/East zo Sheets
   if(roleKey === 'amwest' || roleKey === 'ameast'){
     var session = getSession();
@@ -4618,6 +4726,366 @@ function lbRender(){
 
   body.innerHTML = podiumHtml + listHtml;
 }
+// ═══════════════════════════════════════════════════════════
+// PLNENIE (Predaje vs Plán) — ADMIN zobrazenie (v2.3.0)
+// ═══════════════════════════════════════════════════════════
+
+// Mapovanie produktov sheet kľúč → display názov.
+// Pridaj sem nový produkt, keď pribudne v Plan/Predaje sheetoch.
+// Kľúč = lowercase zo sheet názvu (bez diakritiky, bez medzier nahradených '_').
+// Hodnota = display názov v appke (môže obsahovať diakritiku, medzery).
+var PL_PRODUCT_LABELS = {
+  'aflamil_kr':            'Aflamil krém',
+  'aflamil_tablety_sacky': 'Aflamil tablety a sáčky',
+  'cavinton':              'Cavinton',
+  'globifer':              'Globifer',
+  'junod':                 'Junod',
+  'kogavant':              'Kogavant',
+  'lonelix':               'Lonelix',
+  'ossica':                'Ossica',
+  'suprax':                'Suprax',
+  'telexer':               'Telexer',
+  'terrosa':               'Terrosa',
+  'vidonorm':              'Vidonorm'
+};
+
+var PL_STATE = {
+  year: 2026,
+  q: 1,
+  loading: false,
+  loaded: false,
+  data: null,
+  aggregates: null
+};
+
+function plnenieNormalizeKey(s) {
+  return String(s == null ? '' : s).toLowerCase().trim();
+}
+
+function plnenieDisplayName(rawKey) {
+  var norm = plnenieNormalizeKey(rawKey);
+  return PL_PRODUCT_LABELS[norm] || rawKey;
+}
+
+function plnenieCurrentQ() {
+  var m = new Date().getMonth() + 1;
+  return Math.ceil(m / 3);
+}
+
+function plnenieColorClass(pct) {
+  if (pct === null || pct === undefined || isNaN(pct)) return 'pl-none';
+  if (pct >= 85) return 'pl-g';
+  if (pct >= 70) return 'pl-o';
+  return 'pl-r';
+}
+
+function plnenieFormatPct(pct) {
+  if (pct === null || pct === undefined || isNaN(pct)) return '—';
+  // 2 desatinné miesta, sk notácia (čiarka ako desatinný oddeľovač)
+  return pct.toFixed(2).replace('.', ',') + '%';
+}
+
+function plnenieFormatEUR(val) {
+  if (val === null || val === undefined || isNaN(val)) return '—';
+  // Tisíce s medzerou: 38 420 €
+  var rounded = Math.round(val);
+  return rounded.toLocaleString('sk-SK').replace(/\u00A0/g, ' ') + ' €';
+}
+
+function plnenieQLabel(q, year) {
+  return 'Q' + q + ' ' + year;
+}
+
+// Sub-tab switch medzi "Návštevy" a "Plnenie"
+function mgrSwitchSubtab(tab) {
+  MGR_STATE.subtab = tab;
+  document.body.classList.toggle('mgr-subtab-plnenie', tab === 'plnenie');
+  document.querySelectorAll('.mgr-subtab').forEach(function(btn){
+    btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
+  });
+  window.scrollTo(0, 0);
+  if (tab === 'plnenie' && !PL_STATE.loaded && !PL_STATE.loading) {
+    plnenieLoadData();
+  }
+}
+
+function plnenieSwitchQ(q) {
+  if (q === PL_STATE.q) return;
+  PL_STATE.q = q;
+  PL_STATE.loaded = false;
+  PL_STATE.data = null;
+  PL_STATE.aggregates = null;
+  plnenieUpdateQTabs();
+  plnenieLoadData();
+}
+
+function plnenieUpdateQTabs() {
+  var curQ = plnenieCurrentQ();
+  document.querySelectorAll('.pl-q-tab').forEach(function(btn){
+    var q = parseInt(btn.getAttribute('data-q'));
+    btn.classList.toggle('active', q === PL_STATE.q);
+    btn.classList.toggle('current', q === curQ);
+    btn.classList.toggle('future', q > curQ);
+  });
+}
+
+function plnenieLoadData() {
+  if (PL_STATE.loading) return;
+  PL_STATE.loading = true;
+  plnenieRenderLoading();
+  var url = SCRIPT_URL + '?action=getPlnenieAll&rok=' + PL_STATE.year + '&Q=' + PL_STATE.q;
+  mgrFetchWithRetry(url, 3)
+    .then(function(resp){
+      if (!resp || !resp.ok) throw new Error('No data');
+      PL_STATE.data = resp;
+      PL_STATE.aggregates = plnenieBuildAggregates(resp);
+      PL_STATE.loaded = true;
+    })
+    .catch(function(){
+      PL_STATE.data = null;
+      PL_STATE.aggregates = null;
+    })
+    .then(function(){
+      PL_STATE.loading = false;
+      plnenieRenderAll();
+    });
+}
+
+// Agregácia — Slovensko / West / East / per-produkt / per-rep
+function plnenieBuildAggregates(resp) {
+  var plan = resp.plan || {};
+  var predaje = resp.predaje || {};
+  var planProducts = resp.planProducts || [];
+
+  // Zoznam produktov — IBA z Plan sheetu.
+  // Predaje mimo Plan (napr. Globifer/Lonelix/Ossica/Terrosa) do Plnenia nepatria,
+  // pretože bez plánu sa plnenie nedá zmysluplne počítať.
+  var allProdsMap = {};
+  planProducts.forEach(function(p){ allProdsMap[plnenieNormalizeKey(p)] = p; });
+  var allProdKeys = Object.keys(allProdsMap);
+
+  // Helper: získaj číselnú hodnotu z objektu produktov, kľúč normalizovaný
+  function prodVal(obj, key) {
+    if (!obj) return 0;
+    var v = obj[key];
+    if (v === undefined || v === null) return 0;
+    var n = parseFloat(v);
+    return isNaN(n) ? 0 : n;
+  }
+
+  // Per-rep agregát — per-rep relevant products:
+  // do planEUR a predajeEUR započítavame IBA produkty, kde DANÝ rep má plán > 0.
+  // Rep bez plánu na produkt X nekontribuuje svojimi predajmi pre X do svojho %.
+  var repAgg = {};
+  MGR_ALL.forEach(function(rep){
+    var rPlan = plan[rep] || {};
+    var rPredajeTotal = (predaje[rep] && predaje[rep].total) || {};
+    var planEUR = 0, predajeEUR = 0;
+    allProdKeys.forEach(function(key){
+      var p = prodVal(rPlan, key);
+      if (p > 0) {
+        planEUR += p;
+        predajeEUR += prodVal(rPredajeTotal, key);
+      }
+    });
+    var pct = (planEUR > 0) ? (predajeEUR / planEUR * 100) : null;
+    repAgg[rep] = { planEUR: planEUR, predajeEUR: predajeEUR, pct: pct };
+  });
+
+  // Slovensko sum (weighted by EUR) — repAgg už filtruje relevant products
+  var skPlan = 0, skPredaje = 0;
+  MGR_ALL.forEach(function(rep){
+    skPlan += repAgg[rep].planEUR;
+    skPredaje += repAgg[rep].predajeEUR;
+  });
+  var skPct = (skPlan > 0) ? (skPredaje / skPlan * 100) : null;
+
+  // West / East sum — rovnako cez repAgg
+  var regionAgg = {};
+  [['west', MGR_AM_WEST], ['east', MGR_AM_EAST]].forEach(function(pair){
+    var regionKey = pair[0], list = pair[1];
+    var rPlan = 0, rPredaje = 0;
+    list.forEach(function(rep){
+      if (repAgg[rep]) {
+        rPlan += repAgg[rep].planEUR;
+        rPredaje += repAgg[rep].predajeEUR;
+      }
+    });
+    regionAgg[regionKey] = {
+      planEUR: rPlan,
+      predajeEUR: rPredaje,
+      pct: (rPlan > 0) ? (rPredaje / rPlan * 100) : null
+    };
+  });
+
+  // Per-produkt v Slovensko summary — iba produkty, kde aspoň jeden rep má plán > 0.
+  // Predaje sumujeme IBA za tých repov, ktorí pre daný produkt majú plán (per-rep relevant).
+  var productsToShow = [];
+  allProdKeys.forEach(function(key){
+    var pSum = 0, sSum = 0;
+    MGR_ALL.forEach(function(rep){
+      var p = prodVal(plan[rep], key);
+      if (p > 0) {
+        pSum += p;
+        sSum += prodVal((predaje[rep] && predaje[rep].total) || {}, key);
+      }
+    });
+    if (pSum > 0) {
+      productsToShow.push({
+        key: key,
+        label: plnenieDisplayName(allProdsMap[key]),
+        planEUR: pSum,
+        predajeEUR: sSum,
+        pct: sSum / pSum * 100
+      });
+    }
+  });
+  // Poradie produktov: podľa % zostupne
+  productsToShow.sort(function(a, b){ return b.pct - a.pct; });
+
+  // Rep list zoradený zostupne podľa pct, reps s null na konci
+  var repList = MGR_ALL.map(function(rep){
+    return {
+      username: rep,
+      planEUR: repAgg[rep].planEUR,
+      predajeEUR: repAgg[rep].predajeEUR,
+      pct: repAgg[rep].pct
+    };
+  });
+  repList.sort(function(a, b){
+    if (a.pct === null && b.pct === null) return 0;
+    if (a.pct === null) return 1;
+    if (b.pct === null) return -1;
+    return b.pct - a.pct;
+  });
+
+  return {
+    sk: { planEUR: skPlan, predajeEUR: skPredaje, pct: skPct },
+    regions: regionAgg,
+    products: productsToShow,
+    reps: repList
+  };
+}
+
+// Renderery
+function plnenieRenderLoading() {
+  var listEl = document.getElementById('pl-rep-list');
+  if (listEl) listEl.innerHTML = '<div class="pl-loading"><div class="mgr-spinner"></div><div>Načítavam dáta plnenia…</div></div>';
+}
+
+function plnenieRenderSummaryEmpty() {
+  var lbl = document.getElementById('pl-sum-lbl');
+  if (lbl) lbl.textContent = 'Slovensko · ' + plnenieQLabel(PL_STATE.q, PL_STATE.year);
+  var val = document.getElementById('pl-sum-big-val');
+  if (val) { val.textContent = '—'; val.className = 'pl-sum-big-val pl-none'; }
+  var tot = document.getElementById('pl-sum-big-total');
+  if (tot) tot.textContent = '—';
+  var plan = document.getElementById('pl-sum-big-plan');
+  if (plan) plan.textContent = '—';
+  var prods = document.getElementById('pl-sum-prods');
+  if (prods) prods.innerHTML = '';
+  var west = document.getElementById('pl-region-west');
+  if (west) { west.textContent = '—'; west.className = 'pl-region-val pl-none'; }
+  var east = document.getElementById('pl-region-east');
+  if (east) { east.textContent = '—'; east.className = 'pl-region-val pl-none'; }
+}
+
+function plnenieRenderSummary() {
+  var agg = PL_STATE.aggregates;
+  var sk = agg.sk;
+  var lbl = document.getElementById('pl-sum-lbl');
+  if (lbl) lbl.textContent = 'Slovensko · ' + plnenieQLabel(PL_STATE.q, PL_STATE.year);
+  var val = document.getElementById('pl-sum-big-val');
+  if (val) { val.textContent = plnenieFormatPct(sk.pct); val.className = 'pl-sum-big-val ' + plnenieColorClass(sk.pct); }
+  var tot = document.getElementById('pl-sum-big-total');
+  if (tot) tot.innerHTML = '<strong>' + plnenieFormatEUR(sk.predajeEUR) + '</strong>';
+  var plan = document.getElementById('pl-sum-big-plan');
+  if (plan) plan.textContent = sk.planEUR > 0 ? ('z plánu ' + plnenieFormatEUR(sk.planEUR)) : '—';
+
+  var prods = document.getElementById('pl-sum-prods');
+  if (prods) {
+    if (!agg.products || agg.products.length === 0) {
+      prods.innerHTML = '';
+    } else {
+      prods.innerHTML = agg.products.map(function(p){
+        return '<div class="pl-sum-prod">' + mgrEscape(p.label) +
+               ' <strong class="' + plnenieColorClass(p.pct) + '">' + plnenieFormatPct(p.pct) + '</strong></div>';
+      }).join('');
+    }
+  }
+}
+
+function plnenieRenderRegions() {
+  var regions = PL_STATE.aggregates.regions;
+  var west = document.getElementById('pl-region-west');
+  if (west) {
+    west.textContent = plnenieFormatPct(regions.west.pct);
+    west.className = 'pl-region-val ' + plnenieColorClass(regions.west.pct);
+  }
+  var east = document.getElementById('pl-region-east');
+  if (east) {
+    east.textContent = plnenieFormatPct(regions.east.pct);
+    east.className = 'pl-region-val ' + plnenieColorClass(regions.east.pct);
+  }
+}
+
+function plnenieRenderRepList() {
+  var listEl = document.getElementById('pl-rep-list');
+  if (!listEl) return;
+  var reps = (PL_STATE.aggregates && PL_STATE.aggregates.reps) || [];
+  if (reps.length === 0) {
+    listEl.innerHTML = '<div class="pl-loading">Žiadni reprezentanti.</div>';
+    return;
+  }
+  // Rank počítadlo — iba reps s pct !== null
+  var rank = 0;
+  listEl.innerHTML = reps.map(function(r){
+    var info = LB_REP_INFO[r.username] || {
+      name: MGR_REP_NAMES[r.username] || r.username,
+      region: '',
+      color: 'linear-gradient(135deg,#64748B,#475569)'
+    };
+    var initials = mgrInitials(info.name);
+    var regionLbl = (MGR_AM_WEST.indexOf(r.username) !== -1) ? 'West'
+                  : (MGR_AM_EAST.indexOf(r.username) !== -1) ? 'East' : '';
+    var meta = regionLbl + (info.region ? (' · ' + info.region) : '');
+
+    var medalHtml;
+    if (r.pct === null) {
+      medalHtml = '<div class="pl-rep-medal pl-rank">—</div>';
+    } else {
+      rank++;
+      if (rank === 1)      medalHtml = '<div class="pl-rep-medal">🥇</div>';
+      else if (rank === 2) medalHtml = '<div class="pl-rep-medal">🥈</div>';
+      else if (rank === 3) medalHtml = '<div class="pl-rep-medal">🥉</div>';
+      else                 medalHtml = '<div class="pl-rep-medal pl-rank">' + rank + '.</div>';
+    }
+
+    return '<div class="pl-rep-card">' +
+      medalHtml +
+      '<div class="pl-rep-avatar" style="background:' + info.color + '">' + mgrEscape(initials) + '</div>' +
+      '<div class="pl-rep-body">' +
+        '<div class="pl-rep-name">' + mgrEscape(info.name) + '</div>' +
+        '<div class="pl-rep-meta">' + mgrEscape(meta) + '</div>' +
+      '</div>' +
+      '<div class="pl-rep-pct ' + plnenieColorClass(r.pct) + '">' + plnenieFormatPct(r.pct) + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function plnenieRenderAll() {
+  plnenieUpdateQTabs();
+  if (!PL_STATE.aggregates) {
+    plnenieRenderSummaryEmpty();
+    var listEl = document.getElementById('pl-rep-list');
+    if (listEl) listEl.innerHTML = '<div class="pl-error">Nepodarilo sa načítať dáta. Potiahni dole pre refresh.</div>';
+    return;
+  }
+  plnenieRenderSummary();
+  plnenieRenderRegions();
+  plnenieRenderRepList();
+}
+
 // ── PULL-TO-REFRESH pre manažérsky zoznam ──
 (function(){
   var startY = 0, startX = 0, pulling = false, triggered = false, dirLocked = false;
@@ -4696,8 +5164,13 @@ function lbRender(){
       if(spinner){ spinner.style.display = 'block'; spinner.classList.add('spin'); }
       if(ind){ ind.classList.add('loading'); ind.style.height = '60px'; ind.style.opacity = '1'; }
 
-      MGR_STATE.reps = {};
-      mgrLoadData();
+      if (MGR_STATE.subtab === 'plnenie') {
+        PL_STATE.loaded = false;
+        plnenieLoadData();
+      } else {
+        MGR_STATE.reps = {};
+        mgrLoadData();
+      }
 
       setTimeout(function(){
         if(ind){ ind.classList.remove('pulling','loading'); ind.style.height = '0'; ind.style.opacity = '0'; }
@@ -4818,7 +5291,7 @@ function lbRender(){
   <div class="login-footer">
     <div class="login-footer-logo">GEDEON RICHTER</div>
     <div class="login-footer-text">Interný nástroj · len pre medicínskych reprezentantov</div>
-    <div class="login-version">ver. 2.2.57 · 2026</div>
+    <div class="login-version">ver. 2.3.0 · 2026</div>
   </div>
 
 </div>
