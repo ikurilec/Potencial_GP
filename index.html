@@ -3422,7 +3422,13 @@ function updateHdrForUser(user) {
   if(regEl && user.region) regEl.value = user.region;
 }
 
+// Throttle — zabráni desiatkam zbytočných writes do storage pri rýchlom
+// písaní do formulára (každý keydown/click by inak spustil 2 storage writes).
+var _lastRefresh = 0;
 function refreshSession() {
+  var now = Date.now();
+  if(now - _lastRefresh < 60000) return;
+  _lastRefresh = now;
   // Obnov čas aktivity
   try {
     var data = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null') ||
@@ -3442,6 +3448,16 @@ function refreshSession() {
     if(s) refreshSession();
   }, {passive: true});
 });
+
+// Obnov session pri návrate appky z pozadia (kritické pre PWA na mobile,
+// kde appka mohla bežať cez noc bez interakcie — bez tohto by klik/touch
+// po návrate síce spustil refreshSession, ale až po tom, ako user klikne).
+document.addEventListener('visibilitychange', function() {
+  if(document.visibilityState === 'visible') {
+    var s = getSession();
+    if(s) refreshSession();
+  }
+}, {passive: true});
 
 function initLogin() {
   // Zobraz správu o aktualizácii ak treba
