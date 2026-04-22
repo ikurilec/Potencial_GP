@@ -23,7 +23,7 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.2.56** — obsahuje:
+**2.2.57** — obsahuje:
 - Pull-to-refresh (blokovaný pri otvorených overlayoch)
 - Rebríček (s iOS/Android fixom)
 - Dynamické načítavanie AM West/East zo Sheets
@@ -34,6 +34,9 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 - Funkčné zatváracie tlačidlá
 - Retry + batched loading reprezentantov
 - `getAllHistory` endpoint
+- Oprava hardcoded loginov (Lenka Mačáková + Dionýz Košč)
+- Guard pri SAVE proti expirovanej session
+- Vylepšenie auto-prolongácie session
 
 ---
 
@@ -77,7 +80,7 @@ Motivačné texty v appke sú v **druhej osobe (tykanie)**, po slovensky, kolegi
 
 ### Vizuálna kontinuita
 
-**Aktuálna verzia 2.2.56 je vizuálny baseline appky.** Všetky nové features, úpravy a rozšírenia musia rešpektovať existujúci dizajnový jazyk:
+**Aktuálna verzia 2.2.57 je vizuálny baseline appky.** Všetky nové features, úpravy a rozšírenia musia rešpektovať existujúci dizajnový jazyk:
 
 - Farebná paleta
 - Typografia (font, veľkosti, váhy)
@@ -242,48 +245,9 @@ Vizuálna referencia uložená v samostatnom súbore `plnenie_vizual.html`. Obsa
 
 ---
 
-## DEV mode — testovanie bez internetu (KRITICKÉ)
+## Testovanie
 
-Ivan testuje zmeny priamo v Claude Code preview paneli, ktorý **nemá prístup k produkčným Google Sheets endpointom**. Appka preto MUSÍ byť schopná fungovať bez internetu na `test` vetve.
-
-### Požiadavky na DEV mode
-
-1. **Preskočenie loginu:** Namiesto `pingLogin` a načítavania reprezentanta zo Sheets sa použije fiktívny profil `TEST_REP` (meno: "Test Rep", AM: "AM West", admin: false)
-2. **Mock dáta namiesto fetchov:** Všetky volania na Sheets (načítavanie reprezentantov, `getAllHistory`, rebríček, AM West/East, atď.) sa nahradia lokálnymi zahardkódovanými dátami
-3. **Viditeľný indikátor:** Malý žltý banner v hornej časti appky s textom `⚠️ DEV MODE — mock dáta, žiadne Sheets`
-4. **Admin variant:** DEV mode má aj sub-variant pre testovanie admin funkcií (napr. URL `?dev=1&admin=1`)
-
-### Aktivácia DEV mode
-
-**Primárne:** URL parameter `?dev=1`
-- `index.html?dev=1` → DEV mode ako normálny reprezentant
-- `index.html?dev=1&admin=1` → DEV mode ako manažér
-
-**Sekundárne (fallback):** Automatická detekcia. Ak fetch na Sheets zlyhá do 5 sekúnd (napr. offline, CORS, timeout), appka sa spýta: *"Prepnúť do DEV módu s mock dátami?"* a po potvrdení prepne.
-
-**V produkcii (main vetva):** Kód DEV módu zostáva v appke, ale **NIKDY sa automaticky neaktivuje** pre bežných používateľov. Aktivovať sa dá len explicitne cez URL parameter (čo bežný reprezentant nespraví).
-
-### Mock dáta — minimálny rozsah
-
-Mock dataset musí obsahovať:
-
-- **5–10 ukážkových lekárov** pokrývajúcich segmenty A1, A2, B1, B2, B3, C (aspoň po jednom z golden square)
-- **Ukážková história návštev** (3–5 záznamov, rôzne produkty detailované)
-- **Ukážkový rebríček** (5–10 reprezentantov s bodmi)
-- **Ukážkoví area manažéri** (West + East)
-- **Ukážková kapitácia** (rôzne rozsahy, aby sa dalo testovať ABC segmentovanie)
-
-Mock dáta by mali byť v samostatnej sekcii `index.html` (napr. objekt `MOCK_DATA = {...}`) pre prehľadnosť.
-
-### PRAVIDLO PRE CLAUDE
-
-**Keď robíš akúkoľvek zmenu, ktorá sa dotýka dát zo Sheets** (pridávaš nový fetch, meníš endpoint, pridávaš nové pole v dátovej štruktúre), **VŽDY zároveň aktualizuj zodpovedajúce mock dáta** v DEV móde. Inak sa test vetva pokazí a Ivan ju nebude môcť testovať.
-
-Toto je rovnako dôležité ako samotný feature — mock dáta nie sú "nice to have", sú súčasťou dodania každej zmeny.
-
-### Prvý krok (keď sa DEV mode ešte nezaviedol)
-
-Keďže aktuálna verzia 2.2.56 DEV mode zatiaľ nemá, **prvá úloha na `test` vetve** (ešte pred prvým feature-om) je zaviesť základný DEV mode s mock dátami. Až potom sa dá pohodlne pracovať na reminderoch a ďalších feature-och.
+Ivan testuje zmeny cez **`localhost:8000`** — Claude spustí lokálny server a Ivan otvorí appku v prehliadači. Appka tak siaha na produkčné Google Sheets endpointy normálne cez internet.
 
 ---
 
@@ -305,5 +269,4 @@ Keďže aktuálna verzia 2.2.56 DEV mode zatiaľ nemá, **prvá úloha na `test`
 - **Pri bugu v produkcii — rollback first, fix later.**
 - **Commit správy v slovenčine**, semantické verzovanie.
 - **Primárny user je mobil** — vždy testuj responzívne zobrazenie.
-- **DEV mode musí vždy fungovať.** Pri každej zmene dát zo Sheets aktualizuj mock dáta. Bez toho sa test vetva pokazí.
-- **Dizajn v2.2.56 je baseline.** Drž sa existujúceho štýlu, nemeň ho bez explicitného pokynu. Všetko musí byť použiteľné bez manuálu.
+- **Dizajn v2.2.57 je baseline.** Drž sa existujúceho štýlu, nemeň ho bez explicitného pokynu. Všetko musí byť použiteľné bez manuálu.
