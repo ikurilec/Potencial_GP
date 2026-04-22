@@ -690,6 +690,76 @@
   .mgr-plnenie-detail .trend-lbl.current{color:#059669;font-weight:700}
   .mgr-plnenie-detail .trend-ms{position:absolute;left:-5px;right:-5px;height:3px;background:#0F172A;z-index:2;pointer-events:none}
   .mgr-plnenie-detail .trend-ms-lbl{position:absolute;left:50%;transform:translateX(-50%);font-size:9px;font-weight:600;color:#94A3B8;white-space:nowrap;z-index:3;pointer-events:none;line-height:1}
+  /* ═══ REP NAV BAR (História / Rebríček / Plnenie) ═══ */
+  .rep-nav{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+  .rep-nav-btn{background:#fff;border:1px solid rgba(0,0,0,.07);border-radius:12px;padding:11px 6px;font-size:12px;font-weight:700;color:#1A2A3A;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(0,0,0,.06),0 1px 3px rgba(0,0,0,.04);display:flex;align-items:center;justify-content:center;gap:5px;transition:opacity .15s,transform .15s;-webkit-tap-highlight-color:transparent;white-space:nowrap;overflow:hidden;position:relative}
+  .rep-nav-btn:active{opacity:.82;transform:scale(.96)}
+  .rep-nav-badge{background:linear-gradient(135deg,#F59E0B,#EF4444);color:#fff;border-radius:8px;font-size:9px;font-weight:800;padding:1px 5px;min-width:16px;text-align:center;flex-shrink:0}
+  body.manager-mode .rep-nav{display:none !important}
+  /* ═══ REP PLNENIE OVERLAY ═══ */
+  .rep-plnenie-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:2000;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  .rep-plnenie-overlay.show{display:block}
+  .rep-pl-inner{max-width:660px;margin:0 auto;padding:24px 16px 48px}
+  /* Zdieľané štýly pre rep plnenie (kopíruje mgr-plnenie-detail scope) */
+  .rep-pl-inner .total-card{background:linear-gradient(135deg,#0C1E35,#1A3A5C);border-radius:14px;padding:16px 18px;margin-bottom:12px;color:#fff;text-align:center}
+  .rep-pl-inner .total-lbl{font-size:10px;font-weight:700;color:#7AABCC;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+  .rep-pl-inner .total-val{font-size:34px;font-weight:800;font-family:'Outfit',sans-serif;line-height:1;margin-bottom:3px}
+  .rep-pl-inner .total-val.g{color:#10B981}
+  .rep-pl-inner .total-val.o{color:#F59E0B}
+  .rep-pl-inner .total-val.r{color:#EF4444}
+  .rep-pl-inner .total-val.none{color:#94A3B8}
+  .rep-pl-inner .total-money{font-size:12px;color:#CBD5E1;font-weight:500}
+  .rep-pl-inner .total-money strong{color:#fff;font-weight:700}
+  .rep-pl-inner .prod-item-adv{background:#fff;border-radius:12px;padding:13px 14px;margin-bottom:9px;box-shadow:0 1px 6px rgba(0,0,0,.05)}
+  .rep-pl-inner .prod-adv-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .rep-pl-inner .prod-adv-name{display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:700;color:#0F172A;font-family:'Outfit',sans-serif}
+  .rep-pl-inner .prod-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .rep-pl-inner .prod-adv-pct{font-size:17px;font-weight:800;font-family:'Outfit',sans-serif;line-height:1}
+  .rep-pl-inner .prod-adv-pct.g{color:#059669}
+  .rep-pl-inner .prod-adv-pct.o{color:#D97706}
+  .rep-pl-inner .prod-adv-pct.r{color:#DC2626}
+  .rep-pl-inner .prod-adv-pct.none{color:#94A3B8}
+  .rep-pl-inner .bar-wrap{position:relative;margin-bottom:6px}
+  .rep-pl-inner .bar-track{height:12px;background:#F1F5F9;border-radius:6px;overflow:visible;position:relative}
+  .rep-pl-inner .bar-fill{height:100%;border-radius:6px;position:relative;transition:width .8s ease;max-width:100%}
+  .rep-pl-inner .bar-fill.g{background:linear-gradient(90deg,#10B981,#059669)}
+  .rep-pl-inner .bar-fill.o{background:linear-gradient(90deg,#F59E0B,#D97706)}
+  .rep-pl-inner .bar-fill.r{background:linear-gradient(90deg,#F87171,#DC2626)}
+  .rep-pl-inner .milestone{position:absolute;top:-3px;bottom:-3px;width:3px;background:#0F172A;z-index:2}
+  .rep-pl-inner .ms-labels{display:flex;justify-content:space-between;margin-top:6px;padding:0 1px;font-size:10px;color:#94A3B8;font-weight:600}
+  .rep-pl-inner .ms-labels span{flex:1;text-align:center}
+  .rep-pl-inner .ms-labels span:first-child{text-align:left}
+  .rep-pl-inner .ms-labels span:last-child{text-align:right}
+  .rep-pl-inner .ms-labels span.active{color:#0C1E35;font-weight:700}
+  .rep-pl-inner .ms-labels span.passed{color:#64748B}
+  .rep-pl-inner .prod-money{font-size:11.5px;color:#64748B;margin-top:2px;margin-bottom:8px}
+  .rep-pl-inner .prod-money strong{color:#0F172A;font-weight:700}
+  .rep-pl-inner .prod-money.muted{color:#94A3B8;font-style:italic}
+  .rep-pl-inner .month-rows{display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:0.5px solid #F1F5F9}
+  .rep-pl-inner .mrow{flex:1;text-align:center}
+  .rep-pl-inner .mrow-lbl{font-size:9.5px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+  .rep-pl-inner .mrow-lbl.current{color:#059669}
+  .rep-pl-inner .mrow-val{font-size:12px;font-weight:700;font-family:'Outfit',sans-serif;margin-bottom:4px}
+  .rep-pl-inner .mrow-val.g{color:#059669}
+  .rep-pl-inner .mrow-val.o{color:#D97706}
+  .rep-pl-inner .mrow-val.r{color:#DC2626}
+  .rep-pl-inner .mrow-val.future{color:#CBD5E1}
+  .rep-pl-inner .mrow-plan{font-size:9px;color:#94A3B8;margin-top:1px}
+  .rep-pl-inner .trend{background:#fff;border-radius:14px;padding:14px 18px 16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+  .rep-pl-inner .trend-title{font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:28px}
+  .rep-pl-inner .trend-bars{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:end;height:130px}
+  .rep-pl-inner .trend-col{display:flex;flex-direction:column;align-items:center;gap:10px;height:100%;justify-content:flex-end}
+  .rep-pl-inner .trend-bar{width:100%;max-width:40px;border-radius:6px 6px 2px 2px;position:relative;min-height:4px;transition:height .6s ease}
+  .rep-pl-inner .trend-bar.future{background:linear-gradient(180deg,#E2E8F0,#CBD5E1)}
+  .rep-pl-inner .trend-bar.g{background:linear-gradient(180deg,#10B981,#059669)}
+  .rep-pl-inner .trend-bar.o{background:linear-gradient(180deg,#FBBF24,#D97706)}
+  .rep-pl-inner .trend-bar.r{background:linear-gradient(180deg,#F87171,#DC2626)}
+  .rep-pl-inner .trend-bar-val{position:absolute;top:-20px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:700;color:#0F172A;white-space:nowrap;font-family:'Outfit',sans-serif}
+  .rep-pl-inner .trend-bar-val.empty{color:#94A3B8;font-weight:500}
+  .rep-pl-inner .trend-lbl{font-size:10px;font-weight:600;color:#64748B}
+  .rep-pl-inner .trend-lbl.current{color:#059669;font-weight:700}
+  .rep-pl-inner .trend-ms{position:absolute;left:-5px;right:-5px;height:3px;background:#0F172A;z-index:2;pointer-events:none}
+  .rep-pl-inner .trend-ms-lbl{position:absolute;left:50%;transform:translateX(-50%);font-size:9px;font-weight:600;color:#94A3B8;white-space:nowrap;z-index:3;pointer-events:none;line-height:1}
 </style>
 </head>
 <body>
@@ -715,21 +785,21 @@
         <div class="hdr-dot"><div class="dot" style="background:#C084FC"></div>Suprax</div>
         <div class="hdr-dot"><div class="dot" style="background:#FCD34D"></div>Cavinton Forte</div>
   </div>
-  <div style="display:flex;align-items:center;gap:6px">
+  <div style="display:flex;align-items:center">
   <button class="logout-btn" onclick="doLogout()">⎋ Odhlásiť</button>
-  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-  <div class="hdr-badge-wrap" id="hdr-leaderboard-btn" onclick="openLeaderboard()" style="background:linear-gradient(135deg,#7C3AED,#A78BFA)">
-    <span class="hdr-hist-link" style="border-left:none;padding:4px 9px;font-size:10px">🏆 Rebríček</span>
-  </div>
-  <div class="hdr-badge-wrap" id="hdr-badge-wrap" onclick="openHistory()">
-    <div class="hdr-badge" id="hdr-badge"></div>
-    <span class="hdr-hist-link">📋 História</span>
-  </div>
-  </div>
+  <!-- hdr-badge-wrap zachovaný (skrytý) kvôli JS kompatibilite -->
+  <div id="hdr-badge-wrap" style="display:none"><div class="hdr-badge" id="hdr-badge"></div></div>
   </div>
     </div>
   </div>
   </div>
+</div>
+
+<!-- ═══ REP NAV BAR — História / Rebríček / Plnenie (viditeľné len pre reprezentantov, skryté v manažérskom móde) ═══ -->
+<div class="rep-nav" id="rep-nav">
+  <button type="button" class="rep-nav-btn" onclick="openHistory()">📋 História<span class="rep-nav-badge" id="rep-nav-hist-count" style="display:none"></span></button>
+  <button type="button" class="rep-nav-btn" onclick="openLeaderboard()">🏆 Rebríček</button>
+  <button type="button" class="rep-nav-btn" id="rep-nav-plnenie-btn" onclick="openRepPlnenie()">💊 Plnenie</button>
 </div>
 
 <!-- ═══ MANAGER VIEW (zobrazí sa iba keď sa prihlási BUM/admin/boss/AM West/AM East) ═══ -->
@@ -1318,7 +1388,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.3.1';
+var APP_VERSION = '2.4.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -2551,16 +2621,27 @@ function incrementCounter() {
 
 function updateBadge(count, animate) {
   var badge = document.getElementById('hdr-badge');
-  if(!badge) return;
-  if(count === 0) {
-    badge.style.display = 'none';
-    return;
+  if(badge) {
+    if(count === 0) {
+      badge.style.display = 'none';
+    } else {
+      badge.style.display = 'flex';
+      badge.textContent = count + (count === 1 ? ' lekár' : count < 5 ? ' lekári' : ' lekárov') + ' 📋';
+      if(animate && badge.parentNode) {
+        badge.parentNode.classList.add('bump');
+        setTimeout(function(){ badge.parentNode.classList.remove('bump'); }, 650);
+      }
+    }
   }
-  badge.style.display = 'flex';
-  badge.textContent = count + (count === 1 ? ' lekár' : count < 5 ? ' lekári' : ' lekárov') + ' 📋';
-  if(animate) {
-    badge.parentNode.classList.add('bump');
-    setTimeout(function(){ badge.parentNode.classList.remove('bump'); }, 650);
+  // Aktualizuj rep-nav História badge
+  var navBadge = document.getElementById('rep-nav-hist-count');
+  if(navBadge) {
+    if(count === 0) {
+      navBadge.style.display = 'none';
+    } else {
+      navBadge.style.display = 'inline-flex';
+      navBadge.textContent = count;
+    }
   }
 }
 
@@ -5706,6 +5787,286 @@ function plnenieRenderDetailTrend(username) {
     '<div class="trend-bars">' + barsHtml + '</div>';
 }
 
+// ══════════════════════════════════════════════════════════════════
+// ║  REP PLNENIE — vlastné plnenie pre prihlásených reprezentantov ║
+// ║  Zobrazuje plnenie aktuálneho reprezentanta (nie všetky).      ║
+// ║  Rovnaká logika ako manager detail view, ale standalone.        ║
+// ══════════════════════════════════════════════════════════════════
+
+var REP_PL_STATE = {
+  q: 1,
+  year: (new Date()).getFullYear(),
+  loading: false,
+  loaded: false,
+  data: null,
+  aggregates: null,
+  qCache: {}
+};
+
+function openRepPlnenie() {
+  var session = getSession();
+  if (!session || !session.username) return;
+  var overlay = document.getElementById('rep-plnenie-overlay');
+  if (overlay) overlay.classList.add('show');
+  document.body.style.overflow = 'hidden';
+  // Default: aktuálny kvartál
+  var curQ = plnenieCurrentQ();
+  REP_PL_STATE.year = (new Date()).getFullYear();
+  if (!REP_PL_STATE.loaded || REP_PL_STATE.q !== curQ) {
+    REP_PL_STATE.q = curQ;
+  }
+  repPlnenieUpdateQTabs();
+  // Ak máme data v cache — hneď render, inak načítaj
+  if (REP_PL_STATE.qCache[REP_PL_STATE.q]) {
+    REP_PL_STATE.data = REP_PL_STATE.qCache[REP_PL_STATE.q].data;
+    REP_PL_STATE.aggregates = REP_PL_STATE.qCache[REP_PL_STATE.q].aggregates;
+    REP_PL_STATE.loaded = true;
+    repPlnenieRender();
+  } else {
+    repPlnenieRenderLoading();
+    if (!REP_PL_STATE.loading) repPlnenieLoad();
+  }
+  if (overlay) overlay.scrollTop = 0;
+}
+
+function closeRepPlnenie() {
+  var overlay = document.getElementById('rep-plnenie-overlay');
+  if (overlay) overlay.classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+function repPlnenieLoad() {
+  if (REP_PL_STATE.loading) return;
+  REP_PL_STATE.loading = true;
+  REP_PL_STATE.loaded = false;
+  REP_PL_STATE.data = null;
+  REP_PL_STATE.aggregates = null;
+  REP_PL_STATE.qCache = {};
+  var year = REP_PL_STATE.year;
+  var qs = [1, 2, 3, 4];
+  var pending = qs.length;
+  qs.forEach(function(q) {
+    var url = SCRIPT_URL + '?action=getPlnenieAll&rok=' + year + '&Q=' + q;
+    mgrFetchWithRetry(url, 3)
+      .then(function(resp) {
+        if (!resp || !resp.ok) throw new Error('No data Q' + q);
+        var agg = plnenieBuildAggregates(resp);
+        REP_PL_STATE.qCache[q] = { data: resp, aggregates: agg };
+        if (q === REP_PL_STATE.q) {
+          REP_PL_STATE.data = resp;
+          REP_PL_STATE.aggregates = agg;
+          REP_PL_STATE.loaded = true;
+          var overlay = document.getElementById('rep-plnenie-overlay');
+          if (overlay && overlay.classList.contains('show')) repPlnenieRender();
+        }
+      })
+      .catch(function() { REP_PL_STATE.qCache[q] = null; })
+      .then(function() {
+        pending--;
+        if (pending === 0) {
+          REP_PL_STATE.loading = false;
+          if (!REP_PL_STATE.loaded) {
+            var overlay = document.getElementById('rep-plnenie-overlay');
+            if (overlay && overlay.classList.contains('show')) repPlnenieRender();
+          }
+        }
+      });
+  });
+}
+
+function repPlnenieSwitchQ(q) {
+  if (q === REP_PL_STATE.q) return;
+  REP_PL_STATE.q = q;
+  repPlnenieUpdateQTabs();
+  if (REP_PL_STATE.qCache[q]) {
+    REP_PL_STATE.data = REP_PL_STATE.qCache[q].data;
+    REP_PL_STATE.aggregates = REP_PL_STATE.qCache[q].aggregates;
+    REP_PL_STATE.loaded = true;
+    repPlnenieRender();
+  } else if (REP_PL_STATE.loading) {
+    repPlnenieRenderLoading();
+  } else {
+    repPlnenieRender();
+  }
+}
+
+function repPlnenieUpdateQTabs() {
+  var tabs = document.querySelectorAll('#rep-pl-q-tabs .pl-q-tab');
+  var curQ = plnenieCurrentQ();
+  tabs.forEach(function(tab) {
+    var q = parseInt(tab.getAttribute('data-q'));
+    tab.classList.toggle('active', q === REP_PL_STATE.q);
+    tab.classList.toggle('current', q === curQ && q !== REP_PL_STATE.q);
+    tab.classList.toggle('future', q > curQ);
+  });
+}
+
+function repPlnenieRenderLoading() {
+  var prodsEl = document.getElementById('rep-pl-prods');
+  if (prodsEl) prodsEl.innerHTML = '<div class="pl-loading"><div class="mgr-spinner" style="margin:0 auto 10px"></div><div>Načítavam plnenie...</div></div>';
+  var totalCardEl = document.getElementById('rep-pl-total-card');
+  if (totalCardEl) totalCardEl.innerHTML = '<div class="total-lbl">Môj plán · ' + plnenieQLabel(REP_PL_STATE.q, REP_PL_STATE.year) + '</div><div class="total-val none">—</div><div class="total-money">Načítavam...</div>';
+}
+
+function repPlnenieRender() {
+  var session = getSession();
+  if (!session || !session.username) return;
+  var username = session.username;
+  var totalCardEl = document.getElementById('rep-pl-total-card');
+  var prodsEl = document.getElementById('rep-pl-prods');
+  var prodsLblEl = document.getElementById('rep-pl-prods-lbl');
+  var agg = REP_PL_STATE.aggregates;
+  var qLbl = plnenieQLabel(REP_PL_STATE.q, REP_PL_STATE.year);
+
+  if (!agg) {
+    if (totalCardEl) totalCardEl.innerHTML = '<div class="total-lbl">Môj plán \u00b7 ' + qLbl + '</div><div class="total-val none">Žiadne dáta</div><div class="total-money" style="opacity:.65">Plán nie je zadaný pre tento kvartál</div>';
+    if (prodsEl) prodsEl.innerHTML = '<div class="pl-loading">Plán pre tento kvartál nie je zadaný.</div>';
+    repPlnenieRenderTrend(username);
+    return;
+  }
+
+  // Nájdi riadok pre aktuálneho representanta
+  var repRow = null;
+  for (var i = 0; i < agg.reps.length; i++) {
+    if (agg.reps[i].username === username) { repRow = agg.reps[i]; break; }
+  }
+  var repPct = repRow ? repRow.pct : null;
+  var repPlan = repRow ? repRow.planEUR : 0;
+  var repPredaje = repRow ? repRow.predajeEUR : 0;
+  var repColorCls = plnenieDetailColorClass(repPct);
+  var noData = (repPlan === 0 && repPredaje === 0);
+
+  // Celková karta
+  if (totalCardEl) {
+    var moneyStr;
+    if (noData) {
+      moneyStr = 'Plán ani predaje nie s\u00fa zadané';
+    } else {
+      moneyStr = '<strong>' + plnenieFormatEUR(repPredaje) + '</strong>' + (repPlan > 0 ? ' z pl\u00e1nu ' + plnenieFormatEUR(repPlan) : '');
+    }
+    totalCardEl.innerHTML =
+      '<div class="total-lbl">M\u00f4j pl\u00e1n \u00b7 ' + qLbl + '</div>' +
+      '<div class="total-val ' + repColorCls + '">' + (noData ? 'Žiadne dáta' : plnenieFormatPct(repPct)) + '</div>' +
+      '<div class="total-money" style="' + (noData ? 'opacity:.65' : '') + '">' + moneyStr + '</div>';
+  }
+
+  // Popisok sekcie produktov
+  if (prodsLblEl) prodsLblEl.textContent = 'Moje produkty \u00b7 ' + qLbl;
+  if (!prodsEl) { repPlnenieRenderTrend(username); return; }
+
+  var resp = REP_PL_STATE.data || {};
+  var planProducts = resp.planProducts || [];
+  var plan = (resp.plan && resp.plan[username]) || {};
+  var predajeTotal = (resp.predaje && resp.predaje[username] && resp.predaje[username].total) || {};
+  var predajeByMonth = (resp.predaje && resp.predaje[username] && resp.predaje[username].byMonth) || {};
+  var qMonths = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[REP_PL_STATE.q] || [];
+  var curQ = plnenieCurrentQ();
+  var curMonth = (new Date()).getMonth() + 1;
+
+  if (planProducts.length === 0) {
+    prodsEl.innerHTML = '<div class="pl-loading">Žiadne produkty v pláne pre ' + qLbl + '.</div>';
+    repPlnenieRenderTrend(username);
+    return;
+  }
+
+  var milestonesHtml = plnenieMilestonesHtml(REP_PL_STATE.year, REP_PL_STATE.q);
+  var msLabelsHtml   = plnenieMsLabelsHtml(REP_PL_STATE.year, REP_PL_STATE.q);
+
+  prodsEl.innerHTML = plnenieSortProducts(planProducts).map(function(rawProdKey) {
+    var key = plnenieNormalizeKey(rawProdKey);
+    var label = plnenieDisplayName(rawProdKey);
+    var dotColor = PL_PROD_DOT_COLORS[key] || '#94A3B8';
+    var pPlan = parseFloat(plan[key]); if (isNaN(pPlan)) pPlan = 0;
+    var pPredaje = parseFloat(predajeTotal[key]); if (isNaN(pPredaje)) pPredaje = 0;
+    var pPct = (pPlan > 0) ? (pPredaje / pPlan * 100) : null;
+    var prodColorCls = plnenieDetailColorClass(pPct);
+    var barWidth = (pPct === null || isNaN(pPct)) ? 0 : Math.min(pPct, 100);
+    var monthlyPlans = plnenieMonthlyPlans(REP_PL_STATE.year, REP_PL_STATE.q, pPlan);
+
+    var monthRowsHtml = qMonths.map(function(m) {
+      var monthData = predajeByMonth[m] || {};
+      var mVal = parseFloat(monthData[key]); if (isNaN(mVal)) mVal = 0;
+      var mPlan = monthlyPlans[m] || 0;
+      var mPct = (mPlan > 0) ? (mVal / mPlan * 100) : null;
+      var isCurrent = (REP_PL_STATE.q === curQ && m === curMonth);
+      var isFuture = (REP_PL_STATE.q === curQ && m > curMonth) || REP_PL_STATE.q > curQ;
+      var mValCls = isFuture ? 'future' : ((mPlan > 0 && mVal > 0) ? plnenieDetailColorClass(mPct) : 'future');
+      var mDisplay = mVal > 0 ? plnenieFormatEUR(mVal) : '\u2014';
+      return '<div class="mrow">' +
+        '<div class="mrow-lbl' + (isCurrent ? ' current' : '') + '">' + (PL_MONTH_LABELS[m] || 'M'+m) + '</div>' +
+        '<div class="mrow-val ' + mValCls + '">' + mDisplay + '</div>' +
+        (mPlan > 0 ? '<div class="mrow-plan">pl\u00e1n ' + plnenieFormatEUR(mPlan) + '</div>' : '') +
+      '</div>';
+    }).join('');
+
+    var moneyHtml;
+    if (pPlan > 0) {
+      moneyHtml = '<div class="prod-money"><strong>' + plnenieFormatEUR(pPredaje) + '</strong> z pl\u00e1nu ' + plnenieFormatEUR(pPlan) + '</div>';
+    } else if (pPredaje > 0) {
+      moneyHtml = '<div class="prod-money muted">' + plnenieFormatEUR(pPredaje) + ' \u00b7 \u017eiadny pl\u00e1n</div>';
+    } else {
+      moneyHtml = '<div class="prod-money muted">\u017diadny pl\u00e1n pre tento kv\u00e1rt\u00e1l</div>';
+    }
+
+    return '<div class="prod-item-adv">' +
+      '<div class="prod-adv-top">' +
+        '<div class="prod-adv-name"><div class="prod-dot" style="background:' + dotColor + '"></div>' + mgrEscape(label) + '</div>' +
+        '<div class="prod-adv-pct ' + prodColorCls + '">' + plnenieFormatPct(pPct) + '</div>' +
+      '</div>' +
+      (pPlan > 0
+        ? '<div class="bar-wrap"><div class="bar-track"><div class="bar-fill ' + prodColorCls + '" style="width:' + barWidth + '%"></div>' + milestonesHtml + '</div>' + msLabelsHtml + '</div>'
+        : '') +
+      moneyHtml +
+      '<div class="month-rows">' + monthRowsHtml + '</div>' +
+    '</div>';
+  }).join('');
+
+  repPlnenieRenderTrend(username);
+}
+
+function repPlnenieRenderTrend(username) {
+  var trendEl = document.getElementById('rep-pl-trend');
+  if (!trendEl) return;
+  var curQ = plnenieCurrentQ();
+  var year = REP_PL_STATE.year;
+
+  var qData = [];
+  for (var q = 1; q <= 4; q++) {
+    var cached = REP_PL_STATE.qCache[q];
+    var pct = null;
+    if (cached && cached.aggregates && cached.aggregates.reps) {
+      for (var i = 0; i < cached.aggregates.reps.length; i++) {
+        if (cached.aggregates.reps[i].username === username) { pct = cached.aggregates.reps[i].pct; break; }
+      }
+    }
+    qData.push({ q: q, pct: pct, isCurrent: q === curQ });
+  }
+
+  var maxPct = 0;
+  qData.forEach(function(d){ if (d.pct !== null && d.pct > maxPct) maxPct = d.pct; });
+  if (maxPct < 10) maxPct = 100;
+
+  var barsHtml = qData.map(function(d) {
+    var barH = (d.pct !== null) ? Math.max(6, Math.round(d.pct / maxPct * 90)) : 8;
+    var barCls = (d.pct === null) ? 'future' : plnenieDetailColorClass(d.pct);
+    var valCls = (d.pct === null) ? 'empty' : '';
+    var valStr = (d.pct !== null) ? plnenieFormatPct(d.pct) : '\u2014';
+    var lblCls = d.isCurrent ? 'current' : '';
+    var msHtml = (d.pct !== null) ? plnenieTrendMsHtml(year, d.q, d.pct) : '';
+    return '<div class="trend-col">' +
+      '<div class="trend-bar ' + barCls + '" style="height:' + barH + '%">' +
+        '<div class="trend-bar-val ' + valCls + '">' + valStr + '</div>' +
+        msHtml +
+      '</div>' +
+      '<div class="trend-lbl ' + lblCls + '">Q' + d.q + (d.isCurrent ? ' \u00b7 teraz' : '') + '</div>' +
+    '</div>';
+  }).join('');
+
+  trendEl.innerHTML =
+    '<div class="trend-title">Trend m\u00f4jho plnenia \u00b7 ' + year + '</div>' +
+    '<div class="trend-bars">' + barsHtml + '</div>';
+}
+
 // ── PULL-TO-REFRESH pre manažérsky zoznam ──
 (function(){
   var startY = 0, startX = 0, pulling = false, triggered = false, dirLocked = false;
@@ -5862,6 +6223,27 @@ function plnenieRenderDetailTrend(username) {
     <div class="session-expired-btns">
       <button type="button" class="session-expired-confirm" onclick="confirmLogout()">Prihlásiť sa znova</button>
     </div>
+  </div>
+</div>
+
+<!-- ── REP PLNENIE OVERLAY — vlastné plnenie pre prihlásených reprezentantov ── -->
+<div class="rep-plnenie-overlay" id="rep-plnenie-overlay">
+  <div class="rep-pl-inner">
+    <button type="button" class="mgr-back" onclick="closeRepPlnenie()">&larr; Späť</button>
+    <div class="total-card" id="rep-pl-total-card">
+      <div class="total-lbl">Môj plán</div>
+      <div class="total-val none">—</div>
+      <div class="total-money">Načítavam...</div>
+    </div>
+    <div class="pl-q-tabs" id="rep-pl-q-tabs">
+      <button type="button" class="pl-q-tab" data-q="1" onclick="repPlnenieSwitchQ(1)">Q1</button>
+      <button type="button" class="pl-q-tab" data-q="2" onclick="repPlnenieSwitchQ(2)">Q2</button>
+      <button type="button" class="pl-q-tab" data-q="3" onclick="repPlnenieSwitchQ(3)">Q3</button>
+      <button type="button" class="pl-q-tab" data-q="4" onclick="repPlnenieSwitchQ(4)">Q4</button>
+    </div>
+    <div class="pl-section-lbl" id="rep-pl-prods-lbl">Moje produkty</div>
+    <div id="rep-pl-prods"></div>
+    <div class="trend" id="rep-pl-trend"></div>
   </div>
 </div>
 
