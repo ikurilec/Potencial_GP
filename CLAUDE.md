@@ -37,28 +37,38 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.3.1** — obsahuje všetko z 2.2.56 plus:
+**2.3.3** — obsahuje všetko z 2.2.56 plus kompletný Plnenie modul. **Zámerné rozhodnutie: zostáva na `test` vetve až kým nebudú plány nahodené v Google Sheets. Potom otestovať s reálnymi dátami a pushnúť do `main`.**
 
 ### v2.3.0 — Plnenie (Predaje vs Plán) — manažérsky modul
 - Nový tab 💊 **Plnenie** v manažérskom pohľade (vedľa Návštevy)
-- Plnenie je default tab pri otvorení manažérskeho pohľadu (vľavo)
+- Plnenie je **default tab** pri otvorení manažérskeho pohľadu (vľavo od Návštevy)
 - Slovensko sumár: celkové % plnenia, regióny West/East, per-produkt prehľad
 - Zoznam reprezentantov zoradený podľa % plnenia (medaily 🥇🥈🥉)
 - Q taby (Q1–Q4), aktuálny Q predvolený
 - Endpoint `getPlnenieAll` na Google Apps Script
 
-### v2.3.1 — Detail reprezentanta + UX vylepšenia Plnenie
+### v2.3.1 — Detail reprezentanta + UX vylepšenia
 - **Detail reprezentanta**: tmavá súhrnná karta, per-produkt progress bary s milestone čiarami
-- Milestone čiary delené podľa pracovných dní (rovnako ako produktové bary)
-- Trend plnenia cez kvartály — stĺpcový graf, farby podľa výkonu
+- Milestone čiary delené podľa pracovných dní — čierne, vyčnievajú po stranách, sivé % popisky
+- Trend plnenia cez kvartály — stĺpcový graf, farby podľa výkonu (g/o/r)
 - **Paralelný load** všetkých 4 kvartálov naraz → okamžité prepínanie Q tabov bez fetchu
 - Detail vždy otvára aktuálny Q (defaultne)
 - Všetci reprezentanti klikateľní aj bez dát (zobrazí "Žiadne dáta")
-- Farby výkonu: ≥100% zelená, 95–99,99% oranžová, <95% červená (bonus logika)
-- Milestone čiary v trend grafoch čierne, vyčnievajú po stranách, sivé % popisky
-- Skrátený názov produktu: "Aflamil tbl a sáčky", fix zalamovanie v Slovensko sumári
+- Skrátený názov: "Aflamil tbl a sáčky", fix zalamovanie v Slovensko sumári
 - Poradie produktov: Aflamil skupina pohromade (`PL_PRODUCT_ORDER`)
 - Pull-to-refresh v Plnenie tab: vymaže cache, načíta všetko od znova
+
+### v2.3.2 — Roly a regionálne filtrovanie
+- **boss, bum, pm** — vidia Plnenie rovnako ako admin (všetci reprezentanti, Slovensko sumár)
+- **AM West** — vidí iba West reprezentantov, hlavička "West · Q2 2026", bez region kariet
+- **AM East** — vidí iba East reprezentantov, hlavička "East · Q2 2026", bez region kariet
+- `plnenieGetActiveReps()` — helper, vracia správny zoznam repov podľa `MGR_STATE.role`
+- `plnenieIsAmRole()` — true pre amwest/ameast, skryje region karty
+- `plnenieSumLabel()` — "West" / "East" / "Slovensko" podľa roly
+
+### v2.3.3 — Jednotná farebná logika v Plnenie
+- `plnenieColorClass()` opravená: ≥100% zelená, 95–99,99% oranžová, <95% červená
+- Platí všade: celkové % v sumári, West/East karty, produkty v sumári, % pri každom reprezentantovi
 
 ---
 
@@ -256,9 +266,10 @@ Claude prepne na `test` vetvu a začne pracovať na oprave. Zmeny idú cez štan
 10. **Výber špecializácie pri každom zázname**
 11. **Rýchly brief pred návštevou** — karta lekára s poslednou návštevou, segmentom, potenciálom, poznámkou, trendom a upozornením (ak je to nový lekár alebo zmena segmentu)
 
-### Plnenie — čo ešte chýba (na test vetve, pred mergom do main)
-- **Mód reprezentanta** — 💊 Plnenie tlačidlo v headri (vedľa Rebríček/História) pre bežného reprezentanta, nie len pre manažéra. Vizuálna referencia v `plnenie_vizual.html` sekcia "Mód reprezentanta". Po kliknutí: Späť → tmavá karta s % → Q taby → produkty s míľnikmi → trend graf. **Bez motivačného bannera.**
-- **AM West / AM East pohľad** — regionálny sumár (West vs East breakdown) v Plnenie tabe
+### Plnenie — čo ešte chýba pred mergom do main
+- **Reálne dáta v Sheets** — plány nahodené v Google Sheets (blocker pre merge do main)
+- **Otestovať s reálnymi dátami** — overiť agregácie, farebné prahy, detail reprezentanta
+- **Mód reprezentanta** — 💊 Plnenie tlačidlo v headri (vedľa Rebríček/História) pre bežného reprezentanta. Vizuálna referencia v `docs/plnenie_vizual.html` sekcia "Mód reprezentanta". Po kliknutí: Späť → tmavá karta s % → Q taby → produkty s míľnikmi → trend graf. **Bez motivačného bannera.** (nižšia priorita — najprv otestovať manažérsky pohľad)
 - **DEV mode mock dáta pre Plnenie** — `MOCK_PLNENIE` objekt simulujúci `getPlnenieAll` odpoveď (plány + predaje per reprezentant per produkt per mesiac)
 
 ### Dátová integrácia (až po login + Sheets)
@@ -269,6 +280,59 @@ Claude prepne na `test` vetvu a začne pracovať na oprave. Zmeny idú cez štan
 
 ### Plnenie — vizuálna referencia
 Uložená v `docs/plnenie_vizual.html`. Obsahuje 4 módy (Admin, AM West, Detail reprezentanta, Mód reprezentanta). CSS triedy použité v implementácii sú zámerne totožné s referenciou (napr. `dhdr`, `total-card`, `prod-item-adv`, `bar-wrap`, `milestone`, `ms-labels`, `month-rows`, `trend`, `trend-bars`). Všetok nový Plnenie CSS je scopovaný cez `.mgr-plnenie-detail` aby sa predišlo konfliktom.
+
+### Plnenie — kľúčové technické detaily
+
+**Stav (`PL_STATE`):**
+```javascript
+var PL_STATE = {
+  year: 2026,
+  q: 1,           // aktuálne zobrazený Q
+  loading: false,
+  loaded: false,
+  data: null,     // raw odpoveď z getPlnenieAll pre aktuálny Q
+  aggregates: null, // vypočítané agregáty (sk, regions, products, reps)
+  detailRep: null,  // username otvoreného detailu, null = zoznam
+  qCache: {}      // { 1: {data, aggregates}, 2: {...}, ... } — cache pre všetky Q
+};
+```
+
+**Endpoint:** `SCRIPT_URL + '?action=getPlnenieAll&rok=2026&Q=2'`
+
+**Očakávaná štruktúra odpovede:**
+```javascript
+{
+  ok: true,
+  planProducts: ['Aflamil', 'Aflamil krém', 'Aflamil tbl a sáčky', 'Suprax', 'Vidonorm', 'Cavinton Forte', ...],
+  plan: {
+    'j.bohovic': { 'aflamil': 1200, 'suprax': 800, ... },  // EUR za Q
+    ...
+  },
+  predaje: {
+    'j.bohovic': {
+      total: { 'aflamil': 1100, 'suprax': 750, ... },      // EUR sumár za Q
+      byMonth: { 4: { 'aflamil': 400, ... }, 5: {...}, 6: {...} } // mesačný rozpad
+    },
+    ...
+  }
+}
+```
+
+**Kľúčové funkcie:**
+- `plnenieLoadAllQuarters()` — paralelný fetch Q1–Q4, uloží do `PL_STATE.qCache`
+- `plnenieSwitchQ(q)` — okamžité prepnutie z cache, bez fetchu
+- `plnenieBuildAggregates(resp)` — vypočíta sk/regions/products/reps súhrny
+- `plnenieGetActiveReps()` — vracia MGR_ALL / MGR_AM_WEST / MGR_AM_EAST podľa roly
+- `plnenieIsAmRole()` — true pre amwest/ameast
+- `plnenieSumLabel()` — "Slovensko" / "West" / "East" podľa roly
+- `plnenieColorClass(pct)` — `pl-g` ≥100%, `pl-o` 95–99,99%, `pl-r` <95% (pre sumár/zoznam)
+- `plnenieDetailColorClass(pct)` — `g`/`o`/`r`/`none` (pre detail view, bez pl- prefixu)
+- `plnenieOpenDetail(username)` — otvorí detail, prepne na aktuálny Q
+- `plnenieMilestonesHtml(year, q)` — HTML pre milestone čiary v progress bare
+- `plnenieMonthlyPlans(year, q, total)` — rozdelí Q plán na mesiace podľa pracovných dní
+- `PL_WORKING_DAYS_MAP` — pracovné dni per mesiac pre 2026 (pri novom roku treba doplniť)
+- `PL_PRODUCT_ORDER` — fixné poradie produktov (Aflamil skupina pohromade)
+- `PL_PROD_DOT_COLORS` — farby bodiek pri produktoch (Aflamil = modrá, Suprax = fialová, ...)
 
 ---
 
