@@ -570,7 +570,8 @@
   .pl-sum-big-plan{font-size:10.5px;color:#94A3B8;margin-top:1px}
   .pl-sum-prods{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;padding-top:10px;border-top:0.5px solid #E2E8F0}
   .pl-sum-prods:empty{display:none}
-  .pl-sum-prod{display:flex;justify-content:space-between;font-size:12px;font-weight:500;color:#334155}
+  .pl-sum-prod{display:flex;align-items:baseline;justify-content:space-between;gap:4px;font-size:12px;font-weight:500;color:#334155;min-width:0}
+  .pl-sum-prod-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
   .pl-sum-prod strong{font-weight:700}
   .pl-sum-prod strong.pl-g{color:#059669}
   .pl-sum-prod strong.pl-o{color:#D97706}
@@ -602,6 +603,93 @@
   .pl-loading{padding:30px 14px;text-align:center;color:#64748B;font-size:13px}
   .pl-loading .mgr-spinner{margin:0 auto 10px}
   .pl-error{padding:30px 14px;text-align:center;color:#DC2626;font-size:13px}
+  .pl-rep-card.pl-rep-clickable{cursor:pointer;transition:background .15s}
+  .pl-rep-card.pl-rep-clickable:active{background:#F8FAFC}
+  .pl-rep-chev{color:#CBD5E1;font-size:17px;margin-left:4px;flex-shrink:0}
+  /* ── Detail reprezentanta (v2.3.1) — CSS totožný s plnenie_vizual.html / Detail repa ── */
+  .mgr-plnenie-detail{display:none}
+  body.mgr-subtab-plnenie.mgr-plnenie-detail-open .mgr-plnenie-detail{display:block}
+  body.mgr-subtab-plnenie.mgr-plnenie-detail-open .mgr-plnenie-view{display:none !important}
+  /* Back */
+  .pl-detail-back{display:inline-flex;align-items:center;gap:6px;background:#fff;border:none;padding:9px 14px 9px 10px;border-radius:22px;color:#2563EB;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:10px;font-family:inherit;box-shadow:0 1px 4px rgba(0,0,0,.06);transition:transform .15s;-webkit-tap-highlight-color:transparent}
+  .pl-detail-back:active{transform:scale(.96)}
+  /* Header */
+  .mgr-plnenie-detail .dhdr{background:#fff;border-radius:14px;padding:16px 18px 14px;margin-bottom:10px;display:flex;gap:12px;align-items:center;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+  .mgr-plnenie-detail .dhdr-avatar{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;flex-shrink:0;font-family:'Outfit',sans-serif}
+  .mgr-plnenie-detail .dhdr-name{font-size:15px;font-weight:700;color:#0F172A;font-family:'Outfit',sans-serif}
+  .mgr-plnenie-detail .dhdr-sub{font-size:11px;color:#64748B;margin-top:2px}
+  /* Sub-taby: Predaje / Návštevy */
+  .mgr-plnenie-detail .pl-sub-tabs{display:flex;gap:6px;margin-bottom:12px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  .mgr-plnenie-detail .pl-sub-tab{flex:1;padding:11px 4px;border:none;background:transparent;font-size:12.5px;font-weight:700;color:#64748B;cursor:pointer;border-radius:8px;font-family:inherit;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;-webkit-tap-highlight-color:transparent}
+  .mgr-plnenie-detail .pl-sub-tab.active{background:#0C1E35;color:#fff}
+  /* Total card — tmavá gradient */
+  .mgr-plnenie-detail .total-card{background:linear-gradient(135deg,#0C1E35,#1A3A5C);border-radius:14px;padding:16px 18px;margin-bottom:12px;color:#fff;text-align:center}
+  .mgr-plnenie-detail .total-lbl{font-size:10px;font-weight:700;color:#7AABCC;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+  .mgr-plnenie-detail .total-val{font-size:34px;font-weight:800;font-family:'Outfit',sans-serif;line-height:1;margin-bottom:3px}
+  .mgr-plnenie-detail .total-val.g{color:#10B981}
+  .mgr-plnenie-detail .total-val.o{color:#F59E0B}
+  .mgr-plnenie-detail .total-val.r{color:#EF4444}
+  .mgr-plnenie-detail .total-val.none{color:#94A3B8}
+  .mgr-plnenie-detail .total-money{font-size:12px;color:#CBD5E1;font-weight:500}
+  .mgr-plnenie-detail .total-money strong{color:#fff;font-weight:700}
+  /* Produkty */
+  .mgr-plnenie-detail .prod-item-adv{background:#fff;border-radius:12px;padding:13px 14px;margin-bottom:9px;box-shadow:0 1px 6px rgba(0,0,0,.05)}
+  .mgr-plnenie-detail .prod-adv-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .mgr-plnenie-detail .prod-adv-name{display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:700;color:#0F172A;font-family:'Outfit',sans-serif}
+  .mgr-plnenie-detail .prod-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .mgr-plnenie-detail .prod-adv-pct{font-size:17px;font-weight:800;font-family:'Outfit',sans-serif;line-height:1}
+  .mgr-plnenie-detail .prod-adv-pct.g{color:#059669}
+  .mgr-plnenie-detail .prod-adv-pct.o{color:#D97706}
+  .mgr-plnenie-detail .prod-adv-pct.r{color:#DC2626}
+  .mgr-plnenie-detail .prod-adv-pct.none{color:#94A3B8}
+  /* Bar s míľnikmi */
+  .mgr-plnenie-detail .bar-wrap{position:relative;margin-bottom:6px}
+  .mgr-plnenie-detail .bar-track{height:12px;background:#F1F5F9;border-radius:6px;overflow:visible;position:relative}
+  .mgr-plnenie-detail .bar-fill{height:100%;border-radius:6px;position:relative;transition:width .8s ease;max-width:100%}
+  .mgr-plnenie-detail .bar-fill.g{background:linear-gradient(90deg,#10B981,#059669)}
+  .mgr-plnenie-detail .bar-fill.o{background:linear-gradient(90deg,#F59E0B,#D97706)}
+  .mgr-plnenie-detail .bar-fill.r{background:linear-gradient(90deg,#F87171,#DC2626)}
+  .mgr-plnenie-detail .milestone{position:absolute;top:-3px;bottom:-3px;width:3px;background:#0F172A;z-index:2}
+  .mgr-plnenie-detail .milestone.passed{background:#0F172A}
+  .mgr-plnenie-detail .milestone.current{background:#0F172A;width:4px}
+  /* Textové popisky pod barom */
+  .mgr-plnenie-detail .ms-labels{display:flex;justify-content:space-between;margin-top:6px;padding:0 1px;font-size:10px;color:#94A3B8;font-weight:600}
+  .mgr-plnenie-detail .ms-labels span{flex:1;text-align:center}
+  .mgr-plnenie-detail .ms-labels span:first-child{text-align:left}
+  .mgr-plnenie-detail .ms-labels span:last-child{text-align:right}
+  .mgr-plnenie-detail .ms-labels span.active{color:#0C1E35;font-weight:700}
+  .mgr-plnenie-detail .ms-labels span.passed{color:#64748B}
+  /* Money */
+  .mgr-plnenie-detail .prod-money{font-size:11.5px;color:#64748B;margin-top:2px;margin-bottom:8px}
+  .mgr-plnenie-detail .prod-money strong{color:#0F172A;font-weight:700}
+  .mgr-plnenie-detail .prod-money.muted{color:#94A3B8;font-style:italic}
+  /* Mesačné riadky */
+  .mgr-plnenie-detail .month-rows{display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:0.5px solid #F1F5F9}
+  .mgr-plnenie-detail .mrow{flex:1;text-align:center}
+  .mgr-plnenie-detail .mrow-lbl{font-size:9.5px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+  .mgr-plnenie-detail .mrow-lbl.current{color:#059669}
+  .mgr-plnenie-detail .mrow-val{font-size:12px;font-weight:700;font-family:'Outfit',sans-serif;margin-bottom:4px}
+  .mgr-plnenie-detail .mrow-val.g{color:#059669}
+  .mgr-plnenie-detail .mrow-val.o{color:#D97706}
+  .mgr-plnenie-detail .mrow-val.r{color:#DC2626}
+  .mgr-plnenie-detail .mrow-val.future{color:#CBD5E1}
+  .mgr-plnenie-detail .mrow-plan{font-size:9px;color:#94A3B8;margin-top:1px}
+  /* Trend graf */
+  .mgr-plnenie-detail .trend{background:#fff;border-radius:14px;padding:14px 18px 16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+  .mgr-plnenie-detail .trend-title{font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:28px}
+  .mgr-plnenie-detail .trend-bars{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:end;height:130px}
+  .mgr-plnenie-detail .trend-col{display:flex;flex-direction:column;align-items:center;gap:10px;height:100%;justify-content:flex-end}
+  .mgr-plnenie-detail .trend-bar{width:100%;max-width:40px;background:linear-gradient(180deg,#3B82F6,#1D4ED8);border-radius:6px 6px 2px 2px;position:relative;min-height:4px;transition:height .6s ease}
+  .mgr-plnenie-detail .trend-bar.future{background:linear-gradient(180deg,#E2E8F0,#CBD5E1)}
+  .mgr-plnenie-detail .trend-bar.g{background:linear-gradient(180deg,#10B981,#059669)}
+  .mgr-plnenie-detail .trend-bar.o{background:linear-gradient(180deg,#FBBF24,#D97706)}
+  .mgr-plnenie-detail .trend-bar.r{background:linear-gradient(180deg,#F87171,#DC2626)}
+  .mgr-plnenie-detail .trend-bar-val{position:absolute;top:-20px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:700;color:#0F172A;white-space:nowrap;font-family:'Outfit',sans-serif}
+  .mgr-plnenie-detail .trend-bar-val.empty{color:#94A3B8;font-weight:500}
+  .mgr-plnenie-detail .trend-lbl{font-size:10px;font-weight:600;color:#64748B}
+  .mgr-plnenie-detail .trend-lbl.current{color:#059669;font-weight:700}
+  .mgr-plnenie-detail .trend-ms{position:absolute;left:-5px;right:-5px;height:3px;background:#0F172A;z-index:2;pointer-events:none}
+  .mgr-plnenie-detail .trend-ms-lbl{position:absolute;left:50%;transform:translateX(-50%);font-size:9px;font-weight:600;color:#94A3B8;white-space:nowrap;z-index:3;pointer-events:none;line-height:1}
 </style>
 </head>
 <body>
@@ -648,8 +736,8 @@
 <div class="mgr-view" id="mgr-view">
   <!-- Sub-tabs — Návštevy / Plnenie (admin Plnenie od v2.3.0) -->
   <div class="mgr-subtabs">
-    <button type="button" class="mgr-subtab active" data-tab="visits" onclick="mgrSwitchSubtab('visits')">📋 Návštevy</button>
-    <button type="button" class="mgr-subtab" data-tab="plnenie" onclick="mgrSwitchSubtab('plnenie')">💊 Plnenie</button>
+    <button type="button" class="mgr-subtab active" data-tab="plnenie" onclick="mgrSwitchSubtab('plnenie')">💊 Plnenie</button>
+    <button type="button" class="mgr-subtab" data-tab="visits" onclick="mgrSwitchSubtab('visits')">📋 Návštevy</button>
   </div>
 
   <!-- Dashboard — zoznam reprezentantov -->
@@ -733,6 +821,41 @@
     <div class="pl-rep-list" id="pl-rep-list">
       <div class="pl-loading"><div class="mgr-spinner"></div><div>Načítavam dáta plnenia…</div></div>
     </div>
+  </div>
+
+  <!-- Plnenie — Detail reprezentanta (v2.3.1) -->
+  <div class="mgr-plnenie-detail" id="mgr-plnenie-detail">
+    <button type="button" class="pl-detail-back" onclick="plnenieCloseDetail()">&larr; Späť na zoznam</button>
+
+    <div class="dhdr">
+      <div class="dhdr-avatar" id="pl-detail-avatar">—</div>
+      <div>
+        <div class="dhdr-name" id="pl-detail-name"></div>
+        <div class="dhdr-sub" id="pl-detail-sub"></div>
+      </div>
+    </div>
+
+    <!-- Sub-tab: Predaje -->
+    <div id="pl-detail-predaje">
+      <div class="pl-q-tabs" id="pl-detail-q-tabs">
+        <button type="button" class="pl-q-tab" data-q="1" onclick="plnenieSwitchQ(1)">Q1</button>
+        <button type="button" class="pl-q-tab" data-q="2" onclick="plnenieSwitchQ(2)">Q2</button>
+        <button type="button" class="pl-q-tab" data-q="3" onclick="plnenieSwitchQ(3)">Q3</button>
+        <button type="button" class="pl-q-tab" data-q="4" onclick="plnenieSwitchQ(4)">Q4</button>
+      </div>
+
+      <div class="total-card" id="pl-detail-total-card">
+        <div class="total-lbl">Celkov&#233; plnenie</div>
+        <div class="total-val none">&#8212;</div>
+        <div class="total-money">&#8212;</div>
+      </div>
+
+      <div class="pl-section-lbl" id="pl-detail-prods-lbl">Plnenie per produkt</div>
+      <div id="pl-detail-prods"></div>
+
+      <div class="trend" id="pl-detail-trend"></div>
+    </div>
+
   </div>
 </div>
 
@@ -1195,7 +1318,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.3.0';
+var APP_VERSION = '2.3.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -3672,13 +3795,15 @@ function mgrEnter(roleKey){
   var cfg = MGR_ROLE_CFG[roleKey];
   if(!cfg) return;
   MGR_STATE.role = roleKey;
-  // v2.3.0 — inicializácia Plnenie sub-tabu (default: Návštevy, aby nebola regresia)
-  MGR_STATE.subtab = 'visits';
-  document.body.classList.remove('mgr-subtab-plnenie');
+  // v2.3.1 — Plnenie je default sub-tab pri otvorení
+  MGR_STATE.subtab = 'plnenie';
+  document.body.classList.add('mgr-subtab-plnenie');
   PL_STATE.q = plnenieCurrentQ();
   PL_STATE.loaded = false;
+  PL_STATE.loading = false;
   PL_STATE.data = null;
   PL_STATE.aggregates = null;
+  PL_STATE.qCache = {};
   // Dynamicky zisti repov pre AM West/East zo Sheets
   if(roleKey === 'amwest' || roleKey === 'ameast'){
     var session = getSession();
@@ -3701,6 +3826,8 @@ function mgrEnter(roleKey){
   window.scrollTo(0, 0);
 
   mgrLoadData();
+  // Plnenie je default tab — načítaj všetky kvartály hneď pri vstupe
+  plnenieLoadAllQuarters();
 }
 
 // Paralelný load všetkých histórií cez existujúci getHistory endpoint
@@ -4736,7 +4863,7 @@ function lbRender(){
 // Hodnota = display názov v appke (môže obsahovať diakritiku, medzery).
 var PL_PRODUCT_LABELS = {
   'aflamil_kr':            'Aflamil krém',
-  'aflamil_tablety_sacky': 'Aflamil tablety a sáčky',
+  'aflamil_tablety_sacky': 'Aflamil tbl a sáčky',
   'cavinton':              'Cavinton',
   'globifer':              'Globifer',
   'junod':                 'Junod',
@@ -4755,7 +4882,9 @@ var PL_STATE = {
   loading: false,
   loaded: false,
   data: null,
-  aggregates: null
+  aggregates: null,
+  detailRep: null,    // username otvoreného detailu, null = zoznam
+  qCache: {}          // cache dát per Q — { 1: {data, aggregates}, 2: {...}, ... }
 };
 
 function plnenieNormalizeKey(s) {
@@ -4772,10 +4901,12 @@ function plnenieCurrentQ() {
   return Math.ceil(m / 3);
 }
 
+// Farebné prahy v zozname / Slovensko / regions:
+// ≥ 95% zelená (splnený, bonus), < 95% červená. Binary model — admin vidí bonus áno/nie.
+// Detail view má jemnejší 3-farebný gradient cez plnenieDetailColor().
 function plnenieColorClass(pct) {
   if (pct === null || pct === undefined || isNaN(pct)) return 'pl-none';
-  if (pct >= 85) return 'pl-g';
-  if (pct >= 70) return 'pl-o';
+  if (pct >= 95) return 'pl-g';
   return 'pl-r';
 }
 
@@ -4805,18 +4936,34 @@ function mgrSwitchSubtab(tab) {
   });
   window.scrollTo(0, 0);
   if (tab === 'plnenie' && !PL_STATE.loaded && !PL_STATE.loading) {
-    plnenieLoadData();
+    plnenieLoadAllQuarters();
   }
 }
 
 function plnenieSwitchQ(q) {
   if (q === PL_STATE.q) return;
   PL_STATE.q = q;
-  PL_STATE.loaded = false;
-  PL_STATE.data = null;
-  PL_STATE.aggregates = null;
   plnenieUpdateQTabs();
-  plnenieLoadData();
+  if (PL_STATE.qCache[q]) {
+    // Dáta už načítané — okamžité prepnutie bez fetchu
+    PL_STATE.data = PL_STATE.qCache[q].data;
+    PL_STATE.aggregates = PL_STATE.qCache[q].aggregates;
+    PL_STATE.loaded = true;
+    plnenieRenderAll();
+  } else if (PL_STATE.loading) {
+    // Stále beží paralelný load — ukáž loading stav pre tento Q
+    PL_STATE.data = null;
+    PL_STATE.aggregates = null;
+    PL_STATE.loaded = false;
+    plnenieRenderSummaryEmpty();
+    plnenieRenderLoading();
+  } else {
+    // Load zlyhal — ukáž chybový stav
+    PL_STATE.data = null;
+    PL_STATE.aggregates = null;
+    PL_STATE.loaded = false;
+    plnenieRenderAll();
+  }
 }
 
 function plnenieUpdateQTabs() {
@@ -4829,26 +4976,51 @@ function plnenieUpdateQTabs() {
   });
 }
 
-function plnenieLoadData() {
+function plnenieLoadAllQuarters() {
   if (PL_STATE.loading) return;
   PL_STATE.loading = true;
+  PL_STATE.loaded = false;
+  PL_STATE.data = null;
+  PL_STATE.aggregates = null;
+  // Ukáž loading stav hneď
+  plnenieUpdateQTabs();
+  plnenieRenderSummaryEmpty();
   plnenieRenderLoading();
-  var url = SCRIPT_URL + '?action=getPlnenieAll&rok=' + PL_STATE.year + '&Q=' + PL_STATE.q;
-  mgrFetchWithRetry(url, 3)
-    .then(function(resp){
-      if (!resp || !resp.ok) throw new Error('No data');
-      PL_STATE.data = resp;
-      PL_STATE.aggregates = plnenieBuildAggregates(resp);
-      PL_STATE.loaded = true;
-    })
-    .catch(function(){
-      PL_STATE.data = null;
-      PL_STATE.aggregates = null;
-    })
-    .then(function(){
-      PL_STATE.loading = false;
-      plnenieRenderAll();
-    });
+
+  var year = PL_STATE.year;
+  var qs = [1, 2, 3, 4];
+  var pending = qs.length;
+
+  qs.forEach(function(q) {
+    var url = SCRIPT_URL + '?action=getPlnenieAll&rok=' + year + '&Q=' + q;
+    mgrFetchWithRetry(url, 3)
+      .then(function(resp) {
+        if (!resp || !resp.ok) throw new Error('No data for Q' + q);
+        var agg = plnenieBuildAggregates(resp);
+        PL_STATE.qCache[q] = { data: resp, aggregates: agg };
+        // Ak práve zobrazujeme tento Q, hneď renderuj
+        if (q === PL_STATE.q) {
+          PL_STATE.data = resp;
+          PL_STATE.aggregates = agg;
+          PL_STATE.loaded = true;
+          plnenieRenderAll();
+        }
+      })
+      .catch(function() {
+        PL_STATE.qCache[q] = null; // fetch zlyhal pre tento Q
+      })
+      .then(function() {
+        pending--;
+        if (pending === 0) {
+          // Všetky Q fetche skončili
+          PL_STATE.loading = false;
+          // Ak current Q sa stále nenačítal (error), renderuj error stav
+          if (!PL_STATE.loaded) {
+            plnenieRenderAll();
+          }
+        }
+      });
+  });
 }
 
 // Agregácia — Slovensko / West / East / per-produkt / per-rep
@@ -4940,8 +5112,15 @@ function plnenieBuildAggregates(resp) {
       });
     }
   });
-  // Poradie produktov: podľa % zostupne
-  productsToShow.sort(function(a, b){ return b.pct - a.pct; });
+  // Poradie produktov: podľa PL_PRODUCT_ORDER (Aflamil skupina pohromade), zvyšok podľa %
+  productsToShow.sort(function(a, b){
+    var ai = PL_PRODUCT_ORDER.indexOf(a.key);
+    var bi = PL_PRODUCT_ORDER.indexOf(b.key);
+    if (ai === -1) ai = 999;
+    if (bi === -1) bi = 999;
+    if (ai !== bi) return ai - bi;
+    return b.pct - a.pct;
+  });
 
   // Rep list zoradený zostupne podľa pct, reps s null na konci
   var repList = MGR_ALL.map(function(rep){
@@ -5008,8 +5187,8 @@ function plnenieRenderSummary() {
       prods.innerHTML = '';
     } else {
       prods.innerHTML = agg.products.map(function(p){
-        return '<div class="pl-sum-prod">' + mgrEscape(p.label) +
-               ' <strong class="' + plnenieColorClass(p.pct) + '">' + plnenieFormatPct(p.pct) + '</strong></div>';
+        return '<div class="pl-sum-prod"><span class="pl-sum-prod-name">' + mgrEscape(p.label) +
+               '</span><strong style="flex-shrink:0" class="' + plnenieColorClass(p.pct) + '">' + plnenieFormatPct(p.pct) + '</strong></div>';
       }).join('');
     }
   }
@@ -5061,7 +5240,13 @@ function plnenieRenderRepList() {
       else                 medalHtml = '<div class="pl-rep-medal pl-rank">' + rank + '.</div>';
     }
 
-    return '<div class="pl-rep-card">' +
+    // Všetci reps sú klikateľní — aj bez dát (detail ukáže "Žiadne dáta")
+    var clickable = true;
+    var clickAttr = clickable ? ' onclick="plnenieOpenDetail(\'' + r.username.replace(/'/g, "\\'") + '\')"' : '';
+    var extraClass = clickable ? ' pl-rep-clickable' : '';
+    var chevronHtml = clickable ? '<div class="pl-rep-chev">›</div>' : '';
+
+    return '<div class="pl-rep-card' + extraClass + '"' + clickAttr + '>' +
       medalHtml +
       '<div class="pl-rep-avatar" style="background:' + info.color + '">' + mgrEscape(initials) + '</div>' +
       '<div class="pl-rep-body">' +
@@ -5069,6 +5254,7 @@ function plnenieRenderRepList() {
         '<div class="pl-rep-meta">' + mgrEscape(meta) + '</div>' +
       '</div>' +
       '<div class="pl-rep-pct ' + plnenieColorClass(r.pct) + '">' + plnenieFormatPct(r.pct) + '</div>' +
+      chevronHtml +
     '</div>';
   }).join('');
 }
@@ -5078,12 +5264,417 @@ function plnenieRenderAll() {
   if (!PL_STATE.aggregates) {
     plnenieRenderSummaryEmpty();
     var listEl = document.getElementById('pl-rep-list');
-    if (listEl) listEl.innerHTML = '<div class="pl-error">Nepodarilo sa načítať dáta. Potiahni dole pre refresh.</div>';
+    var qLbl = plnenieQLabel(PL_STATE.q, PL_STATE.year);
+    if (listEl) listEl.innerHTML = '<div class="pl-error">Žiadne dáta pre ' + qLbl + '. Potiahni dole pre refresh.</div>';
+    if (PL_STATE.detailRep) plnenieRenderDetailError();
     return;
   }
   plnenieRenderSummary();
   plnenieRenderRegions();
   plnenieRenderRepList();
+  if (PL_STATE.detailRep) plnenieRenderDetail();
+}
+
+// ═══════════════════════════════════════════════════════════
+// PLNENIE DETAIL — v2.3.1 (Detail reprezentanta)
+// ═══════════════════════════════════════════════════════════
+
+var PL_MONTH_LABELS = {
+  1: 'Jan', 2: 'Feb', 3: 'Mar',
+  4: 'Apr', 5: 'Máj', 6: 'Jún',
+  7: 'Júl', 8: 'Aug', 9: 'Sep',
+  10: 'Okt', 11: 'Nov', 12: 'Dec'
+};
+
+
+
+// Míľniky v progress bare — zvislé deliče na pozíciách koncov mesiacov v rámci Q,
+// proporcionálne podľa pracovných dní.
+function plnenieMilestonesHtml(year, q) {
+  var months = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[q] || [];
+  var wd = months.map(function(m){ return plnenieWorkingDays(year, m); });
+  var total = wd.reduce(function(a,b){ return a+b; }, 0);
+  if (total === 0) return '';
+  var curQ = plnenieCurrentQ();
+  var curMonth = new Date().getMonth() + 1;
+  var html = '';
+  var cum = 0;
+  for (var i = 0; i < wd.length - 1; i++) {
+    cum += wd[i];
+    var pct = cum / total * 100;
+    var isCur = (q === curQ && months[i] === curMonth);
+    // Triedy bez pl- prefixu — scopované cez .mgr-plnenie-detail v CSS
+    html += '<div class="milestone' + (isCur ? ' current' : '') + '" style="left:' + pct.toFixed(2) + '%"></div>';
+  }
+  return html;
+}
+
+// Textové popisky pod progress barom — "Začiatok / Apr · 33% / Máj · 67% / Koniec Jún"
+function plnenieMsLabelsHtml(year, q) {
+  var months = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[q] || [];
+  var wd = months.map(function(m){ return plnenieWorkingDays(year, m); });
+  var total = wd.reduce(function(a,b){ return a+b; }, 0);
+  if (total === 0 || months.length === 0) return '';
+  var curQ = plnenieCurrentQ();
+  var curMonth = new Date().getMonth() + 1;
+  var milestones = [];
+  var cum = 0;
+  for (var i = 0; i < months.length - 1; i++) {
+    cum += wd[i];
+    milestones.push({ label: PL_MONTH_LABELS[months[i]] + ' · ' + Math.round(cum / total * 100) + '%', month: months[i] });
+  }
+  // active = posledný míľnik ktorého mesiac <= aktuálny mesiac
+  var activeIdx = -1;
+  if (q === curQ) {
+    for (var j = 0; j < milestones.length; j++) {
+      if (milestones[j].month <= curMonth) activeIdx = j;
+    }
+  }
+  var spans = ['<span class="passed">Za\u010diatok</span>'];
+  for (var k = 0; k < milestones.length; k++) {
+    var cls = '';
+    if (q === curQ) {
+      if (k < activeIdx) cls = ' class="passed"';
+      else if (k === activeIdx) cls = ' class="active"';
+    }
+    spans.push('<span' + cls + '>' + milestones[k].label + '</span>');
+  }
+  spans.push('<span>Koniec ' + PL_MONTH_LABELS[months[months.length - 1]] + '</span>');
+  return '<div class="ms-labels">' + spans.join('') + '</div>';
+}
+
+// Pracovné dni v mesiaci per rok (Po-Pi mínus SK sviatky).
+// Pri novom roku pridaj nový záznam do PL_WORKING_DAYS_MAP.
+// Ak rok chýba v mape, použije sa fallback (iba Po-Pi bez sviatkov).
+var PL_WORKING_DAYS_MAP = {
+  2026: { 1: 20, 2: 20, 3: 22, 4: 20, 5: 20, 6: 22,
+          7: 23, 8: 21, 9: 21, 10: 22, 11: 21, 12: 21 }
+};
+
+function plnenieWorkingDays(year, month) {
+  if (PL_WORKING_DAYS_MAP[year] && PL_WORKING_DAYS_MAP[year][month] !== undefined) {
+    return PL_WORKING_DAYS_MAP[year][month];
+  }
+  // Fallback — iba Po-Pi, bez SK sviatkov (menej presné, použije sa pre roky mimo mapy)
+  var last = new Date(year, month, 0).getDate();
+  var count = 0;
+  for (var d = 1; d <= last; d++) {
+    var wd = new Date(year, month - 1, d).getDay();     // 0=Ne, 6=So
+    if (wd !== 0 && wd !== 6) count++;
+  }
+  return count;
+}
+
+// Rozdelí Q plán na mesiace proporcionálne podľa pracovných dní.
+// Vráti objekt { 1: planJan, 2: planFeb, 3: planMar } (alebo príslušné mesiace pre Q2/3/4).
+function plnenieMonthlyPlans(year, q, qPlanTotal) {
+  var months = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[q] || [];
+  var wdByMonth = {};
+  var totalWd = 0;
+  months.forEach(function(m){
+    var wd = plnenieWorkingDays(year, m);
+    wdByMonth[m] = wd;
+    totalWd += wd;
+  });
+  var out = {};
+  months.forEach(function(m){
+    out[m] = totalWd > 0 ? (qPlanTotal * wdByMonth[m] / totalWd) : 0;
+  });
+  out._workingDays = wdByMonth;
+  return out;
+}
+
+function plnenieOpenDetail(username) {
+  if (!username) return;
+  PL_STATE.detailRep = username;
+  // Pri otvorení detailu vždy prepni na aktuálny Q
+  var curQ = plnenieCurrentQ();
+  if (PL_STATE.q !== curQ) {
+    PL_STATE.q = curQ;
+    if (PL_STATE.qCache[curQ]) {
+      PL_STATE.data = PL_STATE.qCache[curQ].data;
+      PL_STATE.aggregates = PL_STATE.qCache[curQ].aggregates;
+      PL_STATE.loaded = true;
+    } else {
+      PL_STATE.data = null;
+      PL_STATE.aggregates = null;
+      PL_STATE.loaded = false;
+    }
+    plnenieUpdateQTabs();
+  }
+  document.body.classList.add('mgr-plnenie-detail-open');
+  plnenieRenderDetail();
+  window.scrollTo(0, 0);
+}
+
+function plnenieCloseDetail() {
+  PL_STATE.detailRep = null;
+  document.body.classList.remove('mgr-plnenie-detail-open');
+  window.scrollTo(0, 0);
+}
+
+function plnenieRenderDetailError() {
+  var totalCard = document.getElementById('pl-detail-total-card');
+  if (totalCard) totalCard.innerHTML = '<div class="total-lbl">Chyba na\u010d\u00edtania</div><div class="total-val none">\u2014</div><div class="total-money">\u2014</div>';
+  var prodsEl = document.getElementById('pl-detail-prods');
+  if (prodsEl) prodsEl.innerHTML = '<div class="pl-error">Nepodarilo sa na\u010d\u00edta\u0165 d\u00e1ta. Potiahni dole pre refresh.</div>';
+}
+
+// Farebné prahy pre detail — bonus logika: ≥ 100% zelená, 95–99,99% oranžová, < 95% červená
+// Vracia 'g' / 'o' / 'r' / 'none' (bez pl- prefixu — CSS scopovaný cez .mgr-plnenie-detail)
+function plnenieDetailColorClass(pct) {
+  if (pct === null || pct === undefined || isNaN(pct)) return 'none';
+  if (pct >= 100) return 'g';
+  if (pct >= 95) return 'o';
+  return 'r';
+}
+
+// Sub-tab switcher v detaile reprezentanta (Predaje / Návštevy)
+function plnenieDetailSwitchSubtab(tab, btn) {
+  document.querySelectorAll('.mgr-plnenie-detail .pl-sub-tab').forEach(function(b) {
+    b.classList.toggle('active', b.getAttribute('data-subtab') === tab);
+  });
+  var predajeEl = document.getElementById('pl-detail-predaje');
+  var navstevyEl = document.getElementById('pl-detail-navstevy');
+  if (predajeEl) predajeEl.style.display = (tab === 'predaje') ? '' : 'none';
+  if (navstevyEl) navstevyEl.style.display = (tab === 'navstevy') ? '' : 'none';
+}
+
+var PL_PROD_DOT_COLORS = {
+  // Aflamil skupina — rovnaká modrá
+  'aflamil':             '#60A5FA',
+  'aflamil_kr':          '#60A5FA',
+  'aflamil_tablety_sacky':'#60A5FA',
+  // Ostatné produkty
+  'suprax':              '#C084FC',
+  'vidonorm':            '#34D399',
+  'cavinton forte':      '#FCD34D',
+  'cavinton':            '#FCD34D',
+  'telexer':             '#F87171',
+  'junod':               '#A78BFA',
+  'globifer':            '#FB923C',
+  'kogavant':            '#2DD4BF',
+  'lonelix':             '#F472B6',
+  'ossica':              '#4ADE80',
+  'terrosa':             '#E879F9'
+};
+
+// Preferované poradie produktov — Aflamil skupina pohromade, zvyšok abecedne
+var PL_PRODUCT_ORDER = [
+  'aflamil', 'aflamil_kr', 'aflamil_tablety_sacky',
+  'suprax', 'vidonorm', 'cavinton forte', 'cavinton',
+  'telexer', 'globifer', 'junod', 'kogavant', 'lonelix', 'ossica', 'terrosa'
+];
+
+function plnenieSortProducts(planProducts) {
+  var copy = planProducts.slice();
+  copy.sort(function(a, b) {
+    var ai = PL_PRODUCT_ORDER.indexOf(plnenieNormalizeKey(a));
+    var bi = PL_PRODUCT_ORDER.indexOf(plnenieNormalizeKey(b));
+    if (ai === -1) ai = 999;
+    if (bi === -1) bi = 999;
+    if (ai !== bi) return ai - bi;
+    return String(a).localeCompare(String(b), 'sk');
+  });
+  return copy;
+}
+
+function plnenieRenderDetail() {
+  var username = PL_STATE.detailRep;
+  if (!username) return;
+  var agg = PL_STATE.aggregates;
+  if (!agg) { plnenieRenderDetailError(); return; }
+
+  // Rep info
+  var info = LB_REP_INFO[username] || {
+    name: MGR_REP_NAMES[username] || username,
+    region: '',
+    color: 'linear-gradient(135deg,#64748B,#475569)'
+  };
+  var regionLbl = (MGR_AM_WEST.indexOf(username) !== -1) ? 'West'
+                : (MGR_AM_EAST.indexOf(username) !== -1) ? 'East' : '';
+  var sub = regionLbl + (info.region ? (' · ' + info.region) : '') + ' · @' + username;
+
+  // Header
+  var avatarEl = document.getElementById('pl-detail-avatar');
+  if (avatarEl) { avatarEl.textContent = mgrInitials(info.name); avatarEl.style.background = info.color; }
+  var nameEl = document.getElementById('pl-detail-name');
+  if (nameEl) nameEl.textContent = info.name;
+  var subEl = document.getElementById('pl-detail-sub');
+  if (subEl) subEl.textContent = sub;
+
+  // Q tabs
+  plnenieUpdateQTabs();
+
+  // Súhrn za Q
+  var repRow = null;
+  for (var i = 0; i < agg.reps.length; i++) {
+    if (agg.reps[i].username === username) { repRow = agg.reps[i]; break; }
+  }
+  var repPct = repRow ? repRow.pct : null;
+  var repPlan = repRow ? repRow.planEUR : 0;
+  var repPredaje = repRow ? repRow.predajeEUR : 0;
+  var repColorCls = plnenieDetailColorClass(repPct);
+
+  // Tmavá súhrnná karta
+  var noData = (repPlan === 0 && repPredaje === 0);
+  var totalCardEl = document.getElementById('pl-detail-total-card');
+  if (totalCardEl) {
+    var moneyStr;
+    if (noData) {
+      moneyStr = 'Plán ani predaje nie s\u00fa zadané';
+    } else {
+      moneyStr = (repPlan > 0 || repPredaje > 0)
+        ? '<strong>' + plnenieFormatEUR(repPredaje) + '</strong>' + (repPlan > 0 ? ' z pl\u00e1nu ' + plnenieFormatEUR(repPlan) : '')
+        : '\u2014';
+    }
+    totalCardEl.innerHTML =
+      '<div class="total-lbl">Celkov\u00e9 plnenie \u00b7 ' + plnenieQLabel(PL_STATE.q, PL_STATE.year) + '</div>' +
+      '<div class="total-val ' + repColorCls + '">' + (noData ? 'Žiadne dáta' : plnenieFormatPct(repPct)) + '</div>' +
+      '<div class="total-money" style="' + (noData ? 'opacity:.65' : '') + '">' + moneyStr + '</div>';
+  }
+
+  // Per-produkt breakdown
+  var prodsEl = document.getElementById('pl-detail-prods');
+  var prodsLblEl = document.getElementById('pl-detail-prods-lbl');
+  if (prodsLblEl) prodsLblEl.textContent = 'Plnenie per produkt · ' + plnenieQLabel(PL_STATE.q, PL_STATE.year);
+  if (!prodsEl) return;
+
+  var resp = PL_STATE.data || {};
+  var planProducts = resp.planProducts || [];
+  var plan = (resp.plan && resp.plan[username]) || {};
+  var predajeTotal = (resp.predaje && resp.predaje[username] && resp.predaje[username].total) || {};
+  var predajeByMonth = (resp.predaje && resp.predaje[username] && resp.predaje[username].byMonth) || {};
+  var qMonths = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[PL_STATE.q] || [];
+  var curQ = plnenieCurrentQ();
+  var curMonth = (new Date()).getMonth() + 1;
+
+  if (planProducts.length === 0) {
+    prodsEl.innerHTML = '<div class="pl-loading">Žiadne produkty v pláne.</div>';
+    plnenieRenderDetailTrend(username);
+    return;
+  }
+
+  var milestonesHtml = plnenieMilestonesHtml(PL_STATE.year, PL_STATE.q);
+  var msLabelsHtml   = plnenieMsLabelsHtml(PL_STATE.year, PL_STATE.q);
+
+  prodsEl.innerHTML = plnenieSortProducts(planProducts).map(function(rawProdKey) {
+    var key = plnenieNormalizeKey(rawProdKey);
+    var label = plnenieDisplayName(rawProdKey);
+    var dotColor = PL_PROD_DOT_COLORS[key] || '#94A3B8';
+    var pPlan = parseFloat(plan[key]); if (isNaN(pPlan)) pPlan = 0;
+    var pPredaje = parseFloat(predajeTotal[key]); if (isNaN(pPredaje)) pPredaje = 0;
+    var pPct = (pPlan > 0) ? (pPredaje / pPlan * 100) : null;
+    var prodColorCls = plnenieDetailColorClass(pPct);
+    var barWidth = (pPct === null || isNaN(pPct)) ? 0 : Math.min(pPct, 100);
+
+    var monthlyPlans = plnenieMonthlyPlans(PL_STATE.year, PL_STATE.q, pPlan);
+
+    var monthRowsHtml = qMonths.map(function(m) {
+      var monthData = predajeByMonth[m] || {};
+      var mVal = parseFloat(monthData[key]); if (isNaN(mVal)) mVal = 0;
+      var mPlan = monthlyPlans[m] || 0;
+      var mPct = (mPlan > 0) ? (mVal / mPlan * 100) : null;
+      var isCurrent = (PL_STATE.q === curQ && m === curMonth);
+      var isFuture = (PL_STATE.q === curQ && m > curMonth) || PL_STATE.q > curQ;
+      var mValCls = isFuture ? 'future' : ((mPlan > 0 && mVal > 0) ? plnenieDetailColorClass(mPct) : 'future');
+      var mDisplay = mVal > 0 ? plnenieFormatEUR(mVal) : '\u2014';
+      return '<div class="mrow">' +
+        '<div class="mrow-lbl' + (isCurrent ? ' current' : '') + '">' + (PL_MONTH_LABELS[m] || 'M'+m) + '</div>' +
+        '<div class="mrow-val ' + mValCls + '">' + mDisplay + '</div>' +
+        (mPlan > 0 ? '<div class="mrow-plan">pl\u00e1n ' + plnenieFormatEUR(mPlan) + '</div>' : '') +
+      '</div>';
+    }).join('');
+
+    var moneyHtml;
+    if (pPlan > 0) {
+      moneyHtml = '<div class="prod-money"><strong>' + plnenieFormatEUR(pPredaje) + '</strong> z pl\u00e1nu ' + plnenieFormatEUR(pPlan) + '</div>';
+    } else if (pPredaje > 0) {
+      moneyHtml = '<div class="prod-money muted">' + plnenieFormatEUR(pPredaje) + ' \u00b7 \u017eiadny pl\u00e1n</div>';
+    } else {
+      moneyHtml = '<div class="prod-money muted">\u017diadny pl\u00e1n pre tento kvart\u00e1l</div>';
+    }
+
+    return '<div class="prod-item-adv">' +
+      '<div class="prod-adv-top">' +
+        '<div class="prod-adv-name"><div class="prod-dot" style="background:' + dotColor + '"></div>' + mgrEscape(label) + '</div>' +
+        '<div class="prod-adv-pct ' + prodColorCls + '">' + plnenieFormatPct(pPct) + '</div>' +
+      '</div>' +
+      (pPlan > 0
+        ? '<div class="bar-wrap"><div class="bar-track"><div class="bar-fill ' + prodColorCls + '" style="width:' + barWidth + '%"></div>' + milestonesHtml + '</div>' + msLabelsHtml + '</div>'
+        : '') +
+      moneyHtml +
+      '<div class="month-rows">' + monthRowsHtml + '</div>' +
+    '</div>';
+  }).join('');
+
+  plnenieRenderDetailTrend(username);
+}
+
+// Trend graf — stĺpcový, Q1–Q4, data z qCache
+// Milestone čiary v trend bare — horizontálne deliace čiary podľa pracovných dní
+// Pozícia = bottom: X% kde X = (milestone_expected_pct / actual_pct * 100)
+function plnenieTrendMsHtml(year, q, actualPct) {
+  if (!actualPct || actualPct <= 0) return '';
+  var months = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[q] || [];
+  var wd = months.map(function(m){ return plnenieWorkingDays(year, m); });
+  var total = wd.reduce(function(a, b){ return a + b; }, 0);
+  if (!total) return '';
+  var html = '';
+  var cum = 0;
+  for (var i = 0; i < wd.length - 1; i++) {
+    cum += wd[i];
+    var msPct = cum / total * 100;
+    if (msPct >= actualPct) continue; // míľnik je nad barom — preskočiť
+    var bottomPct = (msPct / actualPct * 100).toFixed(1);
+    html += '<div class="trend-ms" style="bottom:' + bottomPct + '%"></div>';
+    html += '<div class="trend-ms-lbl" style="bottom:calc(' + bottomPct + '% + 5px)">' + Math.round(msPct) + '%</div>';
+  }
+  return html;
+}
+
+function plnenieRenderDetailTrend(username) {
+  var trendEl = document.getElementById('pl-detail-trend');
+  if (!trendEl) return;
+  var curQ = plnenieCurrentQ();
+  var year = PL_STATE.year;
+
+  var qData = [];
+  for (var q = 1; q <= 4; q++) {
+    var cached = PL_STATE.qCache[q];
+    var pct = null;
+    if (cached && cached.aggregates && cached.aggregates.reps) {
+      for (var i = 0; i < cached.aggregates.reps.length; i++) {
+        if (cached.aggregates.reps[i].username === username) { pct = cached.aggregates.reps[i].pct; break; }
+      }
+    }
+    qData.push({ q: q, pct: pct, isCurrent: q === curQ, isFuture: q > curQ });
+  }
+
+  // Škálovanie výšky stĺpcov
+  var maxPct = 0;
+  qData.forEach(function(d){ if (d.pct !== null && d.pct > maxPct) maxPct = d.pct; });
+  if (maxPct < 10) maxPct = 100;
+
+  var barsHtml = qData.map(function(d) {
+    var barH = (d.pct !== null) ? Math.max(6, Math.round(d.pct / maxPct * 90)) : 8;
+    var barCls = (d.pct === null) ? 'future' : plnenieDetailColorClass(d.pct);
+    var valCls = (d.pct === null) ? 'empty' : '';
+    var valStr = (d.pct !== null) ? plnenieFormatPct(d.pct) : '\u2014';
+    var lblCls = d.isCurrent ? 'current' : '';
+    var msHtml = (d.pct !== null) ? plnenieTrendMsHtml(year, d.q, d.pct) : '';
+    return '<div class="trend-col">' +
+      '<div class="trend-bar ' + barCls + '" style="height:' + barH + '%">' +
+        '<div class="trend-bar-val ' + valCls + '">' + valStr + '</div>' +
+        msHtml +
+      '</div>' +
+      '<div class="trend-lbl ' + lblCls + '">Q' + d.q + (d.isCurrent ? ' \u00b7 teraz' : '') + '</div>' +
+    '</div>';
+  }).join('');
+
+  trendEl.innerHTML =
+    '<div class="trend-title">Trend plnenia cez kv\u00e1rt\u00e1ly \u00b7 ' + year + '</div>' +
+    '<div class="trend-bars">' + barsHtml + '</div>';
 }
 
 // ── PULL-TO-REFRESH pre manažérsky zoznam ──
@@ -5165,8 +5756,9 @@ function plnenieRenderAll() {
       if(ind){ ind.classList.add('loading'); ind.style.height = '60px'; ind.style.opacity = '1'; }
 
       if (MGR_STATE.subtab === 'plnenie') {
-        PL_STATE.loaded = false;
-        plnenieLoadData();
+        PL_STATE.loading = false; // reset aby loadAllQuarters mohol bežať
+        PL_STATE.qCache = {};     // vymaž cache — refresh = nové dáta
+        plnenieLoadAllQuarters();
       } else {
         MGR_STATE.reps = {};
         mgrLoadData();
@@ -5291,7 +5883,7 @@ function plnenieRenderAll() {
   <div class="login-footer">
     <div class="login-footer-logo">GEDEON RICHTER</div>
     <div class="login-footer-text">Interný nástroj · len pre medicínskych reprezentantov</div>
-    <div class="login-version">ver. 2.3.0 · 2026</div>
+    <div class="login-version">ver. 2.3.1 · 2026</div>
   </div>
 
 </div>
