@@ -37,7 +37,7 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.3.3** — obsahuje všetko z 2.2.56 plus kompletný Plnenie modul. **Zámerné rozhodnutie: zostáva na `test` vetve až kým nebudú plány nahodené v Google Sheets. Potom otestovať s reálnymi dátami a pushnúť do `main`.**
+**2.4.2** — obsahuje všetko z 2.2.56 plus kompletný Plnenie modul (manažérsky aj reprezentantský pohľad). **Zámerné rozhodnutie: zostáva na `test` vetve až kým nebudú plány nahodené v Google Sheets. Potom otestovať s reálnymi dátami a pushnúť do `main`.**
 
 ### v2.3.0 — Plnenie (Predaje vs Plán) — manažérsky modul
 - Nový tab 💊 **Plnenie** v manažérskom pohľade (vedľa Návštevy)
@@ -69,6 +69,57 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 ### v2.3.3 — Jednotná farebná logika v Plnenie
 - `plnenieColorClass()` opravená: ≥100% zelená, 95–99,99% oranžová, <95% červená
 - Platí všade: celkové % v sumári, West/East karty, produkty v sumári, % pri každom reprezentantovi
+
+### v2.4.0 — Rep nav bar + Rep Plnenie overlay (vlastné plnenie pre reprezentantov)
+
+#### Rep navigačný panel
+- **Nový `.rep-nav` panel** pod headerom — 3 tlačidlá v rade: 📋 História | 🏆 Rebríček | 💊 Plnenie
+- Nahradil malé badge tlačidlá (História, Rebríček) ktoré boli predtým vpravo v headri
+- História tlačidlo má dynamický číselný badge (počet záznamov) — aktualizuje ho `updateBadge()`
+- Panel je **automaticky skrytý v manažérskom móde** cez CSS `body.manager-mode .rep-nav { display:none !important }`
+- Logout tlačidlo ostáva v headri (nezmenené)
+- HTML ID pôvodného `#hdr-badge-wrap` zachovaný (skrytý `display:none`) kvôli JS kompatibilite — `updateBadge()` ho stále referencuje
+
+#### Rep Plnenie overlay
+- **Nový `.rep-plnenie-overlay`** — celostránkový fixed overlay (z-index 2000), otvorí sa po kliknutí na 💊 Plnenie v rep nav bare
+- Zobrazuje **iba plnenie prihláseného reprezentanta** (filtruje podľa `session.username`)
+- Obsah: tlačidlo „← Späť na formulár", tmavá celková karta, Q1–Q4 taby, produkty s progress barmi + milestone čiarami, trend graf
+- Vizuálny štýl identický s manažérskym detailom (rovnaké CSS triedy: `total-card`, `prod-item-adv`, `bar-wrap`, `milestone`, `month-rows`, `trend-bars`) — CSS scopovaný cez `.rep-pl-inner`
+- Zelená bodka na aktuálnom Q tabe vždy viditeľná (trieda `current` sa nastavuje pre curQ bez ohľadu na `active`)
+
+#### REP_PL_STATE — stav rep Plnenie view
+```javascript
+var REP_PL_STATE = {
+  q: 1,              // aktuálne zobrazený Q
+  year: 2026,        // aktuálny rok
+  loading: false,
+  loaded: false,
+  data: null,        // raw odpoveď z getPlnenieAll
+  aggregates: null,  // vypočítané agregáty
+  qCache: {}         // { 1: {data, aggregates}, ... } — cache pre všetky Q
+};
+```
+
+#### Kľúčové funkcie (rep Plnenie)
+- `openRepPlnenie()` — otvorí overlay, defaultne na aktuálny Q, použije cache ak je k dispozícii
+- `closeRepPlnenie()` — zatvorí overlay, obnoví `body.overflow`
+- `repPlnenieLoad()` — paralelný fetch Q1–Q4 (rovnaká logika ako `plnenieLoadAllQuarters`), uloží do `REP_PL_STATE.qCache`
+- `repPlnenieSwitchQ(q)` — okamžité prepnutie z cache (bez fetchu)
+- `repPlnenieUpdateQTabs()` — aktualizuje triedy tabov v `#rep-pl-q-tabs` (selektuje iba rep taby, nie manažérske)
+- `repPlnenieRenderLoading()` — loading stav v overlaye
+- `repPlnenieRender()` — hlavný render: celková karta + produkty + volá `repPlnenieRenderTrend()`
+- `repPlnenieRenderTrend(username)` — trend graf, čerpá % zo `REP_PL_STATE.qCache` pre daného reprezentanta
+
+#### Dôležité poznámky pre Claude
+- Rep Plnenie fetchuje rovnaký endpoint `getPlnenieAll` ako manažér — dostane dáta pre VŠETKÝCH reprezentantov, ale filtruje len `username` z `getSession()`
+- `plnenieBuildAggregates()` sa volá aj z rep view — keďže `MGR_STATE.role` je null pre bežného reprezentanta, `plnenieGetActiveReps()` vracia `MGR_ALL` (celý zoznam) — to je OK, stačí nájsť jedného reprezentanta v výsledku
+- DOM ID prefix `rep-pl-*`: `#rep-pl-total-card`, `#rep-pl-q-tabs`, `#rep-pl-prods`, `#rep-pl-prods-lbl`, `#rep-pl-trend`
+
+### v2.4.1 — Fix zelená bodka Q tab v rep Plnení
+- `repPlnenieUpdateQTabs()`: odstránená chybná podmienka `q !== REP_PL_STATE.q` — `current` trieda sa teraz nastavuje vždy pre aktuálny Q (rovnako ako v manažérskej verzii)
+
+### v2.4.2 — Späť na formulár
+- Tlačidlo v rep Plnenie overlaye premenované z „← Späť" na „← Späť na formulár" pre jasnejšiu navigáciu
 
 ---
 
@@ -262,14 +313,14 @@ Claude prepne na `test` vetvu a začne pracovať na oprave. Zmeny idú cez štan
 6. **Neaktívni reprezentanti → email manažérovi**
 7. **Schválenie záznamu manažérom**
 8. **CRM light** (po 3 mesiacoch v teréne)
-9. ~~**Progress bar produktov vs. kvartálny plán**~~ ✅ **Hotové v v2.3.x** — Plnenie modul (manažérsky pohľad)
+9. ~~**Progress bar produktov vs. kvartálny plán**~~ ✅ **Hotové v v2.3.x–v2.4.x** — Plnenie modul (manažérsky aj reprezentantský pohľad)
 10. **Výber špecializácie pri každom zázname**
 11. **Rýchly brief pred návštevou** — karta lekára s poslednou návštevou, segmentom, potenciálom, poznámkou, trendom a upozornením (ak je to nový lekár alebo zmena segmentu)
 
 ### Plnenie — čo ešte chýba pred mergom do main
 - **Reálne dáta v Sheets** — plány nahodené v Google Sheets (blocker pre merge do main)
-- **Otestovať s reálnymi dátami** — overiť agregácie, farebné prahy, detail reprezentanta
-- **Mód reprezentanta** — 💊 Plnenie tlačidlo v headri (vedľa Rebríček/História) pre bežného reprezentanta. Vizuálna referencia v `docs/plnenie_vizual.html` sekcia "Mód reprezentanta". Po kliknutí: Späť → tmavá karta s % → Q taby → produkty s míľnikmi → trend graf. **Bez motivačného bannera.** (nižšia priorita — najprv otestovať manažérsky pohľad)
+- **Otestovať s reálnymi dátami** — overiť agregácie, farebné prahy, detail reprezentanta, rep Plnenie overlay
+- ~~**Mód reprezentanta**~~ ✅ **Hotové v v2.4.0** — rep nav bar + rep Plnenie overlay
 - **DEV mode mock dáta pre Plnenie** — `MOCK_PLNENIE` objekt simulujúci `getPlnenieAll` odpoveď (plány + predaje per reprezentant per produkt per mesiac)
 
 ### Dátová integrácia (až po login + Sheets)
