@@ -5896,7 +5896,7 @@ function repPlnenieUpdateQTabs() {
   tabs.forEach(function(tab) {
     var q = parseInt(tab.getAttribute('data-q'));
     tab.classList.toggle('active', q === REP_PL_STATE.q);
-    tab.classList.toggle('current', q === curQ && q !== REP_PL_STATE.q);
+    tab.classList.toggle('current', q === curQ);
     tab.classList.toggle('future', q > curQ);
   });
 }
