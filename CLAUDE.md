@@ -37,7 +37,7 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.4.2** — obsahuje všetko z 2.2.56 plus kompletný Plnenie modul (manažérsky aj reprezentantský pohľad). **Zámerné rozhodnutie: zostáva na `test` vetve až kým nebudú plány nahodené v Google Sheets. Potom otestovať s reálnymi dátami a pushnúť do `main`.**
+**2.4.3** — obsahuje všetko z 2.2.56 plus kompletný Plnenie modul (manažérsky aj reprezentantský pohľad) a rebríček pre manažérov. **Zámerné rozhodnutie: zostáva na `test` vetve až kým nebudú plány nahodené v Google Sheets. Potom otestovať s reálnymi dátami a pushnúť do `main`.**
 
 ### v2.3.0 — Plnenie (Predaje vs Plán) — manažérsky modul
 - Nový tab 💊 **Plnenie** v manažérskom pohľade (vedľa Návštevy)
@@ -120,6 +120,10 @@ var REP_PL_STATE = {
 
 ### v2.4.2 — Späť na formulár
 - Tlačidlo v rep Plnenie overlaye premenované z „← Späť" na „← Späť na formulár" pre jasnejšiu navigáciu
+
+### v2.4.3 — Rebríček pre manažérov
+- Pridané tlačidlo 🏆 Rebríček do `mgr-subtabs` (vedľa Plnenie a Návštevy)
+- Otvorí rovnaký `lb-overlay` ako u reprezentantov — žiadny extra kód, CSS to pre manažérov už malo povolené
 
 ---
 
