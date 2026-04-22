@@ -18,6 +18,9 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 - **`sw.js`** — PWA service worker (offline cache, inštalovateľnosť appky na mobile)
 - **`version.json`** — metadata pre auto-update. Obsahuje aktuálnu verziu appky (napr. `{"version": "2.2.56"}`). Pri štarte appky sa fetchne zo servera a porovná s `APP_VERSION` v `index.html` — ak sa líši, reprezentantovi sa zobrazí banner *"Nová verzia — ťuknúť pre update"*.
 - **Backend:** Google Sheets + Google Apps Script (endpointy, napr. `getAllHistory`, `pingLogin`)
+  - Apps Script súbor: `apps_script/kód.gs`
+  - Apps Script URL: `https://script.google.com/macros/s/AKfycbziSBvq1u8Jq0u0sTMynd-hqfk39rJtQZerIxdAgLiqL4AH-pEkE6TZK1HPqhcNiZxO0A/exec`
+  - Táto URL je zhodná s `SCRIPT_URL` v `index.html` — pri zmene treba aktualizovať oboje
 - **Hosting:** GitHub Pages (URL, ktorú používajú reprezentanti v teréne)
 - **Jazyk UI:** slovenčina
 
@@ -280,6 +283,13 @@ Predtým, ako Claude zmerguje `test` → `main`, MUSÍ sa Ivana opýtať a prejs
 - [ ] Dizajn nových prvkov je konzistentný s existujúcou appkou (farby, typografia, štýl tlačidiel)
 - [ ] Nové funkcie sú použiteľné bez manuálu (intuitívne pre reprezentanta)
 
+### 7. What's New modal (pri každom release do main)
+Appka má hotový systém "Čo je nové" — zobrazí sa každému používateľovi raz po prihlásení, keď príde nová verzia. Treba aktualizovať pri každom merge do `main`:
+- [ ] `WN_KEY` zmenený na unikátnu hodnotu pre túto verziu (napr. `potencial_vl_wn_v2_5`) — bez toho sa modal starým používateľom **nezobrazí**
+- [ ] `WN_CONTENT_REP` aktualizovaný — čo je nové pre reprezentantov (stručne, zrozumiteľne)
+- [ ] `WN_CONTENT_MGR` aktualizovaný — čo je nové pre manažérov (môže byť iný obsah)
+- [ ] Modal sa zobrazí po prihlásení s oneskorením ~600ms (po načítaní obsahu) — otestovať v DEV mode
+
 ### 6. DEV mode stále funguje
 - [ ] Appka sa dá otvoriť s `?dev=1` a beží s mock dátami
 - [ ] DEV banner je viditeľný
@@ -309,7 +319,7 @@ Claude prepne na `test` vetvu a začne pracovať na oprave. Zmeny idú cez štan
 
 ## Plánované funkcie (v priorite)
 
-1. **Login cez Google Sheets** — integrácia autentifikácie
+1. ~~**Login cez Google Sheets**~~ ✅ **Hotové** — záložka `Pouzivatelia` v Sheets, endpoint `?action=login`, session uložená v `sessionStorage`/`localStorage`
 2. **Reminder ak doktor nenavštívený X týždňov** — X nastaviteľné v admin móde
 3. **Trend potenciálu lekára** — vizualizácia vývoja v čase
 4. **Rebríček s fotkami reprezentantov** (voliteľné, neskôr)
@@ -353,6 +363,12 @@ var PL_STATE = {
 ```
 
 **Endpoint:** `SCRIPT_URL + '?action=getPlnenieAll&rok=2026&Q=2'`
+
+**Zdrojové záložky pre predaje (KRITICKÉ):**
+- **Q1** → záložka `Predaje` (pôvodná, s pôvodnými regiónmi)
+- **Q2, Q3, Q4** → záložka `Predaje_2` (nová, s premenovanými regiónmi)
+- Logika je v Apps Scripte (`apps_script/kód.gs`) — appka posiela `Q` parameter, Apps Script sám vyberie správnu záložku
+- Štruktúra stĺpcov v `Predaje` aj `Predaje_2` je totožná
 
 **Očakávaná štruktúra odpovede:**
 ```javascript
