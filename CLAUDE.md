@@ -23,7 +23,7 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.2.56** — obsahuje:
+**2.2.56** (na `main` vetve) — obsahuje:
 - Pull-to-refresh (blokovaný pri otvorených overlayoch)
 - Rebríček (s iOS/Android fixom)
 - Dynamické načítavanie AM West/East zo Sheets
@@ -34,6 +34,31 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 - Funkčné zatváracie tlačidlá
 - Retry + batched loading reprezentantov
 - `getAllHistory` endpoint
+
+## Verzia na `test` vetve
+
+**2.3.1** — obsahuje všetko z 2.2.56 plus:
+
+### v2.3.0 — Plnenie (Predaje vs Plán) — manažérsky modul
+- Nový tab 💊 **Plnenie** v manažérskom pohľade (vedľa Návštevy)
+- Plnenie je default tab pri otvorení manažérskeho pohľadu (vľavo)
+- Slovensko sumár: celkové % plnenia, regióny West/East, per-produkt prehľad
+- Zoznam reprezentantov zoradený podľa % plnenia (medaily 🥇🥈🥉)
+- Q taby (Q1–Q4), aktuálny Q predvolený
+- Endpoint `getPlnenieAll` na Google Apps Script
+
+### v2.3.1 — Detail reprezentanta + UX vylepšenia Plnenie
+- **Detail reprezentanta**: tmavá súhrnná karta, per-produkt progress bary s milestone čiarami
+- Milestone čiary delené podľa pracovných dní (rovnako ako produktové bary)
+- Trend plnenia cez kvartály — stĺpcový graf, farby podľa výkonu
+- **Paralelný load** všetkých 4 kvartálov naraz → okamžité prepínanie Q tabov bez fetchu
+- Detail vždy otvára aktuálny Q (defaultne)
+- Všetci reprezentanti klikateľní aj bez dát (zobrazí "Žiadne dáta")
+- Farby výkonu: ≥100% zelená, 95–99,99% oranžová, <95% červená (bonus logika)
+- Milestone čiary v trend grafoch čierne, vyčnievajú po stranách, sivé % popisky
+- Skrátený názov produktu: "Aflamil tbl a sáčky", fix zalamovanie v Slovensko sumári
+- Poradie produktov: Aflamil skupina pohromade (`PL_PRODUCT_ORDER`)
+- Pull-to-refresh v Plnenie tab: vymaže cache, načíta všetko od znova
 
 ---
 
@@ -227,9 +252,14 @@ Claude prepne na `test` vetvu a začne pracovať na oprave. Zmeny idú cez štan
 6. **Neaktívni reprezentanti → email manažérovi**
 7. **Schválenie záznamu manažérom**
 8. **CRM light** (po 3 mesiacoch v teréne)
-9. **Progress bar produktov vs. kvartálny plán** (dáta zo Sheets)
+9. ~~**Progress bar produktov vs. kvartálny plán**~~ ✅ **Hotové v v2.3.x** — Plnenie modul (manažérsky pohľad)
 10. **Výber špecializácie pri každom zázname**
 11. **Rýchly brief pred návštevou** — karta lekára s poslednou návštevou, segmentom, potenciálom, poznámkou, trendom a upozornením (ak je to nový lekár alebo zmena segmentu)
+
+### Plnenie — čo ešte chýba (na test vetve, pred mergom do main)
+- **Mód reprezentanta** — 💊 Plnenie tlačidlo v headri (vedľa Rebríček/História) pre bežného reprezentanta, nie len pre manažéra. Vizuálna referencia v `plnenie_vizual.html` sekcia "Mód reprezentanta". Po kliknutí: Späť → tmavá karta s % → Q taby → produkty s míľnikmi → trend graf. **Bez motivačného bannera.**
+- **AM West / AM East pohľad** — regionálny sumár (West vs East breakdown) v Plnenie tabe
+- **DEV mode mock dáta pre Plnenie** — `MOCK_PLNENIE` objekt simulujúci `getPlnenieAll` odpoveď (plány + predaje per reprezentant per produkt per mesiac)
 
 ### Dátová integrácia (až po login + Sheets)
 - Vlastné predaje na úrovni lekárne mesačne
@@ -237,8 +267,8 @@ Claude prepne na `test` vetvu a začne pracovať na oprave. Zmeny idú cez štan
 - Plán: (1) Sheets štruktúra, (2) login, (3) panel trhových podielov v appke (naše vs. konkurencia, balenia → pacienti), (4) automatický mesačný report
 - **Prepočty balení → pacienti ešte nedodané** (treba získať od R&D / medical)
 
-### Plnenie (Predaje vs Plán)
-Vizuálna referencia uložená v samostatnom súbore `plnenie_vizual.html`. Obsahuje 4 módy (Admin, AM West, Detail reprezentanta, Mód reprezentanta). Pri implementácii do produkčnej appky čerpať celý vizuál odtiaľ. Mód reprezentanta = verná kópia produkčnej obrazovky + 💊 Plnenie tlačidlo v headri vedľa Rebríček/História. Po kliknutí: Späť → tmavá karta s % hore → Q taby → produkty s míľnikmi → trend graf. **Bez motivačného bannera.**
+### Plnenie — vizuálna referencia
+Uložená v `docs/plnenie_vizual.html`. Obsahuje 4 módy (Admin, AM West, Detail reprezentanta, Mód reprezentanta). CSS triedy použité v implementácii sú zámerne totožné s referenciou (napr. `dhdr`, `total-card`, `prod-item-adv`, `bar-wrap`, `milestone`, `ms-labels`, `month-rows`, `trend`, `trend-bars`). Všetok nový Plnenie CSS je scopovaný cez `.mgr-plnenie-detail` aby sa predišlo konfliktom.
 
 ---
 
@@ -281,9 +311,15 @@ Mock dáta by mali byť v samostatnej sekcii `index.html` (napr. objekt `MOCK_DA
 
 Toto je rovnako dôležité ako samotný feature — mock dáta nie sú "nice to have", sú súčasťou dodania každej zmeny.
 
-### Prvý krok (keď sa DEV mode ešte nezaviedol)
+### Stav DEV mode (april 2026)
 
-Keďže aktuálna verzia 2.2.56 DEV mode zatiaľ nemá, **prvá úloha na `test` vetve** (ešte pred prvým feature-om) je zaviesť základný DEV mode s mock dátami. Až potom sa dá pohodlne pracovať na reminderoch a ďalších feature-och.
+DEV mode zatiaľ **nie je implementovaný** (chýba v oboch vetvách). Na `test` vetve (v2.3.1) pribudol Plnenie modul, ktorý fetchuje `getPlnenieAll` zo Sheets — bez DEV mode interceptu to v offline prostredí zlyhá. **Pred ďalšou väčšou zmenou treba DEV mode zaviesť**, inak sa test vetva nedá testovať bez pripojenia na produkčné Sheets.
+
+**Minimálny rozsah mock dát pre Plnenie (`MOCK_PLNENIE`):**
+- Objekt `{ ok: true, plan: {...}, predaje: {...}, planProducts: [...] }` — rovnaká štruktúra ako `getPlnenieAll` odpoveď
+- Plány per reprezentant per produkt (Aflamil, Aflamil krém, Aflamil tbl a sáčky, Suprax, Vidonorm, Cavinton Forte)
+- Predaje per reprezentant per produkt per mesiac (`byMonth`) + sumár (`total`)
+- Pokryť Q1 aj Q2 (aspoň) aby sa dalo testovať prepínanie kvartálov
 
 ---
 
