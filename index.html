@@ -5024,6 +5024,25 @@ function plnenieLoadAllQuarters() {
 }
 
 // Agregácia — Slovensko / West / East / per-produkt / per-rep
+// Vráti zoznam repov pre aktuálnu rolu (AM West/East vidia iba svojich)
+function plnenieGetActiveReps() {
+  if (MGR_STATE.role === 'amwest') return MGR_AM_WEST;
+  if (MGR_STATE.role === 'ameast') return MGR_AM_EAST;
+  return MGR_ALL;
+}
+
+// True ak rola vidí iba jeden región (AM West / AM East) — skryje region karty
+function plnenieIsAmRole() {
+  return MGR_STATE.role === 'amwest' || MGR_STATE.role === 'ameast';
+}
+
+// Label pre sumárnu kartu — namiesto "Slovensko" pre AM roly
+function plnenieSumLabel() {
+  if (MGR_STATE.role === 'amwest') return 'West';
+  if (MGR_STATE.role === 'ameast') return 'East';
+  return 'Slovensko';
+}
+
 function plnenieBuildAggregates(resp) {
   var plan = resp.plan || {};
   var predaje = resp.predaje || {};
@@ -5048,8 +5067,9 @@ function plnenieBuildAggregates(resp) {
   // Per-rep agregát — per-rep relevant products:
   // do planEUR a predajeEUR započítavame IBA produkty, kde DANÝ rep má plán > 0.
   // Rep bez plánu na produkt X nekontribuuje svojimi predajmi pre X do svojho %.
+  var activeReps = plnenieGetActiveReps();
   var repAgg = {};
-  MGR_ALL.forEach(function(rep){
+  activeReps.forEach(function(rep){
     var rPlan = plan[rep] || {};
     var rPredajeTotal = (predaje[rep] && predaje[rep].total) || {};
     var planEUR = 0, predajeEUR = 0;
@@ -5064,9 +5084,9 @@ function plnenieBuildAggregates(resp) {
     repAgg[rep] = { planEUR: planEUR, predajeEUR: predajeEUR, pct: pct };
   });
 
-  // Slovensko sum (weighted by EUR) — repAgg už filtruje relevant products
+  // Sumár pre aktívnych repov (Slovensko / West / East podľa roly)
   var skPlan = 0, skPredaje = 0;
-  MGR_ALL.forEach(function(rep){
+  activeReps.forEach(function(rep){
     skPlan += repAgg[rep].planEUR;
     skPredaje += repAgg[rep].predajeEUR;
   });
@@ -5090,12 +5110,11 @@ function plnenieBuildAggregates(resp) {
     };
   });
 
-  // Per-produkt v Slovensko summary — iba produkty, kde aspoň jeden rep má plán > 0.
-  // Predaje sumujeme IBA za tých repov, ktorí pre daný produkt majú plán (per-rep relevant).
+  // Per-produkt summary — iba produkty, kde aspoň jeden aktívny rep má plán > 0.
   var productsToShow = [];
   allProdKeys.forEach(function(key){
     var pSum = 0, sSum = 0;
-    MGR_ALL.forEach(function(rep){
+    activeReps.forEach(function(rep){
       var p = prodVal(plan[rep], key);
       if (p > 0) {
         pSum += p;
@@ -5123,7 +5142,7 @@ function plnenieBuildAggregates(resp) {
   });
 
   // Rep list zoradený zostupne podľa pct, reps s null na konci
-  var repList = MGR_ALL.map(function(rep){
+  var repList = activeReps.map(function(rep){
     return {
       username: rep,
       planEUR: repAgg[rep].planEUR,
@@ -5154,7 +5173,7 @@ function plnenieRenderLoading() {
 
 function plnenieRenderSummaryEmpty() {
   var lbl = document.getElementById('pl-sum-lbl');
-  if (lbl) lbl.textContent = 'Slovensko · ' + plnenieQLabel(PL_STATE.q, PL_STATE.year);
+  if (lbl) lbl.textContent = plnenieSumLabel() + ' · ' + plnenieQLabel(PL_STATE.q, PL_STATE.year);
   var val = document.getElementById('pl-sum-big-val');
   if (val) { val.textContent = '—'; val.className = 'pl-sum-big-val pl-none'; }
   var tot = document.getElementById('pl-sum-big-total');
@@ -5163,6 +5182,8 @@ function plnenieRenderSummaryEmpty() {
   if (plan) plan.textContent = '—';
   var prods = document.getElementById('pl-sum-prods');
   if (prods) prods.innerHTML = '';
+  var regionsEl = document.querySelector('.pl-regions');
+  if (regionsEl) regionsEl.style.display = plnenieIsAmRole() ? 'none' : '';
   var west = document.getElementById('pl-region-west');
   if (west) { west.textContent = '—'; west.className = 'pl-region-val pl-none'; }
   var east = document.getElementById('pl-region-east');
@@ -5173,7 +5194,7 @@ function plnenieRenderSummary() {
   var agg = PL_STATE.aggregates;
   var sk = agg.sk;
   var lbl = document.getElementById('pl-sum-lbl');
-  if (lbl) lbl.textContent = 'Slovensko · ' + plnenieQLabel(PL_STATE.q, PL_STATE.year);
+  if (lbl) lbl.textContent = plnenieSumLabel() + ' · ' + plnenieQLabel(PL_STATE.q, PL_STATE.year);
   var val = document.getElementById('pl-sum-big-val');
   if (val) { val.textContent = plnenieFormatPct(sk.pct); val.className = 'pl-sum-big-val ' + plnenieColorClass(sk.pct); }
   var tot = document.getElementById('pl-sum-big-total');
@@ -5195,6 +5216,13 @@ function plnenieRenderSummary() {
 }
 
 function plnenieRenderRegions() {
+  var regionsEl = document.querySelector('.pl-regions');
+  // AM West / AM East — region karty skryť (vidia iba svoju líniu v sumári)
+  if (plnenieIsAmRole()) {
+    if (regionsEl) regionsEl.style.display = 'none';
+    return;
+  }
+  if (regionsEl) regionsEl.style.display = '';
   var regions = PL_STATE.aggregates.regions;
   var west = document.getElementById('pl-region-west');
   if (west) {
