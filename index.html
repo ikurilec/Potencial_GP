@@ -674,6 +674,7 @@
   .mgr-plnenie-detail .milestone{position:absolute;top:-3px;bottom:-3px;width:3px;background:#0F172A;z-index:2}
   .mgr-plnenie-detail .milestone.passed{background:#0F172A}
   .mgr-plnenie-detail .milestone.current{background:#0F172A;width:4px}
+  .mgr-plnenie-detail .milestone.future{background:#CBD5E1}
   /* Textové popisky pod barom */
   .mgr-plnenie-detail .ms-labels{display:flex;justify-content:space-between;margin-top:6px;padding:0 1px;font-size:10px;color:#94A3B8;font-weight:600}
   .mgr-plnenie-detail .ms-labels span{flex:1;text-align:center}
@@ -797,6 +798,7 @@
   .rep-pl-inner .bar-fill.o{background:linear-gradient(90deg,#F59E0B,#D97706)}
   .rep-pl-inner .bar-fill.r{background:linear-gradient(90deg,#F87171,#DC2626)}
   .rep-pl-inner .milestone{position:absolute;top:-3px;bottom:-3px;width:3px;background:#0F172A;z-index:2}
+  .rep-pl-inner .milestone.future{background:#CBD5E1}
   .rep-pl-inner .ms-labels{display:flex;justify-content:space-between;margin-top:6px;padding:0 1px;font-size:10px;color:#94A3B8;font-weight:600}
   .rep-pl-inner .ms-labels span{flex:1;text-align:center}
   .rep-pl-inner .ms-labels span:first-child{text-align:left}
@@ -5698,9 +5700,10 @@ function plnenieMilestonesHtml(year, q) {
   for (var i = 0; i < wd.length - 1; i++) {
     cum += wd[i];
     var pct = cum / total * 100;
-    var isCur = (q === curQ && months[i] === curMonth);
+    var isCur    = (q === curQ && months[i] === curMonth);
+    var isFuture = (q === curQ && months[i] > curMonth) || q > curQ;
     // Triedy bez pl- prefixu — scopované cez .mgr-plnenie-detail v CSS
-    html += '<div class="milestone' + (isCur ? ' current' : '') + '" style="left:' + pct.toFixed(2) + '%"></div>';
+    html += '<div class="milestone' + (isCur ? ' current' : isFuture ? ' future' : '') + '" style="left:' + pct.toFixed(2) + '%"></div>';
   }
   return html;
 }
