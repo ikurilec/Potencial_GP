@@ -5832,21 +5832,6 @@ function plnenieCalcPredikcia(q, year, qPlanTotal, predajeByMonth, productKey) {
 function plnenieOpenDetail(username) {
   if (!username) return;
   PL_STATE.detailRep = username;
-  // Pri otvorení detailu vždy prepni na aktuálny Q
-  var curQ = plnenieCurrentQ();
-  if (PL_STATE.q !== curQ) {
-    PL_STATE.q = curQ;
-    if (PL_STATE.qCache[curQ]) {
-      PL_STATE.data = PL_STATE.qCache[curQ].data;
-      PL_STATE.aggregates = PL_STATE.qCache[curQ].aggregates;
-      PL_STATE.loaded = true;
-    } else {
-      PL_STATE.data = null;
-      PL_STATE.aggregates = null;
-      PL_STATE.loaded = false;
-    }
-    plnenieUpdateQTabs();
-  }
   document.body.classList.add('mgr-plnenie-detail-open');
   plnenieRenderDetail();
   window.scrollTo(0, 0);
