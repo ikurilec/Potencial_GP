@@ -40,7 +40,81 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.5.2** — obsahuje všetko z 2.5.0 plus dynamický zoznam reprezentantov zo Sheets a oprava ke.rep → a.makis. **Zostáva na `test` vetve až kým nebudú plány nahodené v Google Sheets.**
+**2.6.0** — obsahuje všetko z 2.5.x plus nový modul Trhový podiel (pharma MS overlay). **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+
+### v2.6.0 — Trhový podiel (Pharma MS overlay)
+
+#### Čo je nové
+Každý produkt v Rep Plnenie overlaye má tlačidlo **📊 Trhový podiel**. Po kliknutí sa otvorí overlay s market share dátami z Google Sheets.
+
+#### Dátová štruktúra (Google Sheets)
+- **`PharmaData_Summary`** — teritoriálny a SK market share po mesiacoch (YYMM formát napr. `2601` = jan 2026)
+  - Stĺpce: `produkt | oblast | mesiac | terit_ms | sk_ms`
+- **`PharmaData_Okresy`** — rozpad po okresoch s mesačnými hodnotami pre náš produkt + top 3 konkurenti
+  - Stĺpce: `produkt | oblast | okres | kvartal | nas_m1 | nas_m2 | nas_m3 | k1_nazov | k1_m1 | k1_m2 | k1_m3 | k2_nazov | k2_m1 | k2_m2 | k2_m3 | k3_nazov | k3_m1 | k3_m2 | k3_m3`
+- Kvartal kód formát **YYQQ**: `2601` = Q1 2026, `2602` = Q2 2026 atď.
+- Dáta do Sheets sa generujú cez **`pharma_converter.html`** (samostatný nástroj, nie v appke)
+
+#### pharma_converter.html
+- Nástroj na konverziu Excel súborov (formát `202603_TEL_e_KE.xlsx`) do TSV na kopírovanie do Sheets
+- `raw: true` — číta skutočné hodnoty z buniek (nie formátovaný text) → správne desatinné čísla
+- Summary záložka detekovaná podľa **názvu** (`MS_e_KE`, `MS_w_BA`) — nie podľa obsahu (predchádzajúci bug)
+- District záložky detekované podľa kvartal kódov (4 cifry, rozsah 2401–2699)
+- Výstup: 2 desatinné miesta pre všetky MS hodnoty
+
+#### Apps Script — endpoint `getPharmaData`
+- **Parametre:** `oblast` (napr. `KE`), `produkt` (napr. `TEL`), `kvartal` (napr. `2601`)
+- Číta z oboch Sheets (`PharmaData_Summary` + `PharmaData_Okresy`), filtruje podľa všetkých troch parametrov
+- Odpoveď: `{ ok:true, summary:[{mesiac, terit_ms, sk_ms}], okresy:[{okres, nas_m1..3, k1:{name,m1..3}, k2, k3}] }`
+- **Po každej zmene Apps Scriptu treba nasadiť novú verziu** (Nasadiť → Spravovať nasadenia → Nová verzia)
+
+#### Kódy produktov (`PHARMA_CODES`)
+```javascript
+'aflamil_kr'            → ['AFLcrm']
+'aflamil_tablety_sacky' → ['AFLtbl', 'AFLsach']  // Tablety tab prvý
+'cavinton'              → ['CAV']
+'suprax'                → ['SUP']
+'telexer'               → ['TEL']
+'vidonorm'              → ['VID']
+'junod'                 → ['JUN']
+```
+
+#### PHARMA_STATE
+```javascript
+var PHARMA_STATE = {
+  open: false,
+  loading: {},        // per-cacheKey objekt — umožňuje paralelné fetche
+  activeCode: null,
+  codes: [],
+  oblast: null,
+  kvartal: null,
+  cache: {}           // kľúč: 'CODE_OBLAST_KVARTAL' (napr. 'TEL_KE_2601')
+};
+```
+
+#### Kvartal kódy — pomocné funkcie
+- `pharmaKvartalCode(year, q)` → napr. `pharmaKvartalCode(2026, 1)` = `'2601'`
+- `pharmaQuarterMonths(kvartal)` → napr. `'2601'` = `['2601','2602','2603']` (YYMM mesiace v Q)
+
+#### Pharma overlay — UI
+- Header: biely pill tlačidlo "← Späť" (štýl `mgr-back`) + titulok `Trhový podiel · Q1 2026 · Aflamil krém`
+- Tmavá karta: 2-stĺpcový layout — **Teritoriálny MS** (zelený ak ≥ SK MS, červený ak nižší) | **Slovenský MS** (modrý)
+- Mesačný trend (M1 M2 M3) pod kartou
+- Tabuľka po okresoch: náš produkt (modrý, tučný) + top 3 konkurenti
+- Aflamil tablety/sáčky: 2 subtaby — **Tablety** vľavo, **Sáčky** vpravo
+- Tlačidlo "📊 Trhový podiel" v produkte: svetlosivé (`#F1F5F9`), celá šírka karty
+
+#### Preload stratégia (dôležité!)
+Pharma dáta sa fetchujú **paralelne na pozadí** v 3 situáciách:
+1. `loginSuccess()` — 1.5 s po prihlásení (prvé prihlásenie)
+2. `initLogin()` — 1.5 s po reloade stránky s existujúcou session (PWA restart, OS discard tab)
+3. `visibilitychange` — keď appka príde z pozadia a `PHARMA_STATE.cache` je prázdna
+
+Tým je zaistené, že keď reprezentant klikne na Trhový podiel, dáta sú už v cache → žiadny spinner.
+
+**Pravidlo:** `PHARMA_STATE.loading` je **objekt** (nie boolean) — každý cacheKey má vlastný flag → paralelné fetche fungujú bez blokovania.
+
+---
 
 ### v2.5.2 — Dynamický zoznam reprezentantov zo Sheets
 
