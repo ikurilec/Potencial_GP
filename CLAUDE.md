@@ -40,7 +40,32 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.4.4** — obsahuje všetko z 2.4.3 plus predikcia plnenia. **Zámerné rozhodnutie: zostáva na `test` vetve až kým nebudú plány nahodené v Google Sheets. Potom otestovať s reálnymi dátami a pushnúť do `main`.**
+**2.5.0** — obsahuje všetko z 2.4.4 plus zjednotená navigácia História/Rebríček/Plnenie, rebríček ako inline subtab pre manažérov, a pre-loading dát po prihlásení. **Zostáva na `test` vetve až kým nebudú plány nahodené v Google Sheets.**
+
+### v2.5.0 — Zjednotená navigácia + pre-loading
+
+#### Rep navigácia (História / Rebríček / Plnenie)
+- Všetky 3 sekcie sú teraz **full-screen overlaye** s rovnakým vizuálnym štýlom (svetlé pozadie `#EAECF2`)
+- História prekonvertovaná z modalu (dark backdrop + box) na full-screen — rovnaký vzor ako Plnenie a Rebríček
+- Nový **zdielaný panel-nav** (`.panel-nav`) hore v každej sekcii: `📋 História | 🏆 Rebríček | 💊 Plnenie + ✕`
+- Aktívna sekcia je zvýraznená tmavo (`background:#0C1E35; color:#fff`)
+- Kliknutím na tab v nav bare sa priamo prepneš do inej sekcie — bez návratu cez formulár
+- `closeAllPanels()` — zatvára všetky 3 overlaye naraz a resetuje `body.overflow`
+- Každý `openX()` najprv zatvorí ostatné dva overlaye bez resetovania `body.overflow`
+
+#### Manažérský mód — Rebríček ako inline subtab
+- Rebríček **nie je overlay** — zobrazuje sa inline ako `mgr-leaderboard-view` div v `mgr-view`
+- Prepínanie medzi Plnenie / Návštevy / Rebríček zostáva na tej istej obrazovke (body CSS class toggle)
+- CSS: `body.mgr-subtab-leaderboard .mgr-leaderboard-view{display:block}` + skryje `mgr-list-wrap`, `mgr-detail`
+- Pre manažéra sa rebríček otvára cez `mgrSwitchSubtab('leaderboard')` (nie `openLeaderboard()`)
+- `lbGetBody()` — helper funkcia; vracia `#mgr-lb-body` v manager mode, `#lb-body` pre reprezentanta
+- `lbRender()` a `lbLoadData()` detekujú kontext cez `lbGetBody()`
+
+#### Pre-loading dát po prihlásení
+- **Rebríček** (`lbLoadData`): spustí sa 2 s po prihlásení na pozadí — pre všetky roly (rep, admin, AM)
+- **Plnenie** (`repPlnenieLoad`): spustí sa 3,5 s po prihlásení — len pre reprezentantov (nie manažéri)
+- Namiesto 12 individuálnych `getHistory` requestov rebríček používa jeden `getAllHistory` request (rýchlejší pre-load), s fallbackom na 12 requestov
+- Ak sú dáta pri kliknutí už načítané → okamžité zobrazenie bez spinnera
 
 ### v2.4.4 — Predikcia plnenia konca kvartálu
 - **Vzorec:** skutočné predaje za dokončené mesiace / mesačný plán pre tie mesiace. Mesačný plán = (Q plán / všetky pracovné dni v Q) × pracovné dni daného mesiaca.

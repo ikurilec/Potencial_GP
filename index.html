@@ -90,8 +90,8 @@
   body.manager-mode .app > .send-popup.show,
   body.manager-mode .app > .restore-overlay.show,
   body.manager-mode .app > .tutorial-overlay.show,
-  body.manager-mode .app > .lb-overlay.show,
   body.manager-mode .app > .wn-overlay.show{display:flex !important}
+  body.manager-mode .app > .lb-overlay.show{display:block !important}
   /* Leaderboard overlay */
 
   /* Pull-to-refresh */
@@ -103,7 +103,8 @@
   @keyframes ptrSpin{to{transform:rotate(360deg)}}
   .ptr-arrow{font-size:20px;transition:transform .2s;display:inline-block;color:#64748B}
   .ptr-arrow.ready{transform:rotate(180deg)}
-  .lb-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:1500;align-items:flex-start;justify-content:center;padding-top:48px;overscroll-behavior:none}
+  .lb-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#EAECF2;z-index:1500;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  .lb-inner{max-width:660px;margin:0 auto;padding:24px 16px 48px}
   /* ── WHAT'S NEW overlay ── */
     /* Scroll indikátor — gradient fade dole keď je obsah dlhší */
   .confirm-box::-webkit-scrollbar,.lb-box::-webkit-scrollbar{width:4px}
@@ -132,16 +133,16 @@
   .wn-item-title{font-size:13.5px;font-weight:700;color:#0F172A;margin-bottom:2px;font-family:'Outfit',sans-serif}
   .wn-item-desc{font-size:12px;color:#64748B;line-height:1.4}
   .wn-btn{width:100%;background:linear-gradient(135deg,#1E40AF,#2563EB);color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;font-family:'Outfit',sans-serif;cursor:pointer;margin-top:16px;letter-spacing:.01em}
-  .lb-overlay.show{display:flex}
-  .lb-box{background:#0C1E35;border-radius:20px;width:93%;max-width:420px;max-height:82vh;overflow:hidden;display:flex;flex-direction:column;animation:slideUp .28s ease;overscroll-behavior:contain}
-  .lb-hdr{background:#0C1E35;border-radius:20px 20px 0 0;padding:18px 16px 14px 20px;display:flex;align-items:center;justify-content:space-between}
-  .lb-hdr-title{font-size:16px;font-weight:700;color:#fff;font-family:'Outfit',sans-serif}
-  .lb-hdr-sub{font-size:11px;color:#5B8DB8;margin-top:2px}
-  .lb-close{width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,.12);color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .lb-overlay.show{display:block}
+  .lb-box{background:#fff;border-radius:16px;overflow:hidden;}
+  .lb-hdr{padding:0 0 14px;}
+  .lb-hdr-title{font-size:18px;font-weight:800;color:#0F172A;font-family:'Outfit',sans-serif}
+  .lb-hdr-sub{font-size:11px;color:#64748B;margin-top:3px}
+  .lb-close{display:none}
   .lb-tabs{display:flex;gap:0;background:#F8FAFC;border-bottom:1px solid #E2E8F0}
   .lb-tab{flex:1;padding:11px 4px;border:none;background:none;font-size:12px;font-weight:600;color:#94A3B8;font-family:inherit;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
   .lb-tab.active{color:#2563EB;border-bottom-color:#2563EB}
-  .lb-body{padding:0 0 8px;background:#fff;overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;overscroll-behavior:contain}
+  .lb-body{padding:0 0 8px;background:#fff;}
   .lb-loading{text-align:center;padding:32px 20px;color:#94A3B8;font-size:14px}
   .lb-podium{display:flex;align-items:flex-end;justify-content:center;gap:8px;padding:20px 16px 8px;background:linear-gradient(180deg,#F8FAFC,#fff)}
   .lb-p-item{display:flex;flex-direction:column;align-items:center;flex:1}
@@ -313,19 +314,30 @@
   .progress-fill.complete{background:#059669}
   .hdr-hist-btn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:#fff;font-size:12px;font-weight:600;font-family:inherit;padding:6px 12px;border-radius:20px;cursor:pointer;transition:background .2s;white-space:nowrap}
   .hdr-hist-btn:hover{background:rgba(255,255,255,0.25)}
-  .hist-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:1500;align-items:flex-start;justify-content:center;padding-top:60px}
-  .hist-overlay.show{display:flex}
-  .hist-box{background:#fff;border-radius:16px;width:90%;max-width:420px;max-height:75vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:slideUp .3s ease;overflow:hidden}
-  .hist-header{padding:18px 20px 14px;border-bottom:1px solid #E2E8F0;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
-  .hist-title{font-size:16px;font-weight:700;color:#1A2A3A}
-  .hist-date{font-size:12px;color:#94A3B8;margin-top:2px}
-  .hist-close{background:none;border:none;font-size:22px;color:#94A3B8;cursor:pointer;line-height:1;padding:0 4px}
-  .hist-body{overflow-y:auto;flex:1;padding:8px 0}
+  .hist-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#EAECF2;z-index:1500;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  .hist-overlay.show{display:block}
+  .hist-inner{max-width:660px;margin:0 auto;padding:24px 16px 48px}
+  .hist-header{margin-bottom:12px}
+  .hist-title{font-size:18px;font-weight:800;color:#0F172A;font-family:'Outfit',sans-serif}
+  .hist-date{font-size:11px;color:#64748B;margin-top:3px}
+  .hist-close{display:none}
+  .hist-body-card{background:#fff;border-radius:14px;overflow:hidden}
+  .hist-body{padding:4px 0}
+  /* Zdielaný panel-nav pre História / Rebríček / Plnenie */
+  .panel-nav{display:grid;grid-template-columns:repeat(3,1fr) 32px;gap:4px;background:#fff;border-radius:12px;padding:4px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  .panel-nav-btn{border:none;background:none;padding:9px 4px;font-size:11.5px;font-weight:600;color:#94A3B8;cursor:pointer;border-radius:9px;transition:all .15s;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:4px;-webkit-tap-highlight-color:transparent;white-space:nowrap}
+  .panel-nav-btn.active{background:#0C1E35;color:#fff}
+  .panel-nav-btn:active{opacity:.75}
+  .panel-nav-close{border:none;background:none;color:#94A3B8;font-size:18px;cursor:pointer;border-radius:8px;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}
+  .panel-nav-close:active{background:#F1F5F9}
+  .panel-nav-mgr-back{display:none;margin-bottom:10px}
+  body.manager-mode .panel-nav{display:none}
+  body.manager-mode .panel-nav-mgr-back{display:inline-flex}
   .hist-empty{text-align:center;padding:48px 24px;color:#94A3B8;font-size:13px;line-height:1.6}
   .hist-empty-icon{font-size:44px;margin-bottom:12px;display:block;opacity:.6}
   .hist-empty-title{font-size:15px;font-weight:700;color:#64748B;margin-bottom:6px}
   .hist-empty-sub{font-size:12px;color:#94A3B8}
-  .hist-search-wrap{padding:10px 14px;border-bottom:1px solid #E2E8F0;position:sticky;top:0;background:#fff;z-index:1}
+  .hist-search-wrap{padding:10px 14px;border-bottom:1px solid #E2E8F0;background:#fff}
   .hist-search{width:100%;height:38px;padding:0 12px 0 34px;border-radius:9px;border:1.5px solid #E2E8F0;background:#F8FAFC;font-size:14px;font-family:inherit;color:#1A2A3A;outline:none;box-sizing:border-box}
   .hist-search:focus{border-color:#3B82F6;background:#fff;box-shadow:0 0 0 3px rgba(59,130,246,.1)}
   .hist-search-icon{position:absolute;left:24px;top:50%;transform:translateY(-50%);font-size:14px;color:#94A3B8;pointer-events:none}
@@ -552,6 +564,10 @@
   body.mgr-subtab-plnenie .mgr-plnenie-view{display:block}
   body.mgr-subtab-plnenie .mgr-list-wrap,
   body.mgr-subtab-plnenie .mgr-detail{display:none !important}
+  .mgr-leaderboard-view{display:none;background:#fff;border-radius:14px;overflow:hidden;margin-top:4px}
+  body.mgr-subtab-leaderboard .mgr-leaderboard-view{display:block}
+  body.mgr-subtab-leaderboard .mgr-list-wrap,
+  body.mgr-subtab-leaderboard .mgr-detail{display:none !important}
   .pl-q-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
   .pl-q-tab{padding:10px 4px;border:none;background:transparent;font-size:12px;font-weight:700;color:#64748B;cursor:pointer;border-radius:8px;font-family:inherit;transition:all .15s;text-align:center;-webkit-tap-highlight-color:transparent;position:relative}
   .pl-q-tab.active{background:#0C1E35;color:#fff}
@@ -824,7 +840,7 @@
   <div class="mgr-subtabs">
     <button type="button" class="mgr-subtab active" data-tab="plnenie" onclick="mgrSwitchSubtab('plnenie')">💊 Plnenie</button>
     <button type="button" class="mgr-subtab" data-tab="visits" onclick="mgrSwitchSubtab('visits')">📋 Návštevy</button>
-    <button type="button" class="mgr-subtab" data-tab="leaderboard" onclick="openLeaderboard()">🏆 Rebríček</button>
+    <button type="button" class="mgr-subtab" data-tab="leaderboard" onclick="mgrSwitchSubtab('leaderboard')">🏆 Rebríček</button>
   </div>
 
   <!-- Dashboard — zoznam reprezentantov -->
@@ -947,6 +963,18 @@
     </div>
 
   </div>
+
+  <div class="mgr-leaderboard-view" id="mgr-leaderboard-view">
+    <div class="lb-tabs">
+      <button class="lb-tab active" onclick="lbSetPeriod('month',this)">Mesiac</button>
+      <button class="lb-tab" onclick="lbSetPeriod('quarter',this)">Kvartál</button>
+      <button class="lb-tab" onclick="lbSetPeriod('all',this)">Celkové</button>
+    </div>
+    <div class="lb-body" id="mgr-lb-body">
+      <div class="lb-loading">⏳ Načítavam rebríček...</div>
+    </div>
+  </div>
+
 </div>
 
 <div class="progress-wrap" id="progress-wrap">
@@ -1119,39 +1147,50 @@
   </div>
 
   <div class="hist-overlay" id="hist-overlay">
-    <div class="hist-box">
+    <div class="hist-inner">
+      <div class="panel-nav">
+        <button class="panel-nav-btn active" onclick="openHistory()">📋 História</button>
+        <button class="panel-nav-btn" onclick="openLeaderboard()">🏆 Rebríček</button>
+        <button class="panel-nav-btn" onclick="openRepPlnenie()">💊 Plnenie</button>
+        <button class="panel-nav-close" onclick="closeAllPanels()">✕</button>
+      </div>
       <div class="hist-header">
-        <div>
-          <div class="hist-title">História lekárov</div>
-          <div class="hist-date" id="hist-date"></div>
+        <div class="hist-title">História lekárov</div>
+        <div class="hist-date" id="hist-date"></div>
+      </div>
+      <div class="hist-body-card">
+        <div class="hist-search-wrap">
+          <span class="hist-search-icon">🔍</span>
+          <input type="text" class="hist-search" id="hist-search" placeholder="Hľadať lekára..." oninput="filterHistory()" autocomplete="off">
         </div>
-        <button type="button" class="hist-close" onclick="closeHistory()">×</button>
+        <div class="hist-body" id="hist-body"></div>
       </div>
-      <div class="hist-search-wrap">
-        <span class="hist-search-icon">🔍</span>
-        <input type="text" class="hist-search" id="hist-search" placeholder="Hľadať lekára..." oninput="filterHistory()" autocomplete="off">
-      </div>
-      <div class="hist-body" id="hist-body"></div>
     </div>
   </div>
 
-  <!-- ── REBRÍČEK OVERLAY ── -->
+  <!-- ── REBRÍČEK ── -->
   <div class="lb-overlay" id="lb-overlay">
-    <div class="lb-box">
+    <div class="lb-inner">
+      <button type="button" class="mgr-back panel-nav-mgr-back" onclick="closeLeaderboard()">← Späť</button>
+      <div class="panel-nav">
+        <button class="panel-nav-btn" onclick="openHistory()">📋 História</button>
+        <button class="panel-nav-btn active" onclick="openLeaderboard()">🏆 Rebríček</button>
+        <button class="panel-nav-btn" onclick="openRepPlnenie()">💊 Plnenie</button>
+        <button class="panel-nav-close" onclick="closeAllPanels()">✕</button>
+      </div>
       <div class="lb-hdr">
-        <div>
-          <div class="lb-hdr-title">🏆 Rebríček tímu</div>
-          <div class="lb-hdr-sub" id="lb-hdr-sub">Gedeon Richter Slovakia · 2026</div>
+        <div class="lb-hdr-title">🏆 Rebríček tímu</div>
+        <div class="lb-hdr-sub" id="lb-hdr-sub">Gedeon Richter Slovakia · 2026</div>
+      </div>
+      <div class="lb-box">
+        <div class="lb-tabs">
+          <button class="lb-tab active" onclick="lbSetPeriod('month',this)">Mesiac</button>
+          <button class="lb-tab" onclick="lbSetPeriod('quarter',this)">Kvartál</button>
+          <button class="lb-tab" onclick="lbSetPeriod('all',this)">Celkové</button>
         </div>
-        <button class="lb-close" onclick="closeLeaderboard()">×</button>
-      </div>
-      <div class="lb-tabs">
-        <button class="lb-tab active" onclick="lbSetPeriod('month',this)">Mesiac</button>
-        <button class="lb-tab" onclick="lbSetPeriod('quarter',this)">Kvartál</button>
-        <button class="lb-tab" onclick="lbSetPeriod('all',this)">Celkové</button>
-      </div>
-      <div class="lb-body" id="lb-body">
-        <div class="lb-loading">⏳ Načítavam rebríček...</div>
+        <div class="lb-body" id="lb-body">
+          <div class="lb-loading">⏳ Načítavam rebríček...</div>
+        </div>
       </div>
     </div>
   </div>
@@ -1408,7 +1447,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.4.4';
+var APP_VERSION = '2.5.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -2960,6 +2999,14 @@ function filterHistory() {
   renderHistItems(filtered);
 }
 
+function closeAllPanels() {
+  ['hist-overlay','lb-overlay','rep-plnenie-overlay'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.classList.remove('show');
+  });
+  document.body.style.overflow = '';
+}
+
 function openHistory() {
   var overlay = document.getElementById('hist-overlay');
   var body = document.getElementById('hist-body');
@@ -2967,9 +3014,14 @@ function openHistory() {
   var searchEl = document.getElementById('hist-search');
   if(!overlay || !body) return;
 
+  ['lb-overlay','rep-plnenie-overlay'].forEach(function(id){
+    var el = document.getElementById(id); if(el) el.classList.remove('show');
+  });
+  document.body.style.overflow = 'hidden';
+  overlay.scrollTop = 0;
   dateEl.textContent = getTodayStr();
   if(searchEl) searchEl.value = '';
-  overlay.className = 'hist-overlay show';
+  overlay.classList.add('show');
 
   // Načítaj zo Sheets
   body.innerHTML = '<div class="hist-empty"><span class="hist-empty-icon">⏳</span><div class="hist-empty-title">Načítavam históriu...</div></div>';
@@ -3038,7 +3090,8 @@ function openHistory() {
 
 function closeHistory() {
   var overlay = document.getElementById('hist-overlay');
-  if(overlay) overlay.className = 'hist-overlay';
+  if(overlay) overlay.classList.remove('show');
+  document.body.style.overflow = '';
 }
 
 function openDetail(idx) {
@@ -3136,8 +3189,6 @@ document.addEventListener('click', function(e) {
   if(hist && e.target === hist) closeHistory();
   var detail = document.getElementById('detail-overlay');
   if(detail && e.target === detail) closeDetail();
-  var lb = document.getElementById('lb-overlay');
-  if(lb && e.target === lb) closeLeaderboard();
   var wn = document.getElementById('wn-overlay');
   if(wn && e.target === wn) wnClose();
   var conf = document.getElementById('confirm-overlay');
@@ -3648,6 +3699,7 @@ function loginSuccess(username, name, role, region) {
     mgrEnter(mgrRole);
     try { mgrDedupUnique(); } catch(e){}
     setTimeout(function(){ wnShow(true); }, 600);
+    setTimeout(function(){ lbLoadData(); }, 2000);
     return;
   }
   if(localStorage.getItem(TUTORIAL_KEY)){
@@ -3655,6 +3707,14 @@ function loginSuccess(username, name, role, region) {
   }
   initTutorial();
   refreshBadgeFromSheets(username);
+  setTimeout(function(){ lbLoadData(); }, 2000);
+  setTimeout(function(){
+    if (!REP_PL_STATE.loading && !REP_PL_STATE.loaded) {
+      REP_PL_STATE.year = (new Date()).getFullYear();
+      REP_PL_STATE.q = plnenieCurrentQ();
+      repPlnenieLoad();
+    }
+  }, 3500);
   // Agresívny dedup po prihlásení — eliminácia prípadných duplicitov
   setTimeout(function(){ try { mgrDedupUnique(); } catch(e){} }, 100);
   setTimeout(function(){ try { mgrDedupUnique(); } catch(e){} }, 600);
@@ -3804,10 +3864,19 @@ function initLogin() {
     var mgrRole = mgrDetectRole(session);
     if(mgrRole){
       mgrEnter(mgrRole);
+      setTimeout(function(){ lbLoadData(); }, 2000);
       return;
     }
     setTimeout(function(){ updateHdrForUser(session); }, 300);
     refreshBadgeFromSheets(session.username);
+    setTimeout(function(){ lbLoadData(); }, 2000);
+    setTimeout(function(){
+      if (!REP_PL_STATE.loading && !REP_PL_STATE.loaded) {
+        REP_PL_STATE.year = (new Date()).getFullYear();
+        REP_PL_STATE.q = plnenieCurrentQ();
+        repPlnenieLoad();
+      }
+    }, 3500);
   } else {
     // Zobraziť login
     document.getElementById('login-screen').classList.add('show');
@@ -4784,35 +4853,24 @@ var LB_ALL_REPS = ['j.bohovic','v.hatinova','v.hromadkova','z.lescis','j.krkoska
 function openLeaderboard(){
   var overlay = document.getElementById('lb-overlay');
   if(!overlay) return;
+  ['hist-overlay','rep-plnenie-overlay'].forEach(function(id){
+    var el = document.getElementById(id); if(el) el.classList.remove('show');
+  });
   overlay.className = 'lb-overlay show';
-  // iOS fix — zabraň overscrollu cez touchmove
-  overlay._touchHandler = function(e){
-    var box = overlay.querySelector('.lb-box');
-    if(!box) return;
-    // Ak sme na vrchu boxu a ťaháme dole — zablokuj
-    if(box.scrollTop <= 0){
-      var touch = e.touches[0];
-      if(!overlay._lastY) overlay._lastY = touch.clientY;
-      var dy = touch.clientY - overlay._lastY;
-      if(dy > 0) e.preventDefault();
-      overlay._lastY = touch.clientY;
-    } else {
-      overlay._lastY = null;
-    }
-  };
-  overlay.addEventListener('touchmove', overlay._touchHandler, {passive:false});
-  overlay.addEventListener('touchstart', function(){ overlay._lastY = null; }, {passive:true});
-  lbLoadData();
+  overlay.scrollTop = 0;
+  document.body.style.overflow = 'hidden';
+  if(LB_STATE.data){
+    lbRender();
+  } else {
+    lbLoadData();
+  }
 }
 
 function closeLeaderboard(){
   var overlay = document.getElementById('lb-overlay');
   if(!overlay) return;
   overlay.className = 'lb-overlay';
-  if(overlay._touchHandler){
-    overlay.removeEventListener('touchmove', overlay._touchHandler);
-    overlay._touchHandler = null;
-  }
+  document.body.style.overflow = '';
 }
 
 function lbSetPeriod(period, el){
@@ -4822,30 +4880,52 @@ function lbSetPeriod(period, el){
   lbRender();
 }
 
-function lbLoadData(){
+function lbLoadData(force){
   if(LB_STATE.loading) return;
+  if(LB_STATE.data && !force) return;
   LB_STATE.loading = true;
   LB_STATE.data = null;
-  var body = document.getElementById('lb-body');
-  if(body) body.innerHTML = '<div class="lb-loading">&#9203; Na&#269;&#237;tavam rebr&#237;&#269;ek...</div>';
+  var isMgrOpen = document.body.classList.contains('manager-mode') && document.body.classList.contains('mgr-subtab-leaderboard');
+  var isRepOpen = (function(){ var ov = document.getElementById('lb-overlay'); return ov && ov.classList.contains('show'); })();
+  if(isMgrOpen || isRepOpen){
+    var body = lbGetBody();
+    if(body) body.innerHTML = '<div class="lb-loading">&#9203; Na&#269;&#237;tavam rebr&#237;&#269;ek...</div>';
+  }
 
-  var results = {};
-  var remaining = LB_ALL_REPS.length;
+  function onDone(results){
+    LB_STATE.data = results;
+    LB_STATE.loading = false;
+    var mgrOpen = document.body.classList.contains('manager-mode') && document.body.classList.contains('mgr-subtab-leaderboard');
+    var repOpen = (function(){ var ov = document.getElementById('lb-overlay'); return ov && ov.classList.contains('show'); })();
+    if(mgrOpen || repOpen) lbRender();
+  }
 
-  LB_ALL_REPS.forEach(function(username){
-    fetch(SCRIPT_URL + '?action=getHistory&reprezentant=' + encodeURIComponent(username), { cache: 'no-store' })
-      .then(function(r){ return r.ok ? r.json() : []; })
-      .then(function(rows){ results[username] = Array.isArray(rows) ? rows : []; })
-      .catch(function(){ results[username] = []; })
-      .finally(function(){
-        remaining--;
-        if(remaining <= 0){
-          LB_STATE.data = results;
-          LB_STATE.loading = false;
-          lbRender();
-        }
+  fetch(SCRIPT_URL + '?action=getAllHistory', { cache: 'no-store' })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(allHist){
+      if(allHist && typeof allHist === 'object' && !Array.isArray(allHist)){
+        var results = {};
+        LB_ALL_REPS.forEach(function(u){ results[u] = Array.isArray(allHist[u]) ? allHist[u] : []; });
+        onDone(results);
+      } else {
+        throw new Error('fallback');
+      }
+    })
+    .catch(function(){
+      // Fallback — 12 individuálnych requestov
+      var results = {};
+      var remaining = LB_ALL_REPS.length;
+      LB_ALL_REPS.forEach(function(username){
+        fetch(SCRIPT_URL + '?action=getHistory&reprezentant=' + encodeURIComponent(username), { cache: 'no-store' })
+          .then(function(r){ return r.ok ? r.json() : []; })
+          .then(function(rows){ results[username] = Array.isArray(rows) ? rows : []; })
+          .catch(function(){ results[username] = []; })
+          .finally(function(){
+            remaining--;
+            if(remaining <= 0) onDone(results);
+          });
       });
-  });
+    });
 }
 
 function lbCountVisits(rows, period){
@@ -4881,8 +4961,13 @@ function lbPeriodLabel(){
   return 'Celkov\u00e9';
 }
 
+function lbGetBody(){
+  var isMgr = document.body.classList.contains('manager-mode');
+  return document.getElementById(isMgr ? 'mgr-lb-body' : 'lb-body');
+}
+
 function lbRender(){
-  var body = document.getElementById('lb-body');
+  var body = lbGetBody();
   if(!body) return;
   var sub = document.getElementById('lb-hdr-sub');
   if(sub) sub.textContent = 'Gedeon Richter Slovakia \u00b7 ' + lbPeriodLabel();
@@ -5033,12 +5118,20 @@ function plnenieQLabel(q, year) {
 function mgrSwitchSubtab(tab) {
   MGR_STATE.subtab = tab;
   document.body.classList.toggle('mgr-subtab-plnenie', tab === 'plnenie');
+  document.body.classList.toggle('mgr-subtab-leaderboard', tab === 'leaderboard');
   document.querySelectorAll('.mgr-subtab').forEach(function(btn){
     btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
   });
   window.scrollTo(0, 0);
   if (tab === 'plnenie' && !PL_STATE.loaded && !PL_STATE.loading) {
     plnenieLoadAllQuarters();
+  }
+  if (tab === 'leaderboard') {
+    if (LB_STATE.data) {
+      lbRender();
+    } else {
+      lbLoadData();
+    }
   }
 }
 
@@ -5923,6 +6016,9 @@ var REP_PL_STATE = {
 function openRepPlnenie() {
   var session = getSession();
   if (!session || !session.username) return;
+  ['hist-overlay','lb-overlay'].forEach(function(id){
+    var el = document.getElementById(id); if(el) el.classList.remove('show');
+  });
   var overlay = document.getElementById('rep-plnenie-overlay');
   if (overlay) overlay.classList.add('show');
   document.body.style.overflow = 'hidden';
@@ -6370,7 +6466,12 @@ function repPlnenieRenderTrend(username) {
 <!-- ── REP PLNENIE OVERLAY — vlastné plnenie pre prihlásených reprezentantov ── -->
 <div class="rep-plnenie-overlay" id="rep-plnenie-overlay">
   <div class="rep-pl-inner">
-    <button type="button" class="mgr-back" onclick="closeRepPlnenie()">&larr; Späť na formulár</button>
+    <div class="panel-nav">
+      <button class="panel-nav-btn" onclick="openHistory()">📋 História</button>
+      <button class="panel-nav-btn" onclick="openLeaderboard()">🏆 Rebríček</button>
+      <button class="panel-nav-btn active" onclick="openRepPlnenie()">💊 Plnenie</button>
+      <button class="panel-nav-close" onclick="closeAllPanels()">✕</button>
+    </div>
     <div class="total-card" id="rep-pl-total-card">
       <div class="total-lbl">Môj plán</div>
       <div class="total-val none">—</div>
