@@ -725,6 +725,38 @@
   /* ═══ REP PLNENIE OVERLAY ═══ */
   .rep-plnenie-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:2000;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   .rep-plnenie-overlay.show{display:block}
+
+  /* ── PHARMA MS OVERLAY — trhový podiel po kliknutí na produkt ── */
+  .pharma-ms-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:3000;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  .pharma-ms-overlay.show{display:block}
+  .pharma-ms-inner{max-width:480px;margin:0 auto;padding:16px 16px 40px}
+  .pharma-ms-hdr{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+  .pharma-ms-back{background:none;border:none;cursor:pointer;font-size:15px;font-weight:700;color:#0C1E35;padding:8px 4px 8px 0;font-family:inherit;-webkit-tap-highlight-color:transparent}
+  .pharma-ms-title{font-size:15px;font-weight:700;color:#0C1E35;flex:1;font-family:'Outfit',sans-serif}
+  .pharma-ms-mesiac{font-size:11px;color:#64748B;background:#fff;border-radius:6px;padding:3px 8px;white-space:nowrap}
+  .pharma-ms-subtabs{display:flex;gap:6px;margin-bottom:14px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  .pharma-ms-subtab{flex:1;padding:10px 4px;border:none;background:transparent;font-size:13px;font-weight:700;color:#64748B;cursor:pointer;border-radius:8px;font-family:inherit;transition:all .15s;-webkit-tap-highlight-color:transparent}
+  .pharma-ms-subtab.active{background:#0C1E35;color:#fff}
+  .pharma-ms-card{background:linear-gradient(135deg,#0C1E35,#1A3A5C);border-radius:14px;padding:16px 18px;margin-bottom:14px;color:#fff;text-align:center}
+  .pharma-ms-card-lbl{font-size:10px;font-weight:700;color:#7AABCC;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+  .pharma-ms-card-val{font-size:38px;font-weight:800;line-height:1;margin-bottom:4px;font-family:'Outfit',sans-serif}
+  .pharma-ms-card-sub{font-size:12px;color:#94A3B8}
+  .pharma-ms-section-title{font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin:4px 0 8px}
+  .pharma-ms-district{background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:8px;box-shadow:0 1px 6px rgba(0,0,0,.05)}
+  .pharma-ms-district-name{font-size:13px;font-weight:700;color:#0F172A;margin-bottom:8px;font-family:'Outfit',sans-serif}
+  .pharma-ms-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+  .pharma-ms-bar-row:last-child{margin-bottom:0}
+  .pharma-ms-bar-label{font-size:11px;color:#64748B;width:90px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pharma-ms-bar-label.ours{color:#0C1E35;font-weight:700}
+  .pharma-ms-bar-track{flex:1;height:8px;background:#F1F5F9;border-radius:4px;overflow:hidden}
+  .pharma-ms-bar-fill{height:100%;border-radius:4px;transition:width .6s ease}
+  .pharma-ms-bar-fill.ours{background:linear-gradient(90deg,#3B82F6,#1D4ED8)}
+  .pharma-ms-bar-fill.comp{background:#CBD5E1}
+  .pharma-ms-bar-pct{font-size:11px;font-weight:700;color:#0F172A;width:38px;text-align:right;flex-shrink:0}
+  .pharma-ms-bar-pct.ours{color:#2563EB}
+  .pharma-ms-loading{text-align:center;padding:48px 20px;color:#64748B;font-size:14px}
+  .prod-ms-link{display:inline-flex;align-items:center;gap:4px;margin-top:8px;padding:5px 10px;background:#F1F5F9;border-radius:8px;border:none;font-size:11px;font-weight:600;color:#475569;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent}
+  .prod-ms-link:active{background:#E2E8F0}
   .rep-pl-inner{max-width:660px;margin:0 auto;padding:24px 16px 48px}
   /* Zdieľané štýly pre rep plnenie (kopíruje mgr-plnenie-detail scope) */
   .rep-pl-inner .total-card{background:linear-gradient(135deg,#0C1E35,#1A3A5C);border-radius:14px;padding:16px 18px;margin-bottom:12px;color:#fff;text-align:center}
@@ -3000,7 +3032,7 @@ function filterHistory() {
 }
 
 function closeAllPanels() {
-  ['hist-overlay','lb-overlay','rep-plnenie-overlay'].forEach(function(id){
+  ['hist-overlay','lb-overlay','rep-plnenie-overlay','pharma-ms-overlay'].forEach(function(id){
     var el = document.getElementById(id);
     if(el) el.classList.remove('show');
   });
@@ -6307,6 +6339,10 @@ function repPlnenieRender() {
       ? '<div class="prod-pred">predikcia konca kvartálu <span>' + plnenieFormatPct(pPredikcia) + '</span></div>'
       : '';
 
+    var msLinkHtml = PHARMA_CODES[key]
+      ? '<button type="button" class="prod-ms-link" onclick="openPharmaMs(\'' + key.replace(/'/g,"\\'") + '\',\'' + label.replace(/'/g,"\\'") + '\')">📊 Trhový podiel</button>'
+      : '';
+
     return '<div class="prod-item-adv">' +
       '<div class="prod-adv-top">' +
         '<div class="prod-adv-name"><div class="prod-dot" style="background:' + dotColor + '"></div>' + mgrEscape(label) + '</div>' +
@@ -6318,6 +6354,7 @@ function repPlnenieRender() {
       moneyHtml +
       prodPredHtml +
       '<div class="month-rows">' + monthRowsHtml + '</div>' +
+      msLinkHtml +
     '</div>';
   }).join('');
 
@@ -6377,6 +6414,167 @@ function repPlnenieRenderTrend(username) {
   trendEl.innerHTML =
     '<div class="trend-title">Trend m\u00f4jho plnenia \u00b7 ' + year + '</div>' +
     '<div class="trend-bars">' + barsHtml + '</div>';
+}
+
+// ── PHARMA MS — trhový podiel po kliknutí na produkt v Plnení ──
+
+var PHARMA_CODES = {
+  'aflamil_kr':            ['AFLcrm'],
+  'aflamil_tablety_sacky': ['AFLsach', 'AFLtbl'],
+  'cavinton':              ['CAV'],
+  'cavinton forte':        ['CAV'],
+  'junod':                 ['JUN'],
+  'suprax':                ['SUP'],
+  'telexer':               ['TEL'],
+  'vidonorm':              ['VID']
+};
+
+var PHARMA_STATE = { open: false, loading: false, data: null, oblast: null, activeCode: null, codes: [] };
+
+function openPharmaMs(prodKey, label) {
+  var codes = PHARMA_CODES[prodKey];
+  if (!codes || !codes.length) return;
+  var session = getSession();
+  if (!session) return;
+  var oblast = (USERS_LOCAL[session.username] && USERS_LOCAL[session.username].region) || session.region || '';
+  if (!oblast) return;
+
+  PHARMA_STATE.codes = codes;
+  PHARMA_STATE.activeCode = codes[0];
+  PHARMA_STATE.oblast = oblast;
+
+  var titleEl  = document.getElementById('pharma-ms-title');
+  var subtabsEl = document.getElementById('pharma-ms-subtabs');
+  var bodyEl   = document.getElementById('pharma-ms-body');
+  var mesiacEl = document.getElementById('pharma-ms-mesiac');
+  var overlay  = document.getElementById('pharma-ms-overlay');
+
+  if (titleEl) titleEl.textContent = label + ' · MS';
+  if (mesiacEl) mesiacEl.textContent = '';
+  if (bodyEl) bodyEl.innerHTML = '<div class="pharma-ms-loading">Načítavam dáta…</div>';
+
+  if (codes.length > 1) {
+    subtabsEl.style.display = 'flex';
+    Array.prototype.forEach.call(subtabsEl.querySelectorAll('.pharma-ms-subtab'), function(btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-code') === codes[0]);
+    });
+  } else {
+    subtabsEl.style.display = 'none';
+  }
+
+  overlay.classList.add('show');
+  overlay.scrollTop = 0;
+  PHARMA_STATE.open = true;
+
+  // Použi cache ak máme dáta pre rovnaký región
+  if (PHARMA_STATE.data && PHARMA_STATE.data._oblast === oblast) {
+    pharmaRender(PHARMA_STATE.activeCode);
+  } else {
+    PHARMA_STATE.data = null;
+    loadPharmaData(oblast);
+  }
+}
+
+function loadPharmaData(oblast) {
+  if (PHARMA_STATE.loading) return;
+  PHARMA_STATE.loading = true;
+  fetch(SCRIPT_URL + '?action=getPharmaData&oblast=' + encodeURIComponent(oblast), { cache: 'no-store' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      PHARMA_STATE.loading = false;
+      if (data.ok) {
+        data._oblast = oblast;
+        PHARMA_STATE.data = data;
+        var mesiacEl = document.getElementById('pharma-ms-mesiac');
+        if (mesiacEl && data.mesiac) mesiacEl.textContent = pharmaMesiacLabel(data.mesiac);
+        pharmaRender(PHARMA_STATE.activeCode);
+      } else {
+        var bodyEl = document.getElementById('pharma-ms-body');
+        if (bodyEl) bodyEl.innerHTML = '<div class="pharma-ms-loading">Dáta nie sú dostupné pre oblasť ' + mgrEscape(oblast) + '.</div>';
+      }
+    })
+    .catch(function() {
+      PHARMA_STATE.loading = false;
+      var bodyEl = document.getElementById('pharma-ms-body');
+      if (bodyEl) bodyEl.innerHTML = '<div class="pharma-ms-loading">Chyba načítania.</div>';
+    });
+}
+
+function pharmaSwitchTab(code) {
+  PHARMA_STATE.activeCode = code;
+  var subtabsEl = document.getElementById('pharma-ms-subtabs');
+  if (subtabsEl) {
+    Array.prototype.forEach.call(subtabsEl.querySelectorAll('.pharma-ms-subtab'), function(btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-code') === code);
+    });
+  }
+  if (PHARMA_STATE.data) pharmaRender(code);
+}
+
+function pharmaRender(code) {
+  var bodyEl = document.getElementById('pharma-ms-body');
+  if (!bodyEl || !PHARMA_STATE.data) return;
+
+  var rows = (PHARMA_STATE.data.rows || []).filter(function(r) { return r.produkt === code; });
+  if (!rows.length) {
+    bodyEl.innerHTML = '<div class="pharma-ms-loading">Žiadne dáta pre oblasť ' + mgrEscape(PHARMA_STATE.oblast) + '.</div>';
+    return;
+  }
+
+  var avgMs = rows.reduce(function(s, r) { return s + (r.nas_ms || 0); }, 0) / rows.length;
+
+  // Max hodnota pre normalizáciu šírky barov
+  var allVals = [];
+  rows.forEach(function(r) {
+    allVals.push(r.nas_ms || 0);
+    if (r.k1 && r.k1.ms) allVals.push(r.k1.ms);
+    if (r.k2 && r.k2.ms) allVals.push(r.k2.ms);
+    if (r.k3 && r.k3.ms) allVals.push(r.k3.ms);
+  });
+  var maxVal = Math.max.apply(null, allVals) || 1;
+
+  var html = '';
+
+  // Summary karta
+  html += '<div class="pharma-ms-card">';
+  html += '<div class="pharma-ms-card-lbl">PRIEMERNÝ TRHOVÝ PODIEL · ' + mgrEscape(PHARMA_STATE.oblast) + '</div>';
+  html += '<div class="pharma-ms-card-val">' + avgMs.toFixed(1) + ' %</div>';
+  html += '<div class="pharma-ms-card-sub">priemer z ' + rows.length + ' okres' + (rows.length === 1 ? 'u' : 'ov') + '</div>';
+  html += '</div>';
+
+  // Rozpad po okresoch
+  html += '<div class="pharma-ms-section-title">Rozpad po okresoch</div>';
+  rows.forEach(function(r) {
+    var comps = [r.k1, r.k2, r.k3].filter(function(k) { return k && k.n && k.ms > 0; });
+    var ourW = Math.round((r.nas_ms || 0) / maxVal * 100);
+    html += '<div class="pharma-ms-district">';
+    html += '<div class="pharma-ms-district-name">' + mgrEscape(r.okres) + '</div>';
+    html += '<div class="pharma-ms-bar-row"><div class="pharma-ms-bar-label ours">Náš produkt</div>';
+    html += '<div class="pharma-ms-bar-track"><div class="pharma-ms-bar-fill ours" style="width:' + ourW + '%"></div></div>';
+    html += '<div class="pharma-ms-bar-pct ours">' + (r.nas_ms || 0).toFixed(1) + ' %</div></div>';
+    comps.forEach(function(k) {
+      var kW = Math.round(k.ms / maxVal * 100);
+      html += '<div class="pharma-ms-bar-row"><div class="pharma-ms-bar-label">' + mgrEscape(k.n) + '</div>';
+      html += '<div class="pharma-ms-bar-track"><div class="pharma-ms-bar-fill comp" style="width:' + kW + '%"></div></div>';
+      html += '<div class="pharma-ms-bar-pct">' + k.ms.toFixed(1) + ' %</div></div>';
+    });
+    html += '</div>';
+  });
+
+  bodyEl.innerHTML = html;
+}
+
+function pharmaMesiacLabel(m) {
+  if (!m || m.length !== 6) return m;
+  var mNames = ['jan','feb','mar','apr','máj','jún','júl','aug','sep','okt','nov','dec'];
+  var mm = parseInt(m.slice(4), 10) - 1;
+  return (mNames[mm] || m.slice(4)) + ' ' + m.slice(0, 4);
+}
+
+function closePharmaMs() {
+  var overlay = document.getElementById('pharma-ms-overlay');
+  if (overlay) overlay.classList.remove('show');
+  PHARMA_STATE.open = false;
 }
 
 // ── PULL-TO-REFRESH pre manažérsky zoznam ──
@@ -6561,6 +6759,22 @@ function repPlnenieRenderTrend(username) {
     <div class="pl-section-lbl" id="rep-pl-prods-lbl">Moje produkty</div>
     <div id="rep-pl-prods"></div>
     <div class="trend" id="rep-pl-trend"></div>
+  </div>
+</div>
+
+<!-- ── PHARMA MS OVERLAY — trhový podiel produktu ── -->
+<div class="pharma-ms-overlay" id="pharma-ms-overlay">
+  <div class="pharma-ms-inner">
+    <div class="pharma-ms-hdr">
+      <button type="button" class="pharma-ms-back" onclick="closePharmaMs()">← Späť</button>
+      <span class="pharma-ms-title" id="pharma-ms-title">Trhový podiel</span>
+      <span class="pharma-ms-mesiac" id="pharma-ms-mesiac"></span>
+    </div>
+    <div id="pharma-ms-subtabs" class="pharma-ms-subtabs" style="display:none">
+      <button type="button" class="pharma-ms-subtab active" data-code="AFLsach" onclick="pharmaSwitchTab('AFLsach')">Sáčky</button>
+      <button type="button" class="pharma-ms-subtab" data-code="AFLtbl" onclick="pharmaSwitchTab('AFLtbl')">Tablety</button>
+    </div>
+    <div id="pharma-ms-body"></div>
   </div>
 </div>
 
