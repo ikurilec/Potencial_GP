@@ -6510,27 +6510,15 @@ function pharmaOblastFromRegion(region) {
   return r;
 }
 
-function pharmaOblastForRep(username) {
-  // Primárne: statický zoznam West/East
-  if (MGR_AM_WEST.indexOf(username) !== -1) return 'BA';
-  if (MGR_AM_EAST.indexOf(username) !== -1) return 'KE';
-  // Fallback: region kód z USERS_LOCAL — 'KE*' = East, všetko ostatné = West
-  var region = (USERS_LOCAL[username] && USERS_LOCAL[username].region) || '';
-  if (String(region).toUpperCase().indexOf('KE') === 0) return 'KE';
-  return 'BA';
-}
-
 function pharmaGetOblast() {
-  if (document.body.classList.contains('manager-mode')) {
-    var dr = MGR_STATE.dynamicRegion;
-    if (dr === 'west') return 'BA';
-    if (dr === 'east') return 'KE';
-    // Admin: oblast podľa otvoreného reprezentanta
-    if (PL_STATE.detailRep) return pharmaOblastForRep(PL_STATE.detailRep);
-    return '';
-  }
   var session = getSession();
   if (!session) return '';
+  if (document.body.classList.contains('manager-mode')) {
+    // Manažér vidí detail konkrétneho reps — použi jeho region, rovnako ako keby sa prihlásil sám
+    var rep = PL_STATE.detailRep;
+    if (rep) return pharmaOblastFromRegion((USERS_LOCAL[rep] && USERS_LOCAL[rep].region) || '');
+    return '';
+  }
   return pharmaOblastFromRegion(
     (USERS_LOCAL[session.username] && USERS_LOCAL[session.username].region) || session.region || ''
   );
