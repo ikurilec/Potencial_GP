@@ -5727,7 +5727,7 @@ function plnenieMsLabelsHtml(year, q) {
     }
   }
   var isPast = (q < curQ);
-  var spans = ['<span class="' + (isPast ? 'active' : 'passed') + '">Za\u010diatok</span>'];
+  var spans = ['<span class="' + (q <= curQ ? 'active' : 'passed') + '">Za\u010diatok</span>'];
   for (var k = 0; k < milestones.length; k++) {
     var cls = '';
     if (isPast) {
