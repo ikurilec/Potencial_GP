@@ -692,7 +692,8 @@
   .mgr-plnenie-detail .month-rows{display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:0.5px solid #F1F5F9}
   .mgr-plnenie-detail .mrow{flex:1;text-align:center}
   .mgr-plnenie-detail .mrow-lbl{font-size:9.5px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
-  .mgr-plnenie-detail .mrow-lbl.current{color:#059669}
+  .mgr-plnenie-detail .mrow-lbl.past{color:#0C1E35}
+  .mgr-plnenie-detail .mrow-plan.past{color:#64748B}
   .mgr-plnenie-detail .mrow-val{font-size:12px;font-weight:700;font-family:'Outfit',sans-serif;margin-bottom:4px}
   .mgr-plnenie-detail .mrow-val.g{color:#059669}
   .mgr-plnenie-detail .mrow-val.o{color:#D97706}
@@ -813,7 +814,8 @@
   .rep-pl-inner .month-rows{display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:0.5px solid #F1F5F9}
   .rep-pl-inner .mrow{flex:1;text-align:center}
   .rep-pl-inner .mrow-lbl{font-size:9.5px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
-  .rep-pl-inner .mrow-lbl.current{color:#059669}
+  .rep-pl-inner .mrow-lbl.past{color:#0C1E35}
+  .rep-pl-inner .mrow-plan.past{color:#64748B}
   .rep-pl-inner .mrow-val{font-size:12px;font-weight:700;font-family:'Outfit',sans-serif;margin-bottom:4px}
   .rep-pl-inner .mrow-val.g{color:#059669}
   .rep-pl-inner .mrow-val.o{color:#D97706}
@@ -6024,10 +6026,11 @@ function plnenieRenderDetail() {
       var isFuture = (PL_STATE.q === curQ && m > curMonth) || PL_STATE.q > curQ;
       var mValCls = isFuture ? 'future' : ((mPlan > 0 && mVal > 0) ? plnenieDetailColorClass(mPct) : 'future');
       var mDisplay = mVal > 0 ? plnenieFormatEUR(mVal) : '\u2014';
+      var rowPast = !isFuture ? ' past' : '';
       return '<div class="mrow">' +
-        '<div class="mrow-lbl' + (isCurrent ? ' current' : '') + '">' + (PL_MONTH_LABELS[m] || 'M'+m) + '</div>' +
+        '<div class="mrow-lbl' + rowPast + '">' + (PL_MONTH_LABELS[m] || 'M'+m) + '</div>' +
         '<div class="mrow-val ' + mValCls + '">' + mDisplay + '</div>' +
-        (mPlan > 0 ? '<div class="mrow-plan">pl\u00e1n ' + plnenieFormatEUR(mPlan) + '</div>' : '') +
+        (mPlan > 0 ? '<div class="mrow-plan' + rowPast + '">pl\u00e1n ' + plnenieFormatEUR(mPlan) + '</div>' : '') +
       '</div>';
     }).join('');
 
@@ -6367,10 +6370,11 @@ function repPlnenieRender() {
       var isFuture = (REP_PL_STATE.q === curQ && m > curMonth) || REP_PL_STATE.q > curQ;
       var mValCls = isFuture ? 'future' : ((mPlan > 0 && mVal > 0) ? plnenieDetailColorClass(mPct) : 'future');
       var mDisplay = mVal > 0 ? plnenieFormatEUR(mVal) : '\u2014';
+      var rowPast = !isFuture ? ' past' : '';
       return '<div class="mrow">' +
-        '<div class="mrow-lbl' + (isCurrent ? ' current' : '') + '">' + (PL_MONTH_LABELS[m] || 'M'+m) + '</div>' +
+        '<div class="mrow-lbl' + rowPast + '">' + (PL_MONTH_LABELS[m] || 'M'+m) + '</div>' +
         '<div class="mrow-val ' + mValCls + '">' + mDisplay + '</div>' +
-        (mPlan > 0 ? '<div class="mrow-plan">pl\u00e1n ' + plnenieFormatEUR(mPlan) + '</div>' : '') +
+        (mPlan > 0 ? '<div class="mrow-plan' + rowPast + '">pl\u00e1n ' + plnenieFormatEUR(mPlan) + '</div>' : '') +
       '</div>';
     }).join('');
 
