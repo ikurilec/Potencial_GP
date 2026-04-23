@@ -146,6 +146,10 @@ Pharma dáta sa preloadujú pre všetky oblasti všetkých reprezentantov v 4 si
 
 V `preloadAllPharmaData()` sa iteruje cez `USERS_LOCAL`, zbierajú sa unikátne oblasti (`seenOblasts`) a pre každú sa fetchujú všetky kódy — bez normalizácie.
 
+#### Ďalšie fixy v v2.6.1
+- **Aflamil tbl a sáčky — default tab:** `PHARMA_CODES['aflamil_tablety_sacky']` = `['AFLtbl', 'AFLsach']` — Tablety sú prvé, teda `activeCode = codes[0] = AFLtbl`. Poradie v tomto poli určuje ktorý subtab sa zobrazí ako prvý.
+- **Q persistencia v manažérskom detaile:** `plnenieOpenDetail()` už nevynucuje prepnutie na aktuálny Q. `PL_STATE.q` sa zachová — ak manažér prepol na Q1 a klikne na reprezentanta, detail ostane na Q1. Defaultný Q (aktuálny) sa nastavuje raz pri `mgrEnter()`.
+
 ---
 
 ### v2.5.2 — Dynamický zoznam reprezentantov zo Sheets
@@ -234,7 +238,7 @@ V `preloadAllPharmaData()` sa iteruje cez `USERS_LOCAL`, zbierajú sa unikátne 
 - Milestone čiary delené podľa pracovných dní — čierne, vyčnievajú po stranách, sivé % popisky
 - Trend plnenia cez kvartály — stĺpcový graf, farby podľa výkonu (g/o/r)
 - **Paralelný load** všetkých 4 kvartálov naraz → okamžité prepínanie Q tabov bez fetchu
-- Detail vždy otvára aktuálny Q (defaultne)
+- Detail pri prvom otvorení (po prihlásení) otvára aktuálny Q — ale zachováva vybraný Q ak manažér manuálne prepol na iný Q pred kliknutím na reprezentanta
 - Všetci reprezentanti klikateľní aj bez dát (zobrazí "Žiadne dáta")
 - Skrátený názov: "Aflamil tbl a sáčky", fix zalamovanie v Slovensko sumári
 - Poradie produktov: Aflamil skupina pohromade (`PL_PRODUCT_ORDER`)
@@ -578,7 +582,7 @@ var PL_STATE = {
 - `plnenieSumLabel()` — "Slovensko" / "West" / "East" podľa roly
 - `plnenieColorClass(pct)` — `pl-g` ≥100%, `pl-o` 95–99,99%, `pl-r` <95% (pre sumár/zoznam)
 - `plnenieDetailColorClass(pct)` — `g`/`o`/`r`/`none` (pre detail view, bez pl- prefixu)
-- `plnenieOpenDetail(username)` — otvorí detail, prepne na aktuálny Q
+- `plnenieOpenDetail(username)` — otvorí detail, zachová aktuálne zvolený `PL_STATE.q` (neprepisuje na curQ)
 - `plnenieMilestonesHtml(year, q)` — HTML pre milestone čiary v progress bare
 - `plnenieMonthlyPlans(year, q, total)` — rozdelí Q plán na mesiace podľa pracovných dní
 - `PL_WORKING_DAYS_MAP` — pracovné dni per mesiac pre 2026 (pri novom roku treba doplniť)
