@@ -4960,9 +4960,10 @@ function buildRepData(reps) {
   MGR_ROLE_CFG.amwest.reps = MGR_AM_WEST;
   MGR_ROLE_CFG.ameast.reps = MGR_AM_EAST;
 
-  // Ak je manažér práve prihlásený, prekreslí zoznam reprezentantov
+  // Ak je manažér práve prihlásený, prekreslí zoznam reprezentantov a predloaduje pharma dáta
   if (document.body.classList.contains('manager-mode') && typeof mgrRenderReps === 'function') {
     mgrRenderReps();
+    preloadAllPharmaData();
   }
 }
 
@@ -6739,23 +6740,8 @@ function preloadAllPharmaData() {
   var session = getSession();
   if (!session) return;
 
-  var oblasts = [];
-  var isMgr = document.body.classList.contains('manager-mode');
-  if (isMgr) {
-    var dr = MGR_STATE.dynamicRegion;
-    if (dr === 'west')       oblasts = ['BA'];
-    else if (dr === 'east')  oblasts = ['KE'];
-    else                     oblasts = ['BA', 'KE']; // admin vidí obe oblasti
-  } else {
-    var o = pharmaOblastFromRegion(
-      (USERS_LOCAL[session.username] && USERS_LOCAL[session.username].region) || session.region || ''
-    );
-    if (o) oblasts = [o];
-  }
-  if (!oblasts.length) return;
-
-  var q    = (isMgr ? PL_STATE.q    : REP_PL_STATE.q)    || plnenieCurrentQ();
-  var year = (isMgr ? PL_STATE.year : REP_PL_STATE.year) || (new Date()).getFullYear();
+  var q    = REP_PL_STATE.q    || plnenieCurrentQ();
+  var year = REP_PL_STATE.year || (new Date()).getFullYear();
   var kvartal = pharmaKvartalCode(year, q);
 
   var allCodes = [];
@@ -6765,11 +6751,21 @@ function preloadAllPharmaData() {
     });
   });
 
-  oblasts.forEach(function(oblast) {
-    allCodes.forEach(function(code) {
-      loadPharmaData(code, oblast, kvartal);
+  if (document.body.classList.contains('manager-mode')) {
+    // Pre každého reps predloaduj jeho vlastnú oblast — rovnaká logika ako pri rep login
+    var seenOblasts = {};
+    Object.keys(USERS_LOCAL).forEach(function(username) {
+      var oblast = pharmaOblastFromRegion((USERS_LOCAL[username] && USERS_LOCAL[username].region) || '');
+      if (!oblast || seenOblasts[oblast]) return;
+      seenOblasts[oblast] = true;
+      allCodes.forEach(function(code) { loadPharmaData(code, oblast, kvartal); });
     });
-  });
+  } else {
+    var oblast = pharmaOblastFromRegion(
+      (USERS_LOCAL[session.username] && USERS_LOCAL[session.username].region) || session.region || ''
+    );
+    if (oblast) allCodes.forEach(function(code) { loadPharmaData(code, oblast, kvartal); });
+  }
 }
 
 // ── PULL-TO-REFRESH pre manažérsky zoznam ──
