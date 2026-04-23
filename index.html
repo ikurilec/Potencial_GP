@@ -6185,9 +6185,17 @@ function repPlnenieLoad() {
         pending--;
         if (pending === 0) {
           REP_PL_STATE.loading = false;
-          if (!REP_PL_STATE.loaded) {
-            var overlay = document.getElementById('rep-plnenie-overlay');
-            if (overlay && overlay.classList.contains('show')) repPlnenieRender();
+          // Vždy re-render keď všetky fetche skončia — opravuje zaseknutý loading state
+          // ak user prepol Q tab počas načítavania
+          var overlay = document.getElementById('rep-plnenie-overlay');
+          if (overlay && overlay.classList.contains('show')) {
+            var cached = REP_PL_STATE.qCache[REP_PL_STATE.q];
+            if (cached) {
+              REP_PL_STATE.data = cached.data;
+              REP_PL_STATE.aggregates = cached.aggregates;
+              REP_PL_STATE.loaded = true;
+            }
+            repPlnenieRender();
           }
         }
       });
