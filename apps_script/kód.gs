@@ -337,6 +337,58 @@ function doGet(e) {
       });
     }
 
+    // ── PHARMA MS DÁTA ──
+    // URL: ?action=getPharmaData&oblast=KE   (mesiac voliteľný — default = najnovší)
+    if(action === 'getPharmaData') {
+      var oblast = (e.parameter.oblast || '').trim().toUpperCase();
+      if(!oblast) return jsonResponse({ok: false, error: 'missing oblast'});
+
+      var sheet = ss.getSheetByName('PharmaData');
+      if(!sheet) return jsonResponse({ok: false, error: 'Sheet PharmaData nenajdeny'});
+
+      var rows = sheet.getDataRange().getValues();
+      if(rows.length < 2) return jsonResponse({ok: true, mesiac: '', rows: []});
+
+      var hdr = rows[0].map(function(h){ return String(h||'').trim().toLowerCase(); });
+      var iMesiac = hdr.indexOf('mesiac');
+      var iProdukt = hdr.indexOf('produkt_kod');
+      var iOblast  = hdr.indexOf('oblast');
+      var iOkres   = hdr.indexOf('okres');
+      var iNasMs   = hdr.indexOf('nas_ms');
+      var iK1n = hdr.indexOf('k1_nazov'), iK1ms = hdr.indexOf('k1_ms');
+      var iK2n = hdr.indexOf('k2_nazov'), iK2ms = hdr.indexOf('k2_ms');
+      var iK3n = hdr.indexOf('k3_nazov'), iK3ms = hdr.indexOf('k3_ms');
+
+      // Najdi najnovší mesiac pre daný región
+      var mesiacParam = (e.parameter.mesiac || '').trim();
+      if(!mesiacParam) {
+        var mesiace = [];
+        for(var i = 1; i < rows.length; i++){
+          var m = String(rows[i][iMesiac]||'').trim();
+          if(m && mesiace.indexOf(m) < 0) mesiace.push(m);
+        }
+        mesiace.sort();
+        mesiacParam = mesiace[mesiace.length - 1] || '';
+      }
+
+      var result = [];
+      for(var i = 1; i < rows.length; i++){
+        var r = rows[i];
+        if(String(r[iMesiac]).trim() !== mesiacParam) continue;
+        if(String(r[iOblast]).trim().toUpperCase() !== oblast) continue;
+        var nasMs = parseFloat(r[iNasMs]) || 0;
+        result.push({
+          produkt: String(r[iProdukt]||'').trim(),
+          okres:   String(r[iOkres]||'').trim(),
+          nas_ms:  nasMs,
+          k1: { n: String(r[iK1n]||'').trim(), ms: parseFloat(r[iK1ms])||0 },
+          k2: { n: String(r[iK2n]||'').trim(), ms: parseFloat(r[iK2ms])||0 },
+          k3: { n: String(r[iK3n]||'').trim(), ms: parseFloat(r[iK3ms])||0 }
+        });
+      }
+      return jsonResponse({ok: true, mesiac: mesiacParam, rows: result});
+    }
+
     return jsonResponse({error: 'unknown action'});
 
   } catch(err) {
