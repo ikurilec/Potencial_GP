@@ -26,7 +26,7 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.2.56** (na `main` vetve) — obsahuje:
+**2.2.57** (na `main` vetve) — obsahuje:
 - Pull-to-refresh (blokovaný pri otvorených overlayoch)
 - Rebríček (s iOS/Android fixom)
 - Dynamické načítavanie AM West/East zo Sheets
@@ -40,7 +40,41 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.5.0** — obsahuje všetko z 2.4.4 plus zjednotená navigácia História/Rebríček/Plnenie, rebríček ako inline subtab pre manažérov, a pre-loading dát po prihlásení. **Zostáva na `test` vetve až kým nebudú plány nahodené v Google Sheets.**
+**2.5.2** — obsahuje všetko z 2.5.0 plus dynamický zoznam reprezentantov zo Sheets a oprava ke.rep → a.makis. **Zostáva na `test` vetve až kým nebudú plány nahodené v Google Sheets.**
+
+### v2.5.2 — Dynamický zoznam reprezentantov zo Sheets
+
+**Kľúčová zmena:** Mená, skupiny (West/East) a regióny reprezentantov sa už **nenachádzajú hardcoded v kóde**. Po prihlásení appka fetchne zoznam zo Sheets cez nový endpoint `getRepList`.
+
+#### Čo bolo hardcoded a teraz je dynamické:
+- `MGR_REP_NAMES` — mapa username → celé meno
+- `MGR_AM_WEST` / `MGR_AM_EAST` / `MGR_ALL` — skupiny West/East
+- `MGR_ROLE_CFG` — reps polia pre jednotlivé roly
+- `LB_REP_INFO` — info pre rebríček (meno, región, farba)
+- `LB_ALL_REPS` — poradie v rebríčku
+- `USERS_LOCAL` — fallback región per username
+
+#### Nové funkcie:
+- `loadRepList()` — fetchne `?action=getRepList`, zavolá `buildRepData()`, pri chybe ticho failne
+- `buildRepData(reps)` — z poľa `{login, meno, rola, region}` zostaví všetky vyššie konštanty. West prídu pred East (v poradí zo Sheets). Farby avatárov v rebríčku sú auto-pridelené z `LB_COLOR_PALETTE` (12 farieb, cyklicky).
+- `REP_LIST_STATE` — `{ loaded, loading }` — guard proti dvojitému fetchu
+
+#### Kedy sa volá:
+- Hneď pri `loginSuccess()` (pred setTimeout pre lbLoadData/plnenie)
+- Hneď pri `initLogin()` pre vracajúce sa session (pred mgrRole kontrolou)
+
+#### Fallback (keď getRepList ešte nenačítal):
+- `lbRender()` — ak `LB_ALL_REPS` je prázdne, zobrazí reprezentantov z `Object.keys(LB_STATE.data)` (tí čo majú nejaké záznamy)
+- Všetky ostatné moduly — prázdne polia/objekty, kým sa nenačíta
+
+#### Apps Script (`apps_script/kód.gs`):
+- Nový endpoint `?action=getRepList` — číta záložku `Pouzivatelia`, vracia všetky riadky kde `rola === 'rep west'` alebo `rola === 'rep east'`
+- Odpoveď: `{ ok: true, reps: [{login, meno, rola, region}, ...] }`
+- **DÔLEŽITÉ:** Po aktualizácii Apps Script treba nasadiť novú verziu (Nasadiť → Spravovať nasadenia → Nová verzia) — bez toho sa endpoint neprejaví
+
+### v2.5.1 — Oprava ke.rep → a.makis (Andrej Makiš, KE)
+- Premenovaný účet `ke.rep` → `a.makis` vo všetkých miestach kde bol hardcoded
+- Platné len historicky — od v2.5.2 sú tieto údaje dynamické zo Sheets
 
 ### v2.5.0 — Zjednotená navigácia + pre-loading
 
@@ -204,7 +238,7 @@ Motivačné texty v appke sú v **druhej osobe (tykanie)**, po slovensky, kolegi
 
 ### Vizuálna kontinuita
 
-**Aktuálna verzia 2.2.56 je vizuálny baseline appky.** Všetky nové features, úpravy a rozšírenia musia rešpektovať existujúci dizajnový jazyk:
+**Aktuálna verzia 2.2.57 je vizuálny baseline appky.** Všetky nové features, úpravy a rozšírenia musia rešpektovať existujúci dizajnový jazyk:
 
 - Farebná paleta
 - Typografia (font, veľkosti, váhy)
@@ -303,7 +337,8 @@ Predtým, ako Claude zmerguje `test` → `main`, MUSÍ sa Ivana opýtať a prejs
 - [ ] Scroll pill sa zobrazuje správne pod kartou lekára
 
 ### 3. Admin mode (ak relevantné)
-- [ ] AM West/East sa dynamicky načítajú zo Sheets
+- [ ] Zoznam reprezentantov sa načíta zo Sheets (`getRepList`) — mená v rebríčku a manažérskom view sú správne
+- [ ] AM West/East rozdelenie sedí podľa Sheets (nie hardcoded)
 - [ ] Manažéri vidia admin funkcie
 
 ### 4. Konkrétny feature, na ktorom sa pracovalo
@@ -511,4 +546,4 @@ DEV mode zatiaľ **nie je implementovaný** (chýba v oboch vetvách). Na `test`
 - **Commit správy v slovenčine**, semantické verzovanie.
 - **Primárny user je mobil** — vždy testuj responzívne zobrazenie.
 - **DEV mode musí vždy fungovať.** Pri každej zmene dát zo Sheets aktualizuj mock dáta. Bez toho sa test vetva pokazí.
-- **Dizajn v2.2.56 je baseline.** Drž sa existujúceho štýlu, nemeň ho bez explicitného pokynu. Všetko musí byť použiteľné bez manuálu.
+- **Dizajn v2.2.57 je baseline.** Drž sa existujúceho štýlu, nemeň ho bez explicitného pokynu. Všetko musí byť použiteľné bez manuálu.
