@@ -40,7 +40,16 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.4.3** — obsahuje všetko z 2.2.56 plus kompletný Plnenie modul (manažérsky aj reprezentantský pohľad) a rebríček pre manažérov. **Zámerné rozhodnutie: zostáva na `test` vetve až kým nebudú plány nahodené v Google Sheets. Potom otestovať s reálnymi dátami a pushnúť do `main`.**
+**2.4.4** — obsahuje všetko z 2.4.3 plus predikcia plnenia. **Zámerné rozhodnutie: zostáva na `test` vetve až kým nebudú plány nahodené v Google Sheets. Potom otestovať s reálnymi dátami a pushnúť do `main`.**
+
+### v2.4.4 — Predikcia plnenia konca kvartálu
+- **Vzorec:** skutočné predaje za dokončené mesiace / mesačný plán pre tie mesiace. Mesačný plán = (Q plán / všetky pracovné dni v Q) × pracovné dni daného mesiaca.
+- **Zobrazuje sa len pre aktuálny Q** a len ak existuje aspoň 1 dokončený mesiac (m < curMonth).
+- **Tmavá súhrnná karta** (detail reprezentanta aj rep Plnenie overlay) — riadok "predikcia konca kvartálu XX%" pod čiarou oddeľovača
+- **Trend graf** — prerušovaný šedý stĺpec pre aktuálny Q namiesto plného, pod ním popisok "predikcia". Míľniky (čierne deliace čiary) zobrazené iba pre aktuálny Q počas behu — nie pre minulé Q ani predikciu.
+- **Per-produkt** — riadok s predikciou pod každým produktom, vycentrovaný
+- **Slovensko / West / East sumárne karty** — predikcia v každej karte (funkcia `plnenieCalcPredikciaSummary` používa predajeEUR / súčet mesačných plánov pre dokončené mesiace)
+- Kľúčové funkcie: `plnenieCalcPredikcia(q, year, qPlanTotal, predajeByMonth, productKey)`, `plnenieCalcPredikciaSummary(qPlanTotal, predajeEUR, q, year)`
 
 ### v2.3.0 — Plnenie (Predaje vs Plán) — manažérsky modul
 - Nový tab 💊 **Plnenie** v manažérskom pohľade (vedľa Návštevy)
