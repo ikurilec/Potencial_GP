@@ -6515,9 +6515,11 @@ function pharmaGetOblast() {
     var dr = MGR_STATE.dynamicRegion;
     if (dr === 'west') return 'BA';
     if (dr === 'east') return 'KE';
-    // Admin: pokús sa zistiť oblast z otvoreného detailu reprezentanta
-    if (PL_STATE.detailRep && USERS_LOCAL[PL_STATE.detailRep]) {
-      return pharmaOblastFromRegion(USERS_LOCAL[PL_STATE.detailRep].region);
+    // Admin: podľa toho, v ktorom regióne je otvorený reprezentant
+    var rep = PL_STATE.detailRep;
+    if (rep) {
+      if (MGR_AM_WEST.indexOf(rep) !== -1) return 'BA';
+      if (MGR_AM_EAST.indexOf(rep) !== -1) return 'KE';
     }
     return '';
   }
