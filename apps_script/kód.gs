@@ -39,7 +39,6 @@ function doGet(e) {
       return ContentService.createTextOutput('OK').setMimeType(ContentService.MimeType.TEXT);
     }
 
-
     // ── VŠETKY HISTÓRIE NARAZ (pre manažérsky dashboard) ──
     if(action === 'getAllHistory') {
       var sheet = ss.getSheets()[0];
@@ -217,6 +216,25 @@ function doGet(e) {
       return jsonResponse(result);
     }
 
+    // ── ZOZNAM VŠETKÝCH REPREZENTANTOV (pre dynamické načítanie v appke) ──
+    if(action === 'getRepList') {
+      var sheet = ss.getSheetByName('Pouzivatelia');
+      if(!sheet) return jsonResponse({ok: false, error: 'Sheet Pouzivatelia nenajdeny'});
+      var rows = sheet.getDataRange().getValues();
+      var reps = [];
+      for(var i = 1; i < rows.length; i++) {
+        var login  = String(rows[i][0] || '').trim();
+        var meno   = String(rows[i][2] || '').trim();
+        var rola   = String(rows[i][3] || '').trim().toLowerCase();
+        var region = String(rows[i][4] || '').trim();
+        if(!login || !meno) continue;
+        if(rola === 'rep west' || rola === 'rep east') {
+          reps.push({ login: login, meno: meno, rola: rola, region: region });
+        }
+      }
+      return jsonResponse({ok: true, reps: reps});
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // PLNENIE ENDPOINTS — case-insensitive matching produktov
     // ═══════════════════════════════════════════════════════════════════
@@ -243,6 +261,7 @@ function doGet(e) {
 
     // ── PLNENIE PRE VŠETKÝCH REPOV (admin pohľad) ──
     // URL: ?action=getPlnenieAll&rok=2026&Q=1
+    // Q1 → záložka "Predaje", Q2–Q4 → záložka "Predaje_2"
     if(action === 'getPlnenieAll') {
       var rokA = parseInt(e.parameter.rok) || 2026;
       var qA = parseInt(e.parameter.Q) || 1;
@@ -251,7 +270,7 @@ function doGet(e) {
       // PLAN: načítaj hlavičku a všetkých repov
       var planSheet = ss.getSheetByName('Plan');
       var planByRep = {};
-      var planProducts = []; // zachovaj pôvodné názvy v hlavičke
+      var planProducts = [];
       if(planSheet) {
         var planRows = planSheet.getDataRange().getValues();
         if(planRows.length >= 2) {
@@ -275,8 +294,9 @@ function doGet(e) {
         }
       }
 
-      // PREDAJE
-      var predajeSheet = ss.getSheetByName('Predaje');
+      // PREDAJE: Q1 → "Predaje", Q2–Q4 → "Predaje_2"
+      var predajeSheetName = (qA === 1) ? 'Predaje' : 'Predaje_2';
+      var predajeSheet = ss.getSheetByName(predajeSheetName);
       var predajeByRep = {};
       var predajeProducts = [];
       if(predajeSheet) {
@@ -325,37 +345,31 @@ function doGet(e) {
 }
 
 // Helper: normalizuje názov produktu pre case-insensitive porovnávanie
-// "Junod" → "junod", "JUNOD" → "junod", " Aflamil_KR " → "aflamil_kr"
 function normalizeProd(name) {
   if(!name) return '';
   return String(name).trim().toLowerCase();
 }
 
 // Helper: robustné parsovanie čísla z Sheet bunky.
-// Zvláda text s čiarkou ("3916,20"), thousand separators ("3 916,20", NBSP, úzku medzeru),
-// menou ("3916,20 €") a chybne uložené Date objekty (vráti 0).
-// Použitie v Plan/Predaje spracovaní (nie pre HISTORY — tá má vlastný num()).
 function parseNum(v) {
   if (v == null || v === '') return 0;
   if (typeof v === 'number') return isNaN(v) ? 0 : v;
-  if (v instanceof Date) return 0;                              // Date v Predaje/Plan = chyba dát
+  if (v instanceof Date) return 0;
   var s = String(v).trim();
   if (!s) return 0;
-  // Odstráň thousand separators (medzera, nbsp, úzka medzera, apostrof)
   s = s.replace(/[\s\u00A0\u202F']/g, '');
-  // Ak má aj čiarku aj bodku → bodka je thousand (EU), čiarka decimal. "1.234,56" → "1234.56"
   if (s.indexOf(',') !== -1 && s.indexOf('.') !== -1) {
     s = s.replace(/\./g, '').replace(',', '.');
   } else if (s.indexOf(',') !== -1) {
     s = s.replace(',', '.');
   }
-  // Odstráň menu a nečíselné znaky (€, $, písmená)
   s = s.replace(/[^\d.\-]/g, '');
   var n = parseFloat(s);
   return isNaN(n) ? 0 : n;
 }
 
 // Helper: zostaví plán + predaje pre jedného repa a konkrétny Q
+// Q1 → záložka "Predaje", Q2–Q4 → záložka "Predaje_2"
 function buildPlnenieForRep(ss, rep, rok, q) {
   var qMonths = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[q] || [];
 
@@ -385,10 +399,11 @@ function buildPlnenieForRep(ss, rep, rok, q) {
     }
   }
 
-  // Predaje
+  // Predaje: Q1 → "Predaje", Q2–Q4 → "Predaje_2"
   var predaje = { total: {}, byMonth: {} };
   var predajeProducts = [];
-  var predajeSheet = ss.getSheetByName('Predaje');
+  var predajeSheetName = (q === 1) ? 'Predaje' : 'Predaje_2';
+  var predajeSheet = ss.getSheetByName(predajeSheetName);
   if(predajeSheet) {
     var prRows = predajeSheet.getDataRange().getValues();
     if(prRows.length >= 2) {
