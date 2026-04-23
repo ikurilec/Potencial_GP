@@ -149,6 +149,9 @@ V `preloadAllPharmaData()` sa iteruje cez `USERS_LOCAL`, zbierajú sa unikátne 
 #### Ďalšie fixy v v2.6.1
 - **Aflamil tbl a sáčky — default tab:** `PHARMA_CODES['aflamil_tablety_sacky']` = `['AFLtbl', 'AFLsach']` — Tablety sú prvé, teda `activeCode = codes[0] = AFLtbl`. Poradie v tomto poli určuje ktorý subtab sa zobrazí ako prvý.
 - **Q persistencia v manažérskom detaile:** `plnenieOpenDetail()` už nevynucuje prepnutie na aktuálny Q. `PL_STATE.q` sa zachová — ak manažér prepol na Q1 a klikne na reprezentanta, detail ostane na Q1. Defaultný Q (aktuálny) sa nastavuje raz pri `mgrEnter()`.
+- **Farba míľnikov a popiskov (ms-labels):** Pre minulé Q dostávajú všetky popisky (Začiatok, Jan·32%, Feb·65%, Koniec Mar) triedu `active` → čierne. Pre aktuálny Q: Začiatok + uplynulé mesiace = `active` (čierne), budúce = default (šedé). Milestone čiarky: budúce dostávajú triedu `future` → `background:#CBD5E1` (šedé).
+- **Farba mesiacov v month-rows:** Trieda `past` (= `!isFuture`) sa pridáva na `mrow-lbl` aj `mrow-plan` → `color:#0C1E35` (čierna). Budúce mesiace ostávajú šedé. Font `mrow-plan` zjednotený s `mrow-lbl` (9.5px, bold, letter-spacing).
+- **prod-money vycentrovaný:** `text-align:center` na `.mrow-plan` aj `.prod-money` v oboch scopoch (`mgr-plnenie-detail` aj `rep-pl-inner`).
 
 ---
 
