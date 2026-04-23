@@ -72,6 +72,11 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 - Odpoveď: `{ ok: true, reps: [{login, meno, rola, region}, ...] }`
 - **DÔLEŽITÉ:** Po aktualizácii Apps Script treba nasadiť novú verziu (Nasadiť → Spravovať nasadenia → Nová verzia) — bez toho sa endpoint neprejaví
 
+### v2.5.3 — Fix prázdnych reprezentantov pri prvom otvorení
+- **Problém:** v2.5.2 vyčistil všetky polia na prázdne (`MGR_ALL = []`, `LB_ALL_REPS = []` atď.). Manažérsky view sa vykreslil okamžite po prihlásení, ale `getRepList` ešte nedobehol → zobrazilo "žiadni reprezentanti".
+- **Riešenie:** Hardcoded defaults zostávajú ako okamžitá záloha. Keď `getRepList` dobeží, `buildRepData()` ich prepíše dátami zo Sheets. Ak `getRepList` zlyhá, app funguje s defaults.
+- **Pravidlo do budúcna:** Pri dynamickom načítaní zo Sheets vždy zachovaj hardcoded defaults ako fallback — nikdy neštartuj s prázdnymi poliami.
+
 ### v2.5.1 — Oprava ke.rep → a.makis (Andrej Makiš, KE)
 - Premenovaný účet `ke.rep` → `a.makis` vo všetkých miestach kde bol hardcoded
 - Platné len historicky — od v2.5.2 sú tieto údaje dynamické zo Sheets
