@@ -3665,21 +3665,8 @@ function clearSession() {
   } catch(e){}
 }
 
-// ── Región reprezentantov (len pre fallback ak session nemá región) ──
-var USERS_LOCAL = {
-  'j.bohovic':    { region: 'BAMA' },
-  'v.hatinova':   { region: 'BASE' },
-  'v.hromadkova': { region: 'TN'   },
-  'z.lescis':     { region: 'DS'   },
-  'j.krkoska':    { region: 'MT'   },
-  'i.kozakova':   { region: 'NR'   },
-  'k.czidor':     { region: 'LV'   },
-  'o.rad':        { region: 'RS'   },
-  'l.macakova':   { region: 'PP'   },
-  'z.lapsan':     { region: 'PO'   },
-  'm.sabol':      { region: 'MI'   },
-  'a.makis':      { region: 'KE'   },
-};
+// ── Región reprezentantov — dynamicky plnené zo Sheets cez loadRepList() ──
+var USERS_LOCAL = {};
 
 function loginSuccess(username, name, role, region) {
   var user = { username: username, name: name, role: role, region: region || '' };
@@ -3689,6 +3676,7 @@ function loginSuccess(username, name, role, region) {
   try { mgrDedupUnique(); } catch(e){}
   updateHdrForUser(user);
   pingLogin(username);
+  loadRepList();
   // Vyčisti akékoľvek stuck body štýly (position:fixed z tutoriálu, lockScroll atď.)
   document.body.style.position = '';
   document.body.style.top = '';
@@ -3861,6 +3849,7 @@ function initLogin() {
     }
     updateHdrForUser(session);
     pingLogin(session.username);
+    loadRepList();
     var mgrRole = mgrDetectRole(session);
     if(mgrRole){
       mgrEnter(mgrRole);
@@ -3895,24 +3884,11 @@ document.addEventListener('DOMContentLoaded', function(){
 //   MANAGER MODE — dashboard pre BUM / admin / boss / AM West / AM East
 // ═══════════════════════════════════════════════════════════
 
-// Username → Celé meno (pre zobrazenie v karte)
-var MGR_REP_NAMES = {
-  'j.bohovic':    'Jaroslava Bohovičová',
-  'v.hatinova':   'Viktória Hatinová',
-  'v.hromadkova': 'Vladimíra Hromádková',
-  'z.lescis':     'Zuzana Leščišinová',
-  'j.krkoska':    'Juraj Krkoška',
-  'i.kozakova':   'Ida Kozáková',
-  'k.czidor':     'Katarína Czidor',
-  'o.rad':        'Olexandra Rad',
-  'l.macakova':   'Lenka Mačáková',
-  'z.lapsan':     'Zuzana Lapšanská',
-  'm.sabol':      'Michal Sabol',
-  'a.makis':      'Andrej Makiš'
-};
-var MGR_AM_WEST = ['j.bohovic','v.hatinova','v.hromadkova','z.lescis','j.krkoska','i.kozakova'];
-var MGR_AM_EAST = ['k.czidor','o.rad','l.macakova','z.lapsan','m.sabol','a.makis'];
-var MGR_ALL = MGR_AM_WEST.concat(MGR_AM_EAST);
+// Username → Celé meno — dynamicky plnené zo Sheets cez loadRepList()
+var MGR_REP_NAMES = {};
+var MGR_AM_WEST = [];
+var MGR_AM_EAST = [];
+var MGR_ALL = [];
 
 var MGR_ROLE_CFG = {
   bum:    { label:'BUM',     title:'Všetci reprezentanti',      reps:MGR_ALL },
@@ -4832,23 +4808,76 @@ function wnClose(){
 
 var LB_STATE = { period: 'month', data: null, loading: false };
 
-var LB_REP_INFO = {
-  'j.bohovic':    { name: 'Jaroslava Bohovičová', region: 'BAMA', color: 'linear-gradient(135deg,#1E40AF,#3B82F6)' },
-  'v.hatinova':   { name: 'Viktória Hatinová',    region: 'BASE', color: 'linear-gradient(135deg,#0E7490,#22D3EE)' },
-  'v.hromadkova': { name: 'Vladimíra Hromádková', region: 'TN',   color: 'linear-gradient(135deg,#9D174D,#EC4899)' },
-  'z.lescis':     { name: 'Zuzana Leščišinová',   region: 'DS',   color: 'linear-gradient(135deg,#7C3AED,#A78BFA)' },
-  'j.krkoska':    { name: 'Juraj Krkoška',         region: 'MT',   color: 'linear-gradient(135deg,#0E7490,#06B6D4)' },
-  'i.kozakova':   { name: 'Ida Kozáková',          region: 'NR',   color: 'linear-gradient(135deg,#065F46,#10B981)' },
-  'k.czidor':     { name: 'Katarína Czidor',       region: 'LV',   color: 'linear-gradient(135deg,#B45309,#F59E0B)' },
-  'o.rad':        { name: 'Olexandra Rad',         region: 'RS',   color: 'linear-gradient(135deg,#DC2626,#F87171)' },
-  'l.macakova':   { name: 'Lenka Mačáková',        region: 'PP',   color: 'linear-gradient(135deg,#374151,#6B7280)' },
-  'z.lapsan':     { name: 'Zuzana Lapšanská',      region: 'PO',   color: 'linear-gradient(135deg,#7C3AED,#C084FC)' },
-  'm.sabol':      { name: 'Michal Sabol',          region: 'MI',   color: 'linear-gradient(135deg,#059669,#10B981)' },
-  'a.makis':      { name: 'Andrej Makiš',           region: 'KE',   color: 'linear-gradient(135deg,#1E1B4B,#4338CA)' }
-};
+// Farebná paleta pre auto-pridelenie farieb v rebríčku
+var LB_COLOR_PALETTE = [
+  'linear-gradient(135deg,#1E40AF,#3B82F6)',
+  'linear-gradient(135deg,#0E7490,#22D3EE)',
+  'linear-gradient(135deg,#9D174D,#EC4899)',
+  'linear-gradient(135deg,#7C3AED,#A78BFA)',
+  'linear-gradient(135deg,#065F46,#10B981)',
+  'linear-gradient(135deg,#B45309,#F59E0B)',
+  'linear-gradient(135deg,#DC2626,#F87171)',
+  'linear-gradient(135deg,#374151,#6B7280)',
+  'linear-gradient(135deg,#059669,#34D399)',
+  'linear-gradient(135deg,#1E1B4B,#4338CA)',
+  'linear-gradient(135deg,#92400E,#D97706)',
+  'linear-gradient(135deg,#831843,#DB2777)'
+];
 
-var LB_ALL_REPS = ['j.bohovic','v.hatinova','v.hromadkova','z.lescis','j.krkoska','i.kozakova',
-                   'k.czidor','o.rad','l.macakova','z.lapsan','m.sabol','a.makis'];
+// Dynamicky plnené zo Sheets cez loadRepList()
+var LB_REP_INFO = {};
+var LB_ALL_REPS = [];
+
+var REP_LIST_STATE = { loaded: false, loading: false };
+
+function buildRepData(reps) {
+  var west = reps.filter(function(r){ return r.rola === 'rep west'; });
+  var east = reps.filter(function(r){ return r.rola === 'rep east'; });
+  var all = west.concat(east);
+
+  MGR_AM_WEST = west.map(function(r){ return r.login; });
+  MGR_AM_EAST = east.map(function(r){ return r.login; });
+  MGR_ALL = all.map(function(r){ return r.login; });
+  LB_ALL_REPS = MGR_ALL.slice();
+
+  MGR_REP_NAMES = {};
+  LB_REP_INFO = {};
+  USERS_LOCAL = {};
+
+  all.forEach(function(r, idx){
+    var color = LB_COLOR_PALETTE[idx % LB_COLOR_PALETTE.length];
+    MGR_REP_NAMES[r.login] = r.meno;
+    LB_REP_INFO[r.login]   = { name: r.meno, region: r.region, color: color };
+    USERS_LOCAL[r.login]   = { region: r.region };
+  });
+
+  MGR_ROLE_CFG.bum.reps    = MGR_ALL;
+  MGR_ROLE_CFG.admin.reps  = MGR_ALL;
+  MGR_ROLE_CFG.boss.reps   = MGR_ALL;
+  MGR_ROLE_CFG.pm.reps     = MGR_ALL;
+  MGR_ROLE_CFG.amwest.reps = MGR_AM_WEST;
+  MGR_ROLE_CFG.ameast.reps = MGR_AM_EAST;
+}
+
+function loadRepList() {
+  if (REP_LIST_STATE.loaded || REP_LIST_STATE.loading) return;
+  REP_LIST_STATE.loading = true;
+  fetch(SCRIPT_URL + '?action=getRepList', { cache: 'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      REP_LIST_STATE.loading = false;
+      if (data.ok && data.reps && data.reps.length) {
+        buildRepData(data.reps);
+        REP_LIST_STATE.loaded = true;
+        // Prerender ak je rebríček otvorený
+        var lbEl = document.getElementById('lb-overlay');
+        if (lbEl && lbEl.classList.contains('show')) lbRender();
+        var mgrLb = document.getElementById('mgr-lb-body');
+        if (mgrLb && document.body.classList.contains('mgr-subtab-leaderboard')) lbRender();
+      }
+    })
+    .catch(function(){ REP_LIST_STATE.loading = false; });
+}
 
 function openLeaderboard(){
   var overlay = document.getElementById('lb-overlay');
@@ -4980,7 +5009,8 @@ function lbRender(){
   var session = getSession();
   var myUsername = session ? session.username : '';
 
-  var ranking = LB_ALL_REPS.map(function(username){
+  var repsToShow = LB_ALL_REPS.length > 0 ? LB_ALL_REPS : Object.keys(LB_STATE.data || {});
+  var ranking = repsToShow.map(function(username){
     var info = LB_REP_INFO[username] || { name: username, region: '', color: 'linear-gradient(135deg,#374151,#6B7280)' };
     return { username: username, name: info.name, region: info.region, color: info.color,
              count: lbCountVisits(LB_STATE.data[username], LB_STATE.period) };
