@@ -40,7 +40,7 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.6.0** — obsahuje všetko z 2.5.x plus nový modul Trhový podiel (pharma MS overlay). **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.6.1** — obsahuje všetko z 2.6.0 plus Trhový podiel v manažérskom móde. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
 
 ### v2.6.0 — Trhový podiel (Pharma MS overlay)
 
@@ -113,6 +113,38 @@ Pharma dáta sa fetchujú **paralelne na pozadí** v 3 situáciách:
 Tým je zaistené, že keď reprezentant klikne na Trhový podiel, dáta sú už v cache → žiadny spinner.
 
 **Pravidlo:** `PHARMA_STATE.loading` je **objekt** (nie boolean) — každý cacheKey má vlastný flag → paralelné fetche fungujú bez blokovania.
+
+---
+
+### v2.6.1 — Trhový podiel v manažérskom móde
+
+#### Čo je nové
+Tlačidlo **📊 Trhový podiel** je teraz dostupné aj v manažérskom detaile reprezentanta (`plnenieRenderDetail`), nielen v rep Plnenie overlaye.
+
+#### Oblast — kritické pravidlo
+V manažérskom móde sa oblast pre pharma fetch berie ako **raw `USERS_LOCAL[rep].region`** bez normalizácie. Funkcia `pharmaOblastFromRegion` sa v manažérskom móde **nesmie používať** — normalizuje `BAMA`→`BA` a `BASE`→`BA`, čo nespôsobuje zhodu so Sheets hodnotami.
+
+```javascript
+// pharmaGetOblast() — manažérský mód
+if (document.body.classList.contains('manager-mode')) {
+  var rep = PL_STATE.detailRep;
+  if (rep) return (USERS_LOCAL[rep] && USERS_LOCAL[rep].region) || '';
+  return '';
+}
+```
+
+Regióny podľa reprezentanta (hodnoty v `PharmaData_Summary.oblast`):
+- `j.bohovic` → `BAMA`, `v.hatinova` → `BASE` (tieto dvaja by boli chybne normalizovaní na `BA`)
+- Ostatní (`DS`, `TN`, `MT`, `NR`, `LV`, `RS`, `PP`, `PO`, `MI`, `KE`) — normalizácia ich nemenila
+
+#### Preload pre manažéra
+Pharma dáta sa preloadujú pre všetky oblasti všetkých reprezentantov v 4 situáciách:
+1. `loginSuccess()` — 2500ms po prihlásení manažéra
+2. `initLogin()` — 2500ms po reloade s existujúcou session
+3. `buildRepData()` dokončenie — keď `getRepList` dobeží a manažér je prihlásený
+4. `visibilitychange` — keď appka príde z pozadia a cache je prázdna
+
+V `preloadAllPharmaData()` sa iteruje cez `USERS_LOCAL`, zbierajú sa unikátne oblasti (`seenOblasts`) a pre každú sa fetchujú všetky kódy — bez normalizácie.
 
 ---
 
