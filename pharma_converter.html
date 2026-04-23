@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pharma Data Konverter v2</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f1117; color: #e2e8f0; font-family: -apple-system, 'Segoe UI', sans-serif; padding: 32px 24px; min-height: 100vh; }
+  h1 { font-size: 20px; font-weight: 700; color: #f8fafc; margin-bottom: 4px; }
+  .sub { font-size: 13px; color: #64748b; margin-bottom: 28px; }
+  #drop-zone { border: 2px dashed #334155; border-radius: 16px; padding: 48px 24px; text-align: center; cursor: pointer; transition: border-color .2s, background .2s; background: #1e293b; margin-bottom: 24px; }
+  #drop-zone.drag-over { border-color: #3b82f6; background: #1e3a5f; }
+  #drop-zone .drop-icon { font-size: 40px; margin-bottom: 12px; }
+  #drop-zone .drop-title { font-size: 16px; font-weight: 600; color: #cbd5e1; margin-bottom: 6px; }
+  #drop-zone .drop-hint { font-size: 12px; color: #475569; }
+  #file-input { display: none; }
+  #stats { display: none; background: #1e293b; border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; font-size: 13px; color: #94a3b8; }
+  #stats strong { color: #38bdf8; }
+  #stats .err { color: #f87171; margin-top: 6px; font-size: 12px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 20px; border-radius: 10px; border: none; cursor: pointer; font-size: 14px; font-weight: 600; font-family: inherit; transition: opacity .15s; }
+  .btn:hover { opacity: .85; }
+  .btn-primary { background: #2563eb; color: #fff; }
+  .btn-green { background: #059669; color: #fff; }
+  .btn-yellow { background: #d97706; color: #fff; }
+  .btn-sm { padding: 7px 14px; font-size: 12px; }
+  #actions { display: none; margin-bottom: 20px; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .section-title { font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; }
+  .output-block { display: none; margin-bottom: 24px; }
+  .table-scroll { overflow-x: auto; border-radius: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+  thead th { padding: 8px 10px; text-align: left; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; background: #0f172a; border-bottom: 1px solid #1e293b; }
+  tbody tr:nth-child(odd) { background: #1e293b; }
+  tbody tr:nth-child(even) { background: #172033; }
+  tbody td { padding: 7px 10px; color: #cbd5e1; border-bottom: 1px solid #0f172a; }
+  tbody td.hi { color: #38bdf8; font-weight: 600; }
+  .more-rows { font-size: 12px; color: #475569; margin-top: 8px; }
+  #notice { display: none; background: #14532d; border: 1px solid #166534; border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #86efac; margin-bottom: 20px; }
+  #debug-block { display:none; background:#0f172a; border:1px solid #1e293b; border-radius:10px; padding:14px 16px; margin-bottom:20px; font-size:11px; font-family:monospace; color:#94a3b8; max-height:260px; overflow-y:auto; }
+  #debug-block .d-summ { color:#34d399; }
+  #debug-block .d-dist { color:#60a5fa; }
+  #debug-block .d-skip { color:#475569; }
+  #debug-block .d-warn { color:#f87171; }
+</style>
+</head>
+<body>
+<h1>📊 Pharma Data Konverter v2</h1>
+<p class="sub">Hoď sem Excel súbory — konverter vyrobí 2 tabuľky na skopírovanie do Google Sheets.</p>
+
+<div id="drop-zone" onclick="document.getElementById('file-input').click()">
+  <div class="drop-icon">📁</div>
+  <div class="drop-title">Pretiahni súbory sem alebo klikni pre výber</div>
+  <div class="drop-hint">Formát: 202603_TEL_e_KE.xlsx · môžeš hodiť všetkých naraz</div>
+</div>
+<input type="file" id="file-input" multiple accept=".xlsx">
+
+<div id="stats"></div>
+<div id="debug-block"></div>
+<div id="notice"></div>
+
+<div id="actions">
+  <button class="btn btn-green" onclick="copyOutput('summary')">📋 Kopírovať Summary</button>
+  <button class="btn btn-yellow" onclick="copyOutput('okresy')">📋 Kopírovať Okresy</button>
+  <button class="btn btn-primary btn-sm" onclick="resetAll()">🔄 Začať znova</button>
+</div>
+
+<div id="block-summary" class="output-block">
+  <div class="section-title">PharmaData_Summary — teritoriálny a SK market share po mesiacoch</div>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>produkt</th><th>oblast</th><th>mesiac</th><th>terit_ms</th><th>sk_ms</th></tr></thead>
+      <tbody id="body-summary"></tbody>
+    </table>
+  </div>
+  <p class="more-rows" id="more-summary"></p>
+</div>
+
+<div id="block-okresy" class="output-block">
+  <div class="section-title">PharmaData_Okresy — rozpad po okresoch + konkurenti</div>
+  <div class="table-scroll">
+    <table>
+      <thead><tr>
+        <th>produkt</th><th>oblast</th><th>okres</th><th>kvartal</th>
+        <th>nas_m1</th><th>nas_m2</th><th>nas_m3</th>
+        <th>k1_nazov</th><th>k1_m1</th><th>k1_m2</th><th>k1_m3</th>
+        <th>k2_nazov</th><th>k2_m1</th><th>k2_m2</th><th>k2_m3</th>
+        <th>k3_nazov</th><th>k3_m1</th><th>k3_m2</th><th>k3_m3</th>
+      </tr></thead>
+      <tbody id="body-okresy"></tbody>
+    </table>
+  </div>
+  <p class="more-rows" id="more-okresy"></p>
+</div>
+
+<script>
+// ── Naše produkty: kód súboru → hľadaný názov riadku v Excel ──
+var OUR_PROD_NAME = {
+  'AFLcrm':  'AFLAMIL',
+  'AFLsach': 'AFLAMIL',
+  'AFLtbl':  'AFLAMIL',
+  'CAV':     'CAVINTON',
+  'JUN':     'JUNOD',
+  'SUP':     'SUPRAX',
+  'TEL':     'TELEXER',
+  'VID':     'VIDONORM'
+};
+
+var summaryRows = [];
+var okresyRows  = [];
+var errors = [];
+var debugLog = [];
+
+// ── Drag & drop ──
+var dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover',  function(e){ e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', function(){ dz.classList.remove('drag-over'); });
+dz.addEventListener('drop', function(e){ e.preventDefault(); dz.classList.remove('drag-over'); processFiles(e.dataTransfer.files); });
+document.getElementById('file-input').addEventListener('change', function(){ processFiles(this.files); });
+
+function processFiles(files) {
+  summaryRows = []; okresyRows = []; errors = [];
+  var fileArr = Array.from(files).filter(function(f){ return f.name.endsWith('.xlsx'); });
+  if (!fileArr.length) { showStats('Žiadne .xlsx súbory.'); return; }
+  var pending = fileArr.length;
+  fileArr.forEach(function(file){
+    var reader = new FileReader();
+    reader.onload = function(e){
+      try {
+        var info = parseFilename(file.name);
+        if (!info) { errors.push(file.name + ': neočakávaný názov'); return; }
+        var ourName = OUR_PROD_NAME[info.produkt];
+        if (!ourName) { errors.push(file.name + ': neznámy produkt "' + info.produkt + '"'); return; }
+        var wb = XLSX.read(e.target.result, { type: 'array', raw: false });
+        processWorkbook(wb, info, ourName);
+      } catch(err) {
+        errors.push(file.name + ': ' + err.message);
+      }
+      pending--;
+      if (pending === 0) renderAll();
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function parseFilename(name) {
+  var m = name.match(/^(\d{6})_([A-Za-z]+)_(e|w)_([A-Z0-9]+)\.xlsx$/i);
+  if (!m) return null;
+  return { mesiac: m[1], produkt: m[2], region: m[3].toLowerCase(), oblast: m[4].toUpperCase() };
+}
+
+// ── Spracovanie celého workbooku ──
+function processWorkbook(wb, info, ourName) {
+  wb.SheetNames.forEach(function(sheetName) {
+    var sheet = wb.Sheets[sheetName];
+    var data = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' });
+    if (!data || data.length < 2) {
+      debugLog.push('<span class="d-skip">[' + info.produkt + '] "' + sheetName + '" → preskočené (prázdne)</span>');
+      return;
+    }
+    var nameUp = sheetName.trim().toUpperCase();
+    var isSumm = /^MS_[EW]_/.test(nameUp);
+    if (isSumm) {
+      var before = summaryRows.length;
+      parseSummarySheet(data, info);
+      debugLog.push('<span class="d-summ">[' + info.produkt + '] "' + sheetName + '" → SUMMARY +' + (summaryRows.length - before) + ' riadkov</span>');
+    } else {
+      var dist = detectDistrictStructure(data);
+      if (dist.ok) {
+        var before2 = okresyRows.length;
+        parseDistrictSheet(data, sheetName, info, ourName, dist);
+        debugLog.push('<span class="d-dist">[' + info.produkt + '] "' + sheetName + '" → DISTRICT +' + (okresyRows.length - before2) + ' riadkov | qtrRow=' + dist.qtrRowIdx + ' kvartály=[' + dist.qtrs.join(',') + '] produkty=[' + dist.prodNames.join(',') + ']</span>');
+      } else {
+        debugLog.push('<span class="d-skip">[' + info.produkt + '] "' + sheetName + '" → preskočené: ' + dist.reason + ' | r0: ' + dist.sample + '</span>');
+      }
+    }
+  });
+}
+
+function parseSummarySheet(data, info) {
+  var hdrIdx = -1, hdr = [];
+  for (var r = 0; r < Math.min(5, data.length); r++) {
+    var rowUpper = data[r].map(function(c){ return String(c).trim().toUpperCase(); });
+    if (rowUpper.some(function(c){ return c.indexOf('TERIT') >= 0 || c.indexOf('MS_PAT') >= 0; })) {
+      hdrIdx = r; hdr = rowUpper; break;
+    }
+  }
+  if (hdrIdx < 0) return;
+  var iMesiac = 0;
+  var iTerit = hdr.findIndex(function(c){ return c.indexOf('TERIT') >= 0; });
+  var iSK    = hdr.findIndex(function(c){ return c.indexOf('_SK') >= 0 && c.indexOf('MS') >= 0; });
+  if (iTerit < 0 || iSK < 0) return;
+  for (var r = hdrIdx + 1; r < data.length; r++) {
+    var row = data[r];
+    var mesiac = String(row[iMesiac] || '').trim();
+    if (!mesiac || isNaN(mesiac)) continue;
+    summaryRows.push([info.produkt, info.oblast, mesiac, pct(row[iTerit]), pct(row[iSK])]);
+  }
+}
+
+// ── Detekcia štruktúry district záložky ──
+function detectDistrictStructure(data) {
+  var sample = (data[0] || []).slice(0, 5).map(function(c){ return '"' + String(c).trim() + '"'; }).join(', ');
+
+  // Hľadáme riadok kde sú 4-ciferné kvartal kódy (2501..2699 rozsah)
+  var qtrRowIdx = -1;
+  for (var r = 0; r < Math.min(15, data.length); r++) {
+    var vals = data[r].map(function(c){ return String(c).trim(); });
+    var found = vals.filter(function(c){ return /^\d{4}$/.test(c) && parseInt(c) >= 2401 && parseInt(c) <= 2699; });
+    if (found.length >= 1) { qtrRowIdx = r; break; }
+  }
+  if (qtrRowIdx < 0) return { ok: false, reason: 'nenašiel kvartal kód (2401-2699)', sample: sample };
+
+  // Month riadok hneď za ním
+  var monthRowIdx = qtrRowIdx + 1;
+  if (monthRowIdx >= data.length) return { ok: false, reason: 'chýba month riadok', sample: sample };
+
+  var qtrRow   = data[qtrRowIdx].map(function(c){ return String(c).trim(); });
+  var monthRow = data[monthRowIdx].map(function(c){ return String(c).trim(); });
+
+  // Namapuj kvartály na stĺpce
+  var quarters = {}, curQtr = null;
+  for (var c = 0; c < qtrRow.length; c++) {
+    var qv = qtrRow[c];
+    if (/^\d{4}$/.test(qv) && parseInt(qv) >= 2401 && parseInt(qv) <= 2699) curQtr = qv;
+    if (curQtr && /^\d{1,2}$/.test(monthRow[c]) && parseInt(monthRow[c]) >= 1 && parseInt(monthRow[c]) <= 12) {
+      if (!quarters[curQtr]) quarters[curQtr] = [];
+      quarters[curQtr].push({ col: c, month: parseInt(monthRow[c]) });
+    }
+  }
+  var qtrs = Object.keys(quarters);
+  if (!qtrs.length) return { ok: false, reason: 'kvartal kódy nájdené ale mesiace nie | qtrRow: ' + qtrRow.slice(0,8).join('|') + ' monthRow: ' + monthRow.slice(0,8).join('|'), sample: sample };
+
+  // Zberi názvy produktov (col0 v dátových riadkoch)
+  var dataStartIdx = monthRowIdx + 1;
+  var prodNames = [];
+  for (var r = dataStartIdx; r < data.length; r++) {
+    var col0 = String(data[r][0] || '').trim();
+    if (col0 && col0.toUpperCase().indexOf('TOTAL') < 0 && prodNames.indexOf(col0.toUpperCase()) < 0) {
+      prodNames.push(col0.toUpperCase());
+    }
+  }
+
+  return { ok: true, qtrRowIdx: qtrRowIdx, monthRowIdx: monthRowIdx, dataStartIdx: dataStartIdx, quarters: quarters, qtrs: qtrs, prodNames: prodNames };
+}
+
+function parseDistrictSheet(data, sheetName, info, ourName, dist) {
+  // Načítaj produktové riadky — col0=produkt, col1=typ ("MS% Pat" alebo "Pat")
+  var products = {}, lastProd = null;
+  for (var r = dist.dataStartIdx; r < data.length; r++) {
+    var row  = data[r];
+    var col0 = String(row[0] || '').trim();
+    var col1 = String(row[1] || '').trim().toUpperCase().replace(/\s/g,'');
+    if (col0 && col0.toUpperCase().indexOf('TOTAL') >= 0) continue;
+    if (col0) lastProd = col0.toUpperCase();
+    if (!lastProd) continue;
+    // "MS%PAT", "MS%PAT.", "MS%PAT_" atď.
+    if (col1.indexOf('MS%') >= 0) {
+      if (!products[lastProd]) products[lastProd] = {};
+      products[lastProd].msRow = row;
+    }
+  }
+
+  // Pre každý kvartál vybuduj výstupný riadok
+  var qtrKeys = Object.keys(dist.quarters).sort(function(a,b){ return parseInt(a)-parseInt(b); });
+  qtrKeys.forEach(function(qtr) {
+    var cols = dist.quarters[qtr].slice().sort(function(a,b){ return a.month - b.month; });
+
+    var ourProd = null;
+    Object.keys(products).forEach(function(pName) {
+      if (pName.indexOf(ourName.toUpperCase()) >= 0) ourProd = pName;
+    });
+    var ourMs = [null, null, null];
+    if (ourProd && products[ourProd] && products[ourProd].msRow) {
+      cols.forEach(function(x, i){ if (i < 3) ourMs[i] = pct(products[ourProd].msRow[x.col]); });
+    }
+
+    var compList = [];
+    Object.keys(products).forEach(function(pName) {
+      if (pName === ourProd) return;
+      var msRow = products[pName] && products[pName].msRow;
+      if (!msRow) return;
+      var vals = cols.map(function(x){ return pct(msRow[x.col]); });
+      var avg = vals.reduce(function(s,v){ return s + (parseFloat(v)||0); }, 0) / (vals.length || 1);
+      if (avg > 0) compList.push({ name: pName, vals: vals, avg: avg });
+    });
+    compList.sort(function(a,b){ return b.avg - a.avg; });
+    var top3 = compList.slice(0, 3);
+
+    function mVal(arr, i) { return (arr && arr[i] != null) ? arr[i] : ''; }
+    var outRow = [info.produkt, info.oblast, sheetName, qtr,
+      mVal(ourMs,0), mVal(ourMs,1), mVal(ourMs,2)];
+    for (var k = 0; k < 3; k++) {
+      var comp = top3[k];
+      outRow.push(comp ? comp.name : '');
+      outRow.push(comp ? mVal(comp.vals,0) : '');
+      outRow.push(comp ? mVal(comp.vals,1) : '');
+      outRow.push(comp ? mVal(comp.vals,2) : '');
+    }
+    okresyRows.push(outRow);
+  });
+}
+
+// ── Pomocné funkcie ──
+function pct(val) {
+  if (val === '' || val === null || val === undefined) return null;
+  var s = String(val).trim().replace('%','');
+  var n = parseFloat(s);
+  if (isNaN(n)) return null;
+  // Ak je < 1 a nie je percent string, je to desatinný zápis
+  if (String(val).indexOf('%') < 0 && n > 0 && n <= 1) n = n * 100;
+  return n.toFixed(2);
+}
+
+// ── Render ──
+function renderAll() {
+  summaryRows.sort(function(a,b){ return (a[0]+a[1]+a[2]).localeCompare(b[0]+b[1]+b[2]); });
+  okresyRows.sort(function(a,b){ return (a[0]+a[1]+a[2]+a[3]).localeCompare(b[0]+b[1]+b[2]+b[3]); });
+
+  var errHtml = errors.length ? '<div class="err">⚠️ Problémy (' + errors.length + '):<br>' + errors.map(function(e){ return '· '+e; }).join('<br>') + '</div>' : '';
+  var statsEl = document.getElementById('stats');
+  statsEl.style.display = 'block';
+  statsEl.innerHTML = '✅ Summary riadkov: <strong>' + summaryRows.length + '</strong> &nbsp;·&nbsp; Okresy riadkov: <strong>' + okresyRows.length + '</strong>' + errHtml;
+
+  renderTable('body-summary', 'more-summary', 'block-summary', summaryRows, 5);
+  renderTable('body-okresy',  'more-okresy',  'block-okresy',  okresyRows,  19);
+
+  document.getElementById('actions').style.display = (summaryRows.length || okresyRows.length) ? 'flex' : 'none';
+
+  var dbEl = document.getElementById('debug-block');
+  dbEl.style.display = 'block';
+  dbEl.innerHTML = '<strong style="color:#cbd5e1">Debug log (' + debugLog.length + ' záložiek):</strong><br>' + debugLog.join('<br>');
+}
+
+function renderTable(bodyId, moreId, blockId, rows, colCount) {
+  var block = document.getElementById(blockId);
+  if (!rows.length) { block.style.display = 'none'; return; }
+  block.style.display = 'block';
+  var preview = rows.slice(0, 30);
+  document.getElementById(bodyId).innerHTML = preview.map(function(r){
+    return '<tr>' + r.map(function(c, i){
+      return '<td' + (i < 4 ? ' class="hi"' : '') + '>' + (c !== '' && c !== null ? c : '—') + '</td>';
+    }).join('') + '</tr>';
+  }).join('');
+  var moreEl = document.getElementById(moreId);
+  moreEl.textContent = rows.length > 30 ? '... a ďalších ' + (rows.length-30) + ' riadkov (všetky sa skopírujú)' : '';
+}
+
+function showStats(msg) {
+  var el = document.getElementById('stats');
+  el.style.display = 'block';
+  el.innerHTML = msg;
+}
+
+function buildTsv(rows, headers) {
+  return [headers.join('\t')].concat(rows.map(function(r){ return r.map(function(c){ return c !== null && c !== undefined ? c : ''; }).join('\t'); })).join('\n');
+}
+
+function copyOutput(type) {
+  var tsv, label;
+  if (type === 'summary') {
+    tsv = buildTsv(summaryRows, ['produkt','oblast','mesiac','terit_ms','sk_ms']);
+    label = 'Summary';
+  } else {
+    tsv = buildTsv(okresyRows, ['produkt','oblast','okres','kvartal','nas_m1','nas_m2','nas_m3','k1_nazov','k1_m1','k1_m2','k1_m3','k2_nazov','k2_m1','k2_m2','k2_m3','k3_nazov','k3_m1','k3_m2','k3_m3']);
+    label = 'Okresy';
+  }
+  var n = document.getElementById('notice');
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(tsv).then(function(){ showNotice('✅ ' + label + ' skopírované — vlož do Google Sheets (Ctrl+V na bunku A1).'); });
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = tsv; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    showNotice('✅ ' + label + ' skopírované — vlož do Google Sheets (Ctrl+V na bunku A1).');
+  }
+}
+
+function showNotice(msg) {
+  var n = document.getElementById('notice');
+  n.textContent = msg; n.style.display = 'block';
+  setTimeout(function(){ n.style.display='none'; }, 4000);
+}
+
+function resetAll() {
+  summaryRows=[]; okresyRows=[]; errors=[]; debugLog=[];
+  ['stats','actions','block-summary','block-okresy','notice','debug-block'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  document.getElementById('body-summary').innerHTML = '';
+  document.getElementById('body-okresy').innerHTML = '';
+  document.getElementById('file-input').value = '';
+}
+</script>
+</body>
+</html>

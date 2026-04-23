@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Predaje vs Plán — demo</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#EAECF2;min-height:100vh;padding:12px}
+.app{max-width:440px;margin:0 auto}
+
+/* Header */
+.hdr{background:#0C1E35;border-radius:18px;padding:14px 18px;margin-bottom:10px;box-shadow:0 10px 40px rgba(10,25,50,.3)}
+.hdr-title{font-size:17px;font-weight:700;color:#fff;font-family:'Outfit',sans-serif}
+.hdr-sub{font-size:11px;color:#5B8DB8;margin-top:2px}
+
+/* Mode switcher */
+.mode-switch{display:flex;gap:6px;margin-bottom:10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.mode-btn{flex:1;padding:9px 4px;border:none;background:transparent;font-size:11.5px;font-weight:700;color:#64748B;cursor:pointer;border-radius:9px;font-family:inherit;transition:all .15s}
+.mode-btn.active{background:#0C1E35;color:#fff}
+
+/* Summary cards */
+.sum-big{background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.sum-lbl{font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+.sum-big-row{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+.sum-big-val{font-size:30px;font-weight:800;font-family:'Outfit',sans-serif;line-height:1}
+.sum-big-val.green{color:#059669}
+.sum-big-val.orange{color:#D97706}
+.sum-big-val.red{color:#DC2626}
+.sum-big-total{font-size:11.5px;color:#64748B;font-weight:500}
+.sum-big-total strong{color:#0F172A;font-weight:700}
+.sum-prods{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;padding-top:10px;border-top:0.5px solid #E2E8F0}
+.sum-prod{display:flex;justify-content:space-between;font-size:12px;font-weight:500;color:#334155}
+.sum-prod strong{font-weight:700;font-family:'Outfit',sans-serif}
+.sum-prod strong.g{color:#059669}
+.sum-prod strong.o{color:#D97706}
+.sum-prod strong.r{color:#DC2626}
+
+/* Region cards */
+.regions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.region-card{background:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 2px 8px rgba(0,0,0,.06);text-align:center}
+.region-lbl{font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
+.region-val{font-size:22px;font-weight:800;font-family:'Outfit',sans-serif;line-height:1}
+
+/* Rep list */
+.section-lbl{font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.07em;margin:14px 2px 8px}
+.rep-list{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.rep-card{display:flex;align-items:center;gap:12px;padding:13px 14px;border-top:0.5px solid #F1F5F9;cursor:pointer}
+.rep-card:first-child{border-top:none}
+.rep-medal{width:32px;font-size:17px;text-align:center;flex-shrink:0}
+.rep-avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700;color:#fff;flex-shrink:0;font-family:'Outfit',sans-serif}
+.rep-body{flex:1;min-width:0}
+.rep-name{font-size:13.5px;font-weight:700;color:#0F172A;font-family:'Outfit',sans-serif}
+.rep-meta{font-size:10.5px;color:#94A3B8;margin-top:2px;letter-spacing:.02em}
+.rep-pct{font-size:17px;font-weight:800;font-family:'Outfit',sans-serif;flex-shrink:0;margin-right:4px}
+.rep-chev{color:#CBD5E1;font-size:17px;margin-left:4px}
+
+/* Back btn */
+.back{background:none;border:none;color:#64748B;font-size:12.5px;font-weight:600;cursor:pointer;padding:10px 2px 14px;font-family:inherit;display:flex;align-items:center;gap:4px}
+
+/* Detail hdr */
+.dhdr{background:#fff;border-radius:14px;padding:16px 18px 14px;margin-bottom:10px;display:flex;gap:12px;align-items:center;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.dhdr-avatar{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;flex-shrink:0;font-family:'Outfit',sans-serif}
+.dhdr-name{font-size:15px;font-weight:700;color:#0F172A;font-family:'Outfit',sans-serif}
+.dhdr-sub{font-size:11px;color:#64748B;margin-top:2px}
+
+/* Q tabs */
+.q-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.q-tab{padding:10px 4px;border:none;background:transparent;font-size:11.5px;font-weight:700;color:#64748B;cursor:pointer;border-radius:8px;font-family:inherit;transition:all .15s;text-align:center}
+.q-tab.active{background:#0C1E35;color:#fff}
+.q-tab.future{color:#E2E8F0;cursor:not-allowed;pointer-events:none;opacity:.6}
+.q-tab.current{position:relative}
+.q-tab.current::after{content:'';position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:#10B981}
+
+/* Big perf card */
+.perf-card{background:#fff;border-radius:14px;padding:16px 18px;margin-bottom:10px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.perf-row{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px}
+.perf-val{font-size:36px;font-weight:800;font-family:'Outfit',sans-serif;line-height:1}
+.perf-val.g{color:#059669}
+.perf-val.o{color:#D97706}
+.perf-val.r{color:#DC2626}
+.perf-money{text-align:right}
+.perf-money-big{font-size:15px;font-weight:700;color:#0F172A;font-family:'Outfit',sans-serif}
+.perf-money-sm{font-size:11px;color:#64748B;margin-top:1px}
+.perf-bar-wrap{height:8px;background:#F1F5F9;border-radius:4px;overflow:hidden;margin-top:8px}
+.perf-bar{height:100%;border-radius:4px;transition:width .6s ease}
+.perf-bar.g{background:linear-gradient(90deg,#10B981,#059669)}
+.perf-bar.o{background:linear-gradient(90deg,#F59E0B,#D97706)}
+.perf-bar.r{background:linear-gradient(90deg,#F87171,#DC2626)}
+
+/* Monthly breakdown */
+.months{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.month-card{background:#fff;border-radius:12px;padding:12px 10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.06);position:relative}
+.month-card.current{border:2px solid #10B981}
+.month-card.current::after{content:'TERAZ';position:absolute;top:-8px;left:50%;transform:translateX(-50%);background:#10B981;color:#fff;font-size:8px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:.08em}
+.month-lbl{font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.month-pct{font-size:16px;font-weight:800;font-family:'Outfit',sans-serif;margin-bottom:4px}
+.month-eur{font-size:10px;color:#94A3B8;line-height:1.3}
+
+/* Products */
+.prod-list{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.prod-item{background:#fff;border-radius:12px;padding:11px 14px;box-shadow:0 1px 6px rgba(0,0,0,.05)}
+.prod-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+.prod-name{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:#0F172A;font-family:'Outfit',sans-serif}
+.prod-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.prod-right{text-align:right}
+.prod-pct{font-size:14px;font-weight:800;font-family:'Outfit',sans-serif;line-height:1}
+.prod-money{font-size:10px;color:#64748B;margin-top:1px}
+.prod-bar-wrap{height:6px;background:#F1F5F9;border-radius:3px;overflow:hidden}
+.prod-bar{height:100%;border-radius:3px}
+.prod-bar.g{background:#10B981}
+.prod-bar.o{background:#F59E0B}
+.prod-bar.r{background:#EF4444}
+
+/* Trend chart */
+.trend{background:#fff;border-radius:14px;padding:14px 18px 16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.trend-title{font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px}
+.trend-bars{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:end;height:110px}
+.trend-col{display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+.trend-bar{width:100%;max-width:40px;background:linear-gradient(180deg,#3B82F6,#1D4ED8);border-radius:6px 6px 2px 2px;position:relative;min-height:4px;transition:height .6s ease}
+.trend-bar.future{background:linear-gradient(180deg,#E2E8F0,#CBD5E1)}
+.trend-bar.current{background:linear-gradient(180deg,#10B981,#059669)}
+.trend-bar-val{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:700;color:#0F172A;white-space:nowrap;font-family:'Outfit',sans-serif}
+.trend-bar-val.empty{color:#94A3B8;font-weight:500}
+.trend-lbl{font-size:10px;font-weight:600;color:#64748B}
+.trend-lbl.current{color:#059669;font-weight:700}
+
+/* Placeholder Q3/Q4 */
+.placeholder{background:#fff;border-radius:14px;padding:44px 24px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.placeholder-emoji{font-size:44px;margin-bottom:10px}
+.placeholder-title{font-size:15px;font-weight:700;color:#0F172A;font-family:'Outfit',sans-serif;margin-bottom:5px}
+.placeholder-sub{font-size:12.5px;color:#64748B;line-height:1.5}
+
+/* Sub-tabs — Predaje / Návštevy */
+.sub-tabs{display:flex;gap:6px;margin-bottom:12px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.sub-tab{flex:1;padding:11px 4px;border:none;background:transparent;font-size:12.5px;font-weight:700;color:#64748B;cursor:pointer;border-radius:8px;font-family:inherit;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.sub-tab.active{background:#0C1E35;color:#fff}
+
+/* Visits list */
+.visit-item{background:#fff;border-radius:11px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.visit-seg{width:4px;height:36px;border-radius:2px;flex-shrink:0}
+.visit-body{flex:1;min-width:0}
+.visit-name{font-size:13.5px;font-weight:700;color:#0F172A;font-family:'Outfit',sans-serif}
+.visit-meta{font-size:10.5px;color:#94A3B8;margin-top:2px}
+.visit-right{text-align:right;flex-shrink:0}
+.visit-date{font-size:10.5px;color:#64748B;font-weight:600}
+.visit-seg-chip{font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;margin-top:3px;display:inline-block}
+.chip-platinum{background:#EAF0F8;color:#1B3A5C}
+.chip-gold{background:#FEF9E3;color:#7D6008}
+.chip-silver{background:#F0F0F0;color:#4A5568}
+.chip-bronze{background:#FAE5D3;color:#6E3217}
+
+.visits-filter{display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;padding-bottom:4px}
+.vfilter{padding:6px 12px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid #E2E8F0;background:#fff;cursor:pointer;white-space:nowrap;font-family:inherit;color:#64748B}
+.vfilter.active{background:#0C1E35;color:#fff;border-color:#0C1E35}
+
+
+/* Product bar with monthly milestones */
+.prod-item-adv{background:#fff;border-radius:12px;padding:13px 14px;margin-bottom:9px;box-shadow:0 1px 6px rgba(0,0,0,.05)}
+.prod-adv-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.prod-adv-name{display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:700;color:#0F172A;font-family:'Outfit',sans-serif}
+.prod-adv-pct{font-size:17px;font-weight:800;font-family:'Outfit',sans-serif;line-height:1}
+
+/* Bar with milestones */
+.bar-wrap{position:relative;margin-bottom:6px}
+.bar-track{height:12px;background:#F1F5F9;border-radius:6px;overflow:visible;position:relative}
+.bar-fill{height:100%;border-radius:6px;position:relative;transition:width .8s ease}
+.bar-fill.g{background:linear-gradient(90deg,#10B981,#059669)}
+.bar-fill.o{background:linear-gradient(90deg,#F59E0B,#D97706)}
+.bar-fill.r{background:linear-gradient(90deg,#F87171,#DC2626)}
+/* Milestone lines on track */
+.milestone{position:absolute;top:-2px;bottom:-2px;width:2px;background:#CBD5E1;z-index:2}
+.milestone.passed{background:#64748B}
+.milestone.current{background:#0C1E35;width:3px}
+/* Milestone label */
+.ms-labels{display:flex;justify-content:space-between;margin-top:6px;padding:0 1px;font-size:10px;color:#94A3B8;font-weight:600}
+.ms-labels span{flex:1;text-align:center}
+.ms-labels span:first-child{text-align:left}
+.ms-labels span:last-child{text-align:right}
+.ms-labels span.active{color:#0C1E35;font-weight:700}
+.ms-labels span.passed{color:#64748B}
+
+/* Monthly mini rows */
+.month-rows{display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:0.5px solid #F1F5F9}
+.mrow{flex:1;text-align:center}
+.mrow-lbl{font-size:9.5px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+.mrow-lbl.current{color:#059669}
+.mrow-val{font-size:12px;font-weight:700;font-family:'Outfit',sans-serif}
+.mrow-val.g{color:#059669}
+.mrow-val.o{color:#D97706}
+.mrow-val.r{color:#DC2626}
+.mrow-val.future{color:#CBD5E1}
+.mrow-plan{font-size:9px;color:#94A3B8;margin-top:1px}
+
+/* Total summary */
+.total-card{background:linear-gradient(135deg,#0C1E35,#1A3A5C);border-radius:14px;padding:16px 18px;margin-bottom:12px;color:#fff;text-align:center}
+.total-lbl{font-size:10px;font-weight:700;color:#7AABCC;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+.total-val{font-size:34px;font-weight:800;font-family:'Outfit',sans-serif;line-height:1;margin-bottom:3px}
+.total-val.g{color:#10B981}
+.total-val.o{color:#F59E0B}
+.total-val.r{color:#EF4444}
+.total-money{font-size:12px;color:#CBD5E1;font-weight:500}
+.total-money strong{color:#fff;font-weight:700}
+
+/* === REP-HOME: faithful production styles (scoped) === */
+#rep-home{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Arial,sans-serif;color:#1A2A3A}
+#rep-home .hdr{background:#0C1E35;border-radius:18px;padding:10px 16px;margin-bottom:10px;box-shadow:0 10px 40px rgba(10,25,50,.30),0 2px 8px rgba(10,25,50,.15);position:relative;overflow:hidden;min-height:60px}
+#rep-home .hdr::before{content:'';position:absolute;top:-60px;right:-40px;width:240px;height:240px;border-radius:50%;background:rgba(255,255,255,.04)}
+#rep-home .hdr-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;position:relative;z-index:1}
+#rep-home .hdr-title{font-size:16px;font-weight:700;color:#fff;line-height:1.15;letter-spacing:.01em;font-family:'Outfit',sans-serif;white-space:nowrap}
+#rep-home .hdr-sub{font-size:9.5px;color:#5B8DB8;margin-top:2px;letter-spacing:.02em}
+#rep-home .hdr-bottom{display:flex;justify-content:space-between;align-items:flex-end;gap:8px;margin-top:8px;position:relative;z-index:1}
+#rep-home .hdr-dots{display:flex;gap:7px;flex-wrap:wrap;flex:1;min-width:0}
+#rep-home .hdr-dot{display:flex;align-items:center;gap:4px;font-size:10px;color:#7AABCC;font-weight:500}
+#rep-home .hdr-dot .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+#rep-home .hdr-actions{display:flex;align-items:center;gap:5px;flex-shrink:0}
+#rep-home .logout-btn{display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:20px;border:1px solid rgba(239,68,68,.4);background:rgba(239,68,68,.15);color:rgba(255,180,180,.95);font-size:10px;font-weight:600;font-family:inherit;white-space:nowrap}
+#rep-home .hdr-actions-stack{display:flex;flex-direction:column;gap:3px;align-items:flex-end}
+#rep-home .hdr-badge-wrap{display:flex;flex-direction:row;align-items:center;gap:0;border-radius:20px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25);overflow:hidden;flex-shrink:0}
+#rep-home .hdr-hist-link{font-size:10px;font-weight:600;color:#fff;padding:4px 9px;letter-spacing:.01em;white-space:nowrap}
+#rep-home .hdr-plnenie{background:linear-gradient(135deg,#059669,#10B981);border:1px solid rgba(255,255,255,.15)}
+#rep-home .hdr-rebricek{background:linear-gradient(135deg,#7C3AED,#A78BFA)}
+#rep-home .hdr-historia{background:linear-gradient(135deg,#F59E0B,#EF4444)}
+#rep-home .info-card{background:#fff;border-radius:14px;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,.07);border:1px solid rgba(0,0,0,.07);overflow:hidden}
+#rep-home .info-accent{height:3px;background:linear-gradient(90deg,#0C1E35,#1A3A5C)}
+#rep-home .info-inner{padding:16px 18px 18px}
+#rep-home .info-title{font-size:13px;font-weight:600;color:#1A2A3A;margin-bottom:12px}
+#rep-home .info-grid-3{display:flex;flex-direction:column;gap:10px}
+#rep-home .info-field{display:flex;flex-direction:column;gap:4px}
+#rep-home .info-label{font-size:9px;font-weight:600;color:#64748B;letter-spacing:.06em;text-transform:uppercase}
+#rep-home .info-input{height:40px;padding:0 13px;border-radius:9px;border:1.5px solid #E2E8F0;background:#F8FAFC;font-size:14px;color:#94A3B8;display:flex;align-items:center}
+#rep-home .rec{border-radius:14px;padding:18px 22px;text-align:center;margin-bottom:14px;background:#fff;border:2px dashed #C8D5E0}
+#rep-home .rec-icon{font-size:26px;margin-bottom:4px;display:block;line-height:1;color:#9AAABB}
+#rep-home .rec-label{font-size:17px;font-weight:600;margin-bottom:3px;color:#5A7080}
+#rep-home .rec-sub{font-size:11px;color:#5A7080;opacity:.72}
+#rep-home .card{background:#fff;border-radius:14px;margin-bottom:10px;box-shadow:0 2px 12px rgba(0,0,0,.07),0 1px 4px rgba(0,0,0,.04);border:1px solid rgba(0,0,0,.07);overflow:hidden}
+#rep-home .card-accent{height:3px}
+#rep-home .card-inner{padding:16px 18px 18px}
+#rep-home .prod-name{font-size:14px;font-weight:600;color:#1A2A3A;margin-bottom:1px;display:block}
+#rep-home .prod-type{font-size:10.5px;color:#8A97A6;margin-bottom:12px}
+#rep-home .row{display:flex;flex-direction:column;gap:6px;background:#F8FAFC;border-radius:10px;padding:11px 13px;border:1px solid #EEF2F7;margin-bottom:6px}
+#rep-home .flbl{font-size:9px;font-weight:600;color:#64748B;letter-spacing:.03em;text-transform:uppercase;margin-bottom:4px}
+#rep-home .num-input{height:40px;padding:0 13px;border-radius:9px;border:1.5px solid #E2E8F0;background:#fff;font-size:14px;color:#94A3B8;display:flex;align-items:center;box-shadow:inset 0 1px 3px rgba(0,0,0,.04)}
+#rep-home .btn-submit{width:100%;padding:14px;border-radius:11px;border:none;background:#16A34A;color:#fff;font-size:15px;font-weight:600;font-family:inherit;margin-top:10px;margin-bottom:14px;box-shadow:0 4px 14px rgba(22,163,74,.3)}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <div class="mode-switch">
+    <button class="mode-btn active" onclick="showMode('admin',this)">👁 Admin</button>
+    <button class="mode-btn" onclick="showMode('amwest',this)">AM West</button>
+    <button class="mode-btn" onclick="showMode('detail',this)">Detail repa</button>
+    <button class="mode-btn" onclick="showMode('rep',this)">👨‍⚕️ Rep</button>
+  </div>
+
+  <!-- ADMIN / Slovensko -->
+  <div id="view-admin">
+    <div class="q-tabs">
+      <button class="q-tab">Q1</button>
+      <button class="q-tab current active">Q2 · teraz</button>
+      <button class="q-tab future">Q3</button>
+      <button class="q-tab future">Q4</button>
+    </div>
+    <div class="sum-big">
+      <div class="sum-big-row">
+        <div>
+          <div class="sum-lbl">Slovensko · Q2 2026</div>
+          <div class="sum-big-val orange">82%</div>
+        </div>
+        <div style="text-align:right">
+          <div class="sum-big-total"><strong>38 420 €</strong></div>
+          <div style="font-size:10.5px;color:#94A3B8;margin-top:1px">z plánu 46 800 €</div>
+        </div>
+      </div>
+      <div class="sum-prods">
+        <div class="sum-prod">Aflamil <strong class="g">85%</strong></div>
+        <div class="sum-prod">Suprax <strong class="g">92%</strong></div>
+        <div class="sum-prod">Cavinton <strong class="o">78%</strong></div>
+        <div class="sum-prod">Telexer <strong class="g">91%</strong></div>
+        <div class="sum-prod">Vidonorm <strong class="o">75%</strong></div>
+        <div class="sum-prod">Junod <strong class="r">71%</strong></div>
+      </div>
+    </div>
+
+    <div class="regions">
+      <div class="region-card">
+        <div class="region-lbl">West</div>
+        <div class="region-val" style="color:#D97706">78%</div>
+      </div>
+      <div class="region-card">
+        <div class="region-lbl">East</div>
+        <div class="region-val" style="color:#059669">86%</div>
+      </div>
+    </div>
+
+    <div class="section-lbl">Poradie reprezentantov · Q2</div>
+    <div class="rep-list">
+      <div class="rep-card">
+        <div class="rep-medal">🥇</div>
+        <div class="rep-avatar" style="background:linear-gradient(135deg,#2563EB,#1E40AF)">MS</div>
+        <div class="rep-body"><div class="rep-name">Michal Sabol</div><div class="rep-meta">East · MI</div></div>
+        <div class="rep-pct" style="color:#059669">108%</div>
+        <div class="rep-chev">›</div>
+      </div>
+      <div class="rep-card">
+        <div class="rep-medal">🥈</div>
+        <div class="rep-avatar" style="background:linear-gradient(135deg,#059669,#047857)">ZL</div>
+        <div class="rep-body"><div class="rep-name">Zuzana Lapšanská</div><div class="rep-meta">East · PP</div></div>
+        <div class="rep-pct" style="color:#059669">102%</div>
+        <div class="rep-chev">›</div>
+      </div>
+      <div class="rep-card">
+        <div class="rep-medal">🥉</div>
+        <div class="rep-avatar" style="background:linear-gradient(135deg,#7C3AED,#5B21B6)">JB</div>
+        <div class="rep-body"><div class="rep-name">Jaroslava Bohovičová</div><div class="rep-meta">West · BAMA</div></div>
+        <div class="rep-pct" style="color:#059669">95%</div>
+        <div class="rep-chev">›</div>
+      </div>
+      <div class="rep-card">
+        <div class="rep-medal" style="font-size:11px;color:#94A3B8;font-weight:700">4.</div>
+        <div class="rep-avatar" style="background:linear-gradient(135deg,#DC2626,#991B1B)">VH</div>
+        <div class="rep-body"><div class="rep-name">Viera Hatinová</div><div class="rep-meta">West · NR</div></div>
+        <div class="rep-pct" style="color:#D97706">84%</div>
+        <div class="rep-chev">›</div>
+      </div>
+      <div class="rep-card">
+        <div class="rep-medal" style="font-size:11px;color:#94A3B8;font-weight:700">5.</div>
+        <div class="rep-avatar" style="background:linear-gradient(135deg,#0891B2,#0E7490)">IK</div>
+        <div class="rep-body"><div class="rep-name">Ida Kozáková</div><div class="rep-meta">West · TN</div></div>
+        <div class="rep-pct" style="color:#D97706">79%</div>
+        <div class="rep-chev">›</div>
+      </div>
+      <div class="rep-card">
+        <div class="rep-medal" style="font-size:11px;color:#94A3B8;font-weight:700">4.</div>
+        <div class="rep-avatar" style="background:linear-gradient(135deg,#DC2626,#991B1B)">VH</div>
+        <div class="rep-body"><div class="rep-name">Viera Hatinová</div><div class="rep-meta">West · NR</div></div>
+        <div class="rep-pct" style="color:#D97706">84%</div>
+        <div class="rep-chev">›</div>
+      </div>
+      <div class="rep-card">
+        <div class="rep-medal" style="font-size:11px;color:#94A3B8;font-weight:700">5.</div>
+        <div class="rep-avatar" style="background:linear-gradient(135deg,#0891B2,#0E7490)">KC</div>
+        <div class="rep-body"><div class="rep-name">Katarína Czidor</div><div class="rep-meta">East · LV</div></div>
+        <div class="rep-pct" style="color:#D97706">82%</div>
+        <div class="rep-chev">›</div>
+      </div>
+      <div class="rep-card">
+        <div class="rep-medal" style="font-size:11px;color:#94A3B8;font-weight:700">6.</div>
+        <div class="rep-avatar" style="background:linear-gradient(135deg,#0891B2,#0E7490)">IK</div>
+        <div class="rep-body"><div class="rep-name">Ida Kozáková</div><div class="rep-meta">West · TN</div></div>
+        <div class="rep-pct" style="color:#D97706">79%</div>
+        <div class="rep-chev">›</div>
+      </div>
+      <div class="rep-card">
+        <div class="rep-medal" style="font-size:11px;color:#94A3B8;font-weight:700">7.</div>
+        <div class="rep-avatar" style="background:linear-gradient(135deg,#059669,#047857)">VH</div>
+        <div class="rep-body"><div class="rep-name">Viera Hromadková</div><div class="rep-meta">West · DS</div></div>
+        <div class="rep-pct" style="color:#D97706">77%</div>
+        <div class="rep-chev">›</div>
+      </div>
+      <div class="rep-card">
+        <div class="rep-medal" style="font-size:11px;color:#94A3B8;font-weight:700">8.</div>
+        <div class="rep-avatar" style="background:linear-gradient(135deg,#BE185D,#9F1239)">LM</div>
+        <div class="rep-body"><div class="rep-name">Lenka Mačáková</div><div class="rep-meta">East · RS</div></div>
+        <div class="rep-pct" style="color:#D97706">74%</div>
+        <div class="rep-chev">›</div>
+      </div>
+      <div class="rep-card">
+        <div class="rep-medal" style="font-size:11px;color:#94A3B8;font-weight:700">9.</div>
+        <div class="rep-avatar" style="background:linear-gradient(135deg,#2563EB,#1E40AF)">ZL</div>
+        <div class="rep-body"><div class="rep-name">Zoran Leščiš</div><div class="rep-meta">West · BASE</div></div>
+        <div class="rep-pct" style="color:#D97706">71%</div>
+        <div class="rep-chev">›</div>
+      </div>
+      <div class="rep-card">
+        <div class="rep-medal" style="font-size:11px;color:#94A3B8;font-weight:700">10.</div>
+        <div class="rep-avatar" style="background:linear-gradient(135deg,#EA580C,#C2410C)">JK</div>
+        <div class="rep-body"><div class="rep-name">Jozef Krkoška</div><div class="rep-meta">West · MT</div></div>
+        <div class="rep-pct" style="color:#D97706">70%</div>
+        <div class="rep-chev">›</div>
+      </div>
+      <div class="rep-card">
+        <div class="rep-medal" style="font-size:11px;color:#94A3B8;font-weight:700">11.</div>
+        <div class="rep-avatar" style="background:linear-gradient(135deg,#EA580C,#C2410C)">OR</div>
+        <div class="rep-body"><div class="rep-name">Olexandra Rad</div><div class="rep-meta">East · KE</div></div>
+        <div class="rep-pct" style="color:#DC2626">68%</div>
+        <div class="rep-chev">›</div>
+      </div>
+      <div class="rep-card">
+        <div class="rep-medal" style="font-size:11px;color:#94A3B8;font-weight:700">12.</div>
+        <div class="rep-avatar" style="background:linear-gradient(135deg,#7C3AED,#5B21B6)">KE</div>
+        <div class="rep-body"><div class="rep-name">KE Reprezentant</div><div class="rep-meta">East · PO</div></div>
+        <div class="rep-pct" style="color:#DC2626">62%</div>
+        <div class="rep-chev">›</div>
+      </div>
+    </div>
+  </div>
+
+
+
+
+
+  <!-- AM WEST pohľad -->
+  <div id="view-amwest" style="display:none">
+    <div class="q-tabs">
+      <button class="q-tab">Q1</button>
+      <button class="q-tab current active">Q2 · teraz</button>
+      <button class="q-tab future">Q3</button>
+      <button class="q-tab future">Q4</button>
+    </div>
+    <div class="sum-big">
+      <div class="sum-big-row">
+        <div>
+          <div class="sum-lbl">West · Q2 2026</div>
+          <div class="sum-big-val orange">78%</div>
+        </div>
+        <div style="text-align:right">
+          <div class="sum-big-total"><strong>18 240 €</strong></div>
+          <div style="font-size:10.5px;color:#94A3B8;margin-top:1px">z plánu 23 400 €</div>
+        </div>
+      </div>
+      <div class="sum-prods">
+        <div class="sum-prod">Aflamil <strong class="o">82%</strong></div>
+        <div class="sum-prod">Suprax <strong class="g">88%</strong></div>
+        <div class="sum-prod">Cavinton <strong class="o">74%</strong></div>
+        <div class="sum-prod">Telexer <strong class="g">86%</strong></div>
+        <div class="sum-prod">Vidonorm <strong class="o">72%</strong></div>
+        <div class="sum-prod">Junod <strong class="r">68%</strong></div>
+      </div>
+    </div>
+
+    <div class="section-lbl">Moji reprezentanti · Q2</div>
+    <div class="rep-list">
+      <div class="rep-card">
+        <div class="rep-medal">🥇</div>
+        <div class="rep-avatar" style="background:linear-gradient(135deg,#7C3AED,#5B21B6)">JB</div>
+        <div class="rep-body"><div class="rep-name">Jaroslava Bohovičová</div><div class="rep-meta">West · BAMA</div></div>
+        <div class="rep-pct" style="color:#059669">95%</div>
+        <div class="rep-chev">›</div>
+      </div>
+      <div class="rep-card">
+        <div class="rep-medal">🥈</div>
+        <div class="rep-avatar" style="background:linear-gradient(135deg,#DC2626,#991B1B)">VH</div>
+        <div class="rep-body"><div class="rep-name">Viera Hatinová</div><div class="rep-meta">West · NR</div></div>
+        <div class="rep-pct" style="color:#D97706">84%</div>
+        <div class="rep-chev">›</div>
+      </div>
+      <div class="rep-card">
+        <div class="rep-medal">🥉</div>
+        <div class="rep-avatar" style="background:linear-gradient(135deg,#0891B2,#0E7490)">IK</div>
+        <div class="rep-body"><div class="rep-name">Ida Kozáková</div><div class="rep-meta">West · TN</div></div>
+        <div class="rep-pct" style="color:#D97706">79%</div>
+        <div class="rep-chev">›</div>
+      </div>
+      <div class="rep-card">
+        <div class="rep-medal" style="font-size:11px;color:#94A3B8;font-weight:700">4.</div>
+        <div class="rep-avatar" style="background:linear-gradient(135deg,#059669,#047857)">VH</div>
+        <div class="rep-body"><div class="rep-name">Viera Hromadková</div><div class="rep-meta">West · DS</div></div>
+        <div class="rep-pct" style="color:#D97706">77%</div>
+        <div class="rep-chev">›</div>
+      </div>
+      <div class="rep-card">
+        <div class="rep-medal" style="font-size:11px;color:#94A3B8;font-weight:700">5.</div>
+        <div class="rep-avatar" style="background:linear-gradient(135deg,#2563EB,#1E40AF)">ZL</div>
+        <div class="rep-body"><div class="rep-name">Zoran Leščiš</div><div class="rep-meta">West · BASE</div></div>
+        <div class="rep-pct" style="color:#D97706">71%</div>
+        <div class="rep-chev">›</div>
+      </div>
+      <div class="rep-card">
+        <div class="rep-medal" style="font-size:11px;color:#94A3B8;font-weight:700">6.</div>
+        <div class="rep-avatar" style="background:linear-gradient(135deg,#EA580C,#C2410C)">JK</div>
+        <div class="rep-body"><div class="rep-name">Jozef Krkoška</div><div class="rep-meta">West · MT</div></div>
+        <div class="rep-pct" style="color:#D97706">70%</div>
+        <div class="rep-chev">›</div>
+      </div>
+    </div>
+  </div>
+  <!-- /AM WEST -->
+
+  <!-- DETAIL REPA -->
+  <div id="view-detail" style="display:none">
+    <button class="back">&larr; Späť na zoznam</button>
+
+    <div class="dhdr">
+      <div class="dhdr-avatar" style="background:linear-gradient(135deg,#2563EB,#1E40AF)">MS</div>
+      <div>
+        <div class="dhdr-name">Michal Sabol</div>
+        <div class="dhdr-sub">East · MI · @m.sabol</div>
+      </div>
+    </div>
+
+    <div class="sub-tabs">
+      <button class="sub-tab active" onclick="showSubTab('predaje',this)">💊 Predaje</button>
+      <button class="sub-tab" onclick="showSubTab('navstevy',this)">📋 Návštevy · 47</button>
+    </div>
+
+    <!-- SUB-TAB: PREDAJE -->
+    <div id="subtab-predaje">
+    <div class="q-tabs">
+      <button class="q-tab" onclick="showQ('Q1',this)">Q1</button>
+      <button class="q-tab current active" onclick="showQ('Q2',this)">Q2 · teraz</button>
+      <button class="q-tab future" onclick="showQ('Q3',this)">Q3</button>
+      <button class="q-tab future" onclick="showQ('Q4',this)">Q4</button>
+    </div>
+
+    <div class="total-card">
+      <div class="total-lbl">Celkové plnenie Q2 · apríl</div>
+      <div class="total-val g">108%</div>
+      <div class="total-money"><strong>1 367 €</strong> z aprílového plánu 1 304 €</div>
+    </div>
+
+    <div class="section-lbl">Plnenie per produkt · Q2 · apríl</div>
+    <div class="prod-list">
+
+      <div class="prod-item-adv">
+        <div class="prod-adv-top">
+          <div class="prod-adv-name"><div class="prod-dot" style="background:#60A5FA"></div>Aflamil</div>
+          <div class="prod-adv-pct" style="color:#059669">118%</div>
+        </div>
+        <div class="bar-wrap">
+          <div class="bar-track">
+            <div class="bar-fill g" style="width:39%"></div>
+            <div class="milestone current" style="left:33%"></div>
+            <div class="milestone" style="left:67%"></div>
+          </div>
+          <div class="ms-labels">
+            <span class="passed">Začiatok</span>
+            <span class="active">Apríl · 33%</span>
+            <span>Máj · 67%</span>
+            <span>Koniec Jún</span>
+          </div>
+        </div>
+        <div class="month-rows">
+          <div class="mrow">
+            <div class="mrow-lbl current">Apríl</div>
+            <div class="mrow-val g">236 €</div>
+            <div class="mrow-plan">plán 201 €</div>
+          </div>
+          <div class="mrow">
+            <div class="mrow-lbl">Máj</div>
+            <div class="mrow-val future">—</div>
+            <div class="mrow-plan">plán 199 €</div>
+          </div>
+          <div class="mrow">
+            <div class="mrow-lbl">Jún</div>
+            <div class="mrow-val future">—</div>
+            <div class="mrow-plan">plán 200 €</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="prod-item-adv">
+        <div class="prod-adv-top">
+          <div class="prod-adv-name"><div class="prod-dot" style="background:#C084FC"></div>Suprax</div>
+          <div class="prod-adv-pct" style="color:#059669">124%</div>
+        </div>
+        <div class="bar-wrap">
+          <div class="bar-track">
+            <div class="bar-fill g" style="width:41%"></div>
+            <div class="milestone current" style="left:33%"></div>
+            <div class="milestone" style="left:67%"></div>
+          </div>
+          <div class="ms-labels">
+            <span class="passed">Začiatok</span>
+            <span class="active">Apríl · 33%</span>
+            <span>Máj · 67%</span>
+            <span>Koniec Jún</span>
+          </div>
+        </div>
+        <div class="month-rows">
+          <div class="mrow">
+            <div class="mrow-lbl current">Apríl</div>
+            <div class="mrow-val g">454 €</div>
+            <div class="mrow-plan">plán 367 €</div>
+          </div>
+          <div class="mrow">
+            <div class="mrow-lbl">Máj</div>
+            <div class="mrow-val future">—</div>
+            <div class="mrow-plan">plán 367 €</div>
+          </div>
+          <div class="mrow">
+            <div class="mrow-lbl">Jún</div>
+            <div class="mrow-val future">—</div>
+            <div class="mrow-plan">plán 366 €</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="prod-item-adv">
+        <div class="prod-adv-top">
+          <div class="prod-adv-name"><div class="prod-dot" style="background:#FCD34D"></div>Cavinton</div>
+          <div class="prod-adv-pct" style="color:#D97706">86%</div>
+        </div>
+        <div class="bar-wrap">
+          <div class="bar-track">
+            <div class="bar-fill o" style="width:28%"></div>
+            <div class="milestone current" style="left:33%"></div>
+            <div class="milestone" style="left:67%"></div>
+          </div>
+          <div class="ms-labels">
+            <span class="passed">Začiatok</span>
+            <span class="active">Apríl · 33%</span>
+            <span>Máj · 67%</span>
+            <span>Koniec Jún</span>
+          </div>
+        </div>
+        <div class="month-rows">
+          <div class="mrow">
+            <div class="mrow-lbl current">Apríl</div>
+            <div class="mrow-val o">115 €</div>
+            <div class="mrow-plan">plán 134 €</div>
+          </div>
+          <div class="mrow">
+            <div class="mrow-lbl">Máj</div>
+            <div class="mrow-val future">—</div>
+            <div class="mrow-plan">plán 133 €</div>
+          </div>
+          <div class="mrow">
+            <div class="mrow-lbl">Jún</div>
+            <div class="mrow-val future">—</div>
+            <div class="mrow-plan">plán 133 €</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="prod-item-adv">
+        <div class="prod-adv-top">
+          <div class="prod-adv-name"><div class="prod-dot" style="background:#F87171"></div>Telexer</div>
+          <div class="prod-adv-pct" style="color:#059669">110%</div>
+        </div>
+        <div class="bar-wrap">
+          <div class="bar-track">
+            <div class="bar-fill g" style="width:36%"></div>
+            <div class="milestone current" style="left:33%"></div>
+            <div class="milestone" style="left:67%"></div>
+          </div>
+          <div class="ms-labels">
+            <span class="passed">Začiatok</span>
+            <span class="active">Apríl · 33%</span>
+            <span>Máj · 67%</span>
+            <span>Koniec Jún</span>
+          </div>
+        </div>
+        <div class="month-rows">
+          <div class="mrow">
+            <div class="mrow-lbl current">Apríl</div>
+            <div class="mrow-val g">293 €</div>
+            <div class="mrow-plan">plán 267 €</div>
+          </div>
+          <div class="mrow">
+            <div class="mrow-lbl">Máj</div>
+            <div class="mrow-val future">—</div>
+            <div class="mrow-plan">plán 267 €</div>
+          </div>
+          <div class="mrow">
+            <div class="mrow-lbl">Jún</div>
+            <div class="mrow-val future">—</div>
+            <div class="mrow-plan">plán 266 €</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="prod-item-adv">
+        <div class="prod-adv-top">
+          <div class="prod-adv-name"><div class="prod-dot" style="background:#34D399"></div>Vidonorm</div>
+          <div class="prod-adv-pct" style="color:#D97706">88%</div>
+        </div>
+        <div class="bar-wrap">
+          <div class="bar-track">
+            <div class="bar-fill o" style="width:29%"></div>
+            <div class="milestone current" style="left:33%"></div>
+            <div class="milestone" style="left:67%"></div>
+          </div>
+          <div class="ms-labels">
+            <span class="passed">Začiatok</span>
+            <span class="active">Apríl · 33%</span>
+            <span>Máj · 67%</span>
+            <span>Koniec Jún</span>
+          </div>
+        </div>
+        <div class="month-rows">
+          <div class="mrow">
+            <div class="mrow-lbl current">Apríl</div>
+            <div class="mrow-val o">176 €</div>
+            <div class="mrow-plan">plán 201 €</div>
+          </div>
+          <div class="mrow">
+            <div class="mrow-lbl">Máj</div>
+            <div class="mrow-val future">—</div>
+            <div class="mrow-plan">plán 199 €</div>
+          </div>
+          <div class="mrow">
+            <div class="mrow-lbl">Jún</div>
+            <div class="mrow-val future">—</div>
+            <div class="mrow-plan">plán 200 €</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="prod-item-adv">
+        <div class="prod-adv-top">
+          <div class="prod-adv-name"><div class="prod-dot" style="background:#A78BFA"></div>Junod</div>
+          <div class="prod-adv-pct" style="color:#DC2626">70%</div>
+        </div>
+        <div class="bar-wrap">
+          <div class="bar-track">
+            <div class="bar-fill r" style="width:23%"></div>
+            <div class="milestone current" style="left:33%"></div>
+            <div class="milestone" style="left:67%"></div>
+          </div>
+          <div class="ms-labels">
+            <span class="passed">Začiatok</span>
+            <span class="active">Apríl · 33%</span>
+            <span>Máj · 67%</span>
+            <span>Koniec Jún</span>
+          </div>
+        </div>
+        <div class="month-rows">
+          <div class="mrow">
+            <div class="mrow-lbl current">Apríl</div>
+            <div class="mrow-val r">93 €</div>
+            <div class="mrow-plan">plán 134 €</div>
+          </div>
+          <div class="mrow">
+            <div class="mrow-lbl">Máj</div>
+            <div class="mrow-val future">—</div>
+            <div class="mrow-plan">plán 133 €</div>
+          </div>
+          <div class="mrow">
+            <div class="mrow-lbl">Jún</div>
+            <div class="mrow-val future">—</div>
+            <div class="mrow-plan">plán 133 €</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+
+    <div class="trend">
+      <div class="trend-title">Trend plnenia cez kvartály · 2026</div>
+      <div class="trend-bars">
+        <div class="trend-col">
+          <div class="trend-bar" style="height:92%"><div class="trend-bar-val">94%</div></div>
+          <div class="trend-lbl">Q1</div>
+        </div>
+        <div class="trend-col">
+          <div class="trend-bar current" style="height:100%"><div class="trend-bar-val">108%</div></div>
+          <div class="trend-lbl current">Q2</div>
+        </div>
+        <div class="trend-col">
+          <div class="trend-bar future" style="height:18%"><div class="trend-bar-val empty">—</div></div>
+          <div class="trend-lbl">Q3</div>
+        </div>
+        <div class="trend-col">
+          <div class="trend-bar future" style="height:18%"><div class="trend-bar-val empty">—</div></div>
+          <div class="trend-lbl">Q4</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+  <!-- /DETAIL REPA -->
+
+
+  <!-- REP POHĽAD -->
+  <div id="view-rep" style="display:none">
+
+    <!-- SUB-VIEW 1: HOME (skutočná obrazovka ktorú rep vidí v produkčnej appke) -->
+    <div id="rep-home">
+
+      <!-- Header (produkčná kópia) -->
+      <div class="hdr">
+        <div class="hdr-row">
+          <div style="flex:1;min-width:0">
+            <div class="hdr-title">Potenciál všeobecného lekára</div>
+            <div class="hdr-sub">Medicínsky reprezentant — kalkulačka potenciálu</div>
+          </div>
+        </div>
+        <div class="hdr-bottom">
+          <div class="hdr-dots">
+            <div class="hdr-dot"><div class="dot" style="background:#34D399"></div>Vidonorm</div>
+            <div class="hdr-dot"><div class="dot" style="background:#60A5FA"></div>Aflamil</div>
+            <div class="hdr-dot"><div class="dot" style="background:#C084FC"></div>Suprax</div>
+            <div class="hdr-dot"><div class="dot" style="background:#FCD34D"></div>Cavinton Forte</div>
+          </div>
+          <div class="hdr-actions">
+            <button class="logout-btn" onclick="return false;">⎋ Odhlásiť</button>
+            <div class="hdr-actions-stack">
+              <div class="hdr-badge-wrap hdr-plnenie" onclick="openRepPlan()"><span class="hdr-hist-link">💊 Plnenie 108%</span></div>
+              <div class="hdr-badge-wrap hdr-rebricek"><span class="hdr-hist-link">🏆 Rebríček</span></div>
+              <div class="hdr-badge-wrap hdr-historia"><span class="hdr-hist-link">📋 História</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Identifikácia návštevy -->
+      <div class="info-card">
+        <div class="info-accent"></div>
+        <div class="info-inner">
+          <div class="info-title">Identifikácia návštevy</div>
+          <div class="info-grid-3">
+            <div class="info-field">
+              <div class="info-label">Titul, meno a priezvisko lekára</div>
+              <div class="info-input">napr. MUDr. Gedeon Richter</div>
+            </div>
+            <div class="info-field">
+              <div class="info-label">Okres pracoviska lekára</div>
+              <div class="info-input">napr. Bratislava I</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KAPITÁCIA -->
+      <div class="card">
+        <div class="card-accent" style="background:linear-gradient(90deg,#475569,#94A3B8)"></div>
+        <div class="card-inner">
+          <div class="prod-name">Kapitácia</div>
+          <div class="row">
+            <div class="flbl">Počet pacientov v kapitácii</div>
+            <div class="num-input">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIDONORM -->
+      <div class="card">
+        <div class="card-accent" style="background:linear-gradient(90deg,#059669,#34D399)"></div>
+        <div class="card-inner">
+          <div class="prod-name">Vidonorm</div>
+          <div class="prod-type">Chronický produkt · noví pacienti / mes.</div>
+          <div class="row">
+            <div class="flbl">Novonastavení pacienti / mesiac</div>
+            <div class="num-input">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AFLAMIL -->
+      <div class="card">
+        <div class="card-accent" style="background:linear-gradient(90deg,#2563EB,#60A5FA)"></div>
+        <div class="card-inner">
+          <div class="prod-name">Aflamil</div>
+          <div class="prod-type">Akútny produkt · bal. / mes.</div>
+          <div class="row">
+            <div class="flbl">Počet predpísaných balení / mesiac</div>
+            <div class="num-input">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUPRAX -->
+      <div class="card">
+        <div class="card-accent" style="background:linear-gradient(90deg,#7C3ABE,#C084FC)"></div>
+        <div class="card-inner">
+          <div class="prod-name">Suprax</div>
+          <div class="prod-type">Akútny produkt · bal. / mes.</div>
+          <div class="row">
+            <div class="flbl">Počet predpísaných balení / mesiac</div>
+            <div class="num-input">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CAVINTON FORTE -->
+      <div class="card">
+        <div class="card-accent" style="background:linear-gradient(90deg,#D97706,#FCD34D)"></div>
+        <div class="card-inner">
+          <div class="prod-name">Cavinton Forte</div>
+          <div class="prod-type">Chronický produkt · noví pacienti / mes.</div>
+          <div class="row">
+            <div class="flbl">Novonastavení pacienti / mesiac</div>
+            <div class="num-input">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- POZNÁMKA -->
+      <div class="card">
+        <div class="card-accent" style="background:linear-gradient(90deg,#F59E0B,#FDE68A)"></div>
+        <div class="card-inner">
+          <div class="prod-name">Poznámky <span style="font-size:10.5px;font-weight:400;color:#94A3B8;margin-left:4px">— nepovinné</span></div>
+          <div class="prod-type">Osobné poznámky</div>
+          <div class="row">
+            <div class="flbl">Poznámka</div>
+            <div class="num-input" style="height:70px;align-items:flex-start;padding:10px 13px">Napr. preferuje ráno, ohlásiť sa deň vopred...</div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-submit">Potvrdiť</button>
+
+        </div>
+    <!-- /SUB-VIEW 1 -->
+
+    <!-- SUB-VIEW 2: PLAN (po kliknutí na Plnenie) -->
+    <div id="rep-plan" style="display:none">
+
+      <!-- Späť tlačidlo -->
+      <button class="back" onclick="closeRepPlan()">&larr; Späť</button>
+
+      <!-- Celková karta (hore) -->
+      <div class="total-card" style="margin-bottom:10px">
+        <div class="total-lbl">Môj plán Q2 · apríl</div>
+        <div class="total-val g">108%</div>
+        <div class="total-money"><strong>1 367 €</strong> z aprílového plánu 1 304 €</div>
+      </div>
+
+      <!-- Q taby (pod kartou) -->
+      <div class="q-tabs">
+        <button class="q-tab">Q1</button>
+        <button class="q-tab current active">Q2 · teraz</button>
+        <button class="q-tab future">Q3</button>
+        <button class="q-tab future">Q4</button>
+      </div>
+
+      <div class="section-lbl">Môje produkty · apríl</div>
+      <div class="prod-list">
+
+        <div class="prod-item-adv">
+          <div class="prod-adv-top">
+            <div class="prod-adv-name"><div class="prod-dot" style="background:#60A5FA"></div>Aflamil</div>
+            <div class="prod-adv-pct" style="color:#059669">118%</div>
+          </div>
+          <div class="bar-wrap">
+            <div class="bar-track">
+              <div class="bar-fill g" style="width:39%"></div>
+              <div class="milestone current" style="left:34%"></div>
+              <div class="milestone" style="left:68%"></div>
+            </div>
+            <div class="ms-labels">
+              <span class="passed">Začiatok</span>
+              <span class="active">Apríl · 34%</span>
+              <span>Máj · 68%</span>
+              <span>Koniec Jún</span>
+            </div>
+          </div>
+          <div class="month-rows">
+            <div class="mrow"><div class="mrow-lbl current">Apríl</div><div class="mrow-val g">236 €</div><div class="mrow-plan">plán 201 €</div></div>
+            <div class="mrow"><div class="mrow-lbl">Máj</div><div class="mrow-val future">—</div><div class="mrow-plan">plán 201 €</div></div>
+            <div class="mrow"><div class="mrow-lbl">Jún</div><div class="mrow-val future">—</div><div class="mrow-plan">plán 198 €</div></div>
+          </div>
+        </div>
+
+        <div class="prod-item-adv">
+          <div class="prod-adv-top">
+            <div class="prod-adv-name"><div class="prod-dot" style="background:#C084FC"></div>Suprax</div>
+            <div class="prod-adv-pct" style="color:#059669">124%</div>
+          </div>
+          <div class="bar-wrap">
+            <div class="bar-track">
+              <div class="bar-fill g" style="width:41%"></div>
+              <div class="milestone current" style="left:34%"></div>
+              <div class="milestone" style="left:68%"></div>
+            </div>
+            <div class="ms-labels">
+              <span class="passed">Začiatok</span>
+              <span class="active">Apríl · 34%</span>
+              <span>Máj · 68%</span>
+              <span>Koniec Jún</span>
+            </div>
+          </div>
+          <div class="month-rows">
+            <div class="mrow"><div class="mrow-lbl current">Apríl</div><div class="mrow-val g">454 €</div><div class="mrow-plan">plán 367 €</div></div>
+            <div class="mrow"><div class="mrow-lbl">Máj</div><div class="mrow-val future">—</div><div class="mrow-plan">plán 367 €</div></div>
+            <div class="mrow"><div class="mrow-lbl">Jún</div><div class="mrow-val future">—</div><div class="mrow-plan">plán 366 €</div></div>
+          </div>
+        </div>
+
+        <div class="prod-item-adv">
+          <div class="prod-adv-top">
+            <div class="prod-adv-name"><div class="prod-dot" style="background:#FCD34D"></div>Cavinton</div>
+            <div class="prod-adv-pct" style="color:#D97706">86%</div>
+          </div>
+          <div class="bar-wrap">
+            <div class="bar-track">
+              <div class="bar-fill o" style="width:28%"></div>
+              <div class="milestone current" style="left:34%"></div>
+              <div class="milestone" style="left:68%"></div>
+            </div>
+            <div class="ms-labels">
+              <span class="passed">Začiatok</span>
+              <span class="active">Apríl · 34%</span>
+              <span>Máj · 68%</span>
+              <span>Koniec Jún</span>
+            </div>
+          </div>
+          <div class="month-rows">
+            <div class="mrow"><div class="mrow-lbl current">Apríl</div><div class="mrow-val o">115 €</div><div class="mrow-plan">plán 134 €</div></div>
+            <div class="mrow"><div class="mrow-lbl">Máj</div><div class="mrow-val future">—</div><div class="mrow-plan">plán 134 €</div></div>
+            <div class="mrow"><div class="mrow-lbl">Jún</div><div class="mrow-val future">—</div><div class="mrow-plan">plán 132 €</div></div>
+          </div>
+        </div>
+
+        <div class="prod-item-adv">
+          <div class="prod-adv-top">
+            <div class="prod-adv-name"><div class="prod-dot" style="background:#F87171"></div>Telexer</div>
+            <div class="prod-adv-pct" style="color:#059669">110%</div>
+          </div>
+          <div class="bar-wrap">
+            <div class="bar-track">
+              <div class="bar-fill g" style="width:36%"></div>
+              <div class="milestone current" style="left:34%"></div>
+              <div class="milestone" style="left:68%"></div>
+            </div>
+            <div class="ms-labels">
+              <span class="passed">Začiatok</span>
+              <span class="active">Apríl · 34%</span>
+              <span>Máj · 68%</span>
+              <span>Koniec Jún</span>
+            </div>
+          </div>
+          <div class="month-rows">
+            <div class="mrow"><div class="mrow-lbl current">Apríl</div><div class="mrow-val g">293 €</div><div class="mrow-plan">plán 267 €</div></div>
+            <div class="mrow"><div class="mrow-lbl">Máj</div><div class="mrow-val future">—</div><div class="mrow-plan">plán 267 €</div></div>
+            <div class="mrow"><div class="mrow-lbl">Jún</div><div class="mrow-val future">—</div><div class="mrow-plan">plán 266 €</div></div>
+          </div>
+        </div>
+
+        <div class="prod-item-adv">
+          <div class="prod-adv-top">
+            <div class="prod-adv-name"><div class="prod-dot" style="background:#34D399"></div>Vidonorm</div>
+            <div class="prod-adv-pct" style="color:#D97706">88%</div>
+          </div>
+          <div class="bar-wrap">
+            <div class="bar-track">
+              <div class="bar-fill o" style="width:29%"></div>
+              <div class="milestone current" style="left:34%"></div>
+              <div class="milestone" style="left:68%"></div>
+            </div>
+            <div class="ms-labels">
+              <span class="passed">Začiatok</span>
+              <span class="active">Apríl · 34%</span>
+              <span>Máj · 68%</span>
+              <span>Koniec Jún</span>
+            </div>
+          </div>
+          <div class="month-rows">
+            <div class="mrow"><div class="mrow-lbl current">Apríl</div><div class="mrow-val o">176 €</div><div class="mrow-plan">plán 201 €</div></div>
+            <div class="mrow"><div class="mrow-lbl">Máj</div><div class="mrow-val future">—</div><div class="mrow-plan">plán 201 €</div></div>
+            <div class="mrow"><div class="mrow-lbl">Jún</div><div class="mrow-val future">—</div><div class="mrow-plan">plán 198 €</div></div>
+          </div>
+        </div>
+
+        <div class="prod-item-adv">
+          <div class="prod-adv-top">
+            <div class="prod-adv-name"><div class="prod-dot" style="background:#A78BFA"></div>Junod</div>
+            <div class="prod-adv-pct" style="color:#DC2626">70%</div>
+          </div>
+          <div class="bar-wrap">
+            <div class="bar-track">
+              <div class="bar-fill r" style="width:23%"></div>
+              <div class="milestone current" style="left:34%"></div>
+              <div class="milestone" style="left:68%"></div>
+            </div>
+            <div class="ms-labels">
+              <span class="passed">Začiatok</span>
+              <span class="active">Apríl · 34%</span>
+              <span>Máj · 68%</span>
+              <span>Koniec Jún</span>
+            </div>
+          </div>
+          <div class="month-rows">
+            <div class="mrow"><div class="mrow-lbl current">Apríl</div><div class="mrow-val r">93 €</div><div class="mrow-plan">plán 134 €</div></div>
+            <div class="mrow"><div class="mrow-lbl">Máj</div><div class="mrow-val future">—</div><div class="mrow-plan">plán 134 €</div></div>
+            <div class="mrow"><div class="mrow-lbl">Jún</div><div class="mrow-val future">—</div><div class="mrow-plan">plán 132 €</div></div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="trend">
+        <div class="trend-title">Trend plnenia cez kvartály · 2026</div>
+        <div class="trend-bars">
+          <div class="trend-col">
+            <div class="trend-bar" style="height:92%"><div class="trend-bar-val">94%</div></div>
+            <div class="trend-lbl">Q1</div>
+          </div>
+          <div class="trend-col">
+            <div class="trend-bar current" style="height:100%"><div class="trend-bar-val">108%</div></div>
+            <div class="trend-lbl current">Q2</div>
+          </div>
+          <div class="trend-col">
+            <div class="trend-bar future" style="height:18%"><div class="trend-bar-val empty">—</div></div>
+            <div class="trend-lbl">Q3</div>
+          </div>
+          <div class="trend-col">
+            <div class="trend-bar future" style="height:18%"><div class="trend-bar-val empty">—</div></div>
+            <div class="trend-lbl">Q4</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <!-- /SUB-VIEW 2 -->
+
+  </div>
+  <!-- /REP POHĽAD -->
+
+</div>
+
+<script>
+function showMode(mode, btn){
+  document.querySelectorAll('.mode-btn').forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  ['admin','amwest','detail','rep'].forEach(function(v){
+    var el = document.getElementById('view-'+v);
+    if(el) el.style.display = (v===mode) ? 'block' : 'none';
+  });
+  // Reset rep sub-view to home whenever entering rep mode
+  if(mode === 'rep'){
+    var h = document.getElementById('rep-home');
+    var p = document.getElementById('rep-plan');
+    if(h) h.style.display = 'block';
+    if(p) p.style.display = 'none';
+  }
+  try { window.scrollTo(0,0); } catch(e){}
+}
+
+function showQ(q, btn){
+  document.querySelectorAll('#view-detail .q-tab').forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+}
+
+function showSubTab(tab, btn){
+  document.querySelectorAll('.sub-tab').forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  var p = document.getElementById('subtab-predaje');
+  var n = document.getElementById('subtab-navstevy');
+  if(p) p.style.display = (tab==='predaje') ? 'block' : 'none';
+  if(n) n.style.display = (tab==='navstevy') ? 'block' : 'none';
+}
+
+function openRepPlan(){
+  var h = document.getElementById('rep-home');
+  var p = document.getElementById('rep-plan');
+  if(h) h.style.display = 'none';
+  if(p) p.style.display = 'block';
+  try { window.scrollTo(0,0); } catch(e){}
+}
+
+function closeRepPlan(){
+  var h = document.getElementById('rep-home');
+  var p = document.getElementById('rep-plan');
+  if(p) p.style.display = 'none';
+  if(h) h.style.display = 'block';
+  try { window.scrollTo(0,0); } catch(e){}
+}
+</script>
+</body>
+</html>

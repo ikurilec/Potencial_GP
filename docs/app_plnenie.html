@@ -90,8 +90,8 @@
   body.manager-mode .app > .send-popup.show,
   body.manager-mode .app > .restore-overlay.show,
   body.manager-mode .app > .tutorial-overlay.show,
+  body.manager-mode .app > .lb-overlay.show,
   body.manager-mode .app > .wn-overlay.show{display:flex !important}
-  body.manager-mode .app > .lb-overlay.show{display:block !important}
   /* Leaderboard overlay */
 
   /* Pull-to-refresh */
@@ -103,8 +103,7 @@
   @keyframes ptrSpin{to{transform:rotate(360deg)}}
   .ptr-arrow{font-size:20px;transition:transform .2s;display:inline-block;color:#64748B}
   .ptr-arrow.ready{transform:rotate(180deg)}
-  .lb-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#EAECF2;z-index:1500;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
-  .lb-inner{max-width:660px;margin:0 auto;padding:24px 16px 48px}
+  .lb-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:1500;align-items:flex-start;justify-content:center;padding-top:48px;overscroll-behavior:none}
   /* ── WHAT'S NEW overlay ── */
     /* Scroll indikátor — gradient fade dole keď je obsah dlhší */
   .confirm-box::-webkit-scrollbar,.lb-box::-webkit-scrollbar{width:4px}
@@ -133,16 +132,16 @@
   .wn-item-title{font-size:13.5px;font-weight:700;color:#0F172A;margin-bottom:2px;font-family:'Outfit',sans-serif}
   .wn-item-desc{font-size:12px;color:#64748B;line-height:1.4}
   .wn-btn{width:100%;background:linear-gradient(135deg,#1E40AF,#2563EB);color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;font-family:'Outfit',sans-serif;cursor:pointer;margin-top:16px;letter-spacing:.01em}
-  .lb-overlay.show{display:block}
-  .lb-box{background:#fff;border-radius:16px;overflow:hidden;}
-  .lb-hdr{padding:0 0 14px;}
-  .lb-hdr-title{font-size:18px;font-weight:800;color:#0F172A;font-family:'Outfit',sans-serif}
-  .lb-hdr-sub{font-size:11px;color:#64748B;margin-top:3px}
-  .lb-close{display:none}
+  .lb-overlay.show{display:flex}
+  .lb-box{background:#0C1E35;border-radius:20px;width:93%;max-width:420px;max-height:82vh;overflow:hidden;display:flex;flex-direction:column;animation:slideUp .28s ease;overscroll-behavior:contain}
+  .lb-hdr{background:#0C1E35;border-radius:20px 20px 0 0;padding:18px 16px 14px 20px;display:flex;align-items:center;justify-content:space-between}
+  .lb-hdr-title{font-size:16px;font-weight:700;color:#fff;font-family:'Outfit',sans-serif}
+  .lb-hdr-sub{font-size:11px;color:#5B8DB8;margin-top:2px}
+  .lb-close{width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,.12);color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
   .lb-tabs{display:flex;gap:0;background:#F8FAFC;border-bottom:1px solid #E2E8F0}
   .lb-tab{flex:1;padding:11px 4px;border:none;background:none;font-size:12px;font-weight:600;color:#94A3B8;font-family:inherit;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
   .lb-tab.active{color:#2563EB;border-bottom-color:#2563EB}
-  .lb-body{padding:0 0 8px;background:#fff;}
+  .lb-body{padding:0 0 8px;background:#fff;overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;overscroll-behavior:contain}
   .lb-loading{text-align:center;padding:32px 20px;color:#94A3B8;font-size:14px}
   .lb-podium{display:flex;align-items:flex-end;justify-content:center;gap:8px;padding:20px 16px 8px;background:linear-gradient(180deg,#F8FAFC,#fff)}
   .lb-p-item{display:flex;flex-direction:column;align-items:center;flex:1}
@@ -314,30 +313,19 @@
   .progress-fill.complete{background:#059669}
   .hdr-hist-btn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:#fff;font-size:12px;font-weight:600;font-family:inherit;padding:6px 12px;border-radius:20px;cursor:pointer;transition:background .2s;white-space:nowrap}
   .hdr-hist-btn:hover{background:rgba(255,255,255,0.25)}
-  .hist-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#EAECF2;z-index:1500;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
-  .hist-overlay.show{display:block}
-  .hist-inner{max-width:660px;margin:0 auto;padding:24px 16px 48px}
-  .hist-header{margin-bottom:12px}
-  .hist-title{font-size:18px;font-weight:800;color:#0F172A;font-family:'Outfit',sans-serif}
-  .hist-date{font-size:11px;color:#64748B;margin-top:3px}
-  .hist-close{display:none}
-  .hist-body-card{background:#fff;border-radius:14px;overflow:hidden}
-  .hist-body{padding:4px 0}
-  /* Zdielaný panel-nav pre História / Rebríček / Plnenie */
-  .panel-nav{display:grid;grid-template-columns:repeat(3,1fr) 32px;gap:4px;background:#fff;border-radius:12px;padding:4px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
-  .panel-nav-btn{border:none;background:none;padding:9px 4px;font-size:11.5px;font-weight:600;color:#94A3B8;cursor:pointer;border-radius:9px;transition:all .15s;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:4px;-webkit-tap-highlight-color:transparent;white-space:nowrap}
-  .panel-nav-btn.active{background:#0C1E35;color:#fff}
-  .panel-nav-btn:active{opacity:.75}
-  .panel-nav-close{border:none;background:none;color:#94A3B8;font-size:18px;cursor:pointer;border-radius:8px;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}
-  .panel-nav-close:active{background:#F1F5F9}
-  .panel-nav-mgr-back{display:none;margin-bottom:10px}
-  body.manager-mode .panel-nav{display:none}
-  body.manager-mode .panel-nav-mgr-back{display:inline-flex}
+  .hist-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:1500;align-items:flex-start;justify-content:center;padding-top:60px}
+  .hist-overlay.show{display:flex}
+  .hist-box{background:#fff;border-radius:16px;width:90%;max-width:420px;max-height:75vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:slideUp .3s ease;overflow:hidden}
+  .hist-header{padding:18px 20px 14px;border-bottom:1px solid #E2E8F0;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+  .hist-title{font-size:16px;font-weight:700;color:#1A2A3A}
+  .hist-date{font-size:12px;color:#94A3B8;margin-top:2px}
+  .hist-close{background:none;border:none;font-size:22px;color:#94A3B8;cursor:pointer;line-height:1;padding:0 4px}
+  .hist-body{overflow-y:auto;flex:1;padding:8px 0}
   .hist-empty{text-align:center;padding:48px 24px;color:#94A3B8;font-size:13px;line-height:1.6}
   .hist-empty-icon{font-size:44px;margin-bottom:12px;display:block;opacity:.6}
   .hist-empty-title{font-size:15px;font-weight:700;color:#64748B;margin-bottom:6px}
   .hist-empty-sub{font-size:12px;color:#94A3B8}
-  .hist-search-wrap{padding:10px 14px;border-bottom:1px solid #E2E8F0;background:#fff}
+  .hist-search-wrap{padding:10px 14px;border-bottom:1px solid #E2E8F0;position:sticky;top:0;background:#fff;z-index:1}
   .hist-search{width:100%;height:38px;padding:0 12px 0 34px;border-radius:9px;border:1.5px solid #E2E8F0;background:#F8FAFC;font-size:14px;font-family:inherit;color:#1A2A3A;outline:none;box-sizing:border-box}
   .hist-search:focus{border-color:#3B82F6;background:#fff;box-shadow:0 0 0 3px rgba(59,130,246,.1)}
   .hist-search-icon{position:absolute;left:24px;top:50%;transform:translateY(-50%);font-size:14px;color:#94A3B8;pointer-events:none}
@@ -493,14 +481,6 @@
   .logout-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .logout-cancel{padding:12px;border-radius:12px;border:1.5px solid #E2E8F0;background:#fff;color:#64748B;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer}
   .logout-confirm{padding:12px;border-radius:12px;border:none;background:#DC2626;color:#fff;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer}
-  .session-expired-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.45);z-index:5000;align-items:center;justify-content:center}
-  .session-expired-overlay.show{display:flex}
-  .session-expired-box{background:#fff;border-radius:20px;padding:28px 24px;max-width:300px;width:88%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:slideUp .3s ease}
-  .session-expired-icon{font-size:36px;margin-bottom:10px}
-  .session-expired-title{font-size:16px;font-weight:800;color:#0F172A;margin-bottom:6px}
-  .session-expired-sub{font-size:13px;color:#64748B;margin-bottom:22px;line-height:1.5}
-  .session-expired-btns{display:grid;grid-template-columns:1fr;gap:10px}
-  .session-expired-confirm{padding:12px;border-radius:12px;border:none;background:#2563EB;color:#fff;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer}
   .logout-btn{display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;border:1px solid rgba(239,68,68,.4);background:rgba(239,68,68,.15);color:rgba(255,180,180,.9);font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .2s}
   .logout-btn:hover{background:rgba(239,68,68,.25)}
   .note-wrap{background:#FFFBEB;border-radius:10px;padding:10px 12px;margin:10px 0 4px;border:1px solid #FDE68A}
@@ -556,285 +536,47 @@
   .tutorial-back{width:100%;padding:10px;background:none;border:none;color:#94A3B8;font-size:13px;font-family:inherit;cursor:pointer;font-weight:500}
   .tutorial-preskocit{display:block;margin:6px auto 0;background:none;border:none;color:#CBD5E1;font-size:11px;font-family:inherit;cursor:pointer;font-weight:500}
   .tutorial-hero-login-title{font-size:26px;font-weight:800;letter-spacing:-.03em;color:#fff;text-align:center;line-height:1.2}
-  /* ── PLNENIE (Predaje vs Plán) — admin sub-view, v2.3.0 ── */
-  .mgr-subtabs{display:flex;gap:6px;margin:0 0 10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
-  .mgr-subtab{flex:1;padding:9px 4px;border:none;background:transparent;font-size:12px;font-weight:700;color:#64748B;cursor:pointer;border-radius:9px;font-family:inherit;transition:all .15s;-webkit-tap-highlight-color:transparent}
-  .mgr-subtab.active{background:#0C1E35;color:#fff}
-  .mgr-plnenie-view{display:none}
-  body.mgr-subtab-plnenie .mgr-plnenie-view{display:block}
-  body.mgr-subtab-plnenie .mgr-list-wrap,
-  body.mgr-subtab-plnenie .mgr-detail{display:none !important}
-  .mgr-leaderboard-view{display:none;background:#fff;border-radius:14px;overflow:hidden;margin-top:4px}
-  body.mgr-subtab-leaderboard .mgr-leaderboard-view{display:block}
-  body.mgr-subtab-leaderboard .mgr-list-wrap,
-  body.mgr-subtab-leaderboard .mgr-detail{display:none !important}
-  .pl-q-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
-  .pl-q-tab{padding:10px 4px;border:none;background:transparent;font-size:12px;font-weight:700;color:#64748B;cursor:pointer;border-radius:8px;font-family:inherit;transition:all .15s;text-align:center;-webkit-tap-highlight-color:transparent;position:relative}
-  .pl-q-tab.active{background:#0C1E35;color:#fff}
-  .pl-q-tab.future{color:#E2E8F0;cursor:not-allowed;pointer-events:none;opacity:.6}
-  .pl-q-tab.current::after{content:'';position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:#10B981}
-  .pl-sum-big{background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
-  .pl-sum-big-row{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;gap:10px}
-  .pl-sum-lbl{font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
-  .pl-sum-big-val{font-size:30px;font-weight:800;line-height:1}
-  .pl-sum-big-val.pl-g{color:#059669}
-  .pl-sum-big-val.pl-o{color:#D97706}
-  .pl-sum-big-val.pl-r{color:#DC2626}
-  .pl-sum-big-val.pl-none{color:#94A3B8}
-  .pl-sum-big-total{font-size:11.5px;color:#64748B;font-weight:500}
-  .pl-sum-big-total strong{color:#0F172A;font-weight:700}
-  .pl-sum-big-plan{font-size:10.5px;color:#94A3B8;margin-top:1px}
-  .pl-sum-pred{font-size:11.5px;color:#94A3B8;margin-top:10px;padding-top:10px;border-top:1px solid #F1F5F9;text-align:center}
-  .pl-sum-pred span{font-weight:700;margin-left:4px}
-  .pl-sum-prods{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;padding-top:10px;border-top:0.5px solid #E2E8F0}
-  .pl-sum-prods:empty{display:none}
-  .pl-sum-prod{display:flex;align-items:baseline;justify-content:space-between;gap:4px;font-size:12px;font-weight:500;color:#334155;min-width:0}
-  .pl-sum-prod-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
-  .pl-sum-prod strong{font-weight:700}
-  .pl-sum-prod strong.pl-g{color:#059669}
-  .pl-sum-prod strong.pl-o{color:#D97706}
-  .pl-sum-prod strong.pl-r{color:#DC2626}
-  .pl-sum-prod strong.pl-none{color:#94A3B8}
-  .pl-regions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
-  .pl-region-card{background:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 2px 8px rgba(0,0,0,.06);text-align:center}
-  .pl-region-lbl{font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
-  .pl-region-val{font-size:22px;font-weight:800;line-height:1}
-  .pl-region-val.pl-g{color:#059669}
-  .pl-region-val.pl-o{color:#D97706}
-  .pl-region-val.pl-r{color:#DC2626}
-  .pl-region-val.pl-none{color:#94A3B8}
-  .pl-region-pred{font-size:10px;color:#94A3B8;margin-top:4px}
-  .pl-region-pred span{font-weight:700}
-  .pl-section-lbl{font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.07em;margin:14px 2px 8px}
-  .pl-rep-list{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.06)}
-  .pl-rep-card{display:flex;align-items:center;gap:12px;padding:13px 14px;border-top:0.5px solid #F1F5F9}
-  .pl-rep-card:first-child{border-top:none}
-  .pl-rep-medal{width:32px;font-size:17px;text-align:center;flex-shrink:0}
-  .pl-rep-medal.pl-rank{font-size:11px;color:#94A3B8;font-weight:700}
-  .pl-rep-avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700;color:#fff;flex-shrink:0}
-  .pl-rep-body{flex:1;min-width:0}
-  .pl-rep-name{font-size:13.5px;font-weight:700;color:#0F172A}
-  .pl-rep-meta{font-size:10.5px;color:#94A3B8;margin-top:2px;letter-spacing:.02em}
-  .pl-rep-pct{font-size:17px;font-weight:800;flex-shrink:0}
-  .pl-rep-pct.pl-g{color:#059669}
-  .pl-rep-pct.pl-o{color:#D97706}
-  .pl-rep-pct.pl-r{color:#DC2626}
-  .pl-rep-pct.pl-none{color:#94A3B8}
-  .pl-loading{padding:30px 14px;text-align:center;color:#64748B;font-size:13px}
-  .pl-loading .mgr-spinner{margin:0 auto 10px}
-  .pl-error{padding:30px 14px;text-align:center;color:#DC2626;font-size:13px}
-  .pl-rep-card.pl-rep-clickable{cursor:pointer;transition:background .15s}
-  .pl-rep-card.pl-rep-clickable:active{background:#F8FAFC}
-  .pl-rep-chev{color:#CBD5E1;font-size:17px;margin-left:4px;flex-shrink:0}
-  /* ── Detail reprezentanta (v2.3.1) — CSS totožný s plnenie_vizual.html / Detail repa ── */
-  .mgr-plnenie-detail{display:none}
-  body.mgr-subtab-plnenie.mgr-plnenie-detail-open .mgr-plnenie-detail{display:block}
-  body.mgr-subtab-plnenie.mgr-plnenie-detail-open .mgr-plnenie-view{display:none !important}
-  /* Back */
-  .pl-detail-back{display:inline-flex;align-items:center;gap:6px;background:#fff;border:none;padding:9px 14px 9px 10px;border-radius:22px;color:#2563EB;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:10px;font-family:inherit;box-shadow:0 1px 4px rgba(0,0,0,.06);transition:transform .15s;-webkit-tap-highlight-color:transparent}
-  .pl-detail-back:active{transform:scale(.96)}
-  /* Header */
-  .mgr-plnenie-detail .dhdr{background:#fff;border-radius:14px;padding:16px 18px 14px;margin-bottom:10px;display:flex;gap:12px;align-items:center;box-shadow:0 2px 10px rgba(0,0,0,.06)}
-  .mgr-plnenie-detail .dhdr-avatar{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;flex-shrink:0;font-family:'Outfit',sans-serif}
-  .mgr-plnenie-detail .dhdr-name{font-size:15px;font-weight:700;color:#0F172A;font-family:'Outfit',sans-serif}
-  .mgr-plnenie-detail .dhdr-sub{font-size:11px;color:#64748B;margin-top:2px}
-  /* Sub-taby: Predaje / Návštevy */
-  .mgr-plnenie-detail .pl-sub-tabs{display:flex;gap:6px;margin-bottom:12px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
-  .mgr-plnenie-detail .pl-sub-tab{flex:1;padding:11px 4px;border:none;background:transparent;font-size:12.5px;font-weight:700;color:#64748B;cursor:pointer;border-radius:8px;font-family:inherit;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;-webkit-tap-highlight-color:transparent}
-  .mgr-plnenie-detail .pl-sub-tab.active{background:#0C1E35;color:#fff}
-  /* Total card — tmavá gradient */
-  .mgr-plnenie-detail .total-card{background:linear-gradient(135deg,#0C1E35,#1A3A5C);border-radius:14px;padding:16px 18px;margin-bottom:12px;color:#fff;text-align:center}
-  .mgr-plnenie-detail .total-lbl{font-size:10px;font-weight:700;color:#7AABCC;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
-  .mgr-plnenie-detail .total-val{font-size:34px;font-weight:800;font-family:'Outfit',sans-serif;line-height:1;margin-bottom:3px}
-  .mgr-plnenie-detail .total-val.g{color:#10B981}
-  .mgr-plnenie-detail .total-val.o{color:#F59E0B}
-  .mgr-plnenie-detail .total-val.r{color:#EF4444}
-  .mgr-plnenie-detail .total-val.none{color:#94A3B8}
-  .mgr-plnenie-detail .total-money{font-size:12px;color:#CBD5E1;font-weight:500}
-  .mgr-plnenie-detail .total-money strong{color:#fff;font-weight:700}
-  .mgr-plnenie-detail .total-pred{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.1);font-size:11.5px;color:#94A3B8}
-  .mgr-plnenie-detail .total-pred span{font-size:16px;font-weight:700;color:#94A3B8;margin-left:6px}
-  /* Produkty */
-  .mgr-plnenie-detail .prod-item-adv{background:#fff;border-radius:12px;padding:13px 14px;margin-bottom:9px;box-shadow:0 1px 6px rgba(0,0,0,.05)}
-  .mgr-plnenie-detail .prod-adv-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-  .mgr-plnenie-detail .prod-adv-name{display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:700;color:#0F172A;font-family:'Outfit',sans-serif}
-  .mgr-plnenie-detail .prod-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-  .mgr-plnenie-detail .prod-adv-pct{font-size:17px;font-weight:800;font-family:'Outfit',sans-serif;line-height:1}
-  .mgr-plnenie-detail .prod-adv-pct.g{color:#059669}
-  .mgr-plnenie-detail .prod-adv-pct.o{color:#D97706}
-  .mgr-plnenie-detail .prod-adv-pct.r{color:#DC2626}
-  .mgr-plnenie-detail .prod-adv-pct.none{color:#94A3B8}
-  /* Bar s míľnikmi */
-  .mgr-plnenie-detail .bar-wrap{position:relative;margin-bottom:6px}
-  .mgr-plnenie-detail .bar-track{height:12px;background:#F1F5F9;border-radius:6px;overflow:visible;position:relative}
-  .mgr-plnenie-detail .bar-fill{height:100%;border-radius:6px;position:relative;transition:width .8s ease;max-width:100%}
-  .mgr-plnenie-detail .bar-fill.g{background:linear-gradient(90deg,#10B981,#059669)}
-  .mgr-plnenie-detail .bar-fill.o{background:linear-gradient(90deg,#F59E0B,#D97706)}
-  .mgr-plnenie-detail .bar-fill.r{background:linear-gradient(90deg,#F87171,#DC2626)}
-  .mgr-plnenie-detail .milestone{position:absolute;top:-3px;bottom:-3px;width:3px;background:#0F172A;z-index:2}
-  .mgr-plnenie-detail .milestone.passed{background:#0F172A}
-  .mgr-plnenie-detail .milestone.current{background:#0F172A;width:4px}
-  /* Textové popisky pod barom */
-  .mgr-plnenie-detail .ms-labels{display:flex;justify-content:space-between;margin-top:6px;padding:0 1px;font-size:10px;color:#94A3B8;font-weight:600}
-  .mgr-plnenie-detail .ms-labels span{flex:1;text-align:center}
-  .mgr-plnenie-detail .ms-labels span:first-child{text-align:left}
-  .mgr-plnenie-detail .ms-labels span:last-child{text-align:right}
-  .mgr-plnenie-detail .ms-labels span.active{color:#0C1E35;font-weight:700}
-  .mgr-plnenie-detail .ms-labels span.passed{color:#64748B}
-  /* Money */
-  .mgr-plnenie-detail .prod-money{font-size:11.5px;color:#64748B;margin-top:2px;margin-bottom:4px}
-  .mgr-plnenie-detail .prod-money strong{color:#0F172A;font-weight:700}
-  .mgr-plnenie-detail .prod-money.muted{color:#94A3B8;font-style:italic}
-  .mgr-plnenie-detail .prod-pred{font-size:11px;color:#94A3B8;margin-bottom:8px;text-align:center}
-  .mgr-plnenie-detail .prod-pred span{font-weight:700;margin-left:4px}
-  /* Mesačné riadky */
-  .mgr-plnenie-detail .month-rows{display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:0.5px solid #F1F5F9}
-  .mgr-plnenie-detail .mrow{flex:1;text-align:center}
-  .mgr-plnenie-detail .mrow-lbl{font-size:9.5px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
-  .mgr-plnenie-detail .mrow-lbl.current{color:#059669}
-  .mgr-plnenie-detail .mrow-val{font-size:12px;font-weight:700;font-family:'Outfit',sans-serif;margin-bottom:4px}
-  .mgr-plnenie-detail .mrow-val.g{color:#059669}
-  .mgr-plnenie-detail .mrow-val.o{color:#D97706}
-  .mgr-plnenie-detail .mrow-val.r{color:#DC2626}
-  .mgr-plnenie-detail .mrow-val.future{color:#CBD5E1}
-  .mgr-plnenie-detail .mrow-plan{font-size:9px;color:#94A3B8;margin-top:1px}
-  /* Trend graf */
-  .mgr-plnenie-detail .trend{background:#fff;border-radius:14px;padding:14px 18px 16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
-  .mgr-plnenie-detail .trend-title{font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:28px}
-  .mgr-plnenie-detail .trend-bars{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:end;height:130px}
-  .mgr-plnenie-detail .trend-col{display:flex;flex-direction:column;align-items:center;gap:10px;height:100%;justify-content:flex-end}
-  .mgr-plnenie-detail .trend-bar{width:100%;max-width:40px;background:linear-gradient(180deg,#3B82F6,#1D4ED8);border-radius:6px 6px 2px 2px;position:relative;min-height:4px;transition:height .6s ease}
-  .mgr-plnenie-detail .trend-bar.future{background:linear-gradient(180deg,#E2E8F0,#CBD5E1)}
-  .mgr-plnenie-detail .trend-bar.g{background:linear-gradient(180deg,#10B981,#059669)}
-  .mgr-plnenie-detail .trend-bar.o{background:linear-gradient(180deg,#FBBF24,#D97706)}
-  .mgr-plnenie-detail .trend-bar.r{background:linear-gradient(180deg,#F87171,#DC2626)}
-  .mgr-plnenie-detail .trend-bar.pred{background:transparent;border:2px dashed #94A3B8;border-bottom:none;box-sizing:border-box}
-  .mgr-plnenie-detail .trend-pred-lbl{font-size:9px;color:#94A3B8;font-weight:600;text-align:center;margin-top:-6px}
-  .mgr-plnenie-detail .trend-bar-val{position:absolute;top:-20px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:700;color:#0F172A;white-space:nowrap;font-family:'Outfit',sans-serif}
-  .mgr-plnenie-detail .trend-bar-val.empty{color:#94A3B8;font-weight:500}
-  .mgr-plnenie-detail .trend-lbl{font-size:10px;font-weight:600;color:#64748B}
-  .mgr-plnenie-detail .trend-lbl.current{color:#059669;font-weight:700}
-  .mgr-plnenie-detail .trend-ms{position:absolute;left:-5px;right:-5px;height:3px;background:#0F172A;z-index:2;pointer-events:none}
-  .mgr-plnenie-detail .trend-ms-lbl{position:absolute;left:50%;transform:translateX(-50%);font-size:9px;font-weight:600;color:#94A3B8;white-space:nowrap;z-index:3;pointer-events:none;line-height:1}
-  /* ═══ REP NAV BAR (História / Rebríček / Plnenie) ═══ */
-  .rep-nav{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
-  .rep-nav-btn{background:#fff;border:1px solid rgba(0,0,0,.07);border-radius:12px;padding:11px 6px;font-size:12px;font-weight:700;color:#1A2A3A;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(0,0,0,.06),0 1px 3px rgba(0,0,0,.04);display:flex;align-items:center;justify-content:center;gap:5px;transition:opacity .15s,transform .15s;-webkit-tap-highlight-color:transparent;white-space:nowrap;overflow:hidden;position:relative}
-  .rep-nav-btn:active{opacity:.82;transform:scale(.96)}
-  .rep-nav-badge{background:linear-gradient(135deg,#F59E0B,#EF4444);color:#fff;border-radius:8px;font-size:9px;font-weight:800;padding:1px 5px;min-width:16px;text-align:center;flex-shrink:0}
-  body.manager-mode .rep-nav{display:none !important}
-  /* ═══ REP PLNENIE OVERLAY ═══ */
-  .rep-plnenie-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:2000;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
-  .rep-plnenie-overlay.show{display:block}
 
-  /* ── PHARMA MS OVERLAY — trhový podiel po kliknutí na produkt ── */
-  .pharma-ms-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:3000;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
-  .pharma-ms-overlay.show{display:block}
-  .pharma-ms-inner{max-width:480px;margin:0 auto;padding:16px 16px 40px}
-  .pharma-ms-hdr{display:flex;align-items:center;gap:10px;margin-bottom:16px}
-  .pharma-ms-back{display:inline-flex;align-items:center;gap:6px;background:#fff;border:none;padding:9px 14px 9px 10px;border-radius:22px;color:#2563EB;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;box-shadow:0 1px 4px rgba(0,0,0,.06);-webkit-tap-highlight-color:transparent;white-space:nowrap;flex-shrink:0}
-  .pharma-ms-back:active{opacity:.75}
-  .pharma-ms-title{font-size:13px;font-weight:700;color:#0C1E35;flex:1;font-family:'Outfit',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .pharma-ms-mesiac{display:none}
-  .pharma-ms-subtabs{display:flex;gap:6px;margin-bottom:14px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
-  .pharma-ms-subtab{flex:1;padding:10px 4px;border:none;background:transparent;font-size:13px;font-weight:700;color:#64748B;cursor:pointer;border-radius:8px;font-family:inherit;transition:all .15s;-webkit-tap-highlight-color:transparent}
-  .pharma-ms-subtab.active{background:#0C1E35;color:#fff}
-  /* Karta — teritoriálny + SK MS */
-  .pharma-ms-card{background:linear-gradient(135deg,#0C1E35,#1A3A5C);border-radius:14px;padding:16px 18px;margin-bottom:14px;color:#fff}
-  .pharma-ms-card-lbl{font-size:10px;font-weight:700;color:#7AABCC;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;text-align:center}
-  .pharma-ms-card-2col{display:flex;gap:0;margin-bottom:12px}
-  .pharma-ms-card-2col > div{flex:1;text-align:center;padding:0 8px}
-  .pharma-ms-card-2col > div + div{border-left:1px solid rgba(255,255,255,.1)}
-  .pharma-ms-card-sublbl{font-size:10px;color:#7AABCC;font-weight:600;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em}
-  .pharma-ms-card-val{font-size:32px;font-weight:800;line-height:1;font-family:'Outfit',sans-serif;color:#fff}
-  .pharma-ms-card-val.sk{color:#93C5FD}
-  .pharma-ms-card-val.none{font-size:18px;color:#94A3B8;text-align:center;padding:8px 0}
-  /* Mesačný trend v karte */
-  .pharma-ms-trend-row{display:flex;justify-content:center;gap:16px;padding-top:10px;border-top:1px solid rgba(255,255,255,.1)}
-  .pharma-ms-trend-m{text-align:center}
-  .pharma-ms-trend-val{font-size:13px;font-weight:700;color:#fff;font-family:'Outfit',sans-serif}
-  .pharma-ms-trend-lbl{font-size:10px;color:#7AABCC;margin-top:2px}
-  /* Sekcia a okresy */
-  .pharma-ms-section-title{font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin:4px 0 8px}
-  .pharma-ms-district{background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:8px;box-shadow:0 1px 6px rgba(0,0,0,.05);overflow:hidden}
-  .pharma-ms-district-name{font-size:13px;font-weight:700;color:#0F172A;margin-bottom:8px;font-family:'Outfit',sans-serif}
-  /* Tabuľka mesiacov */
-  .pharma-ms-tbl{width:100%;border-collapse:collapse}
-  .pharma-ms-tbl th{font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.04em;padding:0 4px 5px;text-align:right}
-  .pharma-ms-tbl th:first-child{text-align:left;width:40%}
-  .pharma-ms-tbl td{font-size:12px;padding:4px 4px;text-align:right;color:#475569;border-top:0.5px solid #F1F5F9}
-  .pharma-ms-tbl td:first-child{text-align:left;color:#0F172A;font-weight:700;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:0}
-  .pharma-ms-tbl tr.ours td{color:#2563EB;font-weight:700}
-  .pharma-ms-tbl tr.ours td:first-child{color:#0C1E35}
-  .pharma-ms-loading{text-align:center;padding:48px 20px;color:#64748B;font-size:14px}
-  .prod-ms-link{display:block;width:100%;text-align:center;margin-top:12px;padding:11px 14px;background:#F1F5F9;border-radius:10px;border:none;font-size:13px;font-weight:700;color:#334155;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;letter-spacing:.01em}
-  .prod-ms-link:active{background:#E2E8F0}
-  .rep-pl-inner{max-width:660px;margin:0 auto;padding:24px 16px 48px}
-  /* Zdieľané štýly pre rep plnenie (kopíruje mgr-plnenie-detail scope) */
-  .rep-pl-inner .total-card{background:linear-gradient(135deg,#0C1E35,#1A3A5C);border-radius:14px;padding:16px 18px;margin-bottom:12px;color:#fff;text-align:center}
-  .rep-pl-inner .total-lbl{font-size:10px;font-weight:700;color:#7AABCC;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
-  .rep-pl-inner .total-val{font-size:34px;font-weight:800;font-family:'Outfit',sans-serif;line-height:1;margin-bottom:3px}
-  .rep-pl-inner .total-val.g{color:#10B981}
-  .rep-pl-inner .total-val.o{color:#F59E0B}
-  .rep-pl-inner .total-val.r{color:#EF4444}
-  .rep-pl-inner .total-val.none{color:#94A3B8}
-  .rep-pl-inner .total-money{font-size:12px;color:#CBD5E1;font-weight:500}
-  .rep-pl-inner .total-money strong{color:#fff;font-weight:700}
-  .rep-pl-inner .total-pred{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.1);font-size:11.5px;color:#94A3B8}
-  .rep-pl-inner .total-pred span{font-size:16px;font-weight:700;color:#94A3B8;margin-left:6px}
-  .rep-pl-inner .prod-item-adv{background:#fff;border-radius:12px;padding:13px 14px;margin-bottom:9px;box-shadow:0 1px 6px rgba(0,0,0,.05)}
-  .rep-pl-inner .prod-adv-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-  .rep-pl-inner .prod-adv-name{display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:700;color:#0F172A;font-family:'Outfit',sans-serif}
-  .rep-pl-inner .prod-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-  .rep-pl-inner .prod-adv-pct{font-size:17px;font-weight:800;font-family:'Outfit',sans-serif;line-height:1}
-  .rep-pl-inner .prod-adv-pct.g{color:#059669}
-  .rep-pl-inner .prod-adv-pct.o{color:#D97706}
-  .rep-pl-inner .prod-adv-pct.r{color:#DC2626}
-  .rep-pl-inner .prod-adv-pct.none{color:#94A3B8}
-  .rep-pl-inner .bar-wrap{position:relative;margin-bottom:6px}
-  .rep-pl-inner .bar-track{height:12px;background:#F1F5F9;border-radius:6px;overflow:visible;position:relative}
-  .rep-pl-inner .bar-fill{height:100%;border-radius:6px;position:relative;transition:width .8s ease;max-width:100%}
-  .rep-pl-inner .bar-fill.g{background:linear-gradient(90deg,#10B981,#059669)}
-  .rep-pl-inner .bar-fill.o{background:linear-gradient(90deg,#F59E0B,#D97706)}
-  .rep-pl-inner .bar-fill.r{background:linear-gradient(90deg,#F87171,#DC2626)}
-  .rep-pl-inner .milestone{position:absolute;top:-3px;bottom:-3px;width:3px;background:#0F172A;z-index:2}
-  .rep-pl-inner .ms-labels{display:flex;justify-content:space-between;margin-top:6px;padding:0 1px;font-size:10px;color:#94A3B8;font-weight:600}
-  .rep-pl-inner .ms-labels span{flex:1;text-align:center}
-  .rep-pl-inner .ms-labels span:first-child{text-align:left}
-  .rep-pl-inner .ms-labels span:last-child{text-align:right}
-  .rep-pl-inner .ms-labels span.active{color:#0C1E35;font-weight:700}
-  .rep-pl-inner .ms-labels span.passed{color:#64748B}
-  .rep-pl-inner .prod-money{font-size:11.5px;color:#64748B;margin-top:2px;margin-bottom:4px}
-  .rep-pl-inner .prod-money strong{color:#0F172A;font-weight:700}
-  .rep-pl-inner .prod-money.muted{color:#94A3B8;font-style:italic}
-  .rep-pl-inner .prod-pred{font-size:11px;color:#94A3B8;margin-bottom:8px;text-align:center}
-  .rep-pl-inner .prod-pred span{font-weight:700;margin-left:4px}
-  .rep-pl-inner .month-rows{display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:0.5px solid #F1F5F9}
-  .rep-pl-inner .mrow{flex:1;text-align:center}
-  .rep-pl-inner .mrow-lbl{font-size:9.5px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
-  .rep-pl-inner .mrow-lbl.current{color:#059669}
-  .rep-pl-inner .mrow-val{font-size:12px;font-weight:700;font-family:'Outfit',sans-serif;margin-bottom:4px}
-  .rep-pl-inner .mrow-val.g{color:#059669}
-  .rep-pl-inner .mrow-val.o{color:#D97706}
-  .rep-pl-inner .mrow-val.r{color:#DC2626}
-  .rep-pl-inner .mrow-val.future{color:#CBD5E1}
-  .rep-pl-inner .mrow-plan{font-size:9px;color:#94A3B8;margin-top:1px}
-  .rep-pl-inner .trend{background:#fff;border-radius:14px;padding:14px 18px 16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
-  .rep-pl-inner .trend-title{font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:28px}
-  .rep-pl-inner .trend-bars{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:end;height:130px}
-  .rep-pl-inner .trend-col{display:flex;flex-direction:column;align-items:center;gap:10px;height:100%;justify-content:flex-end}
-  .rep-pl-inner .trend-bar{width:100%;max-width:40px;border-radius:6px 6px 2px 2px;position:relative;min-height:4px;transition:height .6s ease}
-  .rep-pl-inner .trend-bar.future{background:linear-gradient(180deg,#E2E8F0,#CBD5E1)}
-  .rep-pl-inner .trend-bar.g{background:linear-gradient(180deg,#10B981,#059669)}
-  .rep-pl-inner .trend-bar.o{background:linear-gradient(180deg,#FBBF24,#D97706)}
-  .rep-pl-inner .trend-bar.r{background:linear-gradient(180deg,#F87171,#DC2626)}
-  .rep-pl-inner .trend-bar.pred{background:transparent;border:2px dashed #94A3B8;border-bottom:none;box-sizing:border-box}
-  .rep-pl-inner .trend-pred-lbl{font-size:9px;color:#94A3B8;font-weight:600;text-align:center;margin-top:-6px}
-  .rep-pl-inner .trend-bar-val{position:absolute;top:-20px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:700;color:#0F172A;white-space:nowrap;font-family:'Outfit',sans-serif}
-  .rep-pl-inner .trend-bar-val.empty{color:#94A3B8;font-weight:500}
-  .rep-pl-inner .trend-lbl{font-size:10px;font-weight:600;color:#64748B}
-  .rep-pl-inner .trend-lbl.current{color:#059669;font-weight:700}
-  .rep-pl-inner .trend-ms{position:absolute;left:-5px;right:-5px;height:3px;background:#0F172A;z-index:2;pointer-events:none}
-  .rep-pl-inner .trend-ms-lbl{position:absolute;left:50%;transform:translateX(-50%);font-size:9px;font-weight:600;color:#94A3B8;white-space:nowrap;z-index:3;pointer-events:none;line-height:1}
+  /* ═══ PLNENIE — admin only ═══ */
+  .pln-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:950;overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch}
+  .pln-overlay.show{display:block}
+  .pln-inner{max-width:660px;margin:0 auto}
+  .pln-back{display:inline-flex;align-items:center;gap:6px;background:#fff;border:none;padding:9px 14px 9px 10px;border-radius:22px;color:#2563EB;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:10px;font-family:inherit;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+  .pln-q-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  .pln-q-tab{padding:9px 4px;border:none;background:transparent;font-size:12px;font-weight:700;color:#64748B;cursor:pointer;border-radius:9px;font-family:inherit;position:relative}
+  .pln-q-tab.active{background:#0C1E35;color:#fff}
+  .pln-q-tab.current::after{content:'';position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:#10B981}
+  .pln-q-tab.future{color:#CBD5E1;pointer-events:none}
+  .pln-sum{background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+  .pln-sum-hdr{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+  .pln-sum-lbl{font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+  .pln-sum-val{font-size:30px;font-weight:800;font-family:'Outfit',sans-serif;line-height:1}
+  .pln-sum-val.g{color:#059669}.pln-sum-val.o{color:#D97706}.pln-sum-val.r{color:#DC2626}
+  .pln-sum-total{font-size:12px;color:#64748B;text-align:right}
+  .pln-sum-total strong{color:#0F172A;font-weight:800}
+  .pln-sum-prods{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;padding-top:10px;border-top:1px solid #F1F5F9}
+  .pln-sum-prod{background:#F8FAFC;border-radius:8px;padding:4px 9px;font-size:10.5px;color:#64748B;font-weight:600}
+  .pln-sum-prod strong{margin-left:4px;font-weight:800}
+  .pln-sum-prod strong.g{color:#059669}.pln-sum-prod strong.o{color:#D97706}.pln-sum-prod strong.r{color:#DC2626}
+  .pln-regions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+  .pln-region{background:#fff;border-radius:12px;padding:11px 14px;text-align:center;box-shadow:0 1px 6px rgba(0,0,0,.05)}
+  .pln-region-lbl{font-size:10px;font-weight:700;color:#64748B;letter-spacing:.05em;text-transform:uppercase;margin-bottom:3px}
+  .pln-region-val{font-size:22px;font-weight:800;font-family:'Outfit',sans-serif;line-height:1}
+  .pln-section-lbl{font-size:10.5px;font-weight:700;color:#64748B;letter-spacing:.07em;text-transform:uppercase;margin:14px 4px 6px}
+  .pln-rep-list{display:flex;flex-direction:column;gap:6px}
+  .pln-rep{background:#fff;border-radius:10px;padding:11px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+  .pln-rep-medal{width:24px;font-size:14px;text-align:center;flex-shrink:0;color:#94A3B8;font-weight:700}
+  .pln-rep-body{flex:1;min-width:0}
+  .pln-rep-name{font-size:13px;font-weight:700;color:#0F172A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pln-rep-meta{font-size:10.5px;color:#94A3B8;margin-top:1px}
+  .pln-rep-pct{font-size:17px;font-weight:800;font-family:'Outfit',sans-serif;flex-shrink:0}
+  .pln-rep-pct.g{color:#059669}.pln-rep-pct.o{color:#D97706}.pln-rep-pct.r{color:#DC2626}.pln-rep-pct.none{color:#CBD5E1}
+  .pln-loading{text-align:center;padding:40px 20px;color:#64748B;font-size:13px}
+  .pln-empty{background:#fff;border-radius:12px;padding:28px 20px;text-align:center;color:#94A3B8;font-size:12px;font-style:italic}
+
+  /* Plnenie tlačidlo v admin toolbar */
+  .mgr-tb-btn-plnenie{background:linear-gradient(135deg,#059669,#10B981)!important;color:#fff!important;font-weight:700}
+  .mgr-tb-btn-plnenie:hover{opacity:.92}
 </style>
 </head>
 <body>
@@ -860,32 +602,25 @@
         <div class="hdr-dot"><div class="dot" style="background:#C084FC"></div>Suprax</div>
         <div class="hdr-dot"><div class="dot" style="background:#FCD34D"></div>Cavinton Forte</div>
   </div>
-  <div style="display:flex;align-items:center">
+  <div style="display:flex;align-items:center;gap:6px">
   <button class="logout-btn" onclick="doLogout()">⎋ Odhlásiť</button>
-  <!-- hdr-badge-wrap zachovaný (skrytý) kvôli JS kompatibilite -->
-  <div id="hdr-badge-wrap" style="display:none"><div class="hdr-badge" id="hdr-badge"></div></div>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+  <div class="hdr-badge-wrap" id="hdr-leaderboard-btn" onclick="openLeaderboard()" style="background:linear-gradient(135deg,#7C3AED,#A78BFA)">
+    <span class="hdr-hist-link" style="border-left:none;padding:4px 9px;font-size:10px">🏆 Rebríček</span>
+  </div>
+  <div class="hdr-badge-wrap" id="hdr-badge-wrap" onclick="openHistory()">
+    <div class="hdr-badge" id="hdr-badge"></div>
+    <span class="hdr-hist-link">📋 História</span>
+  </div>
+  </div>
   </div>
     </div>
   </div>
   </div>
 </div>
 
-<!-- ═══ REP NAV BAR — História / Rebríček / Plnenie (viditeľné len pre reprezentantov, skryté v manažérskom móde) ═══ -->
-<div class="rep-nav" id="rep-nav">
-  <button type="button" class="rep-nav-btn" onclick="openHistory()">📋 História<span class="rep-nav-badge" id="rep-nav-hist-count" style="display:none"></span></button>
-  <button type="button" class="rep-nav-btn" onclick="openLeaderboard()">🏆 Rebríček</button>
-  <button type="button" class="rep-nav-btn" id="rep-nav-plnenie-btn" onclick="openRepPlnenie()">💊 Plnenie</button>
-</div>
-
 <!-- ═══ MANAGER VIEW (zobrazí sa iba keď sa prihlási BUM/admin/boss/AM West/AM East) ═══ -->
 <div class="mgr-view" id="mgr-view">
-  <!-- Sub-tabs — Návštevy / Plnenie (admin Plnenie od v2.3.0) -->
-  <div class="mgr-subtabs">
-    <button type="button" class="mgr-subtab active" data-tab="plnenie" onclick="mgrSwitchSubtab('plnenie')">💊 Plnenie</button>
-    <button type="button" class="mgr-subtab" data-tab="visits" onclick="mgrSwitchSubtab('visits')">📋 Návštevy</button>
-    <button type="button" class="mgr-subtab" data-tab="leaderboard" onclick="mgrSwitchSubtab('leaderboard')">🏆 Rebríček</button>
-  </div>
-
   <!-- Dashboard — zoznam reprezentantov -->
   <div class="mgr-list-wrap" id="mgr-list-wrap">
     <div class="ptr-indicator" id="ptr-indicator">
@@ -901,6 +636,7 @@
       <button class="mgr-tb-btn active" data-sort="activity" onclick="mgrSetSort('activity')">Podľa aktivity</button>
       <button class="mgr-tb-btn" data-sort="volume" onclick="mgrSetSort('volume')">Podľa počtu</button>
       <button class="mgr-tb-btn" data-sort="name" onclick="mgrSetSort('name')">A–Z</button>
+      <button class="mgr-tb-btn mgr-tb-btn-plnenie" id="mgr-tb-plnenie" onclick="plnOpen()" style="display:none">💊 Plnenie</button>
     </div>
     <div class="mgr-list" id="mgr-list">
       <div class="mgr-loading"><div class="mgr-spinner"></div><div>Načítavam dáta reprezentantov zo Sheets...</div></div>
@@ -931,93 +667,6 @@
     </div>
     <div class="mgr-vlist" id="mgr-vlist"></div>
   </div>
-
-  <!-- Plnenie view (admin) — v2.3.0 -->
-  <div class="mgr-plnenie-view" id="mgr-plnenie-view">
-    <div class="pl-q-tabs" id="pl-q-tabs">
-      <button type="button" class="pl-q-tab" data-q="1" onclick="plnenieSwitchQ(1)">Q1</button>
-      <button type="button" class="pl-q-tab" data-q="2" onclick="plnenieSwitchQ(2)">Q2</button>
-      <button type="button" class="pl-q-tab" data-q="3" onclick="plnenieSwitchQ(3)">Q3</button>
-      <button type="button" class="pl-q-tab" data-q="4" onclick="plnenieSwitchQ(4)">Q4</button>
-    </div>
-    <div class="pl-sum-big">
-      <div class="pl-sum-big-row">
-        <div>
-          <div class="pl-sum-lbl" id="pl-sum-lbl">Slovensko</div>
-          <div class="pl-sum-big-val pl-none" id="pl-sum-big-val">—</div>
-        </div>
-        <div style="text-align:right">
-          <div class="pl-sum-big-total" id="pl-sum-big-total">—</div>
-          <div class="pl-sum-big-plan" id="pl-sum-big-plan">—</div>
-        </div>
-      </div>
-      <div class="pl-sum-prods" id="pl-sum-prods"></div>
-      <div class="pl-sum-pred" id="pl-sum-pred" style="display:none"></div>
-    </div>
-    <div class="pl-regions">
-      <div class="pl-region-card">
-        <div class="pl-region-lbl">West</div>
-        <div class="pl-region-val pl-none" id="pl-region-west">—</div>
-        <div class="pl-region-pred" id="pl-region-west-pred" style="display:none"></div>
-      </div>
-      <div class="pl-region-card">
-        <div class="pl-region-lbl">East</div>
-        <div class="pl-region-val pl-none" id="pl-region-east">—</div>
-        <div class="pl-region-pred" id="pl-region-east-pred" style="display:none"></div>
-      </div>
-    </div>
-    <div class="pl-section-lbl">Poradie reprezentantov</div>
-    <div class="pl-rep-list" id="pl-rep-list">
-      <div class="pl-loading"><div class="mgr-spinner"></div><div>Načítavam dáta plnenia…</div></div>
-    </div>
-  </div>
-
-  <!-- Plnenie — Detail reprezentanta (v2.3.1) -->
-  <div class="mgr-plnenie-detail" id="mgr-plnenie-detail">
-    <button type="button" class="pl-detail-back" onclick="plnenieCloseDetail()">&larr; Späť na zoznam</button>
-
-    <div class="dhdr">
-      <div class="dhdr-avatar" id="pl-detail-avatar">—</div>
-      <div>
-        <div class="dhdr-name" id="pl-detail-name"></div>
-        <div class="dhdr-sub" id="pl-detail-sub"></div>
-      </div>
-    </div>
-
-    <!-- Sub-tab: Predaje -->
-    <div id="pl-detail-predaje">
-      <div class="pl-q-tabs" id="pl-detail-q-tabs">
-        <button type="button" class="pl-q-tab" data-q="1" onclick="plnenieSwitchQ(1)">Q1</button>
-        <button type="button" class="pl-q-tab" data-q="2" onclick="plnenieSwitchQ(2)">Q2</button>
-        <button type="button" class="pl-q-tab" data-q="3" onclick="plnenieSwitchQ(3)">Q3</button>
-        <button type="button" class="pl-q-tab" data-q="4" onclick="plnenieSwitchQ(4)">Q4</button>
-      </div>
-
-      <div class="total-card" id="pl-detail-total-card">
-        <div class="total-lbl">Celkov&#233; plnenie</div>
-        <div class="total-val none">&#8212;</div>
-        <div class="total-money">&#8212;</div>
-      </div>
-
-      <div class="pl-section-lbl" id="pl-detail-prods-lbl">Plnenie per produkt</div>
-      <div id="pl-detail-prods"></div>
-
-      <div class="trend" id="pl-detail-trend"></div>
-    </div>
-
-  </div>
-
-  <div class="mgr-leaderboard-view" id="mgr-leaderboard-view">
-    <div class="lb-tabs">
-      <button class="lb-tab active" onclick="lbSetPeriod('month',this)">Mesiac</button>
-      <button class="lb-tab" onclick="lbSetPeriod('quarter',this)">Kvartál</button>
-      <button class="lb-tab" onclick="lbSetPeriod('all',this)">Celkové</button>
-    </div>
-    <div class="lb-body" id="mgr-lb-body">
-      <div class="lb-loading">⏳ Načítavam rebríček...</div>
-    </div>
-  </div>
-
 </div>
 
 <div class="progress-wrap" id="progress-wrap">
@@ -1190,50 +839,39 @@
   </div>
 
   <div class="hist-overlay" id="hist-overlay">
-    <div class="hist-inner">
-      <div class="panel-nav">
-        <button class="panel-nav-btn active" onclick="openHistory()">📋 História</button>
-        <button class="panel-nav-btn" onclick="openLeaderboard()">🏆 Rebríček</button>
-        <button class="panel-nav-btn" onclick="openRepPlnenie()">💊 Plnenie</button>
-        <button class="panel-nav-close" onclick="closeAllPanels()">✕</button>
-      </div>
+    <div class="hist-box">
       <div class="hist-header">
-        <div class="hist-title">História lekárov</div>
-        <div class="hist-date" id="hist-date"></div>
-      </div>
-      <div class="hist-body-card">
-        <div class="hist-search-wrap">
-          <span class="hist-search-icon">🔍</span>
-          <input type="text" class="hist-search" id="hist-search" placeholder="Hľadať lekára..." oninput="filterHistory()" autocomplete="off">
+        <div>
+          <div class="hist-title">História lekárov</div>
+          <div class="hist-date" id="hist-date"></div>
         </div>
-        <div class="hist-body" id="hist-body"></div>
+        <button type="button" class="hist-close" onclick="closeHistory()">×</button>
       </div>
+      <div class="hist-search-wrap">
+        <span class="hist-search-icon">🔍</span>
+        <input type="text" class="hist-search" id="hist-search" placeholder="Hľadať lekára..." oninput="filterHistory()" autocomplete="off">
+      </div>
+      <div class="hist-body" id="hist-body"></div>
     </div>
   </div>
 
-  <!-- ── REBRÍČEK ── -->
+  <!-- ── REBRÍČEK OVERLAY ── -->
   <div class="lb-overlay" id="lb-overlay">
-    <div class="lb-inner">
-      <button type="button" class="mgr-back panel-nav-mgr-back" onclick="closeLeaderboard()">← Späť</button>
-      <div class="panel-nav">
-        <button class="panel-nav-btn" onclick="openHistory()">📋 História</button>
-        <button class="panel-nav-btn active" onclick="openLeaderboard()">🏆 Rebríček</button>
-        <button class="panel-nav-btn" onclick="openRepPlnenie()">💊 Plnenie</button>
-        <button class="panel-nav-close" onclick="closeAllPanels()">✕</button>
-      </div>
+    <div class="lb-box">
       <div class="lb-hdr">
-        <div class="lb-hdr-title">🏆 Rebríček tímu</div>
-        <div class="lb-hdr-sub" id="lb-hdr-sub">Gedeon Richter Slovakia · 2026</div>
+        <div>
+          <div class="lb-hdr-title">🏆 Rebríček tímu</div>
+          <div class="lb-hdr-sub" id="lb-hdr-sub">Gedeon Richter Slovakia · 2026</div>
+        </div>
+        <button class="lb-close" onclick="closeLeaderboard()">×</button>
       </div>
-      <div class="lb-box">
-        <div class="lb-tabs">
-          <button class="lb-tab active" onclick="lbSetPeriod('month',this)">Mesiac</button>
-          <button class="lb-tab" onclick="lbSetPeriod('quarter',this)">Kvartál</button>
-          <button class="lb-tab" onclick="lbSetPeriod('all',this)">Celkové</button>
-        </div>
-        <div class="lb-body" id="lb-body">
-          <div class="lb-loading">⏳ Načítavam rebríček...</div>
-        </div>
+      <div class="lb-tabs">
+        <button class="lb-tab active" onclick="lbSetPeriod('month',this)">Mesiac</button>
+        <button class="lb-tab" onclick="lbSetPeriod('quarter',this)">Kvartál</button>
+        <button class="lb-tab" onclick="lbSetPeriod('all',this)">Celkové</button>
+      </div>
+      <div class="lb-body" id="lb-body">
+        <div class="lb-loading">⏳ Načítavam rebríček...</div>
       </div>
     </div>
   </div>
@@ -1247,6 +885,24 @@
         <div class="wn-sub" id="wn-sub">Aktualizácia</div>
       </div>
       <div class="wn-body" id="wn-body"></div>
+    </div>
+  </div>
+
+  <!-- ── PLNENIE OVERLAY (admin only) ── -->
+  <div class="pln-overlay" id="pln-overlay">
+    <div class="pln-inner">
+      <button class="pln-back" onclick="plnClose()">&larr; Späť</button>
+
+      <div class="pln-q-tabs" id="pln-q-tabs">
+        <button class="pln-q-tab" data-q="1" onclick="plnSwitchQ(1)">Q1</button>
+        <button class="pln-q-tab" data-q="2" onclick="plnSwitchQ(2)">Q2</button>
+        <button class="pln-q-tab" data-q="3" onclick="plnSwitchQ(3)">Q3</button>
+        <button class="pln-q-tab" data-q="4" onclick="plnSwitchQ(4)">Q4</button>
+      </div>
+
+      <div id="pln-content">
+        <div class="pln-loading"><div class="mgr-spinner"></div><div>Načítavam plnenie zo Sheets...</div></div>
+      </div>
     </div>
   </div>
 
@@ -1490,7 +1146,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.6.0';
+var APP_VERSION = '2.3.00';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -1800,17 +1456,6 @@ function potvrdit(){
   if(window._dupWarningActive){
     var warnEl = document.getElementById('lekar-dup-warn');
     if(warnEl) warnEl.scrollIntoView({behavior:'smooth', block:'center'});
-    haptic('error');
-    return;
-  }
-
-  // ── FIX B: Guard — session expired / missing ──
-  // Zabráni zápisu prázdneho "Reprezentant" poľa do HISTORY.
-  // Force-save rozpracovaného formulára, potom modál so session expiry hláškou.
-  var guardSession = getSession();
-  if(!guardSession || !guardSession.username){
-    saveDraft();
-    showSessionExpiredModal();
     haptic('error');
     return;
   }
@@ -2723,27 +2368,16 @@ function incrementCounter() {
 
 function updateBadge(count, animate) {
   var badge = document.getElementById('hdr-badge');
-  if(badge) {
-    if(count === 0) {
-      badge.style.display = 'none';
-    } else {
-      badge.style.display = 'flex';
-      badge.textContent = count + (count === 1 ? ' lekár' : count < 5 ? ' lekári' : ' lekárov') + ' 📋';
-      if(animate && badge.parentNode) {
-        badge.parentNode.classList.add('bump');
-        setTimeout(function(){ badge.parentNode.classList.remove('bump'); }, 650);
-      }
-    }
+  if(!badge) return;
+  if(count === 0) {
+    badge.style.display = 'none';
+    return;
   }
-  // Aktualizuj rep-nav História badge
-  var navBadge = document.getElementById('rep-nav-hist-count');
-  if(navBadge) {
-    if(count === 0) {
-      navBadge.style.display = 'none';
-    } else {
-      navBadge.style.display = 'inline-flex';
-      navBadge.textContent = count;
-    }
+  badge.style.display = 'flex';
+  badge.textContent = count + (count === 1 ? ' lekár' : count < 5 ? ' lekári' : ' lekárov') + ' 📋';
+  if(animate) {
+    badge.parentNode.classList.add('bump');
+    setTimeout(function(){ badge.parentNode.classList.remove('bump'); }, 650);
   }
 }
 
@@ -3042,14 +2676,6 @@ function filterHistory() {
   renderHistItems(filtered);
 }
 
-function closeAllPanels() {
-  ['hist-overlay','lb-overlay','rep-plnenie-overlay','pharma-ms-overlay'].forEach(function(id){
-    var el = document.getElementById(id);
-    if(el) el.classList.remove('show');
-  });
-  document.body.style.overflow = '';
-}
-
 function openHistory() {
   var overlay = document.getElementById('hist-overlay');
   var body = document.getElementById('hist-body');
@@ -3057,14 +2683,9 @@ function openHistory() {
   var searchEl = document.getElementById('hist-search');
   if(!overlay || !body) return;
 
-  ['lb-overlay','rep-plnenie-overlay'].forEach(function(id){
-    var el = document.getElementById(id); if(el) el.classList.remove('show');
-  });
-  document.body.style.overflow = 'hidden';
-  overlay.scrollTop = 0;
   dateEl.textContent = getTodayStr();
   if(searchEl) searchEl.value = '';
-  overlay.classList.add('show');
+  overlay.className = 'hist-overlay show';
 
   // Načítaj zo Sheets
   body.innerHTML = '<div class="hist-empty"><span class="hist-empty-icon">⏳</span><div class="hist-empty-title">Načítavam históriu...</div></div>';
@@ -3133,8 +2754,7 @@ function openHistory() {
 
 function closeHistory() {
   var overlay = document.getElementById('hist-overlay');
-  if(overlay) overlay.classList.remove('show');
-  document.body.style.overflow = '';
+  if(overlay) overlay.className = 'hist-overlay';
 }
 
 function openDetail(idx) {
@@ -3232,6 +2852,8 @@ document.addEventListener('click', function(e) {
   if(hist && e.target === hist) closeHistory();
   var detail = document.getElementById('detail-overlay');
   if(detail && e.target === detail) closeDetail();
+  var lb = document.getElementById('lb-overlay');
+  if(lb && e.target === lb) closeLeaderboard();
   var wn = document.getElementById('wn-overlay');
   if(wn && e.target === wn) wnClose();
   var conf = document.getElementById('confirm-overlay');
@@ -3708,7 +3330,7 @@ function clearSession() {
   } catch(e){}
 }
 
-// ── Región reprezentantov — defaults, prepísané zo Sheets cez loadRepList() ──
+// ── Región reprezentantov (len pre fallback ak session nemá región) ──
 var USERS_LOCAL = {
   'j.bohovic':    { region: 'BAMA' },
   'v.hatinova':   { region: 'BASE' },
@@ -3718,10 +3340,10 @@ var USERS_LOCAL = {
   'i.kozakova':   { region: 'NR'   },
   'k.czidor':     { region: 'LV'   },
   'o.rad':        { region: 'RS'   },
-  'l.macakova':   { region: 'PP'   },
+  'l.mackova':    { region: 'PP'   },
   'z.lapsan':     { region: 'PO'   },
   'm.sabol':      { region: 'MI'   },
-  'a.makis':      { region: 'KE'   }
+  'ke.rep':       { region: 'KE'   },
 };
 
 function loginSuccess(username, name, role, region) {
@@ -3732,7 +3354,6 @@ function loginSuccess(username, name, role, region) {
   try { mgrDedupUnique(); } catch(e){}
   updateHdrForUser(user);
   pingLogin(username);
-  loadRepList();
   // Vyčisti akékoľvek stuck body štýly (position:fixed z tutoriálu, lockScroll atď.)
   document.body.style.position = '';
   document.body.style.top = '';
@@ -3743,7 +3364,6 @@ function loginSuccess(username, name, role, region) {
     mgrEnter(mgrRole);
     try { mgrDedupUnique(); } catch(e){}
     setTimeout(function(){ wnShow(true); }, 600);
-    setTimeout(function(){ lbLoadData(); }, 2000);
     return;
   }
   if(localStorage.getItem(TUTORIAL_KEY)){
@@ -3751,20 +3371,6 @@ function loginSuccess(username, name, role, region) {
   }
   initTutorial();
   refreshBadgeFromSheets(username);
-  setTimeout(function(){ lbLoadData(); }, 2000);
-  setTimeout(function(){
-    if (!REP_PL_STATE.loading && !REP_PL_STATE.loaded) {
-      REP_PL_STATE.year = (new Date()).getFullYear();
-      REP_PL_STATE.q = plnenieCurrentQ();
-      repPlnenieLoad();
-    }
-  }, 3500);
-  // Pharma preload na pozadí — hneď po prihlásení
-  setTimeout(function(){
-    REP_PL_STATE.year = REP_PL_STATE.year || (new Date()).getFullYear();
-    REP_PL_STATE.q    = REP_PL_STATE.q    || plnenieCurrentQ();
-    preloadAllPharmaData();
-  }, 1500);
   // Agresívny dedup po prihlásení — eliminácia prípadných duplicitov
   setTimeout(function(){ try { mgrDedupUnique(); } catch(e){} }, 100);
   setTimeout(function(){ try { mgrDedupUnique(); } catch(e){} }, 600);
@@ -3842,11 +3448,6 @@ function confirmLogout() {
   location.reload();
 }
 
-function showSessionExpiredModal() {
-  var overlay = document.getElementById('session-expired-overlay');
-  if(overlay) overlay.classList.add('show');
-}
-
 function updateHdrForUser(user) {
   var subEl = document.querySelector('.hdr-sub');
   var roleLabel = user.role === 'admin' ? 'Admin' : user.role === 'pm' ? 'PM' : user.role === 'bum' ? 'BUM' : user.role === 'am' ? 'AM' : 'Medicínsky reprezentant';
@@ -3857,13 +3458,7 @@ function updateHdrForUser(user) {
   if(regEl && user.region) regEl.value = user.region;
 }
 
-// Throttle — zabráni desiatkam zbytočných writes do storage pri rýchlom
-// písaní do formulára (každý keydown/click by inak spustil 2 storage writes).
-var _lastRefresh = 0;
 function refreshSession() {
-  var now = Date.now();
-  if(now - _lastRefresh < 60000) return;
-  _lastRefresh = now;
   // Obnov čas aktivity
   try {
     var data = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null') ||
@@ -3884,24 +3479,6 @@ function refreshSession() {
   }, {passive: true});
 });
 
-// Obnov session pri návrate appky z pozadia (kritické pre PWA na mobile,
-// kde appka mohla bežať cez noc bez interakcie — bez tohto by klik/touch
-// po návrate síce spustil refreshSession, ale až po tom, ako user klikne).
-document.addEventListener('visibilitychange', function() {
-  if(document.visibilityState === 'visible') {
-    var s = getSession();
-    if(s) {
-      refreshSession();
-      // Doplniť pharma cache ak bola vyčistená (napr. OS vyhodil tab)
-      if(Object.keys(PHARMA_STATE.cache).length === 0) {
-        REP_PL_STATE.year = REP_PL_STATE.year || (new Date()).getFullYear();
-        REP_PL_STATE.q    = REP_PL_STATE.q    || plnenieCurrentQ();
-        preloadAllPharmaData();
-      }
-    }
-  }
-}, {passive: true});
-
 function initLogin() {
   // Zobraz správu o aktualizácii ak treba
   if(localStorage.getItem('potencial_gp_update_msg') === '1') {
@@ -3919,28 +3496,13 @@ function initLogin() {
     }
     updateHdrForUser(session);
     pingLogin(session.username);
-    loadRepList();
     var mgrRole = mgrDetectRole(session);
     if(mgrRole){
       mgrEnter(mgrRole);
-      setTimeout(function(){ lbLoadData(); }, 2000);
       return;
     }
     setTimeout(function(){ updateHdrForUser(session); }, 300);
     refreshBadgeFromSheets(session.username);
-    setTimeout(function(){ lbLoadData(); }, 2000);
-    setTimeout(function(){
-      if (!REP_PL_STATE.loading && !REP_PL_STATE.loaded) {
-        REP_PL_STATE.year = (new Date()).getFullYear();
-        REP_PL_STATE.q = plnenieCurrentQ();
-        repPlnenieLoad();
-      }
-    }, 3500);
-    setTimeout(function(){
-      REP_PL_STATE.year = REP_PL_STATE.year || (new Date()).getFullYear();
-      REP_PL_STATE.q    = REP_PL_STATE.q    || plnenieCurrentQ();
-      preloadAllPharmaData();
-    }, 1500);
   } else {
     // Zobraziť login
     document.getElementById('login-screen').classList.add('show');
@@ -3959,7 +3521,7 @@ document.addEventListener('DOMContentLoaded', function(){
 //   MANAGER MODE — dashboard pre BUM / admin / boss / AM West / AM East
 // ═══════════════════════════════════════════════════════════
 
-// Username → Celé meno — defaults, prepísané zo Sheets cez loadRepList()
+// Username → Celé meno (pre zobrazenie v karte)
 var MGR_REP_NAMES = {
   'j.bohovic':    'Jaroslava Bohovičová',
   'v.hatinova':   'Viktória Hatinová',
@@ -3969,13 +3531,13 @@ var MGR_REP_NAMES = {
   'i.kozakova':   'Ida Kozáková',
   'k.czidor':     'Katarína Czidor',
   'o.rad':        'Olexandra Rad',
-  'l.macakova':   'Lenka Mačáková',
+  'l.mackova':    'Lenka Mačáková',
   'z.lapsan':     'Zuzana Lapšanská',
   'm.sabol':      'Michal Sabol',
-  'a.makis':      'Andrej Makiš'
+  'ke.rep':       'KE Reprezentant'
 };
 var MGR_AM_WEST = ['j.bohovic','v.hatinova','v.hromadkova','z.lescis','j.krkoska','i.kozakova'];
-var MGR_AM_EAST = ['k.czidor','o.rad','l.macakova','z.lapsan','m.sabol','a.makis'];
+var MGR_AM_EAST = ['k.czidor','o.rad','l.mackova','z.lapsan','m.sabol','ke.rep'];
 var MGR_ALL = MGR_AM_WEST.concat(MGR_AM_EAST);
 
 var MGR_ROLE_CFG = {
@@ -3998,7 +3560,6 @@ var MGR_USERS = {
   'e.starostova': 'bum',     // Eva Starostová — BUM, vidí všetkých
   'admin':        'admin',   // Ivan Kurilec — admin, vidí všetkých
   'z.halasz':     'boss',    // Zoltán Halász — boss, vidí všetkých
-  'd.kosc':       'boss',    // Dionýz Košč — boss, vidí všetkých
   'p.holansky':   'pm',      // Peter Holanský — PM, vidí všetkých
   'v.dzurilla':   'pm',      // Viktor Dzurilla — PM, vidí všetkých
   'am.west':      'amwest',  // AM West — vidí len reps West
@@ -4029,15 +3590,6 @@ function mgrEnter(roleKey){
   var cfg = MGR_ROLE_CFG[roleKey];
   if(!cfg) return;
   MGR_STATE.role = roleKey;
-  // v2.3.1 — Plnenie je default sub-tab pri otvorení
-  MGR_STATE.subtab = 'plnenie';
-  document.body.classList.add('mgr-subtab-plnenie');
-  PL_STATE.q = plnenieCurrentQ();
-  PL_STATE.loaded = false;
-  PL_STATE.loading = false;
-  PL_STATE.data = null;
-  PL_STATE.aggregates = null;
-  PL_STATE.qCache = {};
   // Dynamicky zisti repov pre AM West/East zo Sheets
   if(roleKey === 'amwest' || roleKey === 'ameast'){
     var session = getSession();
@@ -4060,8 +3612,6 @@ function mgrEnter(roleKey){
   window.scrollTo(0, 0);
 
   mgrLoadData();
-  // Plnenie je default tab — načítaj všetky kvartály hneď pri vstupe
-  plnenieLoadAllQuarters();
 }
 
 // Paralelný load všetkých histórií cez existujúci getHistory endpoint
@@ -4896,117 +4446,56 @@ function wnClose(){
 
 var LB_STATE = { period: 'month', data: null, loading: false };
 
-// Farebná paleta pre auto-pridelenie farieb v rebríčku
-var LB_COLOR_PALETTE = [
-  'linear-gradient(135deg,#1E40AF,#3B82F6)',
-  'linear-gradient(135deg,#0E7490,#22D3EE)',
-  'linear-gradient(135deg,#9D174D,#EC4899)',
-  'linear-gradient(135deg,#7C3AED,#A78BFA)',
-  'linear-gradient(135deg,#065F46,#10B981)',
-  'linear-gradient(135deg,#B45309,#F59E0B)',
-  'linear-gradient(135deg,#DC2626,#F87171)',
-  'linear-gradient(135deg,#374151,#6B7280)',
-  'linear-gradient(135deg,#059669,#34D399)',
-  'linear-gradient(135deg,#1E1B4B,#4338CA)',
-  'linear-gradient(135deg,#92400E,#D97706)',
-  'linear-gradient(135deg,#831843,#DB2777)'
-];
-
-// Defaults, prepísané zo Sheets cez loadRepList()
 var LB_REP_INFO = {
   'j.bohovic':    { name: 'Jaroslava Bohovičová', region: 'BAMA', color: 'linear-gradient(135deg,#1E40AF,#3B82F6)' },
   'v.hatinova':   { name: 'Viktória Hatinová',    region: 'BASE', color: 'linear-gradient(135deg,#0E7490,#22D3EE)' },
   'v.hromadkova': { name: 'Vladimíra Hromádková', region: 'TN',   color: 'linear-gradient(135deg,#9D174D,#EC4899)' },
   'z.lescis':     { name: 'Zuzana Leščišinová',   region: 'DS',   color: 'linear-gradient(135deg,#7C3AED,#A78BFA)' },
-  'j.krkoska':    { name: 'Juraj Krkoška',         region: 'MT',   color: 'linear-gradient(135deg,#065F46,#10B981)' },
+  'j.krkoska':    { name: 'Juraj Krkoška',         region: 'MT',   color: 'linear-gradient(135deg,#0E7490,#06B6D4)' },
   'i.kozakova':   { name: 'Ida Kozáková',          region: 'NR',   color: 'linear-gradient(135deg,#065F46,#10B981)' },
   'k.czidor':     { name: 'Katarína Czidor',       region: 'LV',   color: 'linear-gradient(135deg,#B45309,#F59E0B)' },
   'o.rad':        { name: 'Olexandra Rad',         region: 'RS',   color: 'linear-gradient(135deg,#DC2626,#F87171)' },
-  'l.macakova':   { name: 'Lenka Mačáková',        region: 'PP',   color: 'linear-gradient(135deg,#374151,#6B7280)' },
+  'l.mackova':    { name: 'Lenka Mačáková',        region: 'PP',   color: 'linear-gradient(135deg,#374151,#6B7280)' },
   'z.lapsan':     { name: 'Zuzana Lapšanská',      region: 'PO',   color: 'linear-gradient(135deg,#7C3AED,#C084FC)' },
   'm.sabol':      { name: 'Michal Sabol',          region: 'MI',   color: 'linear-gradient(135deg,#059669,#10B981)' },
-  'a.makis':      { name: 'Andrej Makiš',           region: 'KE',   color: 'linear-gradient(135deg,#1E1B4B,#4338CA)' }
+  'ke.rep':       { name: 'KE Reprezentant',       region: 'KE',   color: 'linear-gradient(135deg,#1E1B4B,#4338CA)' }
 };
+
 var LB_ALL_REPS = ['j.bohovic','v.hatinova','v.hromadkova','z.lescis','j.krkoska','i.kozakova',
-                   'k.czidor','o.rad','l.macakova','z.lapsan','m.sabol','a.makis'];
-
-var REP_LIST_STATE = { loaded: false, loading: false };
-
-function buildRepData(reps) {
-  var west = reps.filter(function(r){ return r.rola === 'rep west'; });
-  var east = reps.filter(function(r){ return r.rola === 'rep east'; });
-  var all = west.concat(east);
-
-  MGR_AM_WEST = west.map(function(r){ return r.login; });
-  MGR_AM_EAST = east.map(function(r){ return r.login; });
-  MGR_ALL = all.map(function(r){ return r.login; });
-  LB_ALL_REPS = MGR_ALL.slice();
-
-  MGR_REP_NAMES = {};
-  LB_REP_INFO = {};
-  USERS_LOCAL = {};
-
-  all.forEach(function(r, idx){
-    var color = LB_COLOR_PALETTE[idx % LB_COLOR_PALETTE.length];
-    MGR_REP_NAMES[r.login] = r.meno;
-    LB_REP_INFO[r.login]   = { name: r.meno, region: r.region, color: color };
-    USERS_LOCAL[r.login]   = { region: r.region };
-  });
-
-  MGR_ROLE_CFG.bum.reps    = MGR_ALL;
-  MGR_ROLE_CFG.admin.reps  = MGR_ALL;
-  MGR_ROLE_CFG.boss.reps   = MGR_ALL;
-  MGR_ROLE_CFG.pm.reps     = MGR_ALL;
-  MGR_ROLE_CFG.amwest.reps = MGR_AM_WEST;
-  MGR_ROLE_CFG.ameast.reps = MGR_AM_EAST;
-
-  // Ak je manažér práve prihlásený, prekreslí zoznam reprezentantov
-  if (document.body.classList.contains('manager-mode') && typeof mgrRenderReps === 'function') {
-    mgrRenderReps();
-  }
-}
-
-function loadRepList() {
-  if (REP_LIST_STATE.loaded || REP_LIST_STATE.loading) return;
-  REP_LIST_STATE.loading = true;
-  fetch(SCRIPT_URL + '?action=getRepList', { cache: 'no-store' })
-    .then(function(r){ return r.json(); })
-    .then(function(data){
-      REP_LIST_STATE.loading = false;
-      if (data.ok && data.reps && data.reps.length) {
-        buildRepData(data.reps);
-        REP_LIST_STATE.loaded = true;
-        // Prerender ak je rebríček otvorený
-        var lbEl = document.getElementById('lb-overlay');
-        if (lbEl && lbEl.classList.contains('show')) lbRender();
-        var mgrLb = document.getElementById('mgr-lb-body');
-        if (mgrLb && document.body.classList.contains('mgr-subtab-leaderboard')) lbRender();
-      }
-    })
-    .catch(function(){ REP_LIST_STATE.loading = false; });
-}
+                   'k.czidor','o.rad','l.mackova','z.lapsan','m.sabol','ke.rep'];
 
 function openLeaderboard(){
   var overlay = document.getElementById('lb-overlay');
   if(!overlay) return;
-  ['hist-overlay','rep-plnenie-overlay'].forEach(function(id){
-    var el = document.getElementById(id); if(el) el.classList.remove('show');
-  });
   overlay.className = 'lb-overlay show';
-  overlay.scrollTop = 0;
-  document.body.style.overflow = 'hidden';
-  if(LB_STATE.data){
-    lbRender();
-  } else {
-    lbLoadData();
-  }
+  // iOS fix — zabraň overscrollu cez touchmove
+  overlay._touchHandler = function(e){
+    var box = overlay.querySelector('.lb-box');
+    if(!box) return;
+    // Ak sme na vrchu boxu a ťaháme dole — zablokuj
+    if(box.scrollTop <= 0){
+      var touch = e.touches[0];
+      if(!overlay._lastY) overlay._lastY = touch.clientY;
+      var dy = touch.clientY - overlay._lastY;
+      if(dy > 0) e.preventDefault();
+      overlay._lastY = touch.clientY;
+    } else {
+      overlay._lastY = null;
+    }
+  };
+  overlay.addEventListener('touchmove', overlay._touchHandler, {passive:false});
+  overlay.addEventListener('touchstart', function(){ overlay._lastY = null; }, {passive:true});
+  lbLoadData();
 }
 
 function closeLeaderboard(){
   var overlay = document.getElementById('lb-overlay');
   if(!overlay) return;
   overlay.className = 'lb-overlay';
-  document.body.style.overflow = '';
+  if(overlay._touchHandler){
+    overlay.removeEventListener('touchmove', overlay._touchHandler);
+    overlay._touchHandler = null;
+  }
 }
 
 function lbSetPeriod(period, el){
@@ -5016,52 +4505,30 @@ function lbSetPeriod(period, el){
   lbRender();
 }
 
-function lbLoadData(force){
+function lbLoadData(){
   if(LB_STATE.loading) return;
-  if(LB_STATE.data && !force) return;
   LB_STATE.loading = true;
   LB_STATE.data = null;
-  var isMgrOpen = document.body.classList.contains('manager-mode') && document.body.classList.contains('mgr-subtab-leaderboard');
-  var isRepOpen = (function(){ var ov = document.getElementById('lb-overlay'); return ov && ov.classList.contains('show'); })();
-  if(isMgrOpen || isRepOpen){
-    var body = lbGetBody();
-    if(body) body.innerHTML = '<div class="lb-loading">&#9203; Na&#269;&#237;tavam rebr&#237;&#269;ek...</div>';
-  }
+  var body = document.getElementById('lb-body');
+  if(body) body.innerHTML = '<div class="lb-loading">&#9203; Na&#269;&#237;tavam rebr&#237;&#269;ek...</div>';
 
-  function onDone(results){
-    LB_STATE.data = results;
-    LB_STATE.loading = false;
-    var mgrOpen = document.body.classList.contains('manager-mode') && document.body.classList.contains('mgr-subtab-leaderboard');
-    var repOpen = (function(){ var ov = document.getElementById('lb-overlay'); return ov && ov.classList.contains('show'); })();
-    if(mgrOpen || repOpen) lbRender();
-  }
+  var results = {};
+  var remaining = LB_ALL_REPS.length;
 
-  fetch(SCRIPT_URL + '?action=getAllHistory', { cache: 'no-store' })
-    .then(function(r){ return r.ok ? r.json() : null; })
-    .then(function(allHist){
-      if(allHist && typeof allHist === 'object' && !Array.isArray(allHist)){
-        var results = {};
-        LB_ALL_REPS.forEach(function(u){ results[u] = Array.isArray(allHist[u]) ? allHist[u] : []; });
-        onDone(results);
-      } else {
-        throw new Error('fallback');
-      }
-    })
-    .catch(function(){
-      // Fallback — 12 individuálnych requestov
-      var results = {};
-      var remaining = LB_ALL_REPS.length;
-      LB_ALL_REPS.forEach(function(username){
-        fetch(SCRIPT_URL + '?action=getHistory&reprezentant=' + encodeURIComponent(username), { cache: 'no-store' })
-          .then(function(r){ return r.ok ? r.json() : []; })
-          .then(function(rows){ results[username] = Array.isArray(rows) ? rows : []; })
-          .catch(function(){ results[username] = []; })
-          .finally(function(){
-            remaining--;
-            if(remaining <= 0) onDone(results);
-          });
+  LB_ALL_REPS.forEach(function(username){
+    fetch(SCRIPT_URL + '?action=getHistory&reprezentant=' + encodeURIComponent(username), { cache: 'no-store' })
+      .then(function(r){ return r.ok ? r.json() : []; })
+      .then(function(rows){ results[username] = Array.isArray(rows) ? rows : []; })
+      .catch(function(){ results[username] = []; })
+      .finally(function(){
+        remaining--;
+        if(remaining <= 0){
+          LB_STATE.data = results;
+          LB_STATE.loading = false;
+          lbRender();
+        }
       });
-    });
+  });
 }
 
 function lbCountVisits(rows, period){
@@ -5097,13 +4564,8 @@ function lbPeriodLabel(){
   return 'Celkov\u00e9';
 }
 
-function lbGetBody(){
-  var isMgr = document.body.classList.contains('manager-mode');
-  return document.getElementById(isMgr ? 'mgr-lb-body' : 'lb-body');
-}
-
 function lbRender(){
-  var body = lbGetBody();
+  var body = document.getElementById('lb-body');
   if(!body) return;
   var sub = document.getElementById('lb-hdr-sub');
   if(sub) sub.textContent = 'Gedeon Richter Slovakia \u00b7 ' + lbPeriodLabel();
@@ -5116,8 +4578,7 @@ function lbRender(){
   var session = getSession();
   var myUsername = session ? session.username : '';
 
-  var repsToShow = LB_ALL_REPS.length > 0 ? LB_ALL_REPS : Object.keys(LB_STATE.data || {});
-  var ranking = repsToShow.map(function(username){
+  var ranking = LB_ALL_REPS.map(function(username){
     var info = LB_REP_INFO[username] || { name: username, region: '', color: 'linear-gradient(135deg,#374151,#6B7280)' };
     return { username: username, name: info.name, region: info.region, color: info.color,
              count: lbCountVisits(LB_STATE.data[username], LB_STATE.period) };
@@ -5176,1558 +4637,6 @@ function lbRender(){
 
   body.innerHTML = podiumHtml + listHtml;
 }
-// ═══════════════════════════════════════════════════════════
-// PLNENIE (Predaje vs Plán) — ADMIN zobrazenie (v2.3.0)
-// ═══════════════════════════════════════════════════════════
-
-// Mapovanie produktov sheet kľúč → display názov.
-// Pridaj sem nový produkt, keď pribudne v Plan/Predaje sheetoch.
-// Kľúč = lowercase zo sheet názvu (bez diakritiky, bez medzier nahradených '_').
-// Hodnota = display názov v appke (môže obsahovať diakritiku, medzery).
-var PL_PRODUCT_LABELS = {
-  'aflamil_kr':            'Aflamil krém',
-  'aflamil_tablety_sacky': 'Aflamil tbl a sáčky',
-  'cavinton':              'Cavinton',
-  'globifer':              'Globifer',
-  'junod':                 'Junod',
-  'kogavant':              'Kogavant',
-  'lonelix':               'Lonelix',
-  'ossica':                'Ossica',
-  'suprax':                'Suprax',
-  'telexer':               'Telexer',
-  'terrosa':               'Terrosa',
-  'vidonorm':              'Vidonorm'
-};
-
-var PL_STATE = {
-  year: 2026,
-  q: 1,
-  loading: false,
-  loaded: false,
-  data: null,
-  aggregates: null,
-  detailRep: null,    // username otvoreného detailu, null = zoznam
-  qCache: {}          // cache dát per Q — { 1: {data, aggregates}, 2: {...}, ... }
-};
-
-function plnenieNormalizeKey(s) {
-  return String(s == null ? '' : s).toLowerCase().trim();
-}
-
-function plnenieDisplayName(rawKey) {
-  var norm = plnenieNormalizeKey(rawKey);
-  return PL_PRODUCT_LABELS[norm] || rawKey;
-}
-
-function plnenieCurrentQ() {
-  var m = new Date().getMonth() + 1;
-  return Math.ceil(m / 3);
-}
-
-// Farebné prahy v zozname / Slovensko / regions:
-// ≥ 95% zelená (splnený, bonus), < 95% červená. Binary model — admin vidí bonus áno/nie.
-// Detail view má jemnejší 3-farebný gradient cez plnenieDetailColor().
-function plnenieColorClass(pct) {
-  if (pct === null || pct === undefined || isNaN(pct)) return 'pl-none';
-  if (pct >= 100) return 'pl-g';
-  if (pct >= 95) return 'pl-o';
-  return 'pl-r';
-}
-
-function plnenieFormatPct(pct) {
-  if (pct === null || pct === undefined || isNaN(pct)) return '—';
-  // 2 desatinné miesta, sk notácia (čiarka ako desatinný oddeľovač)
-  return pct.toFixed(2).replace('.', ',') + '%';
-}
-
-function plnenieFormatEUR(val) {
-  if (val === null || val === undefined || isNaN(val)) return '—';
-  // Tisíce s medzerou: 38 420 €
-  var rounded = Math.round(val);
-  return rounded.toLocaleString('sk-SK').replace(/\u00A0/g, ' ') + ' €';
-}
-
-function plnenieQLabel(q, year) {
-  return 'Q' + q + ' ' + year;
-}
-
-// Sub-tab switch medzi "Návštevy" a "Plnenie"
-function mgrSwitchSubtab(tab) {
-  MGR_STATE.subtab = tab;
-  document.body.classList.toggle('mgr-subtab-plnenie', tab === 'plnenie');
-  document.body.classList.toggle('mgr-subtab-leaderboard', tab === 'leaderboard');
-  document.querySelectorAll('.mgr-subtab').forEach(function(btn){
-    btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
-  });
-  window.scrollTo(0, 0);
-  if (tab === 'plnenie' && !PL_STATE.loaded && !PL_STATE.loading) {
-    plnenieLoadAllQuarters();
-  }
-  if (tab === 'leaderboard') {
-    if (LB_STATE.data) {
-      lbRender();
-    } else {
-      lbLoadData();
-    }
-  }
-}
-
-function plnenieSwitchQ(q) {
-  if (q === PL_STATE.q) return;
-  PL_STATE.q = q;
-  plnenieUpdateQTabs();
-  if (PL_STATE.qCache[q]) {
-    // Dáta už načítané — okamžité prepnutie bez fetchu
-    PL_STATE.data = PL_STATE.qCache[q].data;
-    PL_STATE.aggregates = PL_STATE.qCache[q].aggregates;
-    PL_STATE.loaded = true;
-    plnenieRenderAll();
-  } else if (PL_STATE.loading) {
-    // Stále beží paralelný load — ukáž loading stav pre tento Q
-    PL_STATE.data = null;
-    PL_STATE.aggregates = null;
-    PL_STATE.loaded = false;
-    plnenieRenderSummaryEmpty();
-    plnenieRenderLoading();
-  } else {
-    // Load zlyhal — ukáž chybový stav
-    PL_STATE.data = null;
-    PL_STATE.aggregates = null;
-    PL_STATE.loaded = false;
-    plnenieRenderAll();
-  }
-}
-
-function plnenieUpdateQTabs() {
-  var curQ = plnenieCurrentQ();
-  document.querySelectorAll('.pl-q-tab').forEach(function(btn){
-    var q = parseInt(btn.getAttribute('data-q'));
-    btn.classList.toggle('active', q === PL_STATE.q);
-    btn.classList.toggle('current', q === curQ);
-    btn.classList.toggle('future', q > curQ);
-  });
-}
-
-function plnenieLoadAllQuarters() {
-  if (PL_STATE.loading) return;
-  PL_STATE.loading = true;
-  PL_STATE.loaded = false;
-  PL_STATE.data = null;
-  PL_STATE.aggregates = null;
-  // Ukáž loading stav hneď
-  plnenieUpdateQTabs();
-  plnenieRenderSummaryEmpty();
-  plnenieRenderLoading();
-
-  var year = PL_STATE.year;
-  var qs = [1, 2, 3, 4];
-  var pending = qs.length;
-
-  qs.forEach(function(q) {
-    var url = SCRIPT_URL + '?action=getPlnenieAll&rok=' + year + '&Q=' + q;
-    mgrFetchWithRetry(url, 3)
-      .then(function(resp) {
-        if (!resp || !resp.ok) throw new Error('No data for Q' + q);
-        var agg = plnenieBuildAggregates(resp);
-        PL_STATE.qCache[q] = { data: resp, aggregates: agg };
-        // Ak práve zobrazujeme tento Q, hneď renderuj
-        if (q === PL_STATE.q) {
-          PL_STATE.data = resp;
-          PL_STATE.aggregates = agg;
-          PL_STATE.loaded = true;
-          plnenieRenderAll();
-        }
-      })
-      .catch(function() {
-        PL_STATE.qCache[q] = null; // fetch zlyhal pre tento Q
-      })
-      .then(function() {
-        pending--;
-        if (pending === 0) {
-          // Všetky Q fetche skončili
-          PL_STATE.loading = false;
-          // Ak current Q sa stále nenačítal (error), renderuj error stav
-          if (!PL_STATE.loaded) {
-            plnenieRenderAll();
-          }
-        }
-      });
-  });
-}
-
-// Agregácia — Slovensko / West / East / per-produkt / per-rep
-// Vráti zoznam repov pre aktuálnu rolu (AM West/East vidia iba svojich)
-function plnenieGetActiveReps() {
-  if (MGR_STATE.role === 'amwest') return MGR_AM_WEST;
-  if (MGR_STATE.role === 'ameast') return MGR_AM_EAST;
-  return MGR_ALL;
-}
-
-// True ak rola vidí iba jeden región (AM West / AM East) — skryje region karty
-function plnenieIsAmRole() {
-  return MGR_STATE.role === 'amwest' || MGR_STATE.role === 'ameast';
-}
-
-// Label pre sumárnu kartu — namiesto "Slovensko" pre AM roly
-function plnenieSumLabel() {
-  if (MGR_STATE.role === 'amwest') return 'West';
-  if (MGR_STATE.role === 'ameast') return 'East';
-  return 'Slovensko';
-}
-
-function plnenieBuildAggregates(resp) {
-  var plan = resp.plan || {};
-  var predaje = resp.predaje || {};
-  var planProducts = resp.planProducts || [];
-
-  // Zoznam produktov — IBA z Plan sheetu.
-  // Predaje mimo Plan (napr. Globifer/Lonelix/Ossica/Terrosa) do Plnenia nepatria,
-  // pretože bez plánu sa plnenie nedá zmysluplne počítať.
-  var allProdsMap = {};
-  planProducts.forEach(function(p){ allProdsMap[plnenieNormalizeKey(p)] = p; });
-  var allProdKeys = Object.keys(allProdsMap);
-
-  // Helper: získaj číselnú hodnotu z objektu produktov, kľúč normalizovaný
-  function prodVal(obj, key) {
-    if (!obj) return 0;
-    var v = obj[key];
-    if (v === undefined || v === null) return 0;
-    var n = parseFloat(v);
-    return isNaN(n) ? 0 : n;
-  }
-
-  // Per-rep agregát — per-rep relevant products:
-  // do planEUR a predajeEUR započítavame IBA produkty, kde DANÝ rep má plán > 0.
-  // Rep bez plánu na produkt X nekontribuuje svojimi predajmi pre X do svojho %.
-  var activeReps = plnenieGetActiveReps();
-  var repAgg = {};
-  activeReps.forEach(function(rep){
-    var rPlan = plan[rep] || {};
-    var rPredajeTotal = (predaje[rep] && predaje[rep].total) || {};
-    var planEUR = 0, predajeEUR = 0;
-    allProdKeys.forEach(function(key){
-      var p = prodVal(rPlan, key);
-      if (p > 0) {
-        planEUR += p;
-        predajeEUR += prodVal(rPredajeTotal, key);
-      }
-    });
-    var pct = (planEUR > 0) ? (predajeEUR / planEUR * 100) : null;
-    repAgg[rep] = { planEUR: planEUR, predajeEUR: predajeEUR, pct: pct };
-  });
-
-  // Sumár pre aktívnych repov (Slovensko / West / East podľa roly)
-  var skPlan = 0, skPredaje = 0;
-  activeReps.forEach(function(rep){
-    skPlan += repAgg[rep].planEUR;
-    skPredaje += repAgg[rep].predajeEUR;
-  });
-  var skPct = (skPlan > 0) ? (skPredaje / skPlan * 100) : null;
-
-  // West / East sum — rovnako cez repAgg
-  var regionAgg = {};
-  [['west', MGR_AM_WEST], ['east', MGR_AM_EAST]].forEach(function(pair){
-    var regionKey = pair[0], list = pair[1];
-    var rPlan = 0, rPredaje = 0;
-    list.forEach(function(rep){
-      if (repAgg[rep]) {
-        rPlan += repAgg[rep].planEUR;
-        rPredaje += repAgg[rep].predajeEUR;
-      }
-    });
-    regionAgg[regionKey] = {
-      planEUR: rPlan,
-      predajeEUR: rPredaje,
-      pct: (rPlan > 0) ? (rPredaje / rPlan * 100) : null
-    };
-  });
-
-  // Per-produkt summary — iba produkty, kde aspoň jeden aktívny rep má plán > 0.
-  var productsToShow = [];
-  allProdKeys.forEach(function(key){
-    var pSum = 0, sSum = 0;
-    activeReps.forEach(function(rep){
-      var p = prodVal(plan[rep], key);
-      if (p > 0) {
-        pSum += p;
-        sSum += prodVal((predaje[rep] && predaje[rep].total) || {}, key);
-      }
-    });
-    if (pSum > 0) {
-      productsToShow.push({
-        key: key,
-        label: plnenieDisplayName(allProdsMap[key]),
-        planEUR: pSum,
-        predajeEUR: sSum,
-        pct: sSum / pSum * 100
-      });
-    }
-  });
-  // Poradie produktov: podľa PL_PRODUCT_ORDER (Aflamil skupina pohromade), zvyšok podľa %
-  productsToShow.sort(function(a, b){
-    var ai = PL_PRODUCT_ORDER.indexOf(a.key);
-    var bi = PL_PRODUCT_ORDER.indexOf(b.key);
-    if (ai === -1) ai = 999;
-    if (bi === -1) bi = 999;
-    if (ai !== bi) return ai - bi;
-    return b.pct - a.pct;
-  });
-
-  // Rep list zoradený zostupne podľa pct, reps s null na konci
-  var repList = activeReps.map(function(rep){
-    return {
-      username: rep,
-      planEUR: repAgg[rep].planEUR,
-      predajeEUR: repAgg[rep].predajeEUR,
-      pct: repAgg[rep].pct
-    };
-  });
-  repList.sort(function(a, b){
-    if (a.pct === null && b.pct === null) return 0;
-    if (a.pct === null) return 1;
-    if (b.pct === null) return -1;
-    return b.pct - a.pct;
-  });
-
-  return {
-    sk: { planEUR: skPlan, predajeEUR: skPredaje, pct: skPct },
-    regions: regionAgg,
-    products: productsToShow,
-    reps: repList
-  };
-}
-
-// Renderery
-function plnenieRenderLoading() {
-  var listEl = document.getElementById('pl-rep-list');
-  if (listEl) listEl.innerHTML = '<div class="pl-loading"><div class="mgr-spinner"></div><div>Načítavam dáta plnenia…</div></div>';
-}
-
-function plnenieRenderSummaryEmpty() {
-  var lbl = document.getElementById('pl-sum-lbl');
-  if (lbl) lbl.textContent = plnenieSumLabel() + ' · ' + plnenieQLabel(PL_STATE.q, PL_STATE.year);
-  var val = document.getElementById('pl-sum-big-val');
-  if (val) { val.textContent = '—'; val.className = 'pl-sum-big-val pl-none'; }
-  var tot = document.getElementById('pl-sum-big-total');
-  if (tot) tot.textContent = '—';
-  var plan = document.getElementById('pl-sum-big-plan');
-  if (plan) plan.textContent = '—';
-  var prods = document.getElementById('pl-sum-prods');
-  if (prods) prods.innerHTML = '';
-  var regionsEl = document.querySelector('.pl-regions');
-  if (regionsEl) regionsEl.style.display = plnenieIsAmRole() ? 'none' : '';
-  var west = document.getElementById('pl-region-west');
-  if (west) { west.textContent = '—'; west.className = 'pl-region-val pl-none'; }
-  var east = document.getElementById('pl-region-east');
-  if (east) { east.textContent = '—'; east.className = 'pl-region-val pl-none'; }
-}
-
-function plnenieRenderSummary() {
-  var agg = PL_STATE.aggregates;
-  var sk = agg.sk;
-  var lbl = document.getElementById('pl-sum-lbl');
-  if (lbl) lbl.textContent = plnenieSumLabel() + ' · ' + plnenieQLabel(PL_STATE.q, PL_STATE.year);
-  var val = document.getElementById('pl-sum-big-val');
-  if (val) { val.textContent = plnenieFormatPct(sk.pct); val.className = 'pl-sum-big-val ' + plnenieColorClass(sk.pct); }
-  var tot = document.getElementById('pl-sum-big-total');
-  if (tot) tot.innerHTML = '<strong>' + plnenieFormatEUR(sk.predajeEUR) + '</strong>';
-  var plan = document.getElementById('pl-sum-big-plan');
-  if (plan) plan.textContent = sk.planEUR > 0 ? ('z plánu ' + plnenieFormatEUR(sk.planEUR)) : '—';
-
-  // Predikcia pre summary — sk.predajeEUR delíme súčtom mesačných plánov pre dokončené mesiace
-  var predEl = document.getElementById('pl-sum-pred');
-  if (predEl) {
-    var skPredikcia = plnenieCalcPredikciaSummary(sk.planEUR, sk.predajeEUR, PL_STATE.q, PL_STATE.year);
-    if (skPredikcia !== null) {
-      predEl.style.display = '';
-      predEl.innerHTML = 'predikcia konca kvartálu <span>' + plnenieFormatPct(skPredikcia) + '</span>';
-    } else {
-      predEl.style.display = 'none';
-    }
-  }
-
-  var prods = document.getElementById('pl-sum-prods');
-  if (prods) {
-    if (!agg.products || agg.products.length === 0) {
-      prods.innerHTML = '';
-    } else {
-      prods.innerHTML = agg.products.map(function(p){
-        return '<div class="pl-sum-prod"><span class="pl-sum-prod-name">' + mgrEscape(p.label) +
-               '</span><strong style="flex-shrink:0" class="' + plnenieColorClass(p.pct) + '">' + plnenieFormatPct(p.pct) + '</strong></div>';
-      }).join('');
-    }
-  }
-}
-
-function plnenieRenderRegions() {
-  var regionsEl = document.querySelector('.pl-regions');
-  // AM West / AM East — region karty skryť (vidia iba svoju líniu v sumári)
-  if (plnenieIsAmRole()) {
-    if (regionsEl) regionsEl.style.display = 'none';
-    return;
-  }
-  if (regionsEl) regionsEl.style.display = '';
-  var regions = PL_STATE.aggregates.regions;
-  var west = document.getElementById('pl-region-west');
-  if (west) {
-    west.textContent = plnenieFormatPct(regions.west.pct);
-    west.className = 'pl-region-val ' + plnenieColorClass(regions.west.pct);
-  }
-  var westPred = document.getElementById('pl-region-west-pred');
-  if (westPred) {
-    var wp = plnenieCalcPredikciaSummary(regions.west.planEUR, regions.west.predajeEUR, PL_STATE.q, PL_STATE.year);
-    if (wp !== null) { westPred.style.display = ''; westPred.innerHTML = 'predikcia <span>' + plnenieFormatPct(wp) + '</span>'; }
-    else { westPred.style.display = 'none'; }
-  }
-  var east = document.getElementById('pl-region-east');
-  if (east) {
-    east.textContent = plnenieFormatPct(regions.east.pct);
-    east.className = 'pl-region-val ' + plnenieColorClass(regions.east.pct);
-  }
-  var eastPred = document.getElementById('pl-region-east-pred');
-  if (eastPred) {
-    var ep = plnenieCalcPredikciaSummary(regions.east.planEUR, regions.east.predajeEUR, PL_STATE.q, PL_STATE.year);
-    if (ep !== null) { eastPred.style.display = ''; eastPred.innerHTML = 'predikcia <span>' + plnenieFormatPct(ep) + '</span>'; }
-    else { eastPred.style.display = 'none'; }
-  }
-}
-
-function plnenieRenderRepList() {
-  var listEl = document.getElementById('pl-rep-list');
-  if (!listEl) return;
-  var reps = (PL_STATE.aggregates && PL_STATE.aggregates.reps) || [];
-  if (reps.length === 0) {
-    listEl.innerHTML = '<div class="pl-loading">Žiadni reprezentanti.</div>';
-    return;
-  }
-  // Rank počítadlo — iba reps s pct !== null
-  var rank = 0;
-  listEl.innerHTML = reps.map(function(r){
-    var info = LB_REP_INFO[r.username] || {
-      name: MGR_REP_NAMES[r.username] || r.username,
-      region: '',
-      color: 'linear-gradient(135deg,#64748B,#475569)'
-    };
-    var initials = mgrInitials(info.name);
-    var regionLbl = (MGR_AM_WEST.indexOf(r.username) !== -1) ? 'West'
-                  : (MGR_AM_EAST.indexOf(r.username) !== -1) ? 'East' : '';
-    var meta = regionLbl + (info.region ? (' · ' + info.region) : '');
-
-    var medalHtml;
-    if (r.pct === null) {
-      medalHtml = '<div class="pl-rep-medal pl-rank">—</div>';
-    } else {
-      rank++;
-      if (rank === 1)      medalHtml = '<div class="pl-rep-medal">🥇</div>';
-      else if (rank === 2) medalHtml = '<div class="pl-rep-medal">🥈</div>';
-      else if (rank === 3) medalHtml = '<div class="pl-rep-medal">🥉</div>';
-      else                 medalHtml = '<div class="pl-rep-medal pl-rank">' + rank + '.</div>';
-    }
-
-    // Všetci reps sú klikateľní — aj bez dát (detail ukáže "Žiadne dáta")
-    var clickable = true;
-    var clickAttr = clickable ? ' onclick="plnenieOpenDetail(\'' + r.username.replace(/'/g, "\\'") + '\')"' : '';
-    var extraClass = clickable ? ' pl-rep-clickable' : '';
-    var chevronHtml = clickable ? '<div class="pl-rep-chev">›</div>' : '';
-
-    return '<div class="pl-rep-card' + extraClass + '"' + clickAttr + '>' +
-      medalHtml +
-      '<div class="pl-rep-avatar" style="background:' + info.color + '">' + mgrEscape(initials) + '</div>' +
-      '<div class="pl-rep-body">' +
-        '<div class="pl-rep-name">' + mgrEscape(info.name) + '</div>' +
-        '<div class="pl-rep-meta">' + mgrEscape(meta) + '</div>' +
-      '</div>' +
-      '<div class="pl-rep-pct ' + plnenieColorClass(r.pct) + '">' + plnenieFormatPct(r.pct) + '</div>' +
-      chevronHtml +
-    '</div>';
-  }).join('');
-}
-
-function plnenieRenderAll() {
-  plnenieUpdateQTabs();
-  if (!PL_STATE.aggregates) {
-    plnenieRenderSummaryEmpty();
-    var listEl = document.getElementById('pl-rep-list');
-    var qLbl = plnenieQLabel(PL_STATE.q, PL_STATE.year);
-    if (listEl) listEl.innerHTML = '<div class="pl-error">Žiadne dáta pre ' + qLbl + '. Potiahni dole pre refresh.</div>';
-    if (PL_STATE.detailRep) plnenieRenderDetailError();
-    return;
-  }
-  plnenieRenderSummary();
-  plnenieRenderRegions();
-  plnenieRenderRepList();
-  if (PL_STATE.detailRep) plnenieRenderDetail();
-}
-
-// ═══════════════════════════════════════════════════════════
-// PLNENIE DETAIL — v2.3.1 (Detail reprezentanta)
-// ═══════════════════════════════════════════════════════════
-
-var PL_MONTH_LABELS = {
-  1: 'Jan', 2: 'Feb', 3: 'Mar',
-  4: 'Apr', 5: 'Máj', 6: 'Jún',
-  7: 'Júl', 8: 'Aug', 9: 'Sep',
-  10: 'Okt', 11: 'Nov', 12: 'Dec'
-};
-
-
-
-// Míľniky v progress bare — zvislé deliče na pozíciách koncov mesiacov v rámci Q,
-// proporcionálne podľa pracovných dní.
-function plnenieMilestonesHtml(year, q) {
-  var months = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[q] || [];
-  var wd = months.map(function(m){ return plnenieWorkingDays(year, m); });
-  var total = wd.reduce(function(a,b){ return a+b; }, 0);
-  if (total === 0) return '';
-  var curQ = plnenieCurrentQ();
-  var curMonth = new Date().getMonth() + 1;
-  var html = '';
-  var cum = 0;
-  for (var i = 0; i < wd.length - 1; i++) {
-    cum += wd[i];
-    var pct = cum / total * 100;
-    var isCur = (q === curQ && months[i] === curMonth);
-    // Triedy bez pl- prefixu — scopované cez .mgr-plnenie-detail v CSS
-    html += '<div class="milestone' + (isCur ? ' current' : '') + '" style="left:' + pct.toFixed(2) + '%"></div>';
-  }
-  return html;
-}
-
-// Textové popisky pod progress barom — "Začiatok / Apr · 33% / Máj · 67% / Koniec Jún"
-function plnenieMsLabelsHtml(year, q) {
-  var months = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[q] || [];
-  var wd = months.map(function(m){ return plnenieWorkingDays(year, m); });
-  var total = wd.reduce(function(a,b){ return a+b; }, 0);
-  if (total === 0 || months.length === 0) return '';
-  var curQ = plnenieCurrentQ();
-  var curMonth = new Date().getMonth() + 1;
-  var milestones = [];
-  var cum = 0;
-  for (var i = 0; i < months.length - 1; i++) {
-    cum += wd[i];
-    milestones.push({ label: PL_MONTH_LABELS[months[i]] + ' · ' + Math.round(cum / total * 100) + '%', month: months[i] });
-  }
-  // active = posledný míľnik ktorého mesiac <= aktuálny mesiac
-  var activeIdx = -1;
-  if (q === curQ) {
-    for (var j = 0; j < milestones.length; j++) {
-      if (milestones[j].month <= curMonth) activeIdx = j;
-    }
-  }
-  var spans = ['<span class="passed">Za\u010diatok</span>'];
-  for (var k = 0; k < milestones.length; k++) {
-    var cls = '';
-    if (q === curQ) {
-      if (k < activeIdx) cls = ' class="passed"';
-      else if (k === activeIdx) cls = ' class="active"';
-    }
-    spans.push('<span' + cls + '>' + milestones[k].label + '</span>');
-  }
-  spans.push('<span>Koniec ' + PL_MONTH_LABELS[months[months.length - 1]] + '</span>');
-  return '<div class="ms-labels">' + spans.join('') + '</div>';
-}
-
-// Pracovné dni v mesiaci per rok (Po-Pi mínus SK sviatky).
-// Pri novom roku pridaj nový záznam do PL_WORKING_DAYS_MAP.
-// Ak rok chýba v mape, použije sa fallback (iba Po-Pi bez sviatkov).
-var PL_WORKING_DAYS_MAP = {
-  2026: { 1: 20, 2: 20, 3: 22, 4: 20, 5: 20, 6: 22,
-          7: 23, 8: 21, 9: 21, 10: 22, 11: 21, 12: 21 }
-};
-
-function plnenieWorkingDays(year, month) {
-  if (PL_WORKING_DAYS_MAP[year] && PL_WORKING_DAYS_MAP[year][month] !== undefined) {
-    return PL_WORKING_DAYS_MAP[year][month];
-  }
-  // Fallback — iba Po-Pi, bez SK sviatkov (menej presné, použije sa pre roky mimo mapy)
-  var last = new Date(year, month, 0).getDate();
-  var count = 0;
-  for (var d = 1; d <= last; d++) {
-    var wd = new Date(year, month - 1, d).getDay();     // 0=Ne, 6=So
-    if (wd !== 0 && wd !== 6) count++;
-  }
-  return count;
-}
-
-// Rozdelí Q plán na mesiace proporcionálne podľa pracovných dní.
-// Vráti objekt { 1: planJan, 2: planFeb, 3: planMar } (alebo príslušné mesiace pre Q2/3/4).
-function plnenieMonthlyPlans(year, q, qPlanTotal) {
-  var months = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[q] || [];
-  var wdByMonth = {};
-  var totalWd = 0;
-  months.forEach(function(m){
-    var wd = plnenieWorkingDays(year, m);
-    wdByMonth[m] = wd;
-    totalWd += wd;
-  });
-  var out = {};
-  months.forEach(function(m){
-    out[m] = totalWd > 0 ? (qPlanTotal * wdByMonth[m] / totalWd) : 0;
-  });
-  out._workingDays = wdByMonth;
-  return out;
-}
-
-// Vypočíta predikciu plnenia konca Q na základe dokončených mesiacov.
-// Používa len mesiace pred aktuálnym mesiacom (m < curMonth) kde existujú predaje.
-// predajeByMonth: { m: { prodKey: EUR, ... }, ... }
-// productKey: ak null → počíta celkovú predikciu (súčet všetkých produktov v mesiaci)
-//             ak string → počíta predikciu iba pre daný produkt
-// Vracia % alebo null ak nie sú dostupné dáta (Q nie je aktuálny, alebo žiadne dokončené mesiace).
-// Predikcia pre súhrnné karty (SK, West, East) — používa predajeEUR priamo (už agregované).
-// predajeEUR = skutočné predaje za všetky dostupné mesiace Q (budúce mesiace = 0, takže OK)
-// Delí súčtom mesačných plánov pre dokončené mesiace.
-function plnenieCalcPredikciaSummary(qPlanTotal, predajeEUR, q, year) {
-  if (plnenieCurrentQ() !== q) return null;
-  if (!qPlanTotal || qPlanTotal <= 0) return null;
-  var months = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[q] || [];
-  var curMonth = (new Date()).getMonth() + 1;
-  var monthlyPlans = plnenieMonthlyPlans(year, q, qPlanTotal);
-  var sumPlan = 0;
-  months.forEach(function(m) {
-    if (m >= curMonth) return; // len dokončené mesiace
-    sumPlan += monthlyPlans[m] || 0;
-  });
-  if (sumPlan <= 0) return null;
-  return predajeEUR / sumPlan * 100;
-}
-
-function plnenieCalcPredikcia(q, year, qPlanTotal, predajeByMonth, productKey) {
-  if (plnenieCurrentQ() !== q) return null; // len aktuálny Q
-  if (!qPlanTotal || qPlanTotal <= 0) return null;
-  var months = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[q] || [];
-  var curMonth = (new Date()).getMonth() + 1;
-  var monthlyPlans = plnenieMonthlyPlans(year, q, qPlanTotal);
-  var sumActual = 0, sumPlan = 0;
-  months.forEach(function(m) {
-    if (m >= curMonth) return; // len dokončené mesiace
-    var mPlan = monthlyPlans[m] || 0;
-    if (mPlan <= 0) return;
-    var monthData = predajeByMonth[m] || {};
-    var mActual = 0;
-    if (productKey) {
-      mActual = parseFloat(monthData[productKey]); if (isNaN(mActual)) mActual = 0;
-    } else {
-      Object.keys(monthData).forEach(function(k) { var v = parseFloat(monthData[k]); if (!isNaN(v)) mActual += v; });
-    }
-    sumActual += mActual;
-    sumPlan += mPlan;
-  });
-  if (sumPlan <= 0) return null;
-  return sumActual / sumPlan * 100;
-}
-
-function plnenieOpenDetail(username) {
-  if (!username) return;
-  PL_STATE.detailRep = username;
-  // Pri otvorení detailu vždy prepni na aktuálny Q
-  var curQ = plnenieCurrentQ();
-  if (PL_STATE.q !== curQ) {
-    PL_STATE.q = curQ;
-    if (PL_STATE.qCache[curQ]) {
-      PL_STATE.data = PL_STATE.qCache[curQ].data;
-      PL_STATE.aggregates = PL_STATE.qCache[curQ].aggregates;
-      PL_STATE.loaded = true;
-    } else {
-      PL_STATE.data = null;
-      PL_STATE.aggregates = null;
-      PL_STATE.loaded = false;
-    }
-    plnenieUpdateQTabs();
-  }
-  document.body.classList.add('mgr-plnenie-detail-open');
-  plnenieRenderDetail();
-  window.scrollTo(0, 0);
-}
-
-function plnenieCloseDetail() {
-  PL_STATE.detailRep = null;
-  document.body.classList.remove('mgr-plnenie-detail-open');
-  window.scrollTo(0, 0);
-}
-
-function plnenieRenderDetailError() {
-  var totalCard = document.getElementById('pl-detail-total-card');
-  if (totalCard) totalCard.innerHTML = '<div class="total-lbl">Chyba na\u010d\u00edtania</div><div class="total-val none">\u2014</div><div class="total-money">\u2014</div>';
-  var prodsEl = document.getElementById('pl-detail-prods');
-  if (prodsEl) prodsEl.innerHTML = '<div class="pl-error">Nepodarilo sa na\u010d\u00edta\u0165 d\u00e1ta. Potiahni dole pre refresh.</div>';
-}
-
-// Farebné prahy pre detail — bonus logika: ≥ 100% zelená, 95–99,99% oranžová, < 95% červená
-// Vracia 'g' / 'o' / 'r' / 'none' (bez pl- prefixu — CSS scopovaný cez .mgr-plnenie-detail)
-function plnenieDetailColorClass(pct) {
-  if (pct === null || pct === undefined || isNaN(pct)) return 'none';
-  if (pct >= 100) return 'g';
-  if (pct >= 95) return 'o';
-  return 'r';
-}
-
-// Sub-tab switcher v detaile reprezentanta (Predaje / Návštevy)
-function plnenieDetailSwitchSubtab(tab, btn) {
-  document.querySelectorAll('.mgr-plnenie-detail .pl-sub-tab').forEach(function(b) {
-    b.classList.toggle('active', b.getAttribute('data-subtab') === tab);
-  });
-  var predajeEl = document.getElementById('pl-detail-predaje');
-  var navstevyEl = document.getElementById('pl-detail-navstevy');
-  if (predajeEl) predajeEl.style.display = (tab === 'predaje') ? '' : 'none';
-  if (navstevyEl) navstevyEl.style.display = (tab === 'navstevy') ? '' : 'none';
-}
-
-var PL_PROD_DOT_COLORS = {
-  // Aflamil skupina — rovnaká modrá
-  'aflamil':             '#60A5FA',
-  'aflamil_kr':          '#60A5FA',
-  'aflamil_tablety_sacky':'#60A5FA',
-  // Ostatné produkty
-  'suprax':              '#C084FC',
-  'vidonorm':            '#34D399',
-  'cavinton forte':      '#FCD34D',
-  'cavinton':            '#FCD34D',
-  'telexer':             '#F87171',
-  'junod':               '#A78BFA',
-  'globifer':            '#FB923C',
-  'kogavant':            '#2DD4BF',
-  'lonelix':             '#F472B6',
-  'ossica':              '#4ADE80',
-  'terrosa':             '#E879F9'
-};
-
-// Preferované poradie produktov — Aflamil skupina pohromade, zvyšok abecedne
-var PL_PRODUCT_ORDER = [
-  'aflamil', 'aflamil_kr', 'aflamil_tablety_sacky',
-  'suprax', 'vidonorm', 'cavinton forte', 'cavinton',
-  'telexer', 'globifer', 'junod', 'kogavant', 'lonelix', 'ossica', 'terrosa'
-];
-
-function plnenieSortProducts(planProducts) {
-  var copy = planProducts.slice();
-  copy.sort(function(a, b) {
-    var ai = PL_PRODUCT_ORDER.indexOf(plnenieNormalizeKey(a));
-    var bi = PL_PRODUCT_ORDER.indexOf(plnenieNormalizeKey(b));
-    if (ai === -1) ai = 999;
-    if (bi === -1) bi = 999;
-    if (ai !== bi) return ai - bi;
-    return String(a).localeCompare(String(b), 'sk');
-  });
-  return copy;
-}
-
-function plnenieRenderDetail() {
-  var username = PL_STATE.detailRep;
-  if (!username) return;
-  var agg = PL_STATE.aggregates;
-  if (!agg) { plnenieRenderDetailError(); return; }
-
-  // Rep info
-  var info = LB_REP_INFO[username] || {
-    name: MGR_REP_NAMES[username] || username,
-    region: '',
-    color: 'linear-gradient(135deg,#64748B,#475569)'
-  };
-  var regionLbl = (MGR_AM_WEST.indexOf(username) !== -1) ? 'West'
-                : (MGR_AM_EAST.indexOf(username) !== -1) ? 'East' : '';
-  var sub = regionLbl + (info.region ? (' · ' + info.region) : '') + ' · @' + username;
-
-  // Header
-  var avatarEl = document.getElementById('pl-detail-avatar');
-  if (avatarEl) { avatarEl.textContent = mgrInitials(info.name); avatarEl.style.background = info.color; }
-  var nameEl = document.getElementById('pl-detail-name');
-  if (nameEl) nameEl.textContent = info.name;
-  var subEl = document.getElementById('pl-detail-sub');
-  if (subEl) subEl.textContent = sub;
-
-  // Q tabs
-  plnenieUpdateQTabs();
-
-  // Súhrn za Q
-  var repRow = null;
-  for (var i = 0; i < agg.reps.length; i++) {
-    if (agg.reps[i].username === username) { repRow = agg.reps[i]; break; }
-  }
-  var repPct = repRow ? repRow.pct : null;
-  var repPlan = repRow ? repRow.planEUR : 0;
-  var repPredaje = repRow ? repRow.predajeEUR : 0;
-  var repColorCls = plnenieDetailColorClass(repPct);
-  var resp = PL_STATE.data || {};
-  var predajeByMonth = (resp.predaje && resp.predaje[username] && resp.predaje[username].byMonth) || {};
-  var repPredikcia = plnenieCalcPredikcia(PL_STATE.q, PL_STATE.year, repPlan, predajeByMonth, null);
-
-  // Tmavá súhrnná karta
-  var noData = (repPlan === 0 && repPredaje === 0);
-  var totalCardEl = document.getElementById('pl-detail-total-card');
-  if (totalCardEl) {
-    var moneyStr;
-    if (noData) {
-      moneyStr = 'Plán ani predaje nie s\u00fa zadané';
-    } else {
-      moneyStr = (repPlan > 0 || repPredaje > 0)
-        ? '<strong>' + plnenieFormatEUR(repPredaje) + '</strong>' + (repPlan > 0 ? ' z pl\u00e1nu ' + plnenieFormatEUR(repPlan) : '')
-        : '\u2014';
-    }
-    var prediktHtml = (repPredikcia !== null && !noData)
-      ? '<div class="total-pred">predikcia konca kvartálu <span>' + plnenieFormatPct(repPredikcia) + '</span></div>'
-      : '';
-    totalCardEl.innerHTML =
-      '<div class="total-lbl">Celkov\u00e9 plnenie \u00b7 ' + plnenieQLabel(PL_STATE.q, PL_STATE.year) + '</div>' +
-      '<div class="total-val ' + repColorCls + '">' + (noData ? 'Žiadne dáta' : plnenieFormatPct(repPct)) + '</div>' +
-      '<div class="total-money" style="' + (noData ? 'opacity:.65' : '') + '">' + moneyStr + '</div>' +
-      prediktHtml;
-  }
-
-  // Per-produkt breakdown
-  var prodsEl = document.getElementById('pl-detail-prods');
-  var prodsLblEl = document.getElementById('pl-detail-prods-lbl');
-  if (prodsLblEl) prodsLblEl.textContent = 'Plnenie per produkt · ' + plnenieQLabel(PL_STATE.q, PL_STATE.year);
-  if (!prodsEl) return;
-
-  var resp = PL_STATE.data || {};
-  var planProducts = resp.planProducts || [];
-  var plan = (resp.plan && resp.plan[username]) || {};
-  var predajeTotal = (resp.predaje && resp.predaje[username] && resp.predaje[username].total) || {};
-  var predajeByMonth = (resp.predaje && resp.predaje[username] && resp.predaje[username].byMonth) || {};
-  var qMonths = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[PL_STATE.q] || [];
-  var curQ = plnenieCurrentQ();
-  var curMonth = (new Date()).getMonth() + 1;
-
-  if (planProducts.length === 0) {
-    prodsEl.innerHTML = '<div class="pl-loading">Žiadne produkty v pláne.</div>';
-    plnenieRenderDetailTrend(username);
-    return;
-  }
-
-  var milestonesHtml = plnenieMilestonesHtml(PL_STATE.year, PL_STATE.q);
-  var msLabelsHtml   = plnenieMsLabelsHtml(PL_STATE.year, PL_STATE.q);
-
-  prodsEl.innerHTML = plnenieSortProducts(planProducts).map(function(rawProdKey) {
-    var key = plnenieNormalizeKey(rawProdKey);
-    var label = plnenieDisplayName(rawProdKey);
-    var dotColor = PL_PROD_DOT_COLORS[key] || '#94A3B8';
-    var pPlan = parseFloat(plan[key]); if (isNaN(pPlan)) pPlan = 0;
-    var pPredaje = parseFloat(predajeTotal[key]); if (isNaN(pPredaje)) pPredaje = 0;
-    var pPct = (pPlan > 0) ? (pPredaje / pPlan * 100) : null;
-    var prodColorCls = plnenieDetailColorClass(pPct);
-    var barWidth = (pPct === null || isNaN(pPct)) ? 0 : Math.min(pPct, 100);
-
-    var monthlyPlans = plnenieMonthlyPlans(PL_STATE.year, PL_STATE.q, pPlan);
-    var pPredikcia = plnenieCalcPredikcia(PL_STATE.q, PL_STATE.year, pPlan, predajeByMonth, key);
-
-    var monthRowsHtml = qMonths.map(function(m) {
-      var monthData = predajeByMonth[m] || {};
-      var mVal = parseFloat(monthData[key]); if (isNaN(mVal)) mVal = 0;
-      var mPlan = monthlyPlans[m] || 0;
-      var mPct = (mPlan > 0) ? (mVal / mPlan * 100) : null;
-      var isCurrent = (PL_STATE.q === curQ && m === curMonth);
-      var isFuture = (PL_STATE.q === curQ && m > curMonth) || PL_STATE.q > curQ;
-      var mValCls = isFuture ? 'future' : ((mPlan > 0 && mVal > 0) ? plnenieDetailColorClass(mPct) : 'future');
-      var mDisplay = mVal > 0 ? plnenieFormatEUR(mVal) : '\u2014';
-      return '<div class="mrow">' +
-        '<div class="mrow-lbl' + (isCurrent ? ' current' : '') + '">' + (PL_MONTH_LABELS[m] || 'M'+m) + '</div>' +
-        '<div class="mrow-val ' + mValCls + '">' + mDisplay + '</div>' +
-        (mPlan > 0 ? '<div class="mrow-plan">pl\u00e1n ' + plnenieFormatEUR(mPlan) + '</div>' : '') +
-      '</div>';
-    }).join('');
-
-    var moneyHtml;
-    if (pPlan > 0) {
-      moneyHtml = '<div class="prod-money"><strong>' + plnenieFormatEUR(pPredaje) + '</strong> z pl\u00e1nu ' + plnenieFormatEUR(pPlan) + '</div>';
-    } else if (pPredaje > 0) {
-      moneyHtml = '<div class="prod-money muted">' + plnenieFormatEUR(pPredaje) + ' \u00b7 \u017eiadny pl\u00e1n</div>';
-    } else {
-      moneyHtml = '<div class="prod-money muted">\u017diadny pl\u00e1n pre tento kvart\u00e1l</div>';
-    }
-
-    var prodPredHtml = (pPredikcia !== null && pPlan > 0)
-      ? '<div class="prod-pred">predikcia konca kvartálu <span>' + plnenieFormatPct(pPredikcia) + '</span></div>'
-      : '';
-
-    return '<div class="prod-item-adv">' +
-      '<div class="prod-adv-top">' +
-        '<div class="prod-adv-name"><div class="prod-dot" style="background:' + dotColor + '"></div>' + mgrEscape(label) + '</div>' +
-        '<div class="prod-adv-pct ' + prodColorCls + '">' + plnenieFormatPct(pPct) + '</div>' +
-      '</div>' +
-      (pPlan > 0
-        ? '<div class="bar-wrap"><div class="bar-track"><div class="bar-fill ' + prodColorCls + '" style="width:' + barWidth + '%"></div>' + milestonesHtml + '</div>' + msLabelsHtml + '</div>'
-        : '') +
-      moneyHtml +
-      prodPredHtml +
-      '<div class="month-rows">' + monthRowsHtml + '</div>' +
-    '</div>';
-  }).join('');
-
-  plnenieRenderDetailTrend(username);
-}
-
-// Trend graf — stĺpcový, Q1–Q4, data z qCache
-// Milestone čiary v trend bare — horizontálne deliace čiary podľa pracovných dní
-// Pozícia = bottom: X% kde X = (milestone_expected_pct / actual_pct * 100)
-function plnenieTrendMsHtml(year, q, actualPct) {
-  if (!actualPct || actualPct <= 0) return '';
-  var months = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[q] || [];
-  var wd = months.map(function(m){ return plnenieWorkingDays(year, m); });
-  var total = wd.reduce(function(a, b){ return a + b; }, 0);
-  if (!total) return '';
-  var html = '';
-  var cum = 0;
-  for (var i = 0; i < wd.length - 1; i++) {
-    cum += wd[i];
-    var msPct = cum / total * 100;
-    if (msPct >= actualPct) continue; // míľnik je nad barom — preskočiť
-    var bottomPct = (msPct / actualPct * 100).toFixed(1);
-    html += '<div class="trend-ms" style="bottom:' + bottomPct + '%"></div>';
-    html += '<div class="trend-ms-lbl" style="bottom:calc(' + bottomPct + '% + 5px)">' + Math.round(msPct) + '%</div>';
-  }
-  return html;
-}
-
-function plnenieRenderDetailTrend(username) {
-  var trendEl = document.getElementById('pl-detail-trend');
-  if (!trendEl) return;
-  var curQ = plnenieCurrentQ();
-  var year = PL_STATE.year;
-
-  var qData = [];
-  for (var q = 1; q <= 4; q++) {
-    var cached = PL_STATE.qCache[q];
-    var pct = null;
-    var repPlanEUR = 0;
-    var byMonth = {};
-    if (cached && cached.aggregates && cached.aggregates.reps) {
-      for (var i = 0; i < cached.aggregates.reps.length; i++) {
-        if (cached.aggregates.reps[i].username === username) { pct = cached.aggregates.reps[i].pct; repPlanEUR = cached.aggregates.reps[i].planEUR || 0; break; }
-      }
-    }
-    if (cached && cached.data && cached.data.predaje && cached.data.predaje[username]) {
-      byMonth = cached.data.predaje[username].byMonth || {};
-    }
-    var predikcia = plnenieCalcPredikcia(q, year, repPlanEUR, byMonth, null);
-    qData.push({ q: q, pct: pct, predikcia: predikcia, isCurrent: q === curQ, isFuture: q > curQ });
-  }
-
-  var maxPct = 0;
-  qData.forEach(function(d){
-    var v = (d.isCurrent && d.predikcia !== null) ? d.predikcia : d.pct;
-    if (v !== null && v > maxPct) maxPct = v;
-  });
-  if (maxPct < 10) maxPct = 100;
-
-  var barsHtml = qData.map(function(d) {
-    var isPred = d.isCurrent && d.predikcia !== null;
-    var displayPct = isPred ? d.predikcia : d.pct;
-    var barH = (displayPct !== null) ? Math.max(6, Math.round(displayPct / maxPct * 90)) : 8;
-    var barCls = isPred ? 'pred' : ((d.pct === null) ? 'future' : plnenieDetailColorClass(d.pct));
-    var valCls = (displayPct === null) ? 'empty' : '';
-    var valStr = (displayPct !== null) ? plnenieFormatPct(displayPct) : '\u2014';
-    var lblCls = d.isCurrent ? 'current' : '';
-    var msHtml = (d.isCurrent && !isPred && d.pct !== null) ? plnenieTrendMsHtml(year, d.q, d.pct) : '';
-    return '<div class="trend-col">' +
-      '<div class="trend-bar ' + barCls + '" style="height:' + barH + '%">' +
-        '<div class="trend-bar-val ' + valCls + '">' + valStr + '</div>' +
-        msHtml +
-      '</div>' +
-      '<div class="trend-lbl ' + lblCls + '">Q' + d.q + (d.isCurrent ? ' \u00b7 teraz' : '') + '</div>' +
-      (isPred ? '<div class="trend-pred-lbl">predikcia</div>' : '') +
-    '</div>';
-  }).join('');
-
-  trendEl.innerHTML =
-    '<div class="trend-title">Trend plnenia cez kv\u00e1rt\u00e1ly \u00b7 ' + year + '</div>' +
-    '<div class="trend-bars">' + barsHtml + '</div>';
-}
-
-// ══════════════════════════════════════════════════════════════════
-// ║  REP PLNENIE — vlastné plnenie pre prihlásených reprezentantov ║
-// ║  Zobrazuje plnenie aktuálneho reprezentanta (nie všetky).      ║
-// ║  Rovnaká logika ako manager detail view, ale standalone.        ║
-// ══════════════════════════════════════════════════════════════════
-
-var REP_PL_STATE = {
-  q: 1,
-  year: (new Date()).getFullYear(),
-  loading: false,
-  loaded: false,
-  data: null,
-  aggregates: null,
-  qCache: {}
-};
-
-function openRepPlnenie() {
-  var session = getSession();
-  if (!session || !session.username) return;
-  ['hist-overlay','lb-overlay'].forEach(function(id){
-    var el = document.getElementById(id); if(el) el.classList.remove('show');
-  });
-  var overlay = document.getElementById('rep-plnenie-overlay');
-  if (overlay) overlay.classList.add('show');
-  document.body.style.overflow = 'hidden';
-  // Default: aktuálny kvartál
-  var curQ = plnenieCurrentQ();
-  REP_PL_STATE.year = (new Date()).getFullYear();
-  if (!REP_PL_STATE.loaded || REP_PL_STATE.q !== curQ) {
-    REP_PL_STATE.q = curQ;
-  }
-  repPlnenieUpdateQTabs();
-  // Ak máme data v cache — hneď render, inak načítaj
-  if (REP_PL_STATE.qCache[REP_PL_STATE.q]) {
-    REP_PL_STATE.data = REP_PL_STATE.qCache[REP_PL_STATE.q].data;
-    REP_PL_STATE.aggregates = REP_PL_STATE.qCache[REP_PL_STATE.q].aggregates;
-    REP_PL_STATE.loaded = true;
-    repPlnenieRender();
-  } else {
-    repPlnenieRenderLoading();
-    if (!REP_PL_STATE.loading) repPlnenieLoad();
-  }
-  if (overlay) overlay.scrollTop = 0;
-  preloadAllPharmaData();
-}
-
-function closeRepPlnenie() {
-  var overlay = document.getElementById('rep-plnenie-overlay');
-  if (overlay) overlay.classList.remove('show');
-  document.body.style.overflow = '';
-}
-
-function repPlnenieLoad() {
-  if (REP_PL_STATE.loading) return;
-  REP_PL_STATE.loading = true;
-  REP_PL_STATE.loaded = false;
-  REP_PL_STATE.data = null;
-  REP_PL_STATE.aggregates = null;
-  REP_PL_STATE.qCache = {};
-  var year = REP_PL_STATE.year;
-  var qs = [1, 2, 3, 4];
-  var pending = qs.length;
-  qs.forEach(function(q) {
-    var url = SCRIPT_URL + '?action=getPlnenieAll&rok=' + year + '&Q=' + q;
-    mgrFetchWithRetry(url, 3)
-      .then(function(resp) {
-        if (!resp || !resp.ok) throw new Error('No data Q' + q);
-        var agg = plnenieBuildAggregates(resp);
-        REP_PL_STATE.qCache[q] = { data: resp, aggregates: agg };
-        if (q === REP_PL_STATE.q) {
-          REP_PL_STATE.data = resp;
-          REP_PL_STATE.aggregates = agg;
-          REP_PL_STATE.loaded = true;
-          var overlay = document.getElementById('rep-plnenie-overlay');
-          if (overlay && overlay.classList.contains('show')) repPlnenieRender();
-        }
-      })
-      .catch(function() { REP_PL_STATE.qCache[q] = null; })
-      .then(function() {
-        pending--;
-        if (pending === 0) {
-          REP_PL_STATE.loading = false;
-          // Vždy re-render keď všetky fetche skončia — opravuje zaseknutý loading state
-          // ak user prepol Q tab počas načítavania
-          var overlay = document.getElementById('rep-plnenie-overlay');
-          if (overlay && overlay.classList.contains('show')) {
-            var cached = REP_PL_STATE.qCache[REP_PL_STATE.q];
-            if (cached) {
-              REP_PL_STATE.data = cached.data;
-              REP_PL_STATE.aggregates = cached.aggregates;
-              REP_PL_STATE.loaded = true;
-            }
-            repPlnenieRender();
-          }
-        }
-      });
-  });
-}
-
-function repPlnenieSwitchQ(q) {
-  if (q === REP_PL_STATE.q) return;
-  REP_PL_STATE.q = q;
-  repPlnenieUpdateQTabs();
-  if (REP_PL_STATE.qCache[q]) {
-    REP_PL_STATE.data = REP_PL_STATE.qCache[q].data;
-    REP_PL_STATE.aggregates = REP_PL_STATE.qCache[q].aggregates;
-    REP_PL_STATE.loaded = true;
-    repPlnenieRender();
-  } else if (REP_PL_STATE.loading) {
-    repPlnenieRenderLoading();
-  } else {
-    repPlnenieRender();
-  }
-}
-
-function repPlnenieUpdateQTabs() {
-  var tabs = document.querySelectorAll('#rep-pl-q-tabs .pl-q-tab');
-  var curQ = plnenieCurrentQ();
-  tabs.forEach(function(tab) {
-    var q = parseInt(tab.getAttribute('data-q'));
-    tab.classList.toggle('active', q === REP_PL_STATE.q);
-    tab.classList.toggle('current', q === curQ);
-    tab.classList.toggle('future', q > curQ);
-  });
-}
-
-function repPlnenieRenderLoading() {
-  var prodsEl = document.getElementById('rep-pl-prods');
-  if (prodsEl) prodsEl.innerHTML = '<div class="pl-loading"><div class="mgr-spinner" style="margin:0 auto 10px"></div><div>Načítavam plnenie...</div></div>';
-  var totalCardEl = document.getElementById('rep-pl-total-card');
-  if (totalCardEl) totalCardEl.innerHTML = '<div class="total-lbl">Môj plán · ' + plnenieQLabel(REP_PL_STATE.q, REP_PL_STATE.year) + '</div><div class="total-val none">—</div><div class="total-money">Načítavam...</div>';
-}
-
-function repPlnenieRender() {
-  var session = getSession();
-  if (!session || !session.username) return;
-  var username = session.username;
-  var totalCardEl = document.getElementById('rep-pl-total-card');
-  var prodsEl = document.getElementById('rep-pl-prods');
-  var prodsLblEl = document.getElementById('rep-pl-prods-lbl');
-  var agg = REP_PL_STATE.aggregates;
-  var qLbl = plnenieQLabel(REP_PL_STATE.q, REP_PL_STATE.year);
-
-  if (!agg) {
-    if (totalCardEl) totalCardEl.innerHTML = '<div class="total-lbl">Môj plán \u00b7 ' + qLbl + '</div><div class="total-val none">Žiadne dáta</div><div class="total-money" style="opacity:.65">Plán nie je zadaný pre tento kvartál</div>';
-    if (prodsEl) prodsEl.innerHTML = '<div class="pl-loading">Plán pre tento kvartál nie je zadaný.</div>';
-    repPlnenieRenderTrend(username);
-    return;
-  }
-
-  // Nájdi riadok pre aktuálneho representanta
-  var repRow = null;
-  for (var i = 0; i < agg.reps.length; i++) {
-    if (agg.reps[i].username === username) { repRow = agg.reps[i]; break; }
-  }
-  var repPct = repRow ? repRow.pct : null;
-  var repPlan = repRow ? repRow.planEUR : 0;
-  var repPredaje = repRow ? repRow.predajeEUR : 0;
-  var repColorCls = plnenieDetailColorClass(repPct);
-  var noData = (repPlan === 0 && repPredaje === 0);
-  var repByMonth = (REP_PL_STATE.data && REP_PL_STATE.data.predaje && REP_PL_STATE.data.predaje[username] && REP_PL_STATE.data.predaje[username].byMonth) || {};
-  var repPredikcia = plnenieCalcPredikcia(REP_PL_STATE.q, REP_PL_STATE.year, repPlan, repByMonth, null);
-
-  // Celková karta
-  if (totalCardEl) {
-    var moneyStr;
-    if (noData) {
-      moneyStr = 'Plán ani predaje nie s\u00fa zadané';
-    } else {
-      moneyStr = '<strong>' + plnenieFormatEUR(repPredaje) + '</strong>' + (repPlan > 0 ? ' z pl\u00e1nu ' + plnenieFormatEUR(repPlan) : '');
-    }
-    var prediktHtml = (repPredikcia !== null && !noData)
-      ? '<div class="total-pred">predikcia konca kvartálu <span>' + plnenieFormatPct(repPredikcia) + '</span></div>'
-      : '';
-    totalCardEl.innerHTML =
-      '<div class="total-lbl">M\u00f4j pl\u00e1n \u00b7 ' + qLbl + '</div>' +
-      '<div class="total-val ' + repColorCls + '">' + (noData ? 'Žiadne dáta' : plnenieFormatPct(repPct)) + '</div>' +
-      '<div class="total-money" style="' + (noData ? 'opacity:.65' : '') + '">' + moneyStr + '</div>' +
-      prediktHtml;
-  }
-
-  // Popisok sekcie produktov
-  if (prodsLblEl) prodsLblEl.textContent = 'Moje produkty \u00b7 ' + qLbl;
-  if (!prodsEl) { repPlnenieRenderTrend(username); return; }
-
-  var resp = REP_PL_STATE.data || {};
-  var planProducts = resp.planProducts || [];
-  var plan = (resp.plan && resp.plan[username]) || {};
-  var predajeTotal = (resp.predaje && resp.predaje[username] && resp.predaje[username].total) || {};
-  var predajeByMonth = (resp.predaje && resp.predaje[username] && resp.predaje[username].byMonth) || {};
-  var qMonths = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[REP_PL_STATE.q] || [];
-  var curQ = plnenieCurrentQ();
-  var curMonth = (new Date()).getMonth() + 1;
-
-  if (planProducts.length === 0) {
-    prodsEl.innerHTML = '<div class="pl-loading">Žiadne produkty v pláne pre ' + qLbl + '.</div>';
-    repPlnenieRenderTrend(username);
-    return;
-  }
-
-  var milestonesHtml = plnenieMilestonesHtml(REP_PL_STATE.year, REP_PL_STATE.q);
-  var msLabelsHtml   = plnenieMsLabelsHtml(REP_PL_STATE.year, REP_PL_STATE.q);
-
-  prodsEl.innerHTML = plnenieSortProducts(planProducts).map(function(rawProdKey) {
-    var key = plnenieNormalizeKey(rawProdKey);
-    var label = plnenieDisplayName(rawProdKey);
-    var dotColor = PL_PROD_DOT_COLORS[key] || '#94A3B8';
-    var pPlan = parseFloat(plan[key]); if (isNaN(pPlan)) pPlan = 0;
-    var pPredaje = parseFloat(predajeTotal[key]); if (isNaN(pPredaje)) pPredaje = 0;
-    var pPct = (pPlan > 0) ? (pPredaje / pPlan * 100) : null;
-    var prodColorCls = plnenieDetailColorClass(pPct);
-    var barWidth = (pPct === null || isNaN(pPct)) ? 0 : Math.min(pPct, 100);
-    var monthlyPlans = plnenieMonthlyPlans(REP_PL_STATE.year, REP_PL_STATE.q, pPlan);
-    var pPredikcia = plnenieCalcPredikcia(REP_PL_STATE.q, REP_PL_STATE.year, pPlan, predajeByMonth, key);
-
-    var monthRowsHtml = qMonths.map(function(m) {
-      var monthData = predajeByMonth[m] || {};
-      var mVal = parseFloat(monthData[key]); if (isNaN(mVal)) mVal = 0;
-      var mPlan = monthlyPlans[m] || 0;
-      var mPct = (mPlan > 0) ? (mVal / mPlan * 100) : null;
-      var isCurrent = (REP_PL_STATE.q === curQ && m === curMonth);
-      var isFuture = (REP_PL_STATE.q === curQ && m > curMonth) || REP_PL_STATE.q > curQ;
-      var mValCls = isFuture ? 'future' : ((mPlan > 0 && mVal > 0) ? plnenieDetailColorClass(mPct) : 'future');
-      var mDisplay = mVal > 0 ? plnenieFormatEUR(mVal) : '\u2014';
-      return '<div class="mrow">' +
-        '<div class="mrow-lbl' + (isCurrent ? ' current' : '') + '">' + (PL_MONTH_LABELS[m] || 'M'+m) + '</div>' +
-        '<div class="mrow-val ' + mValCls + '">' + mDisplay + '</div>' +
-        (mPlan > 0 ? '<div class="mrow-plan">pl\u00e1n ' + plnenieFormatEUR(mPlan) + '</div>' : '') +
-      '</div>';
-    }).join('');
-
-    var moneyHtml;
-    if (pPlan > 0) {
-      moneyHtml = '<div class="prod-money"><strong>' + plnenieFormatEUR(pPredaje) + '</strong> z pl\u00e1nu ' + plnenieFormatEUR(pPlan) + '</div>';
-    } else if (pPredaje > 0) {
-      moneyHtml = '<div class="prod-money muted">' + plnenieFormatEUR(pPredaje) + ' \u00b7 \u017eiadny pl\u00e1n</div>';
-    } else {
-      moneyHtml = '<div class="prod-money muted">\u017diadny pl\u00e1n pre tento kv\u00e1rt\u00e1l</div>';
-    }
-
-    var prodPredHtml = (pPredikcia !== null && pPlan > 0)
-      ? '<div class="prod-pred">predikcia konca kvartálu <span>' + plnenieFormatPct(pPredikcia) + '</span></div>'
-      : '';
-
-    var msLinkHtml = PHARMA_CODES[key]
-      ? '<button type="button" class="prod-ms-link" onclick="openPharmaMs(\'' + key.replace(/'/g,"\\'") + '\',\'' + label.replace(/'/g,"\\'") + '\')">📊 Trhový podiel</button>'
-      : '';
-
-    return '<div class="prod-item-adv">' +
-      '<div class="prod-adv-top">' +
-        '<div class="prod-adv-name"><div class="prod-dot" style="background:' + dotColor + '"></div>' + mgrEscape(label) + '</div>' +
-        '<div class="prod-adv-pct ' + prodColorCls + '">' + plnenieFormatPct(pPct) + '</div>' +
-      '</div>' +
-      (pPlan > 0
-        ? '<div class="bar-wrap"><div class="bar-track"><div class="bar-fill ' + prodColorCls + '" style="width:' + barWidth + '%"></div>' + milestonesHtml + '</div>' + msLabelsHtml + '</div>'
-        : '') +
-      moneyHtml +
-      prodPredHtml +
-      '<div class="month-rows">' + monthRowsHtml + '</div>' +
-      msLinkHtml +
-    '</div>';
-  }).join('');
-
-  repPlnenieRenderTrend(username);
-}
-
-function repPlnenieRenderTrend(username) {
-  var trendEl = document.getElementById('rep-pl-trend');
-  if (!trendEl) return;
-  var curQ = plnenieCurrentQ();
-  var year = REP_PL_STATE.year;
-
-  var qData = [];
-  for (var q = 1; q <= 4; q++) {
-    var cached = REP_PL_STATE.qCache[q];
-    var pct = null;
-    var repPlanEUR = 0;
-    var byMonth = {};
-    if (cached && cached.aggregates && cached.aggregates.reps) {
-      for (var i = 0; i < cached.aggregates.reps.length; i++) {
-        if (cached.aggregates.reps[i].username === username) { pct = cached.aggregates.reps[i].pct; repPlanEUR = cached.aggregates.reps[i].planEUR || 0; break; }
-      }
-    }
-    if (cached && cached.data && cached.data.predaje && cached.data.predaje[username]) {
-      byMonth = cached.data.predaje[username].byMonth || {};
-    }
-    var predikcia = plnenieCalcPredikcia(q, year, repPlanEUR, byMonth, null);
-    qData.push({ q: q, pct: pct, predikcia: predikcia, isCurrent: q === curQ });
-  }
-
-  var maxPct = 0;
-  qData.forEach(function(d){
-    var v = (d.isCurrent && d.predikcia !== null) ? d.predikcia : d.pct;
-    if (v !== null && v > maxPct) maxPct = v;
-  });
-  if (maxPct < 10) maxPct = 100;
-
-  var barsHtml = qData.map(function(d) {
-    var isPred = d.isCurrent && d.predikcia !== null;
-    var displayPct = isPred ? d.predikcia : d.pct;
-    var barH = (displayPct !== null) ? Math.max(6, Math.round(displayPct / maxPct * 90)) : 8;
-    var barCls = isPred ? 'pred' : ((d.pct === null) ? 'future' : plnenieDetailColorClass(d.pct));
-    var valCls = (displayPct === null) ? 'empty' : '';
-    var valStr = (displayPct !== null) ? plnenieFormatPct(displayPct) : '\u2014';
-    var lblCls = d.isCurrent ? 'current' : '';
-    var msHtml = (d.isCurrent && !isPred && d.pct !== null) ? plnenieTrendMsHtml(year, d.q, d.pct) : '';
-    return '<div class="trend-col">' +
-      '<div class="trend-bar ' + barCls + '" style="height:' + barH + '%">' +
-        '<div class="trend-bar-val ' + valCls + '">' + valStr + '</div>' +
-        msHtml +
-      '</div>' +
-      '<div class="trend-lbl ' + lblCls + '">Q' + d.q + (d.isCurrent ? ' \u00b7 teraz' : '') + '</div>' +
-      (isPred ? '<div class="trend-pred-lbl">predikcia</div>' : '') +
-    '</div>';
-  }).join('');
-
-  trendEl.innerHTML =
-    '<div class="trend-title">Trend m\u00f4jho plnenia \u00b7 ' + year + '</div>' +
-    '<div class="trend-bars">' + barsHtml + '</div>';
-}
-
-// ── PHARMA MS — trhový podiel po kliknutí na produkt v Plnení ──
-
-var PHARMA_CODES = {
-  'aflamil_kr':            ['AFLcrm'],
-  'aflamil_tablety_sacky': ['AFLsach', 'AFLtbl'],
-  'cavinton':              ['CAV'],
-  'cavinton forte':        ['CAV'],
-  'junod':                 ['JUN'],
-  'suprax':                ['SUP'],
-  'telexer':               ['TEL'],
-  'vidonorm':              ['VID']
-};
-
-var PHARMA_PROD_LABEL = {
-  'AFLcrm':'AFLAMIL Crm','AFLsach':'AFLAMIL Sáčky','AFLtbl':'AFLAMIL Tbl',
-  'CAV':'CAVINTON','JUN':'JUNOD','SUP':'SUPRAX','TEL':'TELEXER','VID':'VIDONORM'
-};
-
-var PHARMA_MONTH_SK = ['','Jan','Feb','Mar','Apr','Máj','Jún','Júl','Aug','Sep','Okt','Nov','Dec'];
-
-var PHARMA_STATE = {
-  open: false, loading: {},
-  activeCode: null, codes: [],
-  oblast: null, kvartal: null,
-  cache: {}
-};
-
-function pharmaKvartalCode(year, q) {
-  return String(year).slice(2) + (q < 10 ? '0' + q : String(q));
-}
-
-function pharmaQuarterMonths(kvartal) {
-  var yy   = kvartal.slice(0, 2);
-  var q    = parseInt(kvartal.slice(2), 10);
-  var base = (q - 1) * 3;
-  return [base + 1, base + 2, base + 3].map(function(m) {
-    return yy + (m < 10 ? '0' + m : String(m));
-  });
-}
-
-function openPharmaMs(prodKey, label) {
-  var codes = PHARMA_CODES[prodKey];
-  if (!codes || !codes.length) return;
-  var session = getSession();
-  if (!session) return;
-  var oblast = (USERS_LOCAL[session.username] && USERS_LOCAL[session.username].region) || session.region || '';
-  if (!oblast) return;
-
-  var q       = REP_PL_STATE.q    || plnenieCurrentQ();
-  var year    = REP_PL_STATE.year || (new Date()).getFullYear();
-  var kvartal = pharmaKvartalCode(year, q);
-
-  PHARMA_STATE.codes      = codes;
-  PHARMA_STATE.activeCode = codes[0];
-  PHARMA_STATE.oblast     = oblast;
-  PHARMA_STATE.kvartal    = kvartal;
-
-  var titleEl   = document.getElementById('pharma-ms-title');
-  var subtabsEl = document.getElementById('pharma-ms-subtabs');
-  var bodyEl    = document.getElementById('pharma-ms-body');
-  var mesiacEl  = document.getElementById('pharma-ms-mesiac');
-  var overlay   = document.getElementById('pharma-ms-overlay');
-
-  if (titleEl)  titleEl.textContent = 'Trhový podiel · Q' + q + ' ' + year + ' · ' + label;
-  if (mesiacEl) mesiacEl.textContent = '';
-  var firstCacheKey = codes[0] + '_' + oblast + '_' + kvartal;
-  if (bodyEl && !PHARMA_STATE.cache[firstCacheKey]) bodyEl.innerHTML = '<div class="pharma-ms-loading">Načítavam dáta…</div>';
-
-  if (codes.length > 1) {
-    subtabsEl.style.display = 'flex';
-    Array.prototype.forEach.call(subtabsEl.querySelectorAll('.pharma-ms-subtab'), function(btn) {
-      btn.classList.toggle('active', btn.getAttribute('data-code') === codes[0]);
-    });
-  } else {
-    subtabsEl.style.display = 'none';
-  }
-
-  overlay.classList.add('show');
-  overlay.scrollTop = 0;
-  PHARMA_STATE.open = true;
-
-  loadPharmaData(codes[0], oblast, kvartal);
-}
-
-function loadPharmaData(code, oblast, kvartal) {
-  var cacheKey = code + '_' + oblast + '_' + kvartal;
-  if (PHARMA_STATE.cache[cacheKey]) {
-    pharmaRender(code);
-    return;
-  }
-  if (PHARMA_STATE.loading[cacheKey]) return;
-  PHARMA_STATE.loading[cacheKey] = true;
-  fetch(
-    SCRIPT_URL + '?action=getPharmaData'
-      + '&oblast='  + encodeURIComponent(oblast)
-      + '&produkt=' + encodeURIComponent(code)
-      + '&kvartal=' + encodeURIComponent(kvartal),
-    { cache: 'no-store' }
-  )
-    .then(function(r) { return r.json(); })
-    .then(function(resp) {
-      delete PHARMA_STATE.loading[cacheKey];
-      if (resp.ok) {
-        PHARMA_STATE.cache[cacheKey] = resp;
-        if (PHARMA_STATE.activeCode === code &&
-            PHARMA_STATE.oblast     === oblast &&
-            PHARMA_STATE.kvartal    === kvartal) {
-          pharmaRender(code);
-        }
-      } else {
-        if (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal) {
-          var bodyEl = document.getElementById('pharma-ms-body');
-          if (bodyEl) bodyEl.innerHTML = '<div class="pharma-ms-loading">Dáta nie sú dostupné pre oblasť ' + mgrEscape(oblast) + '.</div>';
-        }
-      }
-    })
-    .catch(function() {
-      delete PHARMA_STATE.loading[cacheKey];
-      if (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal) {
-        var bodyEl = document.getElementById('pharma-ms-body');
-        if (bodyEl) bodyEl.innerHTML = '<div class="pharma-ms-loading">Chyba načítania.</div>';
-      }
-    });
-}
-
-function pharmaSwitchTab(code) {
-  PHARMA_STATE.activeCode = code;
-  var subtabsEl = document.getElementById('pharma-ms-subtabs');
-  if (subtabsEl) {
-    Array.prototype.forEach.call(subtabsEl.querySelectorAll('.pharma-ms-subtab'), function(btn) {
-      btn.classList.toggle('active', btn.getAttribute('data-code') === code);
-    });
-  }
-  var cacheKey = code + '_' + PHARMA_STATE.oblast + '_' + PHARMA_STATE.kvartal;
-  if (!PHARMA_STATE.cache[cacheKey]) {
-    var bodyEl = document.getElementById('pharma-ms-body');
-    if (bodyEl) bodyEl.innerHTML = '<div class="pharma-ms-loading">Načítavam dáta…</div>';
-  }
-  loadPharmaData(code, PHARMA_STATE.oblast, PHARMA_STATE.kvartal);
-}
-
-function pharmaRender(code) {
-  var bodyEl = document.getElementById('pharma-ms-body');
-  if (!bodyEl) return;
-
-  var cacheKey = code + '_' + PHARMA_STATE.oblast + '_' + PHARMA_STATE.kvartal;
-  var d = PHARMA_STATE.cache[cacheKey];
-  if (!d) {
-    bodyEl.innerHTML = '<div class="pharma-ms-loading">Načítavam dáta…</div>';
-    loadPharmaData(code, PHARMA_STATE.oblast, PHARMA_STATE.kvartal);
-    return;
-  }
-
-  var months  = pharmaQuarterMonths(PHARMA_STATE.kvartal);
-  var summArr = d.summary || [];
-  var okresy  = d.okresy  || [];
-  var q       = parseInt(PHARMA_STATE.kvartal.slice(2), 10);
-  var yy      = PHARMA_STATE.kvartal.slice(0, 2);
-
-  // Priemer dostupných mesiacov v kvartáli
-  var teritVals = [], skVals = [], mTerit = [null, null, null];
-  months.forEach(function(m, idx) {
-    for (var i = 0; i < summArr.length; i++) {
-      if (summArr[i].mesiac === m) {
-        var tv = parseFloat(summArr[i].terit_ms);
-        var sv = parseFloat(summArr[i].sk_ms);
-        if (!isNaN(tv) && tv > 0) { teritVals.push(tv); mTerit[idx] = tv; }
-        if (!isNaN(sv) && sv > 0) { skVals.push(sv); }
-        break;
-      }
-    }
-  });
-
-  var teritAvg = teritVals.length ? teritVals.reduce(function(a,b){return a+b;},0) / teritVals.length : null;
-  var skAvg    = skVals.length    ? skVals.reduce(function(a,b){return a+b;},0)    / skVals.length    : null;
-
-  var mLabels = months.map(function(m) {
-    return PHARMA_MONTH_SK[parseInt(m.slice(2), 10)] || m;
-  });
-
-  var html = '';
-
-  // ── Tmavá summary karta ──
-  html += '<div class="pharma-ms-card">';
-  html += '<div class="pharma-ms-card-lbl">TRHOVÝ PODIEL · Q' + q + ' 20' + yy + '</div>';
-  html += '<div class="pharma-ms-card-2col">';
-  var teritColor = (teritAvg !== null && skAvg !== null) ? (teritAvg >= skAvg ? '#10B981' : '#EF4444') : '#fff';
-  html += '<div><div class="pharma-ms-card-sublbl">Teritoriálny MS</div>';
-  html += '<div class="pharma-ms-card-val" style="color:' + teritColor + '">' + (teritAvg !== null ? teritAvg.toFixed(2) + '%' : '—') + '</div></div>';
-  html += '<div><div class="pharma-ms-card-sublbl">Slovenský MS</div>';
-  html += '<div class="pharma-ms-card-val sk">' + (skAvg !== null ? skAvg.toFixed(2) + '%' : '—') + '</div></div>';
-  html += '</div>';
-
-  // Mesačný trend
-  if (teritVals.length) {
-    html += '<div class="pharma-ms-trend-row">';
-    months.forEach(function(m, idx) {
-      html += '<div class="pharma-ms-trend-m">';
-      html += '<div class="pharma-ms-trend-val">' + (mTerit[idx] !== null ? mTerit[idx].toFixed(2) + '%' : '—') + '</div>';
-      html += '<div class="pharma-ms-trend-lbl">' + mgrEscape(mLabels[idx]) + '</div>';
-      html += '</div>';
-    });
-    html += '</div>';
-  }
-  html += '</div>';
-
-  // ── Rozpad po okresoch ──
-  if (!okresy.length) {
-    html += '<div class="pharma-ms-loading">Žiadne dáta po okresoch.</div>';
-    bodyEl.innerHTML = html;
-    return;
-  }
-
-  html += '<div class="pharma-ms-section-title">Rozpad po okresoch</div>';
-  var prodLabel = PHARMA_PROD_LABEL[code] || code;
-
-  okresy.forEach(function(r) {
-    html += '<div class="pharma-ms-district">';
-    html += '<div class="pharma-ms-district-name">' + mgrEscape(r.okres) + '</div>';
-    html += '<table class="pharma-ms-tbl"><thead><tr>';
-    html += '<th>Produkt</th>';
-    html += '<th>' + mgrEscape(mLabels[0]) + '</th>';
-    html += '<th>' + mgrEscape(mLabels[1]) + '</th>';
-    html += '<th>' + mgrEscape(mLabels[2]) + '</th>';
-    html += '</tr></thead><tbody>';
-
-    function fmtMs(v) {
-      var n = parseFloat(v);
-      return (!isNaN(n) && n > 0) ? n.toFixed(2) + '%' : '—';
-    }
-    html += '<tr class="ours"><td>' + mgrEscape(prodLabel) + '</td>';
-    html += '<td>' + fmtMs(r.nas_m1) + '</td><td>' + fmtMs(r.nas_m2) + '</td><td>' + fmtMs(r.nas_m3) + '</td></tr>';
-
-    [r.k1, r.k2, r.k3].forEach(function(k) {
-      if (!k || !k.name) return;
-      html += '<tr><td>' + mgrEscape(k.name) + '</td>';
-      html += '<td>' + fmtMs(k.m1) + '</td><td>' + fmtMs(k.m2) + '</td><td>' + fmtMs(k.m3) + '</td></tr>';
-    });
-
-    html += '</tbody></table></div>';
-  });
-
-  bodyEl.innerHTML = html;
-}
-
-function closePharmaMs() {
-  var overlay = document.getElementById('pharma-ms-overlay');
-  if (overlay) overlay.classList.remove('show');
-  PHARMA_STATE.open = false;
-}
-
-function preloadAllPharmaData() {
-  var session = getSession();
-  if (!session) return;
-  var oblast = (USERS_LOCAL[session.username] && USERS_LOCAL[session.username].region) || session.region || '';
-  if (!oblast) return;
-  var q       = REP_PL_STATE.q    || plnenieCurrentQ();
-  var year    = REP_PL_STATE.year || (new Date()).getFullYear();
-  var kvartal = pharmaKvartalCode(year, q);
-
-  var allCodes = [];
-  Object.keys(PHARMA_CODES).forEach(function(key) {
-    PHARMA_CODES[key].forEach(function(code) {
-      if (allCodes.indexOf(code) < 0) allCodes.push(code);
-    });
-  });
-
-  // Všetky kódy paralelne — každý fetch nezávisle
-  allCodes.forEach(function(code) {
-    loadPharmaData(code, oblast, kvartal);
-  });
-}
-
 // ── PULL-TO-REFRESH pre manažérsky zoznam ──
 (function(){
   var startY = 0, startX = 0, pulling = false, triggered = false, dirLocked = false;
@@ -6743,7 +4652,7 @@ function preloadAllPharmaData() {
     if(!wrap || wrap.style.display === 'none') return false;
     if(!document.body.classList.contains('manager-mode')) return false;
     // Nespúšťaj PTR ak je otvorený nejaký overlay
-    var overlays = ['lb-overlay','detail-overlay','hist-overlay','wn-overlay','confirm-overlay','session-expired-overlay'];
+    var overlays = ['lb-overlay','detail-overlay','hist-overlay','wn-overlay','confirm-overlay'];
     for(var i=0;i<overlays.length;i++){
       var el = document.getElementById(overlays[i]);
       if(el && el.classList.contains('show')) return false;
@@ -6806,14 +4715,8 @@ function preloadAllPharmaData() {
       if(spinner){ spinner.style.display = 'block'; spinner.classList.add('spin'); }
       if(ind){ ind.classList.add('loading'); ind.style.height = '60px'; ind.style.opacity = '1'; }
 
-      if (MGR_STATE.subtab === 'plnenie') {
-        PL_STATE.loading = false; // reset aby loadAllQuarters mohol bežať
-        PL_STATE.qCache = {};     // vymaž cache — refresh = nové dáta
-        plnenieLoadAllQuarters();
-      } else {
-        MGR_STATE.reps = {};
-        mgrLoadData();
-      }
+      MGR_STATE.reps = {};
+      mgrLoadData();
 
       setTimeout(function(){
         if(ind){ ind.classList.remove('pulling','loading'); ind.style.height = '0'; ind.style.opacity = '0'; }
@@ -6861,6 +4764,326 @@ function preloadAllPharmaData() {
   }, 1000);
 })();
 
+// ═══════════════════════════════════════════════════════════════════
+// PLNENIE — admin only (v2.3.00)
+// ═══════════════════════════════════════════════════════════════════
+var PLN_STATE = { currentQ: 1, data: null, loading: false };
+var PLN_CURRENT_Q = 1; // Q1 default
+var PLN_YEAR = 2026;
+
+// Mapa username → meno + región (pre zobrazenie v zozname)
+var PLN_REP_INFO = {
+  'j.bohovic':    { name: 'Jaroslava Bohovičová', region: 'BAMA' },
+  'v.hatinova':   { name: 'Viera Hatinová',       region: 'BASE' },
+  'v.hromadkova': { name: 'Viera Hromadková',     region: 'TN'   },
+  'z.lescis':     { name: 'Zoran Leščiš',         region: 'DS'   },
+  'j.krkoska':    { name: 'Jozef Krkoška',        region: 'MT'   },
+  'i.kozakova':   { name: 'Ida Kozáková',         region: 'NR'   },
+  'k.czidor':     { name: 'Katarína Czidor',      region: 'LV'   },
+  'o.rad':        { name: 'Olexandra Rad',        region: 'RS'   },
+  'l.mackova':    { name: 'Lenka Mačáková',       region: 'PP'   },
+  'z.lapsan':     { name: 'Zuzana Lapšanská',     region: 'PO'   },
+  'm.sabol':      { name: 'Michal Sabol',         region: 'MI'   },
+  'ke.rep':       { name: 'KE Reprezentant',      region: 'KE'   }
+};
+
+// Zobraz Plnenie tlačidlo iba pre admina
+(function plnShowBtnIfAdmin(){
+  function check(){
+    var s = getSession();
+    if(s && s.role === 'admin'){
+      var btn = document.getElementById('mgr-tb-plnenie');
+      if(btn) btn.style.display = '';
+    }
+  }
+  // Skús hneď + pár retry-ov keďže session sa môže načítať s oneskorením
+  check();
+  setTimeout(check, 500);
+  setTimeout(check, 1500);
+  setTimeout(check, 3000);
+})();
+
+// Mapovanie technických názvov produktov (zo Sheets) na zobrazené mená v appke
+// Case-insensitive kľúč: porovnáva sa lowercased verzia názvu
+var PLN_PRODUCT_LABELS = {
+  'aflamil_kr': 'Aflamil krém',
+  'aflamil_tablety_sacky': 'Aflamil tablety a sáčky',
+  'suprax': 'Suprax',
+  'cavinton': 'Cavinton',
+  'vidonorm': 'Vidonorm',
+  'junod': 'Junod',
+  'telexer': 'Telexer',
+  'kogavant': 'Kogavant',
+  'globifer': 'Globifer',
+  'lonelix': 'Lonelix',
+  'ossica': 'Ossica',
+  'terrosa': 'Terrosa'
+};
+
+// Vráti používateľsky prívetivý názov produktu
+function plnLabel(technicalName){
+  if(!technicalName) return '';
+  var key = String(technicalName).trim().toLowerCase();
+  return PLN_PRODUCT_LABELS[key] || technicalName;
+}
+
+function plnOpen(){
+  var ov = document.getElementById('pln-overlay');
+  if(!ov) return;
+  ov.classList.add('show');
+  PLN_CURRENT_Q = 1;
+  plnUpdateQTabs();
+  plnLoad();
+}
+
+function plnClose(){
+  var ov = document.getElementById('pln-overlay');
+  if(ov) ov.classList.remove('show');
+}
+
+function plnSwitchQ(q){
+  if(PLN_STATE.loading) return;
+  PLN_CURRENT_Q = q;
+  plnUpdateQTabs();
+  plnLoad();
+}
+
+function plnUpdateQTabs(){
+  var now = new Date();
+  var curMonth = now.getMonth() + 1;
+  var curQ = Math.ceil(curMonth / 3);
+  document.querySelectorAll('#pln-q-tabs .pln-q-tab').forEach(function(btn){
+    var q = parseInt(btn.getAttribute('data-q'));
+    btn.classList.remove('active','current','future');
+    if(q === PLN_CURRENT_Q) btn.classList.add('active');
+    if(q === curQ && q !== PLN_CURRENT_Q) btn.classList.add('current');
+    if(q > curQ) btn.classList.add('future');
+  });
+}
+
+function plnLoad(){
+  PLN_STATE.loading = true;
+  var content = document.getElementById('pln-content');
+  content.innerHTML = '<div class="pln-loading"><div class="mgr-spinner"></div><div>Načítavam Q' + PLN_CURRENT_Q + ' ' + PLN_YEAR + '...</div></div>';
+
+  var url = SCRIPT_URL + '?action=getPlnenieAll&rok=' + PLN_YEAR + '&Q=' + PLN_CURRENT_Q;
+  fetch(url)
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      PLN_STATE.loading = false;
+      if(!data || !data.ok){
+        content.innerHTML = '<div class="pln-empty">⚠ Chyba načítavania dát</div>';
+        return;
+      }
+      PLN_STATE.data = data;
+      plnRender(data);
+    })
+    .catch(function(err){
+      PLN_STATE.loading = false;
+      content.innerHTML = '<div class="pln-empty">⚠ Chyba: ' + err.message + '</div>';
+    });
+}
+
+// Vypočíta % plnenie na základe plánu a predajov pre daného repa
+// DÔLEŽITÉ: % sa počíta iba zo súčtu tých produktov, ktoré majú vyplnený plán > 0
+// Produkty bez plánu sa ignorujú (aby porovnávanie bolo férové)
+function plnCalcRep(repPlan, repPredaje, planProducts){
+  if(!repPlan) repPlan = {};
+  if(!repPredaje || !repPredaje.total) repPredaje = { total: {} };
+
+  var planTotal = 0;
+  var predajTotal = 0;
+  var byProduct = [];
+
+  for(var i = 0; i < (planProducts || []).length; i++){
+    var prodName = planProducts[i];
+    var prodKey = String(prodName).trim().toLowerCase();
+    var pln = repPlan[prodKey];
+    if(pln === undefined || pln === null) pln = 0;
+    var prd = repPredaje.total[prodKey];
+    if(prd === undefined || prd === null) prd = 0;
+
+    // Iba produkty s vyplneným plánom > 0 sa zarátavajú do súčtu
+    if(pln > 0){
+      planTotal += pln;
+      predajTotal += prd;
+    }
+
+    byProduct.push({
+      name: prodName,
+      plan: pln,
+      predaj: prd,
+      pct: pln > 0 ? Math.round((prd / pln) * 100) : null
+    });
+  }
+
+  return {
+    pct: planTotal > 0 ? Math.round((predajTotal / planTotal) * 100) : null,
+    planTotal: planTotal,
+    predajTotal: predajTotal,
+    byProduct: byProduct
+  };
+}
+
+function plnPctClass(pct){
+  if(pct === null || pct === undefined) return 'none';
+  if(pct >= 90) return 'g';
+  if(pct >= 70) return 'o';
+  return 'r';
+}
+
+function plnFmt(v){
+  return Math.round(v || 0).toLocaleString('sk-SK');
+}
+
+function plnRender(data){
+  var content = document.getElementById('pln-content');
+  var planProducts = data.planProducts || [];
+  var plan = data.plan || {};
+  var predaje = data.predaje || {};
+
+  // Zozbieraj všetkých unikátnych repov (union Plan + Predaje)
+  var allReps = {};
+  Object.keys(plan).forEach(function(r){ allReps[r] = true; });
+  Object.keys(predaje).forEach(function(r){ allReps[r] = true; });
+  var repList = Object.keys(allReps);
+
+  // Vypočítaj plnenie pre každého
+  var repCalcs = [];
+  var totalPlan = 0, totalPredaj = 0;
+  var westPlan = 0, westPredaj = 0, eastPlan = 0, eastPredaj = 0;
+  var prodAgg = {}; // produkt → { plan, predaj }
+
+  repList.forEach(function(rep){
+    var calc = plnCalcRep(plan[rep], predaje[rep], planProducts);
+    var info = PLN_REP_INFO[rep] || { name: rep, region: '' };
+    repCalcs.push({ rep: rep, info: info, calc: calc });
+
+    // DÔLEŽITÉ: Rep bez plánu (planTotal = 0) sa NEZAPOČÍTAVA do celkových súm
+    // Inak by sa jeho predaje prirátali ku Slovensku/West/East, ale plán by chýbal → skreslí %
+    if(calc.planTotal > 0){
+      totalPlan += calc.planTotal;
+      totalPredaj += calc.predajTotal;
+
+      // West/East rozdelenie (podľa regiónu)
+      var westRegions = ['BAMA','BASE','DS','MT','NR','TN'];
+      var isWest = westRegions.indexOf(info.region) !== -1;
+      if(isWest){ westPlan += calc.planTotal; westPredaj += calc.predajTotal; }
+      else { eastPlan += calc.planTotal; eastPredaj += calc.predajTotal; }
+
+      // Agregácia per produkt — iba repi s plánom
+      calc.byProduct.forEach(function(bp){
+        if(!prodAgg[bp.name]) prodAgg[bp.name] = { plan: 0, predaj: 0 };
+        prodAgg[bp.name].plan += bp.plan;
+        prodAgg[bp.name].predaj += bp.predaj;
+      });
+    }
+  });
+
+  var totalPct = totalPlan > 0 ? Math.round((totalPredaj / totalPlan) * 100) : null;
+  var westPct = westPlan > 0 ? Math.round((westPredaj / westPlan) * 100) : null;
+  var eastPct = eastPlan > 0 ? Math.round((eastPredaj / eastPlan) * 100) : null;
+
+  // Zoraď repov od najvyššieho % (tí bez plánu idú dole)
+  repCalcs.sort(function(a, b){
+    var pa = a.calc.pct, pb = b.calc.pct;
+    if(pa === null && pb === null) return a.info.name.localeCompare(b.info.name);
+    if(pa === null) return 1;
+    if(pb === null) return -1;
+    return pb - pa;
+  });
+
+  // HTML
+  var html = '';
+
+  // 1) Celkový súhrn Slovenska
+  html += '<div class="pln-sum">';
+  html += '<div class="pln-sum-hdr">';
+  html += '<div><div class="pln-sum-lbl">Slovensko · Q' + data.Q + ' ' + data.rok + '</div>';
+  if(totalPct === null){
+    html += '<div class="pln-sum-val" style="color:#CBD5E1;font-size:20px">Nie sú dáta</div>';
+  } else {
+    html += '<div class="pln-sum-val ' + plnPctClass(totalPct) + '">' + totalPct + '%</div>';
+  }
+  html += '</div>';
+  if(totalPlan > 0){
+    html += '<div class="pln-sum-total"><strong>' + plnFmt(totalPredaj) + ' €</strong>';
+    html += '<div style="font-size:10.5px;color:#94A3B8;margin-top:1px">z plánu ' + plnFmt(totalPlan) + ' €</div></div>';
+  }
+  html += '</div>';
+
+  // Produktový rozpad
+  var prodNames = Object.keys(prodAgg);
+  if(prodNames.length > 0){
+    html += '<div class="pln-sum-prods">';
+    prodNames.forEach(function(pn){
+      var pp = prodAgg[pn];
+      var pct = pp.plan > 0 ? Math.round((pp.predaj / pp.plan) * 100) : null;
+      var label = plnLabel(pn);
+      if(pct === null){
+        html += '<div class="pln-sum-prod">' + label + ' <strong style="color:#CBD5E1">—</strong></div>';
+      } else {
+        html += '<div class="pln-sum-prod">' + label + ' <strong class="' + plnPctClass(pct) + '">' + pct + '%</strong></div>';
+      }
+    });
+    html += '</div>';
+  }
+  html += '</div>';
+
+  // 2) West / East karty
+  html += '<div class="pln-regions">';
+  html += '<div class="pln-region"><div class="pln-region-lbl">West</div>';
+  if(westPct === null){
+    html += '<div class="pln-region-val" style="color:#CBD5E1;font-size:14px">Nie sú dáta</div>';
+  } else {
+    html += '<div class="pln-region-val ' + (plnPctClass(westPct)==='g'?'':'') + '" style="color:' + (westPct>=90?'#059669':westPct>=70?'#D97706':'#DC2626') + '">' + westPct + '%</div>';
+  }
+  html += '</div>';
+  html += '<div class="pln-region"><div class="pln-region-lbl">East</div>';
+  if(eastPct === null){
+    html += '<div class="pln-region-val" style="color:#CBD5E1;font-size:14px">Nie sú dáta</div>';
+  } else {
+    html += '<div class="pln-region-val" style="color:' + (eastPct>=90?'#059669':eastPct>=70?'#D97706':'#DC2626') + '">' + eastPct + '%</div>';
+  }
+  html += '</div>';
+  html += '</div>';
+
+  // 3) Zoznam repov
+  html += '<div class="pln-section-lbl">Poradie reprezentantov · Q' + data.Q + '</div>';
+  html += '<div class="pln-rep-list">';
+
+  if(repCalcs.length === 0){
+    html += '<div class="pln-empty">Žiadni reprezentanti s dátami pre Q' + data.Q + '</div>';
+  } else {
+    repCalcs.forEach(function(rc, idx){
+      var medal = '';
+      if(rc.calc.pct !== null){
+        if(idx === 0) medal = '🥇';
+        else if(idx === 1) medal = '🥈';
+        else if(idx === 2) medal = '🥉';
+        else medal = (idx + 1) + '.';
+      } else {
+        medal = '—';
+      }
+      var pctCls = plnPctClass(rc.calc.pct);
+      var pctTxt = rc.calc.pct === null ? '—' : rc.calc.pct + '%';
+
+      html += '<div class="pln-rep">';
+      html += '<div class="pln-rep-medal">' + medal + '</div>';
+      html += '<div class="pln-rep-body">';
+      html += '<div class="pln-rep-name">' + rc.info.name + '</div>';
+      html += '<div class="pln-rep-meta">' + rc.info.region + ' · ' + plnFmt(rc.calc.predajTotal) + ' € / ' + plnFmt(rc.calc.planTotal) + ' €</div>';
+      html += '</div>';
+      html += '<div class="pln-rep-pct ' + pctCls + '">' + pctTxt + '</div>';
+      html += '</div>';
+    });
+  }
+
+  html += '</div>';
+
+  content.innerHTML = html;
+}
+
 </script>
 
 <!-- ── LOGOUT CONFIRM ── -->
@@ -6873,59 +5096,6 @@ function preloadAllPharmaData() {
       <button class="logout-cancel" onclick="closeLogoutConfirm()">Nie, zostanem</button>
       <button class="logout-confirm" onclick="confirmLogout()">Áno, odhlásiť</button>
     </div>
-  </div>
-</div>
-
-<div class="session-expired-overlay" id="session-expired-overlay">
-  <div class="session-expired-box">
-    <div class="session-expired-icon">⏱️</div>
-    <div class="session-expired-title">Prihlásenie vypršalo</div>
-    <div class="session-expired-sub">Kvôli dlhšej nečinnosti ťa appka pre bezpečnosť odhlásila. Prihlás sa prosím znova — tvoj rozpracovaný záznam je uložený a po prihlásení sa ťa appka spýta, či v ňom chceš pokračovať.</div>
-    <div class="session-expired-btns">
-      <button type="button" class="session-expired-confirm" onclick="confirmLogout()">Prihlásiť sa znova</button>
-    </div>
-  </div>
-</div>
-
-<!-- ── REP PLNENIE OVERLAY — vlastné plnenie pre prihlásených reprezentantov ── -->
-<div class="rep-plnenie-overlay" id="rep-plnenie-overlay">
-  <div class="rep-pl-inner">
-    <div class="panel-nav">
-      <button class="panel-nav-btn" onclick="openHistory()">📋 História</button>
-      <button class="panel-nav-btn" onclick="openLeaderboard()">🏆 Rebríček</button>
-      <button class="panel-nav-btn active" onclick="openRepPlnenie()">💊 Plnenie</button>
-      <button class="panel-nav-close" onclick="closeAllPanels()">✕</button>
-    </div>
-    <div class="total-card" id="rep-pl-total-card">
-      <div class="total-lbl">Môj plán</div>
-      <div class="total-val none">—</div>
-      <div class="total-money">Načítavam...</div>
-    </div>
-    <div class="pl-q-tabs" id="rep-pl-q-tabs">
-      <button type="button" class="pl-q-tab" data-q="1" onclick="repPlnenieSwitchQ(1)">Q1</button>
-      <button type="button" class="pl-q-tab" data-q="2" onclick="repPlnenieSwitchQ(2)">Q2</button>
-      <button type="button" class="pl-q-tab" data-q="3" onclick="repPlnenieSwitchQ(3)">Q3</button>
-      <button type="button" class="pl-q-tab" data-q="4" onclick="repPlnenieSwitchQ(4)">Q4</button>
-    </div>
-    <div class="pl-section-lbl" id="rep-pl-prods-lbl">Moje produkty</div>
-    <div id="rep-pl-prods"></div>
-    <div class="trend" id="rep-pl-trend"></div>
-  </div>
-</div>
-
-<!-- ── PHARMA MS OVERLAY — trhový podiel produktu ── -->
-<div class="pharma-ms-overlay" id="pharma-ms-overlay">
-  <div class="pharma-ms-inner">
-    <div class="pharma-ms-hdr">
-      <button type="button" class="pharma-ms-back" onclick="closePharmaMs()">← Späť</button>
-      <span class="pharma-ms-title" id="pharma-ms-title">Trhový podiel</span>
-      <span class="pharma-ms-mesiac" id="pharma-ms-mesiac"></span>
-    </div>
-    <div id="pharma-ms-subtabs" class="pharma-ms-subtabs" style="display:none">
-      <button type="button" class="pharma-ms-subtab active" data-code="AFLtbl" onclick="pharmaSwitchTab('AFLtbl')">Tablety</button>
-      <button type="button" class="pharma-ms-subtab" data-code="AFLsach" onclick="pharmaSwitchTab('AFLsach')">Sáčky</button>
-    </div>
-    <div id="pharma-ms-body"></div>
   </div>
 </div>
 
@@ -6976,7 +5146,7 @@ function preloadAllPharmaData() {
   <div class="login-footer">
     <div class="login-footer-logo">GEDEON RICHTER</div>
     <div class="login-footer-text">Interný nástroj · len pre medicínskych reprezentantov</div>
-    <div class="login-version">ver. 2.6.0 · 2026</div>
+    <div class="login-version">ver. 2.3.00 · 2026</div>
   </div>
 
 </div>
