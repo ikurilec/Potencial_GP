@@ -6525,9 +6525,9 @@ function pharmaGetOblast() {
   var session = getSession();
   if (!session) return '';
   if (document.body.classList.contains('manager-mode')) {
-    // Manažér vidí detail konkrétneho reps — použi jeho region, rovnako ako keby sa prihlásil sám
+    // Manažér vidí detail konkrétneho reps — použi jeho region priamo (bez normalizácie)
     var rep = PL_STATE.detailRep;
-    if (rep) return pharmaOblastFromRegion((USERS_LOCAL[rep] && USERS_LOCAL[rep].region) || '');
+    if (rep) return (USERS_LOCAL[rep] && USERS_LOCAL[rep].region) || '';
     return '';
   }
   return pharmaOblastFromRegion(
@@ -6765,7 +6765,7 @@ function preloadAllPharmaData() {
     // Pre každého reps predloaduj jeho vlastnú oblast — rovnaká logika ako pri rep login
     var seenOblasts = {};
     Object.keys(USERS_LOCAL).forEach(function(username) {
-      var oblast = pharmaOblastFromRegion((USERS_LOCAL[username] && USERS_LOCAL[username].region) || '');
+      var oblast = (USERS_LOCAL[username] && USERS_LOCAL[username].region) || '';
       if (!oblast || seenOblasts[oblast]) return;
       seenOblasts[oblast] = true;
       allCodes.forEach(function(code) { loadPharmaData(code, oblast, kvartal); });
