@@ -3744,6 +3744,11 @@ function loginSuccess(username, name, role, region) {
     try { mgrDedupUnique(); } catch(e){}
     setTimeout(function(){ wnShow(true); }, 600);
     setTimeout(function(){ lbLoadData(); }, 2000);
+    setTimeout(function(){
+      REP_PL_STATE.year = REP_PL_STATE.year || (new Date()).getFullYear();
+      REP_PL_STATE.q    = REP_PL_STATE.q    || plnenieCurrentQ();
+      preloadAllPharmaData();
+    }, 2500);
     return;
   }
   if(localStorage.getItem(TUTORIAL_KEY)){
@@ -3924,6 +3929,11 @@ function initLogin() {
     if(mgrRole){
       mgrEnter(mgrRole);
       setTimeout(function(){ lbLoadData(); }, 2000);
+      setTimeout(function(){
+        REP_PL_STATE.year = REP_PL_STATE.year || (new Date()).getFullYear();
+        REP_PL_STATE.q    = REP_PL_STATE.q    || plnenieCurrentQ();
+        preloadAllPharmaData();
+      }, 2500);
       return;
     }
     setTimeout(function(){ updateHdrForUser(session); }, 300);
