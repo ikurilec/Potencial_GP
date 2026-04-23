@@ -6041,6 +6041,10 @@ function plnenieRenderDetail() {
       ? '<div class="prod-pred">predikcia konca kvartálu <span>' + plnenieFormatPct(pPredikcia) + '</span></div>'
       : '';
 
+    var msLinkHtml = PHARMA_CODES[key]
+      ? '<button type="button" class="prod-ms-link" onclick="openPharmaMs(\'' + key.replace(/'/g,"\\'") + '\',\'' + label.replace(/'/g,"\\'") + '\')">📊 Trhový podiel</button>'
+      : '';
+
     return '<div class="prod-item-adv">' +
       '<div class="prod-adv-top">' +
         '<div class="prod-adv-name"><div class="prod-dot" style="background:' + dotColor + '"></div>' + mgrEscape(label) + '</div>' +
@@ -6052,6 +6056,7 @@ function plnenieRenderDetail() {
       moneyHtml +
       prodPredHtml +
       '<div class="month-rows">' + monthRowsHtml + '</div>' +
+      msLinkHtml +
     '</div>';
   }).join('');
 
