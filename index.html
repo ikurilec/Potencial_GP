@@ -3665,8 +3665,21 @@ function clearSession() {
   } catch(e){}
 }
 
-// ── Región reprezentantov — dynamicky plnené zo Sheets cez loadRepList() ──
-var USERS_LOCAL = {};
+// ── Región reprezentantov — defaults, prepísané zo Sheets cez loadRepList() ──
+var USERS_LOCAL = {
+  'j.bohovic':    { region: 'BAMA' },
+  'v.hatinova':   { region: 'BASE' },
+  'v.hromadkova': { region: 'TN'   },
+  'z.lescis':     { region: 'DS'   },
+  'j.krkoska':    { region: 'MT'   },
+  'i.kozakova':   { region: 'NR'   },
+  'k.czidor':     { region: 'LV'   },
+  'o.rad':        { region: 'RS'   },
+  'l.macakova':   { region: 'PP'   },
+  'z.lapsan':     { region: 'PO'   },
+  'm.sabol':      { region: 'MI'   },
+  'a.makis':      { region: 'KE'   }
+};
 
 function loginSuccess(username, name, role, region) {
   var user = { username: username, name: name, role: role, region: region || '' };
@@ -3884,11 +3897,24 @@ document.addEventListener('DOMContentLoaded', function(){
 //   MANAGER MODE — dashboard pre BUM / admin / boss / AM West / AM East
 // ═══════════════════════════════════════════════════════════
 
-// Username → Celé meno — dynamicky plnené zo Sheets cez loadRepList()
-var MGR_REP_NAMES = {};
-var MGR_AM_WEST = [];
-var MGR_AM_EAST = [];
-var MGR_ALL = [];
+// Username → Celé meno — defaults, prepísané zo Sheets cez loadRepList()
+var MGR_REP_NAMES = {
+  'j.bohovic':    'Jaroslava Bohovičová',
+  'v.hatinova':   'Viktória Hatinová',
+  'v.hromadkova': 'Vladimíra Hromádková',
+  'z.lescis':     'Zuzana Leščišinová',
+  'j.krkoska':    'Juraj Krkoška',
+  'i.kozakova':   'Ida Kozáková',
+  'k.czidor':     'Katarína Czidor',
+  'o.rad':        'Olexandra Rad',
+  'l.macakova':   'Lenka Mačáková',
+  'z.lapsan':     'Zuzana Lapšanská',
+  'm.sabol':      'Michal Sabol',
+  'a.makis':      'Andrej Makiš'
+};
+var MGR_AM_WEST = ['j.bohovic','v.hatinova','v.hromadkova','z.lescis','j.krkoska','i.kozakova'];
+var MGR_AM_EAST = ['k.czidor','o.rad','l.macakova','z.lapsan','m.sabol','a.makis'];
+var MGR_ALL = MGR_AM_WEST.concat(MGR_AM_EAST);
 
 var MGR_ROLE_CFG = {
   bum:    { label:'BUM',     title:'Všetci reprezentanti',      reps:MGR_ALL },
@@ -4824,9 +4850,23 @@ var LB_COLOR_PALETTE = [
   'linear-gradient(135deg,#831843,#DB2777)'
 ];
 
-// Dynamicky plnené zo Sheets cez loadRepList()
-var LB_REP_INFO = {};
-var LB_ALL_REPS = [];
+// Defaults, prepísané zo Sheets cez loadRepList()
+var LB_REP_INFO = {
+  'j.bohovic':    { name: 'Jaroslava Bohovičová', region: 'BAMA', color: 'linear-gradient(135deg,#1E40AF,#3B82F6)' },
+  'v.hatinova':   { name: 'Viktória Hatinová',    region: 'BASE', color: 'linear-gradient(135deg,#0E7490,#22D3EE)' },
+  'v.hromadkova': { name: 'Vladimíra Hromádková', region: 'TN',   color: 'linear-gradient(135deg,#9D174D,#EC4899)' },
+  'z.lescis':     { name: 'Zuzana Leščišinová',   region: 'DS',   color: 'linear-gradient(135deg,#7C3AED,#A78BFA)' },
+  'j.krkoska':    { name: 'Juraj Krkoška',         region: 'MT',   color: 'linear-gradient(135deg,#065F46,#10B981)' },
+  'i.kozakova':   { name: 'Ida Kozáková',          region: 'NR',   color: 'linear-gradient(135deg,#065F46,#10B981)' },
+  'k.czidor':     { name: 'Katarína Czidor',       region: 'LV',   color: 'linear-gradient(135deg,#B45309,#F59E0B)' },
+  'o.rad':        { name: 'Olexandra Rad',         region: 'RS',   color: 'linear-gradient(135deg,#DC2626,#F87171)' },
+  'l.macakova':   { name: 'Lenka Mačáková',        region: 'PP',   color: 'linear-gradient(135deg,#374151,#6B7280)' },
+  'z.lapsan':     { name: 'Zuzana Lapšanská',      region: 'PO',   color: 'linear-gradient(135deg,#7C3AED,#C084FC)' },
+  'm.sabol':      { name: 'Michal Sabol',          region: 'MI',   color: 'linear-gradient(135deg,#059669,#10B981)' },
+  'a.makis':      { name: 'Andrej Makiš',           region: 'KE',   color: 'linear-gradient(135deg,#1E1B4B,#4338CA)' }
+};
+var LB_ALL_REPS = ['j.bohovic','v.hatinova','v.hromadkova','z.lescis','j.krkoska','i.kozakova',
+                   'k.czidor','o.rad','l.macakova','z.lapsan','m.sabol','a.makis'];
 
 var REP_LIST_STATE = { loaded: false, loading: false };
 
@@ -4857,6 +4897,11 @@ function buildRepData(reps) {
   MGR_ROLE_CFG.pm.reps     = MGR_ALL;
   MGR_ROLE_CFG.amwest.reps = MGR_AM_WEST;
   MGR_ROLE_CFG.ameast.reps = MGR_AM_EAST;
+
+  // Ak je manažér práve prihlásený, prekreslí zoznam reprezentantov
+  if (document.body.classList.contains('manager-mode') && typeof mgrRenderReps === 'function') {
+    mgrRenderReps();
+  }
 }
 
 function loadRepList() {
