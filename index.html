@@ -6544,9 +6544,8 @@ function openPharmaMs(prodKey, label) {
   var oblast = pharmaGetOblast();
   if (!oblast) return;
 
-  var isMgr = document.body.classList.contains('manager-mode');
-  var q    = (isMgr ? PL_STATE.q    : REP_PL_STATE.q)    || plnenieCurrentQ();
-  var year = (isMgr ? PL_STATE.year : REP_PL_STATE.year) || (new Date()).getFullYear();
+  var q    = REP_PL_STATE.q    || plnenieCurrentQ();
+  var year = REP_PL_STATE.year || (new Date()).getFullYear();
   var kvartal = pharmaKvartalCode(year, q);
 
   PHARMA_STATE.codes      = codes;
