@@ -1490,7 +1490,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.6.0';
+var APP_VERSION = '2.6.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5260,8 +5260,9 @@ function mgrSwitchSubtab(tab) {
     btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
   });
   window.scrollTo(0, 0);
-  if (tab === 'plnenie' && !PL_STATE.loaded && !PL_STATE.loading) {
-    plnenieLoadAllQuarters();
+  if (tab === 'plnenie') {
+    if (!PL_STATE.loaded && !PL_STATE.loading) plnenieLoadAllQuarters();
+    preloadAllPharmaData();
   }
   if (tab === 'leaderboard') {
     if (LB_STATE.data) {
@@ -6495,16 +6496,44 @@ function pharmaQuarterMonths(kvartal) {
   });
 }
 
+function pharmaOblastFromRegion(region) {
+  if (!region) return '';
+  var r = String(region).toUpperCase();
+  if (r === 'KE') return 'KE';
+  if (r.indexOf('BA') >= 0) return 'BA';
+  if (r.indexOf('KE') >= 0) return 'KE';
+  return r;
+}
+
+function pharmaGetOblast() {
+  if (document.body.classList.contains('manager-mode')) {
+    var dr = MGR_STATE.dynamicRegion;
+    if (dr === 'west') return 'BA';
+    if (dr === 'east') return 'KE';
+    // Admin: pokús sa zistiť oblast z otvoreného detailu reprezentanta
+    if (PL_STATE.detailRep && USERS_LOCAL[PL_STATE.detailRep]) {
+      return pharmaOblastFromRegion(USERS_LOCAL[PL_STATE.detailRep].region);
+    }
+    return '';
+  }
+  var session = getSession();
+  if (!session) return '';
+  return pharmaOblastFromRegion(
+    (USERS_LOCAL[session.username] && USERS_LOCAL[session.username].region) || session.region || ''
+  );
+}
+
 function openPharmaMs(prodKey, label) {
   var codes = PHARMA_CODES[prodKey];
   if (!codes || !codes.length) return;
   var session = getSession();
   if (!session) return;
-  var oblast = (USERS_LOCAL[session.username] && USERS_LOCAL[session.username].region) || session.region || '';
+  var oblast = pharmaGetOblast();
   if (!oblast) return;
 
-  var q       = REP_PL_STATE.q    || plnenieCurrentQ();
-  var year    = REP_PL_STATE.year || (new Date()).getFullYear();
+  var isMgr = document.body.classList.contains('manager-mode');
+  var q    = (isMgr ? PL_STATE.q    : REP_PL_STATE.q)    || plnenieCurrentQ();
+  var year = (isMgr ? PL_STATE.year : REP_PL_STATE.year) || (new Date()).getFullYear();
   var kvartal = pharmaKvartalCode(year, q);
 
   PHARMA_STATE.codes      = codes;
@@ -6709,10 +6738,24 @@ function closePharmaMs() {
 function preloadAllPharmaData() {
   var session = getSession();
   if (!session) return;
-  var oblast = (USERS_LOCAL[session.username] && USERS_LOCAL[session.username].region) || session.region || '';
-  if (!oblast) return;
-  var q       = REP_PL_STATE.q    || plnenieCurrentQ();
-  var year    = REP_PL_STATE.year || (new Date()).getFullYear();
+
+  var oblasts = [];
+  var isMgr = document.body.classList.contains('manager-mode');
+  if (isMgr) {
+    var dr = MGR_STATE.dynamicRegion;
+    if (dr === 'west')       oblasts = ['BA'];
+    else if (dr === 'east')  oblasts = ['KE'];
+    else                     oblasts = ['BA', 'KE']; // admin vidí obe oblasti
+  } else {
+    var o = pharmaOblastFromRegion(
+      (USERS_LOCAL[session.username] && USERS_LOCAL[session.username].region) || session.region || ''
+    );
+    if (o) oblasts = [o];
+  }
+  if (!oblasts.length) return;
+
+  var q    = (isMgr ? PL_STATE.q    : REP_PL_STATE.q)    || plnenieCurrentQ();
+  var year = (isMgr ? PL_STATE.year : REP_PL_STATE.year) || (new Date()).getFullYear();
   var kvartal = pharmaKvartalCode(year, q);
 
   var allCodes = [];
@@ -6722,9 +6765,10 @@ function preloadAllPharmaData() {
     });
   });
 
-  // Všetky kódy paralelne — každý fetch nezávisle
-  allCodes.forEach(function(code) {
-    loadPharmaData(code, oblast, kvartal);
+  oblasts.forEach(function(oblast) {
+    allCodes.forEach(function(code) {
+      loadPharmaData(code, oblast, kvartal);
+    });
   });
 }
 
@@ -6976,7 +7020,7 @@ function preloadAllPharmaData() {
   <div class="login-footer">
     <div class="login-footer-logo">GEDEON RICHTER</div>
     <div class="login-footer-text">Interný nástroj · len pre medicínskych reprezentantov</div>
-    <div class="login-version">ver. 2.6.0 · 2026</div>
+    <div class="login-version">ver. 2.6.1 · 2026</div>
   </div>
 
 </div>
