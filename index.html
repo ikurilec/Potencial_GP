@@ -5726,16 +5726,20 @@ function plnenieMsLabelsHtml(year, q) {
       if (milestones[j].month <= curMonth) activeIdx = j;
     }
   }
+  var isPast = (q < curQ);
   var spans = ['<span class="passed">Za\u010diatok</span>'];
   for (var k = 0; k < milestones.length; k++) {
     var cls = '';
-    if (q === curQ) {
+    if (isPast) {
+      cls = ' class="active"';
+    } else if (q === curQ) {
       if (k < activeIdx) cls = ' class="passed"';
       else if (k === activeIdx) cls = ' class="active"';
     }
     spans.push('<span' + cls + '>' + milestones[k].label + '</span>');
   }
-  spans.push('<span>Koniec ' + PL_MONTH_LABELS[months[months.length - 1]] + '</span>');
+  var endCls = isPast ? ' class="active"' : '';
+  spans.push('<span' + endCls + '>Koniec ' + PL_MONTH_LABELS[months[months.length - 1]] + '</span>');
   return '<div class="ms-labels">' + spans.join('') + '</div>';
 }
 
