@@ -6246,6 +6246,7 @@ function repPlnenieLoad() {
             }
             repPlnenieRender();
           }
+          repPlnenieUpdateNavBtn();
         }
       });
   });
@@ -6264,6 +6265,28 @@ function repPlnenieSwitchQ(q) {
     repPlnenieRenderLoading();
   } else {
     repPlnenieRender();
+  }
+}
+
+function repPlnenieUpdateNavBtn() {
+  var btn = document.getElementById('rep-nav-plnenie-btn');
+  if (!btn) return;
+  var session = getSession();
+  var username = session ? session.username : null;
+  var curQ = plnenieCurrentQ();
+  var cached = REP_PL_STATE.qCache[curQ];
+  var pct = null;
+  if (cached && cached.aggregates && username && cached.aggregates.reps) {
+    for (var i = 0; i < cached.aggregates.reps.length; i++) {
+      if (cached.aggregates.reps[i].username === username) { pct = cached.aggregates.reps[i].pct; break; }
+    }
+  }
+  if (pct !== null) {
+    var pctStr = Math.round(pct) + '%';
+    var colorCls = pct >= 100 ? '#10B981' : (pct >= 95 ? '#F59E0B' : '#EF4444');
+    btn.innerHTML = '💊 Plnenie <span style="background:' + colorCls + ';color:#fff;border-radius:6px;font-size:10px;font-weight:800;padding:1px 5px;margin-left:2px">' + pctStr + '</span>';
+  } else {
+    btn.innerHTML = '💊 Plnenie';
   }
 }
 
