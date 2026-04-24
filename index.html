@@ -1305,6 +1305,7 @@
       </div>
       <div class="confirm-inner">
         <div id="mgr-detail-prod-panel" style="display:none"></div>
+        <div id="rep-detail-prod-panel" style="display:none"></div>
         <div id="detail-seg"></div>
         <div id="detail-note-wrap"></div>
         <hr style="border:none;border-top:1px solid #E2E8F0;margin:4px 0 14px">
@@ -1496,7 +1497,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.6.1';
+var APP_VERSION = '2.6.3';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -3152,9 +3153,45 @@ function closeHistory() {
 function openDetail(idx) {
   var item = _histDetailItems[idx];
   if(!item) return;
-  // Schovaj produktový panel (ten je iba pre manažérov cez mgrOpenVisit)
+  // Schovaj manažérsky produktový panel
   var prodPanel = document.getElementById('mgr-detail-prod-panel');
   if(prodPanel){ prodPanel.style.display = 'none'; prodPanel.innerHTML = ''; }
+
+  // Zobraz produktový panel pre reprezentanta (iba počty, bez €)
+  var repProdPanel = document.getElementById('rep-detail-prod-panel');
+  if(repProdPanel) {
+    var prods = [
+      { name:'Vidonorm',       color:'#34D399', n: item.vidonorm_n,  unit:'pac./mes.' },
+      { name:'Aflamil',        color:'#60A5FA', n: item.aflamil_n,   unit:'bal./mes.' },
+      { name:'Suprax',         color:'#C084FC', n: item.suprax_n,    unit:'bal./mes.' },
+      { name:'Cavinton Forte', color:'#FCD34D', n: item.cavinton_n,  unit:'pac./mes.' }
+    ];
+    var hasAny = prods.some(function(p){ return p.n != null && p.n !== ''; });
+    if(hasAny) {
+      var rows = prods.map(function(p){
+        var val = (p.n != null && p.n !== '') ? p.n : '—';
+        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #F1F5F9">' +
+          '<div style="display:flex;align-items:center;gap:8px">' +
+            '<span style="width:8px;height:8px;border-radius:50%;background:' + p.color + ';display:inline-block;flex-shrink:0"></span>' +
+            '<span style="font-size:13px;font-weight:600;color:#1E293B">' + p.name + '</span>' +
+          '</div>' +
+          '<div style="text-align:right">' +
+            '<span style="font-size:15px;font-weight:700;color:#1E293B">' + val + '</span>' +
+            '<span style="font-size:10px;color:#94A3B8;margin-left:4px">' + p.unit + '</span>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+      repProdPanel.innerHTML =
+        '<div style="background:#F8FAFC;border-radius:10px;padding:10px 14px;margin-bottom:12px">' +
+          '<div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#94A3B8;margin-bottom:8px">Zadané hodnoty</div>' +
+          rows +
+        '</div>';
+      repProdPanel.style.display = 'block';
+    } else {
+      repProdPanel.style.display = 'none';
+      repProdPanel.innerHTML = '';
+    }
+  }
   var seg = SEGMENTS[item.scenar];
   var crClass = (item.scenar==='vyradit') ? 'res-no'
               : (item.scenar==='frekvencia'||item.scenar==='zvysit'||item.scenar==='zvysit3') ? 'res-orange'
@@ -3218,6 +3255,8 @@ function openDetail(idx) {
   }
   renderNoteSection(item);
   document.getElementById('detail-overlay').className = 'detail-overlay show';
+  var scrollBox = document.getElementById('confirm-box-scroll');
+  if(scrollBox) scrollBox.scrollTop = 0;
 }
 
 function closeDetail() {
