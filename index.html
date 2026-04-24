@@ -5026,48 +5026,73 @@ function openLeaderboard(){
   }
 }
 
-function lbConfetti(centerX) {
+function lbConfetti() {
   var existing = document.getElementById('lb-confetti-canvas');
   if (existing) existing.remove();
   var dpr = window.devicePixelRatio || 1;
+
+  // Zisti hranice stĺpca 1. miesta a podlahu (vrchná hrana zlatého bloku)
+  var body = lbGetBody();
+  var p1el = body ? body.querySelector('.lb-p-1') : null;
+  var blockEl = p1el ? p1el.querySelector('.lb-p-block') : null;
+  if (!p1el || !blockEl) return;
+  var p1rect = p1el.getBoundingClientRect();
+  var blockRect = blockEl.getBoundingClientRect();
+  var colLeft  = p1rect.left   * dpr;
+  var colRight  = p1rect.right  * dpr;
+  var floorY   = blockRect.top  * dpr;
+  var startY   = p1rect.top    * dpr; // začiatok pádu = vrch avatara
+
   var canvas = document.createElement('canvas');
   canvas.id = 'lb-confetti-canvas';
   canvas.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:99999';
-  canvas.width = window.innerWidth * dpr;
+  canvas.width  = window.innerWidth  * dpr;
   canvas.height = window.innerHeight * dpr;
   document.body.appendChild(canvas);
   var ctx = canvas.getContext('2d');
-  // Stred nad 1. miestom — v canvas koordinátoch (zarátame dpr)
-  var cx = (centerX !== undefined ? centerX : window.innerWidth / 2) * dpr;
-  var spread = 80 * dpr; // šírka rozptylu
+
   var colors = ['#FBBF24','#EF4444','#10B981','#3B82F6','#8B5CF6','#F59E0B','#EC4899','#14B8A6','#fff'];
   var particles = [];
-  for (var i = 0; i < 100; i++) {
+  for (var i = 0; i < 80; i++) {
     particles.push({
-      x: cx + (Math.random() - 0.5) * spread * 2,
-      y: -10 - Math.random() * 60,
-      w: (6 + Math.random() * 6) * dpr,
-      h: (8 + Math.random() * 5) * dpr,
+      x: colLeft + Math.random() * (colRight - colLeft),
+      y: startY - Math.random() * 120 * dpr,
+      w: (5 + Math.random() * 5) * dpr,
+      h: (7 + Math.random() * 4) * dpr,
       color: colors[Math.floor(Math.random() * colors.length)],
       angle: Math.random() * Math.PI * 2,
-      spin: (Math.random() - 0.5) * 0.2,
-      vx: (Math.random() - 0.5) * 4 * dpr,
-      vy: (2 + Math.random() * 3) * dpr,
+      spin: (Math.random() - 0.5) * 0.18,
+      vx: (Math.random() - 0.5) * 2 * dpr,
+      vy: (1 + Math.random() * 2) * dpr,
+      landed: false,
       opacity: 1
     });
   }
+
   var start = null;
-  var duration = 3200;
+  var duration = 4500;
   function draw(ts) {
     if (!start) start = ts;
     var elapsed = ts - start;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     particles.forEach(function(p) {
-      p.x += p.vx;
-      p.y += p.vy;
-      p.angle += p.spin;
-      p.vy += 0.08 * dpr;
-      if (elapsed > duration * 0.6) p.opacity = Math.max(0, 1 - (elapsed - duration * 0.6) / (duration * 0.4));
+      if (!p.landed) {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.angle += p.spin;
+        p.vy += 0.12 * dpr;
+        // Odrazy od stien stĺpca
+        if (p.x - p.w / 2 < colLeft)  { p.x = colLeft  + p.w / 2; p.vx =  Math.abs(p.vx) * 0.3; }
+        if (p.x + p.w / 2 > colRight) { p.x = colRight - p.w / 2; p.vx = -Math.abs(p.vx) * 0.3; }
+        // Pristátie na stupienku
+        if (p.y + p.h / 2 >= floorY) {
+          p.y = floorY - p.h / 2;
+          p.vy = 0; p.vx = 0; p.spin = 0;
+          p.landed = true;
+        }
+      }
+      // Zmiznutie po 3s
+      if (elapsed > 3000) p.opacity = Math.max(0, 1 - (elapsed - 3000) / 1500);
       ctx.save();
       ctx.globalAlpha = p.opacity;
       ctx.translate(p.x, p.y);
@@ -5076,11 +5101,7 @@ function lbConfetti(centerX) {
       ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
       ctx.restore();
     });
-    if (elapsed < duration) {
-      requestAnimationFrame(draw);
-    } else {
-      canvas.remove();
-    }
+    if (elapsed < duration) requestAnimationFrame(draw); else canvas.remove();
   }
   requestAnimationFrame(draw);
 }
@@ -5266,11 +5287,7 @@ function lbRender(){
 
   if (LB_STATE.showConfetti) {
     LB_STATE.showConfetti = false;
-    setTimeout(function() {
-      var p1el = body.querySelector('.lb-p-1 .lb-p-avatar');
-      var cx = p1el ? (p1el.getBoundingClientRect().left + p1el.getBoundingClientRect().width / 2) : (window.innerWidth / 2);
-      lbConfetti(cx);
-    }, 100);
+    setTimeout(lbConfetti, 100);
   }
 }
 
