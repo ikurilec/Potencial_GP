@@ -195,9 +195,6 @@
   .mgr-dot.err{background:#DC2626}
   .mgr-counts{font-size:11px;color:#8A97A6;margin-bottom:7px}
   .mgr-counts strong{color:#1A2A3A;font-weight:700}
-  .mgr-mo-badge{display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;min-width:40px}
-  .mgr-mo-num{font-size:22px;font-weight:700;color:#1A2A3A;line-height:1;font-family:'Outfit','SF Pro Display',-apple-system,sans-serif}
-  .mgr-mo-lbl{font-size:9px;font-weight:600;color:#94A3B8;text-transform:uppercase;letter-spacing:.05em;margin-top:1px}
   .mgr-segs{display:flex;gap:4px;flex-wrap:wrap}
   .mgr-chip{font-size:10px;padding:2px 7px;border-radius:9px;font-weight:700;white-space:nowrap;letter-spacing:.02em}
   .mgr-chip-top{background:#EAF0F8;color:#1B3A5C;border:1px solid #B0C4DE}
@@ -4476,10 +4473,9 @@ function mgrRenderList(){
       '<div class="mgr-body">' +
         '<div class="mgr-name">'+nameEsc+'</div>' +
         '<div class="mgr-meta"><span class="mgr-dot '+act+'"></span>'+lastTxt+lastLoginTxt+'</div>' +
-        '<div class="mgr-counts">Celkom: <strong>'+visits.length+'</strong> · týždeň: <strong>'+wk+'</strong></div>' +
+        '<div class="mgr-counts">Celkom: <strong>'+visits.length+'</strong> · týždeň: <strong>'+wk+'</strong> · mesiac: <strong>'+mo+'</strong></div>' +
         '<div class="mgr-segs">'+segs+'</div>' +
       '</div>' +
-      '<div class="mgr-mo-badge"><div class="mgr-mo-num">'+mo+'</div><div class="mgr-mo-lbl">mesiac</div></div>' +
       '<div class="mgr-chev">›</div>' +
     '</div>';
   }).join('');
