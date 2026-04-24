@@ -66,6 +66,9 @@ Progress bar na hlavnej obrazovke reprezentanta: `height` zmenená z `6px` na `8
 - Bronzová medaila 🥉 na 3. mieste: rovnaké poziciovanie ako strieborná
 - Avatary 2. a 3. miesta: `margin-bottom:20px` aby meno nesplývalo s medailou
 
+#### EUR súčet v Plnenie sumári — väčší
+Číslo predajov v pravom hornom rohu sumárnej karty (napr. `2 992 755 €`) zväčšené z `11.5px` na `20px` (Outfit font). Text "z plánu X €" zväčšený z `10.5px` na `11.5px`. Platí pre manažérsky aj reprezentantský sumár.
+
 #### Drobné UX/vizuálne fixy (z predchádzajúcej session)
 - Touch targety zvýšené na min. 44px pre všetky taby, tlačidlá Späť, Odhlásiť, rep nav bar
 - Malé fonty 9–9.5px zvýšené na 11px (trend-bar-val, ms-labels atď.)
