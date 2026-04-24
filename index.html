@@ -5037,8 +5037,8 @@ function lbConfetti() {
   var p1rect = p1el.getBoundingClientRect();
   var colLeft  = p1rect.left   * dpr;
   var colRight  = p1rect.right  * dpr;
-  // Podlaha = vrchná hrana zlatého bloku = spodok stĺpca mínus výška bloku (60px z CSS)
-  var floorY   = (p1rect.bottom - 60) * dpr;
+  // Podlaha = úplný spodok zlatého stĺpca
+  var floorY   = p1rect.bottom * dpr;
   var startY   = p1rect.top    * dpr;
 
   var canvas = document.createElement('canvas');
