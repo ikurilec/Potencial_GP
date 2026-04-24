@@ -379,10 +379,11 @@
   .submit-wrap.at-bottom{position:relative;bottom:auto;left:auto;right:auto;background:transparent}
   .submit-wrap.at-bottom .submit-inner{background:transparent;border-top:none;backdrop-filter:none;-webkit-backdrop-filter:none;padding:8px 16px}
   .btn-submit{width:100%;padding:16px;border-radius:50px;border:none;background:rgba(22,163,74,.45);color:rgba(255,255,255,.95);font-size:16px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .3s ease, border-radius .3s ease, color .3s ease;-webkit-tap-highlight-color:transparent}
-  .submit-wrap.at-bottom .btn-submit{background:#16A34A;border-radius:11px;color:#fff}
+  .submit-wrap.at-bottom .btn-submit{background:#16A34A;border-radius:11px;color:#fff;animation:submitGlow 2.2s ease-in-out infinite}
+  @keyframes submitGlow{0%,100%{box-shadow:0 4px 18px rgba(22,163,74,.35)}55%{box-shadow:0 4px 28px rgba(22,163,74,.65),0 0 0 6px rgba(22,163,74,.12)}}
   .btn-submit:hover{background:rgba(22,163,74,.6)}
-  .btn-submit:hover{background:#15803D}
-  .btn-submit:active{background:#166534}
+  .btn-submit:hover{background:#15803D;animation:none}
+  .btn-submit:active{background:#166534;animation:none}
   .smsg{margin-top:10px;padding:13px 18px;border-radius:10px;font-size:13px;font-weight:500;text-align:center;display:none}
   .smsg-err{background:#FEE2E2;color:#7F1D1D;border:1px solid #FCA5A5;display:block}
   .smsg-warn{background:#FFFBEB;color:#92400E;border:1px solid #FCD34D;display:block}
