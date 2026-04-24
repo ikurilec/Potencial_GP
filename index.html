@@ -877,7 +877,7 @@
 <!-- ═══ REP NAV BAR — História / Rebríček / Plnenie (viditeľné len pre reprezentantov, skryté v manažérskom móde) ═══ -->
 <div class="rep-nav" id="rep-nav">
   <button type="button" class="rep-nav-btn" onclick="openHistory()">📋 História<span class="rep-nav-badge" id="rep-nav-hist-count" style="display:none"></span></button>
-  <button type="button" class="rep-nav-btn" onclick="openLeaderboard()">🏆 Rebríček</button>
+  <button type="button" class="rep-nav-btn" id="rep-nav-lb-btn" onclick="openLeaderboard()">🏆 Rebríček</button>
   <button type="button" class="rep-nav-btn" id="rep-nav-plnenie-btn" onclick="openRepPlnenie()">💊 Plnenie</button>
 </div>
 
@@ -5055,6 +5055,7 @@ function lbLoadData(force){
     var mgrOpen = document.body.classList.contains('manager-mode') && document.body.classList.contains('mgr-subtab-leaderboard');
     var repOpen = (function(){ var ov = document.getElementById('lb-overlay'); return ov && ov.classList.contains('show'); })();
     if(mgrOpen || repOpen) lbRender();
+    lbUpdateNavBtn();
   }
 
   fetch(scriptUrl('action=getAllHistory'), { cache: 'no-store' })
@@ -5197,6 +5198,28 @@ function lbRender(){
 
   body.innerHTML = podiumHtml + listHtml;
 }
+
+function lbUpdateNavBtn() {
+  var btn = document.getElementById('rep-nav-lb-btn');
+  if (!btn) return;
+  var session = getSession();
+  var myUsername = session ? session.username : null;
+  if (!myUsername || !LB_STATE.data) { btn.innerHTML = '🏆 Rebríček'; return; }
+  var repsToShow = LB_ALL_REPS.length > 0 ? LB_ALL_REPS : Object.keys(LB_STATE.data);
+  var ranking = repsToShow.map(function(u) {
+    return { username: u, count: lbCountVisits(LB_STATE.data[u], 'month') };
+  }).sort(function(a, b) { return b.count - a.count; });
+  var rank = -1;
+  for (var i = 0; i < ranking.length; i++) {
+    if (ranking[i].username === myUsername) { rank = i + 1; break; }
+  }
+  if (rank > 0 && ranking[rank - 1].count > 0) {
+    btn.innerHTML = '🏆 Rebríček <span style="background:#0C1E35;color:#fff;border-radius:6px;font-size:10px;font-weight:800;padding:1px 5px;margin-left:2px">#' + rank + '</span>';
+  } else {
+    btn.innerHTML = '🏆 Rebríček';
+  }
+}
+
 // ═══════════════════════════════════════════════════════════
 // PLNENIE (Predaje vs Plán) — ADMIN zobrazenie (v2.3.0)
 // ═══════════════════════════════════════════════════════════
