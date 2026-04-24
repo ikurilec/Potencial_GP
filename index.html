@@ -5031,15 +5031,12 @@ function lbConfetti() {
   if (existing) existing.remove();
   var dpr = window.devicePixelRatio || 1;
 
-  // Zisti hranice stĺpca 1. miesta — querySelector globálne (funguje aj pre mgr inline view)
-  var p1el = document.querySelector('.lb-p-1');
-  if (!p1el) return;
-  var p1rect = p1el.getBoundingClientRect();
-  var colLeft  = p1rect.left   * dpr;
-  var colRight  = p1rect.right  * dpr;
-  // Podlaha = úplný spodok zlatého stĺpca
-  var floorY   = p1rect.bottom * dpr;
-  var startY   = p1rect.top    * dpr;
+  // Stred avatara 1. miesta
+  var avatarEl = document.querySelector('.lb-p-1 .lb-p-avatar');
+  if (!avatarEl) return;
+  var ar = avatarEl.getBoundingClientRect();
+  var cx = (ar.left + ar.width / 2) * dpr;
+  var cy = (ar.top  + ar.height / 2) * dpr;
 
   var canvas = document.createElement('canvas');
   canvas.id = 'lb-confetti-canvas';
@@ -5049,56 +5046,77 @@ function lbConfetti() {
   document.body.appendChild(canvas);
   var ctx = canvas.getContext('2d');
 
-  var colors = ['#FBBF24','#EF4444','#10B981','#3B82F6','#8B5CF6','#F59E0B','#EC4899','#14B8A6','#fff'];
-  var particles = [];
-  for (var i = 0; i < 80; i++) {
-    particles.push({
-      x: colLeft + Math.random() * (colRight - colLeft),
-      y: startY - Math.random() * 120 * dpr,
-      w: (5 + Math.random() * 5) * dpr,
-      h: (7 + Math.random() * 4) * dpr,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      angle: Math.random() * Math.PI * 2,
-      spin: (Math.random() - 0.5) * 0.18,
-      vx: (Math.random() - 0.5) * 2 * dpr,
-      vy: (1 + Math.random() * 2) * dpr,
-      landed: false,
-      opacity: 1
-    });
+  var colors = ['#FBBF24','#FDE68A','#EF4444','#F87171','#10B981','#34D399','#3B82F6','#93C5FD','#8B5CF6','#C4B5FD','#EC4899','#F9A8D4','#fff'];
+  var bursts = [];
+
+  function makeBurst(bx, by) {
+    var color = colors[Math.floor(Math.random() * colors.length)];
+    var count = 28 + Math.floor(Math.random() * 12);
+    var speed = (4 + Math.random() * 4) * dpr;
+    var pts = [];
+    for (var i = 0; i < count; i++) {
+      var angle = (Math.PI * 2 / count) * i + Math.random() * 0.3;
+      var s = speed * (0.6 + Math.random() * 0.8);
+      pts.push({
+        x: bx, y: by,
+        vx: Math.cos(angle) * s,
+        vy: Math.sin(angle) * s,
+        r: (1.5 + Math.random() * 2) * dpr,
+        opacity: 1,
+        trail: []
+      });
+    }
+    bursts.push({ pts: pts, color: color, born: performance.now() });
   }
 
+  // 3 výbuchy — hneď, po 600ms, po 1200ms
+  makeBurst(cx, cy);
+  setTimeout(function() { if (canvas.parentNode) makeBurst(cx, cy); }, 600);
+  setTimeout(function() { if (canvas.parentNode) makeBurst(cx, cy); }, 1200);
+
   var start = null;
-  var duration = 4500;
+  var duration = 3000;
   function draw(ts) {
     if (!start) start = ts;
     var elapsed = ts - start;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    particles.forEach(function(p) {
-      if (!p.landed) {
-        p.x += p.vx;
-        p.y += p.vy;
-        p.angle += p.spin;
-        p.vy += 0.12 * dpr;
-        // Odrazy od stien stĺpca
-        if (p.x - p.w / 2 < colLeft)  { p.x = colLeft  + p.w / 2; p.vx =  Math.abs(p.vx) * 0.3; }
-        if (p.x + p.w / 2 > colRight) { p.x = colRight - p.w / 2; p.vx = -Math.abs(p.vx) * 0.3; }
-        // Pristátie na stupienku
-        if (p.y + p.h / 2 >= floorY) {
-          p.y = floorY - p.h / 2;
-          p.vy = 0; p.vx = 0; p.spin = 0;
-          p.landed = true;
+
+    bursts.forEach(function(burst) {
+      var age = ts - burst.born;
+      burst.pts.forEach(function(p) {
+        // Trail
+        p.trail.push({ x: p.x, y: p.y });
+        if (p.trail.length > 6) p.trail.shift();
+
+        p.x  += p.vx;
+        p.y  += p.vy;
+        p.vy += 0.15 * dpr;   // gravitácia
+        p.vx *= 0.98;          // odpor vzduchu
+        p.opacity = Math.max(0, 1 - age / 1400);
+
+        // Kreslenie trailing "chvosta"
+        if (p.trail.length > 1) {
+          for (var t = 1; t < p.trail.length; t++) {
+            var frac = t / p.trail.length;
+            ctx.beginPath();
+            ctx.moveTo(p.trail[t-1].x, p.trail[t-1].y);
+            ctx.lineTo(p.trail[t].x,   p.trail[t].y);
+            ctx.strokeStyle = burst.color;
+            ctx.globalAlpha = p.opacity * frac * 0.4;
+            ctx.lineWidth = p.r * frac;
+            ctx.stroke();
+          }
         }
-      }
-      // Zmiznutie po 3s
-      if (elapsed > 3000) p.opacity = Math.max(0, 1 - (elapsed - 3000) / 1500);
-      ctx.save();
-      ctx.globalAlpha = p.opacity;
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.angle);
-      ctx.fillStyle = p.color;
-      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-      ctx.restore();
+
+        // Hlavná iskra
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = burst.color;
+        ctx.globalAlpha = p.opacity;
+        ctx.fill();
+      });
     });
+
     if (elapsed < duration) requestAnimationFrame(draw); else canvas.remove();
   }
   requestAnimationFrame(draw);
