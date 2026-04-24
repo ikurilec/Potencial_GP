@@ -158,9 +158,6 @@
   .lb-p-1 .lb-p-avatar{width:64px;height:64px;font-size:20px;box-shadow:0 0 0 3px #FBBF24,0 0 0 5px rgba(251,191,36,.25),0 6px 20px rgba(217,119,6,.35)}
   .lb-p-2 .lb-p-avatar,.lb-p-3 .lb-p-avatar{width:44px;height:44px;font-size:14px}
   .lb-rank-badge{position:absolute;bottom:-4px;right:-4px;width:18px;height:18px;border-radius:50%;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
-  .lb-fw{position:absolute;inset:0;pointer-events:none;z-index:0}
-  .lb-fw-p{position:absolute;width:7px;height:7px;border-radius:50%;top:50%;left:50%;animation:lbFwBurst 2s ease-out infinite}
-  @keyframes lbFwBurst{0%{transform:translate(-50%,-50%) scale(0);opacity:1}60%{opacity:1}100%{transform:translate(calc(var(--fx) - 50%),calc(var(--fy) - 50%)) scale(.6);opacity:0}}
   .lb-list{padding:0 14px 8px}
   .lb-row{display:flex;align-items:center;padding:10px 4px;border-bottom:0.5px solid #F8FAFC;gap:10px}
   .lb-row:last-child{border-bottom:none}
@@ -5171,24 +5168,9 @@ function lbRender(){
     var medal = isFirst ? '' : (rn === 2 ? '\uD83E\uDD48' : '\uD83E\uDD49');
     var lastName = rep.name.split(' ').pop();
     var avatarMarginBottom = medal ? 'margin-bottom:20px' : '';
-    // Ohňostroj pre 1. miesto — 8 iskier v rôznych smeroch
-    var fwHtml = '';
-    if (isFirst) {
-      var fwColors = ['#FBBF24','#EF4444','#10B981','#3B82F6','#8B5CF6','#F59E0B','#EC4899','#14B8A6'];
-      var fwAngles = [0,45,90,135,180,225,270,315];
-      var fwParticles = fwAngles.map(function(deg, i) {
-        var rad = deg * Math.PI / 180;
-        var dist = 44;
-        var fx = Math.round(Math.cos(rad) * dist) + 'px';
-        var fy = Math.round(Math.sin(rad) * dist) + 'px';
-        return '<span class="lb-fw-p" style="background:' + fwColors[i] + ';--fx:' + fx + ';--fy:' + fy + ';animation-delay:' + (i * 0.18) + 's"></span>';
-      }).join('');
-      fwHtml = '<div class="lb-fw">' + fwParticles + '</div>';
-    }
     podiumHtml +=
       '<div class="lb-p-item ' + podiumClasses[pi] + '">' +
         '<div class="lb-p-avatar" style="background:' + rep.color + ';' + avatarMarginBottom + '">' +
-          fwHtml +
           (isFirst ? '<span class="lb-p-crown">\uD83D\uDC51</span>' : '') +
           (medal ? '<span class="lb-p-medal">' + medal + '</span>' : '') +
           lbInitials(rep.name) +
