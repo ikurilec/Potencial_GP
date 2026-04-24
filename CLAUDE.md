@@ -40,7 +40,7 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.6.2** — obsahuje všetko z 2.6.1 plus vizuálne vylepšenia (rep nav badges, submit glow, progress bar, rebríček). **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.6.2** — obsahuje všetko z 2.6.1 plus vizuálne vylepšenia (rep nav badges, submit glow, progress bar, rebríček, ohnostroj). **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
 
 ### v2.6.2 — Vizuálne vylepšenia
 
@@ -68,6 +68,16 @@ Progress bar na hlavnej obrazovke reprezentanta: `height` zmenená z `6px` na `8
 
 #### EUR súčet v Plnenie sumári — väčší
 Číslo predajov v pravom hornom rohu sumárnej karty (napr. `2 992 755 €`) zväčšené z `11.5px` na `20px` (Outfit font). Text "z plánu X €" zväčšený z `10.5px` na `11.5px`. Platí pre manažérsky aj reprezentantský sumár.
+
+#### Ohnostroj pri otvorení rebríčka
+Po načítaní rebríčka sa spustí ohnostroj z avatara 1. miesta (`lbConfetti()`):
+- **3 výbuchy** — hneď, po 600ms a po 1200ms, všetky zo stredu `.lb-p-1 .lb-p-avatar`
+- Každý výbuch: ~28–40 iskier letiacich do všetkých strán s gravitáciou a odporom vzduchu
+- Každá iskra má `trail` (chvost 6 bodov) pre efekt svietiacich iskier
+- Farby sa líšia pri každom výbuchu (13 farieb v palete)
+- Spúšťa sa cez `LB_STATE.showConfetti = true` flag — nastavuje sa v `openLeaderboard()` a `mgrSwitchSubtab('leaderboard')`, vykonáva sa v `lbRender()` až po skutočnom vykreslení dát (nie počas načítavania)
+- Funguje pre reprezentantov aj manažérov
+- Canvas: `position:fixed`, `z-index:99999`, `pointer-events:none`, zmizne po 3s
 
 #### Drobné UX/vizuálne fixy (z predchádzajúcej session)
 - Touch targety zvýšené na min. 44px pre všetky taby, tlačidlá Späť, Odhlásiť, rep nav bar
