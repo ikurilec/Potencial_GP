@@ -1622,6 +1622,12 @@ document.addEventListener('visibilitychange', function(){
 window.addEventListener('online', function(){ checkForUpdate(); });
 
 var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbziSBvq1u8Jq0u0sTMynd-hqfk39rJtQZerIxdAgLiqL4AH-pEkE6TZK1HPqhcNiZxO0A/exec';
+var API_TOKEN  = 'gr-potencial-2026'; // musí sedieť s hodnotou v Apps Script Script Properties → API_TOKEN
+
+// Helper — pridá token ku každej URL smerujúcej na SCRIPT_URL
+function scriptUrl(params) {
+  return SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(API_TOKEN);
+}
 
 var SEGMENTS = {
   top: {
@@ -2585,7 +2591,7 @@ function dupCheckLekar(el){
       el.parentNode.parentNode.appendChild(warnEl);
     }
     warnEl.style.display = 'block';
-    warnEl.innerHTML = '⚠️ <strong>' + (found.lekar || val) + '</strong> bol už zadaný dňa <strong>' + (found.dateStr || '—') + '</strong>' + (found.cas ? ' o ' + found.cas : '') + '. Záznam bol zablokovaný — každý lekár sa zadáva iba raz za návštevu.';
+    warnEl.innerHTML = '⚠️ <strong>' + mgrEscape(found.lekar || val) + '</strong> bol už zadaný dňa <strong>' + mgrEscape(found.dateStr || '—') + '</strong>' + (found.cas ? ' o ' + mgrEscape(found.cas) : '') + '. Záznam bol zablokovaný — každý lekár sa zadáva iba raz za návštevu.';
   } else {
     _dupWarningActive = false;
     if(warnEl) warnEl.style.display = 'none';
@@ -2757,7 +2763,7 @@ function initCounter() {
 
 function refreshBadgeFromSheets(username) {
   if(!username) return;
-  fetch(SCRIPT_URL + '?action=getHistory&reprezentant=' + encodeURIComponent(username))
+  fetch(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username)))
     .then(function(r){ return r.json(); })
     .then(function(rows) {
       if(Array.isArray(rows)) {
@@ -2810,7 +2816,7 @@ function saveNote(item, text, callback) {
   } catch(e) {}
   // Ulož do Sheets ak má row
   if(item.row) {
-    var url = SCRIPT_URL + '?action=saveNote&row=' + encodeURIComponent(item.row) + '&poznamka=' + encodeURIComponent(text.trim());
+    var url = scriptUrl('action=saveNote&row=' + encodeURIComponent(item.row) + '&poznamka=' + encodeURIComponent(text.trim()));
     fetch(url).then(function(){ if(callback) callback(); }).catch(function(){ if(callback) callback(); });
   } else {
     if(callback) callback();
@@ -2988,10 +2994,10 @@ function buildHistItemHtml(item) {
   _histDetailItems.push(item);
   return '<div class="hist-item" onclick="openDetail(' + idx + ')" style="cursor:pointer">' +
     '<div style="display:flex;justify-content:space-between;align-items:center">' +
-      '<div class="hist-item-name">' + (item.lekar || '—') + '</div>' +
+      '<div class="hist-item-name">' + mgrEscape(item.lekar || '—') + '</div>' +
       '<span style="font-size:11px;color:#94A3B8">›</span>' +
     '</div>' +
-    '<div class="hist-item-meta">' + (item.okres || '—') + ' · ' + (item.dateStr || '') + ' · ' + (item.cas || '') + '<span style="color:#94A3B8;font-size:10.5px;margin-left:6px">· ' + timeAgo(item.dateKey, item.cas) + '</span></div>' +
+    '<div class="hist-item-meta">' + mgrEscape(item.okres || '—') + ' · ' + mgrEscape(item.dateStr || '') + ' · ' + mgrEscape(item.cas || '') + '<span style="color:#94A3B8;font-size:10.5px;margin-left:6px">· ' + timeAgo(item.dateKey, item.cas) + '</span></div>' +
     recHtml +
   '</div>';
 }
@@ -3075,7 +3081,7 @@ function openHistory() {
   var session = getSession();
   var username = session ? session.username : '';
 
-  fetch(SCRIPT_URL + '?action=getHistory&reprezentant=' + encodeURIComponent(username))
+  fetch(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username)))
     .then(function(r){ return r.json(); })
     .then(function(rows) {
       _histAllItems = rows.map(function(item) {
@@ -4086,7 +4092,7 @@ function mgrLoadData(){
   // Pre AM West/East — najprv načítaj zoznam repov zo Sheets dynamicky
   if(MGR_STATE.dynamicRegion){
     var region = MGR_STATE.dynamicRegion; // 'west' alebo 'east'
-    fetch(SCRIPT_URL + '?action=getReps&region=' + encodeURIComponent(region))
+    fetch(scriptUrl('action=getReps&region=' + encodeURIComponent(region)))
       .then(function(r){ return r.json(); })
       .then(function(reps){
         if(!Array.isArray(reps) || reps.length === 0){
@@ -4130,13 +4136,13 @@ function mgrDelay(ms){
 
 function mgrLoadReps(repList){
   var managersPromise = (MGR_STATE.role === 'admin')
-    ? mgrFetchWithRetry(SCRIPT_URL + '?action=getManagers').catch(function(){ return []; })
+    ? mgrFetchWithRetry(scriptUrl('action=getManagers')).catch(function(){ return []; })
     : Promise.resolve([]);
 
-  var loginPromise = mgrFetchWithRetry(SCRIPT_URL + '?action=getLastLogins').catch(function(){ return {}; });
+  var loginPromise = mgrFetchWithRetry(scriptUrl('action=getLastLogins')).catch(function(){ return {}; });
 
   // Jeden request pre všetky histórie naraz — najrýchlejšie
-  var allHistPromise = mgrFetchWithRetry(SCRIPT_URL + '?action=getAllHistory').catch(function(){ return null; });
+  var allHistPromise = mgrFetchWithRetry(scriptUrl('action=getAllHistory')).catch(function(){ return null; });
 
   Promise.all([loginPromise, managersPromise, allHistPromise]).then(function(meta){
     MGR_STATE.lastLogins = meta[0] || {};
@@ -4156,7 +4162,7 @@ function mgrLoadReps(repList){
       function loadNext(){
         if(idx >= repList.length) return;
         var username = repList[idx++];
-        mgrFetchWithRetry(SCRIPT_URL + '?action=getHistory&reprezentant=' + encodeURIComponent(username))
+        mgrFetchWithRetry(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username)))
           .then(function(rows){
             MGR_STATE.reps[username] = { visits: mgrNormalizeVisits(Array.isArray(rows)?rows:[]), error: false };
           })
@@ -4984,7 +4990,7 @@ function buildRepData(reps) {
 function loadRepList() {
   if (REP_LIST_STATE.loaded || REP_LIST_STATE.loading) return;
   REP_LIST_STATE.loading = true;
-  fetch(SCRIPT_URL + '?action=getRepList', { cache: 'no-store' })
+  fetch(scriptUrl('action=getRepList'), { cache: 'no-store' })
     .then(function(r){ return r.json(); })
     .then(function(data){
       REP_LIST_STATE.loading = false;
@@ -5051,7 +5057,7 @@ function lbLoadData(force){
     if(mgrOpen || repOpen) lbRender();
   }
 
-  fetch(SCRIPT_URL + '?action=getAllHistory', { cache: 'no-store' })
+  fetch(scriptUrl('action=getAllHistory'), { cache: 'no-store' })
     .then(function(r){ return r.ok ? r.json() : null; })
     .then(function(allHist){
       if(allHist && typeof allHist === 'object' && !Array.isArray(allHist)){
@@ -5067,7 +5073,7 @@ function lbLoadData(force){
       var results = {};
       var remaining = LB_ALL_REPS.length;
       LB_ALL_REPS.forEach(function(username){
-        fetch(SCRIPT_URL + '?action=getHistory&reprezentant=' + encodeURIComponent(username), { cache: 'no-store' })
+        fetch(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username)), { cache: 'no-store' })
           .then(function(r){ return r.ok ? r.json() : []; })
           .then(function(rows){ results[username] = Array.isArray(rows) ? rows : []; })
           .catch(function(){ results[username] = []; })
@@ -5340,7 +5346,7 @@ function plnenieLoadAllQuarters() {
   var pending = qs.length;
 
   qs.forEach(function(q) {
-    var url = SCRIPT_URL + '?action=getPlnenieAll&rok=' + year + '&Q=' + q;
+    var url = scriptUrl('action=getPlnenieAll&rok=' + year + '&Q=' + q);
     mgrFetchWithRetry(url, 3)
       .then(function(resp) {
         if (!resp || !resp.ok) throw new Error('No data for Q' + q);
@@ -6209,7 +6215,7 @@ function repPlnenieLoad() {
   var qs = [1, 2, 3, 4];
   var pending = qs.length;
   qs.forEach(function(q) {
-    var url = SCRIPT_URL + '?action=getPlnenieAll&rok=' + year + '&Q=' + q;
+    var url = scriptUrl('action=getPlnenieAll&rok=' + year + '&Q=' + q);
     mgrFetchWithRetry(url, 3)
       .then(function(resp) {
         if (!resp || !resp.ok) throw new Error('No data Q' + q);
@@ -6584,10 +6590,10 @@ function loadPharmaData(code, oblast, kvartal) {
   if (PHARMA_STATE.loading[cacheKey]) return;
   PHARMA_STATE.loading[cacheKey] = true;
   fetch(
-    SCRIPT_URL + '?action=getPharmaData'
+    scriptUrl('action=getPharmaData'
       + '&oblast='  + encodeURIComponent(oblast)
       + '&produkt=' + encodeURIComponent(code)
-      + '&kvartal=' + encodeURIComponent(kvartal),
+      + '&kvartal=' + encodeURIComponent(kvartal)),
     { cache: 'no-store' }
   )
     .then(function(r) { return r.json(); })
