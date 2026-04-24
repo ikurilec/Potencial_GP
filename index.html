@@ -5031,17 +5031,15 @@ function lbConfetti() {
   if (existing) existing.remove();
   var dpr = window.devicePixelRatio || 1;
 
-  // Zisti hranice stĺpca 1. miesta a podlahu (vrchná hrana zlatého bloku)
-  var body = lbGetBody();
-  var p1el = body ? body.querySelector('.lb-p-1') : null;
-  var blockEl = p1el ? p1el.querySelector('.lb-p-block') : null;
-  if (!p1el || !blockEl) return;
+  // Zisti hranice stĺpca 1. miesta — querySelector globálne (funguje aj pre mgr inline view)
+  var p1el = document.querySelector('.lb-p-1');
+  if (!p1el) return;
   var p1rect = p1el.getBoundingClientRect();
-  var blockRect = blockEl.getBoundingClientRect();
   var colLeft  = p1rect.left   * dpr;
   var colRight  = p1rect.right  * dpr;
-  var floorY   = blockRect.top  * dpr;
-  var startY   = p1rect.top    * dpr; // začiatok pádu = vrch avatara
+  // Podlaha = vrchná hrana zlatého bloku = spodok stĺpca mínus výška bloku (60px z CSS)
+  var floorY   = (p1rect.bottom - 60) * dpr;
+  var startY   = p1rect.top    * dpr;
 
   var canvas = document.createElement('canvas');
   canvas.id = 'lb-confetti-canvas';
@@ -5287,7 +5285,7 @@ function lbRender(){
 
   if (LB_STATE.showConfetti) {
     LB_STATE.showConfetti = false;
-    setTimeout(lbConfetti, 100);
+    setTimeout(lbConfetti, 300);
   }
 }
 
