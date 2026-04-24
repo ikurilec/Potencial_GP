@@ -655,7 +655,7 @@
   .mgr-plnenie-detail .total-pred{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.1);font-size:11.5px;color:#94A3B8}
   .mgr-plnenie-detail .total-pred span{font-size:16px;font-weight:700;color:#94A3B8;margin-left:6px}
   /* Produkty */
-  .mgr-plnenie-detail .prod-item-adv{background:#fff;border-radius:12px;padding:13px 14px 13px 10px;margin-bottom:9px;box-shadow:0 1px 6px rgba(0,0,0,.05)}
+  .mgr-plnenie-detail .prod-item-adv{background:#fff;border-radius:12px;padding:13px 14px;margin-bottom:9px;box-shadow:0 1px 6px rgba(0,0,0,.05)}
   .mgr-plnenie-detail .prod-adv-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
   .mgr-plnenie-detail .prod-adv-name{display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:700;color:#0F172A;font-family:'Outfit',sans-serif}
   .mgr-plnenie-detail .prod-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
@@ -783,7 +783,7 @@
   .rep-pl-inner .total-money strong{color:#fff;font-weight:700}
   .rep-pl-inner .total-pred{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.1);font-size:11.5px;color:#94A3B8}
   .rep-pl-inner .total-pred span{font-size:16px;font-weight:700;color:#94A3B8;margin-left:6px}
-  .rep-pl-inner .prod-item-adv{background:#fff;border-radius:12px;padding:13px 14px 13px 10px;margin-bottom:9px;box-shadow:0 1px 6px rgba(0,0,0,.05)}
+  .rep-pl-inner .prod-item-adv{background:#fff;border-radius:12px;padding:13px 14px;margin-bottom:9px;box-shadow:0 1px 6px rgba(0,0,0,.05)}
   .rep-pl-inner .prod-adv-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
   .rep-pl-inner .prod-adv-name{display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:700;color:#0F172A;font-family:'Outfit',sans-serif}
   .rep-pl-inner .prod-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
@@ -6057,7 +6057,7 @@ function plnenieRenderDetail() {
       ? '<button type="button" class="prod-ms-link" onclick="openPharmaMs(\'' + key.replace(/'/g,"\\'") + '\',\'' + label.replace(/'/g,"\\'") + '\')">📊 Trhový podiel</button>'
       : '';
 
-    return '<div class="prod-item-adv" style="border-left:4px solid ' + dotColor + ';border-radius:4px 12px 12px 4px">' +
+    return '<div class="prod-item-adv">' +
       '<div class="prod-adv-top">' +
         '<div class="prod-adv-name"><div class="prod-dot" style="background:' + dotColor + '"></div>' + mgrEscape(label) + '</div>' +
         '<div class="prod-adv-pct ' + prodColorCls + '">' + plnenieFormatPct(pPct) + '</div>' +
@@ -6401,7 +6401,7 @@ function repPlnenieRender() {
       ? '<button type="button" class="prod-ms-link" onclick="openPharmaMs(\'' + key.replace(/'/g,"\\'") + '\',\'' + label.replace(/'/g,"\\'") + '\')">📊 Trhový podiel</button>'
       : '';
 
-    return '<div class="prod-item-adv" style="border-left:4px solid ' + dotColor + ';border-radius:4px 12px 12px 4px">' +
+    return '<div class="prod-item-adv">' +
       '<div class="prod-adv-top">' +
         '<div class="prod-adv-name"><div class="prod-dot" style="background:' + dotColor + '"></div>' + mgrEscape(label) + '</div>' +
         '<div class="prod-adv-pct ' + prodColorCls + '">' + plnenieFormatPct(pPct) + '</div>' +
