@@ -519,10 +519,29 @@ Claude prepne na `test` vetvu a začne pracovať na oprave. Zmeny idú cez štan
 11. **Rýchly brief pred návštevou** — karta lekára s poslednou návštevou, segmentom, potenciálom, poznámkou, trendom a upozornením (ak je to nový lekár alebo zmena segmentu)
 
 ### Plnenie — čo ešte chýba pred mergom do main
-- **Reálne dáta v Sheets** — plány nahodené v Google Sheets (blocker pre merge do main)
+- **Reálne dáta v Sheets** — plány nahodené v Google Sheets (blocker pre merge do main) ⏳ čakáme na Q2 plány
 - **Otestovať s reálnymi dátami** — overiť agregácie, farebné prahy, detail reprezentanta, rep Plnenie overlay
 - ~~**Mód reprezentanta**~~ ✅ **Hotové v v2.4.0** — rep nav bar + rep Plnenie overlay
 - **DEV mode mock dáta pre Plnenie** — `MOCK_PLNENIE` objekt simulujúci `getPlnenieAll` odpoveď (plány + predaje per reprezentant per produkt per mesiac)
+
+### Plán mergu do main — poradie krokov (DÔLEŽITÉ)
+
+Bezpečnostná oprava (API token) v `test` vetve vyžaduje koordinovaný deploy. **Poradie musí byť presne takéto:**
+
+1. ⏳ Nahodiť Q2 plány do Google Sheets
+2. Otestovať s reálnymi dátami (checklist)
+3. Prejsť pre-merge checklist s Ivanom
+4. **Mergnúť `test` → `main`** — reprezentanti dostanú novú verziu s tokenom v kóde
+5. **Až potom** nasadiť nový Apps Script (Nasadiť → Spravovať nasadenia → Nová verzia)
+6. V Apps Script nastaviť Script Properties: kľúč `API_TOKEN`, hodnota = rovnaká ako `API_TOKEN` v `index.html`
+7. Zmeniť default token `gr-potencial-2026` na vlastnú unikátnu hodnotu v oboch miestach
+
+**⚠️ NIKDY nerobiť kroky 5–6 pred krokom 4** — inak representanti na starej main vetve dostanú "Unauthorized" a appka prestane fungovať.
+
+### Bezpečnostné opravy implementované v test vetve (v2.6.1)
+
+- **XSS fix:** `mgrEscape()` pridaný na `found.lekar/dateStr/cas` (duplikátové upozornenie) a `item.lekar/okres/dateStr/cas` (história záznamov) — predchádza spusteniu škodlivého kódu cez meno lekára
+- **API token:** Všetky backendové endpointy (okrem `login` a `pingLogin`) vyžadujú `&token=` parameter. Helper funkcia `scriptUrl(params)` v `index.html` ho pridáva automaticky. Token hodnota: `API_TOKEN` konštanta v `index.html` musí sedieť s `API_TOKEN` v Script Properties Apps Scriptu.
 
 ### Dátová integrácia (až po login + Sheets)
 - Vlastné predaje na úrovni lekárne mesačne
