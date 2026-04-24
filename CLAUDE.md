@@ -40,7 +40,12 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.6.2** — obsahuje všetko z 2.6.1 plus vizuálne vylepšenia (rep nav badges, submit glow, progress bar, rebríček, ohnostroj). **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.6.3** — obsahuje všetko z 2.6.2 plus: zobrazenie zadaných hodnôt produktov v zázname lekára (bez €), fix scroll pozície pri otváraní záznamu. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+
+### v2.6.3 — Zadané hodnoty v zázname lekára
+
+- **Zadané hodnoty produktov v histórii:** Keď reprezentant otvorí záznam lekára v histórii, zobrazí sa sekcia „Zadané hodnoty" so 4 produktmi a ich počtami (bal./mes. pre Aflamil/Suprax, pac./mes. pre Vidonorm/Cavinton Forte). Bez EUR hodnôt — tie sú interná veličina.
+- **Fix scroll pozície:** Pri otvorení záznamu lekára v histórii sa overlay vždy scrolluje na vrch (predtým si pamätal scroll pozíciu predchádzajúceho záznamu).
 
 ### v2.6.2 — Vizuálne vylepšenia
 
