@@ -40,7 +40,42 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.6.1** — obsahuje všetko z 2.6.0 plus Trhový podiel v manažérskom móde. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.6.2** — obsahuje všetko z 2.6.1 plus vizuálne vylepšenia (rep nav badges, submit glow, progress bar, rebríček). **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+
+### v2.6.2 — Vizuálne vylepšenia
+
+#### Rep nav bar — živé badges
+Všetky 3 tlačidlá v rep nav bare (`História`, `Rebríček`, `Plnenie`) zobrazujú relevantné číslo automaticky po prihlásení:
+- **📋 História `5`** — počet záznamov (existovalo, nezmenené)
+- **🏆 Rebríček `#3`** — pozícia reprezentanta v aktuálnom mesiaci (`lbUpdateNavBtn()`, volá sa z `onDone()` v `lbLoadData()`)
+- **💊 Plnenie `88%`** — % plnenia aktuálneho kvartálu (`repPlnenieUpdateNavBtn()`, volá sa po dokončení všetkých fetchov v `repPlnenieLoad()`)
+
+Farebná logika pre Plnenie badge: zelená ≥100%, oranžová ≥95%, červená <95%.
+Farebná logika pre Rebríček badge: tmavá `#0C1E35` (neutrálna, pozícia nemá farbu).
+
+#### Submit tlačidlo — pulzujúca žiara
+Tlačidlo **Potvrdiť** má CSS animáciu `submitGlow` (2.2s, `ease-in-out infinite`) keď je viditeľné v plnom zobrazení (`.submit-wrap.at-bottom .btn-submit`). Animácia pulzuje zelenou žiarou `box-shadow`. Pri hover a active stave sa animácia zastaví (`animation:none`).
+
+#### Progress bar — hrubší
+Progress bar na hlavnej obrazovke reprezentanta: `height` zmenená z `6px` na `8px`, `border-radius` z `3px` na `4px`. Gradient pri 100% (`complete`) zmenený na `linear-gradient(90deg,#059669,#10B981)` namiesto solid farby.
+
+#### Rebríček — podium vizuál
+- Avatar 1. miesta: `64px` (bol `52px`), zlatý ring `box-shadow:0 0 0 3px #FBBF24,0 0 0 5px rgba(251,191,36,.25)` + žiara
+- Korunka 👑: väčšia (`26px`, bol `15px`), pozicionovaná `top:-22px;left:50%;transform:translateX(-50%)` — nasadená na kruhu avatara
+- Strieborná medaila 🥈 na 2. mieste: `position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:22px` — zavesená dole z avatara
+- Bronzová medaila 🥉 na 3. mieste: rovnaké poziciovanie ako strieborná
+- Avatary 2. a 3. miesta: `margin-bottom:20px` aby meno nesplývalo s medailou
+
+#### Drobné UX/vizuálne fixy (z predchádzajúcej session)
+- Touch targety zvýšené na min. 44px pre všetky taby, tlačidlá Späť, Odhlásiť, rep nav bar
+- Malé fonty 9–9.5px zvýšené na 11px (trend-bar-val, ms-labels atď.)
+- Gap v `.mgr-stats` zjednotený na `8px` (bol mix 7px/9px)
+- Label "Reprezent." v manažérskych štatistikách premenovaný na "Tím"
+- Tlačidlo 📊 Trhový podiel: viditeľnejší border `#E2E8F0` a pozadie `#F8FAFC`
+
+---
+
+### v2.6.1 — Trhový podiel v manažérskom móde (pôvodný obsah)
 
 ### v2.6.0 — Trhový podiel (Pharma MS overlay)
 
