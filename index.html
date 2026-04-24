@@ -5167,7 +5167,7 @@ function lbRender(){
     var isFirst = rn === 1;
     var medal = isFirst ? '' : (rn === 2 ? '\uD83E\uDD48' : '\uD83E\uDD49');
     var lastName = rep.name.split(' ').pop();
-    var avatarMarginBottom = isFirst ? 'margin-bottom:24px' : (medal ? 'margin-bottom:24px' : '');
+    var avatarMarginBottom = medal ? 'margin-bottom:20px' : '';
     podiumHtml +=
       '<div class="lb-p-item ' + podiumClasses[pi] + '">' +
         '<div class="lb-p-avatar" style="background:' + rep.color + ';' + avatarMarginBottom + '">' +
