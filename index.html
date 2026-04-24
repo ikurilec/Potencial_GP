@@ -569,10 +569,17 @@
   body.mgr-subtab-leaderboard .mgr-list-wrap,
   body.mgr-subtab-leaderboard .mgr-detail{display:none !important}
   .pl-q-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
-  .pl-q-tab{padding:13px 4px;border:none;background:transparent;font-size:12px;font-weight:700;color:#64748B;cursor:pointer;border-radius:8px;font-family:inherit;transition:all .15s;text-align:center;-webkit-tap-highlight-color:transparent;position:relative}
+  .pl-q-tab{padding:10px 4px 8px;border:none;background:transparent;font-size:12px;font-weight:700;color:#64748B;cursor:pointer;border-radius:8px;font-family:inherit;transition:all .15s;text-align:center;-webkit-tap-highlight-color:transparent;position:relative;display:flex;flex-direction:column;align-items:center;gap:5px}
   .pl-q-tab.active{background:#0C1E35;color:#fff}
   .pl-q-tab.future{color:#E2E8F0;cursor:not-allowed;pointer-events:none;opacity:.6}
-  .pl-q-tab.current::after{content:'';position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:#10B981}
+  .pl-q-tab.current::after{content:'';position:absolute;top:4px;right:5px;width:6px;height:6px;border-radius:50%;background:#10B981}
+  .pl-q-minibar{width:28px;height:3px;border-radius:2px;background:#E2E8F0;overflow:hidden}
+  .pl-q-minibar-fill{height:100%;border-radius:2px;transition:width .3s}
+  .pl-q-minibar-fill.g{background:#10B981}
+  .pl-q-minibar-fill.o{background:#F59E0B}
+  .pl-q-minibar-fill.r{background:#EF4444}
+  .pl-q-tab.active .pl-q-minibar{background:rgba(255,255,255,.2)}
+  .pl-q-tab.future .pl-q-minibar{display:none}
   .pl-sum-big{background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
   .pl-sum-big-row{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;gap:10px}
   .pl-sum-lbl{font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
@@ -5327,6 +5334,18 @@ function plnenieUpdateQTabs() {
     btn.classList.toggle('active', q === PL_STATE.q);
     btn.classList.toggle('current', q === curQ);
     btn.classList.toggle('future', q > curQ);
+    // Mini progress bar
+    var cached = PL_STATE.qCache[q];
+    var pct = cached && cached.aggregates && cached.aggregates.sk ? cached.aggregates.sk.pct : null;
+    var barWidth = pct !== null ? Math.min(Math.round(pct), 100) : 0;
+    var colorCls = pct === null ? '' : (pct >= 100 ? 'g' : (pct >= 95 ? 'o' : 'r'));
+    var existing = btn.querySelector('.pl-q-minibar');
+    if (!existing) {
+      btn.insertAdjacentHTML('beforeend', '<div class="pl-q-minibar"><div class="pl-q-minibar-fill ' + colorCls + '" style="width:' + barWidth + '%"></div></div>');
+    } else {
+      var fill = existing.querySelector('.pl-q-minibar-fill');
+      if (fill) { fill.className = 'pl-q-minibar-fill ' + colorCls; fill.style.width = barWidth + '%'; }
+    }
   });
 }
 
@@ -6270,11 +6289,30 @@ function repPlnenieSwitchQ(q) {
 function repPlnenieUpdateQTabs() {
   var tabs = document.querySelectorAll('#rep-pl-q-tabs .pl-q-tab');
   var curQ = plnenieCurrentQ();
+  var session = getSession();
+  var username = session ? session.username : null;
   tabs.forEach(function(tab) {
     var q = parseInt(tab.getAttribute('data-q'));
     tab.classList.toggle('active', q === REP_PL_STATE.q);
     tab.classList.toggle('current', q === curQ);
     tab.classList.toggle('future', q > curQ);
+    // Mini progress bar — z rep % (nie SK sumár)
+    var cached = REP_PL_STATE.qCache[q];
+    var pct = null;
+    if (cached && cached.aggregates && username && cached.aggregates.reps) {
+      for (var ri = 0; ri < cached.aggregates.reps.length; ri++) {
+        if (cached.aggregates.reps[ri].username === username) { pct = cached.aggregates.reps[ri].pct; break; }
+      }
+    }
+    var barWidth = pct !== null ? Math.min(Math.round(pct), 100) : 0;
+    var colorCls = pct === null ? '' : (pct >= 100 ? 'g' : (pct >= 95 ? 'o' : 'r'));
+    var existing = tab.querySelector('.pl-q-minibar');
+    if (!existing) {
+      tab.insertAdjacentHTML('beforeend', '<div class="pl-q-minibar"><div class="pl-q-minibar-fill ' + colorCls + '" style="width:' + barWidth + '%"></div></div>');
+    } else {
+      var fill = existing.querySelector('.pl-q-minibar-fill');
+      if (fill) { fill.className = 'pl-q-minibar-fill ' + colorCls; fill.style.width = barWidth + '%'; }
+    }
   });
 }
 
