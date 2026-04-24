@@ -1,11 +1,22 @@
 var SHEET_ID = '1V_-iRUpOM_rBk42iwiuvRJEt00rQHC4sxMB4auEQAFc';
 
+// ── API TOKEN — ochrana endpointov pred neoprávneným prístupom ──
+// Token musí sedieť pri každej požiadavke (okrem login).
+// Hodnotu ulož aj do Script Properties (File → Project properties → Script properties → API_TOKEN)
+// a nahraď tento fallback prázdnym reťazcom.
+var API_TOKEN = PropertiesService.getScriptProperties().getProperty('API_TOKEN') || 'gr-potencial-2026';
+
+function requireToken(e) {
+  var token = e.parameter.token || '';
+  return token === API_TOKEN;
+}
+
 function doGet(e) {
   try {
     var ss = SpreadsheetApp.openById(SHEET_ID);
     var action = e.parameter.action || 'save';
 
-    // ── PRIHLÁSENIE ──
+    // ── PRIHLÁSENIE — token sa overuje ináč (username+password) ──
     if(action === 'login') {
       var username = (e.parameter.username || '').trim().toLowerCase();
       var password = e.parameter.password || '';
@@ -41,6 +52,7 @@ function doGet(e) {
 
     // ── VŠETKY HISTÓRIE NARAZ (pre manažérsky dashboard) ──
     if(action === 'getAllHistory') {
+      if(!requireToken(e)) return jsonResponse({ok: false, error: 'Unauthorized'});
       var sheet = ss.getSheets()[0];
       var rows = sheet.getDataRange().getValues();
       if(rows.length < 2) return jsonResponse({});
@@ -73,6 +85,7 @@ function doGet(e) {
 
     // ── NAČÍTANIE HISTÓRIE ──
     if(action === 'getHistory') {
+      if(!requireToken(e)) return jsonResponse({ok: false, error: 'Unauthorized'});
       var reprezentant = e.parameter.reprezentant || '';
       var sheet = ss.getSheets()[0];
       var rows = sheet.getDataRange().getValues();
@@ -112,6 +125,7 @@ function doGet(e) {
 
     // ── AKTUALIZÁCIA POZNÁMKY ──
     if(action === 'saveNote') {
+      if(!requireToken(e)) return jsonResponse({ok: false, error: 'Unauthorized'});
       var p = e.parameter;
       var sheet = ss.getSheets()[0];
       var rowNum = parseInt(p.row);
@@ -128,6 +142,7 @@ function doGet(e) {
 
     // ── ZOZNAM MANAŽÉROV (pre admin view) ──
     if(action === 'getManagers') {
+      if(!requireToken(e)) return jsonResponse({ok: false, error: 'Unauthorized'});
       var sheet = ss.getSheetByName('Pouzivatelia');
       if(!sheet) return jsonResponse([]);
       var rows = sheet.getDataRange().getValues();
@@ -180,6 +195,7 @@ function doGet(e) {
 
     // ── POSLEDNÉ PRIHLÁSENIA — vráti timestamp per rep ──
     if(action === 'getLastLogins') {
+      if(!requireToken(e)) return jsonResponse({ok: false, error: 'Unauthorized'});
       var sheet = ss.getSheetByName('Pouzivatelia');
       if(!sheet) return jsonResponse({});
       var rows = sheet.getDataRange().getValues();
@@ -201,6 +217,7 @@ function doGet(e) {
 
     // ── ZOZNAM REPOV PODĽA REGIONU (pre AM West/East) ──
     if(action === 'getReps') {
+      if(!requireToken(e)) return jsonResponse({ok: false, error: 'Unauthorized'});
       var region = (e.parameter.region || '').toLowerCase().trim();
       var sheet = ss.getSheetByName('Pouzivatelia');
       if(!sheet) return jsonResponse([]);
@@ -218,6 +235,7 @@ function doGet(e) {
 
     // ── ZOZNAM VŠETKÝCH REPREZENTANTOV (pre dynamické načítanie v appke) ──
     if(action === 'getRepList') {
+      if(!requireToken(e)) return jsonResponse({ok: false, error: 'Unauthorized'});
       var sheet = ss.getSheetByName('Pouzivatelia');
       if(!sheet) return jsonResponse({ok: false, error: 'Sheet Pouzivatelia nenajdeny'});
       var rows = sheet.getDataRange().getValues();
@@ -242,6 +260,7 @@ function doGet(e) {
     // ── PLNENIE PRE JEDNÉHO REPA ──
     // URL: ?action=getPlnenie&reprezentant=z.lapsan&rok=2026&Q=1
     if(action === 'getPlnenie') {
+      if(!requireToken(e)) return jsonResponse({ok: false, error: 'Unauthorized'});
       var rep = (e.parameter.reprezentant || '').trim().toLowerCase();
       var rok = parseInt(e.parameter.rok) || 2026;
       var q = parseInt(e.parameter.Q) || 1;
@@ -263,6 +282,7 @@ function doGet(e) {
     // URL: ?action=getPlnenieAll&rok=2026&Q=1
     // Q1 → záložka "Predaje", Q2–Q4 → záložka "Predaje_2"
     if(action === 'getPlnenieAll') {
+      if(!requireToken(e)) return jsonResponse({ok: false, error: 'Unauthorized'});
       var rokA = parseInt(e.parameter.rok) || 2026;
       var qA = parseInt(e.parameter.Q) || 1;
       var qMonthsA = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[qA] || [];
@@ -340,6 +360,7 @@ function doGet(e) {
     // ── PHARMA MS DÁTA ──
     // URL: ?action=getPharmaData&oblast=KE&produkt=TEL&kvartal=2601
     if(action === 'getPharmaData') {
+      if(!requireToken(e)) return jsonResponse({ok: false, error: 'Unauthorized'});
       var oblast  = (e.parameter.oblast  || '').trim().toUpperCase();
       var produkt = (e.parameter.produkt || '').trim();
       var kvartal = (e.parameter.kvartal || '').trim();
