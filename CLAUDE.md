@@ -40,7 +40,17 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.6.3** — obsahuje všetko z 2.6.2 plus: zobrazenie zadaných hodnôt produktov v zázname lekára (bez €), fix scroll pozície pri otváraní záznamu. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.6.4** — obsahuje všetko z 2.6.3 plus: fix trhového podielu v admin/manažérskom pohľade (Q tab switch). **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+
+### v2.6.4 — Fix trhový podiel v admin detaile
+
+**Bug:** Keď admin/manažér otvoril detail reprezentanta v Plnení a prepol na Q2 (alebo iný kvartál), kliknutie na „📊 Trhový podiel" zobrazilo vždy dáta za Q1. Reprezentantom fungoval správne.
+
+**Príčina:** `openPharmaMs()` brala vždy `REP_PL_STATE.q` (stav rep overlay), ktorý bol inicializovaný na `q: 1`. Admin Q taby volajú `plnenieSwitchQ()` → aktualizujú `PL_STATE.q`, nie `REP_PL_STATE.q`.
+
+**Fix:** `openPharmaMs()` teraz zistí, ktorý overlay je otvorený (`rep-plnenie-overlay` = rep pohľad → `REP_PL_STATE.q`, inak admin pohľad → `PL_STATE.q`).
+
+**2.6.3** — obsahuje všetko z 2.6.2 plus: zobrazenie zadaných hodnôt produktov v zázname lekára (bez €), fix scroll pozície pri otváraní záznamu.
 
 ### v2.6.3 — Zadané hodnoty v zázname lekára
 
