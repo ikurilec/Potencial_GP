@@ -40,7 +40,12 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.6.5** — obsahuje všetko z 2.6.4 plus: trend graf trhového podielu, animácie progress barov. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.6.6** — obsahuje všetko z 2.6.5 plus: vycentrovaný header rebríčka. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+
+### v2.6.6 — Vycentrovaný header rebríčka
+- `.lb-hdr` má `text-align:center` — nadpis „Rebríček tímu" aj podtitul sú vycentrované.
+
+**2.6.5** — obsahuje všetko z 2.6.4 plus: trend graf trhového podielu, animácie progress barov.
 
 ### v2.6.5 — Trend graf trhového podielu + animácie
 
