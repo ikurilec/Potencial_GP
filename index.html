@@ -6739,8 +6739,9 @@ function openPharmaMs(prodKey, label) {
   var oblast = pharmaGetOblast();
   if (!oblast) return;
 
-  var q    = REP_PL_STATE.q    || plnenieCurrentQ();
-  var year = REP_PL_STATE.year || (new Date()).getFullYear();
+  var repOverlayOpen = document.getElementById('rep-plnenie-overlay') && document.getElementById('rep-plnenie-overlay').classList.contains('show');
+  var q    = repOverlayOpen ? (REP_PL_STATE.q || plnenieCurrentQ()) : (PL_STATE.q || plnenieCurrentQ());
+  var year = repOverlayOpen ? (REP_PL_STATE.year || (new Date()).getFullYear()) : (PL_STATE.year || (new Date()).getFullYear());
   var kvartal = pharmaKvartalCode(year, q);
 
   PHARMA_STATE.codes      = codes;
