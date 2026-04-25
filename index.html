@@ -368,6 +368,14 @@
   .send-box-icon{font-size:36px;margin-bottom:12px}
   .send-box-title{font-size:16px;font-weight:700;color:#1A2A3A;margin-bottom:6px}
   .send-box-sub{font-size:13px;color:#64748B}
+  @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+  .skel{background:linear-gradient(90deg,#E2E8F0 25%,#F1F5F9 50%,#E2E8F0 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:6px}
+  .skel-card{padding:12px 16px;border-bottom:1px solid #F1F5F9;display:flex;align-items:center;gap:12px}
+  .skel-avatar{width:40px;height:40px;border-radius:50%;flex-shrink:0}
+  .skel-lines{flex:1}
+  .skel-line{height:11px;margin-bottom:7px;border-radius:5px}
+  .skel-line:last-child{margin-bottom:0}
+  .skel-wrap{padding:8px 0}
   .send-spinner-wrap{display:flex;justify-content:center;margin-bottom:12px}
   .send-spinner{width:52px;height:52px;border:3.5px solid #E2E8F0;border-top-color:#F59E0B;border-radius:50%;animation:sendSpin .75s linear infinite}
   @keyframes sendSpin{to{transform:rotate(360deg)}}
@@ -924,7 +932,7 @@
       <button class="mgr-tb-btn" data-sort="name" onclick="mgrSetSort('name')">A–Z</button>
     </div>
     <div class="mgr-list" id="mgr-list">
-      <div class="mgr-loading"><div class="mgr-spinner"></div><div>Načítavam dáta reprezentantov zo Sheets...</div></div>
+      <div class="skel-wrap"><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:55%"></div><div class="skel skel-line" style="width:38%"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:62%"></div><div class="skel skel-line" style="width:30%"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:48%"></div><div class="skel skel-line" style="width:42%"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:58%"></div><div class="skel skel-line" style="width:33%"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:52%"></div><div class="skel skel-line" style="width:36%"></div></div></div></div>
     </div>
     <div id="mgr-managers-section"></div>
   </div>
@@ -989,7 +997,7 @@
     </div>
     <div class="pl-section-lbl">Poradie reprezentantov</div>
     <div class="pl-rep-list" id="pl-rep-list">
-      <div class="pl-loading"><div class="mgr-spinner"></div><div>Načítavam dáta plnenia…</div></div>
+      <div class="skel-wrap"><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:55%"></div><div class="skel skel-line" style="width:35%"></div></div><div class="skel" style="width:44px;height:20px;border-radius:10px;flex-shrink:0"></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:60%"></div><div class="skel skel-line" style="width:30%"></div></div><div class="skel" style="width:44px;height:20px;border-radius:10px;flex-shrink:0"></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:50%"></div><div class="skel skel-line" style="width:38%"></div></div><div class="skel" style="width:44px;height:20px;border-radius:10px;flex-shrink:0"></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:58%"></div><div class="skel skel-line" style="width:32%"></div></div><div class="skel" style="width:44px;height:20px;border-radius:10px;flex-shrink:0"></div></div></div>
     </div>
   </div>
 
@@ -1035,7 +1043,7 @@
       <button class="lb-tab" onclick="lbSetPeriod('all',this)">Celkové</button>
     </div>
     <div class="lb-body" id="mgr-lb-body">
-      <div class="lb-loading">⏳ Načítavam rebríček...</div>
+      <div class="skel-wrap" style="padding:12px 12px 0"><div style="display:flex;align-items:flex-end;justify-content:center;gap:8px;margin-bottom:20px"><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div class="skel skel-avatar"></div><div class="skel" style="height:55px;width:100%;border-radius:8px 8px 0 0"></div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div class="skel skel-avatar"></div><div class="skel" style="height:80px;width:100%;border-radius:8px 8px 0 0"></div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div class="skel skel-avatar"></div><div class="skel" style="height:40px;width:100%;border-radius:8px 8px 0 0"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:60%"></div><div class="skel skel-line" style="width:35%"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:55%"></div><div class="skel skel-line" style="width:40%"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:65%"></div><div class="skel skel-line" style="width:30%"></div></div></div></div>
     </div>
   </div>
 
@@ -1253,7 +1261,7 @@
           <button class="lb-tab" onclick="lbSetPeriod('all',this)">Celkové</button>
         </div>
         <div class="lb-body" id="lb-body">
-          <div class="lb-loading">⏳ Načítavam rebríček...</div>
+          <div class="skel-wrap" style="padding:12px 12px 0"><div style="display:flex;align-items:flex-end;justify-content:center;gap:8px;margin-bottom:20px"><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div class="skel skel-avatar"></div><div class="skel" style="height:55px;width:100%;border-radius:8px 8px 0 0"></div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div class="skel skel-avatar"></div><div class="skel" style="height:80px;width:100%;border-radius:8px 8px 0 0"></div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div class="skel skel-avatar"></div><div class="skel" style="height:40px;width:100%;border-radius:8px 8px 0 0"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:60%"></div><div class="skel skel-line" style="width:35%"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:55%"></div><div class="skel skel-line" style="width:40%"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:65%"></div><div class="skel skel-line" style="width:30%"></div></div></div></div>
         </div>
       </div>
     </div>
@@ -1518,7 +1526,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.7.0';
+var APP_VERSION = '2.7.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -3135,7 +3143,7 @@ function openHistory() {
   overlay.classList.add('show');
 
   // Načítaj zo Sheets
-  body.innerHTML = '<div class="hist-empty"><span class="hist-empty-icon">⏳</span><div class="hist-empty-title">Načítavam históriu...</div></div>';
+  body.innerHTML = skelHist();
   var session = getSession();
   var username = session ? session.username : '';
 
@@ -4648,7 +4656,7 @@ function mgrOpenRep(username){
 
   // Ak dáta ešte nie sú načítané — zobraz loading
   if(!data){
-    document.getElementById('mgr-vlist').innerHTML = '<div class="mgr-loading"><div class="mgr-spinner"></div><div>Načítavam záznamy...</div></div>';
+    document.getElementById('mgr-vlist').innerHTML = skelMgrList();
     // Skús znova za 1s
     var waitInterval = setInterval(function(){
       var d = MGR_STATE.reps[username];
@@ -5241,7 +5249,7 @@ function lbLoadData(force){
   var isRepOpen = (function(){ var ov = document.getElementById('lb-overlay'); return ov && ov.classList.contains('show'); })();
   if(isMgrOpen || isRepOpen){
     var body = lbGetBody();
-    if(body) body.innerHTML = '<div class="lb-loading">&#9203; Na&#269;&#237;tavam rebr&#237;&#269;ek...</div>';
+    if(body) body.innerHTML = skelLb();
   }
 
   function onDone(results){
@@ -5256,7 +5264,7 @@ function lbLoadData(force){
   fetch(scriptUrl('action=getAllHistory'), { cache: 'no-store' })
     .then(function(r){ return r.ok ? r.json() : null; })
     .then(function(allHist){
-      if(allHist && typeof allHist === 'object' && !Array.isArray(allHist)){
+      if(allHist && allHist.ok !== false && typeof allHist === 'object' && !Array.isArray(allHist)){
         var results = {};
         LB_ALL_REPS.forEach(function(u){ results[u] = Array.isArray(allHist[u]) ? allHist[u] : []; });
         onDone(results);
@@ -5281,6 +5289,17 @@ function lbLoadData(force){
     });
 }
 
+function parseLbDatum(str){
+  if(!str) return null;
+  var d = new Date(str);
+  if(!isNaN(d.getTime())) return d;
+  var p = String(str).split('.');
+  if(p.length === 3){
+    d = new Date(parseInt(p[2],10), parseInt(p[1],10)-1, parseInt(p[0],10));
+    if(!isNaN(d.getTime())) return d;
+  }
+  return null;
+}
 function lbCountVisits(rows, period){
   if(!rows || !rows.length) return 0;
   var now = new Date();
@@ -5288,8 +5307,8 @@ function lbCountVisits(rows, period){
   rows.forEach(function(item){
     if(period === 'all'){ count++; return; }
     try {
-      var d = new Date(item.datum || '');
-      if(isNaN(d.getTime())) return;
+      var d = parseLbDatum(item.datum);
+      if(!d) return;
       if(period === 'month' && d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()){ count++; return; }
       if(period === 'quarter'){
         var q = Math.floor(now.getMonth()/3);
@@ -5314,6 +5333,29 @@ function lbPeriodLabel(){
   return 'Celkov\u00e9';
 }
 
+function skelLb(){
+  var av='<div class="skel skel-avatar"></div>';
+  var col=function(h){return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px">'+av+'<div class="skel" style="height:'+h+'px;width:100%;border-radius:8px 8px 0 0"></div></div>';};
+  var row='<div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:60%"></div><div class="skel skel-line" style="width:35%"></div></div></div>';
+  return '<div style="padding:12px 12px 0"><div style="display:flex;align-items:flex-end;justify-content:center;gap:8px;margin-bottom:20px">'+col(55)+col(80)+col(40)+'</div>'+row+row+row+row+'</div>';
+}
+function skelHist(){
+  var row='<div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:65%"></div><div class="skel skel-line" style="width:40%"></div></div></div>';
+  return '<div class="skel-wrap">'+row+row+row+row+row+'</div>';
+}
+function skelPl(){
+  var row='<div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:55%"></div><div class="skel skel-line" style="width:35%"></div></div><div class="skel" style="width:44px;height:20px;border-radius:10px;flex-shrink:0"></div></div>';
+  return '<div class="skel-wrap">'+row+row+row+row+'</div>';
+}
+function skelRepPl(){
+  var row='<div style="margin-bottom:20px"><div class="skel skel-line" style="width:45%;margin-bottom:10px"></div><div class="skel" style="height:8px;border-radius:4px"></div></div>';
+  return '<div style="padding:16px 14px">'+row+row+row+row+'</div>';
+}
+function skelMgrList(){
+  var row='<div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:55%"></div><div class="skel skel-line" style="width:38%"></div></div></div>';
+  return '<div class="skel-wrap">'+row+row+row+row+row+'</div>';
+}
+
 function lbGetBody(){
   var isMgr = document.body.classList.contains('manager-mode');
   return document.getElementById(isMgr ? 'mgr-lb-body' : 'lb-body');
@@ -5326,7 +5368,7 @@ function lbRender(){
   if(sub) sub.textContent = 'Gedeon Richter Slovakia \u00b7 ' + lbPeriodLabel();
 
   if(!LB_STATE.data){
-    body.innerHTML = '<div class="lb-loading">&#9203; Na&#269;&#237;tavam...</div>';
+    body.innerHTML = skelLb();
     return;
   }
 
@@ -5538,7 +5580,11 @@ function mgrSwitchSubtab(tab) {
   }
   if (tab === 'leaderboard') {
     LB_STATE.showConfetti = true;
-    if (LB_STATE.data) {
+    if (LB_STATE.loading) {
+      // Dáta sa práve načítavajú na pozadí — ukáž skeleton, onDone zavolá lbRender
+      var body = lbGetBody();
+      if (body) body.innerHTML = skelLb();
+    } else if (LB_STATE.data) {
       lbRender();
     } else {
       lbLoadData();
@@ -5774,7 +5820,7 @@ function plnenieBuildAggregates(resp) {
 // Renderery
 function plnenieRenderLoading() {
   var listEl = document.getElementById('pl-rep-list');
-  if (listEl) listEl.innerHTML = '<div class="pl-loading"><div class="mgr-spinner"></div><div>Načítavam dáta plnenia…</div></div>';
+  if (listEl) listEl.innerHTML = skelPl();
 }
 
 function plnenieRenderSummaryEmpty() {
@@ -6557,7 +6603,7 @@ function repPlnenieUpdateQTabs() {
 
 function repPlnenieRenderLoading() {
   var prodsEl = document.getElementById('rep-pl-prods');
-  if (prodsEl) prodsEl.innerHTML = '<div class="pl-loading"><div class="mgr-spinner" style="margin:0 auto 10px"></div><div>Načítavam plnenie...</div></div>';
+  if (prodsEl) prodsEl.innerHTML = skelRepPl();
   var totalCardEl = document.getElementById('rep-pl-total-card');
   if (totalCardEl) totalCardEl.innerHTML = '<div class="total-lbl">Môj plán · ' + plnenieQLabel(REP_PL_STATE.q, REP_PL_STATE.year) + '</div><div class="total-val none">—</div><div class="total-money">Načítavam...</div>';
 }

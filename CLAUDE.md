@@ -40,7 +40,29 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.7.0** — obsahuje všetko z 2.6.9 plus: animovaný checkmark v success popupe + zjednodušená confirm obrazovka. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.7.1** — obsahuje všetko z 2.7.0 plus: skeleton screens naprieč celou appkou + opravy rebríčka (dátum, timing, API chyba). **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+
+### v2.7.1 — Skeleton screens + opravy rebríčka
+
+#### Skeleton screens (shimmer efekt)
+- Nahradili všetky spinnery a loading texty (`lb-loading`, `pl-loading`, `hist-empty`, `mgr-list` placeholdery) responzívnymi shimmer skeletonmi
+- CSS: shimmer animácia cez `background: linear-gradient` + `background-size:200%` + `@keyframes shimmer` — triedy `.skel-line`, `.skel-circle`, `.skel-card`
+- 5 JS funkcie generujú skeleton HTML: `skelLb()`, `skelHist()`, `skelPl()`, `skelRepPl()`, `skelMgrList()`
+- Statické HTML templaty (`mgr-list`, `pl-rep-list`, `mgr-lb-body`, `lb-body`) tiež nahradené inline skeleton HTML pre stav pred prvým načítaním
+
+#### Oprava `parseLbDatum()` — formát dátumu D.M.YYYY
+- `new Date('26.4.2026')` vracia Invalid Date vo všetkých prehliadačoch (slovenský formát nie je štandardný ISO)
+- Pridaná funkcia `parseLbDatum(str)`: najprv skúsi ISO parse, ak neuspeje, rozloží cez `split('.')` na deň/mesiac/rok
+- Rebríček mesačný/kvartálny filter teraz korektne filtruje záznamy zo Sheets
+
+#### Oprava `allHist.ok !== false` — chyba pri neoprávnenom prístupe
+- `getAllHistory` API vracalo `{ok:false}` pre neoprávnený prístup
+- Tento response bol chápaný ako validný objekt s prázdnymi poľami reprezentantov → rebríček zobrazoval "Žiadne dáta"
+- Pridaná explicitná kontrola `allHist.ok !== false` → ak false, padne do catch a spustí sa fallback (individuálne `getHistory` volania)
+
+#### Oprava timing bugu v rebríčku (skeleton pri background loade)
+- Pri kliknutí na Rebríček hneď po prihlásení: `mgrSwitchSubtab` volal `lbLoadData()` ktorý okamžite vrátil (guard `LB_STATE.loading === true`) — žiadny skeleton, žiadny obsah
+- Oprava: explicitná kontrola `if (LB_STATE.loading)` v `mgrSwitchSubtab` → zobrazí skeleton ihneď, kým background fetch dobehne
 
 ### v2.7.0 — Animovaný checkmark + confirm UX
 
