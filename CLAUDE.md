@@ -40,7 +40,27 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.6.4** — obsahuje všetko z 2.6.3 plus: fix trhového podielu v admin/manažérskom pohľade (Q tab switch). **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.6.5** — obsahuje všetko z 2.6.4 plus: trend graf trhového podielu, animácie progress barov. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+
+### v2.6.5 — Trend graf trhového podielu + animácie
+
+#### Trend graf v overlay Trhový podiel
+- **Čo:** Po kliknutí na „📊 Trhový podiel" sa zobrazí čiarový SVG graf vývoja MS po kvartáloch (od najstaršieho dostupného Q po aktuálny).
+- **Dáta:** Žiadny extra fetch — dáta sú už v `summArr` (endpoint `getPharmaData` vracia summary pre všetky mesiace naraz, bez filtrovania po kvartáli). Mesiace sa zoskupujú po kvartáloch priamo v JS.
+- **Dve línie:** Teritoriálny MS (zelená/červená podľa vs. SK) a Slovenský MS (modrá).
+- **Hodnoty pri bodkách:** Každý bod má label s hodnotou v %. Kolízia labelov sa rieši dynamicky — porovnajú sa y-pozície oboch línií a labely sa roztiahnu od stredu ak sú príliš blízko.
+- **Zarovnanie krajných labelov:** Prvý bod má `text-anchor="start"`, posledný `text-anchor="end"` — labely nevypadnú mimo okraj grafu.
+- **Y-os:** Dynamický krok podľa rozsahu dát (≤4% → krok 1, ≤10% → 2, ≤20% → 5, inak 10) — max 4–5 grid čiar.
+- **Animácia čiar:** `stroke-dashoffset` trik — čiary sa dokreslujú za 1.6s (`cubic-bezier(0.4,0,0.2,1)`), body sa vyblasknú s oneskorením po dokončení čiar.
+- **Kde platí:** Obaja — admin/manažér aj reprezentant (zdieľaná funkcia `pharmaRender()`).
+- **Legenda:** Vycentrovaná (`justify-content:center`).
+
+#### Názov okresu v rozpad po okresoch
+- Tmavý navy header pás naprieč celou kartou (`background:#0C1E35`, biely uppercase text) — jasne odlíšený od názvov produktov.
+
+#### Animácia progress barov v Plnení
+- Bary sa renderujú s `width:0` + `data-bar-w` atribút, po vložení do DOM `animatePlanBars()` postupne animuje každý bar na finálnu šírku (1s, s 60ms oneskorením medzi barmi).
+- Platí pre oba módy: admin (`plnenieRenderDetail`) aj reprezentant (`repPlnenieRender`).
 
 ### v2.6.4 — Fix trhový podiel v admin detaile
 
