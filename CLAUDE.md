@@ -40,7 +40,12 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.6.6** — obsahuje všetko z 2.6.5 plus: vycentrovaný header rebríčka. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.6.7** — obsahuje všetko z 2.6.6 plus: UX vylepšenia floating tlačidla Potvrdiť. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+
+### v2.6.7 — Floating tlačidlo Potvrdiť — UX vylepšenia
+- Bočné sivé oblasti vedľa tlačidla sú priesvitné — pozadie (blur) je len priamo za tlačidlom (`.submit-inner` je transparent, blur presunutý na `.submit-inner-content`).
+- Tlačidlo sedí na samom spodku obrazovky bez medzery — odstránený `padding:0 0 8px` zo `.submit-wrap` a spodný padding zo `.submit-inner`.
+- Tvar (border-radius 50px pill) je jednotný v oboch stavoch — pri scrollovaní aj na spodku formulára.
 
 ### v2.6.6 — Vycentrovaný header rebríčka
 - `.lb-hdr` má `text-align:center` — nadpis „Rebríček tímu" aj podtitul sú vycentrované.
