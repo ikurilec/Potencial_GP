@@ -151,7 +151,8 @@
   .lb-p-medal{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:22px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.2))}
   .lb-p-name{font-size:11px;font-weight:600;color:#0F172A;text-align:center;max-width:72px;line-height:1.3}
   .lb-p-count{font-size:10px;color:#64748B;margin-top:2px;margin-bottom:4px}
-  .lb-p-block{border-radius:8px 8px 0 0;width:100%}
+  .lb-p-block{border-radius:8px 8px 0 0;width:100%;transform-origin:bottom;transform:scaleY(0)}
+  .lb-p-block.grown{transition:transform 0.7s cubic-bezier(0.34,1.56,0.64,1);transform:scaleY(1)}
   .lb-p-1 .lb-p-block{height:60px;background:linear-gradient(135deg,#D97706,#FBBF24)}
   .lb-p-2 .lb-p-block{height:42px;background:linear-gradient(135deg,#64748B,#CBD5E1)}
   .lb-p-3 .lb-p-block{height:30px;background:linear-gradient(135deg,#92400E,#D97706)}
@@ -5350,6 +5351,30 @@ function lbRender(){
     LB_STATE.showConfetti = false;
     setTimeout(lbConfetti, 300);
   }
+
+  // Animácia podium blokov
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      body.querySelectorAll('.lb-p-block').forEach(function(el, i) {
+        setTimeout(function() { el.classList.add('grown'); }, i * 80);
+      });
+    });
+  });
+}
+
+function plnenieCountUp(el, targetPct) {
+  if (!el || targetPct === null || isNaN(targetPct)) return;
+  var duration = 900, start = null;
+  function step(ts) {
+    if (!start) start = ts;
+    var progress = Math.min((ts - start) / duration, 1);
+    var ease = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+    var current = targetPct * ease;
+    el.textContent = current.toFixed(2).replace('.', ',') + '%';
+    if (progress < 1) requestAnimationFrame(step);
+    else el.textContent = targetPct.toFixed(2).replace('.', ',') + '%';
+  }
+  requestAnimationFrame(step);
 }
 
 function lbUpdateNavBtn() {
@@ -6158,9 +6183,10 @@ function plnenieRenderDetail() {
       : '';
     totalCardEl.innerHTML =
       '<div class="total-lbl">Celkov\u00e9 plnenie \u00b7 ' + plnenieQLabel(PL_STATE.q, PL_STATE.year) + '</div>' +
-      '<div class="total-val ' + repColorCls + '">' + (noData ? 'Žiadne dáta' : plnenieFormatPct(repPct)) + '</div>' +
+      '<div class="total-val ' + repColorCls + '">' + (noData ? 'Žiadne dáta' : '0,00%') + '</div>' +
       '<div class="total-money" style="' + (noData ? 'opacity:.65' : '') + '">' + moneyStr + '</div>' +
       prediktHtml;
+    if (!noData) plnenieCountUp(totalCardEl.querySelector('.total-val'), repPct);
   }
 
   // Per-produkt breakdown
@@ -6529,9 +6555,10 @@ function repPlnenieRender() {
       : '';
     totalCardEl.innerHTML =
       '<div class="total-lbl">M\u00f4j pl\u00e1n \u00b7 ' + qLbl + '</div>' +
-      '<div class="total-val ' + repColorCls + '">' + (noData ? 'Žiadne dáta' : plnenieFormatPct(repPct)) + '</div>' +
+      '<div class="total-val ' + repColorCls + '">' + (noData ? 'Žiadne dáta' : '0,00%') + '</div>' +
       '<div class="total-money" style="' + (noData ? 'opacity:.65' : '') + '">' + moneyStr + '</div>' +
       prediktHtml;
+    if (!noData) plnenieCountUp(totalCardEl.querySelector('.total-val'), repPct);
   }
 
   // Popisok sekcie produktov
