@@ -40,7 +40,18 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.6.9** — obsahuje všetko z 2.6.8 plus: fix preloadu trhových podielov po prihlásení manažéra. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.7.0** — obsahuje všetko z 2.6.9 plus: animovaný checkmark v success popupe + zjednodušená confirm obrazovka. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+
+### v2.7.0 — Animovaný checkmark + confirm UX
+
+#### Animovaný checkmark v success popupe
+- Pri odoslaní záznamu sa zobrazí žltý CSS spinner počas čakania
+- Po odoslaní (2500ms): spinner zmizne, zelený SVG kruh sa nakreslí (500ms ease), potom sa vpíše checkmark (300ms ease), nasleduje bounce efekt celého SVG
+- Implementácia: Web Animations API (`element.animate()`) na `stroke-dashoffset` SVG vlastnostiach — spoľahlivejšie ako CSS transitions pre SVG elementy
+
+#### Zjednodušená confirm obrazovka
+- Odstránená otázka "Chceš zadať ďalšieho lekára?" a dva tlačidlá (Nie, končím / Áno, ďalší)
+- Nahradené jedným tlačidlom **"Pokračovať"** ktoré zatvorí overlay a vráti prázdny formulár
 
 ### v2.6.9 — Fix preloadu trhových podielov (race condition)
 
@@ -629,6 +640,9 @@ Claude prepne na `test` vetvu a začne pracovať na oprave. Zmeny idú cez štan
 9. ~~**Progress bar produktov vs. kvartálny plán**~~ ✅ **Hotové v v2.3.x–v2.4.x** — Plnenie modul (manažérsky aj reprezentantský pohľad)
 10. **Výber špecializácie pri každom zázname**
 11. **Rýchly brief pred návštevou** — karta lekára s poslednou návštevou, segmentom, potenciálom, poznámkou, trendom a upozornením (ak je to nový lekár alebo zmena segmentu)
+12. **At-risk lekári (kombinácia dát)** — manažérsky pohľad: lekári s klesajúcim MS a zároveň nízkou frekvenciou návštev za posledný kvartál. Akčný zoznam, nie surové dáta.
+13. **Gamifikácia — odznaky / míľniky** — nad rámec rebríčka: "Všetci A1 navštívení tento kvartál", "100 návštev celkovo", "3 mesiace v rade v TOP 3". Reprezentant vidí progress k ďalšiemu míľniku.
+14. **"Čo sa zmenilo od mojej poslednej návštevy"** — pri otvorení karty lekára: zmenila sa kapitácia? segment? MS trend? Krátky diff od poslednej návštevy, ešte pred vstupom do ordinácie.
 
 ### Plnenie — čo ešte chýba pred mergom do main
 - **Reálne dáta v Sheets** — plány nahodené v Google Sheets (blocker pre merge do main) ⏳ čakáme na Q2 plány
