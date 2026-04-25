@@ -368,6 +368,14 @@
   .send-box-icon{font-size:36px;margin-bottom:12px}
   .send-box-title{font-size:16px;font-weight:700;color:#1A2A3A;margin-bottom:6px}
   .send-box-sub{font-size:13px;color:#64748B}
+  .send-spinner-wrap{display:flex;justify-content:center;margin-bottom:12px}
+  .send-spinner{width:52px;height:52px;border:3.5px solid #E2E8F0;border-top-color:#F59E0B;border-radius:50%;animation:sendSpin .75s linear infinite}
+  @keyframes sendSpin{to{transform:rotate(360deg)}}
+  .send-check-wrap{display:none;justify-content:center;margin-bottom:12px}
+  .send-check-wrap.show{display:flex}
+  .send-check-svg{width:64px;height:64px;overflow:visible}
+  .send-check-circle{fill:none;stroke:#10B981;stroke-width:3;stroke-linecap:round;stroke-dasharray:151;stroke-dashoffset:151}
+  .send-check-mark{fill:none;stroke:#10B981;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:40;stroke-dashoffset:40}
   .ac-wrap{position:relative}
   .ac-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid #3B82F6;border-top:none;border-radius:0 0 9px 9px;z-index:200;overflow-y:auto;max-height:220px;box-shadow:0 4px 12px rgba(0,0,0,.12)}
   .ac-item{padding:11px 14px;font-size:15px;color:#1A2A3A;cursor:pointer;border-bottom:1px solid #F1F5F9}
@@ -1277,7 +1285,15 @@
 
   <div class="send-popup" id="send-popup">
     <div class="send-box">
-      <div class="send-box-icon" id="send-box-icon">⏳</div>
+      <div class="send-spinner-wrap" id="send-spinner-wrap">
+        <div class="send-spinner"></div>
+      </div>
+      <div class="send-check-wrap" id="send-check-wrap">
+        <svg class="send-check-svg send-check-bounce" id="send-check-svg" viewBox="0 0 52 52">
+          <circle class="send-check-circle" id="send-check-circle" cx="26" cy="26" r="24" transform="rotate(-90,26,26)"/>
+          <path class="send-check-mark" id="send-check-mark" d="M14,27 L22,35 L38,17"/>
+        </svg>
+      </div>
       <div class="send-box-title" id="send-box-title">Odosielam dáta</div>
       <div class="send-box-sub" id="send-box-sub">Prosím čakajte...</div>
     </div>
@@ -1293,10 +1309,8 @@
       <div class="confirm-inner">
         <div id="confirm-seg" style="display:none"></div>
         <hr style="border:none;border-top:1px solid #E2E8F0;margin:4px 0 14px">
-        <div class="confirm-sub">Chce&#353; zada&#357; &#271;al&#353;ieho lek&#225;ra?</div>
-        <div class="confirm-btns">
-          <button type="button" class="confirm-no" onclick="closeConfirm(false)">Nie, kon&#269;&#237;m</button>
-          <button type="button" class="confirm-yes" onclick="closeConfirm(true)">&#193;no, &#271;al&#353;&#237;</button>
+        <div class="confirm-btns" style="grid-template-columns:1fr">
+          <button type="button" class="confirm-yes" onclick="closeConfirm(true)">Pokra&#269;ova&#357;</button>
         </div>
       </div>
     </div>
@@ -1504,7 +1518,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.6.9';
+var APP_VERSION = '2.7.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -1927,15 +1941,49 @@ function potvrdit(){
   var sendIcon2 = document.getElementById('send-box-icon');
   var sendTitle2 = document.getElementById('send-box-title');
   var sendSub2 = document.getElementById('send-box-sub');
+  var sendSpinnerWrap = document.getElementById('send-spinner-wrap');
+  var sendCheckWrap = document.getElementById('send-check-wrap');
+  var sendCheckCircle = document.getElementById('send-check-circle');
+  var sendCheckMark = document.getElementById('send-check-mark');
+  var sendCheckSvg = document.getElementById('send-check-svg');
   if(sendPopup2) {
-    sendIcon2.textContent = '⏳';
     sendTitle2.textContent = 'Odosielam dáta';
     sendSub2.textContent = 'Prosím čakajte...';
+    if(sendSpinnerWrap) sendSpinnerWrap.style.display = 'flex';
+    if(sendCheckWrap) sendCheckWrap.className = 'send-check-wrap';
+    if(sendCheckCircle) sendCheckCircle.className = 'send-check-circle';
+    if(sendCheckMark) sendCheckMark.className = 'send-check-mark';
+    if(sendCheckSvg) sendCheckSvg.className = 'send-check-svg';
     sendPopup2.className = 'send-popup show';
     setTimeout(function(){
-      sendIcon2.textContent = '✅';
       sendTitle2.textContent = 'Dáta boli odoslané';
       sendSub2.textContent = '';
+      if(sendSpinnerWrap) sendSpinnerWrap.style.display = 'none';
+      if(sendCheckWrap) sendCheckWrap.className = 'send-check-wrap show';
+      setTimeout(function(){
+        if(sendCheckCircle) {
+          sendCheckCircle.animate(
+            [{strokeDashoffset:'151'},{strokeDashoffset:'0'}],
+            {duration:500, easing:'ease', fill:'forwards'}
+          );
+        }
+        setTimeout(function(){
+          if(sendCheckMark) {
+            sendCheckMark.animate(
+              [{strokeDashoffset:'40'},{strokeDashoffset:'0'}],
+              {duration:300, easing:'ease', fill:'forwards'}
+            );
+          }
+        }, 460);
+        setTimeout(function(){
+          if(sendCheckSvg) {
+            sendCheckSvg.animate(
+              [{transform:'scale(1)'},{transform:'scale(1.12)'},{transform:'scale(1)'}],
+              {duration:350, easing:'cubic-bezier(.34,1.56,.64,1)', fill:'forwards'}
+            );
+          }
+        }, 720);
+      }, 30);
     }, 2500);
   }
   setTimeout(function(){ window.scrollTo({top:0,behavior:'smooth'}); }, 100);
