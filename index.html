@@ -757,10 +757,16 @@
   .pharma-ms-trend-m{text-align:center}
   .pharma-ms-trend-val{font-size:13px;font-weight:700;color:#fff;font-family:'Outfit',sans-serif}
   .pharma-ms-trend-lbl{font-size:10px;color:#7AABCC;margin-top:2px}
+  /* Kvartalny trend graf */
+  .pharma-ms-trend-chart{background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:14px;box-shadow:0 1px 6px rgba(0,0,0,.05)}
+  .pharma-ms-trend-chart-title{font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
+  .pharma-ms-trend-chart-legend{display:flex;gap:14px;margin-top:10px;justify-content:center}
+  .pharma-ms-trend-chart-legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#64748B;font-weight:600}
+  .pharma-ms-trend-chart-legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
   /* Sekcia a okresy */
   .pharma-ms-section-title{font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin:4px 0 8px}
-  .pharma-ms-district{background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:8px;box-shadow:0 1px 6px rgba(0,0,0,.05);overflow:hidden}
-  .pharma-ms-district-name{font-size:13px;font-weight:700;color:#0F172A;margin-bottom:8px;font-family:'Outfit',sans-serif}
+  .pharma-ms-district{background:#fff;border-radius:12px;padding:0 0 12px;margin-bottom:8px;box-shadow:0 1px 6px rgba(0,0,0,.05);overflow:hidden}
+  .pharma-ms-district-name{font-size:11px;font-weight:700;color:#fff;background:#0C1E35;padding:6px 14px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.07em;font-family:'Outfit',sans-serif}
   /* Tabuľka mesiacov */
   .pharma-ms-tbl{width:100%;border-collapse:collapse}
   .pharma-ms-tbl th{font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.04em;padding:0 4px 5px;text-align:right}
@@ -6234,7 +6240,7 @@ function plnenieRenderDetail() {
         '<div class="prod-adv-pct ' + prodColorCls + '">' + plnenieFormatPct(pPct) + '</div>' +
       '</div>' +
       (pPlan > 0
-        ? '<div class="bar-wrap"><div class="bar-track"><div class="bar-fill ' + prodColorCls + '" style="width:' + barWidth + '%"></div>' + milestonesHtml + '</div>' + msLabelsHtml + '</div>'
+        ? '<div class="bar-wrap"><div class="bar-track"><div class="bar-fill ' + prodColorCls + '" style="width:0" data-bar-w="' + barWidth + '"></div>' + milestonesHtml + '</div>' + msLabelsHtml + '</div>'
         : '') +
       moneyHtml +
       prodPredHtml +
@@ -6242,6 +6248,7 @@ function plnenieRenderDetail() {
       msLinkHtml +
     '</div>';
   }).join('');
+  animatePlanBars(prodsEl);
 
   plnenieRenderDetailTrend(username);
 }
@@ -6601,7 +6608,7 @@ function repPlnenieRender() {
         '<div class="prod-adv-pct ' + prodColorCls + '">' + plnenieFormatPct(pPct) + '</div>' +
       '</div>' +
       (pPlan > 0
-        ? '<div class="bar-wrap"><div class="bar-track"><div class="bar-fill ' + prodColorCls + '" style="width:' + barWidth + '%"></div>' + milestonesHtml + '</div>' + msLabelsHtml + '</div>'
+        ? '<div class="bar-wrap"><div class="bar-track"><div class="bar-fill ' + prodColorCls + '" style="width:0" data-bar-w="' + barWidth + '"></div>' + milestonesHtml + '</div>' + msLabelsHtml + '</div>'
         : '') +
       moneyHtml +
       prodPredHtml +
@@ -6609,6 +6616,7 @@ function repPlnenieRender() {
       msLinkHtml +
     '</div>';
   }).join('');
+  animatePlanBars(prodsEl);
 
   repPlnenieRenderTrend(username);
 }
@@ -6898,10 +6906,148 @@ function pharmaRender(code) {
   }
   html += '</div>';
 
+  // ── Kvartalny trend graf (reálne dáta zo summArr) ──
+  (function() {
+    // Zoskup všetky mesiace zo summArr po kvartáloch
+    var qMap = {};
+    summArr.forEach(function(row) {
+      var m = String(row.mesiac || '').trim();
+      if (m.length !== 4) return;
+      var mm = parseInt(m.slice(2), 10);
+      if (!mm) return;
+      var qNum = Math.ceil(mm / 3);
+      var key  = m.slice(0, 2) + '0' + qNum; // napr. "2502"
+      if (!qMap[key]) qMap[key] = { terit: [], sk: [] };
+      var tv = parseFloat(row.terit_ms), sv = parseFloat(row.sk_ms);
+      if (!isNaN(tv) && tv > 0) qMap[key].terit.push(tv);
+      if (!isNaN(sv) && sv > 0) qMap[key].sk.push(sv);
+    });
+
+    var keys = Object.keys(qMap).sort(); // chronologicky: "2501","2502",...
+    if (keys.length < 2) return;         // menej ako 2 kvartály = graf nemá zmysel
+
+    var qLabels = keys.map(function(k) {
+      return 'Q' + parseInt(k.slice(2)) + '\'' + k.slice(0, 2);
+    });
+    var teritAvgs = keys.map(function(k) {
+      var arr = qMap[k].terit;
+      return arr.length ? arr.reduce(function(a,b){return a+b;},0) / arr.length : null;
+    });
+    var skAvgs = keys.map(function(k) {
+      var arr = qMap[k].sk;
+      return arr.length ? arr.reduce(function(a,b){return a+b;},0) / arr.length : null;
+    });
+
+    // Len kvartály kde máme aspoň jednu z hodnôt
+    var validTerit = teritAvgs.filter(function(v){return v !== null;});
+    var validSk    = skAvgs.filter(function(v){return v !== null;});
+    if (!validTerit.length && !validSk.length) return;
+
+    var allVals = validTerit.concat(validSk);
+    var minV = Math.max(0, Math.floor(Math.min.apply(null, allVals)) - 1);
+    var maxV = Math.ceil(Math.max.apply(null, allVals)) + 1;
+
+    var W = 280, H = 100, padL = 28, padR = 8, padT = 8, padB = 20;
+    var n = keys.length;
+    function px(i) { return padL + i * (W - padL - padR) / (n - 1); }
+    function py(v) { return padT + (1 - (v - minV) / (maxV - minV)) * (H - padT - padB); }
+
+    function polyline(arr, color) {
+      var pts = [];
+      arr.forEach(function(v,i){ if (v !== null) pts.push(px(i).toFixed(1)+','+py(v).toFixed(1)); });
+      if (pts.length < 2) return '';
+      return '<polyline class="pharma-trend-line" points="'+pts.join(' ')+'" fill="none" stroke="'+color+'" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+    }
+    function dotsAndLabels(arr1, color1, arr2, color2) {
+      var out = '';
+      var total = Math.max(arr1.length, arr2.length);
+      var minGap = 13;
+      for (var i = 0; i < total; i++) {
+        var v1 = arr1[i] !== undefined ? arr1[i] : null;
+        var v2 = arr2[i] !== undefined ? arr2[i] : null;
+        var isLast  = i === total - 1;
+        var isFirst = i === 0;
+        var anchor  = isFirst ? 'start' : (isLast ? 'end' : 'middle');
+
+        if (v1 !== null) {
+          var cx1 = px(i), cy1 = py(v1);
+          out += '<circle class="pharma-trend-dot" cx="'+cx1.toFixed(1)+'" cy="'+cy1.toFixed(1)+'" r="'+(isLast?4:2.5)+'" fill="'+(isLast?color1:'#fff')+'" stroke="'+color1+'" stroke-width="2"/>';
+        }
+        if (v2 !== null) {
+          var cx2 = px(i), cy2 = py(v2);
+          out += '<circle class="pharma-trend-dot" cx="'+cx2.toFixed(1)+'" cy="'+cy2.toFixed(1)+'" r="'+(isLast?4:2.5)+'" fill="'+(isLast?color2:'#fff')+'" stroke="'+color2+'" stroke-width="2"/>';
+        }
+
+        if (v1 !== null && v2 !== null) {
+          var cy1l = py(v1), cy2l = py(v2);
+          var l1Above = cy1l <= cy2l;
+          var lbl1Y, lbl2Y;
+          if (Math.abs(cy1l - cy2l) < minGap) {
+            var mid = (cy1l + cy2l) / 2;
+            lbl1Y = l1Above ? (mid - minGap / 2 - 5) : (mid + minGap / 2 + 9);
+            lbl2Y = l1Above ? (mid + minGap / 2 + 9) : (mid - minGap / 2 - 5);
+          } else {
+            lbl1Y = l1Above ? cy1l - 6 : cy1l + 13;
+            lbl2Y = l1Above ? cy2l + 13 : cy2l - 6;
+          }
+          var cx = px(i);
+          out += '<text class="pharma-trend-dot" x="'+cx.toFixed(1)+'" y="'+lbl1Y.toFixed(1)+'" text-anchor="'+anchor+'" font-size="8" fill="'+color1+'" font-weight="700">'+v1.toFixed(1)+'%</text>';
+          out += '<text class="pharma-trend-dot" x="'+cx.toFixed(1)+'" y="'+lbl2Y.toFixed(1)+'" text-anchor="'+anchor+'" font-size="8" fill="'+color2+'" font-weight="700">'+v2.toFixed(1)+'%</text>';
+        } else if (v1 !== null) {
+          out += '<text class="pharma-trend-dot" x="'+px(i).toFixed(1)+'" y="'+(py(v1)-6).toFixed(1)+'" text-anchor="'+anchor+'" font-size="8" fill="'+color1+'" font-weight="700">'+v1.toFixed(1)+'%</text>';
+        } else if (v2 !== null) {
+          out += '<text class="pharma-trend-dot" x="'+px(i).toFixed(1)+'" y="'+(py(v2)+13).toFixed(1)+'" text-anchor="'+anchor+'" font-size="8" fill="'+color2+'" font-weight="700">'+v2.toFixed(1)+'%</text>';
+        }
+      }
+      return out;
+    }
+    function xLabels() {
+      return qLabels.map(function(l,i){
+        var isLast = i === qLabels.length - 1;
+        // Pri viac ako 6 kvartáloch zobraziť len každý druhý aby sa nelámali
+        if (n > 6 && i % 2 !== 0 && !isLast) return '';
+        return '<text x="'+px(i).toFixed(1)+'" y="'+(H-4)+'" text-anchor="middle" font-size="9" fill="'+(isLast?'#0C1E35':'#94A3B8')+'" font-weight="'+(isLast?'700':'400')+'">'+l+'</text>';
+      }).join('');
+    }
+    function yGridLines() {
+      var out = '';
+      var range = maxV - minV;
+      var step = range <= 4 ? 1 : range <= 10 ? 2 : range <= 20 ? 5 : 10;
+      for (var v = Math.ceil(minV); v <= Math.floor(maxV); v += step) {
+        out += '<text x="'+(padL-4)+'" y="'+(py(v)+3)+'" text-anchor="end" font-size="8" fill="#CBD5E1">'+v+'%</text>';
+        out += '<line x1="'+padL+'" y1="'+py(v).toFixed(1)+'" x2="'+(W-padR)+'" y2="'+py(v).toFixed(1)+'" stroke="#F1F5F9" stroke-width="1"/>';
+      }
+      return out;
+    }
+
+    var lastTerit = teritAvgs[n-1], lastSk = skAvgs[n-1];
+    var teritColor = (lastTerit !== null && lastSk !== null)
+      ? (lastTerit >= lastSk ? '#10B981' : '#EF4444') : '#10B981';
+
+    var firstKey = keys[0], lastKey = keys[keys.length-1];
+    var titleFrom = 'Q' + parseInt(firstKey.slice(2)) + ' 20' + firstKey.slice(0,2);
+    var titleTo   = 'Q' + parseInt(lastKey.slice(2))  + ' 20' + lastKey.slice(0,2);
+
+    var svg = '<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="display:block;overflow:visible">'
+      + yGridLines()
+      + polyline(skAvgs, '#93C5FD') + polyline(teritAvgs, teritColor)
+      + dotsAndLabels(teritAvgs, teritColor, skAvgs, '#93C5FD')
+      + xLabels() + '</svg>';
+
+    html += '<div class="pharma-ms-trend-chart">'
+      + '<div class="pharma-ms-trend-chart-title">Vývoj trhového podielu · ' + titleFrom + ' – ' + titleTo + '</div>'
+      + svg
+      + '<div class="pharma-ms-trend-chart-legend">'
+      + '<div class="pharma-ms-trend-chart-legend-item"><div class="pharma-ms-trend-chart-legend-dot" style="background:'+teritColor+'"></div>Teritoriálny MS</div>'
+      + '<div class="pharma-ms-trend-chart-legend-item"><div class="pharma-ms-trend-chart-legend-dot" style="background:#93C5FD"></div>Slovenský MS</div>'
+      + '</div></div>';
+  })();
+
   // ── Rozpad po okresoch ──
   if (!okresy.length) {
     html += '<div class="pharma-ms-loading">Žiadne dáta po okresoch.</div>';
     bodyEl.innerHTML = html;
+    pharmaTrendAnimate(bodyEl);
     return;
   }
 
@@ -6935,6 +7081,45 @@ function pharmaRender(code) {
   });
 
   bodyEl.innerHTML = html;
+  pharmaTrendAnimate(bodyEl);
+}
+
+function animatePlanBars(container) {
+  var bars = container.querySelectorAll('.bar-fill[data-bar-w]');
+  bars.forEach(function(bar, i) {
+    var target = bar.getAttribute('data-bar-w');
+    bar.style.transition = 'none';
+    bar.style.width = '0%';
+    setTimeout(function() {
+      bar.style.transition = 'width 1s cubic-bezier(0.4,0,0.2,1)';
+      bar.style.width = target + '%';
+    }, 80 + i * 60);
+  });
+}
+
+function pharmaTrendAnimate(container) {
+  var lines = container.querySelectorAll('.pharma-trend-line');
+  var dots  = container.querySelectorAll('.pharma-trend-dot');
+  lines.forEach(function(line) {
+    var len = line.getTotalLength();
+    line.style.strokeDasharray  = len;
+    line.style.strokeDashoffset = len;
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        line.style.transition    = 'stroke-dashoffset 1.6s cubic-bezier(0.4,0,0.2,1)';
+        line.style.strokeDashoffset = '0';
+      });
+    });
+  });
+  dots.forEach(function(dot, i) {
+    dot.style.opacity    = '0';
+    dot.style.transition = 'opacity 0.25s ease ' + (0.65 + i * 0.04) + 's';
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        dot.style.opacity = '1';
+      });
+    });
+  });
 }
 
 function closePharmaMs() {
