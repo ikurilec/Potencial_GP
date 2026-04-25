@@ -1504,7 +1504,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.6.3';
+var APP_VERSION = '2.6.9';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5050,6 +5050,8 @@ function loadRepList() {
         if (lbEl && lbEl.classList.contains('show')) lbRender();
         var mgrLb = document.getElementById('mgr-lb-body');
         if (mgrLb && document.body.classList.contains('mgr-subtab-leaderboard')) lbRender();
+        // Pharma preload s čerstvými oblasťami zo Sheets (oprava race condition)
+        preloadAllPharmaData();
       }
     })
     .catch(function(){ REP_LIST_STATE.loading = false; });

@@ -40,7 +40,15 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.6.8** — obsahuje všetko z 2.6.7 plus: animácia podium blokov v rebríčku + count-up animácia celkového % plnenia. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.6.9** — obsahuje všetko z 2.6.8 plus: fix preloadu trhových podielov po prihlásení manažéra. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+
+### v2.6.9 — Fix preloadu trhových podielov (race condition)
+
+#### Problém
+`preloadAllPharmaData()` bola volaná po 2500ms od prihlásenia, ešte pred tým ako `loadRepList()` dokončilo fetch zo Sheets a aktualizovalo `USERS_LOCAL`. Výsledok: preload prebehol so starými/hardkódovanými hodnotami oblastí → iné cache kľúče → pri kliknutí na trhový podiel vždy cache miss → načítavalo sa odznova.
+
+#### Oprava
+`preloadAllPharmaData()` sa teraz volá aj na konci `loadRepList()` (po úspešnom `buildRepData()`), teda vždy so zaručene čerstvými hodnotami oblastí zo Sheets. Tým je garantované, že cache kľúče sedia a pri otvorení trhového podielu sú dáta okamžite dostupné.
 
 ### v2.6.8 — Animácie rebríček + plnenie
 
