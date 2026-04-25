@@ -40,7 +40,18 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.6.7** — obsahuje všetko z 2.6.6 plus: UX vylepšenia floating tlačidla Potvrdiť. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.6.8** — obsahuje všetko z 2.6.7 plus: animácia podium blokov v rebríčku + count-up animácia celkového % plnenia. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+
+### v2.6.8 — Animácie rebríček + plnenie
+
+#### Podium bloky v rebríčku
+- Stĺpce pod avatarmi (`.lb-p-block`) vyrastú zdola nahor pri načítaní rebríčka — `scaleY(0→1)` s `cubic-bezier(0.34,1.56,0.64,1)` (mierne elastic efekt), každý stĺpec s 80ms oneskorením za sebou.
+
+#### Count-up animácia celkového % plnenia
+- Pri načítaní plnenia (admin detail aj rep mód) sa veľké % číslo animovane počíta od `0,00%` po finálnu hodnotu za ~0.9s s ease-out cubic easing.
+- Funkcia `plnenieCountUp(el, targetPct)` — zdieľaná pre oba módy.
+
+**2.6.7** — obsahuje všetko z 2.6.6 plus: UX vylepšenia floating tlačidla Potvrdiť.
 
 ### v2.6.7 — Floating tlačidlo Potvrdiť — UX vylepšenia
 - Bočné sivé oblasti vedľa tlačidla sú priesvitné — pozadie (blur) je len priamo za tlačidlom (`.submit-inner` je transparent, blur presunutý na `.submit-inner-content`).
