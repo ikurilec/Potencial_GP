@@ -156,6 +156,9 @@
   .lb-count-pct.r{color:#DC2626}
   .lb-count-pct.n{color:#94A3B8}
   .lb-pl-q-header{text-align:center;padding:10px 16px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748B}
+  .lb-approve-q-btn{display:block;margin:10px auto 0;padding:7px 18px;border-radius:20px;border:1.5px solid #0C1E35;background:none;color:#0C1E35;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .15s}
+  .lb-approve-q-btn:active{opacity:.7}
+  .lb-approve-q-btn.saving{opacity:.5;pointer-events:none}
   .lb-tabs{display:flex;gap:0;background:#F8FAFC;border-bottom:1px solid #E2E8F0}
   .lb-tab{flex:1;padding:13px 4px;border:none;background:none;font-size:12px;font-weight:600;color:#94A3B8;font-family:inherit;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
   .lb-tab.active{color:#2563EB;border-bottom-color:#2563EB}
@@ -646,6 +649,7 @@
   .pl-sum-big-plan{font-size:11.5px;color:#94A3B8;margin-top:2px}
   .pl-sum-pred{font-size:11.5px;color:#94A3B8;margin-top:10px;padding-top:10px;border-top:1px solid #F1F5F9;text-align:center}
   .pl-sum-pred span{font-weight:700;margin-left:4px}
+  .pl-no-plan-notice{font-size:11.5px;color:#94A3B8;margin-top:10px;padding-top:10px;border-top:1px solid #F1F5F9;text-align:center;font-style:italic}
   .pl-sum-prods{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;padding-top:10px;border-top:0.5px solid #E2E8F0}
   .pl-sum-prods:empty{display:none}
   .pl-sum-prod{display:flex;align-items:baseline;justify-content:space-between;gap:4px;font-size:12px;font-weight:500;color:#334155;min-width:0}
@@ -1025,6 +1029,7 @@
       </div>
       <div class="pl-sum-prods" id="pl-sum-prods"></div>
       <div class="pl-sum-pred" id="pl-sum-pred" style="display:none"></div>
+      <div class="pl-no-plan-notice" id="pl-no-plan-notice" style="display:none"></div>
     </div>
     <div class="pl-regions">
       <div class="pl-region-card">
@@ -1582,7 +1587,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.7.15';
+var APP_VERSION = '2.7.22';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -3991,7 +3996,12 @@ function loginSuccess(username, name, role, region) {
     mgrEnter(mgrRole);
     try { mgrDedupUnique(); } catch(e){}
     setTimeout(function(){ wnShow(true); }, 600);
-    setTimeout(function(){ lbLoadData(); }, 2000);
+    setTimeout(function(){
+      lbFetchApprovedQ(function(){
+        lbLoadData();
+        lbPreloadPlnenie();
+      });
+    }, 2000);
     setTimeout(function(){
       REP_PL_STATE.year = REP_PL_STATE.year || (new Date()).getFullYear();
       REP_PL_STATE.q    = REP_PL_STATE.q    || plnenieCurrentQ();
@@ -4004,9 +4014,12 @@ function loginSuccess(username, name, role, region) {
   }
   initTutorial();
   refreshBadgeFromSheets(username);
-  // Preload rebríček aj plnenie paralelne — oba štartujú po 2s
+  // Preload rebríček + Plnenie Q (leaderboard) paralelne -- oba startuju po 2s
   setTimeout(function(){
-    lbLoadData();
+    lbFetchApprovedQ(function(){
+      lbLoadData();
+      lbPreloadPlnenie();
+    });
     if (!REP_PL_STATE.loading && !REP_PL_STATE.loaded) {
       REP_PL_STATE.year = (new Date()).getFullYear();
       REP_PL_STATE.q = plnenieCurrentQ();
@@ -4177,7 +4190,7 @@ function initLogin() {
     var mgrRole = mgrDetectRole(session);
     if(mgrRole){
       mgrEnter(mgrRole);
-      setTimeout(function(){ lbLoadData(); }, 2000);
+      setTimeout(function(){ lbLoadData(); lbPreloadPlnenie(); }, 2000);
       setTimeout(function(){
         REP_PL_STATE.year = REP_PL_STATE.year || (new Date()).getFullYear();
         REP_PL_STATE.q    = REP_PL_STATE.q    || plnenieCurrentQ();
@@ -4187,9 +4200,12 @@ function initLogin() {
     }
     setTimeout(function(){ updateHdrForUser(session); }, 300);
     refreshBadgeFromSheets(session.username);
-    // Preload rebríček aj plnenie paralelne — oba štartujú po 2s
+    // Preload rebríček + Plnenie Q (leaderboard) paralelne -- oba startuju po 2s
     setTimeout(function(){
-      lbLoadData();
+      lbFetchApprovedQ(function(){
+        lbLoadData();
+        lbPreloadPlnenie();
+      });
       if (!REP_PL_STATE.loading && !REP_PL_STATE.loaded) {
         REP_PL_STATE.year = (new Date()).getFullYear();
         REP_PL_STATE.q = plnenieCurrentQ();
@@ -5164,6 +5180,9 @@ function wnClose(){
 }
 
 var LB_STATE = { period: 'all', mode: 'navstevy', data: null, loading: false, showConfetti: false };
+var LB_PLNENIE_CACHE = null;
+var LB_PLNENIE_LOADING = false;
+var LB_APPROVED_Q = null; // admin schvaleny Q pre rebricek plnenie, null = auto (currentQ-1)
 
 // Deterministický hash z reťazca — zaručuje vždy rovnakú farbu pre toho istého reprezentanta
 function strHash(s) {
@@ -5393,7 +5412,75 @@ function lbSetPeriod(period, el){
 // ── PLNENIE LEADERBOARD MODE ──
 
 function lbLastCompletedQ() {
-  return plnenieCurrentQ() - 1; // 0 ak sme v Q1 (žiadny ukončený Q tento rok)
+  // Admin moze manualne schvalit Q cez tlacidlo v rebricku
+  if (LB_APPROVED_Q !== null) return LB_APPROVED_Q;
+  return Math.max(0, plnenieCurrentQ() - 1);
+}
+
+// Nacita iba posledny ukonceny Q pre leaderboard Plnenie (1 request, nezavisly od repPlnenieLoad)
+
+// Nacita admin-schvaleny Q zo Sheets (getConfig)
+function lbFetchApprovedQ(callback) {
+  var url = scriptUrl('action=getConfig&key=lb_approved_q');
+  fetch(url)
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d && d.ok && d.value !== null) {
+        var q = parseInt(d.value, 10);
+        if (q >= 1 && q <= 4) LB_APPROVED_Q = q;
+      } else {
+        LB_APPROVED_Q = null;
+      }
+      if (callback) callback();
+    })
+    .catch(function(){ if (callback) callback(); });
+}
+
+// Admin schvali novy Q (zapisuje cez setConfig, aktualizuje cache a re-renderuje)
+function lbApproveQ(q) {
+  var btn = document.getElementById('lb-approve-q-btn');
+  if (btn) btn.classList.add('saving');
+  var url = scriptUrl('action=setConfig&key=lb_approved_q&value=' + q);
+  fetch(url)
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d && d.ok) {
+        LB_APPROVED_Q = q;
+        LB_PLNENIE_CACHE = null;
+        LB_PLNENIE_LOADING = false;
+        LB_STATE._plLoadAttempted = false;
+        lbPreloadPlnenie();
+        var b = lbGetBody();
+        if (b && LB_STATE.mode === 'plnenie') lbRenderPlnenie(b);
+      }
+    })
+    .catch(function(){})
+    .then(function(){
+      if (btn) btn.classList.remove('saving');
+    });
+}
+
+function lbPreloadPlnenie() {
+  var lastQ = lbLastCompletedQ();
+  if (lastQ < 1) return;
+  if (LB_PLNENIE_LOADING || LB_PLNENIE_CACHE) return;
+  LB_PLNENIE_LOADING = true;
+  var year = (new Date()).getFullYear();
+  var url = scriptUrl('action=getPlnenieAll&rok=' + year + '&Q=' + lastQ);
+  mgrFetchWithRetry(url, 3)
+    .then(function(resp) {
+      if (!resp || !resp.ok) throw new Error('No data');
+      var agg = plnenieBuildAggregates(resp);
+      LB_PLNENIE_CACHE = { q: lastQ, data: resp, aggregates: agg };
+    })
+    .catch(function() {
+      LB_PLNENIE_CACHE = null;
+    })
+    .then(function() {
+      LB_PLNENIE_LOADING = false;
+      var b = lbGetBody();
+      if (b && LB_STATE.mode === 'plnenie') lbRenderPlnenie(b);
+    });
 }
 
 function lbSetMode(mode, el) {
@@ -5406,7 +5493,7 @@ function lbSetMode(mode, el) {
   var navBtn = document.getElementById(navId);
   var plBtn  = document.getElementById(plId);
   if (mode === 'navstevy') { if(navBtn) navBtn.classList.add('active'); }
-  else                     { if(plBtn)  plBtn.classList.add('active');  }
+  else                     { if(plBtn)  plBtn.classList.add('active'); LB_STATE.showConfetti = true; }
   // Skry/zobraziť period tabs
   ['mgr-lb-period-wrap','rep-lb-period-wrap'].forEach(function(id){
     var w = document.getElementById(id);
@@ -5452,34 +5539,27 @@ function lbRenderPlnenie(body) {
   }
   var qLabel = 'Q' + lastQ + ' ' + (new Date()).getFullYear();
 
-  // Dáta z REP_PL_STATE cache (načítané na pozadí po prihlásení)
-  var cached = REP_PL_STATE.qCache && REP_PL_STATE.qCache[lastQ];
+  // Pouzivame LB_PLNENIE_CACHE -- naplni lbPreloadPlnenie() hned po prihlaseni
+  var cached = LB_PLNENIE_CACHE;
   if (!cached) {
-    // Ak sme sa už raz pokúsili načítať a dáta stále nie sú — zobraz chybu
-    if (LB_STATE._plLoadAttempted) {
+    if (LB_STATE._plLoadAttempted && !LB_PLNENIE_LOADING) {
       body.innerHTML = mkEmpty('podium', 'Dáta nedostupné', 'Plnenie ' + qLabel + ' sa nepodarilo načítať. Skontroluj pripojenie.');
       return;
     }
     body.innerHTML = skelLb();
     LB_STATE._plLoadAttempted = true;
-    // Spusti načítanie ak ešte nebehá
-    if (!REP_PL_STATE.loading) {
-      REP_PL_STATE.year = (new Date()).getFullYear();
-      REP_PL_STATE.q    = plnenieCurrentQ();
-      repPlnenieLoad();
-    }
-    // Čakaj kým loading skončí, potom znova pokús render
+    lbPreloadPlnenie();
     var _lbPlTimer = setInterval(function(){
-      if (REP_PL_STATE.loading) return; // ešte beží
+      if (LB_PLNENIE_LOADING) return;
       clearInterval(_lbPlTimer);
       var b = lbGetBody();
       if (b && LB_STATE.mode === 'plnenie') lbRenderPlnenie(b);
-    }, 700);
+    }, 300);
     return;
   }
-  LB_STATE._plLoadAttempted = false; // reset pre ďalšie otvorenia
+  LB_STATE._plLoadAttempted = false;
 
-  // FIX: plnenieBuildAggregates vracia .reps (array), nie .repAgg (object)
+  // plnenieBuildAggregates vracia .reps (array)
   var repsList = (cached.aggregates && cached.aggregates.reps) ? cached.aggregates.reps : [];
   var repAggLookup = {};
   repsList.forEach(function(r){ repAggLookup[r.username] = r; });
@@ -5554,7 +5634,14 @@ function lbRenderPlnenie(body) {
   });
   listHtml += '</div>';
 
-  var headerHtml = '<div class="lb-pl-q-header">Plnenie pl\u00e1nu \u00b7 ' + qLabel + '</div>';
+  var nextQ = lastQ + 1;
+  var approveBtn = '';
+  if (MGR_STATE && MGR_STATE.role === 'admin' && nextQ <= 4) {
+    approveBtn = '<button id="lb-approve-q-btn" class="lb-approve-q-btn" onclick="lbApproveQ(' + nextQ + ')">' +
+      'Schv\u00e1li\u0165 Q' + nextQ + ' v rebr\u00ed\u010dku' +
+      '</button>';
+  }
+  var headerHtml = '<div class="lb-pl-q-header">Plnenie pl\u00e1nu \u00b7 ' + qLabel + '</div>' + approveBtn;
   body.innerHTML = headerHtml + podiumHtml + listHtml;
 
   // Konfety (rovnako ako pri nav\u0161tev\u00e1ch)
@@ -6238,6 +6325,8 @@ function plnenieRenderSummaryEmpty() {
   if (tot) tot.textContent = '—';
   var plan = document.getElementById('pl-sum-big-plan');
   if (plan) plan.textContent = '—';
+  var notice = document.getElementById('pl-no-plan-notice');
+  if (notice) notice.style.display = 'none';
   var prods = document.getElementById('pl-sum-prods');
   if (prods) prods.innerHTML = '';
   var regionsEl = document.querySelector('.pl-regions');
@@ -6272,6 +6361,15 @@ function plnenieRenderSummary() {
     }
   }
 
+  var notice2 = document.getElementById('pl-no-plan-notice');
+  if (notice2) {
+    if (sk.planEUR === 0) {
+      notice2.style.display = '';
+      notice2.textContent = 'Udúje sa aktualizújú po schválení teritoriálnych plánov na Q' + PL_STATE.q;
+    } else {
+      notice2.style.display = 'none';
+    }
+  }
   var prods = document.getElementById('pl-sum-prods');
   if (prods) {
     if (!agg.products || agg.products.length === 0) {

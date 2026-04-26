@@ -40,7 +40,84 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.7.14** — obsahuje všetko z 2.7.13 plus: dvojrežimový rebríček (Návštevy + Plnenie Q). **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.7.22** — obsahuje všetko z 2.7.16 plus sériu opráv a nových funkcií. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+
+### v2.7.22 — Admin schvaľovanie Q v rebríčku (len pre rolu admin)
+
+Tlačidlo "Schváliť Q{X} v rebríčku" je viditeľné **iba pre používateľa s rolou `admin`** (`MGR_STATE.role === 'admin'`). BUM, AM West, AM East ho nevidia.
+
+---
+
+### v2.7.21 — Admin manuálne schvaľovanie Q v rebríčku
+
+Nová funkcionalita: admin môže manuálne schváliť, ktorý Q sa zobrazuje v rebríčku (Plnenie), namiesto automatického prepínania podľa dátumu.
+
+**Apps Script (`kód.gs`):**
+- Nový endpoint `action=getConfig&key=xxx` — číta hodnotu z tabu "Config" (Key|Value)
+- Nový endpoint `action=setConfig&key=xxx&value=yyy` — zapisuje hodnotu (vyžaduje token)
+- Tab "Config" sa vytvorí automaticky pri prvom `setConfig` ak neexistuje
+
+**App (`index.html`):**
+- `var LB_APPROVED_Q = null` — admin-schválený Q, `null` = auto (currentQ-1)
+- `lbLastCompletedQ()` vracia `LB_APPROVED_Q` ak je nastavený, inak `plnenieCurrentQ() - 1`
+- `lbFetchApprovedQ(callback)` — fetchuje `getConfig?key=lb_approved_q` pri prihlásení (pred `lbLoadData`)
+- `lbApproveQ(q)` — zapisuje cez `setConfig`, resetuje cache, re-renderuje rebríček
+- Admin vidí tlačidlo "Schváliť Q{X} v rebríčku" pod nadpisom Q v rebríčku (Plnenie mode)
+- Všetky 4 login pathy volajú `lbFetchApprovedQ()` pri 2s preloade
+
+---
+
+### v2.7.20 — Oprava zaseknutého Plnenia v manager mode (ReferenceError)
+
+Chyba: Python nahradil prvý výskyt `var prods = document.getElementById('pl-sum-prods')` — ten bol v `plnenieRenderSummaryEmpty()` kde `sk` nie je definované → `ReferenceError: sk is not defined` → celý render sa zasekol na skelete.
+
+Oprava:
+- `plnenieRenderSummaryEmpty` — notice sa vždy iba skryje (sk tam nie je k dispozícii)
+- `plnenieRenderSummary` — notice sa zobrazí/skryje podľa `sk.planEUR === 0` (sk je definované)
+
+---
+
+### v2.7.19 — Správa pri chýbajúcom pláne v manažérskom Plnení
+
+Keď `sk.planEUR === 0` (plán ešte nie je zadaný v Sheets), zobrazí sa pod sumárnou kartou správa:
+*"Údaje sa aktualizujú po schválení teritoriálnych plánov na Q{X}"*
+Q číslo je dynamické podľa aktívneho tabu. Správa zmizne automaticky keď prídu dáta zo Sheets.
+
+---
+
+### v2.7.18 — Ohňostroje aj pri prepnutí na Plnenie Q v rebríčku
+
+`lbSetMode('plnenie')` nastavuje `LB_STATE.showConfetti = true` → ohňostroje sa spustia aj pri kliknutí na tab Plnenie Q, nielen pri otvorení rebríčka.
+
+---
+
+### v2.7.17 — lbPreloadPlnenie() aj v manager login pathoch
+
+Oprava: `lbPreloadPlnenie()` sa volalo iba v rep login pathoch, nie v manažérskych. Manager videl Plnenie Q v rebríčku stále ako načítavanie.
+
+---
+
+### v2.7.16 — Rýchly preload Plnenie Q v rebríčku
+
+Oprava: Plnenie Q v rebríčku sa stále načítavalo aj keď bola appka otvorená dlhšiu dobu.
+
+**Príčina:** Starý kód čakal na `REP_PL_STATE.loading === false` — čo nastalo až keď dokončili **všetky 4 Q fetche** naraz. Aj keď Q1 bol hotový ako prvý, timer čakal na Q2/Q3/Q4.
+
+**Riešenie:** Dedikovaný `LB_PLNENIE_CACHE` + `lbPreloadPlnenie()`:
+- `lbPreloadPlnenie()` fetchuje **iba posledný ukončený Q** (1 request, nie 4)
+- Výsledok ide do `LB_PLNENIE_CACHE` — nezávislý od `REP_PL_STATE`
+- Volá sa **paralelne s `lbLoadData()`** hneď po 2s od prihlásenia
+- `lbRenderPlnenie()` teraz kontroluje `LB_PLNENIE_CACHE` (nie `REP_PL_STATE.qCache[lastQ]`)
+- Polling timer čaká na `LB_PLNENIE_LOADING` (rýchlejší — 1 request) namiesto `REP_PL_STATE.loading`
+- Ak je leaderboard otvorený keď `lbPreloadPlnenie()` dokončí, automaticky re-renderuje
+
+---
+
+### v2.7.15 — Preload Plnenie Q pri prihlásení (čiastočný fix)
+
+Prechodná verzia — `repPlnenieLoad()` sa volal po 2s, ale timer čakal na všetky 4 Q. Nahradená v 2.7.16.
+
+---
 
 ### v2.7.14 — Rebríček Plnenie Q
 

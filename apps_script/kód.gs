@@ -423,6 +423,47 @@ function doGet(e) {
       return jsonResponse({ok:true, summary:summRows, okresy:okresyRows});
     }
 
+    // ── GET CONFIG — číta hodnotu z tabu "Config" ──
+    if(action === 'getConfig') {
+      if(!requireToken(e)) return jsonResponse({ok: false, error: 'Unauthorized'});
+      var key = (e.parameter.key || '').trim();
+      if(!key) return jsonResponse({ok: false, error: 'missing key'});
+      var cfgSheet = ss.getSheetByName('Config');
+      if(!cfgSheet) return jsonResponse({ok: true, value: null});
+      var rows = cfgSheet.getDataRange().getValues();
+      for(var i = 0; i < rows.length; i++){
+        if(String(rows[i][0]||'').trim() === key){
+          var v = rows[i][1];
+          return jsonResponse({ok: true, value: (v === '' || v === null || v === undefined) ? null : String(v)});
+        }
+      }
+      return jsonResponse({ok: true, value: null});
+    }
+
+    // ── SET CONFIG — zapisuje hodnotu do tabu "Config" (len admin) ──
+    if(action === 'setConfig') {
+      if(!requireToken(e)) return jsonResponse({ok: false, error: 'Unauthorized'});
+      var key = (e.parameter.key || '').trim();
+      var value = e.parameter.value;
+      if(!key) return jsonResponse({ok: false, error: 'missing key'});
+      var cfgSheet = ss.getSheetByName('Config');
+      if(!cfgSheet){
+        cfgSheet = ss.insertSheet('Config');
+        cfgSheet.getRange(1,1).setValue('key');
+        cfgSheet.getRange(1,2).setValue('value');
+      }
+      var rows = cfgSheet.getDataRange().getValues();
+      for(var i = 0; i < rows.length; i++){
+        if(String(rows[i][0]||'').trim() === key){
+          cfgSheet.getRange(i + 1, 2).setValue(value);
+          return jsonResponse({ok: true});
+        }
+      }
+      // Kľúč neexistuje — pridaj nový riadok
+      cfgSheet.appendRow([key, value]);
+      return jsonResponse({ok: true});
+    }
+
     return jsonResponse({error: 'unknown action'});
 
   } catch(err) {
