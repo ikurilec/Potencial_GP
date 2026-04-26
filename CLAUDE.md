@@ -951,6 +951,17 @@ Appka má hotový systém "Čo je nové" — zobrazí sa každému používateľ
 - [ ] DEV banner je viditeľný
 - [ ] Ak pribudol nový fetch zo Sheets, mock dáta boli tiež aktualizované
 
+### 8. Apps Script — redeploy (ak sa menil `kód.gs`)
+Ak bol od posledného mergu do `main` zmenený súbor `apps_script/kód.gs`, **treba nasadiť novú verziu Apps Scriptu** — inak sa zmeny v endpointoch neprejavia na produkčnej URL:
+- [ ] Otvor Apps Script editor (script.google.com)
+- [ ] Nasadiť → Spravovať nasadenia → Nová verzia → Nasadiť
+- [ ] Skontroluj, že URL nasadenia je stále rovnaká ako `SCRIPT_URL` v `index.html`
+
+**Zmeny v `kód.gs` od posledného mergu do `main` (v2.2.57):**
+- `getConfig` endpoint — číta hodnotu z tabu "Config" (pre admin schvaľovanie Q v rebríčku)
+- `setConfig` endpoint — zapisuje hodnotu do tabu "Config" (vyžaduje API token)
+- Tab "Config" v Sheets sa vytvorí automaticky pri prvom `setConfig` ak neexistuje
+
 **Ak Ivan nejaký bod nepotvrdí, Claude merge NEVYKONÁ** a navrhne doriešiť problém na test vetve.
 
 ---
