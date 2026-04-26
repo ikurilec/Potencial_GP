@@ -40,7 +40,12 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.7.4** — obsahuje všetko z 2.7.3 plus: SVG empty state ilustrácie naprieč celou appkou. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.7.5** — obsahuje všetko z 2.7.4 plus: konzistentné farby avatárov. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+
+### v2.7.5 — Konzistentné farby avatárov
+
+- Predtým: farba priradená podľa `idx` (poradia v poli zo Sheets) → pri zmene poradia alebo pridaní nového reprezentanta sa farby zmenili pre všetkých
+- Oprava: funkcia `strHash(login)` — deterministický hash z loginu → vždy rovnaká farba pre toho istého reprezentanta bez ohľadu na poradie
 
 ### v2.7.4 — Empty state ilustrácie
 
