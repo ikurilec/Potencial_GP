@@ -107,7 +107,7 @@
   .ptr-arrow{font-size:20px;transition:transform .2s;display:inline-block;color:#64748B}
   .ptr-arrow.ready{transform:rotate(180deg)}
   .lb-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#EAECF2;z-index:1500;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
-  .lb-inner{max-width:660px;margin:0 auto;padding:24px 16px 48px}
+  .lb-inner{max-width:660px;margin:0 auto;padding:82px 16px 48px}
   /* ── WHAT'S NEW overlay ── */
     /* Scroll indikátor — gradient fade dole keď je obsah dlhší */
   .confirm-box::-webkit-scrollbar,.lb-box::-webkit-scrollbar{width:4px}
@@ -277,7 +277,7 @@
   .prod-total{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;background:linear-gradient(135deg,#0C1E35,#1A3A5C);color:#fff}
   .prod-total-lbl{font-size:10.5px;color:#7AABCC;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
   .prod-total-val{font-size:19px;font-weight:700;font-family:'Outfit','SF Pro Display',-apple-system,sans-serif;letter-spacing:.01em}
-  .info-card{background:#fff;border-radius:14px;margin-bottom:32px;box-shadow:0 2px 12px rgba(0,0,0,.07);border:1px solid rgba(0,0,0,.07);overflow:visible}
+  .info-card{background:#fff;border-radius:14px;margin-bottom:12px;box-shadow:0 2px 12px rgba(0,0,0,.07);border:1px solid rgba(0,0,0,.07);overflow:hidden}
   .info-accent{height:3px;background:linear-gradient(90deg,#0C1E35,#1A3A5C)}
   .info-inner{padding:18px 20px 20px}
   .info-title{font-size:14px;font-weight:600;color:#1A2A3A;margin-bottom:14px}
@@ -321,7 +321,7 @@
   .hdr-hist-btn:hover{background:rgba(255,255,255,0.25)}
   .hist-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#EAECF2;z-index:1500;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   .hist-overlay.show{display:block}
-  .hist-inner{max-width:660px;margin:0 auto;padding:24px 16px 48px}
+  .hist-inner{max-width:660px;margin:0 auto;padding:82px 16px 48px}
   .hist-header{margin-bottom:12px}
   .hist-title{font-size:18px;font-weight:800;color:#0F172A;font-family:'Outfit',sans-serif}
   .hist-date{font-size:11px;color:#64748B;margin-top:3px}
@@ -338,6 +338,10 @@
   .panel-nav-mgr-back{display:none;margin-bottom:10px}
   body.manager-mode .panel-nav{display:none}
   body.manager-mode .panel-nav-mgr-back{display:inline-flex}
+  /* Zdieľaný fixný panel nav — zostáva statický pri prechode medzi panelmi */
+  #shared-panel-nav{position:fixed;top:0;left:0;right:0;z-index:2100;background:#EAECF2;padding:20px 16px 12px}
+  #shared-panel-nav .panel-nav{max-width:628px;margin:0 auto;margin-bottom:0}
+  body.manager-mode #shared-panel-nav{display:none !important}
   .hist-empty{text-align:center;padding:48px 24px;color:#94A3B8;font-size:13px;line-height:1.6}
   .hist-empty-icon{font-size:44px;margin-bottom:12px;display:block;opacity:.6}
   .hist-empty-title{font-size:15px;font-weight:700;color:#64748B;margin-bottom:6px}
@@ -818,7 +822,7 @@
   .pharma-ms-loading{text-align:center;padding:48px 20px;color:#64748B;font-size:14px}
   .prod-ms-link{display:block;width:100%;text-align:center;margin-top:12px;padding:11px 14px;background:#EFF6FF;border-radius:10px;border:1.5px solid #3B82F6;font-size:13px;font-weight:700;color:#1D4ED8;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;letter-spacing:.01em}
   .prod-ms-link:active{background:#DBEAFE;border-color:#2563EB}
-  .rep-pl-inner{max-width:660px;margin:0 auto;padding:24px 16px 48px}
+  .rep-pl-inner{max-width:660px;margin:0 auto;padding:82px 16px 48px}
   /* Zdieľané štýly pre rep plnenie (kopíruje mgr-plnenie-detail scope) */
   .rep-pl-inner .total-card{background:linear-gradient(135deg,#0C1E35,#1A3A5C);border-radius:14px;padding:16px 18px;margin-bottom:12px;color:#fff;text-align:center}
   .rep-pl-inner .total-lbl{font-size:10px;font-weight:700;color:#7AABCC;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
@@ -1121,7 +1125,7 @@
 </div>
 
 <!-- KAPITÁCIA -->
-<div class="card" style="margin-top:20px">
+<div class="card">
   <div class="card-accent" style="background:linear-gradient(90deg,#475569,#94A3B8)"></div>
   <div class="card-inner">
     <div class="prod-name">Kapit&#225;cia</div>
@@ -1246,14 +1250,18 @@
     </div>
   </div>
 
+  <!-- ── ZDIEĽANÝ PANEL NAV — fixný, zostáva počas prechodov medzi panelmi ── -->
+  <div id="shared-panel-nav" style="display:none">
+    <div class="panel-nav">
+      <button class="panel-nav-btn" id="spn-hist" onclick="openHistory()">📋 História</button>
+      <button class="panel-nav-btn" id="spn-lb" onclick="openLeaderboard()">🏆 Rebríček</button>
+      <button class="panel-nav-btn" id="spn-pl" onclick="openRepPlnenie()">💊 Plnenie</button>
+      <button class="panel-nav-close" onclick="closeAllPanels()">✕</button>
+    </div>
+  </div>
+
   <div class="hist-overlay" id="hist-overlay">
     <div class="hist-inner">
-      <div class="panel-nav">
-        <button class="panel-nav-btn active" onclick="openHistory()">📋 História</button>
-        <button class="panel-nav-btn" onclick="openLeaderboard()">🏆 Rebríček</button>
-        <button class="panel-nav-btn" onclick="openRepPlnenie()">💊 Plnenie</button>
-        <button class="panel-nav-close" onclick="closeAllPanels()">✕</button>
-      </div>
       <div class="hist-header">
         <div class="hist-title">História lekárov</div>
         <div class="hist-date" id="hist-date"></div>
@@ -1272,12 +1280,6 @@
   <div class="lb-overlay" id="lb-overlay">
     <div class="lb-inner">
       <button type="button" class="mgr-back panel-nav-mgr-back" onclick="closeLeaderboard()">← Späť</button>
-      <div class="panel-nav">
-        <button class="panel-nav-btn" onclick="openHistory()">📋 História</button>
-        <button class="panel-nav-btn active" onclick="openLeaderboard()">🏆 Rebríček</button>
-        <button class="panel-nav-btn" onclick="openRepPlnenie()">💊 Plnenie</button>
-        <button class="panel-nav-close" onclick="closeAllPanels()">✕</button>
-      </div>
       <div class="lb-hdr">
         <div class="lb-hdr-title">🏆 Rebríček tímu</div>
         <div class="lb-hdr-sub" id="lb-hdr-sub">Gedeon Richter Slovakia · 2026</div>
@@ -1554,7 +1556,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.7.12';
+var APP_VERSION = '2.7.13';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -3242,6 +3244,19 @@ function _panelShow(newId) {
   var newEl = document.getElementById(newId);
   if (!newEl) return;
   _panelCurrent = newId;
+  // Zdieľaný fixný nav — aktualizuj active stav
+  if (!document.body.classList.contains('manager-mode')) {
+    var snav = document.getElementById('shared-panel-nav');
+    if (snav) {
+      snav.style.display = '';
+      var _panelToBtn = {'hist-overlay':'spn-hist','lb-overlay':'spn-lb','rep-plnenie-overlay':'spn-pl'};
+      var _activeBtnId = _panelToBtn[newId];
+      ['spn-hist','spn-lb','spn-pl'].forEach(function(id){
+        var btn = document.getElementById(id);
+        if(btn) btn.classList.toggle('active', id === _activeBtnId);
+      });
+    }
+  }
   // Nový panel ide dopredu (nad starý), aby počas animácie nebolo vidieť pozadie
   newEl.style.zIndex = '1600';
   newEl.classList.remove('panel-anim-up','panel-anim-l','panel-anim-r');
@@ -3269,6 +3284,8 @@ function closeAllPanels() {
   });
   _panelCurrent = null;
   document.body.style.overflow = '';
+  var snav = document.getElementById('shared-panel-nav');
+  if(snav) snav.style.display = 'none';
 }
 
 function openHistory() {
@@ -7653,12 +7670,6 @@ function preloadAllPharmaData() {
 <!-- ── REP PLNENIE OVERLAY — vlastné plnenie pre prihlásených reprezentantov ── -->
 <div class="rep-plnenie-overlay" id="rep-plnenie-overlay">
   <div class="rep-pl-inner">
-    <div class="panel-nav">
-      <button class="panel-nav-btn" onclick="openHistory()">📋 História</button>
-      <button class="panel-nav-btn" onclick="openLeaderboard()">🏆 Rebríček</button>
-      <button class="panel-nav-btn active" onclick="openRepPlnenie()">💊 Plnenie</button>
-      <button class="panel-nav-close" onclick="closeAllPanels()">✕</button>
-    </div>
     <div class="total-card" id="rep-pl-total-card">
       <div class="total-lbl">Môj plán</div>
       <div class="total-val none">—</div>
