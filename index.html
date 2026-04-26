@@ -5485,7 +5485,7 @@ function lbRenderPlnenie(body) {
   var session = getSession();
   var myUsername = session ? session.username : '';
 
-  function pctCls(pct){ return pct === null ? 'n' : pct >= 100 ? 'g' : pct >= 70 ? 'o' : 'r'; }
+  function pctCls(pct){ return pct === null ? 'n' : pct >= 100 ? 'g' : pct >= 95 ? 'o' : 'r'; }
   function pctLbl(pct){ return pct === null ? '—' : pct.toFixed(1).replace('.',',') + ' %'; }
 
   // repsList je uz zoradený z plnenieBuildAggregates (zostupne podla pct)
