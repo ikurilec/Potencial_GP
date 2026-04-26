@@ -40,7 +40,31 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.7.7** — obsahuje všetko z 2.7.6 plus: komplexné slide animácie navigácie (overlay, detail, Q taby), fix intermittentného "Žiadne dáta" v rebríčku. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.7.8** — obsahuje všetko z 2.7.7 plus: exit/enter animácie pre Trhový podiel, Tablety/Sáčky subtaby, manažér detail reprezentanta, karta lekára. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+
+### v2.7.8 — Dokončenie exit animácií
+
+#### Trhový podiel overlay (`.pharma-ms-overlay`)
+- **Vstup**: vklznie sprava (`panel-anim-r`) — predtým žiadna animácia
+- **Výstup**: vyklznie doprava (`pl-detail-exit-r`, 230ms delay) — predtým žiadna animácia
+- Implementácia v `openPharmaMs()` a `closePharmaMs()`
+
+#### Tablety / Sáčky subtaby v Trhový podiel
+- Prepínanie medzi subtabmi animuje `#pharma-ms-body` directional slideom (Tablety→Sáčky = doprava, Sáčky→Tablety = doľava)
+- Smer určuje poradie v `PHARMA_STATE.codes` — porovnanie `oldIdx` vs `newIdx`
+- Implementácia v `pharmaSwitchTab()` — reuse `_animPlQ('pharma-ms-body', dir)`
+
+#### Manažér detail reprezentanta (`.mgr-detail`) — Návštevy záložka
+- **Predtým**: nespoľahlivá CSS-only animácia (`animation:mgrSlide` priamo na triede, nie pri `.show`) — prehliadač nemusel reštartovať animáciu pri `display:none → block`
+- **Oprava vstupu**: JS-riadená animácia `panel-anim-r` s `void el.offsetWidth` reflow trikom v `mgrOpenRep()`
+- **Exit**: `pl-detail-exit-r` v `mgrCloseRep()` — zoznam reprezentantov sa objaví až po dokončení exit animácie (230ms)
+- CSS: odstránená `animation:mgrSlide` z `.mgr-detail` (zachovaný `@keyframes mgrSlide` pre prípadné budúce použitie)
+
+#### Karta lekára (`.detail-overlay`) — exit animácia
+- **Predtým**: zatvorenie okamžité bez animácie (`overlay.className = 'detail-overlay'`)
+- **Oprava**: pri zatváraní sa pridá trieda `closing` → `.detail-overlay.closing .confirm-box{animation:slideDown .18s ease both}` → karta skĺzne nadol a zmizne → po 190ms sa overlay skryje
+- `@keyframes slideDown{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(24px)}}`
+- Poznámka: CSS rule `.detail-overlay.show .info-card` bola mŕtvy kód — vo vnútri overlaya nie je `.info-card` ale `.confirm-box`; skutočná vstupná animácia je `slideUp` na `.confirm-box` priamo
 
 ### v2.7.7 — Animácie navigácie + fix rebríčka (intermittent)
 
