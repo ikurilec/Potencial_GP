@@ -625,10 +625,10 @@
   .pl-region-pred{font-size:10px;color:#94A3B8;margin-top:4px}
   .pl-region-pred span{font-weight:700}
   .pl-section-lbl{font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.07em;margin:14px 2px 8px}
-  .pl-rep-list{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.06)}
-  .pl-rep-card{display:flex;align-items:center;gap:12px;padding:13px 14px;border-top:0.5px solid #F1F5F9}
-  .pl-rep-card:first-child{border-top:none}
+  .pl-rep-list{display:flex;flex-direction:column;gap:6px}
+  .pl-rep-card{display:flex;align-items:center;gap:12px;padding:13px 14px;background:#fff;border-radius:12px;box-shadow:0 1px 6px rgba(0,0,0,.06)}
   .pl-rep-medal{width:32px;font-size:17px;text-align:center;flex-shrink:0}
+  .pl-rep-medal.pl-top{font-size:26px}
   .pl-rep-medal.pl-rank{font-size:11px;color:#94A3B8;font-weight:700}
   .pl-rep-avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700;color:#fff;flex-shrink:0}
   .pl-rep-body{flex:1;min-width:0}
@@ -1526,7 +1526,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.7.1';
+var APP_VERSION = '2.7.2';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5938,9 +5938,9 @@ function plnenieRenderRepList() {
       medalHtml = '<div class="pl-rep-medal pl-rank">—</div>';
     } else {
       rank++;
-      if (rank === 1)      medalHtml = '<div class="pl-rep-medal">🥇</div>';
-      else if (rank === 2) medalHtml = '<div class="pl-rep-medal">🥈</div>';
-      else if (rank === 3) medalHtml = '<div class="pl-rep-medal">🥉</div>';
+      if (rank === 1)      medalHtml = '<div class="pl-rep-medal pl-top">🥇</div>';
+      else if (rank === 2) medalHtml = '<div class="pl-rep-medal pl-top">🥈</div>';
+      else if (rank === 3) medalHtml = '<div class="pl-rep-medal pl-top">🥉</div>';
       else                 medalHtml = '<div class="pl-rep-medal pl-rank">' + rank + '.</div>';
     }
 

@@ -40,7 +40,12 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.7.1** — obsahuje všetko z 2.7.0 plus: skeleton screens naprieč celou appkou + opravy rebríčka (dátum, timing, API chyba). **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.7.2** — obsahuje všetko z 2.7.1 plus: UX vylepšenia zoznamu reprezentantov v plnení. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+
+### v2.7.2 — UX zoznam reprezentantov v plnení
+
+- Každý riadok reprezentanta je teraz samostatná kartička s `gap:6px` medzerou (predtým: jeden blok s tenkými deličmi)
+- Medaily 🥇🥈🥉 pri prvej trojke sú väčšie (`font-size:26px` vs. `17px` pre ostatné pozície) — trieda `.pl-rep-medal.pl-top`
 
 ### v2.7.1 — Skeleton screens + opravy rebríčka
 
