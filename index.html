@@ -142,6 +142,20 @@
   .lb-hdr-title{font-size:18px;font-weight:800;color:#0F172A;font-family:'Outfit',sans-serif}
   .lb-hdr-sub{font-size:11px;color:#64748B;margin-top:3px}
   .lb-close{display:none}
+  /* Mode toggle — Návštevy / Plnenie */
+  .lb-mode-tabs{display:flex;background:#fff;border-bottom:2px solid #F1F5F9}
+  .lb-mode-tab{flex:1;padding:12px 4px;border:none;background:none;font-size:12px;font-weight:700;color:#94A3B8;font-family:inherit;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;-webkit-tap-highlight-color:transparent;white-space:nowrap}
+  .lb-mode-tab.active{color:#0C1E35;border-bottom-color:#0C1E35}
+  .lb-mode-tab:active{opacity:.7}
+  .lb-period-wrap{display:block}
+  .lb-period-wrap.hidden{display:none}
+  /* Plnenie % v rebríčku */
+  .lb-count-pct{font-family:'Outfit',sans-serif;font-weight:800}
+  .lb-count-pct.g{color:#059669}
+  .lb-count-pct.o{color:#D97706}
+  .lb-count-pct.r{color:#DC2626}
+  .lb-count-pct.n{color:#94A3B8}
+  .lb-pl-q-header{text-align:center;padding:10px 16px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748B}
   .lb-tabs{display:flex;gap:0;background:#F8FAFC;border-bottom:1px solid #E2E8F0}
   .lb-tab{flex:1;padding:13px 4px;border:none;background:none;font-size:12px;font-weight:600;color:#94A3B8;font-family:inherit;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
   .lb-tab.active{color:#2563EB;border-bottom-color:#2563EB}
@@ -1069,10 +1083,16 @@
   </div>
 
   <div class="mgr-leaderboard-view" id="mgr-leaderboard-view">
-    <div class="lb-tabs">
-      <button class="lb-tab" onclick="lbSetPeriod('month',this)">Mesiac</button>
-      <button class="lb-tab" onclick="lbSetPeriod('quarter',this)">Kvartál</button>
-      <button class="lb-tab active" onclick="lbSetPeriod('all',this)">Celkové</button>
+    <div class="lb-mode-tabs">
+      <button class="lb-mode-tab active" id="mgr-lb-mode-nav" onclick="lbSetMode('navstevy',this)">📋 Návštevy</button>
+      <button class="lb-mode-tab" id="mgr-lb-mode-pl" onclick="lbSetMode('plnenie',this)">💊 Plnenie</button>
+    </div>
+    <div class="lb-period-wrap" id="mgr-lb-period-wrap">
+      <div class="lb-tabs">
+        <button class="lb-tab" onclick="lbSetPeriod('month',this)">Mesiac</button>
+        <button class="lb-tab" onclick="lbSetPeriod('quarter',this)">Kvartál</button>
+        <button class="lb-tab active" onclick="lbSetPeriod('all',this)">Celkové</button>
+      </div>
     </div>
     <div class="lb-body" id="mgr-lb-body">
       <div class="skel-wrap" style="padding:12px 12px 0"><div style="display:flex;align-items:flex-end;justify-content:center;gap:8px;margin-bottom:20px"><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div class="skel skel-avatar"></div><div class="skel" style="height:55px;width:100%;border-radius:8px 8px 0 0"></div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div class="skel skel-avatar"></div><div class="skel" style="height:80px;width:100%;border-radius:8px 8px 0 0"></div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div class="skel skel-avatar"></div><div class="skel" style="height:40px;width:100%;border-radius:8px 8px 0 0"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:60%"></div><div class="skel skel-line" style="width:35%"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:55%"></div><div class="skel skel-line" style="width:40%"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:65%"></div><div class="skel skel-line" style="width:30%"></div></div></div></div>
@@ -1285,10 +1305,16 @@
         <div class="lb-hdr-sub" id="lb-hdr-sub">Gedeon Richter Slovakia · 2026</div>
       </div>
       <div class="lb-box">
-        <div class="lb-tabs">
-          <button class="lb-tab" onclick="lbSetPeriod('month',this)">Mesiac</button>
-          <button class="lb-tab" onclick="lbSetPeriod('quarter',this)">Kvartál</button>
-          <button class="lb-tab active" onclick="lbSetPeriod('all',this)">Celkové</button>
+        <div class="lb-mode-tabs">
+          <button class="lb-mode-tab active" id="rep-lb-mode-nav" onclick="lbSetMode('navstevy',this)">📋 Návštevy</button>
+          <button class="lb-mode-tab" id="rep-lb-mode-pl" onclick="lbSetMode('plnenie',this)">💊 Plnenie</button>
+        </div>
+        <div class="lb-period-wrap" id="rep-lb-period-wrap">
+          <div class="lb-tabs">
+            <button class="lb-tab" onclick="lbSetPeriod('month',this)">Mesiac</button>
+            <button class="lb-tab" onclick="lbSetPeriod('quarter',this)">Kvartál</button>
+            <button class="lb-tab active" onclick="lbSetPeriod('all',this)">Celkové</button>
+          </div>
         </div>
         <div class="lb-body" id="lb-body">
           <div class="skel-wrap" style="padding:12px 12px 0"><div style="display:flex;align-items:flex-end;justify-content:center;gap:8px;margin-bottom:20px"><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div class="skel skel-avatar"></div><div class="skel" style="height:55px;width:100%;border-radius:8px 8px 0 0"></div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div class="skel skel-avatar"></div><div class="skel" style="height:80px;width:100%;border-radius:8px 8px 0 0"></div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div class="skel skel-avatar"></div><div class="skel" style="height:40px;width:100%;border-radius:8px 8px 0 0"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:60%"></div><div class="skel skel-line" style="width:35%"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:55%"></div><div class="skel skel-line" style="width:40%"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:65%"></div><div class="skel skel-line" style="width:30%"></div></div></div></div>
@@ -1556,7 +1582,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.7.13';
+var APP_VERSION = '2.7.14';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5135,7 +5161,7 @@ function wnClose(){
   if(overlay) overlay.classList.remove('show');
 }
 
-var LB_STATE = { period: 'all', data: null, loading: false, showConfetti: false };
+var LB_STATE = { period: 'all', mode: 'navstevy', data: null, loading: false, showConfetti: false };
 
 // Deterministický hash z reťazca — zaručuje vždy rovnakú farbu pre toho istého reprezentanta
 function strHash(s) {
@@ -5362,12 +5388,186 @@ function lbSetPeriod(period, el){
   lbRender();
 }
 
+// ── PLNENIE LEADERBOARD MODE ──
+
+function lbLastCompletedQ() {
+  return plnenieCurrentQ() - 1; // 0 ak sme v Q1 (žiadny ukončený Q tento rok)
+}
+
+function lbSetMode(mode, el) {
+  LB_STATE.mode = mode;
+  // Sync aktívny stav oboch setov mode tabs (mgr + rep)
+  document.querySelectorAll('.lb-mode-tab').forEach(function(t){ t.classList.remove('active'); });
+  var isMgr = document.body.classList.contains('manager-mode');
+  var navId = isMgr ? 'mgr-lb-mode-nav' : 'rep-lb-mode-nav';
+  var plId  = isMgr ? 'mgr-lb-mode-pl'  : 'rep-lb-mode-pl';
+  var navBtn = document.getElementById(navId);
+  var plBtn  = document.getElementById(plId);
+  if (mode === 'navstevy') { if(navBtn) navBtn.classList.add('active'); }
+  else                     { if(plBtn)  plBtn.classList.add('active');  }
+  // Skry/zobraziť period tabs
+  ['mgr-lb-period-wrap','rep-lb-period-wrap'].forEach(function(id){
+    var w = document.getElementById(id);
+    if(w) w.classList.toggle('hidden', mode !== 'navstevy');
+  });
+  lbRender();
+}
+
 function lbSyncTabs() {
   var p = LB_STATE.period;
   document.querySelectorAll('.lb-tab').forEach(function(t) {
     var onclick = t.getAttribute('onclick') || '';
     var match = onclick.match(/lbSetPeriod\('(\w+)'/);
     t.classList.toggle('active', !!(match && match[1] === p));
+  });
+  // Sync mode tabs
+  var lastQ = lbLastCompletedQ();
+  var qLabel = lastQ >= 1 ? (' Q' + lastQ) : '';
+  ['mgr-lb-mode-pl','rep-lb-mode-pl'].forEach(function(id){
+    var btn = document.getElementById(id);
+    if(btn) btn.textContent = '💊 Plnenie' + qLabel;
+  });
+  var isMgr = document.body.classList.contains('manager-mode');
+  var navId = isMgr ? 'mgr-lb-mode-nav' : 'rep-lb-mode-nav';
+  var plId  = isMgr ? 'mgr-lb-mode-pl'  : 'rep-lb-mode-pl';
+  var navBtn = document.getElementById(navId);
+  var plBtn  = document.getElementById(plId);
+  document.querySelectorAll('.lb-mode-tab').forEach(function(t){ t.classList.remove('active'); });
+  if (LB_STATE.mode === 'navstevy') { if(navBtn) navBtn.classList.add('active'); }
+  else                              { if(plBtn)  plBtn.classList.add('active');  }
+  // Period wrap visible/hidden
+  ['mgr-lb-period-wrap','rep-lb-period-wrap'].forEach(function(id){
+    var w = document.getElementById(id);
+    if(w) w.classList.toggle('hidden', LB_STATE.mode !== 'navstevy');
+  });
+}
+
+function lbRenderPlnenie(body) {
+  var lastQ = lbLastCompletedQ();
+  if (lastQ < 1) {
+    body.innerHTML = mkEmpty('calendar', 'Žiadny ukončený kvartál', 'Plnenie bude dostupné po skončení Q1.');
+    return;
+  }
+  var qLabel = 'Q' + lastQ + ' ' + (new Date()).getFullYear();
+
+  // Dáta z REP_PL_STATE cache (načítané na pozadí po prihlásení)
+  var cached = REP_PL_STATE.qCache && REP_PL_STATE.qCache[lastQ];
+  if (!cached) {
+    // Ak sme sa už raz pokúsili načítať a dáta stále nie sú — zobraz chybu
+    if (LB_STATE._plLoadAttempted) {
+      body.innerHTML = mkEmpty('podium', 'Dáta nedostupné', 'Plnenie ' + qLabel + ' sa nepodarilo načítať. Skontroluj pripojenie.');
+      return;
+    }
+    body.innerHTML = skelLb();
+    LB_STATE._plLoadAttempted = true;
+    // Spusti načítanie ak ešte nebehá
+    if (!REP_PL_STATE.loading) {
+      REP_PL_STATE.year = (new Date()).getFullYear();
+      REP_PL_STATE.q    = plnenieCurrentQ();
+      repPlnenieLoad();
+    }
+    // Čakaj kým loading skončí, potom znova pokús render
+    var _lbPlTimer = setInterval(function(){
+      if (REP_PL_STATE.loading) return; // ešte beží
+      clearInterval(_lbPlTimer);
+      var b = lbGetBody();
+      if (b && LB_STATE.mode === 'plnenie') lbRenderPlnenie(b);
+    }, 700);
+    return;
+  }
+  LB_STATE._plLoadAttempted = false; // reset pre ďalšie otvorenia
+
+  // FIX: plnenieBuildAggregates vracia .reps (array), nie .repAgg (object)
+  var repsList = (cached.aggregates && cached.aggregates.reps) ? cached.aggregates.reps : [];
+  var repAggLookup = {};
+  repsList.forEach(function(r){ repAggLookup[r.username] = r; });
+
+  var session = getSession();
+  var myUsername = session ? session.username : '';
+
+  function pctCls(pct){ return pct === null ? 'n' : pct >= 100 ? 'g' : pct >= 70 ? 'o' : 'r'; }
+  function pctLbl(pct){ return pct === null ? '—' : pct.toFixed(1).replace('.',',') + ' %'; }
+
+  // repsList je uz zoradený z plnenieBuildAggregates (zostupne podla pct)
+  var ranking = repsList.map(function(r){
+    var info = LB_REP_INFO[r.username] || { name: r.username, region: '', color: 'linear-gradient(135deg,#374151,#6B7280)' };
+    return { username: r.username, name: info.name, region: info.region, color: info.color, pct: r.pct };
+  });
+  // Doplni repov bez planu (su v LB_ALL_REPS ale nie v repsList)
+  LB_ALL_REPS.forEach(function(u){
+    if(!repAggLookup[u]){
+      var info = LB_REP_INFO[u] || { name: u, region: '', color: 'linear-gradient(135deg,#374151,#6B7280)' };
+      ranking.push({ username: u, name: info.name, region: info.region, color: info.color, pct: null });
+    }
+  });
+
+  // Podium (top 3)
+  var top3 = ranking.slice(0,3);
+  var podiumOrder = top3.length >= 3 ? [top3[1],top3[0],top3[2]] : top3.length === 2 ? [top3[1],top3[0]] : [top3[0]];
+  var podiumClasses = ['lb-p-2','lb-p-1','lb-p-3'];
+  var rankNums = [2,1,3];
+  var rankBg = ['#94A3B8','#F59E0B','#B45309'];
+
+  var podiumHtml = '<div class="lb-podium">';
+  podiumOrder.forEach(function(rep, pi){
+    if(!rep) return;
+    var rn = rankNums[pi];
+    var isFirst = rn === 1;
+    var medal = isFirst ? '' : (rn === 2 ? '\uD83E\uDD48' : '\uD83E\uDD49');
+    var lastName = rep.name.split(' ').pop();
+    var avatarMB = medal ? 'margin-bottom:20px' : '';
+    var cls = pctCls(rep.pct);
+    podiumHtml +=
+      '<div class="lb-p-item ' + podiumClasses[pi] + '">' +
+        '<div class="lb-p-avatar" style="background:' + rep.color + ';' + avatarMB + '">' +
+          (isFirst ? '<span class="lb-p-crown">\uD83D\uDC51</span>' : '') +
+          (medal   ? '<span class="lb-p-medal">' + medal + '</span>' : '') +
+          lbInitials(rep.name) +
+          '<div class="lb-rank-badge" style="background:' + rankBg[rn-1] + ';color:#fff">' + rn + '</div>' +
+        '</div>' +
+        '<div class="lb-p-name">' + lastName + '</div>' +
+        '<div class="lb-p-count lb-count-pct ' + cls + '">' + pctLbl(rep.pct) + '</div>' +
+        '<div class="lb-p-block"></div>' +
+      '</div>';
+  });
+  podiumHtml += '</div>';
+
+  // Zoznam (4+)
+  var listHtml = '<div class="lb-list">';
+  ranking.forEach(function(rep, idx){
+    var rank = idx + 1;
+    if(rank <= 3) return;
+    var isMe = rep.username === myUsername;
+    var cls = pctCls(rep.pct);
+    listHtml +=
+      '<div class="lb-row' + (isMe ? ' me' : '') + '">' +
+        '<div class="lb-rank">' + rank + '</div>' +
+        '<div class="lb-avatar" style="background:' + rep.color + '">' + lbInitials(rep.name) + '</div>' +
+        '<div class="lb-info">' +
+          '<div class="lb-name">' + rep.name + (isMe ? '<span class="lb-me-tag">TY</span>' : '') + '</div>' +
+          '<div class="lb-region">' + rep.region + '</div>' +
+        '</div>' +
+        '<div class="lb-count lb-count-pct ' + cls + '">' + pctLbl(rep.pct) + '</div>' +
+      '</div>';
+  });
+  listHtml += '</div>';
+
+  var headerHtml = '<div class="lb-pl-q-header">Plnenie pl\u00e1nu \u00b7 ' + qLabel + '</div>';
+  body.innerHTML = headerHtml + podiumHtml + listHtml;
+
+  // Konfety (rovnako ako pri nav\u0161tev\u00e1ch)
+  if (LB_STATE.showConfetti) {
+    LB_STATE.showConfetti = false;
+    setTimeout(lbConfetti, 300);
+  }
+
+  // Anim\u00e1cia podium blokov (stupienky)
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      body.querySelectorAll('.lb-p-block').forEach(function(el, i){
+        setTimeout(function(){ el.classList.add('grown'); }, i * 80);
+      });
+    });
   });
 }
 
@@ -5519,6 +5719,17 @@ function lbGetBody(){
 function lbRender(){
   var body = lbGetBody();
   if(!body) return;
+  lbSyncTabs();
+
+  // Plnenie mode \u2014 zobraz plnenie % z posledn\u00e9ho ukon\u010den\u00e9ho kvart\u00e1lu
+  if(LB_STATE.mode === 'plnenie'){
+    var sub2 = document.getElementById('lb-hdr-sub');
+    var lastQ2 = lbLastCompletedQ();
+    if(sub2) sub2.textContent = 'Gedeon Richter Slovakia \u00b7 ' + (lastQ2 >= 1 ? 'Q' + lastQ2 + ' ' + (new Date()).getFullYear() : '');
+    lbRenderPlnenie(body);
+    return;
+  }
+
   var sub = document.getElementById('lb-hdr-sub');
   if(sub) sub.textContent = 'Gedeon Richter Slovakia \u00b7 ' + lbPeriodLabel();
 
@@ -6481,7 +6692,7 @@ function plnenieRenderDetail() {
   if (totalCardEl) {
     var moneyStr;
     if (noData) {
-      moneyStr = 'Plán ani predaje nie s\u00fa zadané';
+      moneyStr = 'Plán na tento kvartál ešte nie je zadaný';
     } else {
       moneyStr = (repPlan > 0 || repPredaje > 0)
         ? '<strong>' + plnenieFormatEUR(repPredaje) + '</strong>' + (repPlan > 0 ? ' z pl\u00e1nu ' + plnenieFormatEUR(repPlan) : '')
@@ -6852,7 +7063,7 @@ function repPlnenieRender() {
   if (totalCardEl) {
     var moneyStr;
     if (noData) {
-      moneyStr = 'Plán ani predaje nie s\u00fa zadané';
+      moneyStr = 'Plán na tento kvartál ešte nie je zadaný';
     } else {
       moneyStr = '<strong>' + plnenieFormatEUR(repPredaje) + '</strong>' + (repPlan > 0 ? ' z pl\u00e1nu ' + plnenieFormatEUR(repPlan) : '');
     }
