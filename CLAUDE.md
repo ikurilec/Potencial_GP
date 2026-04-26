@@ -40,7 +40,31 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.7.12** — obsahuje všetko z 2.7.11 plus: `touch-action:manipulation` na interaktívnych prvkoch. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.7.13** — obsahuje všetko z 2.7.12 plus: zaoblené rohy `.info-card`, oprava medzery pred formulárom, statický panel nav počas prechodov. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+
+### v2.7.13 — Statický panel nav + oprava rohov a medzery
+
+#### 1. Statický panel nav pri prechode medzi panelmi
+- **Problém:** pri prepínaní História/Rebríček/Plnenie sa animoval celý overlay vrátane nav tabov — nepôsobilo to dobre
+- **Riešenie:** panel nav vytiahnutý z každého overlaya do jedného zdieľaného fixného elementu `#shared-panel-nav`
+- `#shared-panel-nav`: `position:fixed; top:0; left:0; right:0; z-index:2100; background:#EAECF2; padding:20px 16px 12px`
+- Nav zostáva statický, animuje sa iba obsah pod ním
+- `_panelShow()` aktualizuje active stav tlačidiel pri každom prechode
+- `closeAllPanels()` skrýva shared nav
+- V manager móde: `display:none !important`
+- Inner containery dostali `padding-top:82px` (z pôvodných 24px) aby obsah začínal pod fixným navom:
+  - `.hist-inner`, `.lb-inner`, `.rep-pl-inner`: `padding:24px 16px 48px → 82px 16px 48px`
+
+#### 2. Zaoblené rohy `.info-card` (karta "Identifikácia návštevy")
+- **Problém:** `.info-card` malo `overflow:visible` → `border-radius` neorezával `.info-accent` pruh navrchu → ostré rohy
+- **Riešenie:** `overflow:visible → overflow:hidden` — border-radius teraz správne orezáva obsah
+- Vizuálne identické s ostatnými kartami (`.card` trieda, ktorá vždy mala `overflow:hidden`)
+
+#### 3. Oprava veľkej medzery pred "Identifikácia návštevy"
+- **Problém:** `margin-bottom:32px` na `.info-card` + `style="margin-top:20px"` inline na Kapitácia karte = 52px medzera
+- **Riešenie:** `.info-card margin-bottom:32px → 12px` + odstránený inline `style="margin-top:20px"` z Kapitácia karty
+
+---
 
 ### v2.7.12 — touch-action:manipulation
 
