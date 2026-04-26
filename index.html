@@ -71,6 +71,8 @@
   .update-bar-icon{display:inline-block;margin-right:6px;animation:updatePulse 1.6s ease-in-out infinite}
   @keyframes updateSlide{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
   @keyframes updatePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+  .sw-toast{position:fixed;bottom:calc(72px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%) translateY(10px);background:#0F172A;color:#fff;padding:10px 20px;border-radius:50px;font-size:13px;font-weight:600;opacity:0;transition:opacity .25s,transform .25s;z-index:9999;pointer-events:none;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.3)}
+  .sw-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   /* ═══ MANAGER MODE ═══ */
   .mgr-view{display:none}
   body.manager-mode .mgr-view{display:block}
@@ -874,6 +876,7 @@
 <div class="update-bar" id="update-bar" onclick="applyUpdate()" role="button" tabindex="0">
   <span class="update-bar-icon">&#127881;</span>Dostupn&#225; nov&#225; verzia apky &#8212; <strong>&#357;ukni pre aktualiz&#225;ciu</strong>
 </div>
+<div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
 
@@ -1526,7 +1529,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.7.2';
+var APP_VERSION = '2.7.3';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -1565,25 +1568,55 @@ window.addEventListener('error', function(ev){
   if(window.console && console.error) console.error('[global error]', ev.message, ev.filename+':'+ev.lineno);
 });
 
-// ── ODREGISTRUJ STARÉ SERVICE WORKERY ──
-// SW sme používali v minulých verziách, ale spôsoboval cache problémy.
-// Už ho nechceme — tichá deregistrácia ak tam ešte je.
+// ── SERVICE WORKER ──
+var _swUpdatePending = false;
+
+function _isAppBusy(){
+  return !!document.querySelector(
+    '.send-popup.show,.confirm-overlay.show,.wn-overlay.show,' +
+    '.detail-overlay.show,.hist-overlay.show,.restore-overlay.show'
+  );
+}
+
+function _applySwUpdate(){
+  if(_isAppBusy()){
+    _swUpdatePending = true;
+  } else {
+    _swUpdatePending = false;
+    showSwToast('Aktualizujem appku…');
+    setTimeout(function(){ location.reload(); }, 900);
+  }
+}
+
 if('serviceWorker' in navigator){
   try {
-    navigator.serviceWorker.getRegistrations().then(function(regs){
-      regs.forEach(function(r){ r.unregister(); });
-    }).catch(function(){});
-    if('caches' in window){
-      caches.keys().then(function(names){
-        names.forEach(function(n){ caches.delete(n); });
-      }).catch(function(){});
-    }
+    navigator.serviceWorker.register('./sw.js').catch(function(){});
+    var _swHadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      if(!_swHadController){ _swHadController = true; return; }
+      _applySwUpdate();
+    });
   } catch(e){}
 }
 
-// ── UPDATE BANNER ──
+// Ak update čaká a reprezentant medzitým zatvoril formulár → reloadni
+setInterval(function(){
+  if(_swUpdatePending && !_isAppBusy()) _applySwUpdate();
+}, 2000);
+
+// ── SW TOAST ──
+function showSwToast(msg, ms){
+  var el = document.getElementById('sw-toast');
+  if(!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(function(){ el.classList.remove('show'); }, ms || 3500);
+}
+
+// ── UPDATE ──
 // Fetchne version.json zo servera a porovná s APP_VERSION v tomto HTML.
-// Ak server má novšiu, zobrazí zelený banner hore.
+// Ak server má novšiu a app je idle → auto-reload s toastom.
+// Ak je otvorený overlay → fallback na banner (reprezentant musí ťuknúť).
 function checkForUpdate(){
   if(!navigator.onLine) return;
   try {
@@ -1597,7 +1630,7 @@ function checkForUpdate(){
           var ack = '';
           try { ack = localStorage.getItem('potencial_vl_ack_ver') || ''; } catch(e){}
           if(srv !== APP_VERSION && srv !== ack){
-            showUpdateBanner(srv);
+            _applySwUpdate();
           }
         }
       })
@@ -5537,6 +5570,7 @@ function plnenieCurrentQ() {
   var m = new Date().getMonth() + 1;
   return Math.ceil(m / 3);
 }
+
 
 // Farebné prahy v zozname / Slovensko / regions:
 // ≥ 95% zelená (splnený, bonus), < 95% červená. Binary model — admin vidí bonus áno/nie.
