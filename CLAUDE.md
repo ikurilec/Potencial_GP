@@ -40,14 +40,48 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.7.6** — obsahuje všetko z 2.7.5 plus: slide-in animácie overlayov a subtabov manažéra, fix rebríčka (default period 'all'). **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.7.7** — obsahuje všetko z 2.7.6 plus: komplexné slide animácie navigácie (overlay, detail, Q taby), fix intermittentného "Žiadne dáta" v rebríčku. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+
+### v2.7.7 — Animácie navigácie + fix rebríčka (intermittent)
+
+#### Slide animácie overlayov v rep móde (História / Rebríček / Plnenie)
+- **Prvé otvorenie** (žiadny overlay nie je otvorený): panel sa vysunie zo spodu (`panel-anim-up` = `translateY(100%)→0`)
+- **Prepínanie medzi panelmi**: directional slide podľa logického poradia `{ 'hist-overlay':0, 'lb-overlay':1, 'rep-plnenie-overlay':2 }` — klik doprava vsunie nový panel sprava, klik doľava zľava
+- **`_panelShow(newId)`** — centrálna funkcia; sleduje `_panelCurrent`, počíta smer animácie, zobrazuje nový panel s `z-index:1600` nad starým (ten zmizne až po dokončení animácie) → eliminuje flash prázdneho pozadia
+- **CSS**: `@keyframes panelSlideUp`, `.panel-anim-up` (0.32s), `.panel-anim-l/.panel-anim-r` (0.22s, reuse `mgrSlideL/R` keyframy)
+
+#### Login animácia — slide up z dola
+- Po úspešnom prihlásení (akýkoľvek mód — reprezentant aj manažér) sa `.app` element vysunutie zdola: `translateY(100vh)→0` za 0.38s
+- **`@keyframes appEnter`** + trieda `.app-enter` (s `fill-mode:both`)
+- Implementácia v `loginSuccess()`: pred skrytím login screenu sa pridá `.app-enter`, po 500ms sa trieda odstráni
+
+#### Q tab animácie v Plnení (manažér aj reprezentant)
+- Prepínanie Q1/Q2/Q3/Q4 tabov animuje obsah pod tabmi (nie taby samotné) directional slideom
+- **`_animPlQ(elId, dir)`** — helper; reštartuje animáciu cez `void el.offsetWidth` reflow
+- **Manažér Plnenie** (hlavný zoznam): obsah obálený do `<div id="pl-q-content">`, animuje `plnenieSwitchQ()`
+- **Rep Plnenie overlay**: obsah obálený do `<div id="rep-pl-q-content">`, animuje `repPlnenieSwitchQ()`
+
+#### Manažér Plnenie — prechod na detail reprezentanta
+- **Klik na reprezentanta** (`plnenieOpenDetail`): detail panel (`#mgr-plnenie-detail`) vsunie sa sprava (`panel-anim-r`)
+- **Späť na zoznam** (`plnenieCloseDetail`): detail panel vysunie sa doprava (`pl-detail-exit-r`), po 230ms sa skryje; zoznam sa objaví bez animácie pod ním
+- **CSS**: `@keyframes plDetailExitR{from{translateX(0);opacity:1}to{translateX(28px);opacity:0}}`, `.pl-detail-exit-r`
+
+#### Q tab animácie v detaile reprezentanta (manažér)
+- Obsah pod Q tabmi v detaile (`#pl-detail-q-content`) animuje directional slide pri prepínaní Q — rovnako ako v hlavnom zozname
+- **Len produkt sekcia** (`#pl-detail-prods-lbl` + `#pl-detail-prods` + `#pl-detail-trend`) je v wrapperi — tmavá súhrnná karta (`#pl-detail-total-card`) ostáva statická
+- `plnenieSwitchQ()` detekuje `PL_STATE.detailRep` a animuje buď `pl-q-content` (zoznam) alebo `pl-detail-q-content` (detail)
+
+#### Fix rebríček — intermittent "Žiadne dáta" (race condition)
+- **Root cause**: `lbLoadData()` bežal s 2-sekundovým delay po logine; ak `getAllHistory` fetch zlyhal a fallback individuálne requesty tiež vrátili prázdne polia, `LB_STATE.data` bol nastavený na `{rep1:[], rep2:[], ...}` — non-null ale bez dát → `lbRender()` zobrazil "Žiadne dáta" a pri ďalšom otvorení rebríčka sa cachované prázdne dáta renderovali znovu
+- **`lbDataHasVisits()`** — nová helper funkcia; vracia `true` ak aspoň jeden rep v `LB_ALL_REPS` má neprázdne pole v `LB_STATE.data`
+- **`lbSyncTabs()`** — nová helper funkcia; syncuje `.active` triedu na `.lb-tab` tlačidlách podľa aktuálneho `LB_STATE.period` (oproti predchádzajúcemu stavu keď sa tabs desynchronizovali)
+- **Logika pri otvorení rebríčka** (oboje `mgrSwitchSubtab('leaderboard')` aj `openLeaderboard()`): ak `LB_STATE.data` existuje ale `lbDataHasVisits()` vracia `false` → `lbLoadData(true)` (force reload) namiesto renderingu prázdnych dát
 
 ### v2.7.6 — Slide-in animácie + fix rebríčka
 
 #### Slide-in animácie pri otváraní overlayov
-- `.hist-overlay`, `.lb-overlay`, `.rep-plnenie-overlay` — všetky dostali `animation:slideRight .22s cubic-bezier(.16,1,.3,1) both` pri triede `.show`
-- `@keyframes slideRight` — vsúvanie zľava doprava (`translateX(100%)` → `translateX(0)`)
-- Karta lekára (`detail-overlay.show .info-card`) — slideUp animácia (už existovala pre confirm-box)
+- `.hist-overlay`, `.lb-overlay`, `.rep-plnenie-overlay` — pôvodná CSS animácia `slideRight` nahradená JS-riadenou `_panelShow()` architektúrou (pozri v2.7.7)
+- `@keyframes slideRight` ostáva v kóde (referencovaný fallback)
 
 #### Directional slide pri prepínaní manažérskych subtabov
 - Pri prepínaní Plnenie ↔ Návštevy ↔ Rebríček sa aktívny panel vsúva z príslušnej strany
