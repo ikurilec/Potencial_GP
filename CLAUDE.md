@@ -40,7 +40,17 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.7.10** — obsahuje všetko z 2.7.9 plus: UI/UX design audit — 5 vizuálnych vylepšení. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.7.11** — obsahuje všetko z 2.7.10 plus: fix X tlačidla v panel-nav. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+
+### v2.7.11 — Fix X tlačidla v panel-nav
+
+`.panel-nav-close` — zatváracie tlačidlo Historia/Rebríček/Plnenie:
+- **Predtým**: `background:none`, `color:#94A3B8` — X sa strácalo v rohu, nebolo viditeľné
+- **Teraz**: `background:#E2E8F0`, `color:#475569`, `font-weight:700` — viditeľné sivé pozadie, tmavší X symbol
+- Active stav: `#CBD5E1` + `#1E293B` (stmavne pri tapnutí)
+- Vizuálne odlíšené od tabov (taby majú `#F1F5F9`, X má `#E2E8F0`)
+
+---
 
 ### v2.7.10 — UI/UX design audit (Refactoring UI)
 
