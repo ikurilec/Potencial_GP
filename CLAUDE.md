@@ -40,7 +40,17 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.7.11** — obsahuje všetko z 2.7.10 plus: fix X tlačidla v panel-nav. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.7.12** — obsahuje všetko z 2.7.11 plus: `touch-action:manipulation` na interaktívnych prvkoch. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+
+### v2.7.12 — touch-action:manipulation
+
+Odstránenie 300ms tap delay na mobile — štandardný fix pre PWA:
+- Pridaný CSS rule: `button,a,input,select,textarea,[role="button"]{touch-action:manipulation}`
+- Prehliadač už nečaká 300ms po každom ťuknutí (čakanie na double-tap zoom)
+- Appka reaguje okamžite — pocit natívnej aplikácie
+- Scrollovanie, pull-to-refresh ani žiadne iné gesta nie sú ovplyvnené
+
+---
 
 ### v2.7.11 — Fix X tlačidla v panel-nav
 
