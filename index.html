@@ -1533,7 +1533,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.7.4';
+var APP_VERSION = '2.7.5';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5055,6 +5055,13 @@ function wnClose(){
 
 var LB_STATE = { period: 'month', data: null, loading: false, showConfetti: false };
 
+// Deterministický hash z reťazca — zaručuje vždy rovnakú farbu pre toho istého reprezentanta
+function strHash(s) {
+  var h = 0;
+  for (var i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
 // Farebná paleta pre auto-pridelenie farieb v rebríčku
 var LB_COLOR_PALETTE = [
   'linear-gradient(135deg,#1E40AF,#3B82F6)',
@@ -5106,7 +5113,7 @@ function buildRepData(reps) {
   USERS_LOCAL = {};
 
   all.forEach(function(r, idx){
-    var color = LB_COLOR_PALETTE[idx % LB_COLOR_PALETTE.length];
+    var color = LB_COLOR_PALETTE[strHash(r.login) % LB_COLOR_PALETTE.length];
     MGR_REP_NAMES[r.login] = r.meno;
     LB_REP_INFO[r.login]   = { name: r.meno, region: r.region, color: color };
     USERS_LOCAL[r.login]   = { region: r.region };
