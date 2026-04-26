@@ -40,7 +40,28 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.7.8** — obsahuje všetko z 2.7.7 plus: exit/enter animácie pre Trhový podiel, Tablety/Sáčky subtaby, manažér detail reprezentanta, karta lekára. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.7.9** — obsahuje všetko z 2.7.8 plus: prevencia duplicitných lekárov (história sa načíta pri prihlásení). **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+
+### v2.7.9 — Prevencia duplicitných lekárov
+
+#### Problém
+`dupCheckLekar()` a `_dupWarningActive` (blokovanie odoslania) existovali, ale `_histAllItems` sa naplnili **až keď reprezentant otvoril História panel**. Ak reprezentant nikdy históriu neotvoril (nový deň, prvé spustenie), duplicitná kontrola nemala žiadne dáta → lekár mohol byť zadaný znova.
+
+#### Riešenie
+Nová funkcia `loadHistoryItems(username)` — extrakcia fetch+parse logiky z `openHistory()` do samostatného Promise-returning helpera:
+- Fetchne `action=getHistory` zo Sheets, sparsuje záznamy (rovnaká normalizácia dátumov/časov ako predtým)
+- Uloží do `_histAllItems`, aktualizuje badge
+- Pri chybe: fallback na `localStorage` (zachovaná pôvodná logika)
+
+`refreshBadgeFromSheets(username)` teraz deleguje na `loadHistoryItems()` — funkcia sa volá pri každom prihlásení (`loginSuccess()` aj `initLogin()`, non-manager cesta), čo znamená že `_histAllItems` sú vždy naplnené skôr, ako reprezentant otvorí formulár.
+
+`openHistory()` zjednodušené — volá `loadHistoryItems().then(renderHistItems)`.
+
+#### Zmena správy pri duplikáte
+- **Predtým**: "bol už zadaný dňa X — každý lekár sa zadáva iba raz za návštevu" (implicitne same-day)
+- **Teraz**: "je už v tvojej databáze — zadaný dňa X. Každý lekár sa zadáva iba raz." (permanentný per-rep blok)
+
+---
 
 ### v2.7.8 — Dokončenie exit animácií
 

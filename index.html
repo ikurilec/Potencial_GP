@@ -1553,7 +1553,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.7.8';
+var APP_VERSION = '2.7.9';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -2714,7 +2714,7 @@ function dupCheckLekar(el){
       el.parentNode.parentNode.appendChild(warnEl);
     }
     warnEl.style.display = 'block';
-    warnEl.innerHTML = '⚠️ <strong>' + mgrEscape(found.lekar || val) + '</strong> bol už zadaný dňa <strong>' + mgrEscape(found.dateStr || '—') + '</strong>' + (found.cas ? ' o ' + mgrEscape(found.cas) : '') + '. Záznam bol zablokovaný — každý lekár sa zadáva iba raz za návštevu.';
+    warnEl.innerHTML = '⚠️ <strong>' + mgrEscape(found.lekar || val) + '</strong> je už v tvojej databáze — zadaný dňa <strong>' + mgrEscape(found.dateStr || '—') + '</strong>' + (found.cas ? ' o ' + mgrEscape(found.cas) : '') + '. Každý lekár sa zadáva iba raz.';
   } else {
     _dupWarningActive = false;
     if(warnEl) warnEl.style.display = 'none';
@@ -2884,16 +2884,65 @@ function initCounter() {
   updateBadge(getCounter(), false);
 }
 
-function refreshBadgeFromSheets(username) {
-  if(!username) return;
-  fetch(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username)))
+// Načíta celú históriu zo Sheets (alebo localStorage fallback), uloží do _histAllItems a aktualizuje badge.
+// Volá sa pri prihlásení aj pri otvorení histórie — zabezpečuje že duplikátna kontrola má vždy dáta.
+function loadHistoryItems(username) {
+  if(!username) return Promise.resolve([]);
+  return fetch(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username)))
     .then(function(r){ return r.json(); })
     .then(function(rows) {
-      if(Array.isArray(rows)) {
-        updateBadge(rows.length, false);
-      }
+      _histAllItems = rows.map(function(item) {
+        var rawDate = item.datum || '';
+        var dateStr = rawDate;
+        try {
+          var d = new Date(rawDate);
+          if(!isNaN(d.getTime())) {
+            dateStr = d.getDate() + '.' + (d.getMonth()+1) + '.' + d.getFullYear();
+          }
+        } catch(e) {}
+        var rawCas = item.cas || '';
+        var casStr = rawCas;
+        try {
+          if(typeof rawCas === 'object' || (typeof rawCas === 'string' && rawCas.length > 5 && rawCas.indexOf('T') !== -1)) {
+            var dc = new Date(rawCas);
+            if(!isNaN(dc.getTime())) {
+              casStr = ('0'+dc.getHours()).slice(-2) + ':' + ('0'+dc.getMinutes()).slice(-2);
+            }
+          }
+        } catch(e) {}
+        var dParts = dateStr.split('.');
+        var dk = (dParts.length === 3) ? dParts[2]+'-'+dParts[1]+'-'+dParts[0] : dateStr;
+        return Object.assign({}, item, {
+          dateKey: dk,
+          dateStr: dateStr,
+          cas: casStr,
+          lekar: item.lekar,
+          okres: item.okres,
+          scenar: item.scenar,
+          poznamka: item.poznamka || ''
+        });
+      });
+      updateBadge(_histAllItems.length, false);
+      return _histAllItems;
     })
-    .catch(function(){});
+    .catch(function() {
+      try {
+        var data = JSON.parse(localStorage.getItem(HISTORY_KEY) || '{}');
+        _histAllItems = [];
+        Object.keys(data).forEach(function(dk) {
+          var d = new Date(dk);
+          var dateStr = d.getDate() + '.' + (d.getMonth()+1) + '.' + d.getFullYear();
+          (data[dk] || []).forEach(function(item) {
+            _histAllItems.push(Object.assign({}, item, {dateKey: dk, dateStr: dateStr}));
+          });
+        });
+      } catch(e) {}
+      return _histAllItems;
+    });
+}
+
+function refreshBadgeFromSheets(username) {
+  loadHistoryItems(username);
 }
 
 
@@ -3237,64 +3286,9 @@ function openHistory() {
   var session = getSession();
   var username = session ? session.username : '';
 
-  fetch(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username)))
-    .then(function(r){ return r.json(); })
-    .then(function(rows) {
-      _histAllItems = rows.map(function(item) {
-        // Parsuj datum - moze pricat ako ISO string zo Sheets
-        var rawDate = item.datum || '';
-        var dateStr = rawDate;
-        try {
-          var d = new Date(rawDate);
-          if(!isNaN(d.getTime())) {
-            dateStr = d.getDate() + '.' + (d.getMonth()+1) + '.' + d.getFullYear();
-          }
-        } catch(e) {}
-        // Parsuj cas - moze pricat ako ISO string
-        var rawCas = item.cas || '';
-        var casStr = rawCas;
-        try {
-          // Sheets moze vrátiť čas ako Date objekt alebo ISO string
-          if(typeof rawCas === 'object' || (typeof rawCas === 'string' && rawCas.length > 5 && rawCas.indexOf('T') !== -1)) {
-            var dc = new Date(rawCas);
-            if(!isNaN(dc.getTime())) {
-              casStr = ('0'+dc.getHours()).slice(-2) + ':' + ('0'+dc.getMinutes()).slice(-2);
-            }
-          }
-        } catch(e) {}
-        // Normalize dateKey to YYYY-M-D for proper sorting
-        var dParts = dateStr.split('.');
-        var dk = (dParts.length === 3) ? dParts[2]+'-'+dParts[1]+'-'+dParts[0] : dateStr;
-        return Object.assign({}, item, {
-          dateKey: dk,
-          dateStr: dateStr,
-          cas: casStr,
-          lekar: item.lekar,
-          okres: item.okres,
-          scenar: item.scenar,
-          poznamka: item.poznamka || ''
-        });
-      });
-      updateBadge(_histAllItems.length, false);
-      renderHistItems(_histAllItems);
-    })
-    .catch(function() {
-      // Fallback na localStorage
-      try {
-        var data = JSON.parse(localStorage.getItem(HISTORY_KEY) || '{}');
-        _histAllItems = [];
-        Object.keys(data).forEach(function(dk) {
-          var d = new Date(dk);
-          var dateStr = d.getDate() + '.' + (d.getMonth()+1) + '.' + d.getFullYear();
-          (data[dk] || []).forEach(function(item) {
-            _histAllItems.push(Object.assign({}, item, {dateKey: dk, dateStr: dateStr}));
-          });
-        });
-        renderHistItems(_histAllItems);
-      } catch(e) {
-        body.innerHTML = mkEmpty('warning', 'Chyba načítania', 'Skontroluj pripojenie a skús znova.');
-      }
-    });
+  loadHistoryItems(username).then(function() {
+    renderHistItems(_histAllItems);
+  });
 }
 
 function closeHistory() {
