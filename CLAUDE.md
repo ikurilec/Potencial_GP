@@ -40,7 +40,26 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.7.2** — obsahuje všetko z 2.7.1 plus: UX vylepšenia zoznamu reprezentantov v plnení. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.7.3** — obsahuje všetko z 2.7.2 plus: automatická aktualizácia appky cez Service Worker bez nutnosti kliknutia. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+
+### v2.7.3 — Automatická aktualizácia cez Service Worker
+
+#### Čo sa zmenilo
+- SW bol predtým deaktivovaný (unregister pri každom načítaní) — teraz je znova aktívny (`sw.js` sa registruje)
+- Stratégia SW: network-first pre HTML (vždy sviežie keď online), cache-first pre ostatné assety (rýchly offline štart)
+- Nový malý tmavý toast (`#sw-toast`) dole na obrazovke nahrádza veľký zelený banner pre tichý update
+
+#### Logika auto-updatu
+- Keď nový SW prevezme kontrolu (`controllerchange`) alebo `version.json` detekuje novú verziu:
+  - **App idle** (žiaden overlay/formulár otvorený) → okamžite toast *"Aktualizujem appku…"* + `location.reload()` po 900ms
+  - **Formulár otvorený** → nastaví sa flag `_swUpdatePending = true`, reprezentant nič nevidí, dopíše záznam
+  - Po zatvorení formulára interval (každé 2s) zachytí flag → toast + reload
+
+#### Zelený banner
+Zostáva v kóde ako fallback — zobrazí sa ak by `_applySwUpdate` z nejakého dôvodu nezafungoval.
+
+#### Dôležité pre testovanie
+V Chrome DevTools → Application → Service Workers možno manuálne triggernúť update: klik "Update" → zobrazí sa waiting worker → klik "skipWaiting" → mal by sa objaviť toast a auto-reload.
 
 ### v2.7.2 — UX zoznam reprezentantov v plnení
 
