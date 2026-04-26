@@ -40,7 +40,28 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.7.5** — obsahuje všetko z 2.7.4 plus: konzistentné farby avatárov. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.7.6** — obsahuje všetko z 2.7.5 plus: slide-in animácie overlayov a subtabov manažéra, fix rebríčka (default period 'all'). **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+
+### v2.7.6 — Slide-in animácie + fix rebríčka
+
+#### Slide-in animácie pri otváraní overlayov
+- `.hist-overlay`, `.lb-overlay`, `.rep-plnenie-overlay` — všetky dostali `animation:slideRight .22s cubic-bezier(.16,1,.3,1) both` pri triede `.show`
+- `@keyframes slideRight` — vsúvanie zľava doprava (`translateX(100%)` → `translateX(0)`)
+- Karta lekára (`detail-overlay.show .info-card`) — slideUp animácia (už existovala pre confirm-box)
+
+#### Directional slide pri prepínaní manažérskych subtabov
+- Pri prepínaní Plnenie ↔ Návštevy ↔ Rebríček sa aktívny panel vsúva z príslušnej strany
+- `MGR_TAB_ORDER = { plnenie:0, visits:1, leaderboard:2 }` — poradie určuje smer
+- Prepínanie doprava (Plnenie → Návštevy → Rebríček): animácia `mgrSlideR` (vpravo)
+- Prepínanie doľava: animácia `mgrSlideL` (vľavo)
+- `mgrAnimateSubtab(tab, dir)` — pridá/odstráni CSS triedu, `void el.offsetWidth` reštartuje animáciu
+- CSS: `.mgr-anim-l{animation:mgrSlideL .2s ...}`, `.mgr-anim-r{animation:mgrSlideR .2s ...}`
+
+#### Fix rebríčka — default period 'all' namiesto 'month'
+- `LB_STATE.period` zmenené z `'month'` na `'all'` — rebríček vždy ukazuje celkové dáta pri prvom otvorení
+- Predtým: ak v aktuálnom mesiaci neboli záznamy, rebríček ukázal "Žiadne dáta" napriek tomu, že historické dáta existujú
+- Aktívne tlačidlo v `.lb-tabs` zmenené z "Mesiac" na "Celkové" (v oboch výskytoch — manager aj rep overlay)
+- Manažér/reprezentant môže prepnúť na "Mesiac" alebo "Kvartál" podľa potreby
 
 ### v2.7.5 — Konzistentné farby avatárov
 

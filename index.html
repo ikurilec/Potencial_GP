@@ -135,7 +135,7 @@
   .wn-item-title{font-size:13.5px;font-weight:700;color:#0F172A;margin-bottom:2px;font-family:'Outfit',sans-serif}
   .wn-item-desc{font-size:12px;color:#64748B;line-height:1.4}
   .wn-btn{width:100%;background:linear-gradient(135deg,#1E40AF,#2563EB);color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;font-family:'Outfit',sans-serif;cursor:pointer;margin-top:16px;letter-spacing:.01em}
-  .lb-overlay.show{display:block}
+  .lb-overlay.show{display:block;animation:slideRight .22s cubic-bezier(.16,1,.3,1) both}
   .lb-box{background:#fff;border-radius:16px;overflow:hidden;}
   .lb-hdr{padding:0 0 14px;text-align:center}
   .lb-hdr-title{font-size:18px;font-weight:800;color:#0F172A;font-family:'Outfit',sans-serif}
@@ -319,7 +319,7 @@
   .hdr-hist-btn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:#fff;font-size:12px;font-weight:600;font-family:inherit;padding:6px 12px;border-radius:20px;cursor:pointer;transition:background .2s;white-space:nowrap}
   .hdr-hist-btn:hover{background:rgba(255,255,255,0.25)}
   .hist-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#EAECF2;z-index:1500;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
-  .hist-overlay.show{display:block}
+  .hist-overlay.show{display:block;animation:slideRight .22s cubic-bezier(.16,1,.3,1) both}
   .hist-inner{max-width:660px;margin:0 auto;padding:24px 16px 48px}
   .hist-header{margin-bottom:12px}
   .hist-title{font-size:18px;font-weight:800;color:#0F172A;font-family:'Outfit',sans-serif}
@@ -414,9 +414,15 @@
   .confirm-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}
   .detail-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}
   .detail-overlay.show{display:flex}
+  .detail-overlay.show .info-card{animation:slideUp .22s cubic-bezier(.16,1,.3,1) both}
   .confirm-overlay.show{display:flex}
   .confirm-box{background:#fff;border-radius:16px;padding:0 0 22px;max-width:390px;width:calc(100% - 32px);max-height:82vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);text-align:center;animation:slideUp .3s ease;position:relative;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
   @keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes slideRight{from{transform:translateX(100%)}to{transform:translateX(0)}}
+  @keyframes mgrSlideL{from{transform:translateX(-28px);opacity:0}to{transform:translateX(0);opacity:1}}
+  @keyframes mgrSlideR{from{transform:translateX(28px);opacity:0}to{transform:translateX(0);opacity:1}}
+  .mgr-anim-l{animation:mgrSlideL .2s cubic-bezier(.16,1,.3,1) both}
+  .mgr-anim-r{animation:mgrSlideR .2s cubic-bezier(.16,1,.3,1) both}
   @keyframes badgeBounce{0%{transform:scale(1)}20%{transform:scale(1.25)}45%{transform:scale(0.92)}65%{transform:scale(1.15)}80%{transform:scale(0.97)}100%{transform:scale(1)}}
   .hdr-badge-wrap.bump{animation:badgeBounce .6s cubic-bezier(.34,1.56,.64,1) both}
   .confirm-result{padding:12px 20px 10px;margin-bottom:10px}
@@ -751,7 +757,7 @@
   body.manager-mode .rep-nav{display:none !important}
   /* ═══ REP PLNENIE OVERLAY ═══ */
   .rep-plnenie-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:2000;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
-  .rep-plnenie-overlay.show{display:block}
+  .rep-plnenie-overlay.show{display:block;animation:slideRight .22s cubic-bezier(.16,1,.3,1) both}
 
   /* ── PHARMA MS OVERLAY — trhový podiel po kliknutí na produkt ── */
   .pharma-ms-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:3000;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
@@ -1045,9 +1051,9 @@
 
   <div class="mgr-leaderboard-view" id="mgr-leaderboard-view">
     <div class="lb-tabs">
-      <button class="lb-tab active" onclick="lbSetPeriod('month',this)">Mesiac</button>
+      <button class="lb-tab" onclick="lbSetPeriod('month',this)">Mesiac</button>
       <button class="lb-tab" onclick="lbSetPeriod('quarter',this)">Kvartál</button>
-      <button class="lb-tab" onclick="lbSetPeriod('all',this)">Celkové</button>
+      <button class="lb-tab active" onclick="lbSetPeriod('all',this)">Celkové</button>
     </div>
     <div class="lb-body" id="mgr-lb-body">
       <div class="skel-wrap" style="padding:12px 12px 0"><div style="display:flex;align-items:flex-end;justify-content:center;gap:8px;margin-bottom:20px"><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div class="skel skel-avatar"></div><div class="skel" style="height:55px;width:100%;border-radius:8px 8px 0 0"></div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div class="skel skel-avatar"></div><div class="skel" style="height:80px;width:100%;border-radius:8px 8px 0 0"></div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div class="skel skel-avatar"></div><div class="skel" style="height:40px;width:100%;border-radius:8px 8px 0 0"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:60%"></div><div class="skel skel-line" style="width:35%"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:55%"></div><div class="skel skel-line" style="width:40%"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:65%"></div><div class="skel skel-line" style="width:30%"></div></div></div></div>
@@ -1263,9 +1269,9 @@
       </div>
       <div class="lb-box">
         <div class="lb-tabs">
-          <button class="lb-tab active" onclick="lbSetPeriod('month',this)">Mesiac</button>
+          <button class="lb-tab" onclick="lbSetPeriod('month',this)">Mesiac</button>
           <button class="lb-tab" onclick="lbSetPeriod('quarter',this)">Kvartál</button>
-          <button class="lb-tab" onclick="lbSetPeriod('all',this)">Celkové</button>
+          <button class="lb-tab active" onclick="lbSetPeriod('all',this)">Celkové</button>
         </div>
         <div class="lb-body" id="lb-body">
           <div class="skel-wrap" style="padding:12px 12px 0"><div style="display:flex;align-items:flex-end;justify-content:center;gap:8px;margin-bottom:20px"><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div class="skel skel-avatar"></div><div class="skel" style="height:55px;width:100%;border-radius:8px 8px 0 0"></div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div class="skel skel-avatar"></div><div class="skel" style="height:80px;width:100%;border-radius:8px 8px 0 0"></div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div class="skel skel-avatar"></div><div class="skel" style="height:40px;width:100%;border-radius:8px 8px 0 0"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:60%"></div><div class="skel skel-line" style="width:35%"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:55%"></div><div class="skel skel-line" style="width:40%"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:65%"></div><div class="skel skel-line" style="width:30%"></div></div></div></div>
@@ -1533,7 +1539,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.7.5';
+var APP_VERSION = '2.7.6';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5053,7 +5059,7 @@ function wnClose(){
   if(overlay) overlay.classList.remove('show');
 }
 
-var LB_STATE = { period: 'month', data: null, loading: false, showConfetti: false };
+var LB_STATE = { period: 'all', data: null, loading: false, showConfetti: false };
 
 // Deterministický hash z reťazca — zaručuje vždy rovnakú farbu pre toho istého reprezentanta
 function strHash(s) {
@@ -5624,8 +5630,27 @@ function plnenieQLabel(q, year) {
   return 'Q' + q + ' ' + year;
 }
 
+var MGR_TAB_ORDER = { plnenie: 0, visits: 1, leaderboard: 2 };
+
+function mgrAnimateSubtab(tab, dir) {
+  var elMap = {
+    plnenie:     document.querySelector('.mgr-plnenie-view'),
+    leaderboard: document.querySelector('.mgr-leaderboard-view'),
+    visits:      document.querySelector('.mgr-list-wrap')
+  };
+  var el = elMap[tab];
+  if (!el) return;
+  var cls = dir === 'r' ? 'mgr-anim-r' : 'mgr-anim-l';
+  el.classList.remove('mgr-anim-l', 'mgr-anim-r');
+  void el.offsetWidth;
+  el.classList.add(cls);
+  setTimeout(function(){ el.classList.remove('mgr-anim-l', 'mgr-anim-r'); }, 250);
+}
+
 // Sub-tab switch medzi "Návštevy" a "Plnenie"
 function mgrSwitchSubtab(tab) {
+  var prevTab = MGR_STATE.subtab;
+  var dir = (MGR_TAB_ORDER[tab] || 0) > (MGR_TAB_ORDER[prevTab] || 0) ? 'r' : 'l';
   MGR_STATE.subtab = tab;
   document.body.classList.toggle('mgr-subtab-plnenie', tab === 'plnenie');
   document.body.classList.toggle('mgr-subtab-leaderboard', tab === 'leaderboard');
@@ -5633,6 +5658,7 @@ function mgrSwitchSubtab(tab) {
     btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
   });
   window.scrollTo(0, 0);
+  if (prevTab !== tab) mgrAnimateSubtab(tab, dir);
   if (tab === 'plnenie') {
     if (!PL_STATE.loaded && !PL_STATE.loading) plnenieLoadAllQuarters();
     preloadAllPharmaData();
