@@ -1619,6 +1619,9 @@ document.addEventListener('DOMContentLoaded', function(){
   try { mgrDedupUnique(); } catch(e){}
   setTimeout(function(){ try { mgrDedupUnique(); } catch(e){} }, 500);
   setTimeout(function(){ try { mgrDedupUnique(); } catch(e){} }, 1500);
+  // Verzia na login obrazovke — automaticky z APP_VERSION
+  var vEl = document.getElementById('login-version-lbl');
+  if (vEl) vEl.textContent = 'ver. ' + APP_VERSION + ' · 2026';
 });
 
 // ── GLOBÁLNY ERROR HANDLER (iba log, neruší užívateľa) ──
@@ -8068,7 +8071,7 @@ function preloadAllPharmaData() {
   <div class="login-footer">
     <div class="login-footer-logo">GEDEON RICHTER</div>
     <div class="login-footer-text">Interný nástroj · len pre medicínskych reprezentantov</div>
-    <div class="login-version">ver. 2.6.1 · 2026</div>
+    <div class="login-version" id="login-version-lbl">ver. 2.7.24 · 2026</div>
   </div>
 
 </div>
