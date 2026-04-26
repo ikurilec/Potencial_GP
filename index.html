@@ -1582,7 +1582,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.7.14';
+var APP_VERSION = '2.7.15';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -4004,14 +4004,15 @@ function loginSuccess(username, name, role, region) {
   }
   initTutorial();
   refreshBadgeFromSheets(username);
-  setTimeout(function(){ lbLoadData(); }, 2000);
+  // Preload rebríček aj plnenie paralelne — oba štartujú po 2s
   setTimeout(function(){
+    lbLoadData();
     if (!REP_PL_STATE.loading && !REP_PL_STATE.loaded) {
       REP_PL_STATE.year = (new Date()).getFullYear();
       REP_PL_STATE.q = plnenieCurrentQ();
       repPlnenieLoad();
     }
-  }, 3500);
+  }, 2000);
   // Pharma preload na pozadí — hneď po prihlásení
   setTimeout(function(){
     REP_PL_STATE.year = REP_PL_STATE.year || (new Date()).getFullYear();
@@ -4186,14 +4187,15 @@ function initLogin() {
     }
     setTimeout(function(){ updateHdrForUser(session); }, 300);
     refreshBadgeFromSheets(session.username);
-    setTimeout(function(){ lbLoadData(); }, 2000);
+    // Preload rebríček aj plnenie paralelne — oba štartujú po 2s
     setTimeout(function(){
+      lbLoadData();
       if (!REP_PL_STATE.loading && !REP_PL_STATE.loaded) {
         REP_PL_STATE.year = (new Date()).getFullYear();
         REP_PL_STATE.q = plnenieCurrentQ();
         repPlnenieLoad();
       }
-    }, 3500);
+    }, 2000);
     setTimeout(function(){
       REP_PL_STATE.year = REP_PL_STATE.year || (new Date()).getFullYear();
       REP_PL_STATE.q    = REP_PL_STATE.q    || plnenieCurrentQ();
