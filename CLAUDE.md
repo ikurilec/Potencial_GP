@@ -40,7 +40,40 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.7.9** — obsahuje všetko z 2.7.8 plus: prevencia duplicitných lekárov (história sa načíta pri prihlásení). **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.7.10** — obsahuje všetko z 2.7.9 plus: UI/UX design audit — 5 vizuálnych vylepšení. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+
+### v2.7.10 — UI/UX design audit (Refactoring UI)
+
+Design audit podľa Refactoring UI frameworku — 5 implementovaných vylepšení:
+
+#### 1. Progress bar — viditeľný track
+- `.progress-track`: `height:8px → 10px`, `background:#E2E8F0 → #CBD5E1`
+- Track je teraz viditeľný aj pri 0% — reprezentant vidí kde bar porastie
+- `border-radius:4px → 5px` (konzistentné s novou výškou)
+
+#### 2. Tlačidlo "Trhový podiel" — outlined štýl
+- `.prod-ms-link`: svetlosivé disabled-vyzerajúce pozadie nahradené outlined modrým štýlom
+- `background:#E2E8F0 → #EFF6FF`, `border:1px solid #CBD5E1 → 1.5px solid #3B82F6`, `color:#334155 → #1D4ED8`
+- Active stav: `#DBEAFE` pozadie + `#2563EB` okraj
+- Modrá konzistentná s percentom v progress bare
+
+#### 3. Formulárové karty — kompaktnejší layout
+- `.card-inner`: `padding:18px 20px 20px → 12px 16px 14px` (-12px per karte)
+- `.prod-type`: `margin-bottom:14px → 8px` (-6px per karte)
+- `.row` + `.row-x`: `padding:12px 14px → 9px 14px`, `margin-bottom:8px → 6px`
+- Celková úspora: ~114px — formulár je o ~1 kartu kratší pri scrollovaní
+
+#### 4. Fixný button "Potvrdiť" — vizuálna separácia
+- `.submit-inner`: `background:transparent → linear-gradient(to bottom, transparent, rgba(234,236,242,.97) 44%)` — obsah pekne vyplynie za button
+- Padding zóna navýšená: `10px → 18px` (väčší fade priestor)
+- `.submit-inner-content`: `border-top: white (neviditeľný) → rgba(15,23,42,.07)` + `box-shadow:0 -4px 16px rgba(15,23,42,.08)` (upward shadow)
+
+#### 5. Panel nav taby — viditeľná tab affordance
+- `.panel-nav-btn`: `background:none → #F1F5F9`, `color:#94A3B8 → #64748B`
+- Neaktívne taby majú teraz viditeľný pill tvar — jasne vyzerajú klikateľne
+- Aktívny stav (`#0C1E35` + biely text) nezmenený
+
+---
 
 ### v2.7.9 — Prevencia duplicitných lekárov
 
