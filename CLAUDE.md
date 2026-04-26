@@ -40,7 +40,35 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.7.13** — obsahuje všetko z 2.7.12 plus: zaoblené rohy `.info-card`, oprava medzery pred formulárom, statický panel nav počas prechodov. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.7.14** — obsahuje všetko z 2.7.13 plus: dvojrežimový rebríček (Návštevy + Plnenie Q). **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+
+### v2.7.14 — Rebríček Plnenie Q
+
+Rebríček rozdelený na dva režimy prepínačom v záhlaví:
+
+#### Režim "📋 Návštevy" (pôvodné správanie)
+- Zoradiť podľa počtu návštev lekárov
+- Zobrazí sub-taby: Mesiac / Kvartál / Celkové (nezmenené)
+
+#### Režim "💊 Plnenie Q{X}" (nový)
+- Zoradiť podľa % plnenia plánu posledného ukončeného kvartálu
+- Dáta z `REP_PL_STATE.qCache[lastQ]` — ten istý `getPlnenieAll` endpoint, žiadny nový backend
+- % s farbami: zelená ≥100%, oranžová ≥70%, červená <70%, šedá = bez plánu
+- Podium (top 3) + zoznam (4+) rovnakého dizajnu ako návštevy
+- `lbLastCompletedQ()` = `plnenieCurrentQ() - 1` (ak Q1, zobrazí "žiadny ukončený Q")
+- Ak dáta nie sú v cache: spustí `repPlnenieLoad()` + zobrazí skeleton
+- Po načítaní: render s podiumom a `%` hodnotami
+- Ak načítanie zlyhá (napr. offline): zobrazí chybovú správu
+
+#### Technické detaily
+- `LB_STATE.mode`: `'navstevy'` | `'plnenie'` (default `'navstevy'`)
+- `lbSetMode(mode, el)` — prepne režim, skryje/zobrazí period tabs, zavolá `lbRender()`
+- `lbSyncTabs()` rozšírená: synchronizuje aj mode tabs + dynamicky nastaví label "💊 Plnenie Q{X}"
+- `lbRender()` sa rozvetvuje podľa `LB_STATE.mode`
+- CSS: `.lb-mode-tabs`, `.lb-mode-tab`, `.lb-count-pct.g/o/r/n`, `.lb-pl-q-header`
+- Period tabs obalené v `.lb-period-wrap` — `hidden` class ich skryje v plnenie móde
+
+---
 
 ### v2.7.13 — Statický panel nav + oprava rohov a medzery
 
