@@ -40,7 +40,20 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.7.3** — obsahuje všetko z 2.7.2 plus: automatická aktualizácia appky cez Service Worker bez nutnosti kliknutia. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.7.4** — obsahuje všetko z 2.7.3 plus: SVG empty state ilustrácie naprieč celou appkou. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+
+### v2.7.4 — Empty state ilustrácie
+
+- Nahradené všetky holé texty a emoji prázdnych stavov konzistentnými SVG ilustráciami
+- CSS: nová trieda `.empty-state` s `flex` layoutom, `.empty-state-title`, `.empty-state-sub`
+- JS: objekt `_ES` s 5 inline SVG ikonami + helper funkcia `mkEmpty(icon, title, sub)`
+- 5 variant ikon podľa kontextu:
+  - `clipboard` (modrá) — žiadne záznamy, história
+  - `podium` (žltá) — žiadne dáta v rebríčku alebo plnení
+  - `search` (sivá) — žiadne zhody vyhľadávania
+  - `people` (modrá + zelená) — žiadni reprezentanti
+  - `warning` (červená) — chyba načítania
+- Nahradených 7 miest: história (2×), rebríček, plnenie (2×), manažér zoznam, manažér história
 
 ### v2.7.3 — Automatická aktualizácia cez Service Worker
 
