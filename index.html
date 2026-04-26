@@ -135,7 +135,7 @@
   .wn-item-title{font-size:13.5px;font-weight:700;color:#0F172A;margin-bottom:2px;font-family:'Outfit',sans-serif}
   .wn-item-desc{font-size:12px;color:#64748B;line-height:1.4}
   .wn-btn{width:100%;background:linear-gradient(135deg,#1E40AF,#2563EB);color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;font-family:'Outfit',sans-serif;cursor:pointer;margin-top:16px;letter-spacing:.01em}
-  .lb-overlay.show{display:block;animation:slideRight .22s cubic-bezier(.16,1,.3,1) both}
+  .lb-overlay.show{display:block}
   .lb-box{background:#fff;border-radius:16px;overflow:hidden;}
   .lb-hdr{padding:0 0 14px;text-align:center}
   .lb-hdr-title{font-size:18px;font-weight:800;color:#0F172A;font-family:'Outfit',sans-serif}
@@ -319,7 +319,7 @@
   .hdr-hist-btn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:#fff;font-size:12px;font-weight:600;font-family:inherit;padding:6px 12px;border-radius:20px;cursor:pointer;transition:background .2s;white-space:nowrap}
   .hdr-hist-btn:hover{background:rgba(255,255,255,0.25)}
   .hist-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#EAECF2;z-index:1500;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
-  .hist-overlay.show{display:block;animation:slideRight .22s cubic-bezier(.16,1,.3,1) both}
+  .hist-overlay.show{display:block}
   .hist-inner{max-width:660px;margin:0 auto;padding:24px 16px 48px}
   .hist-header{margin-bottom:12px}
   .hist-title{font-size:18px;font-weight:800;color:#0F172A;font-family:'Outfit',sans-serif}
@@ -421,8 +421,16 @@
   @keyframes slideRight{from{transform:translateX(100%)}to{transform:translateX(0)}}
   @keyframes mgrSlideL{from{transform:translateX(-28px);opacity:0}to{transform:translateX(0);opacity:1}}
   @keyframes mgrSlideR{from{transform:translateX(28px);opacity:0}to{transform:translateX(0);opacity:1}}
+  @keyframes panelSlideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  @keyframes appEnter{from{transform:translateY(100vh)}to{transform:translateY(0)}}
+  .app-enter{animation:appEnter .38s cubic-bezier(.16,1,.3,1) both}
   .mgr-anim-l{animation:mgrSlideL .2s cubic-bezier(.16,1,.3,1) both}
   .mgr-anim-r{animation:mgrSlideR .2s cubic-bezier(.16,1,.3,1) both}
+  .panel-anim-up{animation:panelSlideUp .32s cubic-bezier(.16,1,.3,1) both}
+  .panel-anim-l{animation:mgrSlideL .22s cubic-bezier(.16,1,.3,1) both}
+  .panel-anim-r{animation:mgrSlideR .22s cubic-bezier(.16,1,.3,1) both}
+  @keyframes plDetailExitR{from{transform:translateX(0);opacity:1}to{transform:translateX(28px);opacity:0}}
+  .pl-detail-exit-r{animation:plDetailExitR .22s cubic-bezier(.16,1,.3,1) both}
   @keyframes badgeBounce{0%{transform:scale(1)}20%{transform:scale(1.25)}45%{transform:scale(0.92)}65%{transform:scale(1.15)}80%{transform:scale(0.97)}100%{transform:scale(1)}}
   .hdr-badge-wrap.bump{animation:badgeBounce .6s cubic-bezier(.34,1.56,.64,1) both}
   .confirm-result{padding:12px 20px 10px;margin-bottom:10px}
@@ -757,7 +765,7 @@
   body.manager-mode .rep-nav{display:none !important}
   /* ═══ REP PLNENIE OVERLAY ═══ */
   .rep-plnenie-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:2000;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
-  .rep-plnenie-overlay.show{display:block;animation:slideRight .22s cubic-bezier(.16,1,.3,1) both}
+  .rep-plnenie-overlay.show{display:block}
 
   /* ── PHARMA MS OVERLAY — trhový podiel po kliknutí na produkt ── */
   .pharma-ms-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:3000;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
@@ -982,6 +990,7 @@
       <button type="button" class="pl-q-tab" data-q="3" onclick="plnenieSwitchQ(3)">Q3</button>
       <button type="button" class="pl-q-tab" data-q="4" onclick="plnenieSwitchQ(4)">Q4</button>
     </div>
+    <div id="pl-q-content">
     <div class="pl-sum-big">
       <div class="pl-sum-big-row">
         <div>
@@ -1012,6 +1021,7 @@
     <div class="pl-rep-list" id="pl-rep-list">
       <div class="skel-wrap"><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:55%"></div><div class="skel skel-line" style="width:35%"></div></div><div class="skel" style="width:44px;height:20px;border-radius:10px;flex-shrink:0"></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:60%"></div><div class="skel skel-line" style="width:30%"></div></div><div class="skel" style="width:44px;height:20px;border-radius:10px;flex-shrink:0"></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:50%"></div><div class="skel skel-line" style="width:38%"></div></div><div class="skel" style="width:44px;height:20px;border-radius:10px;flex-shrink:0"></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:58%"></div><div class="skel skel-line" style="width:32%"></div></div><div class="skel" style="width:44px;height:20px;border-radius:10px;flex-shrink:0"></div></div></div>
     </div>
+    </div>
   </div>
 
   <!-- Plnenie — Detail reprezentanta (v2.3.1) -->
@@ -1041,10 +1051,12 @@
         <div class="total-money">&#8212;</div>
       </div>
 
-      <div class="pl-section-lbl" id="pl-detail-prods-lbl">Plnenie per produkt</div>
-      <div id="pl-detail-prods"></div>
+      <div id="pl-detail-q-content">
+        <div class="pl-section-lbl" id="pl-detail-prods-lbl">Plnenie per produkt</div>
+        <div id="pl-detail-prods"></div>
 
-      <div class="trend" id="pl-detail-trend"></div>
+        <div class="trend" id="pl-detail-trend"></div>
+      </div>
     </div>
 
   </div>
@@ -1539,7 +1551,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.7.6';
+var APP_VERSION = '2.7.7';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -3161,11 +3173,49 @@ function filterHistory() {
   renderHistItems(filtered);
 }
 
+var _panelCurrent = null;
+var _PANEL_ORDER = { 'hist-overlay': 0, 'lb-overlay': 1, 'rep-plnenie-overlay': 2 };
+
+function _panelShow(newId) {
+  var prevEl = _panelCurrent ? document.getElementById(_panelCurrent) : null;
+  var prevVisible = prevEl && prevEl.classList.contains('show');
+  var animCls;
+  if (!prevVisible) {
+    animCls = 'panel-anim-up';
+  } else {
+    var nOrd = _PANEL_ORDER[newId] || 0;
+    var pOrd = _PANEL_ORDER[_panelCurrent] || 0;
+    animCls = nOrd > pOrd ? 'panel-anim-r' : 'panel-anim-l';
+  }
+  var newEl = document.getElementById(newId);
+  if (!newEl) return;
+  _panelCurrent = newId;
+  // Nový panel ide dopredu (nad starý), aby počas animácie nebolo vidieť pozadie
+  newEl.style.zIndex = '1600';
+  newEl.classList.remove('panel-anim-up','panel-anim-l','panel-anim-r');
+  newEl.classList.add(animCls, 'show');
+  newEl.scrollTop = 0;
+  document.body.style.overflow = 'hidden';
+  // Starý panel skryjeme až po dokončení animácie nového
+  if (prevEl && prevVisible) {
+    prevEl.style.zIndex = '1500';
+    setTimeout(function(){
+      prevEl.classList.remove('show');
+      prevEl.style.zIndex = '';
+      newEl.style.zIndex = '';
+    }, 320);
+  } else {
+    setTimeout(function(){ newEl.style.zIndex = ''; }, 380);
+  }
+  setTimeout(function(){ newEl.classList.remove('panel-anim-up','panel-anim-l','panel-anim-r'); }, 380);
+}
+
 function closeAllPanels() {
   ['hist-overlay','lb-overlay','rep-plnenie-overlay','pharma-ms-overlay'].forEach(function(id){
     var el = document.getElementById(id);
     if(el) el.classList.remove('show');
   });
+  _panelCurrent = null;
   document.body.style.overflow = '';
 }
 
@@ -3176,14 +3226,9 @@ function openHistory() {
   var searchEl = document.getElementById('hist-search');
   if(!overlay || !body) return;
 
-  ['lb-overlay','rep-plnenie-overlay'].forEach(function(id){
-    var el = document.getElementById(id); if(el) el.classList.remove('show');
-  });
-  document.body.style.overflow = 'hidden';
-  overlay.scrollTop = 0;
+  _panelShow('hist-overlay');
   dateEl.textContent = getTodayStr();
   if(searchEl) searchEl.value = '';
-  overlay.classList.add('show');
 
   // Načítaj zo Sheets
   body.innerHTML = skelHist();
@@ -3253,6 +3298,7 @@ function openHistory() {
 function closeHistory() {
   var overlay = document.getElementById('hist-overlay');
   if(overlay) overlay.classList.remove('show');
+  _panelCurrent = null;
   document.body.style.overflow = '';
 }
 
@@ -3885,6 +3931,8 @@ function loginSuccess(username, name, role, region) {
   var user = { username: username, name: name, role: role, region: region || '' };
   setSession(user);
   haptic('success');
+  var _appEl = document.querySelector('.app');
+  if (_appEl) { _appEl.classList.add('app-enter'); setTimeout(function(){ _appEl.classList.remove('app-enter'); }, 500); }
   document.getElementById('login-screen').classList.remove('show');
   try { mgrDedupUnique(); } catch(e){}
   updateHdrForUser(user);
@@ -5162,19 +5210,17 @@ function loadRepList() {
 }
 
 function openLeaderboard(){
-  var overlay = document.getElementById('lb-overlay');
-  if(!overlay) return;
-  ['hist-overlay','rep-plnenie-overlay'].forEach(function(id){
-    var el = document.getElementById(id); if(el) el.classList.remove('show');
-  });
-  overlay.className = 'lb-overlay show';
-  overlay.scrollTop = 0;
-  document.body.style.overflow = 'hidden';
+  if(!document.getElementById('lb-overlay')) return;
+  _panelShow('lb-overlay');
   LB_STATE.showConfetti = true;
-  if(LB_STATE.data){
+  lbSyncTabs();
+  if (LB_STATE.loading) {
+    var body = lbGetBody();
+    if (body) body.innerHTML = skelLb();
+  } else if (LB_STATE.data && lbDataHasVisits()) {
     lbRender();
   } else {
-    lbLoadData();
+    lbLoadData(true);
   }
 }
 
@@ -5286,6 +5332,23 @@ function lbSetPeriod(period, el){
   document.querySelectorAll('.lb-tab').forEach(function(t){ t.classList.remove('active'); });
   if(el) el.classList.add('active');
   lbRender();
+}
+
+function lbSyncTabs() {
+  var p = LB_STATE.period;
+  document.querySelectorAll('.lb-tab').forEach(function(t) {
+    var onclick = t.getAttribute('onclick') || '';
+    var match = onclick.match(/lbSetPeriod\('(\w+)'/);
+    t.classList.toggle('active', !!(match && match[1] === p));
+  });
+}
+
+function lbDataHasVisits() {
+  if (!LB_STATE.data) return false;
+  return LB_ALL_REPS.some(function(u) {
+    var rows = LB_STATE.data[u];
+    return rows && rows.length > 0;
+  });
 }
 
 function lbLoadData(force){
@@ -5665,20 +5728,32 @@ function mgrSwitchSubtab(tab) {
   }
   if (tab === 'leaderboard') {
     LB_STATE.showConfetti = true;
+    lbSyncTabs();
     if (LB_STATE.loading) {
-      // Dáta sa práve načítavajú na pozadí — ukáž skeleton, onDone zavolá lbRender
       var body = lbGetBody();
       if (body) body.innerHTML = skelLb();
-    } else if (LB_STATE.data) {
+    } else if (LB_STATE.data && lbDataHasVisits()) {
       lbRender();
     } else {
-      lbLoadData();
+      // Dáta sú null alebo prázdne (fetch zlyhal) — vynútiť znovu načítanie
+      lbLoadData(true);
     }
   }
 }
 
+function _animPlQ(elId, dir) {
+  var el = document.getElementById(elId);
+  if (!el) return;
+  var cls = dir === 'r' ? 'panel-anim-r' : 'panel-anim-l';
+  el.classList.remove('panel-anim-l', 'panel-anim-r');
+  void el.offsetWidth;
+  el.classList.add(cls);
+  setTimeout(function(){ el.classList.remove('panel-anim-l', 'panel-anim-r'); }, 300);
+}
+
 function plnenieSwitchQ(q) {
   if (q === PL_STATE.q) return;
+  var dir = q > PL_STATE.q ? 'r' : 'l';
   PL_STATE.q = q;
   plnenieUpdateQTabs();
   if (PL_STATE.qCache[q]) {
@@ -5700,6 +5775,11 @@ function plnenieSwitchQ(q) {
     PL_STATE.aggregates = null;
     PL_STATE.loaded = false;
     plnenieRenderAll();
+  }
+  if (PL_STATE.detailRep) {
+    _animPlQ('pl-detail-q-content', dir);
+  } else {
+    _animPlQ('pl-q-content', dir);
   }
 }
 
@@ -6232,13 +6312,33 @@ function plnenieOpenDetail(username) {
   PL_STATE.detailRep = username;
   document.body.classList.add('mgr-plnenie-detail-open');
   plnenieRenderDetail();
+  var detailEl = document.getElementById('mgr-plnenie-detail');
+  if (detailEl) {
+    detailEl.classList.remove('panel-anim-r', 'pl-detail-exit-r');
+    void detailEl.offsetWidth;
+    detailEl.classList.add('panel-anim-r');
+    setTimeout(function(){ detailEl.classList.remove('panel-anim-r'); }, 300);
+  }
   window.scrollTo(0, 0);
 }
 
 function plnenieCloseDetail() {
-  PL_STATE.detailRep = null;
-  document.body.classList.remove('mgr-plnenie-detail-open');
-  window.scrollTo(0, 0);
+  var detailEl = document.getElementById('mgr-plnenie-detail');
+  if (detailEl) {
+    detailEl.classList.remove('panel-anim-r');
+    void detailEl.offsetWidth;
+    detailEl.classList.add('pl-detail-exit-r');
+    setTimeout(function(){
+      detailEl.classList.remove('pl-detail-exit-r');
+      PL_STATE.detailRep = null;
+      document.body.classList.remove('mgr-plnenie-detail-open');
+      window.scrollTo(0, 0);
+    }, 230);
+  } else {
+    PL_STATE.detailRep = null;
+    document.body.classList.remove('mgr-plnenie-detail-open');
+    window.scrollTo(0, 0);
+  }
 }
 
 function plnenieRenderDetailError() {
@@ -6556,12 +6656,7 @@ var REP_PL_STATE = {
 function openRepPlnenie() {
   var session = getSession();
   if (!session || !session.username) return;
-  ['hist-overlay','lb-overlay'].forEach(function(id){
-    var el = document.getElementById(id); if(el) el.classList.remove('show');
-  });
-  var overlay = document.getElementById('rep-plnenie-overlay');
-  if (overlay) overlay.classList.add('show');
-  document.body.style.overflow = 'hidden';
+  _panelShow('rep-plnenie-overlay');
   // Default: aktuálny kvartál
   var curQ = plnenieCurrentQ();
   REP_PL_STATE.year = (new Date()).getFullYear();
@@ -6579,13 +6674,13 @@ function openRepPlnenie() {
     repPlnenieRenderLoading();
     if (!REP_PL_STATE.loading) repPlnenieLoad();
   }
-  if (overlay) overlay.scrollTop = 0;
   preloadAllPharmaData();
 }
 
 function closeRepPlnenie() {
   var overlay = document.getElementById('rep-plnenie-overlay');
   if (overlay) overlay.classList.remove('show');
+  _panelCurrent = null;
   document.body.style.overflow = '';
 }
 
@@ -6639,6 +6734,7 @@ function repPlnenieLoad() {
 
 function repPlnenieSwitchQ(q) {
   if (q === REP_PL_STATE.q) return;
+  var dir = q > REP_PL_STATE.q ? 'r' : 'l';
   REP_PL_STATE.q = q;
   repPlnenieUpdateQTabs();
   if (REP_PL_STATE.qCache[q]) {
@@ -6651,6 +6747,7 @@ function repPlnenieSwitchQ(q) {
   } else {
     repPlnenieRender();
   }
+  _animPlQ('rep-pl-q-content', dir);
 }
 
 function repPlnenieUpdateNavBtn() {
@@ -7547,9 +7644,11 @@ function preloadAllPharmaData() {
       <button type="button" class="pl-q-tab" data-q="3" onclick="repPlnenieSwitchQ(3)">Q3</button>
       <button type="button" class="pl-q-tab" data-q="4" onclick="repPlnenieSwitchQ(4)">Q4</button>
     </div>
+    <div id="rep-pl-q-content">
     <div class="pl-section-lbl" id="rep-pl-prods-lbl">Moje produkty</div>
     <div id="rep-pl-prods"></div>
     <div class="trend" id="rep-pl-trend"></div>
+    </div>
   </div>
 </div>
 
