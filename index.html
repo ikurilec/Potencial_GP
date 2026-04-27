@@ -620,7 +620,7 @@
   .tutorial-preskocit{display:block;margin:6px auto 0;background:none;border:none;color:#CBD5E1;font-size:11px;font-family:inherit;cursor:pointer;font-weight:500}
   .tutorial-hero-login-title{font-size:26px;font-weight:800;letter-spacing:-.03em;color:#fff;text-align:center;line-height:1.2}
   /* ── PLNENIE (Predaje vs Plán) — admin sub-view, v2.3.0 ── */
-  .mgr-subtabs{display:flex;gap:6px;margin:0 0 10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  .mgr-subtabs{display:flex;gap:6px;margin:0 0 10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06);position:sticky;top:12px;z-index:100}
   .mgr-subtab{flex:1;padding:13px 4px;border:none;background:transparent;font-size:12px;font-weight:700;color:#64748B;cursor:pointer;border-radius:9px;font-family:inherit;transition:all .15s;-webkit-tap-highlight-color:transparent}
   .mgr-subtab.active{background:#0C1E35;color:#fff}
   .mgr-plnenie-view{display:none}
@@ -1587,7 +1587,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.7.26';
+var APP_VERSION = '2.7.27';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5936,6 +5936,20 @@ function plnenieCountUp(el, targetPct) {
   }
   requestAnimationFrame(step);
 }
+function plnenieCountUpEUR(el, targetVal) {
+  if (!el || targetVal === null || targetVal === undefined || isNaN(targetVal)) return;
+  var duration = 900, start = null;
+  function step(ts) {
+    if (!start) start = ts;
+    var progress = Math.min((ts - start) / duration, 1);
+    var ease = 1 - Math.pow(1 - progress, 3);
+    var current = Math.round(targetVal * ease);
+    el.textContent = current.toLocaleString('sk-SK').replace(/ /g, ' ') + ' €';
+    if (progress < 1) requestAnimationFrame(step);
+    else el.textContent = Math.round(targetVal).toLocaleString('sk-SK').replace(/ /g, ' ') + ' €';
+  }
+  requestAnimationFrame(step);
+}
 
 function lbUpdateNavBtn() {
   var btn = document.getElementById('rep-nav-lb-btn');
@@ -6356,9 +6370,9 @@ function plnenieRenderSummary() {
   var lbl = document.getElementById('pl-sum-lbl');
   if (lbl) lbl.textContent = plnenieSumLabel() + ' · ' + plnenieQLabel(PL_STATE.q, PL_STATE.year);
   var val = document.getElementById('pl-sum-big-val');
-  if (val) { val.textContent = plnenieFormatPct(sk.pct); val.className = 'pl-sum-big-val ' + plnenieColorClass(sk.pct); }
+  if (val) { val.className = 'pl-sum-big-val ' + plnenieColorClass(sk.pct); plnenieCountUp(val, sk.pct); }
   var tot = document.getElementById('pl-sum-big-total');
-  if (tot) tot.innerHTML = '<strong>' + plnenieFormatEUR(sk.predajeEUR) + '</strong>';
+  if (tot) { tot.innerHTML = '<strong id="_pl-eur-strong">0 €</strong>'; plnenieCountUpEUR(document.getElementById('_pl-eur-strong'), sk.predajeEUR); }
   var plan = document.getElementById('pl-sum-big-plan');
   if (plan) plan.textContent = sk.planEUR > 0 ? ('z plánu ' + plnenieFormatEUR(sk.planEUR)) : '—';
 
@@ -6390,8 +6404,13 @@ function plnenieRenderSummary() {
     } else {
       prods.innerHTML = agg.products.map(function(p){
         return '<div class="pl-sum-prod"><span class="pl-sum-prod-name">' + mgrEscape(p.label) +
-               '</span><strong style="flex-shrink:0" class="' + plnenieColorClass(p.pct) + '">' + plnenieFormatPct(p.pct) + '</strong></div>';
+               '</span><strong style="flex-shrink:0" class="' + plnenieColorClass(p.pct) + '" data-pct="' + (isNaN(p.pct) ? '' : p.pct) + '">0,00%</strong></div>';
       }).join('');
+      Array.from(prods.querySelectorAll('strong[data-pct]')).forEach(function(el, i) {
+        var v = parseFloat(el.getAttribute('data-pct'));
+        if (!isNaN(v)) setTimeout(function(){ plnenieCountUp(el, v); }, i * 70);
+        else el.textContent = '—';
+      });
     }
   }
 }
@@ -6407,8 +6426,8 @@ function plnenieRenderRegions() {
   var regions = PL_STATE.aggregates.regions;
   var west = document.getElementById('pl-region-west');
   if (west) {
-    west.textContent = plnenieFormatPct(regions.west.pct);
     west.className = 'pl-region-val ' + plnenieColorClass(regions.west.pct);
+    plnenieCountUp(west, regions.west.pct);
   }
   var westPred = document.getElementById('pl-region-west-pred');
   if (westPred) {
@@ -6418,8 +6437,8 @@ function plnenieRenderRegions() {
   }
   var east = document.getElementById('pl-region-east');
   if (east) {
-    east.textContent = plnenieFormatPct(regions.east.pct);
     east.className = 'pl-region-val ' + plnenieColorClass(regions.east.pct);
+    plnenieCountUp(east, regions.east.pct);
   }
   var eastPred = document.getElementById('pl-region-east-pred');
   if (eastPred) {
@@ -6474,10 +6493,15 @@ function plnenieRenderRepList() {
         '<div class="pl-rep-name">' + mgrEscape(info.name) + '</div>' +
         '<div class="pl-rep-meta">' + mgrEscape(meta) + '</div>' +
       '</div>' +
-      '<div class="pl-rep-pct ' + plnenieColorClass(r.pct) + '">' + plnenieFormatPct(r.pct) + '</div>' +
+      '<div class="pl-rep-pct ' + plnenieColorClass(r.pct) + '" data-pct="' + (r.pct !== null && !isNaN(r.pct) ? r.pct : '') + '">' + (r.pct !== null && !isNaN(r.pct) ? '0,00%' : '—') + '</div>' +
       chevronHtml +
     '</div>';
   }).join('');
+  // Staggered count-up pre percentuálne hodnoty reprezentantov
+  Array.from(listEl.querySelectorAll('.pl-rep-pct[data-pct]')).forEach(function(el, i) {
+    var v = parseFloat(el.getAttribute('data-pct'));
+    if (!isNaN(v)) setTimeout(function(){ plnenieCountUp(el, v); }, 100 + i * 50);
+  });
 }
 
 function plnenieRenderAll() {
