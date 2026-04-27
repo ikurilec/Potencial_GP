@@ -3540,13 +3540,13 @@ function openDetail(idx) {
   var abcEl = cr.querySelector('.detail-abc-badge');
   if(abcEl) abcEl.remove();
   if(item.kategoria) {
-    var katColor = item.kategoria === 'A' ? '#2563EB' : item.kategoria === 'B' ? '#7C3AED' : '#64748B';
+    var katColor = item.kategoria === 'A' ? '#16A34A' : item.kategoria === 'B' ? '#EA580C' : '#DC2626';
     var kapStr = item.kapitacia ? Number(item.kapitacia).toLocaleString('sk-SK') + ' pac.' : '';
     var abcBadge = document.createElement('div');
     abcBadge.className = 'detail-abc-badge';
     abcBadge.style.cssText = 'display:inline-flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap;justify-content:center';
     abcBadge.innerHTML =
-      '<span style="background:' + katColor + ';color:#fff;font-size:11px;font-weight:800;padding:2px 10px;border-radius:20px;letter-spacing:.05em">Segment ' + item.kategoria + '</span>' +
+      '<span style="background:' + katColor + ';color:#fff;font-size:11px;font-weight:800;padding:2px 10px;border-radius:20px;letter-spacing:.05em">Potenciál ' + item.kategoria + '</span>' +
       (kapStr ? '<span style="font-size:11px;color:#64748B;font-weight:600">· ' + kapStr + '</span>' : '');
     sub.insertAdjacentElement('afterend', abcBadge);
   }
