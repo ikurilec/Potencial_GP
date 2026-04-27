@@ -1618,7 +1618,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.7.32';
+var APP_VERSION = '2.7.33';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7752,9 +7752,8 @@ function pharmaGetOblast() {
     if (rep) return (USERS_LOCAL[rep] && USERS_LOCAL[rep].region) || '';
     return '';
   }
-  return pharmaOblastFromRegion(
-    (USERS_LOCAL[session.username] && USERS_LOCAL[session.username].region) || session.region || ''
-  );
+  // Raw hodnota bez normalizácie — Sheets používa pôvodné kódy (BASE, BAMA, KE, ...)
+  return (USERS_LOCAL[session.username] && USERS_LOCAL[session.username].region) || session.region || '';
 }
 
 function openPharmaMs(prodKey, label) {
@@ -8188,9 +8187,8 @@ function preloadAllPharmaData() {
       allCodes.forEach(function(code) { loadPharmaData(code, oblast, kvartal); });
     });
   } else {
-    var oblast = pharmaOblastFromRegion(
-      (USERS_LOCAL[session.username] && USERS_LOCAL[session.username].region) || session.region || ''
-    );
+    // Raw hodnota bez normalizácie — konzistentné so Sheets kľúčmi
+    var oblast = (USERS_LOCAL[session.username] && USERS_LOCAL[session.username].region) || session.region || '';
     if (oblast) allCodes.forEach(function(code) { loadPharmaData(code, oblast, kvartal); });
   }
 }
