@@ -294,8 +294,8 @@
   .prod-total{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;background:linear-gradient(135deg,#0C1E35,#1A3A5C);color:#fff}
   .prod-total-lbl{font-size:10.5px;color:#7AABCC;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
   .prod-total-val{font-size:19px;font-weight:700;font-family:'Outfit','SF Pro Display',-apple-system,sans-serif;letter-spacing:.01em}
-  .info-card{background:#fff;border-radius:14px;margin-bottom:12px;box-shadow:0 2px 12px rgba(0,0,0,.07);border:1px solid rgba(0,0,0,.07);overflow:hidden}
-  .info-accent{height:3px;background:linear-gradient(90deg,#0C1E35,#1A3A5C)}
+  .info-card{background:#fff;border-radius:14px;margin-bottom:12px;box-shadow:0 2px 12px rgba(0,0,0,.07);border:1px solid rgba(0,0,0,.07);overflow:visible}
+  .info-accent{height:3px;background:linear-gradient(90deg,#0C1E35,#1A3A5C);border-radius:14px 14px 0 0}
   .info-inner{padding:18px 20px 20px}
   .info-title{font-size:14px;font-weight:600;color:#1A2A3A;margin-bottom:14px}
   .info-grid-3{display:flex;flex-direction:column;gap:12px}
@@ -413,7 +413,7 @@
   .send-check-circle{fill:none;stroke:#10B981;stroke-width:3;stroke-linecap:round;stroke-dasharray:151;stroke-dashoffset:151}
   .send-check-mark{fill:none;stroke:#10B981;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:40;stroke-dashoffset:40}
   .ac-wrap{position:relative}
-  .ac-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid #3B82F6;border-top:none;border-radius:0 0 9px 9px;z-index:200;overflow-y:auto;max-height:220px;box-shadow:0 4px 12px rgba(0,0,0,.12)}
+  .ac-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid #3B82F6;border-top:none;border-radius:0 0 9px 9px;z-index:1000;overflow-y:auto;max-height:220px;box-shadow:0 4px 12px rgba(0,0,0,.12)}
   .ac-item{padding:11px 14px;font-size:15px;color:#1A2A3A;cursor:pointer;border-bottom:1px solid #F1F5F9}
   .ac-item:last-child{border-bottom:none}
   .ac-item:hover,.ac-item.active{background:#EFF6FF;color:#2563EB}
@@ -1587,7 +1587,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.7.24';
+var APP_VERSION = '2.7.25';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
