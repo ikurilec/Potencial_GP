@@ -6647,13 +6647,12 @@ function openProdSheet(prodKey, prodLabel) {
   prodSheetRenderRepList();
 
   // Triggernúť fetch pre všetky pharma kódy produktu × všetky oblasty
-
-  // Triggernúť fetch pre všetky pharma kódy produktu × všetky oblasty
   // (preloadAllPharmaData cachuje aktuálny Q, sheet môže zobrazovať iný Q)
   if (pharmaCodes.length) {
+    var activeReps = plnenieGetActiveReps();
     var neededOblasts = {};
-    repData.forEach(function(r) {
-      var o = (USERS_LOCAL[r.username] && USERS_LOCAL[r.username].region) || '';
+    activeReps.forEach(function(rep) {
+      var o = (USERS_LOCAL[rep] && USERS_LOCAL[rep].region) || '';
       if (o) neededOblasts[o] = true;
     });
     pharmaCodes.forEach(function(c) {
@@ -6667,7 +6666,6 @@ function openProdSheet(prodKey, prodLabel) {
   }
 
   // Zobraziť sheet — vždy od vrchu (1. miesto)
-  if (bodyEl) bodyEl.scrollTop = 0;
   document.getElementById('pl-prod-sheet-bd').classList.add('show');
   var sheet = document.getElementById('pl-prod-sheet');
   sheet.style.transform = '';
