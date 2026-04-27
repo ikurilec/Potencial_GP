@@ -679,7 +679,7 @@
   .pl-ps-subtab{flex:1;padding:8px 4px;border:none;background:#F1F5F9;font-size:12px;font-weight:700;color:#64748B;cursor:pointer;border-radius:8px;font-family:inherit;transition:all .15s}
   .pl-ps-subtab.active{background:#0C1E35;color:#fff}
   .pl-ps-divider{height:0.5px;background:#E2E8F0;flex-shrink:0}
-  .pl-ps-body{overflow-y:auto;flex:1;padding:4px 16px 40px}
+  .pl-ps-body{overflow-y:scroll;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;flex:1;min-height:0;padding:4px 16px 40px}
   .pl-ps-rep{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:0.5px solid #F1F5F9}
   .pl-ps-rep:last-child{border-bottom:none}
   .pl-ps-medal{width:26px;text-align:center;font-size:18px;flex-shrink:0;line-height:1}
@@ -1622,7 +1622,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.7.34';
+var APP_VERSION = '2.7.37';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6666,13 +6666,13 @@ function openProdSheet(prodKey, prodLabel) {
   }
 
   // Zobraziť sheet — vždy od vrchu (1. miesto)
-  document.getElementById('pl-prod-sheet-bd').classList.add('show');
+  var bd = document.getElementById('pl-prod-sheet-bd');
+  bd.classList.add('show');
   var sheet = document.getElementById('pl-prod-sheet');
   sheet.style.transform = '';
   sheet.classList.remove('show');
   void sheet.offsetWidth;
   sheet.classList.add('show');
-  document.body.style.overflow = 'hidden';
   prodSheetInitSwipe();
 }
 
@@ -6702,12 +6702,8 @@ function prodSheetRenderRepList() {
       repData.push({ username: rep, planEUR: pPlan, predajeEUR: pSales, pct: pSales / pPlan * 100, subSales: subSales });
     }
   });
-  if (predajeSubKey) {
-    // Zoradiť podľa € subtypu (tablety alebo sáčky)
-    repData.sort(function(a, b){ return (b.subSales || 0) - (a.subSales || 0); });
-  } else {
-    repData.sort(function(a, b){ return b.pct - a.pct; });
-  }
+  // Vždy zoradiť podľa % plnenia plánu (kombinovaného) — aj pri subtabe Tablety/Sáčky
+  repData.sort(function(a, b){ return b.pct - a.pct; });
 
   // Helper: terit MS z cache
   function getTeritMs(oblast) {
@@ -6817,29 +6813,42 @@ function prodSheetInitSwipe() {
   if (!sheet || PL_PROD_SHEET_STATE.swipeInited) return;
   PL_PROD_SHEET_STATE.swipeInited = true;
 
-  var startY = 0, dragY = 0, dragging = false;
+  var startY = 0, dragY = 0, dragging = false, mayDrag = false;
   var THRESHOLD = 80;
 
-  function canDrag(target) {
-    // Handle a header — vždy dovolí drag
-    if (target.closest('.pl-ps-handle') || target.closest('.pl-ps-hdr') || target.closest('.pl-ps-divider')) return true;
-    // Body — len keď je scrollnuté na vrch
-    var body = document.getElementById('pl-ps-body');
-    return body ? body.scrollTop <= 2 : true;
+  function isHandleArea(target) {
+    return !!(target.closest('.pl-ps-handle') || target.closest('.pl-ps-hdr') || target.closest('.pl-ps-divider'));
   }
 
+  // Backdrop — zablokuj scroll stránky pod sheetom (iOS safe, neovplyvní scroll vnútri sheetu)
+  var bd = document.getElementById('pl-prod-sheet-bd');
+  if (bd) bd.addEventListener('touchmove', function(e){ e.preventDefault(); }, { passive: false });
+
   sheet.addEventListener('touchstart', function(e) {
-    if (!PL_PROD_SHEET_STATE.open || !canDrag(e.target)) return;
+    if (!PL_PROD_SHEET_STATE.open) return;
+    var body = document.getElementById('pl-ps-body');
+    var atTop = body ? body.scrollTop <= 2 : true;
+    // mayDrag = môže sa stať drag ak pohyb bude smerom dole
+    mayDrag = isHandleArea(e.target) || atTop;
+    dragging = false;
     startY  = e.touches[0].clientY;
     dragY   = 0;
-    dragging = true;
-    sheet.style.transition = 'none';
   }, { passive: true });
 
   sheet.addEventListener('touchmove', function(e) {
-    if (!dragging) return;
-    e.preventDefault(); // blokuje pull-to-refresh stránky pod sheetom
-    var delta = e.touches[0].clientY - startY;
+    if (!PL_PROD_SHEET_STATE.open) return;
+    var currentY = e.touches[0].clientY;
+    var delta = currentY - startY;
+
+    if (!dragging) {
+      if (!mayDrag) return; // nie sme v drag zóne — nechaj scrollovať
+      if (delta <= 4) return; // pohyb nie je jednoznačne smerom dole — nechaj scrollovať
+      // Pohyb je smerom dole — začni drag, zablokuj scroll
+      dragging = true;
+      sheet.style.transition = 'none';
+    }
+
+    e.preventDefault();
     if (delta < 0) delta = 0;
     dragY = delta;
     sheet.style.transform = 'translateY(' + delta + 'px)';
@@ -6870,7 +6879,6 @@ function closeProdSheet() {
   var bd    = document.getElementById('pl-prod-sheet-bd');
   if (sheet) { sheet.style.transform = ''; sheet.classList.remove('show'); }
   if (bd)    bd.classList.remove('show');
-  document.body.style.overflow = '';
 }
 
 // Volá sa automaticky keď loadPharmaData dokončí fetch — updatne MS bunky bez re-renderu
