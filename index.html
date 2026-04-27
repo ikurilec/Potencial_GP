@@ -1622,7 +1622,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.7.35';
+var APP_VERSION = '2.7.36';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6817,15 +6817,11 @@ function prodSheetInitSwipe() {
   if (!sheet || PL_PROD_SHEET_STATE.swipeInited) return;
   PL_PROD_SHEET_STATE.swipeInited = true;
 
-  var startY = 0, dragY = 0, dragging = false;
+  var startY = 0, dragY = 0, dragging = false, mayDrag = false;
   var THRESHOLD = 80;
 
-  function canDrag(target) {
-    // Handle a header — vždy dovolí drag
-    if (target.closest('.pl-ps-handle') || target.closest('.pl-ps-hdr') || target.closest('.pl-ps-divider')) return true;
-    // Body — len keď je scrollnuté na vrch
-    var body = document.getElementById('pl-ps-body');
-    return body ? body.scrollTop <= 2 : true;
+  function isHandleArea(target) {
+    return !!(target.closest('.pl-ps-handle') || target.closest('.pl-ps-hdr') || target.closest('.pl-ps-divider'));
   }
 
   // Backdrop — zablokuj scroll stránky pod sheetom (iOS safe, neovplyvní scroll vnútri sheetu)
@@ -6833,17 +6829,30 @@ function prodSheetInitSwipe() {
   if (bd) bd.addEventListener('touchmove', function(e){ e.preventDefault(); }, { passive: false });
 
   sheet.addEventListener('touchstart', function(e) {
-    if (!PL_PROD_SHEET_STATE.open || !canDrag(e.target)) return;
+    if (!PL_PROD_SHEET_STATE.open) return;
+    var body = document.getElementById('pl-ps-body');
+    var atTop = body ? body.scrollTop <= 2 : true;
+    // mayDrag = môže sa stať drag ak pohyb bude smerom dole
+    mayDrag = isHandleArea(e.target) || atTop;
+    dragging = false;
     startY  = e.touches[0].clientY;
     dragY   = 0;
-    dragging = true;
-    sheet.style.transition = 'none';
   }, { passive: true });
 
   sheet.addEventListener('touchmove', function(e) {
-    if (!dragging) return;
-    e.preventDefault(); // blokuje pull-to-refresh stránky pod sheetom
-    var delta = e.touches[0].clientY - startY;
+    if (!PL_PROD_SHEET_STATE.open) return;
+    var currentY = e.touches[0].clientY;
+    var delta = currentY - startY;
+
+    if (!dragging) {
+      if (!mayDrag) return; // nie sme v drag zóne — nechaj scrollovať
+      if (delta <= 4) return; // pohyb nie je jednoznačne smerom dole — nechaj scrollovať
+      // Pohyb je smerom dole — začni drag, zablokuj scroll
+      dragging = true;
+      sheet.style.transition = 'none';
+    }
+
+    e.preventDefault();
     if (delta < 0) delta = 0;
     dragY = delta;
     sheet.style.transform = 'translateY(' + delta + 'px)';
