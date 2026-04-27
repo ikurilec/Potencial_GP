@@ -652,15 +652,15 @@
   .pl-no-plan-notice{font-size:11.5px;color:#94A3B8;margin-top:10px;padding-top:10px;border-top:1px solid #F1F5F9;text-align:center;font-style:italic}
   .pl-sum-prods{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;padding-top:10px;border-top:0.5px solid #E2E8F0}
   .pl-sum-prods:empty{display:none}
-  .pl-sum-prod{display:flex;align-items:baseline;justify-content:space-between;gap:4px;font-size:12px;font-weight:500;color:#334155;min-width:0}
-  .pl-sum-prod-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
+  .pl-sum-prod{display:flex;align-items:center;justify-content:space-between;gap:4px;font-size:12px;font-weight:500;color:#334155;min-width:0}
+  .pl-sum-prod-name{min-width:0;flex:1;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .pl-sum-prod strong{font-weight:700}
   .pl-sum-prod strong.pl-g{color:#059669}
   .pl-sum-prod strong.pl-o{color:#D97706}
   .pl-sum-prod strong.pl-r{color:#DC2626}
   .pl-sum-prod strong.pl-none{color:#94A3B8}
-  .pl-sum-prod-c{cursor:pointer;border:1px solid #E2E8F0;border-radius:10px;padding:7px 10px;transition:background .15s,border-color .15s}
-  .pl-sum-prod-c:active{background:#F8FAFC;border-color:#CBD5E1}
+  .pl-sum-prod-c{cursor:pointer;border:1px solid #BFDBFE;border-radius:10px;padding:7px 10px;transition:background .15s,border-color .15s}
+  .pl-sum-prod-c:active{background:#EFF6FF;border-color:#93C5FD}
   .pl-sum-prod-chev{color:#CBD5E1;font-size:12px;margin-left:1px;flex-shrink:0;font-weight:400}
   /* ── PRODUCT DRILL-DOWN BOTTOM SHEET ── */
   #pl-prod-sheet-bd{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000}
@@ -6579,7 +6579,7 @@ function openProdSheet(prodKey, prodLabel) {
         ? plnenieFormatEUR(r.predajeEUR) + ' / ' + plnenieFormatEUR(r.planEUR)
         : '— / ' + plnenieFormatEUR(r.planEUR);
 
-      return '<div class="pl-ps-rep">' +
+      return '<div class="pl-ps-rep" data-username="' + mgrEscape(r.username) + '">' +
         medalHtml +
         '<div class="pl-ps-avatar" style="background:' + info.color + '">' + mgrEscape(mgrInitials(info.name)) + '</div>' +
         '<div class="pl-ps-info">' +
@@ -6600,7 +6600,24 @@ function openProdSheet(prodKey, prodLabel) {
     });
   }
 
-  // Zobraziť sheet
+  // Triggernúť fetch pre oblasty, ktoré ešte nie sú v cache pre tento kvartal
+  // (preloadAllPharmaData cachuje aktuálny Q, ale sheet môže zobrazovať iný Q)
+  if (pharmaCode) {
+    var neededOblasts = {};
+    repData.forEach(function(r) {
+      var o = (USERS_LOCAL[r.username] && USERS_LOCAL[r.username].region) || '';
+      if (o) neededOblasts[o] = true;
+    });
+    Object.keys(neededOblasts).forEach(function(o) {
+      var ck = pharmaCode + '_' + o + '_' + kvartal;
+      if (!PHARMA_STATE.cache[ck] && !PHARMA_STATE.loading[ck]) {
+        loadPharmaData(pharmaCode, o, kvartal);
+      }
+    });
+  }
+
+  // Zobraziť sheet — vždy od vrchu (1. miesto)
+  if (bodyEl) bodyEl.scrollTop = 0;
   document.getElementById('pl-prod-sheet-bd').classList.add('show');
   var sheet = document.getElementById('pl-prod-sheet');
   sheet.classList.remove('show');
@@ -6617,6 +6634,67 @@ function closeProdSheet() {
   if (sheet) sheet.classList.remove('show');
   if (bd)    bd.classList.remove('show');
   document.body.style.overflow = '';
+}
+
+// Volá sa automaticky keď loadPharmaData dokončí fetch — updatne MS bunky bez re-renderu
+function prodSheetUpdateMsCells() {
+  if (!PL_PROD_SHEET_STATE.open || !PL_PROD_SHEET_STATE.prodKey) return;
+  var prodKey    = PL_PROD_SHEET_STATE.prodKey;
+  var pharmaCodes = PHARMA_CODES[prodKey];
+  var pharmaCode  = pharmaCodes ? pharmaCodes[0] : null;
+  if (!pharmaCode) return;
+  var kvartal = pharmaKvartalCode(PL_STATE.year, PL_STATE.q);
+  var months  = pharmaQuarterMonths(kvartal);
+
+  function getTeritMs(oblast) {
+    if (!oblast) return null;
+    var d = PHARMA_STATE.cache[pharmaCode + '_' + oblast + '_' + kvartal];
+    if (!d || !d.summary) return null;
+    var vals = [];
+    d.summary.forEach(function(s) {
+      if (months.indexOf(s.mesiac) !== -1) {
+        var v = parseFloat(s.terit_ms);
+        if (!isNaN(v) && v > 0) vals.push(v);
+      }
+    });
+    return vals.length ? vals.reduce(function(a,b){return a+b;},0)/vals.length : null;
+  }
+
+  // Updatni MS bunku každého rep riadku
+  var bodyEl = document.getElementById('pl-ps-body');
+  if (!bodyEl) return;
+  Array.from(bodyEl.querySelectorAll('.pl-ps-rep[data-username]')).forEach(function(row) {
+    var username = row.getAttribute('data-username');
+    var oblast   = (USERS_LOCAL[username] && USERS_LOCAL[username].region) || '';
+    var teritMs  = getTeritMs(oblast);
+    if (teritMs === null) return; // ešte neprislo, nemeň
+    var msEl = row.querySelector('.pl-ps-ms');
+    if (msEl) msEl.innerHTML = 'Terit. MS: <strong>' + teritMs.toFixed(2) + '%</strong>';
+  });
+
+  // Updatni SK MS v headeri ak ešte nie je
+  var subEl = document.getElementById('pl-ps-sub');
+  if (subEl && subEl.innerHTML.indexOf('SK MS') === -1) {
+    var prefix = pharmaCode + '_', suffix = '_' + kvartal;
+    var skMs = null;
+    Object.keys(PHARMA_STATE.cache).forEach(function(ck) {
+      if (skMs !== null) return;
+      if (ck.indexOf(prefix) !== 0 || ck.slice(-suffix.length) !== suffix) return;
+      var d = PHARMA_STATE.cache[ck];
+      if (!d || !d.summary) return;
+      var vals = [];
+      d.summary.forEach(function(s) {
+        if (months.indexOf(s.mesiac) !== -1) {
+          var v = parseFloat(s.sk_ms);
+          if (!isNaN(v) && v > 0) vals.push(v);
+        }
+      });
+      if (vals.length) skMs = vals.reduce(function(a,b){return a+b;},0)/vals.length;
+    });
+    if (skMs !== null) {
+      subEl.innerHTML += ' <span style="color:#94A3B8">·</span> SK MS: <strong>' + skMs.toFixed(2) + '%</strong>';
+    }
+  }
 }
 
 function plnenieRenderRegions() {
@@ -7698,6 +7776,8 @@ function loadPharmaData(code, oblast, kvartal) {
             PHARMA_STATE.kvartal    === kvartal) {
           pharmaRender(code);
         }
+        // Ak je otvorený product drill-down sheet, updatni MS bunky
+        if (typeof prodSheetUpdateMsCells === 'function') prodSheetUpdateMsCells();
       } else {
         if (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal) {
           var bodyEl = document.getElementById('pharma-ms-body');
