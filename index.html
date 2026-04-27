@@ -1622,7 +1622,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.7.36';
+var APP_VERSION = '2.7.37';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6702,12 +6702,8 @@ function prodSheetRenderRepList() {
       repData.push({ username: rep, planEUR: pPlan, predajeEUR: pSales, pct: pSales / pPlan * 100, subSales: subSales });
     }
   });
-  if (predajeSubKey) {
-    // Zoradiť podľa € subtypu (tablety alebo sáčky)
-    repData.sort(function(a, b){ return (b.subSales || 0) - (a.subSales || 0); });
-  } else {
-    repData.sort(function(a, b){ return b.pct - a.pct; });
-  }
+  // Vždy zoradiť podľa % plnenia plánu (kombinovaného) — aj pri subtabe Tablety/Sáčky
+  repData.sort(function(a, b){ return b.pct - a.pct; });
 
   // Helper: terit MS z cache
   function getTeritMs(oblast) {
