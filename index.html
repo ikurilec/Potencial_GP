@@ -1587,7 +1587,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.7.25';
+var APP_VERSION = '2.7.26';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -3265,6 +3265,11 @@ var _panelCurrent = null;
 var _PANEL_ORDER = { 'hist-overlay': 0, 'lb-overlay': 1, 'rep-plnenie-overlay': 2 };
 
 function _panelShow(newId) {
+  // Ak je ten istý panel už otvorený — nerob nič (ochrana pred dvojitým kliknutím)
+  if (_panelCurrent === newId) {
+    var alreadyOpen = document.getElementById(newId);
+    if (alreadyOpen && alreadyOpen.classList.contains('show')) return;
+  }
   var prevEl = _panelCurrent ? document.getElementById(_panelCurrent) : null;
   var prevVisible = prevEl && prevEl.classList.contains('show');
   var animCls;
