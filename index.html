@@ -1790,6 +1790,91 @@ function scriptUrl(params) {
   return SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(API_TOKEN);
 }
 
+// ═══════════════════════════════════════════════════════════
+//   DEV MODE — mock dáta pre testovanie na localhost
+//   Aktivácia: ?dev=1 (admin) alebo ?dev=1&role=amwest
+// ═══════════════════════════════════════════════════════════
+var IS_DEV = (new URLSearchParams(window.location.search)).get('dev') === '1';
+var DEV_ROLE = (new URLSearchParams(window.location.search)).get('role') || 'admin';
+
+// Mock Plnenie dáta — Q1 2026 (použité pre všetky Q v DEV móde)
+var MOCK_PLNENIE = (function() {
+  var reps = ['j.bohovic','v.hatinova','v.hromadkova','z.lescis','j.krkoska','i.kozakova',
+               'k.czidor','o.rad','l.macakova','z.lapsan','m.sabol','a.makis'];
+  var products = ['aflamil_kr','aflamil_tablety_sacky','cavinton forte','suprax','vidonorm'];
+  // Plan v EUR na rep × produkt
+  var planBase = {
+    'aflamil_kr':           3200,
+    'aflamil_tablety_sacky':5800,
+    'cavinton forte':       4100,
+    'suprax':               3600,
+    'vidonorm':             2900
+  };
+  // Variácie plnenia (seed per rep)
+  var pcts = { 'j.bohovic':1.12,'v.hatinova':0.87,'v.hromadkova':1.03,'z.lescis':0.95,
+               'j.krkoska':0.78,'i.kozakova':1.18,'k.czidor':0.91,'o.rad':1.05,
+               'l.macakova':0.82,'z.lapsan':0.99,'m.sabol':1.07,'a.makis':0.73 };
+  var plan = {}, predaje = {};
+  reps.forEach(function(rep) {
+    plan[rep] = {};
+    var tot = {}, byM = {};
+    products.forEach(function(p) {
+      var planVal = Math.round(planBase[p] * (0.85 + Math.random() * 0.3));
+      plan[rep][p] = planVal;
+      var salesVal = Math.round(planVal * pcts[rep] * (0.92 + Math.random() * 0.16));
+      tot[p] = salesVal;
+      // Split pre Aflamil tbl a sáčky: ~60% tablety, ~40% sáčky
+      if (p === 'aflamil_tablety_sacky') {
+        tot['aflamiltb'] = Math.round(salesVal * 0.60);
+        tot['aflamilsa'] = salesVal - Math.round(salesVal * 0.60);
+      }
+      // byMonth — rozdeľ rovnomerne do mesiacov 1-3 (Q1)
+      [1,2,3].forEach(function(m) {
+        byM[m] = byM[m] || {};
+        byM[m][p] = Math.round(salesVal / 3);
+        if (p === 'aflamil_tablety_sacky') {
+          byM[m]['aflamiltb'] = Math.round(tot['aflamiltb'] / 3);
+          byM[m]['aflamilsa'] = Math.round(tot['aflamilsa'] / 3);
+        }
+      });
+    });
+    predaje[rep] = { total: tot, byMonth: byM };
+  });
+  var planProducts    = products;
+  var predajeProducts = products.concat(['aflamiltb','aflamilsa']);
+  // Rovnaké dáta pre všetky 4 Q (v DEV móde stačí mať konzistentné dáta)
+  var resp = { ok:true, rok:2026, plan:plan, predaje:predaje, planProducts:planProducts, predajeProducts:predajeProducts };
+  return { Q1:resp, Q2:resp, Q3:resp, Q4:resp };
+})();
+
+// DEV auto-login — spustí sa po DOMContentLoaded ak ?dev=1
+function devModeInit() {
+  if (!IS_DEV) return;
+  // Žltý DEV banner
+  var banner = document.createElement('div');
+  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#FBBF24;color:#1a1a1a;font-size:12px;font-weight:700;text-align:center;padding:4px 8px;letter-spacing:.5px';
+  banner.textContent = '⚠️ DEV MODE — mock dáta, žiadne Sheets';
+  document.body.appendChild(banner);
+
+  // Nastav fake session
+  var fakeUser = { username:'admin', name:'Ivan (DEV)', role: DEV_ROLE === 'amwest' ? 'am west' : DEV_ROLE === 'ameast' ? 'am east' : 'admin', region:'' };
+  try {
+    fakeUser.loginTime = Date.now();
+    sessionStorage.setItem('potencial_gp_session', JSON.stringify(fakeUser));
+    localStorage.setItem('potencial_gp_session', JSON.stringify(fakeUser));
+  } catch(e){}
+
+  // Skry login screen, zavolaj loginSuccess flow
+  var ls = document.getElementById('login-screen');
+  if (ls) ls.classList.remove('show');
+  updateHdrForUser(fakeUser);
+  var mgrRole = mgrDetectRole(fakeUser);
+  if (mgrRole) {
+    mgrEnter(mgrRole);
+    setTimeout(function(){ wnShow(true); }, 400);
+  }
+}
+
 var SEGMENTS = {
   top: {
     label: 'Platinum', icon: '✅', color: 'green',
@@ -4447,6 +4532,17 @@ function mgrDelay(ms){
 }
 
 function mgrLoadReps(repList){
+  // DEV MODE — použij prázdne mock histórie, žiadne Sheets fetche
+  if (IS_DEV) {
+    MGR_STATE.lastLogins = {};
+    MGR_STATE.managers = [];
+    repList.forEach(function(username) {
+      MGR_STATE.reps[username] = { visits: [], error: false };
+    });
+    mgrRenderList();
+    return;
+  }
+
   var managersPromise = (MGR_STATE.role === 'admin')
     ? mgrFetchWithRetry(scriptUrl('action=getManagers')).catch(function(){ return []; })
     : Promise.resolve([]);
@@ -5120,7 +5216,12 @@ document.addEventListener('DOMContentLoaded', function(){
     localStorage.setItem('potencial_gp_version', APP_VERSION);
   }
 
-  initLogin();
+  if (IS_DEV) {
+    // DEV mód — preskočí initLogin a prihlási automaticky
+    devModeInit();
+  } else {
+    initLogin();
+  }
   initAutosave();
   initCounter();
   initProgress();
@@ -6206,6 +6307,26 @@ function plnenieLoadAllQuarters() {
   plnenieUpdateQTabs();
   plnenieRenderSummaryEmpty();
   plnenieRenderLoading();
+
+  // DEV MODE — použi mock dáta namiesto Sheets fetchu
+  if (IS_DEV) {
+    var qs = [1, 2, 3, 4];
+    qs.forEach(function(q) {
+      var resp = MOCK_PLNENIE['Q' + q];
+      if (resp) {
+        var agg = plnenieBuildAggregates(resp);
+        PL_STATE.qCache[q] = { data: resp, aggregates: agg };
+        if (q === PL_STATE.q) {
+          PL_STATE.data = resp;
+          PL_STATE.aggregates = agg;
+          PL_STATE.loaded = true;
+        }
+      }
+    });
+    PL_STATE.loading = false;
+    plnenieRenderAll();
+    return;
+  }
 
   var year = PL_STATE.year;
   var qs = [1, 2, 3, 4];
