@@ -990,12 +990,14 @@
     <button type="button" class="mgr-subtab" data-tab="leaderboard" onclick="mgrSwitchSubtab('leaderboard')">🏆 Rebríček</button>
   </div>
 
+  <!-- PTR indicator — zdieľaný pre Návštevy aj Plnenie -->
+  <div class="ptr-indicator" id="ptr-indicator">
+    <span class="ptr-arrow" id="ptr-arrow">↓</span>
+    <div class="ptr-spinner" id="ptr-spinner" style="display:none"></div>
+  </div>
+
   <!-- Dashboard — zoznam reprezentantov -->
   <div class="mgr-list-wrap" id="mgr-list-wrap">
-    <div class="ptr-indicator" id="ptr-indicator">
-      <span class="ptr-arrow" id="ptr-arrow">↓</span>
-      <div class="ptr-spinner" id="ptr-spinner" style="display:none"></div>
-    </div>
     <div class="mgr-stats">
       <div class="mgr-stat"><div class="mgr-stat-num" id="mgr-stat-reps">—</div><div class="mgr-stat-lbl">Tím</div></div>
       <div class="mgr-stat"><div class="mgr-stat-num" id="mgr-stat-week">—</div><div class="mgr-stat-lbl">Týždeň</div></div>
@@ -1616,7 +1618,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.7.30';
+var APP_VERSION = '2.7.32';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6468,7 +6470,7 @@ function plnenieRenderSummary() {
 // PRODUCT DRILL-DOWN SHEET — klik na produkt v sumári
 // ═══════════════════════════════════════════════════════════
 
-var PL_PROD_SHEET_STATE = { open: false, prodKey: null };
+var PL_PROD_SHEET_STATE = { open: false, prodKey: null, swipeInited: false };
 
 function openProdSheet(prodKey, prodLabel) {
   if (!PL_STATE.data || !PL_STATE.aggregates) return;
@@ -6620,10 +6622,63 @@ function openProdSheet(prodKey, prodLabel) {
   if (bodyEl) bodyEl.scrollTop = 0;
   document.getElementById('pl-prod-sheet-bd').classList.add('show');
   var sheet = document.getElementById('pl-prod-sheet');
+  sheet.style.transform = '';
   sheet.classList.remove('show');
   void sheet.offsetWidth;
   sheet.classList.add('show');
   document.body.style.overflow = 'hidden';
+  prodSheetInitSwipe();
+}
+
+function prodSheetInitSwipe() {
+  var sheet = document.getElementById('pl-prod-sheet');
+  if (!sheet || PL_PROD_SHEET_STATE.swipeInited) return;
+  PL_PROD_SHEET_STATE.swipeInited = true;
+
+  var startY = 0, dragY = 0, dragging = false;
+  var THRESHOLD = 80;
+
+  function canDrag(target) {
+    // Handle a header — vždy dovolí drag
+    if (target.closest('.pl-ps-handle') || target.closest('.pl-ps-hdr') || target.closest('.pl-ps-divider')) return true;
+    // Body — len keď je scrollnuté na vrch
+    var body = document.getElementById('pl-ps-body');
+    return body ? body.scrollTop <= 2 : true;
+  }
+
+  sheet.addEventListener('touchstart', function(e) {
+    if (!PL_PROD_SHEET_STATE.open || !canDrag(e.target)) return;
+    startY  = e.touches[0].clientY;
+    dragY   = 0;
+    dragging = true;
+    sheet.style.transition = 'none';
+  }, { passive: true });
+
+  sheet.addEventListener('touchmove', function(e) {
+    if (!dragging) return;
+    e.preventDefault(); // blokuje pull-to-refresh stránky pod sheetom
+    var delta = e.touches[0].clientY - startY;
+    if (delta < 0) delta = 0;
+    dragY = delta;
+    sheet.style.transform = 'translateY(' + delta + 'px)';
+  }, { passive: false });
+
+  function onTouchEnd() {
+    if (!dragging) return;
+    dragging = false;
+    sheet.style.transition = '';
+    if (dragY > THRESHOLD) {
+      closeProdSheet();
+    } else {
+      sheet.style.transform = '';
+    }
+  }
+  sheet.addEventListener('touchend',    onTouchEnd);
+  sheet.addEventListener('touchcancel', function() {
+    dragging = false;
+    sheet.style.transition = '';
+    sheet.style.transform  = '';
+  });
 }
 
 function closeProdSheet() {
@@ -6631,7 +6686,7 @@ function closeProdSheet() {
   PL_PROD_SHEET_STATE.prodKey = null;
   var sheet = document.getElementById('pl-prod-sheet');
   var bd    = document.getElementById('pl-prod-sheet-bd');
-  if (sheet) sheet.classList.remove('show');
+  if (sheet) { sheet.style.transform = ''; sheet.classList.remove('show'); }
   if (bd)    bd.classList.remove('show');
   document.body.style.overflow = '';
 }
@@ -8151,16 +8206,21 @@ function preloadAllPharmaData() {
   function getSpinner(){ return document.getElementById('ptr-spinner'); }
 
   function isManagerList(){
-    var wrap = getListWrap();
-    if(!wrap || wrap.style.display === 'none') return false;
     if(!document.body.classList.contains('manager-mode')) return false;
-    // Nespúšťaj PTR ak je otvorený nejaký overlay
+    // Nespúšťaj PTR ak je otvorený product sheet alebo nejaký overlay
+    if(PL_PROD_SHEET_STATE && PL_PROD_SHEET_STATE.open) return false;
     var overlays = ['lb-overlay','detail-overlay','hist-overlay','wn-overlay','confirm-overlay','session-expired-overlay'];
     for(var i=0;i<overlays.length;i++){
       var el = document.getElementById(overlays[i]);
       if(el && el.classList.contains('show')) return false;
     }
-    return true;
+    // Plnenie subtab — ak je aktívny a detail reprezentanta nie je otvorený
+    if(MGR_STATE && MGR_STATE.subtab === 'plnenie'){
+      return !document.body.classList.contains('mgr-plnenie-detail-open');
+    }
+    // Zoznam lekárov (Návštevy)
+    var wrap = getListWrap();
+    return !!(wrap && wrap.style.display !== 'none');
   }
 
   document.addEventListener('touchstart', function(e){
