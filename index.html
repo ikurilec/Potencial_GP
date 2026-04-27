@@ -674,6 +674,10 @@
   .pl-ps-sub{font-size:12px;color:#64748B;display:flex;align-items:center;gap:6px;flex-wrap:wrap;line-height:1.4}
   .pl-ps-sub-pct{font-weight:700}
   .pl-ps-close{width:32px;height:32px;border:none;background:#F1F5F9;border-radius:50%;cursor:pointer;font-size:18px;color:#475569;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1}
+  .pl-ps-subtabs{display:none;gap:6px;padding:0 16px 10px;flex-shrink:0}
+  .pl-ps-subtabs.show{display:flex}
+  .pl-ps-subtab{flex:1;padding:8px 4px;border:none;background:#F1F5F9;font-size:12px;font-weight:700;color:#64748B;cursor:pointer;border-radius:8px;font-family:inherit;transition:all .15s}
+  .pl-ps-subtab.active{background:#0C1E35;color:#fff}
   .pl-ps-divider{height:0.5px;background:#E2E8F0;flex-shrink:0}
   .pl-ps-body{overflow-y:auto;flex:1;padding:4px 16px 40px}
   .pl-ps-rep{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:0.5px solid #F1F5F9}
@@ -990,12 +994,14 @@
     <button type="button" class="mgr-subtab" data-tab="leaderboard" onclick="mgrSwitchSubtab('leaderboard')">🏆 Rebríček</button>
   </div>
 
+  <!-- PTR indicator — zdieľaný pre Návštevy aj Plnenie -->
+  <div class="ptr-indicator" id="ptr-indicator">
+    <span class="ptr-arrow" id="ptr-arrow">↓</span>
+    <div class="ptr-spinner" id="ptr-spinner" style="display:none"></div>
+  </div>
+
   <!-- Dashboard — zoznam reprezentantov -->
   <div class="mgr-list-wrap" id="mgr-list-wrap">
-    <div class="ptr-indicator" id="ptr-indicator">
-      <span class="ptr-arrow" id="ptr-arrow">↓</span>
-      <div class="ptr-spinner" id="ptr-spinner" style="display:none"></div>
-    </div>
     <div class="mgr-stats">
       <div class="mgr-stat"><div class="mgr-stat-num" id="mgr-stat-reps">—</div><div class="mgr-stat-lbl">Tím</div></div>
       <div class="mgr-stat"><div class="mgr-stat-num" id="mgr-stat-week">—</div><div class="mgr-stat-lbl">Týždeň</div></div>
@@ -1616,7 +1622,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.7.30';
+var APP_VERSION = '2.7.34';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6468,7 +6474,7 @@ function plnenieRenderSummary() {
 // PRODUCT DRILL-DOWN SHEET — klik na produkt v sumári
 // ═══════════════════════════════════════════════════════════
 
-var PL_PROD_SHEET_STATE = { open: false, prodKey: null };
+var PL_PROD_SHEET_STATE = { open: false, prodKey: null, activePharmaCode: null, predajeSubKey: null, swipeInited: false };
 
 function openProdSheet(prodKey, prodLabel) {
   if (!PL_STATE.data || !PL_STATE.aggregates) return;
@@ -6481,27 +6487,110 @@ function openProdSheet(prodKey, prodLabel) {
   var activeReps = plnenieGetActiveReps();
   var q = PL_STATE.q, year = PL_STATE.year;
   var kvartal = pharmaKvartalCode(year, q);
-  var pharmaCodes = PHARMA_CODES[prodKey];
-  var pharmaCode = pharmaCodes ? pharmaCodes[0] : null;
+  var pharmaCodes = PHARMA_CODES[prodKey] || [];
+  var pharmaCode  = pharmaCodes.length ? pharmaCodes[0] : null;
+  PL_PROD_SHEET_STATE.activePharmaCode = pharmaCode;
+  PL_PROD_SHEET_STATE.predajeSubKey = PHARMA_PREDAJE_KEY[pharmaCode] || null;
 
-  // Per-rep data pre tento produkt (len reps s plánom > 0)
+  // Subtaby (napr. Tablety / Sáčky pre Aflamil)
+  var subtabsEl = document.getElementById('pl-ps-subtabs');
+  if (subtabsEl) {
+    var PHARMA_CODE_LABELS = { AFLtbl: 'Tablety', AFLsach: 'Sáčky', AFLcrm: 'Krém', CAV: 'Cavinton', JUN: 'Junod', SUP: 'Suprax', TEL: 'Telexer', VID: 'Vidonorm' };
+    if (pharmaCodes.length > 1) {
+      subtabsEl.innerHTML = pharmaCodes.map(function(c) {
+        return '<button type="button" class="pl-ps-subtab' + (c === pharmaCode ? ' active' : '') + '" onclick="prodSheetSwitchPharmaCode(\'' + c + '\')">' + (PHARMA_CODE_LABELS[c] || c) + '</button>';
+      }).join('');
+      subtabsEl.classList.add('show');
+    } else {
+      subtabsEl.innerHTML = '';
+      subtabsEl.classList.remove('show');
+    }
+  }
+
+  // Product summary (overall % — vždy kombinovaný, bez ohľadu na subtab)
+  var prodSummary = null;
+  (PL_STATE.aggregates.products || []).forEach(function(p){ if (p.key === prodKey) prodSummary = p; });
+
+  // Header — title + SK MS
+  var titleEl = document.getElementById('pl-ps-title');
+  var subEl   = document.getElementById('pl-ps-sub');
+  if (titleEl) titleEl.textContent = prodLabel;
+  if (subEl) {
+    var pctPart = (prodSummary && prodSummary.pct !== null)
+      ? '<span class="pl-ps-sub-pct ' + plnenieColorClass(prodSummary.pct) + '">' + plnenieFormatPct(prodSummary.pct) + '</span> plnenia · ' + plnenieQLabel(q, year)
+      : plnenieQLabel(q, year);
+    subEl.innerHTML = pctPart;
+  }
+
+  // Zoznam reprezentantov (cez zdieľanú funkciu, volateľnú aj pri prepnutí subtabu)
+  prodSheetRenderRepList();
+
+  // Triggernúť fetch pre všetky pharma kódy produktu × všetky oblasty
+
+  // Triggernúť fetch pre všetky pharma kódy produktu × všetky oblasty
+  // (preloadAllPharmaData cachuje aktuálny Q, sheet môže zobrazovať iný Q)
+  if (pharmaCodes.length) {
+    var neededOblasts = {};
+    repData.forEach(function(r) {
+      var o = (USERS_LOCAL[r.username] && USERS_LOCAL[r.username].region) || '';
+      if (o) neededOblasts[o] = true;
+    });
+    pharmaCodes.forEach(function(c) {
+      Object.keys(neededOblasts).forEach(function(o) {
+        var ck = c + '_' + o + '_' + kvartal;
+        if (!PHARMA_STATE.cache[ck] && !PHARMA_STATE.loading[ck]) {
+          loadPharmaData(c, o, kvartal);
+        }
+      });
+    });
+  }
+
+  // Zobraziť sheet — vždy od vrchu (1. miesto)
+  if (bodyEl) bodyEl.scrollTop = 0;
+  document.getElementById('pl-prod-sheet-bd').classList.add('show');
+  var sheet = document.getElementById('pl-prod-sheet');
+  sheet.style.transform = '';
+  sheet.classList.remove('show');
+  void sheet.offsetWidth;
+  sheet.classList.add('show');
+  document.body.style.overflow = 'hidden';
+  prodSheetInitSwipe();
+}
+
+// Vykreslí zoznam reprezentantov v product sheet.
+// Vždy používa PL_PROD_SHEET_STATE.prodKey + activePharmaCode + predajeSubKey.
+// Volá sa pri otvorení aj pri prepnutí subtabu (Tablety ↔ Sáčky).
+function prodSheetRenderRepList() {
+  if (!PL_STATE.data || !PL_PROD_SHEET_STATE.prodKey) return;
+  var prodKey      = PL_PROD_SHEET_STATE.prodKey;
+  var pharmaCode   = PL_PROD_SHEET_STATE.activePharmaCode;
+  var predajeSubKey = PL_PROD_SHEET_STATE.predajeSubKey; // napr. 'aflamiltb' alebo 'aflamilsa', null = kombinácia
+  var resp = PL_STATE.data;
+  var plan = resp.plan || {};
+  var predaje = resp.predaje || {};
+  var activeReps = plnenieGetActiveReps();
+  var kvartal = pharmaKvartalCode(PL_STATE.year, PL_STATE.q);
+
+  // Zoradenie: pri subtabe podľa € daného subtypu, inak podľa % plnenia
   var repData = [];
   activeReps.forEach(function(rep) {
-    var rPlan = plan[rep] || {};
+    var rPlan  = plan[rep] || {};
     var rSales = (predaje[rep] && predaje[rep].total) || {};
     var pPlan  = parseFloat(rPlan[prodKey]);  if (isNaN(pPlan))  pPlan  = 0;
     var pSales = parseFloat(rSales[prodKey]); if (isNaN(pSales)) pSales = 0;
     if (pPlan > 0) {
-      repData.push({ username: rep, planEUR: pPlan, predajeEUR: pSales, pct: pSales / pPlan * 100 });
+      var subSales = predajeSubKey ? (parseFloat(rSales[predajeSubKey]) || 0) : null;
+      repData.push({ username: rep, planEUR: pPlan, predajeEUR: pSales, pct: pSales / pPlan * 100, subSales: subSales });
     }
   });
-  repData.sort(function(a, b){ return b.pct - a.pct; });
+  if (predajeSubKey) {
+    // Zoradiť podľa € subtypu (tablety alebo sáčky)
+    repData.sort(function(a, b){ return (b.subSales || 0) - (a.subSales || 0); });
+  } else {
+    repData.sort(function(a, b){ return b.pct - a.pct; });
+  }
 
-  // Product summary (overall %)
-  var prodSummary = null;
-  (PL_STATE.aggregates.products || []).forEach(function(p){ if (p.key === prodKey) prodSummary = p; });
-
-  // Helper: vypočítaj teritAvg z pharma cache pre daný oblast
+  // Helper: terit MS z cache
   function getTeritMs(oblast) {
     if (!pharmaCode || !oblast) return null;
     var d = PHARMA_STATE.cache[pharmaCode + '_' + oblast + '_' + kvartal];
@@ -6517,10 +6606,11 @@ function openProdSheet(prodKey, prodLabel) {
     return vals.length ? vals.reduce(function(a,b){return a+b;},0)/vals.length : null;
   }
 
-  // SK MS — z ľubovoľnej dostupnej cache položky pre tento produkt+kvartal
-  var skMs = null;
-  if (pharmaCode) {
+  // SK MS — aktualizuj header (len ak ešte nie je)
+  var subEl = document.getElementById('pl-ps-sub');
+  if (subEl && subEl.innerHTML.indexOf('SK MS') === -1 && pharmaCode) {
     var prefix = pharmaCode + '_', suffix = '_' + kvartal;
+    var skMs = null;
     Object.keys(PHARMA_STATE.cache).forEach(function(ck) {
       if (skMs !== null) return;
       if (ck.indexOf(prefix) !== 0 || ck.slice(-suffix.length) !== suffix) return;
@@ -6536,94 +6626,122 @@ function openProdSheet(prodKey, prodLabel) {
       });
       if (vals.length) skMs = vals.reduce(function(a,b){return a+b;},0)/vals.length;
     });
+    if (skMs !== null) {
+      subEl.innerHTML += ' <span style="color:#94A3B8">·</span> SK MS: <strong>' + skMs.toFixed(2) + '%</strong>';
+    }
   }
 
-  // Header
-  var titleEl = document.getElementById('pl-ps-title');
-  var subEl   = document.getElementById('pl-ps-sub');
-  if (titleEl) titleEl.textContent = prodLabel;
-  if (subEl) {
-    var pctPart = (prodSummary && prodSummary.pct !== null)
-      ? '<span class="pl-ps-sub-pct ' + plnenieColorClass(prodSummary.pct) + '">' + plnenieFormatPct(prodSummary.pct) + '</span> plnenia · ' + plnenieQLabel(q, year)
-      : plnenieQLabel(q, year);
-    var msPart = (skMs !== null) ? ' <span style="color:#94A3B8">·</span> SK MS: <strong>' + skMs.toFixed(2) + '%</strong>' : '';
-    subEl.innerHTML = pctPart + msPart;
-  }
-
-  // Zoznam reprezentantov
+  // Vykresli zoznam
   var bodyEl = document.getElementById('pl-ps-body');
   if (!bodyEl) return;
   if (repData.length === 0) {
     bodyEl.innerHTML = '<div style="padding:24px 0;text-align:center;color:#94A3B8;font-size:14px">Žiadne dáta pre tento produkt</div>';
-  } else {
-    var rank = 0;
-    bodyEl.innerHTML = repData.map(function(r) {
-      var info = LB_REP_INFO[r.username] || {
-        name: MGR_REP_NAMES[r.username] || r.username,
-        color: 'linear-gradient(135deg,#64748B,#475569)'
-      };
-      var oblast   = (USERS_LOCAL[r.username] && USERS_LOCAL[r.username].region) || '';
-      var teritMs  = getTeritMs(oblast);
-      var msHtml   = pharmaCode
-        ? '<div class="pl-ps-ms">Terit. MS: ' + (teritMs !== null ? '<strong>' + teritMs.toFixed(2) + '%</strong>' : '—') + '</div>'
-        : '';
+    return;
+  }
 
-      rank++;
-      var medalHtml;
-      if (rank === 1)      medalHtml = '<div class="pl-ps-medal">🥇</div>';
-      else if (rank === 2) medalHtml = '<div class="pl-ps-medal">🥈</div>';
-      else if (rank === 3) medalHtml = '<div class="pl-ps-medal">🥉</div>';
-      else                 medalHtml = '<div class="pl-ps-rank">' + rank + '.</div>';
+  var rank = 0;
+  bodyEl.innerHTML = repData.map(function(r) {
+    var info = LB_REP_INFO[r.username] || {
+      name: MGR_REP_NAMES[r.username] || r.username,
+      color: 'linear-gradient(135deg,#64748B,#475569)'
+    };
+    var oblast  = (USERS_LOCAL[r.username] && USERS_LOCAL[r.username].region) || '';
+    var teritMs = getTeritMs(oblast);
+    var msHtml  = pharmaCode
+      ? '<div class="pl-ps-ms">Terit. MS: ' + (teritMs !== null ? '<strong>' + teritMs.toFixed(2) + '%</strong>' : '—') + '</div>'
+      : '';
 
-      var eurHtml = r.predajeEUR > 0
+    rank++;
+    var medalHtml;
+    if (rank === 1)      medalHtml = '<div class="pl-ps-medal">🥇</div>';
+    else if (rank === 2) medalHtml = '<div class="pl-ps-medal">🥈</div>';
+    else if (rank === 3) medalHtml = '<div class="pl-ps-medal">🥉</div>';
+    else                 medalHtml = '<div class="pl-ps-rank">' + rank + '.</div>';
+
+    // € riadok: pri subtabe zobraz € subtypu / celkové predaje; inak predaje / plán
+    var eurHtml;
+    if (predajeSubKey !== null) {
+      var subAmt = r.subSales || 0;
+      eurHtml = (subAmt > 0 ? plnenieFormatEUR(subAmt) : '—') +
+                (r.predajeEUR > 0 ? ' / ' + plnenieFormatEUR(r.predajeEUR) : '');
+    } else {
+      eurHtml = r.predajeEUR > 0
         ? plnenieFormatEUR(r.predajeEUR) + ' / ' + plnenieFormatEUR(r.planEUR)
         : '— / ' + plnenieFormatEUR(r.planEUR);
+    }
 
-      return '<div class="pl-ps-rep" data-username="' + mgrEscape(r.username) + '">' +
-        medalHtml +
-        '<div class="pl-ps-avatar" style="background:' + info.color + '">' + mgrEscape(mgrInitials(info.name)) + '</div>' +
-        '<div class="pl-ps-info">' +
-          '<div class="pl-ps-name">' + mgrEscape(info.name) + '</div>' +
-          msHtml +
-        '</div>' +
-        '<div class="pl-ps-right">' +
-          '<div class="pl-ps-pct ' + plnenieColorClass(r.pct) + '" data-pct="' + r.pct.toFixed(4) + '">0,00%</div>' +
-          '<div class="pl-ps-eur">' + mgrEscape(eurHtml) + '</div>' +
-        '</div>' +
-      '</div>';
-    }).join('');
+    return '<div class="pl-ps-rep" data-username="' + mgrEscape(r.username) + '">' +
+      medalHtml +
+      '<div class="pl-ps-avatar" style="background:' + info.color + '">' + mgrEscape(mgrInitials(info.name)) + '</div>' +
+      '<div class="pl-ps-info">' +
+        '<div class="pl-ps-name">' + mgrEscape(info.name) + '</div>' +
+        msHtml +
+      '</div>' +
+      '<div class="pl-ps-right">' +
+        '<div class="pl-ps-pct ' + plnenieColorClass(r.pct) + '" data-pct="' + r.pct.toFixed(4) + '">0,00%</div>' +
+        '<div class="pl-ps-eur">' + mgrEscape(eurHtml) + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
 
-    // Count-up animácia pre %
-    Array.from(bodyEl.querySelectorAll('.pl-ps-pct[data-pct]')).forEach(function(el, i) {
-      var v = parseFloat(el.getAttribute('data-pct'));
-      if (!isNaN(v)) setTimeout(function(){ plnenieCountUp(el, v); }, 80 + i * 50);
-    });
-  }
+  // Count-up animácia pre %
+  Array.from(bodyEl.querySelectorAll('.pl-ps-pct[data-pct]')).forEach(function(el, i) {
+    var v = parseFloat(el.getAttribute('data-pct'));
+    if (!isNaN(v)) setTimeout(function(){ plnenieCountUp(el, v); }, 80 + i * 50);
+  });
 
-  // Triggernúť fetch pre oblasty, ktoré ešte nie sú v cache pre tento kvartal
-  // (preloadAllPharmaData cachuje aktuálny Q, ale sheet môže zobrazovať iný Q)
-  if (pharmaCode) {
-    var neededOblasts = {};
-    repData.forEach(function(r) {
-      var o = (USERS_LOCAL[r.username] && USERS_LOCAL[r.username].region) || '';
-      if (o) neededOblasts[o] = true;
-    });
-    Object.keys(neededOblasts).forEach(function(o) {
-      var ck = pharmaCode + '_' + o + '_' + kvartal;
-      if (!PHARMA_STATE.cache[ck] && !PHARMA_STATE.loading[ck]) {
-        loadPharmaData(pharmaCode, o, kvartal);
-      }
-    });
-  }
+  bodyEl.scrollTop = 0;
+}
 
-  // Zobraziť sheet — vždy od vrchu (1. miesto)
-  if (bodyEl) bodyEl.scrollTop = 0;
-  document.getElementById('pl-prod-sheet-bd').classList.add('show');
+function prodSheetInitSwipe() {
   var sheet = document.getElementById('pl-prod-sheet');
-  sheet.classList.remove('show');
-  void sheet.offsetWidth;
-  sheet.classList.add('show');
-  document.body.style.overflow = 'hidden';
+  if (!sheet || PL_PROD_SHEET_STATE.swipeInited) return;
+  PL_PROD_SHEET_STATE.swipeInited = true;
+
+  var startY = 0, dragY = 0, dragging = false;
+  var THRESHOLD = 80;
+
+  function canDrag(target) {
+    // Handle a header — vždy dovolí drag
+    if (target.closest('.pl-ps-handle') || target.closest('.pl-ps-hdr') || target.closest('.pl-ps-divider')) return true;
+    // Body — len keď je scrollnuté na vrch
+    var body = document.getElementById('pl-ps-body');
+    return body ? body.scrollTop <= 2 : true;
+  }
+
+  sheet.addEventListener('touchstart', function(e) {
+    if (!PL_PROD_SHEET_STATE.open || !canDrag(e.target)) return;
+    startY  = e.touches[0].clientY;
+    dragY   = 0;
+    dragging = true;
+    sheet.style.transition = 'none';
+  }, { passive: true });
+
+  sheet.addEventListener('touchmove', function(e) {
+    if (!dragging) return;
+    e.preventDefault(); // blokuje pull-to-refresh stránky pod sheetom
+    var delta = e.touches[0].clientY - startY;
+    if (delta < 0) delta = 0;
+    dragY = delta;
+    sheet.style.transform = 'translateY(' + delta + 'px)';
+  }, { passive: false });
+
+  function onTouchEnd() {
+    if (!dragging) return;
+    dragging = false;
+    sheet.style.transition = '';
+    if (dragY > THRESHOLD) {
+      closeProdSheet();
+    } else {
+      sheet.style.transform = '';
+    }
+  }
+  sheet.addEventListener('touchend',    onTouchEnd);
+  sheet.addEventListener('touchcancel', function() {
+    dragging = false;
+    sheet.style.transition = '';
+    sheet.style.transform  = '';
+  });
 }
 
 function closeProdSheet() {
@@ -6631,7 +6749,7 @@ function closeProdSheet() {
   PL_PROD_SHEET_STATE.prodKey = null;
   var sheet = document.getElementById('pl-prod-sheet');
   var bd    = document.getElementById('pl-prod-sheet-bd');
-  if (sheet) sheet.classList.remove('show');
+  if (sheet) { sheet.style.transform = ''; sheet.classList.remove('show'); }
   if (bd)    bd.classList.remove('show');
   document.body.style.overflow = '';
 }
@@ -6639,9 +6757,8 @@ function closeProdSheet() {
 // Volá sa automaticky keď loadPharmaData dokončí fetch — updatne MS bunky bez re-renderu
 function prodSheetUpdateMsCells() {
   if (!PL_PROD_SHEET_STATE.open || !PL_PROD_SHEET_STATE.prodKey) return;
-  var prodKey    = PL_PROD_SHEET_STATE.prodKey;
-  var pharmaCodes = PHARMA_CODES[prodKey];
-  var pharmaCode  = pharmaCodes ? pharmaCodes[0] : null;
+  // Použije aktívny pharma kód (napr. AFLtbl alebo AFLsach pre Aflamil)
+  var pharmaCode = PL_PROD_SHEET_STATE.activePharmaCode;
   if (!pharmaCode) return;
   var kvartal = pharmaKvartalCode(PL_STATE.year, PL_STATE.q);
   var months  = pharmaQuarterMonths(kvartal);
@@ -6695,6 +6812,48 @@ function prodSheetUpdateMsCells() {
       subEl.innerHTML += ' <span style="color:#94A3B8">·</span> SK MS: <strong>' + skMs.toFixed(2) + '%</strong>';
     }
   }
+}
+
+function prodSheetSwitchPharmaCode(code) {
+  if (!PL_PROD_SHEET_STATE.open) return;
+  if (PL_PROD_SHEET_STATE.activePharmaCode === code) return;
+  PL_PROD_SHEET_STATE.activePharmaCode = code;
+  PL_PROD_SHEET_STATE.predajeSubKey = PHARMA_PREDAJE_KEY[code] || null;
+
+  // Aktualizuj aktívny subtab
+  var subtabsEl = document.getElementById('pl-ps-subtabs');
+  if (subtabsEl) {
+    Array.from(subtabsEl.querySelectorAll('.pl-ps-subtab')).forEach(function(btn) {
+      btn.classList.toggle('active', btn.textContent && btn.getAttribute('onclick') && btn.getAttribute('onclick').indexOf(code) !== -1);
+    });
+  }
+
+  // Resetni SK MS v headeri (bude aktualizovaný cez prodSheetRenderRepList)
+  var subEl = document.getElementById('pl-ps-sub');
+  if (subEl) {
+    subEl.innerHTML = subEl.innerHTML.replace(/\s*<span[^>]*>·<\/span>\s*SK MS:.*?<\/strong>/g, '');
+  }
+
+  // Prerendruj zoznam reprezentantov (nový zorad podľa subtypu + nové € hodnoty)
+  prodSheetRenderRepList();
+
+  // Triggernúť fetche pre nový kód ak treba
+  var kvartal = pharmaKvartalCode(PL_STATE.year, PL_STATE.q);
+  var activeReps = plnenieGetActiveReps();
+  var neededOblasts = {};
+  activeReps.forEach(function(r) {
+    var o = (USERS_LOCAL[r] && USERS_LOCAL[r].region) || '';
+    if (o) neededOblasts[o] = true;
+  });
+  Object.keys(neededOblasts).forEach(function(o) {
+    var ck = code + '_' + o + '_' + kvartal;
+    if (!PHARMA_STATE.cache[ck] && !PHARMA_STATE.loading[ck]) {
+      loadPharmaData(code, o, kvartal);
+    }
+  });
+
+  // Ak sú dáta už v cache, ihneď updatni MS bunky
+  prodSheetUpdateMsCells();
 }
 
 function plnenieRenderRegions() {
@@ -7657,6 +7816,12 @@ var PHARMA_PROD_LABEL = {
   'CAV':'CAVINTON','JUN':'JUNOD','SUP':'SUPRAX','TEL':'TELEXER','VID':'VIDONORM'
 };
 
+// Mapovanie pharma kódu → kľúč v predajoch pre split zobrazenie (napr. AFLtbl → aflamiltb)
+var PHARMA_PREDAJE_KEY = {
+  'AFLtbl':  'aflamiltb',
+  'AFLsach': 'aflamilsa'
+};
+
 var PHARMA_MONTH_SK = ['','Jan','Feb','Mar','Apr','Máj','Jún','Júl','Aug','Sep','Okt','Nov','Dec'];
 
 var PHARMA_STATE = {
@@ -7697,9 +7862,8 @@ function pharmaGetOblast() {
     if (rep) return (USERS_LOCAL[rep] && USERS_LOCAL[rep].region) || '';
     return '';
   }
-  return pharmaOblastFromRegion(
-    (USERS_LOCAL[session.username] && USERS_LOCAL[session.username].region) || session.region || ''
-  );
+  // Raw hodnota bez normalizácie — Sheets používa pôvodné kódy (BASE, BAMA, KE, ...)
+  return (USERS_LOCAL[session.username] && USERS_LOCAL[session.username].region) || session.region || '';
 }
 
 function openPharmaMs(prodKey, label) {
@@ -8133,9 +8297,8 @@ function preloadAllPharmaData() {
       allCodes.forEach(function(code) { loadPharmaData(code, oblast, kvartal); });
     });
   } else {
-    var oblast = pharmaOblastFromRegion(
-      (USERS_LOCAL[session.username] && USERS_LOCAL[session.username].region) || session.region || ''
-    );
+    // Raw hodnota bez normalizácie — konzistentné so Sheets kľúčmi
+    var oblast = (USERS_LOCAL[session.username] && USERS_LOCAL[session.username].region) || session.region || '';
     if (oblast) allCodes.forEach(function(code) { loadPharmaData(code, oblast, kvartal); });
   }
 }
@@ -8151,16 +8314,21 @@ function preloadAllPharmaData() {
   function getSpinner(){ return document.getElementById('ptr-spinner'); }
 
   function isManagerList(){
-    var wrap = getListWrap();
-    if(!wrap || wrap.style.display === 'none') return false;
     if(!document.body.classList.contains('manager-mode')) return false;
-    // Nespúšťaj PTR ak je otvorený nejaký overlay
+    // Nespúšťaj PTR ak je otvorený product sheet alebo nejaký overlay
+    if(PL_PROD_SHEET_STATE && PL_PROD_SHEET_STATE.open) return false;
     var overlays = ['lb-overlay','detail-overlay','hist-overlay','wn-overlay','confirm-overlay','session-expired-overlay'];
     for(var i=0;i<overlays.length;i++){
       var el = document.getElementById(overlays[i]);
       if(el && el.classList.contains('show')) return false;
     }
-    return true;
+    // Plnenie subtab — ak je aktívny a detail reprezentanta nie je otvorený
+    if(MGR_STATE && MGR_STATE.subtab === 'plnenie'){
+      return !document.body.classList.contains('mgr-plnenie-detail-open');
+    }
+    // Zoznam lekárov (Návštevy)
+    var wrap = getListWrap();
+    return !!(wrap && wrap.style.display !== 'none');
   }
 
   document.addEventListener('touchstart', function(e){
@@ -8348,6 +8516,7 @@ function preloadAllPharmaData() {
     </div>
     <button type="button" class="pl-ps-close" onclick="closeProdSheet()">×</button>
   </div>
+  <div class="pl-ps-subtabs" id="pl-ps-subtabs"></div>
   <div class="pl-ps-divider"></div>
   <div class="pl-ps-body" id="pl-ps-body"></div>
 </div>
