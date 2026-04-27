@@ -6666,14 +6666,13 @@ function openProdSheet(prodKey, prodLabel) {
   }
 
   // Zobraziť sheet — vždy od vrchu (1. miesto)
-  document.getElementById('pl-prod-sheet-bd').classList.add('show');
+  var bd = document.getElementById('pl-prod-sheet-bd');
+  bd.classList.add('show');
   var sheet = document.getElementById('pl-prod-sheet');
   sheet.style.transform = '';
   sheet.classList.remove('show');
   void sheet.offsetWidth;
   sheet.classList.add('show');
-  // Zablokuj scroll stránky pod sheetom — ale nie scroll vnútri sheetu
-  document.documentElement.style.overflow = 'hidden';
   prodSheetInitSwipe();
 }
 
@@ -6829,6 +6828,10 @@ function prodSheetInitSwipe() {
     return body ? body.scrollTop <= 2 : true;
   }
 
+  // Backdrop — zablokuj scroll stránky pod sheetom (iOS safe, neovplyvní scroll vnútri sheetu)
+  var bd = document.getElementById('pl-prod-sheet-bd');
+  if (bd) bd.addEventListener('touchmove', function(e){ e.preventDefault(); }, { passive: false });
+
   sheet.addEventListener('touchstart', function(e) {
     if (!PL_PROD_SHEET_STATE.open || !canDrag(e.target)) return;
     startY  = e.touches[0].clientY;
@@ -6871,7 +6874,6 @@ function closeProdSheet() {
   var bd    = document.getElementById('pl-prod-sheet-bd');
   if (sheet) { sheet.style.transform = ''; sheet.classList.remove('show'); }
   if (bd)    bd.classList.remove('show');
-  document.documentElement.style.overflow = '';
 }
 
 // Volá sa automaticky keď loadPharmaData dokončí fetch — updatne MS bunky bez re-renderu
