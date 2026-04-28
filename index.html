@@ -723,6 +723,25 @@
   .pl-rep-card.pl-rep-clickable{cursor:pointer;transition:background .15s}
   .pl-rep-card.pl-rep-clickable:active{background:#F8FAFC}
   .pl-rep-chev{color:#CBD5E1;font-size:17px;margin-left:4px;flex-shrink:0}
+  /* ── Admin notifikačné tlačidlá pod West/East kartami ── */
+  .pl-notif-btns{display:flex;flex-direction:column;gap:7px;margin-top:18px;margin-bottom:12px}
+  .pl-notif-btn{display:flex;align-items:center;gap:9px;background:#fff;border:1.5px solid #E2E8F0;border-radius:12px;padding:11px 14px;font-family:inherit;font-size:13px;font-weight:600;color:#334155;text-align:left;cursor:default}
+  .pl-notif-btn .pl-notif-icon{font-size:16px;flex-shrink:0}
+  .pl-notif-btn .pl-notif-lbl{flex:1;line-height:1.3}
+  .pl-notif-action{background:#fff;border:1.5px solid #BFDBFE;border-radius:8px;padding:5px 11px;font-family:inherit;font-size:12px;font-weight:600;color:#2563EB;cursor:pointer;flex-shrink:0;transition:background .15s,border-color .15s;-webkit-tap-highlight-color:transparent}
+  .pl-notif-action:active{background:#EFF6FF;border-color:#93C5FD}
+  .pl-notif-btn.saving .pl-notif-action{color:#94A3B8;border-color:#E2E8F0;pointer-events:none}
+  .pl-notif-btn.done .pl-notif-action{color:#059669;border-color:#BBF7D0}
+  /* ── Notifikačný banner pre reprezentantov ── */
+  .notif-banner{position:fixed;inset:0;z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px;background:rgba(0,0,0,.45);animation:notifFadeIn .2s ease both}
+  @keyframes notifFadeIn{from{opacity:0}to{opacity:1}}
+  .notif-banner-inner{background:#1E293B;color:#fff;border-radius:16px;padding:18px 18px 16px;display:flex;flex-direction:column;align-items:center;gap:10px;box-shadow:0 8px 32px rgba(0,0,0,.35);width:100%;max-width:320px;animation:notifElastic .6s cubic-bezier(.36,.07,.19,.97) both}
+  @keyframes notifElastic{0%{opacity:0;transform:scale(0.5)}60%{opacity:1;transform:scale(1.12)}75%{transform:scale(0.94)}88%{transform:scale(1.04)}100%{transform:scale(1)}}
+  .notif-banner-icon{font-size:32px;line-height:1;animation:notifIconPulse 1.4s ease-in-out 0.3s infinite}
+  @keyframes notifIconPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.22)}}
+  .notif-banner-text{font-size:14px;font-weight:600;line-height:1.4;text-align:center}
+  .notif-banner-close{background:#2563EB;border:none;color:#fff;border-radius:10px;padding:10px 0;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;width:100%;margin-top:4px;-webkit-tap-highlight-color:transparent;transition:background .15s}
+  .notif-banner-close:active{background:#1D4ED8}
   /* ── Detail reprezentanta (v2.3.1) — CSS totožný s plnenie_vizual.html / Detail repa ── */
   .mgr-plnenie-detail{display:none}
   body.mgr-subtab-plnenie.mgr-plnenie-detail-open .mgr-plnenie-detail{display:block}
@@ -1081,6 +1100,19 @@
     <div class="pl-section-lbl">Poradie reprezentantov</div>
     <div class="pl-rep-list" id="pl-rep-list">
       <div class="skel-wrap"><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:55%"></div><div class="skel skel-line" style="width:35%"></div></div><div class="skel" style="width:44px;height:20px;border-radius:10px;flex-shrink:0"></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:60%"></div><div class="skel skel-line" style="width:30%"></div></div><div class="skel" style="width:44px;height:20px;border-radius:10px;flex-shrink:0"></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:50%"></div><div class="skel skel-line" style="width:38%"></div></div><div class="skel" style="width:44px;height:20px;border-radius:10px;flex-shrink:0"></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:58%"></div><div class="skel skel-line" style="width:32%"></div></div><div class="skel" style="width:44px;height:20px;border-radius:10px;flex-shrink:0"></div></div></div>
+    </div>
+    <!-- Notifikačné tlačidlá — úplne dole, viditeľné iba pre admin rolu -->
+    <div class="pl-notif-btns" id="pl-notif-btns" style="display:none">
+      <div class="pl-notif-btn" id="pl-notif-btn-predaje">
+        <span class="pl-notif-icon">📊</span>
+        <span class="pl-notif-lbl">Dáta predajov boli aktualizované</span>
+        <button type="button" class="pl-notif-action" id="pl-notif-status-predaje" onclick="plnenieSetNotif('predaje')">Odoslať</button>
+      </div>
+      <div class="pl-notif-btn" id="pl-notif-btn-pharma">
+        <span class="pl-notif-icon">📈</span>
+        <span class="pl-notif-lbl">Dáta o trhových podieloch boli aktualizované</span>
+        <button type="button" class="pl-notif-action" id="pl-notif-status-pharma" onclick="plnenieSetNotif('pharma')">Odoslať</button>
+      </div>
     </div>
     </div>
   </div>
@@ -1622,7 +1654,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.7.38';
+var APP_VERSION = '2.7.39';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -1657,6 +1689,8 @@ document.addEventListener('DOMContentLoaded', function(){
   // Verzia na login obrazovke — automaticky z APP_VERSION
   var vEl = document.getElementById('login-version-lbl');
   if (vEl) vEl.textContent = 'ver. ' + APP_VERSION + ' · 2026';
+  // Prefetch notifikácií na pozadí — výsledky budú hotové do prihlásenia
+  prefetchNotifications();
 });
 
 // ── GLOBÁLNY ERROR HANDLER (iba log, neruší užívateľa) ──
@@ -4113,6 +4147,7 @@ function clearSession() {
     sessionStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(SESSION_KEY);
   } catch(e){}
+  stopNotifPolling();
 }
 
 // ── Región reprezentantov — defaults, prepísané zo Sheets cez loadRepList() ──
@@ -4163,6 +4198,11 @@ function loginSuccess(username, name, role, region) {
       REP_PL_STATE.q    = REP_PL_STATE.q    || plnenieCurrentQ();
       preloadAllPharmaData();
     }, 2500);
+    // Notifikácie pre manažérov (nie admin)
+    if (user.role !== 'admin') {
+      checkNotifications();
+      startNotifPolling();
+    }
     return;
   }
   if(localStorage.getItem(TUTORIAL_KEY)){
@@ -4170,6 +4210,10 @@ function loginSuccess(username, name, role, region) {
   }
   initTutorial();
   refreshBadgeFromSheets(username);
+  // Skontroluj notifikácie od admina — výsledky sú pravdepodobne už v cache z prefetchu
+  checkNotifications();
+  // Spusti polling — ak admin odošle kým je reprezentant prihlásený, banner vyskočí do 60s
+  startNotifPolling();
   // Preload rebríček + Plnenie Q (leaderboard) paralelne -- oba startuju po 2s
   setTimeout(function(){
     lbFetchApprovedQ(function(){
@@ -5637,6 +5681,193 @@ function lbApproveQ(q) {
     });
 }
 
+// ══════════════════════════════════════════════════════════════
+//   ADMIN NOTIFIKÁCIE — tlačidlá pod West/East + rep bannery
+// ══════════════════════════════════════════════════════════════
+
+// Admin klikne na tlačidlo → zapíše aktuálny timestamp do Config Sheets
+function plnenieSetNotif(type) {
+  var btnId = 'pl-notif-btn-' + type;
+  var statusId = 'pl-notif-status-' + type;
+  var btn = document.getElementById(btnId);
+  var statusEl = document.getElementById(statusId);
+  if (!btn || btn.classList.contains('saving')) return;
+
+  btn.classList.add('saving');
+  if (statusEl) statusEl.textContent = 'Odosiela...';
+
+  var ts = new Date().toISOString();
+  var key = 'notif_' + type;
+  var url = scriptUrl('action=setConfig&key=' + encodeURIComponent(key) + '&value=' + encodeURIComponent(ts));
+
+  fetch(url)
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      btn.classList.remove('saving');
+      if (d && d.ok) {
+        btn.classList.add('done');
+        if (statusEl) statusEl.textContent = 'Odoslané ✓';
+        setTimeout(function(){
+          btn.classList.remove('done');
+          if (statusEl) statusEl.textContent = 'Odoslať';
+        }, 3000);
+      } else {
+        if (statusEl) statusEl.textContent = 'Chyba';
+        setTimeout(function(){ if (statusEl) statusEl.textContent = 'Odoslať'; }, 2500);
+      }
+    })
+    .catch(function(){
+      btn.classList.remove('saving');
+      if (statusEl) statusEl.textContent = 'Chyba';
+      setTimeout(function(){ if (statusEl) statusEl.textContent = 'Odoslať'; }, 2500);
+    });
+}
+
+// Načíta notifikačné timestampy zo Sheets a porovná s localStorage
+// Ak je server timestamp novší než seen → zobrazí banner
+var NOTIF_TYPES = [
+  { key: 'predaje', icon: '📊', text: 'Dáta predajov boli aktualizované' },
+  { key: 'pharma',  icon: '📈', text: 'Dáta o trhových podieloch boli aktualizované' }
+];
+
+// Cache prefetchnutých výsledkov — { key: serverTs } alebo null kým nepríde odpoveď
+var NOTIF_PREFETCH_CACHE = {};
+
+// Spustí sa hneď pri načítaní stránky (ešte pred prihlásením) — výsledky čakajú v cache
+function prefetchNotifications() {
+  if (IS_DEV) return;
+  NOTIF_TYPES.forEach(function(n) {
+    var cfgKey = 'notif_' + n.key;
+    var url = scriptUrl('action=getConfig&key=' + encodeURIComponent(cfgKey));
+    fetch(url)
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        NOTIF_PREFETCH_CACHE[n.key] = (d && d.ok && d.value) ? d.value : null;
+      })
+      .catch(function(){
+        NOTIF_PREFETCH_CACHE[n.key] = null;
+      });
+  });
+}
+
+// Po prihlásení — použije cache ak je hotová, inak počká na fetch
+function checkNotifications() {
+  if (IS_DEV) return;
+  NOTIF_TYPES.forEach(function(n) {
+    var lsKey = 'seen_notif_' + n.key;
+    if (n.key in NOTIF_PREFETCH_CACHE) {
+      // Výsledok už máme — zobraz okamžite
+      var serverTs = NOTIF_PREFETCH_CACHE[n.key];
+      if (serverTs && serverTs !== (localStorage.getItem(lsKey) || '')) {
+        showNotifBanner(n.icon, n.text, lsKey, serverTs);
+      }
+    } else {
+      // Fetch ešte beží — počkaj na výsledok (polling každých 200ms, max 8s)
+      var attempts = 0;
+      var interval = setInterval(function() {
+        attempts++;
+        if (n.key in NOTIF_PREFETCH_CACHE || attempts > 40) {
+          clearInterval(interval);
+          var serverTs = NOTIF_PREFETCH_CACHE[n.key];
+          if (serverTs && serverTs !== (localStorage.getItem(lsKey) || '')) {
+            showNotifBanner(n.icon, n.text, lsKey, serverTs);
+          }
+        }
+      }, 200);
+    }
+  });
+}
+
+// Polling — beží na pozadí po prihlásení, každých 60s sviežo fetchne Sheets
+var NOTIF_POLL_INTERVAL = null;
+
+function startNotifPolling() {
+  if (IS_DEV) return;
+  stopNotifPolling();
+  NOTIF_POLL_INTERVAL = setInterval(function() {
+    NOTIF_TYPES.forEach(function(n) {
+      var cfgKey = 'notif_' + n.key;
+      var lsKey  = 'seen_notif_' + n.key;
+      var url = scriptUrl('action=getConfig&key=' + encodeURIComponent(cfgKey));
+      fetch(url)
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (!d || !d.ok || !d.value) return;
+          var serverTs = d.value;
+          if (serverTs !== (localStorage.getItem(lsKey) || '')) {
+            showNotifBanner(n.icon, n.text, lsKey, serverTs);
+          }
+        })
+        .catch(function(){});
+    });
+  }, 60000); // každých 60 sekúnd
+}
+
+function stopNotifPolling() {
+  if (NOTIF_POLL_INTERVAL) { clearInterval(NOTIF_POLL_INTERVAL); NOTIF_POLL_INTERVAL = null; }
+}
+
+// Keď reprezentant otvorí appku z pozadia — okamžite skontroluj notifikácie
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible' && NOTIF_POLL_INTERVAL) {
+    NOTIF_TYPES.forEach(function(n) {
+      var cfgKey = 'notif_' + n.key;
+      var lsKey  = 'seen_notif_' + n.key;
+      var url = scriptUrl('action=getConfig&key=' + encodeURIComponent(cfgKey));
+      fetch(url)
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (!d || !d.ok || !d.value) return;
+          var serverTs = d.value;
+          if (serverTs !== (localStorage.getItem(lsKey) || '')) {
+            showNotifBanner(n.icon, n.text, lsKey, serverTs);
+          }
+        })
+        .catch(function(){});
+    });
+  }
+});
+
+// Formátuje ISO timestamp na slovenský dátum: "28.4.2026"
+function formatNotifDate(isoTs) {
+  try {
+    var d = new Date(isoTs);
+    return d.getDate() + '.' + (d.getMonth() + 1) + '.' + d.getFullYear();
+  } catch(e) { return ''; }
+}
+
+// Zobrazí notifikačný banner (hľadá existujúci kontajner alebo vytvorí nový)
+function showNotifBanner(icon, text, lsKey, serverTs) {
+  var wrap = document.getElementById('notif-banner-wrap');
+  if (!wrap) {
+    wrap = document.createElement('div');
+    wrap.id = 'notif-banner-wrap';
+    wrap.className = 'notif-banner';
+    document.body.appendChild(wrap);
+  }
+  var id = 'nb-' + lsKey;
+  if (document.getElementById(id)) return; // už zobrazený
+
+  var inner = document.createElement('div');
+  inner.id = id;
+  inner.className = 'notif-banner-inner';
+  var dateStr = formatNotifDate(serverTs);
+  inner.innerHTML =
+    '<div class="notif-banner-icon">' + icon + '</div>' +
+    '<div class="notif-banner-text">' + text + (dateStr ? '<br><span style="font-size:12px;opacity:.7;font-weight:500">' + dateStr + '</span>' : '') + '</div>' +
+    '<button type="button" class="notif-banner-close" onclick="dismissNotifBanner(\'' + id + '\',\'' + lsKey + '\',\'' + serverTs.replace(/'/g,"\\'") + '\')">OK, rozumiem</button>';
+  wrap.appendChild(inner);
+}
+
+function dismissNotifBanner(id, lsKey, serverTs) {
+  var el = document.getElementById(id);
+  if (el) el.remove();
+  localStorage.setItem(lsKey, serverTs);
+  // Ak v overlay nezostali žiadne ďalšie bannery, odstrán celý wrapper
+  var wrap = document.getElementById('notif-banner-wrap');
+  if (wrap && wrap.children.length === 0) wrap.remove();
+}
+
 function lbPreloadPlnenie() {
   var lastQ = lbLastCompletedQ();
   if (lastQ < 1) return;
@@ -7000,6 +7231,11 @@ function prodSheetSwitchPharmaCode(code) {
 
 function plnenieRenderRegions() {
   var regionsEl = document.querySelector('.pl-regions');
+  // Notifikačné tlačidlá — iba pre admin (nie AM West/East)
+  var notifBtns = document.getElementById('pl-notif-btns');
+  if (notifBtns) {
+    notifBtns.style.display = (MGR_STATE && MGR_STATE.role === 'admin') ? '' : 'none';
+  }
   // AM West / AM East — region karty skryť (vidia iba svoju líniu v sumári)
   if (plnenieIsAmRole()) {
     if (regionsEl) regionsEl.style.display = 'none';
