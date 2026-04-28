@@ -1654,7 +1654,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.7.39';
+var APP_VERSION = '2.7.40';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6862,7 +6862,7 @@ function openProdSheet(prodKey, prodLabel) {
   // Subtaby (napr. Tablety / Sáčky pre Aflamil)
   var subtabsEl = document.getElementById('pl-ps-subtabs');
   if (subtabsEl) {
-    var PHARMA_CODE_LABELS = { AFLtbl: 'Tablety', AFLsach: 'Sáčky', AFLcrm: 'Krém', CAV: 'Cavinton', JUN: 'Junod', SUP: 'Suprax', TEL: 'Telexer', VID: 'Vidonorm' };
+    var PHARMA_CODE_LABELS = { AFLtbl: 'Tablety', AFLsach: 'Sáčky', AFLcrm: 'Krém', CAV: 'Cavinton', JUN: 'Junod', KOGGOL: 'Kogavant', SUP: 'Suprax', TEL: 'Telexer', VID: 'Vidonorm' };
     if (pharmaCodes.length > 1) {
       subtabsEl.innerHTML = pharmaCodes.map(function(c) {
         return '<button type="button" class="pl-ps-subtab' + (c === pharmaCode ? ' active' : '') + '" onclick="prodSheetSwitchPharmaCode(\'' + c + '\')">' + (PHARMA_CODE_LABELS[c] || c) + '</button>';
@@ -8184,6 +8184,7 @@ var PHARMA_CODES = {
   'cavinton':              ['CAV'],
   'cavinton forte':        ['CAV'],
   'junod':                 ['JUN'],
+  'kogavant':              ['KOGGOL'],
   'suprax':                ['SUP'],
   'telexer':               ['TEL'],
   'vidonorm':              ['VID']
@@ -8191,7 +8192,7 @@ var PHARMA_CODES = {
 
 var PHARMA_PROD_LABEL = {
   'AFLcrm':'AFLAMIL Crm','AFLsach':'AFLAMIL Sáčky','AFLtbl':'AFLAMIL Tbl',
-  'CAV':'CAVINTON','JUN':'JUNOD','SUP':'SUPRAX','TEL':'TELEXER','VID':'VIDONORM'
+  'CAV':'CAVINTON','JUN':'JUNOD','KOGGOL':'KOGAVANT','SUP':'SUPRAX','TEL':'TELEXER','VID':'VIDONORM'
 };
 
 // Mapovanie pharma kódu → kľúč v predajoch pre split zobrazenie (napr. AFLtbl → aflamiltb)
