@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Graf Konverter — MS% trend + top 4 konkurenti</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f1117; color: #e2e8f0; font-family: -apple-system, 'Segoe UI', sans-serif; padding: 32px 24px; min-height: 100vh; }
+  h1 { font-size: 20px; font-weight: 700; color: #f8fafc; margin-bottom: 4px; }
+  .sub { font-size: 13px; color: #64748b; margin-bottom: 28px; }
+  #drop-zone { border: 2px dashed #334155; border-radius: 16px; padding: 48px 24px; text-align: center; cursor: pointer; transition: border-color .2s, background .2s; background: #1e293b; margin-bottom: 24px; }
+  #drop-zone.drag-over { border-color: #3b82f6; background: #1e3a5f; }
+  #drop-zone .drop-icon { font-size: 40px; margin-bottom: 12px; }
+  #drop-zone .drop-title { font-size: 16px; font-weight: 600; color: #cbd5e1; margin-bottom: 6px; }
+  #drop-zone .drop-hint { font-size: 12px; color: #475569; }
+  #file-input { display: none; }
+  #stats { display: none; background: #1e293b; border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; font-size: 13px; color: #94a3b8; }
+  #stats strong { color: #38bdf8; }
+  #stats .err { color: #f87171; margin-top: 6px; font-size: 12px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 20px; border-radius: 10px; border: none; cursor: pointer; font-size: 14px; font-weight: 600; font-family: inherit; transition: opacity .15s; }
+  .btn:hover { opacity: .85; }
+  .btn-primary { background: #2563eb; color: #fff; }
+  .btn-teal { background: #0284c7; color: #fff; }
+  .btn-sm { padding: 7px 14px; font-size: 12px; }
+  #actions { display: none; margin-bottom: 20px; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .section-title { font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; }
+  .output-block { display: none; margin-bottom: 24px; }
+  .table-scroll { overflow-x: auto; border-radius: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+  thead th { padding: 8px 10px; text-align: left; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; background: #0f172a; border-bottom: 1px solid #1e293b; }
+  tbody tr:nth-child(odd) { background: #1e293b; }
+  tbody tr:nth-child(even) { background: #172033; }
+  tbody td { padding: 7px 10px; color: #cbd5e1; border-bottom: 1px solid #0f172a; }
+  tbody td.hi { color: #38bdf8; font-weight: 600; }
+  tbody td.nas { color: #34d399; font-weight: 700; }
+  .more-rows { font-size: 12px; color: #475569; margin-top: 8px; }
+  #notice { display: none; background: #14532d; border: 1px solid #166534; border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #86efac; margin-bottom: 20px; }
+  #debug-block { display:none; background:#0f172a; border:1px solid #1e293b; border-radius:10px; padding:14px 16px; margin-bottom:20px; font-size:11px; font-family:monospace; color:#94a3b8; max-height:260px; overflow-y:auto; }
+  #debug-block .d-ok { color:#34d399; }
+  #debug-block .d-skip { color:#475569; }
+  #debug-block .d-err { color:#f87171; }
+</style>
+</head>
+<body>
+
+<h1>📈 Graf Konverter</h1>
+<p class="sub">Trend MS% nášho produktu + top 4 konkurenti · Výstup do tabu <strong>PharmaData_Graf</strong> v Google Sheets</p>
+
+<div id="drop-zone" onclick="document.getElementById('file-input').click()">
+  <div class="drop-icon">📁</div>
+  <div class="drop-title">Pretiahni súbory sem alebo klikni pre výber</div>
+  <div class="drop-hint">Formát: 202603_VID_w_BAMA.xlsx · môžeš hodiť všetkých naraz</div>
+</div>
+<input type="file" id="file-input" multiple accept=".xlsx">
+
+<div id="stats"></div>
+<div id="debug-block"></div>
+<div id="notice"></div>
+
+<div id="actions">
+  <button class="btn btn-teal" onclick="copyOutput()">📋 Kopírovať Graf dáta</button>
+  <button class="btn btn-primary btn-sm" onclick="resetAll()">🔄 Začať znova</button>
+</div>
+
+<div id="block-graf" class="output-block">
+  <div class="section-title">PharmaData_Graf — trend MS% nášho produktu + top 4 konkurenti (12 mesiacov)</div>
+  <div class="table-scroll">
+    <table>
+      <thead><tr>
+        <th>produkt</th><th>oblast</th><th>mesiac</th>
+        <th>nas_ms</th>
+        <th>k1_nazov</th><th>k1_ms</th>
+        <th>k2_nazov</th><th>k2_ms</th>
+        <th>k3_nazov</th><th>k3_ms</th>
+      </tr></thead>
+      <tbody id="body-graf"></tbody>
+    </table>
+  </div>
+  <p class="more-rows" id="more-graf"></p>
+</div>
+
+<script>
+// ── Naše produkty: kód súboru → hľadaný názov stĺpca v MS_ChartTab ──
+var OUR_PROD_NAME = {
+  'AFLcrm':  'AFLAMIL',
+  'AFLsach': 'AFLAMIL',
+  'AFLtbl':  'AFLAMIL',
+  'CAV':     'CAVINTON',
+  'JUN':     'JUNOD',
+  'KOGGOL':  'KOGAVANT',
+  'SUP':     'SUPRAX',
+  'TEL':     'TELEXER',
+  'VID':     'VIDONORM'
+};
+
+var grafRows = [];
+var errors   = [];
+var debugLog = [];
+
+// ── Drag & drop ──
+var dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover',  function(e){ e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', function(){ dz.classList.remove('drag-over'); });
+dz.addEventListener('drop', function(e){ e.preventDefault(); dz.classList.remove('drag-over'); processFiles(e.dataTransfer.files); });
+document.getElementById('file-input').addEventListener('change', function(){ processFiles(this.files); });
+
+function processFiles(files) {
+  grafRows = []; errors = []; debugLog = [];
+  var fileArr = Array.from(files).filter(function(f){ return f.name.endsWith('.xlsx'); });
+  if (!fileArr.length) { showStats('Žiadne .xlsx súbory.'); return; }
+  var pending = fileArr.length;
+  fileArr.forEach(function(file){
+    var reader = new FileReader();
+    reader.onload = function(e){
+      try {
+        var info = parseFilename(file.name);
+        if (!info) { errors.push(file.name + ': neočakávaný názov súboru'); }
+        else {
+          var ourName = OUR_PROD_NAME[info.produkt];
+          if (!ourName) { errors.push(file.name + ': neznámy produkt "' + info.produkt + '"'); }
+          else {
+            var wb = XLSX.read(e.target.result, { type: 'array', raw: false });
+            var added = parseChartTab(wb, info, ourName);
+            debugLog.push('<span class="' + (added > 0 ? 'd-ok' : 'd-skip') + '">' + file.name + ' → ' + (added > 0 ? '+' + added + ' riadkov' : 'MS_ChartTab nenašla dáta') + '</span>');
+          }
+        }
+      } catch(err) {
+        errors.push(file.name + ': ' + err.message);
+        debugLog.push('<span class="d-err">' + file.name + ': ' + err.message + '</span>');
+      }
+      pending--;
+      if (pending === 0) renderAll();
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function parseFilename(name) {
+  var m = name.match(/^(\d{6})_([A-Za-z]+)_(e|w)_([A-Z0-9]+)\.xlsx$/i);
+  if (!m) return null;
+  return { mesiac: m[1], produkt: m[2], region: m[3].toLowerCase(), oblast: m[4].toUpperCase() };
+}
+
+// ── Hlavná funkcia — parsuje MS_ChartTab záložku ──
+function parseChartTab(wb, info, ourName) {
+  var sheet = wb.Sheets['MS_ChartTab'];
+  if (!sheet) return 0;
+  var data = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' });
+  if (!data || data.length < 6) return 0;
+
+  // Nájdi riadok s hlavičkami — obsahuje 'Mesiac' v stĺpci B (index 1)
+  var hdrRow = -1;
+  for (var i = 0; i < Math.min(8, data.length); i++) {
+    if (String(data[i][1] || '').trim().toUpperCase() === 'MESIAC') { hdrRow = i; break; }
+  }
+  if (hdrRow < 0) return 0;
+
+  var headers = data[hdrRow].map(function(c){ return String(c || '').trim().toUpperCase(); });
+
+  // Nájdi stĺpec nášho produktu
+  var ourIdx = headers.indexOf(ourName.toUpperCase());
+  if (ourIdx < 0) return 0;
+
+  // Všetky konkurentské stĺpce (okrem Rok, Mesiac, Grand Total, prázdnych, nášho produktu)
+  var kompetitori = [];
+  for (var ci = 2; ci < headers.length; ci++) {
+    var h = headers[ci];
+    if (!h || h === 'GRAND TOTAL' || ci === ourIdx) continue;
+    kompetitori.push({ name: h, idx: ci, sum: 0, count: 0 });
+  }
+
+  // Zbieraj dátové riadky — preskočí subtotaly (col B nie je číslo 1–12)
+  var monthData = [];
+  var curYear = null;
+  for (var ri = hdrRow + 1; ri < data.length; ri++) {
+    var row = data[ri];
+    var rokVal = row[0];
+    if (rokVal !== '' && rokVal !== null && !isNaN(parseInt(rokVal))) curYear = parseInt(rokVal);
+    var mesNum = parseInt(row[1]);
+    if (isNaN(mesNum) || mesNum < 1 || mesNum > 12) continue;
+    if (!curYear) continue;
+
+    var nasMs = parseFloat(row[ourIdx]);
+    if (isNaN(nasMs)) nasMs = null;
+
+    var kompVals = kompetitori.map(function(k) {
+      var v = parseFloat(row[k.idx]);
+      if (!isNaN(v)) { k.sum += v; k.count++; }
+      return isNaN(v) ? null : v;
+    });
+
+    // Mesiac kód YYMM (napr. 2504 = apríl 2025)
+    var yy = String(curYear).slice(-2);
+    var mm = String(mesNum).padStart(2, '0');
+    monthData.push({ mesiac: yy + mm, nasMs: nasMs, kompVals: kompVals });
+  }
+
+  if (monthData.length === 0) return 0;
+
+  // Top 3 konkurenti podľa priemerného MS% (zostupne)
+  kompetitori.sort(function(a, b) {
+    return (b.count ? b.sum / b.count : 0) - (a.count ? a.sum / a.count : 0);
+  });
+  var top3 = kompetitori.slice(0, 3);
+
+  // Výstupné riadky
+  monthData.forEach(function(md) {
+    var outRow = [
+      info.produkt,
+      info.oblast,
+      md.mesiac,
+      md.nasMs !== null ? (md.nasMs * 100).toFixed(2) : ''
+    ];
+    top3.forEach(function(k) {
+      var v = md.kompVals[kompetitori.indexOf(k)];
+      outRow.push(k.name);
+      outRow.push(v !== null ? (v * 100).toFixed(2) : '');
+    });
+    // Doplň prázdne stĺpce ak menej ako 3 konkurenti
+    while (outRow.length < 10) outRow.push('');
+    grafRows.push(outRow);
+  });
+
+  return monthData.length;
+}
+
+// ── Render ──
+function renderAll() {
+  grafRows.sort(function(a, b){ return (a[0]+a[1]+a[2]).localeCompare(b[0]+b[1]+b[2]); });
+
+  var errHtml = errors.length
+    ? '<div class="err">⚠️ Problémy (' + errors.length + '):<br>' + errors.map(function(e){ return '· ' + e; }).join('<br>') + '</div>'
+    : '';
+
+  var statsEl = document.getElementById('stats');
+  statsEl.style.display = 'block';
+  statsEl.innerHTML = '✅ Graf riadkov: <strong>' + grafRows.length + '</strong>' + errHtml;
+
+  var block = document.getElementById('block-graf');
+  if (!grafRows.length) { block.style.display = 'none'; }
+  else {
+    block.style.display = 'block';
+    var preview = grafRows.slice(0, 50);
+    document.getElementById('body-graf').innerHTML = preview.map(function(r){
+      return '<tr>' + r.map(function(c, i){
+        var cls = i === 3 ? ' class="nas"' : (i < 3 ? ' class="hi"' : '');
+        return '<td' + cls + '>' + (c !== '' && c !== null ? c : '—') + '</td>';
+      }).join('') + '</tr>';
+    }).join('');
+    var moreEl = document.getElementById('more-graf');
+    moreEl.textContent = grafRows.length > 50 ? '... a ďalších ' + (grafRows.length - 50) + ' riadkov (všetky sa skopírujú)' : '';
+  }
+
+  document.getElementById('actions').style.display = grafRows.length ? 'flex' : 'none';
+
+  var dbEl = document.getElementById('debug-block');
+  if (debugLog.length) {
+    dbEl.style.display = 'block';
+    dbEl.innerHTML = '<strong style="color:#cbd5e1">Debug log:</strong><br>' + debugLog.join('<br>');
+  }
+}
+
+function copyOutput() {
+  var headers = ['produkt','oblast','mesiac','nas_ms','k1_nazov','k1_ms','k2_nazov','k2_ms','k3_nazov','k3_ms'];
+  var tsv = [headers.join('\t')].concat(grafRows.map(function(r){
+    return r.map(function(c){ return c !== null && c !== undefined ? c : ''; }).join('\t');
+  })).join('\n');
+
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(tsv).then(function(){
+      showNotice('✅ Graf dáta skopírované — otvor Google Sheets → tab PharmaData_Graf → klikni na A1 → Ctrl+V (prepíš existujúce dáta).');
+    });
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = tsv; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    showNotice('✅ Graf dáta skopírované — otvor Google Sheets → tab PharmaData_Graf → klikni na A1 → Ctrl+V.');
+  }
+}
+
+function showNotice(msg) {
+  var n = document.getElementById('notice');
+  n.textContent = msg; n.style.display = 'block';
+  setTimeout(function(){ n.style.display = 'none'; }, 5000);
+}
+
+function showStats(msg) {
+  var el = document.getElementById('stats');
+  el.style.display = 'block';
+  el.innerHTML = msg;
+}
+
+function resetAll() {
+  grafRows = []; errors = []; debugLog = [];
+  ['stats','actions','block-graf','notice','debug-block'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  document.getElementById('body-graf').innerHTML = '';
+  document.getElementById('file-input').value = '';
+}
+</script>
+</body>
+</html>
