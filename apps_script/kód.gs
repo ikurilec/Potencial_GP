@@ -423,6 +423,49 @@ function doGet(e) {
       return jsonResponse({ok:true, summary:summRows, okresy:okresyRows});
     }
 
+    // ── PHARMA GRAF DÁTA — trend MS% nášho produktu + top 4 konkurenti ──
+    // URL: ?action=getPharmaGraf&produkt=VID&oblast=BAMA
+    if(action === 'getPharmaGraf') {
+      if(!requireToken(e)) return jsonResponse({ok: false, error: 'Unauthorized'});
+      var produkt = (e.parameter.produkt || '').trim().toUpperCase();
+      var oblast  = (e.parameter.oblast  || '').trim().toUpperCase();
+      if(!produkt || !oblast) return jsonResponse({ok: false, error: 'missing produkt or oblast'});
+
+      var grafSheet = ss.getSheetByName('PharmaData_Graf');
+      if(!grafSheet) return jsonResponse({ok: false, error: 'Tab PharmaData_Graf nenajdeny'});
+
+      var gd = grafSheet.getDataRange().getValues();
+      if(gd.length < 2) return jsonResponse({ok: true, produkt: produkt, oblast: oblast, rows: []});
+
+      var gh = gd[0].map(function(c){ return String(c||'').trim().toLowerCase(); });
+      var giP  = gh.indexOf('produkt');
+      var giO  = gh.indexOf('oblast');
+      var giM  = gh.indexOf('mesiac');
+      var giNM = gh.indexOf('nas_ms');
+      var giK1n = gh.indexOf('k1_nazov'); var giK1m = gh.indexOf('k1_ms');
+      var giK2n = gh.indexOf('k2_nazov'); var giK2m = gh.indexOf('k2_ms');
+      var giK3n = gh.indexOf('k3_nazov'); var giK3m = gh.indexOf('k3_ms');
+
+      var rows = [];
+      for(var i = 1; i < gd.length; i++) {
+        var r = gd[i];
+        if(String(r[giP]||'').trim().toUpperCase() !== produkt) continue;
+        if(String(r[giO]||'').trim().toUpperCase() !== oblast)  continue;
+        rows.push({
+          mesiac:   String(r[giM]  ||'').trim(),
+          nas_ms:   parseFloat(r[giNM]) || 0,
+          k1_nazov: String(r[giK1n]||'').trim(), k1_ms: parseFloat(r[giK1m]) || 0,
+          k2_nazov: String(r[giK2n]||'').trim(), k2_ms: parseFloat(r[giK2m]) || 0,
+          k3_nazov: String(r[giK3n]||'').trim(), k3_ms: parseFloat(r[giK3m]) || 0
+        });
+      }
+
+      // Zoraď podľa mesiaca (YYMM)
+      rows.sort(function(a, b){ return a.mesiac.localeCompare(b.mesiac); });
+
+      return jsonResponse({ok: true, produkt: produkt, oblast: oblast, rows: rows});
+    }
+
     // ── GET CONFIG — číta hodnotu z tabu "Config" ──
     if(action === 'getConfig') {
       if(!requireToken(e)) return jsonResponse({ok: false, error: 'Unauthorized'});
