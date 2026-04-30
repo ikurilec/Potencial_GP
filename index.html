@@ -1740,7 +1740,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.10.4';
+var APP_VERSION = '2.10.5';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -3666,9 +3666,10 @@ function filterHistory() {
 }
 
 var _panelCurrent = null;
+var _panelStack = []; // navigačný stack — pamätá odkiaľ sme prišli (pre Android back button)
 var _PANEL_ORDER = { 'hist-overlay': 0, 'lb-overlay': 1, 'rep-plnenie-overlay': 2 };
 
-function _panelShow(newId) {
+function _panelShow(newId, isBack) {
   // Ak je ten istý panel už otvorený — nerob nič (ochrana pred dvojitým kliknutím)
   if (_panelCurrent === newId) {
     var alreadyOpen = document.getElementById(newId);
@@ -3676,6 +3677,10 @@ function _panelShow(newId) {
   }
   var prevEl = _panelCurrent ? document.getElementById(_panelCurrent) : null;
   var prevVisible = prevEl && prevEl.classList.contains('show');
+  // Pamätaj odkiaľ sme prišli (pre back button) — len pri doprednej navigácii
+  if (!isBack && prevVisible && _panelCurrent) {
+    _panelStack.push(_panelCurrent);
+  }
   var animCls;
   if (!prevVisible) {
     animCls = 'panel-anim-up';
@@ -3726,6 +3731,7 @@ function closeAllPanels() {
     if(el) el.classList.remove('show');
   });
   _panelCurrent = null;
+  _panelStack = [];
   document.body.style.overflow = '';
   var snav = document.getElementById('shared-panel-nav');
   if(snav) snav.style.display = 'none';
@@ -5606,7 +5612,15 @@ function _handleAndroidBack() {
   var panels = ['hist-overlay', 'lb-overlay', 'rep-plnenie-overlay'];
   for (var i = 0; i < panels.length; i++) {
     el = document.getElementById(panels[i]);
-    if (el && el.classList.contains('show')) { closeAllPanels(); return true; }
+    if (el && el.classList.contains('show')) {
+      var prevPanel = _panelStack.pop();
+      if (prevPanel) {
+        _panelShow(prevPanel, true); // isBack=true — neplní stack, naviguje späť
+      } else {
+        closeAllPanels();
+      }
+      return true;
+    }
   }
 
   return false;
