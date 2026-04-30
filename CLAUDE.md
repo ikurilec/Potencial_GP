@@ -40,7 +40,47 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.7.22** — obsahuje všetko z 2.7.16 plus sériu opráv a nových funkcií. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.9.0** — obsahuje všetko z predchádzajúcich verzií plus district chart overlay a vylepšenia pharma MS panelu. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+
+### v2.9.0 — District chart overlay (fullscreen graf po okresoch)
+
+**Nová funkcia:** Po kliknutí na tlačidlo "Graf" pri názve okresu v sekcii "Rozpad po okresoch" sa otvorí fullscreen overlay s historickým grafom trhového podielu pre daný okres (posledné 2 kvartály = 6 mesiacov).
+
+**Overlay:**
+- Zobrazuje sa v landscape orientácii (CSS `transform: translate(-50%,-50%) rotate(90deg)`) aj keď je telefón v portrait móde
+- Biele pozadie, `display:none/flex` (nie `opacity`) — vyhýba sa compositing bug
+- Portrait: `top:50%;left:50%;width:100vh;height:100vw;transform-origin:center center`
+- Landscape: `inset:0`
+
+**Graf (`buildOkresChartSvg`):**
+- SVG viewBox `620×195`, gradient fill pod čiarou nášho produktu
+- 5 horizontálnych gridlines, zvislý oddelovač kvartálov (pri 6 mesiacoch)
+- Konkurenti slabnú v opacite podľa poradia (vizuálna hierarchia)
+- Subtitle zobrazuje konkrétne kvartály: napr. `Q1/2026 + Q4/2025`
+
+**Legenda:**
+- 4-stĺpcový CSS grid, všetci konkurenti viditeľní bez scrollovania
+- Pill chip štýl (background `#F8FAFC`, border `#E2E8F0`, `border-radius:20px`) — rovnaký štýl aj v legende hlavného grafu (`pharma-ms-trend-chart-legend-item`)
+- Vlastný produkt: tučný, väčšia bodka
+
+**Tlačidlo "Graf" na district headeri:**
+- Modrý CTA button (`#2563EB`) s ikonkou čiarového grafu + text "Graf"
+- Class `pharma-okres-chart-btn pharma-okres-btn`, `data-okr-idx` atribút
+- Click handlery pridávané priamo po `bodyEl.innerHTML = html` (nie delegované)
+
+**`pharma_converter.html`:**
+- `MAX_KOMP_GRAF`: 8 → **15** (exportuje top 15 konkurentov do `PharmaData_OkresyGraf`)
+- Tabuľka a TSV export rozšírené na stĺpce k1–k15
+
+**`kód.gs`:**
+- Endpoint `getPharmaOkresGraf` — číta `PharmaData_OkresyGraf` tab dynamicky (všetky `k*_nazov`/`k*_ms` stĺpce)
+- Vracia pole `rows` so štruktúrou `{mesiac, nas_ms, komp:[{name, ms}]}`
+
+**Mock dáta (`MOCK_PHARMA_OKRES_GRAF`):**
+- AFL produkty: 12 realistických konkurentov (FLECTOR EP, DOLGIT, INDOMETHACIN, IBALGIN DUO EFFECT, IBALGIN, FASTUM, VERAL NEO, EMOXEN, AULIN, ALMIRAL, ALGESAL, VOLTAREN)
+- SUP/KOGGOL: 5 konkurentov, VID/CAV: 4 konkurenti
+
+**`OKGRAF_COLORS`:** rozšírené z 8 na 15 farieb
 
 ### v2.7.22 — Admin schvaľovanie Q v rebríčku (len pre rolu admin)
 
