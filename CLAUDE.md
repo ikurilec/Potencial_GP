@@ -40,7 +40,31 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.10.0** — obsahuje všetko z predchádzajúcich verzií plus milestone celebrácia pri 200 lekároch.
+**2.10.2** — obsahuje všetko z predchádzajúcich verzií plus milestone celebrácia, PWA Android manifest a back button handling.
+
+### v2.10.2 — Android back button pre PWA standalone mód
+
+**Čo robí:**
+- Tlačidlo Späť na Androide zatvára otvorené overlaye namiesto ukončenia appky
+- Funguje iba v PWA standalone móde (pridané na home screen)
+
+**Technické detaily:**
+- `initAndroidBack()` — volá sa pri `DOMContentLoaded`, nastaví `history.replaceState({pgApp:true})`
+- `_handleAndroidBack()` — prechádza overlaye od najvnútornejšieho po najvonkajší a zatvára prvý otvorený
+- Po každom zatvorení sa pushne nový stav (`history.pushState`) aby ďalší stisk opäť fungoval
+- Poradie overlay priorít: `pharma-okres-overlay` → `pharma-ms-overlay` → `milestone-overlay` → `thankyou` → `logout-overlay` → panely (História/Rebríček/Plnenie)
+- Keď nie je otvorený žiadny overlay → appka sa minimalizuje (štandardné Android správanie)
+
+### v2.10.1 — PWA manifest pre Android standalone mód
+
+**Čo robí:**
+- Na Androide po pridaní na home screen sa appka otvára bez URL baru (ako natívna appka)
+- Predtým fungovalo len na iPhone (Apple meta tagy), Android potreboval `manifest.json`
+
+**Súbory:**
+- `manifest.json` — nový súbor s `"display": "standalone"`, `"theme_color": "#0C1E35"`, ikony
+- `icon-192.png`, `icon-512.png` — ikony extrahované z base64 v HTML (pre Android home screen)
+- `index.html` — pridané `<link rel="manifest">`, `<meta name="theme-color">`, `<meta name="mobile-web-app-capable">`
 
 ### v2.10.0 — Milestone celebrácia: 200 lekárov
 
