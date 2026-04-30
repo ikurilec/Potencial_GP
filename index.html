@@ -506,6 +506,23 @@
   .thankyou-title{font-size:28px;font-weight:600;color:#fff;line-height:1.4;margin-bottom:10px}
   .thankyou-sub{font-size:17px;color:#7AABCC;letter-spacing:.03em;margin-bottom:8px}
   .thankyou-team{font-size:36px;font-weight:700;color:#fff;letter-spacing:.08em;text-transform:uppercase}
+  /* ── MILESTONE 200 LEKÁROV CELEBRATION ── */
+  .milestone-overlay{display:none;position:fixed;inset:0;z-index:9500;background:linear-gradient(145deg,#0C1E35,#1A3A5C);flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden;padding:24px}
+  .milestone-overlay.show{display:flex}
+  .milestone-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  .milestone-content{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;max-width:360px;width:100%}
+  .milestone-emoji{font-size:54px;line-height:1;margin-bottom:14px;animation:milestone-bounce .6s ease-out}
+  @keyframes milestone-bounce{0%{transform:scale(.5);opacity:0}60%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+  .milestone-title{font-size:24px;font-weight:700;color:#fff;margin-bottom:5px;letter-spacing:.01em}
+  .milestone-sub{font-size:15px;color:#7AABCC;margin-bottom:4px}
+  .milestone-count{font-size:72px;font-weight:800;color:#fff;line-height:1;margin:6px 0;letter-spacing:-.02em;text-shadow:0 0 40px rgba(96,165,250,.6)}
+  .milestone-count-label{font-size:15px;color:#7AABCC;margin-bottom:20px}
+  .milestone-stats{display:flex;gap:10px;width:100%;margin-bottom:22px}
+  .milestone-stat{flex:1;background:rgba(255,255,255,.08);border-radius:16px;padding:14px 10px;border:1px solid rgba(255,255,255,.12)}
+  .milestone-stat-val{font-size:30px;font-weight:800;color:#60A5FA;line-height:1;margin-bottom:5px}
+  .milestone-stat-label{font-size:11px;color:#7AABCC;line-height:1.4}
+  .milestone-bottom{font-size:16px;color:#fff;font-weight:600;margin-bottom:24px}
+  .milestone-btn{background:#2563EB;color:#fff;border:none;border-radius:24px;padding:14px 40px;font-size:16px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;box-shadow:0 4px 20px rgba(37,99,235,.5);min-height:52px}
   .hdr-logo-wrap{background:rgba(255,255,255,0.12);border-radius:10px;padding:8px 10px;display:flex;align-items:center;justify-content:center;position:absolute;right:20px;top:50%;transform:translateY(-50%)}
   .hdr-logo{width:85px;height:auto;opacity:.95;display:block}
   @media(max-width:480px){.hdr-logo{width:68px}}
@@ -1384,6 +1401,30 @@
     </div>
   </div>
 
+  <!-- ── MILESTONE 200 LEKÁROV CELEBRATION ── -->
+  <div class="milestone-overlay" id="milestone-overlay">
+    <canvas class="milestone-canvas" id="milestone-canvas"></canvas>
+    <div class="milestone-content">
+      <div class="milestone-emoji">🎉</div>
+      <div class="milestone-title">Gratulujem, tím Golem!</div>
+      <div class="milestone-sub">Spoločne ste úspešne nahrali</div>
+      <div class="milestone-count">200</div>
+      <div class="milestone-count-label">lekárov s potenciálom</div>
+      <div class="milestone-stats">
+        <div class="milestone-stat">
+          <div class="milestone-stat-val" id="milestone-high-pct">—</div>
+          <div class="milestone-stat-label">% lekárov, ktorých chceme navštevovať</div>
+        </div>
+        <div class="milestone-stat">
+          <div class="milestone-stat-val" id="milestone-vyradit-pct">—</div>
+          <div class="milestone-stat-label">% navrhnutých na vyradenie z targetu</div>
+        </div>
+      </div>
+      <div class="milestone-bottom">Good job! Len tak ďalej. 💪</div>
+      <button class="milestone-btn" onclick="closeMilestone()">Super, ďakujem!</button>
+    </div>
+  </div>
+
   <!-- ── ZDIEĽANÝ PANEL NAV — fixný, zostáva počas prechodov medzi panelmi ── -->
   <div id="shared-panel-nav" style="display:none">
     <div class="panel-nav">
@@ -1696,7 +1737,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.9.1';
+var APP_VERSION = '2.10.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -2828,9 +2869,8 @@ closeConfirm = function(doNext) {
 };
 
 // ── fireworks ──
-function startFireworks() {
-  var canvas = document.getElementById('fireworks-canvas');
-  if(!canvas) return;
+function startFireworksOnCanvas(canvas) {
+  if(!canvas) return function(){};
   var ctx = canvas.getContext('2d');
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
@@ -2888,6 +2928,56 @@ function startFireworks() {
     clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); clearTimeout(t5);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
+}
+
+function startFireworks() {
+  return startFireworksOnCanvas(document.getElementById('fireworks-canvas'));
+}
+
+// ── milestone 200 lekárov ──
+var _milestoneStopFn = null;
+
+function checkMilestone() {
+  try { if(localStorage.getItem('milestone_200_shown')) return; } catch(e) {}
+  var promise;
+  if(typeof IS_DEV !== 'undefined' && IS_DEV) {
+    promise = Promise.resolve({ total: 200, highPotentialPct: 68, vyraditPct: 14 });
+  } else {
+    promise = fetch(scriptUrl('action=getMilestoneStats'))
+      .then(function(r){ return r.json(); })
+      .catch(function(){ return null; });
+  }
+  promise.then(function(stats) {
+    if(stats && typeof stats.total === 'number' && stats.total >= 200) {
+      setTimeout(function(){ showMilestone(stats); }, 500);
+    }
+  });
+}
+
+function showMilestone(stats) {
+  var overlay = document.getElementById('milestone-overlay');
+  if(!overlay) return;
+  var highEl = document.getElementById('milestone-high-pct');
+  var vyraditEl = document.getElementById('milestone-vyradit-pct');
+  if(highEl) highEl.textContent = (stats.highPotentialPct || 0) + '%';
+  if(vyraditEl) vyraditEl.textContent = (stats.vyraditPct || 0) + '%';
+  overlay.classList.add('show');
+  document.body.style.overflow = 'hidden';
+  var canvas = document.getElementById('milestone-canvas');
+  if(canvas) {
+    _milestoneStopFn = startFireworksOnCanvas(canvas);
+    setTimeout(function(){
+      if(_milestoneStopFn){ _milestoneStopFn(); _milestoneStopFn = null; }
+    }, 9000);
+  }
+  try { localStorage.setItem('milestone_200_shown', '1'); } catch(e) {}
+}
+
+function closeMilestone() {
+  var overlay = document.getElementById('milestone-overlay');
+  if(overlay) overlay.classList.remove('show');
+  document.body.style.overflow = '';
+  if(_milestoneStopFn){ _milestoneStopFn(); _milestoneStopFn = null; }
 }
 
 
@@ -4360,6 +4450,8 @@ function loginSuccess(username, name, role, region) {
       checkNotifications();
       startNotifPolling();
     }
+    // Skontroluj míľnik 200 lekárov
+    setTimeout(function(){ checkMilestone(); }, 3000);
     return;
   }
   if(localStorage.getItem(TUTORIAL_KEY)){
@@ -4392,6 +4484,8 @@ function loginSuccess(username, name, role, region) {
   // Agresívny dedup po prihlásení — eliminácia prípadných duplicitov
   setTimeout(function(){ try { mgrDedupUnique(); } catch(e){} }, 100);
   setTimeout(function(){ try { mgrDedupUnique(); } catch(e){} }, 600);
+  // Skontroluj míľnik 200 lekárov — s miernym oneskorením aby appka stihla načítať
+  setTimeout(function(){ checkMilestone(); }, 3000);
   window.scrollTo({top: 0, behavior: 'instant'});
 }
 
