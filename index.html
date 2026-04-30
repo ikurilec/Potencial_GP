@@ -8993,6 +8993,10 @@ function closePharmaOkresChart() {
   overlay.classList.remove('show');
   document.body.style.overflow = '';
   PHARMA_OKRES_STATE.current = null;
+  // Vyčisti prípadné úniky active triedy na hlavnom grafe
+  document.querySelectorAll('.pharma-ms-trend-chart-legend-item').forEach(function(el) {
+    el.classList.remove('pharma-okres-legend-item--active');
+  });
 }
 
 function buildOkresChartSvg(rows, prodLabel) {
@@ -9176,7 +9180,9 @@ function pharmaOkresResetLine() {
       l.style.strokeWidth = '';
     });
   }
-  document.querySelectorAll('[data-line-key]').forEach(function(el) {
+  // Scope len na overlay — aby sa nezasiahli legend items hlavného grafu
+  var overlay = document.getElementById('pharma-okres-overlay');
+  if (overlay) overlay.querySelectorAll('[data-line-key]').forEach(function(el) {
     el.classList.remove('pharma-okres-legend-item--active');
   });
   var resetBtn = document.getElementById('pharma-okres-reset-btn');
@@ -9231,8 +9237,9 @@ function pharmaOkresReplayLine(key) {
     }
   }
 
-  // Aktívny stav legendy
-  document.querySelectorAll('[data-line-key]').forEach(function(el) {
+  // Aktívny stav legendy — scope len na overlay, nie celý dokument
+  var overlay = document.getElementById('pharma-okres-overlay');
+  if (overlay) overlay.querySelectorAll('[data-line-key]').forEach(function(el) {
     var k = el.getAttribute('data-line-key');
     if (_pharmaOkresSelectedKeys[k]) {
       el.classList.add('pharma-okres-legend-item--active');
