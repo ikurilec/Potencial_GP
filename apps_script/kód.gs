@@ -592,6 +592,114 @@ function doGet(e) {
       });
     }
 
+    // ── INIT DATA — všetko potrebné pre rep session v jednom requeste ──
+    // Nahrádza 3 separate volania: getRepList + getHistory + getMilestoneStats
+    // URL: ?action=getInitData&reprezentant=j.bohovic&rok=2026&Q=2
+    if(action === 'getInitData') {
+      if(!requireToken(e)) return jsonResponse({ok: false, error: 'Unauthorized'});
+      var username = (e.parameter.reprezentant || '').trim().toLowerCase();
+      var rok = parseInt(e.parameter.rok) || new Date().getFullYear();
+      var q = parseInt(e.parameter.Q) || Math.ceil((new Date().getMonth() + 1) / 3);
+
+      // Hlavný sheet — čítame raz, použijeme pre históriu aj milestone štatistiky
+      var mainSheet = ss.getSheets()[0];
+      var mainData = mainSheet.getDataRange().getValues();
+      var mainHdr = mainData.length > 0
+        ? mainData[0].map(function(h){ return String(h||'').trim().toLowerCase(); })
+        : [];
+      var numericCols = ['kapitacia','aflamil_n','aflamil_eur','suprax_n','suprax_eur',
+                         'vidonorm_n','vidonorm_eur','cavinton_n','cavinton_eur','rocny_potential'];
+      var epoch = new Date(1899, 11, 30);
+
+      // 1. História tohto repa
+      var history = [];
+      var repIdxI = mainHdr.indexOf('reprezentant');
+      if(mainData.length >= 2 && repIdxI !== -1) {
+        for(var i = 1; i < mainData.length; i++) {
+          var row = mainData[i];
+          if(String(row[repIdxI]||'').trim().toLowerCase() !== username) continue;
+          var obj = { row: i + 1 };
+          mainHdr.forEach(function(h, idx){
+            if(!h) return;
+            var v = row[idx];
+            if(v instanceof Date) {
+              if(numericCols.indexOf(h) !== -1){
+                var days = Math.round((v.getTime() - epoch.getTime()) / 86400000);
+                obj[h] = days > 0 ? days : 0;
+              } else { obj[h] = v.toISOString(); }
+            } else { obj[h] = v; }
+          });
+          history.push(obj);
+        }
+      }
+
+      // 2. MilestoneStats — reuse mainData, nové čítanie sheetu nie je potrebné
+      var milestoneStats = { total: 0, highPotentialPct: 0, vyraditPct: 0 };
+      var lekarIdxI    = mainHdr.indexOf('lekar');
+      var potentialIdxI = mainHdr.indexOf('rocny_potential');
+      var scenarIdxI   = mainHdr.indexOf('scenar');
+      if(mainData.length >= 2 && lekarIdxI !== -1) {
+        var doctors = {};
+        for(var i = 1; i < mainData.length; i++) {
+          var lekar = String(mainData[i][lekarIdxI]||'').trim();
+          if(!lekar) continue;
+          var rp2 = potentialIdxI !== -1 ? (parseFloat(mainData[i][potentialIdxI]) || 0) : 0;
+          var sc2 = scenarIdxI   !== -1 ? String(mainData[i][scenarIdxI]||'').trim() : '';
+          doctors[lekar] = { rp: rp2, sc: sc2 };
+        }
+        var total = Object.keys(doctors).length;
+        var highCount = 0, vyraditCount = 0;
+        Object.keys(doctors).forEach(function(k) {
+          if(doctors[k].rp >= 3700) highCount++;
+          if(doctors[k].sc === 'vyradit') vyraditCount++;
+        });
+        milestoneStats = {
+          total: total,
+          highPotentialPct: total > 0 ? Math.round(highCount / total * 100) : 0,
+          vyraditPct:       total > 0 ? Math.round(vyraditCount / total * 100) : 0
+        };
+      }
+
+      // 3. RepList (Pouzivatelia sheet)
+      var repList = [];
+      var pouzSheet2 = ss.getSheetByName('Pouzivatelia');
+      if(pouzSheet2) {
+        var pouzRows2 = pouzSheet2.getDataRange().getValues();
+        for(var i = 1; i < pouzRows2.length; i++) {
+          var login2  = String(pouzRows2[i][0] || '').trim();
+          var meno2   = String(pouzRows2[i][2] || '').trim();
+          var rola2   = String(pouzRows2[i][3] || '').trim().toLowerCase();
+          var region2 = String(pouzRows2[i][4] || '').trim();
+          if(!login2 || !meno2) continue;
+          if(rola2 === 'rep west' || rola2 === 'rep east') {
+            repList.push({ login: login2, meno: meno2, rola: rola2, region: region2 });
+          }
+        }
+      }
+
+      // 4. Config (lb_approved_q)
+      var configs = { lb_approved_q: null };
+      var cfgSheet2 = ss.getSheetByName('Config');
+      if(cfgSheet2) {
+        var cfgRows2 = cfgSheet2.getDataRange().getValues();
+        for(var i = 0; i < cfgRows2.length; i++){
+          if(String(cfgRows2[i][0]||'').trim() === 'lb_approved_q'){
+            var cv = cfgRows2[i][1];
+            configs.lb_approved_q = (cv === '' || cv === null || cv === undefined) ? null : String(cv);
+            break;
+          }
+        }
+      }
+
+      return jsonResponse({
+        ok:             true,
+        history:        history,
+        repList:        repList,
+        milestoneStats: milestoneStats,
+        configs:        configs
+      });
+    }
+
     return jsonResponse({error: 'unknown action'});
 
   } catch(err) {
