@@ -192,6 +192,13 @@ function processWorkbook(wb, info, ourName) {
       parseSummarySheet(data, info);
       debugLog.push('<span class="d-summ">[' + info.produkt + '] "' + sheetName + '" → SUMMARY +' + (summaryRows.length - before) + ' riadkov</span>');
     } else {
+      // Preskočíme záložky ktoré vyzerajú ako skratky/kódy (celé veľké písmená, žiadna medzera)
+      // Slovenské okresy majú vždy malé písmená alebo medzery napr. "Levice", "Banská Štiavnica"
+      var trimmedName = sheetName.trim();
+      if (trimmedName === trimmedName.toUpperCase() && !/\s/.test(trimmedName)) {
+        debugLog.push('<span class="d-skip">[' + info.produkt + '] "' + sheetName + '" → preskočené (skratka/kód, nie okres)</span>');
+        return;
+      }
       var dist = detectDistrictStructure(data);
       if (dist.ok) {
         var before2 = okresyRows.length;
