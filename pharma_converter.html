@@ -62,6 +62,7 @@
 <div id="actions">
   <button class="btn btn-green" onclick="copyOutput('summary')">📋 Kopírovať Summary</button>
   <button class="btn btn-yellow" onclick="copyOutput('okresy')">📋 Kopírovať Okresy</button>
+  <button class="btn" style="background:#7C3AED;color:#fff" onclick="copyOutput('okrgraf')">📋 Kopírovať OkresyGraf</button>
   <button class="btn btn-primary btn-sm" onclick="resetAll()">🔄 Začať znova</button>
 </div>
 
@@ -83,6 +84,8 @@
       <thead><tr>
         <th>produkt</th><th>oblast</th><th>okres</th><th>kvartal</th>
         <th>nas_m1</th><th>nas_m2</th><th>nas_m3</th>
+        <th>nas_pat_m1</th><th>nas_pat_m2</th><th>nas_pat_m3</th>
+        <th>tot_pat_m1</th><th>tot_pat_m2</th><th>tot_pat_m3</th>
         <th>k1_nazov</th><th>k1_m1</th><th>k1_m2</th><th>k1_m3</th>
         <th>k2_nazov</th><th>k2_m1</th><th>k2_m2</th><th>k2_m3</th>
         <th>k3_nazov</th><th>k3_m1</th><th>k3_m2</th><th>k3_m3</th>
@@ -91,6 +94,27 @@
     </table>
   </div>
   <p class="more-rows" id="more-okresy"></p>
+</div>
+
+<div id="block-okrgraf" class="output-block">
+  <div class="section-title">PharmaData_OkresyGraf — historický graf po okresoch (všetci konkurenti, per mesiac)</div>
+  <div class="table-scroll">
+    <table>
+      <thead><tr>
+        <th>produkt</th><th>oblast</th><th>okres</th><th>mesiac</th><th>nas_ms</th>
+        <th>k1_nazov</th><th>k1_ms</th><th>k2_nazov</th><th>k2_ms</th>
+        <th>k3_nazov</th><th>k3_ms</th><th>k4_nazov</th><th>k4_ms</th>
+        <th>k5_nazov</th><th>k5_ms</th><th>k6_nazov</th><th>k6_ms</th>
+        <th>k7_nazov</th><th>k7_ms</th><th>k8_nazov</th><th>k8_ms</th>
+        <th>k9_nazov</th><th>k9_ms</th><th>k10_nazov</th><th>k10_ms</th>
+        <th>k11_nazov</th><th>k11_ms</th><th>k12_nazov</th><th>k12_ms</th>
+        <th>k13_nazov</th><th>k13_ms</th><th>k14_nazov</th><th>k14_ms</th>
+        <th>k15_nazov</th><th>k15_ms</th>
+      </tr></thead>
+      <tbody id="body-okrgraf"></tbody>
+    </table>
+  </div>
+  <p class="more-rows" id="more-okrgraf"></p>
 </div>
 
 <script>
@@ -107,10 +131,12 @@ var OUR_PROD_NAME = {
   'VID':     'VIDONORM'
 };
 
-var summaryRows = [];
-var okresyRows  = [];
+var summaryRows  = [];
+var okresyRows   = [];
+var okrGrafRows  = [];
 var errors = [];
 var debugLog = [];
+var MAX_KOMP_GRAF = 15;
 
 // ── Drag & drop ──
 var dz = document.getElementById('drop-zone');
@@ -247,18 +273,33 @@ function detectDistrictStructure(data) {
 
 function parseDistrictSheet(data, sheetName, info, ourName, dist) {
   // Načítaj produktové riadky — col0=produkt, col1=typ ("MS% Pat" alebo "Pat")
-  var products = {}, lastProd = null;
+  var products = {}, lastProd = null, totalPatRow = null;
   for (var r = dist.dataStartIdx; r < data.length; r++) {
     var row  = data[r];
     var col0 = String(row[0] || '').trim();
     var col1 = String(row[1] || '').trim().toUpperCase().replace(/\s/g,'');
-    if (col0 && col0.toUpperCase().indexOf('TOTAL') >= 0) continue;
+    if (col0 && col0.toUpperCase().indexOf('TOTAL') >= 0) {
+      // Zachyť riadok "Total Pat" — celkový počet pacientov v okrese
+      // Podporuje oba formáty:
+      //   col0="Total", col1="Pat"          (oddelené bunky)
+      //   col0="Total Pat", col1=""         (celý text v A stĺpci)
+      var col0ns = col0.toUpperCase().replace(/\s/g,'');
+      var isTotalPat = col1 === 'PAT' ||
+        (col0ns.indexOf('TOTALPAT') >= 0 && col0ns.indexOf('MS') < 0);
+      if (isTotalPat) totalPatRow = row;
+      continue;
+    }
     if (col0) lastProd = col0.toUpperCase();
     if (!lastProd) continue;
     // "MS%PAT", "MS%PAT.", "MS%PAT_" atď.
     if (col1.indexOf('MS%') >= 0) {
       if (!products[lastProd]) products[lastProd] = {};
       products[lastProd].msRow = row;
+    }
+    // "PAT" — počet pacientov nášho produktu
+    if (col1 === 'PAT') {
+      if (!products[lastProd]) products[lastProd] = {};
+      products[lastProd].patRow = row;
     }
   }
 
@@ -275,6 +316,16 @@ function parseDistrictSheet(data, sheetName, info, ourName, dist) {
     if (ourProd && products[ourProd] && products[ourProd].msRow) {
       cols.forEach(function(x, i){ if (i < 3) ourMs[i] = pct(products[ourProd].msRow[x.col]); });
     }
+    // Počet pacientov nášho produktu za každý mesiac v Q
+    var ourPat = [null, null, null];
+    if (ourProd && products[ourProd] && products[ourProd].patRow) {
+      cols.forEach(function(x, i){ if (i < 3) { var v = parseInt(products[ourProd].patRow[x.col]); ourPat[i] = isNaN(v) ? null : v; } });
+    }
+    // Celkový počet pacientov v okrese za každý mesiac v Q
+    var totPat = [null, null, null];
+    if (totalPatRow) {
+      cols.forEach(function(x, i){ if (i < 3) { var v = parseInt(totalPatRow[x.col]); totPat[i] = isNaN(v) ? null : v; } });
+    }
 
     var compList = [];
     Object.keys(products).forEach(function(pName) {
@@ -290,7 +341,9 @@ function parseDistrictSheet(data, sheetName, info, ourName, dist) {
 
     function mVal(arr, i) { return (arr && arr[i] != null) ? arr[i] : ''; }
     var outRow = [info.produkt, info.oblast, sheetName, qtr,
-      mVal(ourMs,0), mVal(ourMs,1), mVal(ourMs,2)];
+      mVal(ourMs,0), mVal(ourMs,1), mVal(ourMs,2),
+      mVal(ourPat,0), mVal(ourPat,1), mVal(ourPat,2),
+      mVal(totPat,0), mVal(totPat,1), mVal(totPat,2)];
     for (var k = 0; k < 3; k++) {
       var comp = top3[k];
       outRow.push(comp ? comp.name : '');
@@ -300,6 +353,47 @@ function parseDistrictSheet(data, sheetName, info, ourName, dist) {
     }
     okresyRows.push(outRow);
   });
+
+  // ── OkresyGraf: per-mesiac výstup pre historický district chart ──
+  (function() {
+    var ourProd2 = null;
+    Object.keys(products).forEach(function(n) {
+      if (n.indexOf(ourName.toUpperCase()) >= 0) ourProd2 = n;
+    });
+    // Zbier všetky mesiace naprieč všetkými kvartálmi
+    var allM = [];
+    Object.keys(dist.quarters).forEach(function(qtr) {
+      var yy = qtr.slice(0, 2);
+      dist.quarters[qtr].forEach(function(x) {
+        var mm = x.month < 10 ? '0' + x.month : String(x.month);
+        allM.push({ col: x.col, mesiac: yy + mm });
+      });
+    });
+    allM.sort(function(a, b) { return a.mesiac.localeCompare(b.mesiac); });
+    // Všetci konkurenti zoradení podľa priemeru MS%
+    var kList = [];
+    Object.keys(products).forEach(function(n) {
+      if (n === ourProd2) return;
+      var msRow = products[n] && products[n].msRow;
+      if (!msRow) return;
+      var avg = allM.reduce(function(s, m) { return s + (parseFloat(pct(msRow[m.col])) || 0); }, 0) / (allM.length || 1);
+      if (avg > 0) kList.push({ name: n, msRow: msRow, avg: avg });
+    });
+    kList.sort(function(a, b) { return b.avg - a.avg; });
+    var topK = kList.slice(0, MAX_KOMP_GRAF);
+    // Jeden riadok na mesiac
+    allM.forEach(function(m) {
+      var nasMs = (ourProd2 && products[ourProd2] && products[ourProd2].msRow)
+        ? (pct(products[ourProd2].msRow[m.col]) || '') : '';
+      var outRow = [info.produkt, info.oblast, sheetName, m.mesiac, nasMs];
+      for (var k = 0; k < MAX_KOMP_GRAF; k++) {
+        var komp = topK[k];
+        outRow.push(komp ? komp.name : '');
+        outRow.push(komp ? (pct(komp.msRow[m.col]) || '') : '');
+      }
+      okrGrafRows.push(outRow);
+    });
+  })();
 }
 
 // ── Pomocné funkcie ──
@@ -317,14 +411,16 @@ function pct(val) {
 function renderAll() {
   summaryRows.sort(function(a,b){ return (a[0]+a[1]+a[2]).localeCompare(b[0]+b[1]+b[2]); });
   okresyRows.sort(function(a,b){ return (a[0]+a[1]+a[2]+a[3]).localeCompare(b[0]+b[1]+b[2]+b[3]); });
+  okrGrafRows.sort(function(a,b){ return (a[0]+a[1]+a[2]+a[3]).localeCompare(b[0]+b[1]+b[2]+b[3]); });
 
   var errHtml = errors.length ? '<div class="err">⚠️ Problémy (' + errors.length + '):<br>' + errors.map(function(e){ return '· '+e; }).join('<br>') + '</div>' : '';
   var statsEl = document.getElementById('stats');
   statsEl.style.display = 'block';
-  statsEl.innerHTML = '✅ Summary riadkov: <strong>' + summaryRows.length + '</strong> &nbsp;·&nbsp; Okresy riadkov: <strong>' + okresyRows.length + '</strong>' + errHtml;
+  statsEl.innerHTML = '✅ Summary: <strong>' + summaryRows.length + '</strong> &nbsp;·&nbsp; Okresy: <strong>' + okresyRows.length + '</strong> &nbsp;·&nbsp; OkresyGraf: <strong>' + okrGrafRows.length + '</strong>' + errHtml;
 
-  renderTable('body-summary', 'more-summary', 'block-summary', summaryRows, 5);
-  renderTable('body-okresy',  'more-okresy',  'block-okresy',  okresyRows,  19);
+  renderTable('body-summary',   'more-summary',   'block-summary',   summaryRows,  5);
+  renderTable('body-okresy',    'more-okresy',    'block-okresy',    okresyRows,   25);
+  renderTable('body-okrgraf',   'more-okrgraf',   'block-okrgraf',   okrGrafRows,  21);
 
   document.getElementById('actions').style.display = (summaryRows.length || okresyRows.length) ? 'flex' : 'none';
 
@@ -362,9 +458,14 @@ function copyOutput(type) {
   if (type === 'summary') {
     tsv = buildTsv(summaryRows, ['produkt','oblast','mesiac','terit_ms','sk_ms']);
     label = 'Summary';
-  } else {
-    tsv = buildTsv(okresyRows, ['produkt','oblast','okres','kvartal','nas_m1','nas_m2','nas_m3','k1_nazov','k1_m1','k1_m2','k1_m3','k2_nazov','k2_m1','k2_m2','k2_m3','k3_nazov','k3_m1','k3_m2','k3_m3']);
+  } else if (type === 'okresy') {
+    tsv = buildTsv(okresyRows, ['produkt','oblast','okres','kvartal','nas_m1','nas_m2','nas_m3','nas_pat_m1','nas_pat_m2','nas_pat_m3','tot_pat_m1','tot_pat_m2','tot_pat_m3','k1_nazov','k1_m1','k1_m2','k1_m3','k2_nazov','k2_m1','k2_m2','k2_m3','k3_nazov','k3_m1','k3_m2','k3_m3']);
     label = 'Okresy';
+  } else {
+    var grafHdrs = ['produkt','oblast','okres','mesiac','nas_ms'];
+    for (var gk = 1; gk <= MAX_KOMP_GRAF; gk++) { grafHdrs.push('k'+gk+'_nazov'); grafHdrs.push('k'+gk+'_ms'); }
+    tsv = buildTsv(okrGrafRows, grafHdrs);
+    label = 'OkresyGraf';
   }
   var n = document.getElementById('notice');
   if (navigator.clipboard) {
@@ -384,13 +485,14 @@ function showNotice(msg) {
 }
 
 function resetAll() {
-  summaryRows=[]; okresyRows=[]; errors=[]; debugLog=[];
-  ['stats','actions','block-summary','block-okresy','notice','debug-block'].forEach(function(id){
+  summaryRows=[]; okresyRows=[]; okrGrafRows=[]; errors=[]; debugLog=[];
+  ['stats','actions','block-summary','block-okresy','block-okrgraf','notice','debug-block'].forEach(function(id){
     var el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
   document.getElementById('body-summary').innerHTML = '';
   document.getElementById('body-okresy').innerHTML = '';
+  document.getElementById('body-okrgraf').innerHTML = '';
   document.getElementById('file-input').value = '';
 }
 </script>
