@@ -1740,7 +1740,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.10.8';
+var APP_VERSION = '2.11.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -2945,6 +2945,9 @@ function checkMilestone() {
   var promise;
   if(typeof IS_DEV !== 'undefined' && IS_DEV) {
     promise = Promise.resolve({ total: 200, highPotentialPct: 68, vyraditPct: 14 });
+  } else if(window._cachedMilestoneStats) {
+    // Cache z loadInitData — vyhne sa zbytočnému fetchu
+    promise = Promise.resolve(window._cachedMilestoneStats);
   } else {
     promise = fetch(scriptUrl('action=getMilestoneStats'))
       .then(function(r){ return r.json(); })
@@ -3327,9 +3330,12 @@ function initCounter() {
 
 // Načíta celú históriu zo Sheets (alebo localStorage fallback), uloží do _histAllItems a aktualizuje badge.
 // Volá sa pri prihlásení aj pri otvorení histórie — zabezpečuje že duplikátna kontrola má vždy dáta.
+// _histPromise cache zabraňuje dvojitému fetchu: ak fetch práve beží alebo už dobehol, vráti ten istý Promise.
 function loadHistoryItems(username) {
   if(!username) return Promise.resolve([]);
-  return fetch(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username)))
+  // Cache hit — dáta sú v pamäti alebo fetch práve beží, nespúšťaj nový request
+  if(_histPromise) return _histPromise;
+  _histPromise = fetch(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username)))
     .then(function(r){ return r.json(); })
     .then(function(rows) {
       _histAllItems = rows.map(function(item) {
@@ -3367,6 +3373,7 @@ function loadHistoryItems(username) {
       return _histAllItems;
     })
     .catch(function() {
+      _histPromise = null; // reset — nabudúce sa skúsi znova fetchnúť zo Sheets
       try {
         var data = JSON.parse(localStorage.getItem(HISTORY_KEY) || '{}');
         _histAllItems = [];
@@ -3380,6 +3387,7 @@ function loadHistoryItems(username) {
       } catch(e) {}
       return _histAllItems;
     });
+  return _histPromise;
 }
 
 function refreshBadgeFromSheets(username) {
@@ -3516,6 +3524,8 @@ function getTodayStr() {
 }
 
 function saveToHistory(lekar, okres, odporucanie, scenar) {
+  // Vymaž history cache — nabudúce História fetchne čerstvé dáta zo Sheets
+  _histPromise = null;
   try {
     var data = JSON.parse(localStorage.getItem(HISTORY_KEY) || '{}');
     var todayKey = getTodayKey();
@@ -3557,6 +3567,7 @@ function getShortRec(scenar) {
 }
 
 var _histAllItems = []; // [{dateKey, dateStr, lekar, okres, cas, scenar}]
+var _histPromise  = null; // Promise cache — zabraňuje dvojitému fetchu histórie pri rovnobežných volaniach
 
 function timeAgo(dateKey, cas) {
   try {
@@ -4432,7 +4443,7 @@ function loginSuccess(username, name, role, region) {
   try { mgrDedupUnique(); } catch(e){}
   updateHdrForUser(user);
   pingLogin(username);
-  loadRepList();
+  loadInitData(username); // nahrádza loadRepList() + refreshBadgeFromSheets() — 1 request namiesto 3
   // Vyčisti akékoľvek stuck body štýly (position:fixed z tutoriálu, lockScroll atď.)
   document.body.style.position = '';
   document.body.style.top = '';
@@ -4467,7 +4478,7 @@ function loginSuccess(username, name, role, region) {
     setTimeout(function(){ wnShow(false); }, 600);
   }
   initTutorial();
-  refreshBadgeFromSheets(username);
+  // refreshBadgeFromSheets je nahradená loadInitData() vyššie — história sa načíta cez getInitData
   // Skontroluj notifikácie od admina — výsledky sú pravdepodobne už v cache z prefetchu
   checkNotifications();
   // Spusti polling — ak admin odošle kým je reprezentant prihlásený, banner vyskočí do 60s
@@ -4646,7 +4657,7 @@ function initLogin() {
     }
     updateHdrForUser(session);
     pingLogin(session.username);
-    loadRepList();
+    loadInitData(session.username); // nahrádza loadRepList() + refreshBadgeFromSheets() — 1 request namiesto 3
     var mgrRole = mgrDetectRole(session);
     if(mgrRole){
       mgrEnter(mgrRole);
@@ -4659,7 +4670,7 @@ function initLogin() {
       return;
     }
     setTimeout(function(){ updateHdrForUser(session); }, 300);
-    refreshBadgeFromSheets(session.username);
+    // refreshBadgeFromSheets nahradená loadInitData() vyššie
     // Preload rebríček + Plnenie Q (leaderboard) paralelne -- oba startuju po 2s
     setTimeout(function(){
       lbFetchApprovedQ(function(){
@@ -5859,6 +5870,96 @@ function loadRepList() {
     .catch(function(){ REP_LIST_STATE.loading = false; });
 }
 
+// ── INIT DATA — načíta repList + históriu + milestoneStats v jedinom HTTP requeste ──
+// Nahrádza loadRepList() + refreshBadgeFromSheets() pri logine.
+// Retry: pri zlyhaní skúsi znova po 3s a 8s, potom fallback na pôvodné funkcie.
+function loadInitData(username, _attempt) {
+  _attempt = _attempt || 0;
+
+  // DEV mode — mock dáta, žiadny fetch
+  if(typeof IS_DEV !== 'undefined' && IS_DEV) {
+    _histAllItems = [];
+    _histPromise  = Promise.resolve([]);
+    updateBadge(0, false);
+    // RepList z existujúcich mock konštánt
+    var mockReps = Object.keys(MGR_REP_NAMES).map(function(login) {
+      var r = LB_REP_INFO[login] || {};
+      var regionStr = (USERS_LOCAL[login] || {}).region || '';
+      return { login: login, meno: MGR_REP_NAMES[login] || login, rola: 'rep west', region: regionStr };
+    });
+    if(mockReps.length) { buildRepData(mockReps); REP_LIST_STATE.loaded = true; }
+    window._cachedMilestoneStats = { total: 200, highPotentialPct: 68, vyraditPct: 14 };
+    return Promise.resolve({ ok: true });
+  }
+
+  var rok = (new Date()).getFullYear();
+  var q   = plnenieCurrentQ();
+  var url = scriptUrl('action=getInitData&reprezentant=' + encodeURIComponent(username)
+                      + '&rok=' + rok + '&Q=' + q);
+
+  return fetch(url, { cache: 'no-store' })
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(data) {
+      if(!data || !data.ok) throw new Error('getInitData: no data');
+
+      // História — naplní cache, História panel bude okamžitá
+      if(Array.isArray(data.history)) {
+        var processedHistory = data.history.map(function(item) {
+          var rawDate = item.datum || '';
+          var dateStr = rawDate;
+          try {
+            var d = new Date(rawDate);
+            if(!isNaN(d.getTime())) dateStr = d.getDate() + '.' + (d.getMonth()+1) + '.' + d.getFullYear();
+          } catch(e) {}
+          var rawCas = item.cas || '';
+          var casStr = rawCas;
+          try {
+            if(typeof rawCas === 'object' || (typeof rawCas === 'string' && rawCas.length > 5 && rawCas.indexOf('T') !== -1)) {
+              var dc = new Date(rawCas);
+              if(!isNaN(dc.getTime())) casStr = ('0'+dc.getHours()).slice(-2) + ':' + ('0'+dc.getMinutes()).slice(-2);
+            }
+          } catch(e) {}
+          var dParts = dateStr.split('.');
+          var dk = (dParts.length === 3) ? dParts[2]+'-'+dParts[1]+'-'+dParts[0] : dateStr;
+          return Object.assign({}, item, { dateKey: dk, dateStr: dateStr, cas: casStr, poznamka: item.poznamka || '' });
+        });
+        _histAllItems = processedHistory;
+        _histPromise  = Promise.resolve(processedHistory);
+        updateBadge(_histAllItems.length, false);
+      }
+
+      // RepList
+      if(data.repList && data.repList.length) {
+        buildRepData(data.repList);
+        REP_LIST_STATE.loaded = true;
+        // Prerender ak je rebríček práve otvorený
+        var lbEl2 = document.getElementById('lb-overlay');
+        if(lbEl2 && lbEl2.classList.contains('show')) lbRender();
+        preloadAllPharmaData();
+      }
+
+      // MilestoneStats — uloží pre checkMilestone, vyhne sa extra fetchu
+      if(data.milestoneStats) window._cachedMilestoneStats = data.milestoneStats;
+
+      // Config — lb_approved_q (vyhne sa extra getConfig fetchu pri otváraní rebríčka)
+      if(data.configs && data.configs.lb_approved_q !== null && data.configs.lb_approved_q !== undefined) {
+        var lbq = parseInt(data.configs.lb_approved_q);
+        if(!isNaN(lbq)) LB_APPROVED_Q = lbq;
+      }
+    })
+    .catch(function() {
+      var delays = [3000, 8000];
+      if(_attempt < delays.length) {
+        // Retry s oneskorením
+        setTimeout(function() { loadInitData(username, _attempt + 1); }, delays[_attempt]);
+      } else {
+        // Po 3 pokusoch — fallback na pôvodné funkcie
+        loadRepList();
+        refreshBadgeFromSheets(username);
+      }
+    });
+}
+
 function openLeaderboard(){
   if(!document.getElementById('lb-overlay')) return;
   _panelShow('lb-overlay');
@@ -5995,7 +6096,13 @@ function lbLastCompletedQ() {
 // Nacita iba posledny ukonceny Q pre leaderboard Plnenie (1 request, nezavisly od repPlnenieLoad)
 
 // Nacita admin-schvaleny Q zo Sheets (getConfig)
+// Ak loadInitData už nastavil LB_APPROVED_Q, preskočí fetch a zavolá callback priamo
 function lbFetchApprovedQ(callback) {
+  // Cache hit z loadInitData — vyhne sa extra getConfig fetchu
+  if(LB_APPROVED_Q !== null) {
+    if(callback) callback();
+    return;
+  }
   var url = scriptUrl('action=getConfig&key=lb_approved_q');
   fetch(url)
     .then(function(r){ return r.json(); })
