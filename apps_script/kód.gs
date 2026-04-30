@@ -400,11 +400,14 @@ function doGet(e) {
             var oh = od[0].map(function(c){ return String(c||'').trim().toLowerCase(); });
             var oiP=hdrIdx(oh,'produkt'), oiO=hdrIdx(oh,'oblast'), oiOkr=hdrIdx(oh,'okres'), oiK=hdrIdx(oh,'kvartal');
             var oiN1=hdrIdx(oh,'nas_m1'), oiN2=hdrIdx(oh,'nas_m2'), oiN3=hdrIdx(oh,'nas_m3');
+            var oiNP1=hdrIdx(oh,'nas_pat_m1'), oiNP2=hdrIdx(oh,'nas_pat_m2'), oiNP3=hdrIdx(oh,'nas_pat_m3');
+            var oiTP1=hdrIdx(oh,'tot_pat_m1'), oiTP2=hdrIdx(oh,'tot_pat_m2'), oiTP3=hdrIdx(oh,'tot_pat_m3');
             function komp(row,prefix){
               var iN=hdrIdx(oh,prefix+'_nazov'),iM1=hdrIdx(oh,prefix+'_m1'),iM2=hdrIdx(oh,prefix+'_m2'),iM3=hdrIdx(oh,prefix+'_m3');
               var name=String(row[iN]||'').trim(); if(!name) return null;
               return {name:name, m1:parseFloat(row[iM1])||null, m2:parseFloat(row[iM2])||null, m3:parseFloat(row[iM3])||null};
             }
+            function pi(v){ var n=parseInt(v); return isNaN(n)?null:n; }
             for(var i=1;i<od.length;i++){
               var r=od[i];
               if(String(r[oiP]||'').trim()!==produkt) continue;
@@ -413,6 +416,8 @@ function doGet(e) {
               okresyRows.push({
                 okres:  String(r[oiOkr]||'').trim(),
                 nas_m1: parseFloat(r[oiN1])||null, nas_m2: parseFloat(r[oiN2])||null, nas_m3: parseFloat(r[oiN3])||null,
+                nas_pat_m1: pi(r[oiNP1]), nas_pat_m2: pi(r[oiNP2]), nas_pat_m3: pi(r[oiNP3]),
+                tot_pat_m1: pi(r[oiTP1]), tot_pat_m2: pi(r[oiTP2]), tot_pat_m3: pi(r[oiTP3]),
                 k1: komp(r,'k1'), k2: komp(r,'k2'), k3: komp(r,'k3')
               });
             }
@@ -421,6 +426,54 @@ function doGet(e) {
       }
 
       return jsonResponse({ok:true, summary:summRows, okresy:okresyRows});
+    }
+
+    // ── PHARMA OKRES GRAF — historický MS% nášho produktu + všetci konkurenti per mesiac per okres ──
+    // URL: ?action=getPharmaOkresGraf&produkt=TEL&oblast=DS&okres=Dunajská Streda
+    if(action === 'getPharmaOkresGraf') {
+      if(!requireToken(e)) return jsonResponse({ok: false, error: 'Unauthorized'});
+      var produkt = (e.parameter.produkt || '').trim().toUpperCase();
+      var oblast  = (e.parameter.oblast  || '').trim().toUpperCase();
+      var okres   = (e.parameter.okres   || '').trim();
+      if(!produkt || !oblast || !okres) return jsonResponse({ok:false, error:'missing params'});
+
+      var ogSheet = ss.getSheetByName('PharmaData_OkresyGraf');
+      if(!ogSheet) return jsonResponse({ok:false, error:'Tab PharmaData_OkresyGraf nenajdeny'});
+
+      var ogd = ogSheet.getDataRange().getValues();
+      if(ogd.length < 2) return jsonResponse({ok:true, rows:[]});
+
+      var ogh = ogd[0].map(function(c){ return String(c||'').trim().toLowerCase(); });
+      var giP=ogh.indexOf('produkt'), giO=ogh.indexOf('oblast'), giOk=ogh.indexOf('okres');
+      var giM=ogh.indexOf('mesiac'), giNM=ogh.indexOf('nas_ms');
+
+      // Nájdi všetky k*_nazov / k*_ms stĺpce dynamicky
+      var kompCols = [];
+      for(var ci=0;ci<ogh.length;ci++){
+        if(/^k\d+_nazov$/.test(ogh[ci])){
+          var msIdx = ogh.indexOf(ogh[ci].replace('_nazov','_ms'));
+          if(msIdx>=0) kompCols.push({n:ci, m:msIdx});
+        }
+      }
+
+      var rows = [];
+      for(var i=1;i<ogd.length;i++){
+        var r=ogd[i];
+        if(String(r[giP]||'').trim().toUpperCase()!==produkt) continue;
+        if(String(r[giO]||'').trim().toUpperCase()!==oblast) continue;
+        if(String(r[giOk]||'').trim()!==okres) continue;
+        var mesiac = String(r[giM]||'').trim();
+        if(!mesiac) continue;
+        var row = {mesiac:mesiac, nas_ms: parseFloat(r[giNM])||null, komp:[]};
+        kompCols.forEach(function(kc){
+          var name=String(r[kc.n]||'').trim();
+          if(!name) return;
+          row.komp.push({name:name, ms:parseFloat(r[kc.m])||null});
+        });
+        rows.push(row);
+      }
+      rows.sort(function(a,b){return a.mesiac.localeCompare(b.mesiac);});
+      return jsonResponse({ok:true, produkt:produkt, oblast:oblast, okres:okres, rows:rows});
     }
 
     // ── PHARMA GRAF DÁTA — trend MS% nášho produktu + top 4 konkurenti ──
