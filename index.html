@@ -875,10 +875,15 @@
   .pharma-ms-trend-chart{background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:14px;box-shadow:0 1px 6px rgba(0,0,0,.05)}
   .pharma-ms-trend-chart-title{font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
   .pharma-ms-trend-chart-legend{display:grid;grid-template-columns:1fr 1fr;gap:4px 6px;margin-top:10px}
-  .pharma-ms-trend-chart-legend-item{display:flex;align-items:center;gap:5px;font-size:10px;color:#475569;font-weight:500;min-width:0;padding:4px 8px 4px 6px;border-radius:20px;background:#F8FAFC;border:1px solid #E2E8F0;cursor:pointer;transition:background .15s,border-color .15s;-webkit-tap-highlight-color:transparent}
+  .pharma-ms-trend-chart-legend-item{display:flex;align-items:center;gap:5px;font-size:10px;color:#64748B;font-weight:500;min-width:0;padding:4px 8px 4px 6px;border-radius:20px;background:#F8FAFC;border:1px solid #E2E8F0;cursor:pointer;transition:background .15s,border-color .15s;-webkit-tap-highlight-color:transparent}
   .pharma-ms-trend-chart-legend-item:active{background:#E2E8F0;border-color:#CBD5E1}
   .pharma-ms-trend-chart-legend-item span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .pharma-ms-trend-chart-legend-item b{color:#1E293B;font-weight:700}
+  .pharma-ms-trend-chart-legend-item b{color:#0F172A;font-weight:700;font-size:10.5px}
+  .pharma-ms-trend-chart-legend-item--nas{background:#EFF6FF;border-color:#BFDBFE;color:#1E40AF;font-weight:700}
+  .pharma-ms-trend-chart-legend-item--nas b{color:#1E40AF}
+  .pharma-ms-trend-chart-legend-item--active{background:#2563EB!important;border-color:#2563EB!important;color:#fff!important}
+  .pharma-ms-trend-chart-legend-item--active b{color:#fff!important}
+  .pharma-ms-trend-chart-legend-item--active .pharma-ms-trend-chart-legend-dot{outline:2px solid rgba(255,255,255,.5);outline-offset:1px}
   .pharma-ms-trend-chart-legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
   /* Sekcia a okresy */
   .pharma-ms-section-title{font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin:4px 0 8px}
@@ -907,11 +912,17 @@
   .pharma-okres-chart-wrap svg{width:100%;height:100%;display:block}
   /* Legenda: 4-stĺpcový grid — všetci konkurenti viditeľní bez scrollovania */
   .pharma-okres-legend{display:grid;grid-template-columns:repeat(4,1fr);gap:1px 4px;padding:4px 10px 7px;flex-shrink:0;overflow:hidden}
-  .pharma-okres-legend-item{display:flex;align-items:center;gap:3px;font-size:9.5px;color:#374151;cursor:pointer;padding:3px 6px 3px 4px;border-radius:20px;min-width:0;background:#F8FAFC;border:1px solid #E2E8F0;transition:background .15s,border-color .15s;-webkit-tap-highlight-color:transparent}
+  .pharma-okres-legend-item{display:flex;align-items:center;gap:3px;font-size:9.5px;color:#64748B;font-weight:500;cursor:pointer;padding:3px 6px 3px 4px;border-radius:20px;min-width:0;background:#F8FAFC;border:1px solid #E2E8F0;transition:background .15s,border-color .15s;-webkit-tap-highlight-color:transparent}
   .pharma-okres-legend-item:active{background:#E2E8F0;border-color:#CBD5E1}
+  .pharma-okres-legend-item--nas{background:#EFF6FF;border-color:#BFDBFE;color:#1E40AF;font-weight:700}
+  .pharma-okres-legend-item--nas .pharma-okres-legend-val{color:#1E40AF}
+  .pharma-okres-legend-item--active{background:#2563EB!important;border-color:#2563EB!important;color:#fff!important}
+  .pharma-okres-legend-item--active .pharma-okres-legend-val{color:#fff!important}
   .pharma-okres-legend-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
   .pharma-okres-legend-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-  .pharma-okres-legend-val{font-size:8.5px;color:#94A3B8;white-space:nowrap;flex-shrink:0}
+  .pharma-okres-legend-val{font-size:9.5px;font-weight:700;color:#0F172A;white-space:nowrap;flex-shrink:0}
+  .pharma-legend-reset-btn{display:none;align-items:center;gap:4px;padding:4px 10px;background:#FEF2F2;border:1px solid #FECACA;border-radius:20px;color:#DC2626;font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;-webkit-tap-highlight-color:transparent;transition:background .15s}
+  .pharma-legend-reset-btn.visible{display:flex}
   /* Tabuľka mesiacov */
   .pharma-ms-tbl{width:100%;border-collapse:collapse}
   .pharma-ms-tbl th{font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.04em;padding:0 4px 5px;text-align:right}
@@ -1685,7 +1696,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.9.0';
+var APP_VERSION = '2.9.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8699,14 +8710,17 @@ function buildGrafChartHtml(code, oblast) {
   out += '<div class="pharma-ms-trend-chart-title">Vývoj trhového podielu · ' + titleFrom + ' – ' + titleTo + '</div>';
   out += svg;
 
-  // Legenda — 2-stĺpcová mriežka: náš produkt + trend na prvom riadku, potom kompetitori
+  // Legenda — reset tlačidlo + 2-stĺpcová mriežka
+  out += '<div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">'
+    + '<button class="pharma-legend-reset-btn" id="pharma-main-reset-btn" onclick="pharmaResetLine()">× Všetky</button>'
+    + '</div>';
   out += '<div class="pharma-ms-trend-chart-legend">';
-  out += '<div class="pharma-ms-trend-chart-legend-item" onclick="pharmaReplayLine(\'nas\')">'
+  out += '<div class="pharma-ms-trend-chart-legend-item pharma-ms-trend-chart-legend-item--nas" data-line-key="nas" onclick="pharmaReplayLine(\'nas\')">'
     + '<div class="pharma-ms-trend-chart-legend-dot" style="background:' + nasColor + '"></div>'
     + '<span>' + mgrEscape(prodLabel) + (nasLast !== null ? ' · <b>' + nasLast.toFixed(1) + '%</b>' : '') + '</span></div>';
   kompCfg.forEach(function(k, ki) {
     var vLast = kompLast[ki];
-    out += '<div class="pharma-ms-trend-chart-legend-item" onclick="pharmaReplayLine(\'k' + ki + '\')">'
+    out += '<div class="pharma-ms-trend-chart-legend-item" data-line-key="k' + ki + '" onclick="pharmaReplayLine(\'k' + ki + '\')">'
       + '<div class="pharma-ms-trend-chart-legend-dot" style="background:' + kompColors[ki] + '"></div>'
       + '<span>' + mgrEscape(k.name) + (vLast !== null ? ' · <b>' + vLast.toFixed(1) + '%</b>' : '') + '</span></div>';
   });
@@ -8714,16 +8728,52 @@ function buildGrafChartHtml(code, oblast) {
   return out;
 }
 
+var _pharmaSelectedKey = null;
+
+function pharmaResetLine() {
+  _pharmaSelectedKey = null;
+  var wrap = document.getElementById('pharma-graf-chart');
+  if (wrap) {
+    wrap.querySelectorAll('.pharma-trend-line').forEach(function(l) {
+      l.style.transition = 'opacity 0.3s';
+      l.style.opacity = l.id === 'pharma-line-nas' ? '1' : '0.55';
+      l.style.strokeWidth = '';
+    });
+    wrap.querySelectorAll('[data-line-key]').forEach(function(el) {
+      el.classList.remove('pharma-ms-trend-chart-legend-item--active');
+    });
+  }
+  var resetBtn = document.getElementById('pharma-main-reset-btn');
+  if (resetBtn) resetBtn.classList.remove('visible');
+}
+
 function pharmaReplayLine(key) {
   var wrap = document.getElementById('pharma-graf-chart');
   if (!wrap) return;
-  var targetId = 'pharma-line-' + key;
-  var allLines = wrap.querySelectorAll('.pharma-trend-line');
+  var allLines    = wrap.querySelectorAll('.pharma-trend-line');
+  var allLegItems = wrap.querySelectorAll('[data-line-key]');
+  var resetBtn    = document.getElementById('pharma-main-reset-btn');
+  var targetId    = 'pharma-line-' + key;
+  var isSame      = _pharmaSelectedKey === key;
 
-  // Stlm ostatné čiary
+  if (isSame) {
+    pharmaResetLine();
+    return;
+  }
+
+  // Nový výber
+  _pharmaSelectedKey = key;
+
+  // Stlm ostatné čiary, zvýrazni vybratú
   allLines.forEach(function(l) {
     l.style.transition = 'opacity 0.25s';
-    l.style.opacity = l.id === targetId ? '1' : '0.1';
+    if (l.id === targetId) {
+      l.style.opacity = '1';
+      l.style.strokeWidth = l.id === 'pharma-line-nas' ? '3' : '2.2';
+    } else {
+      l.style.opacity = '0.08';
+      l.style.strokeWidth = '';
+    }
   });
 
   // Prehrај animáciu kliknutej čiary
@@ -8736,20 +8786,22 @@ function pharmaReplayLine(key) {
       line.style.strokeDashoffset = len;
       requestAnimationFrame(function() {
         requestAnimationFrame(function() {
-          line.style.transition = 'stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1)';
+          line.style.transition = 'stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1), opacity 0.25s';
           line.style.strokeDashoffset = '0';
         });
       });
     } catch(e) {}
   }
 
-  // Obnov pôvodné opacity po skončení animácie
-  setTimeout(function() {
-    allLines.forEach(function(l) {
-      l.style.transition = 'opacity 0.4s';
-      l.style.opacity = l.id === 'pharma-line-nas' ? '1' : '0.55';
-    });
-  }, 1400);
+  // Aktívny stav legendy + zobraz reset tlačidlo
+  allLegItems.forEach(function(el) {
+    if (el.getAttribute('data-line-key') === key) {
+      el.classList.add('pharma-ms-trend-chart-legend-item--active');
+    } else {
+      el.classList.remove('pharma-ms-trend-chart-legend-item--active');
+    }
+  });
+  if (resetBtn) resetBtn.classList.add('visible');
 }
 
 // ── DISTRICT CHART — fullscreen historický graf okresu ──
@@ -8839,6 +8891,7 @@ function openPharmaOkresChart(r, prodLabel) {
 }
 
 function closePharmaOkresChart() {
+  _pharmaOkresSelectedKey = null;
   var overlay = document.getElementById('pharma-okres-overlay');
   overlay.classList.remove('show');
   document.body.style.overflow = '';
@@ -8981,16 +9034,21 @@ function buildOkresLegend(rows, prodLabel) {
     if (rows[i].komp) rows[i].komp.forEach(function(k){ if(k.name && kompNames.indexOf(k.name)<0) kompNames.push(k.name); });
   }
 
-  var html = '';
-  function legItem(color, dotSize, label, val, lineKey, bold) {
-    return '<div class="pharma-okres-legend-item" onclick="pharmaOkresReplayLine(\''+lineKey+'\')"'+(bold?' style="font-weight:700"':'')+' >'
+  var html = '<div style="display:flex;align-items:center;gap:4px;padding:3px 10px 0;flex-shrink:0">  '
+    + '<button class="pharma-legend-reset-btn" id="pharma-okres-reset-btn" onclick="pharmaOkresResetLine()">× Všetky</button>'
+    + '</div>'
+    + '<div class="pharma-okres-legend" id="pharma-okres-legend-grid">';
+
+  function legItem(color, dotSize, label, val, lineKey, isNas) {
+    var cls = 'pharma-okres-legend-item' + (isNas ? ' pharma-okres-legend-item--nas' : '');
+    return '<div class="'+cls+'" data-line-key="'+lineKey+'" onclick="pharmaOkresReplayLine(\''+lineKey+'\')">'
       + '<div class="pharma-okres-legend-dot" style="background:'+color+';width:'+dotSize+'px;height:'+dotSize+'px;flex-shrink:0"></div>'
       + '<span class="pharma-okres-legend-name">'+mgrEscape(label)+'</span>'
       + (val !== null ? '<span class="pharma-okres-legend-val"> '+val+'%</span>' : '')
       + '</div>';
   }
 
-  // Náš produkt ako prvý (tučný)
+  // Náš produkt ako prvý (zvýraznený modrým chipom)
   html += legItem(nasColor, 9, prodLabel, lastNas !== null ? lastNas.toFixed(1) : null, 'nas', true);
 
   kompNames.forEach(function(name, ki) {
@@ -9005,18 +9063,58 @@ function buildOkresLegend(rows, prodLabel) {
     }
     html += legItem(color, 7, name, lastV !== null ? parseFloat(lastV).toFixed(1) : null, 'k'+ki, false);
   });
+  html += '</div>'; // close pharma-okres-legend-grid
   return html;
+}
+
+var _pharmaOkresSelectedKey = null;
+
+function pharmaOkresResetLine() {
+  _pharmaOkresSelectedKey = null;
+  var wrap = document.getElementById('pharma-okres-chart-wrap');
+  if (wrap) {
+    wrap.querySelectorAll('.pharma-trend-line').forEach(function(l) {
+      l.style.transition = 'opacity 0.3s';
+      l.style.opacity = l.id === 'okgraf-line-nas' ? '1' : '0.5';
+      l.style.strokeWidth = '';
+    });
+  }
+  document.querySelectorAll('[data-line-key]').forEach(function(el) {
+    el.classList.remove('pharma-okres-legend-item--active');
+  });
+  var resetBtn = document.getElementById('pharma-okres-reset-btn');
+  if (resetBtn) resetBtn.classList.remove('visible');
 }
 
 function pharmaOkresReplayLine(key) {
   var wrap = document.getElementById('pharma-okres-chart-wrap');
   if (!wrap) return;
-  var targetId = 'okgraf-line-' + key;
-  var allLines = wrap.querySelectorAll('.pharma-trend-line');
+  var allLines    = wrap.querySelectorAll('.pharma-trend-line');
+  var allLegItems = document.querySelectorAll('[data-line-key]');
+  var resetBtn    = document.getElementById('pharma-okres-reset-btn');
+  var targetId    = 'okgraf-line-' + key;
+  var isSame      = _pharmaOkresSelectedKey === key;
+
+  if (isSame) {
+    pharmaOkresResetLine();
+    return;
+  }
+
+  _pharmaOkresSelectedKey = key;
+
+  // Stlm ostatné, zvýrazni vybratú
   allLines.forEach(function(l) {
     l.style.transition = 'opacity 0.25s';
-    l.style.opacity = l.id === targetId ? '1' : '0.08';
+    if (l.id === targetId) {
+      l.style.opacity = '1';
+      l.style.strokeWidth = l.id === 'okgraf-line-nas' ? '3' : '2.2';
+    } else {
+      l.style.opacity = '0.08';
+      l.style.strokeWidth = '';
+    }
   });
+
+  // Animácia kliknutej čiary
   var line = document.getElementById(targetId);
   if (line) {
     try {
@@ -9032,12 +9130,16 @@ function pharmaOkresReplayLine(key) {
       });
     } catch(e) {}
   }
-  setTimeout(function() {
-    allLines.forEach(function(l) {
-      l.style.transition = 'opacity 0.4s';
-      l.style.opacity = l.id === 'okgraf-line-nas' ? '1' : '0.5';
-    });
-  }, 1400);
+
+  // Aktívny stav legendy + zobraz reset tlačidlo
+  allLegItems.forEach(function(el) {
+    if (el.getAttribute('data-line-key') === key) {
+      el.classList.add('pharma-okres-legend-item--active');
+    } else {
+      el.classList.remove('pharma-okres-legend-item--active');
+    }
+  });
+  if (resetBtn) resetBtn.classList.add('visible');
 }
 
 function calcLinearTrend(vals) {
@@ -9509,7 +9611,7 @@ function preloadAllPharmaData() {
     <div class="pharma-okres-chart-wrap" id="pharma-okres-chart-wrap">
       <div id="pharma-okres-chart-svg" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#94A3B8;font-size:13px">Načítavam…</div>
     </div>
-    <div class="pharma-okres-legend" id="pharma-okres-legend"></div>
+    <div id="pharma-okres-legend"></div>
   </div>
 </div>
 

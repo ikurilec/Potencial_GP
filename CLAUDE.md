@@ -40,7 +40,34 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.9.0** — obsahuje všetko z predchádzajúcich verzií plus district chart overlay a vylepšenia pharma MS panelu. **Zostáva na `test` vetve — čaká na schválenie pred mergom do main.**
+**2.9.1** — obsahuje všetko z predchádzajúcich verzií plus district chart overlay, vylepšenia pharma MS panelu a interaktívne zvýrazňovanie čiar v grafoch.
+
+### v2.9.1 — Interaktívne zvýrazňovanie čiar v pharma grafoch + oprava legendy
+
+**Legenda — kontrast textu:**
+- Meno produktu/konkurenta: `#64748B` (strednošedé) — ustúpi do pozadia
+- % hodnota: `#0F172A`, `font-weight:700`, `font-size:10.5px` — jasne viditeľná
+- Náš produkt: modrý chip (`#EFF6FF` bg, `#BFDBFE` border, `#1E40AF` text) — odlíšený od konkurentov
+
+**Zvýrazňovanie čiar (klik na legend chip):**
+- Klik na ľubovoľnú položku legendy → čiara sa rozbehne draw animáciou, ostatné sa stlmia na `0.08` opacity, chip smodrie (`#2563EB`)
+- Funguje v **hlavnom pharma grafe** (`pharmaReplayLine`) aj v **district overlay grafe** (`pharmaOkresReplayLine`)
+- Persistentný výber — čiara ostane zvýraznená po skončení animácie
+
+**Zrušenie zvýraznenia — 2 spôsoby:**
+- Červené tlačidlo **„× Všetky"** sa objaví v legende hneď po výbere → jedno ťuknutie vráti všetko
+- Opätovný klik na aktívny (modrý) chip → rovnaký efekt
+
+**Technické detaily:**
+- `_pharmaSelectedKey` / `_pharmaOkresSelectedKey` — module-level premenné sledujúce výber
+- `pharmaResetLine()` / `pharmaOkresResetLine()` — funkcie na reset výberu
+- `data-line-key` atribút na každom legend chipe — identifikácia pri toggle
+- `closePharmaOkresChart()` resetuje `_pharmaOkresSelectedKey`
+
+**Oprava bugu — nested grid v district legende:**
+- Statický `<div class="pharma-okres-legend" id="pharma-okres-legend">` mal CSS grid
+- `buildOkresLegend()` vkladal dovnútra ďalší `<div class="pharma-okres-legend">` → nested grid rozbil layout
+- Oprava: statický kontajner je teraz neutrálny `<div id="pharma-okres-legend">` bez grid CSS
 
 ### v2.9.0 — District chart overlay (fullscreen graf po okresoch)
 
