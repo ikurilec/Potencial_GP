@@ -560,6 +560,38 @@ function doGet(e) {
       return jsonResponse({ok: true});
     }
 
+    // ── MILESTONE ŠTATISTIKY — celkový počet unikátnych lekárov v systéme ──
+    if(action === 'getMilestoneStats') {
+      var sheet = ss.getSheets()[0];
+      var rows = sheet.getDataRange().getValues();
+      if(rows.length < 2) return jsonResponse({total:0, highPotentialPct:0, vyraditPct:0});
+      var headers = rows[0].map(function(h){ return String(h||'').trim().toLowerCase().replace(/\s+/g,'_'); });
+      var lekarIdx = headers.indexOf('lekar');
+      var potentialIdx = headers.indexOf('rocny_potential');
+      var scenarIdx = headers.indexOf('scenar');
+      if(lekarIdx === -1) return jsonResponse({total:0, highPotentialPct:0, vyraditPct:0});
+      // Posledný záznam pre každého lekára (sheet je chronologický — posledný riadok vyhráva)
+      var doctors = {};
+      for(var i = 1; i < rows.length; i++) {
+        var lekar = String(rows[i][lekarIdx]||'').trim();
+        if(!lekar) continue;
+        var rp = potentialIdx !== -1 ? (parseFloat(rows[i][potentialIdx]) || 0) : 0;
+        var sc = scenarIdx !== -1 ? String(rows[i][scenarIdx]||'').trim() : '';
+        doctors[lekar] = { rp: rp, sc: sc };
+      }
+      var total = Object.keys(doctors).length;
+      var highCount = 0, vyraditCount = 0;
+      Object.keys(doctors).forEach(function(k) {
+        if(doctors[k].rp >= 3700) highCount++;
+        if(doctors[k].sc === 'vyradit') vyraditCount++;
+      });
+      return jsonResponse({
+        total: total,
+        highPotentialPct: total > 0 ? Math.round(highCount / total * 100) : 0,
+        vyraditPct: total > 0 ? Math.round(vyraditCount / total * 100) : 0
+      });
+    }
+
     return jsonResponse({error: 'unknown action'});
 
   } catch(err) {

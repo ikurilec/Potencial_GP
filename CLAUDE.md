@@ -40,7 +40,33 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Verzia na `test` vetve
 
-**2.9.1** — obsahuje všetko z predchádzajúcich verzií plus district chart overlay, vylepšenia pharma MS panelu a interaktívne zvýrazňovanie čiar v grafoch.
+**2.10.0** — obsahuje všetko z predchádzajúcich verzií plus milestone celebrácia pri 200 lekároch.
+
+### v2.10.0 — Milestone celebrácia: 200 lekárov
+
+**Čo robí:**
+- Po prihlásení (s 3-sekundovým oneskorením) appka zavolá `getMilestoneStats` endpoint
+- Ak celkový počet unikátnych lekárov v systéme ≥ 200 a overlay ešte nebol zobrazený (localStorage `milestone_200_shown`), zobrazí sa celoobrazovkový overlay s ohňostrojmi
+- Overlay sa zobrazí raz — po kliknutí „Super, ďakujem!" sa uloží flag a viac sa nezobrazí
+- Funguje pre všetkých používateľov — bežných reprezentantov aj manažérov
+
+**Obsah overlay:**
+- 🎉 emoji s animáciou (bounce)
+- „Gratulujem, tím Golem!"
+- „Spoločne ste úspešne nahrali 200 lekárov s potenciálom"
+- Dve štatistiky v kartičkách:
+  - X% lekárov, ktorých chceme navštevovať (rocny_potential ≥ 3700 €)
+  - X% navrhnutých na vyradenie z targetu (scenar = 'vyradit')
+- „Good job! Len tak ďalej. 💪"
+- Tlačidlo „Super, ďakujem!"
+
+**Technické detaily:**
+- Nový endpoint `getMilestoneStats` v Apps Script — bez tokenu (verejné)
+- Vracia `{total: N, highPotentialPct: X, vyraditPct: Y}`
+- `startFireworks()` refaktorovaný: teraz volá `startFireworksOnCanvas(canvas)` → reuse pre oba canvasy (thankyou screen aj milestone overlay)
+- DEV mode: mock stats `{total: 200, highPotentialPct: 68, vyraditPct: 14}`
+- Fireworks sa auto-zastavia po 9 sekundách
+- localStorage key: `milestone_200_shown`
 
 ### v2.9.1 — Interaktívne zvýrazňovanie čiar v pharma grafoch + oprava legendy
 
