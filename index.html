@@ -1740,7 +1740,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.10.2';
+var APP_VERSION = '2.10.3';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5549,6 +5549,40 @@ function initAndroidBack() {
   // Základný stav — garantuje že appka má v histórii aspoň 1 záznam
   history.replaceState({ pgApp: true }, '');
 
+  // MutationObserver — automaticky pushne history state pri otvorení každého overlaya.
+  // Tým pádom Android back button vždy nájde stav na popnutie a nevyhodí z appky.
+  // Táto metóda nevyžaduje zmeny v jednotlivých open funkciách.
+  var _watchedOverlays = [
+    'pharma-ms-overlay', 'pharma-okres-overlay',
+    'hist-overlay', 'lb-overlay', 'rep-plnenie-overlay',
+    'milestone-overlay', 'thankyou', 'logout-overlay',
+    'tutorial-overlay', 'mgr-detail', 'wn-overlay'
+  ];
+  _watchedOverlays.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    new MutationObserver(function(mutations) {
+      mutations.forEach(function(m) {
+        if (m.attributeName !== 'class') return;
+        var wasShown = (m.oldValue || '').split(' ').indexOf('show') !== -1;
+        if (!wasShown && el.classList.contains('show')) {
+          history.pushState({ pgApp: true }, '');
+        }
+      });
+    }).observe(el, { attributes: true, attributeOldValue: true });
+  });
+
+  // Sleduj aj body pre mgr-plnenie-detail-open (nie overlay ale CSS class na body)
+  new MutationObserver(function(mutations) {
+    mutations.forEach(function(m) {
+      if (m.attributeName !== 'class') return;
+      var wasOpen = (m.oldValue || '').split(' ').indexOf('mgr-plnenie-detail-open') !== -1;
+      if (!wasOpen && document.body.classList.contains('mgr-plnenie-detail-open')) {
+        history.pushState({ pgApp: true }, '');
+      }
+    });
+  }).observe(document.body, { attributes: true, attributeOldValue: true });
+
   window.addEventListener('popstate', function() {
     if (_handleAndroidBack()) {
       // Overlay bol zatvorený — push nový stav naspäť,
@@ -5563,27 +5597,45 @@ function _handleAndroidBack() {
   // Poradie: od najvnútornejšieho overlaya po najvonkajší
   var el;
 
-  // 1. District chart overlay (pharma → okres graf)
+  // 1. Tutorial — krok späť, na kroku 1 zatvoriť tutoriál
+  el = document.getElementById('tutorial-overlay');
+  if (el && el.classList.contains('show')) {
+    if (_tutorialCurrent > 1) {
+      window.tutorialBack(_tutorialCurrent - 1);
+    } else {
+      tutorialSkip();
+    }
+    return true;
+  }
+
+  // 2. District chart overlay (pharma → okres graf)
   el = document.getElementById('pharma-okres-overlay');
   if (el && el.classList.contains('show')) { closePharmaOkresChart(); return true; }
 
-  // 2. Pharma trhový podiel panel
+  // 3. Pharma trhový podiel panel
   el = document.getElementById('pharma-ms-overlay');
   if (el && el.classList.contains('show')) { closePharmaMs(); return true; }
 
-  // 3. Milestone overlay (celebrácia 200 lekárov)
+  // 4. Milestone overlay (celebrácia 200 lekárov)
   el = document.getElementById('milestone-overlay');
   if (el && el.classList.contains('show')) { closeMilestone(); return true; }
 
-  // 4. Thankyou obrazovka (po uložení záznamu)
+  // 5. Thankyou obrazovka (po uložení záznamu)
   el = document.getElementById('thankyou');
   if (el && el.classList.contains('show')) { el.classList.remove('show'); return true; }
 
-  // 5. Odhlásenie confirm dialog
+  // 6. Odhlásenie confirm dialog
   el = document.getElementById('logout-overlay');
   if (el && el.classList.contains('show')) { closeLogoutConfirm(); return true; }
 
-  // 6. Panely — História / Rebríček / Plnenie
+  // 7. Manager plnenie detail (← Späť na zoznam)
+  if (document.body.classList.contains('mgr-plnenie-detail-open')) { plnenieCloseDetail(); return true; }
+
+  // 8. Manager rep detail (← Späť na zoznam)
+  el = document.getElementById('mgr-detail');
+  if (el && el.classList.contains('show')) { mgrCloseRep(); return true; }
+
+  // 9. Panely — História / Rebríček / Plnenie
   var panels = ['hist-overlay', 'lb-overlay', 'rep-plnenie-overlay'];
   for (var i = 0; i < panels.length; i++) {
     el = document.getElementById(panels[i]);
