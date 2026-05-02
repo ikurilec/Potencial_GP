@@ -393,6 +393,30 @@
   .hist-item-seg-row{display:flex;gap:5px;align-items:baseline;margin-bottom:2px}
   .hist-item-seg-key{font-size:10px;font-weight:700;opacity:.6;text-transform:uppercase;letter-spacing:.04em;flex-shrink:0}
   .hist-item-seg-val{font-size:11px;font-weight:600;color:#334155;line-height:1.35}
+  /* ── EDIT OVERLAY (admin — úprava záznamu) ── */
+  .edit-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#EAECF2;z-index:2400;flex-direction:column;overflow:hidden}
+  .edit-overlay.show{display:flex}
+  .edit-inner{display:flex;flex-direction:column;height:100%}
+  .edit-hdr{background:linear-gradient(135deg,#0C1E35,#1E3A5F);padding:52px 16px 14px;flex-shrink:0;position:relative}
+  .edit-hdr-title{font-size:16px;font-weight:800;color:#fff;font-family:'Outfit',sans-serif;margin-bottom:2px}
+  .edit-hdr-sub{font-size:12px;color:rgba(255,255,255,.7);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .edit-close-btn{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;font-family:inherit;padding:0}
+  .edit-form{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;overscroll-behavior:contain}
+  .edit-section{background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+  .edit-section-title{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#94A3B8;margin-bottom:12px}
+  .edit-field{margin-bottom:10px}
+  .edit-field:last-child{margin-bottom:0}
+  .edit-lbl{font-size:12px;font-weight:600;color:#64748B;display:block;margin-bottom:4px}
+  .edit-input{width:100%;padding:10px 12px;border:1.5px solid #E2E8F0;border-radius:9px;font-size:15px;font-weight:600;color:#1A2A3A;background:#F8FAFC;font-family:inherit;box-sizing:border-box;outline:none;-webkit-appearance:none;appearance:none}
+  .edit-input:focus{border-color:#2563EB;background:#fff}
+  .edit-textarea{width:100%;padding:10px 12px;border:1.5px solid #E2E8F0;border-radius:9px;font-size:14px;color:#1A2A3A;background:#F8FAFC;font-family:inherit;box-sizing:border-box;outline:none;resize:none;line-height:1.5}
+  .edit-textarea:focus{border-color:#2563EB;background:#fff}
+  .edit-footer{padding:14px 16px;padding-bottom:calc(14px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid #E2E8F0;flex-shrink:0}
+  .edit-save-btn{width:100%;padding:14px;background:linear-gradient(135deg,#2563EB,#3B82F6);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;letter-spacing:.01em}
+  .edit-save-btn:active{opacity:.9}
+  .edit-save-btn:disabled{background:#94A3B8;cursor:default}
+  .edit-open-btn{width:100%;padding:11px;background:#F1F5F9;border:1.5px solid #E2E8F0;border-radius:10px;font-size:13px;font-weight:600;color:#475569;cursor:pointer;font-family:inherit;transition:background .15s}
+  .edit-open-btn:active{background:#E2E8F0}
   .send-popup{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center}
   .send-popup.show{display:flex}
   .send-box{background:#fff;border-radius:16px;padding:28px 24px;max-width:300px;width:88%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:slideUp .3s ease}
@@ -1552,6 +1576,9 @@
         <div id="detail-seg"></div>
         <div id="detail-note-wrap"></div>
         <hr style="border:none;border-top:1px solid #E2E8F0;margin:4px 0 14px">
+        <div id="detail-edit-wrap" style="display:none;margin-bottom:10px">
+          <button type="button" class="edit-open-btn" onclick="openEditRecord()">✏️ Upraviť záznam</button>
+        </div>
         <div class="confirm-btns" style="grid-template-columns:1fr">
           <button type="button" class="confirm-yes" onclick="closeDetail()">Zavrieť</button>
         </div>
@@ -1559,6 +1586,54 @@
     </div>
     <div class="scroll-pill-inner hidden" id="detail-scroll-pill" style="pointer-events:auto;cursor:pointer" onclick="var b=document.getElementById('confirm-box-scroll');if(b)b.scrollTo({top:b.scrollHeight,behavior:'smooth'})"><span class="spill">↓ scrolluj dole</span></div>
     </div>
+</div>
+
+<div class="edit-overlay" id="edit-overlay">
+  <div class="edit-inner">
+    <div class="edit-hdr">
+      <button class="edit-close-btn" onclick="closeEditOverlay()">×</button>
+      <div class="edit-hdr-title">✏️ Upraviť záznam</div>
+      <div class="edit-hdr-sub" id="edit-hdr-sub"></div>
+    </div>
+    <div class="edit-form">
+      <div class="edit-section">
+        <div class="edit-section-title">Kapitácia</div>
+        <div class="edit-field">
+          <label class="edit-lbl">Počet pacientov v kapitácii</label>
+          <input type="number" id="edit-kapitacia" class="edit-input" min="0" max="9999"
+                 oninput="recalcEditPreview()" inputmode="numeric" pattern="[0-9]*">
+        </div>
+        <div id="edit-segment-preview" style="display:none;margin-top:8px"></div>
+      </div>
+      <div class="edit-section">
+        <div class="edit-section-title">Produkty (počty za mesiac)</div>
+        <div class="edit-field">
+          <label class="edit-lbl">Aflamil (balenia/mes.)</label>
+          <input type="number" id="edit-afl" class="edit-input" min="0" inputmode="numeric" pattern="[0-9]*">
+        </div>
+        <div class="edit-field">
+          <label class="edit-lbl">Suprax (balenia/mes.)</label>
+          <input type="number" id="edit-sup" class="edit-input" min="0" inputmode="numeric" pattern="[0-9]*">
+        </div>
+        <div class="edit-field">
+          <label class="edit-lbl">Vidonorm (pacienti/mes.)</label>
+          <input type="number" id="edit-vid" class="edit-input" min="0" inputmode="numeric" pattern="[0-9]*">
+        </div>
+        <div class="edit-field">
+          <label class="edit-lbl">Cavinton Forte (pacienti/mes.)</label>
+          <input type="number" id="edit-cav" class="edit-input" min="0" inputmode="numeric" pattern="[0-9]*">
+        </div>
+      </div>
+      <div class="edit-section">
+        <div class="edit-section-title">Poznámka</div>
+        <textarea id="edit-poznamka" class="edit-textarea" rows="3" placeholder="(voliteľné)"></textarea>
+      </div>
+      <div id="edit-smsg" style="display:none;padding:10px 14px;border-radius:9px;font-size:13px;font-weight:600;margin-top:4px;margin-bottom:8px"></div>
+    </div>
+    <div class="edit-footer">
+      <button type="button" class="edit-save-btn" id="edit-save-btn" onclick="saveEditRecord()">Uložiť zmeny</button>
+    </div>
+  </div>
 </div>
 
 <div class="tutorial-overlay" id="tutorial-overlay">
@@ -1740,7 +1815,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.11.0';
+var APP_VERSION = '2.12.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -1802,7 +1877,7 @@ var _swUpdatePending = false;
 function _isAppBusy(){
   return !!document.querySelector(
     '.send-popup.show,.confirm-overlay.show,.wn-overlay.show,' +
-    '.detail-overlay.show,.hist-overlay.show,.restore-overlay.show'
+    '.detail-overlay.show,.hist-overlay.show,.restore-overlay.show,.edit-overlay.show'
   );
 }
 
@@ -3776,9 +3851,12 @@ function closeHistory() {
   document.body.style.overflow = '';
 }
 
+var _currentDetailIdx = -1;
+
 function openDetail(idx) {
   var item = _histDetailItems[idx];
   if(!item) return;
+  _currentDetailIdx = idx;
   // Schovaj manažérsky produktový panel
   var prodPanel = document.getElementById('mgr-detail-prod-panel');
   if(prodPanel){ prodPanel.style.display = 'none'; prodPanel.innerHTML = ''; }
@@ -3895,6 +3973,13 @@ function openDetail(idx) {
     saveNote(item, item.poznamka);
   }
   renderNoteSection(item);
+  // Zobraz edit tlačidlo len pre admin rolu — a len ak má záznam číslo riadku (z GAS)
+  var editWrap = document.getElementById('detail-edit-wrap');
+  if(editWrap) {
+    var editSession = getSession();
+    var isAdmin = editSession && editSession.role === 'admin';
+    editWrap.style.display = (isAdmin && item.row) ? 'block' : 'none';
+  }
   document.getElementById('detail-overlay').className = 'detail-overlay show';
   var scrollBox = document.getElementById('confirm-box-scroll');
   var pill = document.getElementById('detail-scroll-pill');
@@ -3920,6 +4005,162 @@ function closeDetail() {
   setTimeout(function(){
     overlay.className = 'detail-overlay';
   }, 190);
+}
+
+// ── EDIT OVERLAY — úprava záznamu (len admin/manažér) ──
+
+function openEditRecord() {
+  var item = _histDetailItems[_currentDetailIdx];
+  if(!item) return;
+  // Vyplň hlavičku
+  var sub = document.getElementById('edit-hdr-sub');
+  if(sub) sub.textContent = (item.lekar || '—') + ' · ' + (item.dateStr || '') + ' · ' + (item.cas || '');
+  // Vyplň polia
+  var kapEl = document.getElementById('edit-kapitacia');
+  if(kapEl) kapEl.value = item.kapitacia != null ? item.kapitacia : '';
+  var afl = document.getElementById('edit-afl'); if(afl) afl.value = item.aflamil_n != null ? item.aflamil_n : '';
+  var sup = document.getElementById('edit-sup'); if(sup) sup.value = item.suprax_n  != null ? item.suprax_n  : '';
+  var vid = document.getElementById('edit-vid'); if(vid) vid.value = item.vidonorm_n != null ? item.vidonorm_n : '';
+  var cav = document.getElementById('edit-cav'); if(cav) cav.value = item.cavinton_n != null ? item.cavinton_n : '';
+  var poz = document.getElementById('edit-poznamka'); if(poz) poz.value = item.poznamka || '';
+  // Vymaž stavovú hlášku
+  var smsg = document.getElementById('edit-smsg');
+  if(smsg) { smsg.style.display = 'none'; smsg.textContent = ''; }
+  var btn = document.getElementById('edit-save-btn');
+  if(btn) { btn.disabled = false; btn.textContent = 'Uložiť zmeny'; }
+  // Zobraz náhľad segmentu
+  recalcEditPreview();
+  // Otvor overlay
+  var overlay = document.getElementById('edit-overlay');
+  if(overlay) { overlay.classList.add('show'); overlay.scrollTop = 0; }
+  document.body.style.overflow = 'hidden';
+}
+
+function recalcEditPreview() {
+  var kapEl = document.getElementById('edit-kapitacia');
+  var preview = document.getElementById('edit-segment-preview');
+  if(!kapEl || !preview) return;
+  var kap = parseInt(kapEl.value) || 0;
+  if(!kap) { preview.style.display = 'none'; return; }
+  var kat = kap <= 1500 ? 'C' : kap <= 1999 ? 'B' : 'A';
+  var katColor = kat === 'A' ? '#16A34A' : kat === 'B' ? '#EA580C' : '#DC2626';
+  preview.style.display = 'block';
+  preview.innerHTML =
+    '<span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#64748B">' +
+      'Nový segment:&nbsp;' +
+      '<span style="background:' + katColor + ';color:#fff;font-size:11px;font-weight:800;' +
+        'padding:2px 10px;border-radius:20px;letter-spacing:.05em">Potenciál ' + kat + '</span>' +
+    '</span>';
+}
+
+function closeEditOverlay() {
+  var overlay = document.getElementById('edit-overlay');
+  if(overlay) overlay.classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+function saveEditRecord() {
+  var item = _histDetailItems[_currentDetailIdx];
+  if(!item || !item.row) return;
+
+  var btn  = document.getElementById('edit-save-btn');
+  var smsg = document.getElementById('edit-smsg');
+
+  function showMsg(text, isErr) {
+    if(!smsg) return;
+    smsg.style.display  = 'block';
+    smsg.style.background = isErr ? '#FEE2E2' : '#DCFCE7';
+    smsg.style.color      = isErr ? '#7F1D1D' : '#14532D';
+    smsg.textContent = text;
+  }
+
+  // Zbier hodnoty
+  var kap  = parseFloat((document.getElementById('edit-kapitacia')||{}).value) || 0;
+  var aflN = parseFloat((document.getElementById('edit-afl')||{}).value) || 0;
+  var supN = parseFloat((document.getElementById('edit-sup')||{}).value) || 0;
+  var vidN = parseFloat((document.getElementById('edit-vid')||{}).value) || 0;
+  var cavN = parseFloat((document.getElementById('edit-cav')||{}).value) || 0;
+  var pozn = ((document.getElementById('edit-poznamka')||{}).value || '').trim();
+
+  if(!kap) { showMsg('⚠ Zadaj kapitáciu.', true); return; }
+  if(kap > 9999) { showMsg('⚠ Kapitácia je nereálna.', true); return; }
+
+  // Prepočet odvodených hodnôt (rovnaká logika ako pri ukladaní návštevy)
+  var kategoria = kap <= 1500 ? 'C' : kap <= 1999 ? 'B' : 'A';
+  var aflEur    = Math.round(aflN * 4.10  * 12       * 100) / 100;
+  var supEur    = Math.round(supN * 12.82 * 0.75 * 12 * 100) / 100;
+  var vidEur    = Math.round(vidN * 285   * 0.7       * 100) / 100;
+  var cavEur    = Math.round(cavN * 421   * 0.7       * 100) / 100;
+  var total     = Math.round((aflEur + supEur + vidEur + cavEur) * 100) / 100;
+  var scenar    = (kap < 1501 && total < 3700) ? 'vyradit'
+                : (kap < 1501 && total >= 3700) ? 'frekvencia'
+                : (kap >= 1501 && kap <= 1999 && total < 3700) ? 'zvysit'
+                : (kap >= 1501 && kap <= 1999 && total >= 3700) ? 'udrzat'
+                : (kap >= 2000 && total < 3700) ? 'zvysit3'
+                : (kap >= 2000 && total >= 3700) ? 'top' : 'ok';
+  var odporucanie = {
+    'vyradit':   'Vyradit lekara z targetu',
+    'frekvencia':'Maximalnu frekvenciu 1 x za Q',
+    'zvysit':    'Zvysit preskripciu, ponechat v targete s maximalnou frekvenciou 2 x Q',
+    'udrzat':    'Udrzať preskripciu s maximalnou frekvenciou 2 x Q',
+    'zvysit3':   'Zvysit preskripciu, ponechat v targete s minimalnou frekvenciou 3 x Q',
+    'top':       'Udrzať preskripciu, s maximalnou frekvenciou 2 x Q',
+    'ok':        ''
+  }[scenar] || '';
+
+  // DEV mód — simuluj uloženie bez Sheets
+  if(IS_DEV) {
+    item.kapitacia = kap; item.kategoria = kategoria;
+    item.aflamil_n = aflN; item.aflamil_eur = aflEur;
+    item.suprax_n  = supN; item.suprax_eur  = supEur;
+    item.vidonorm_n  = vidN; item.vidonorm_eur  = vidEur;
+    item.cavinton_n  = cavN; item.cavinton_eur  = cavEur;
+    item.rocny_potential = total; item.scenar = scenar; item.odporucanie = odporucanie;
+    item.poznamka = pozn;
+    showMsg('✓ Záznam uložený (DEV)', false);
+    setTimeout(function() { closeEditOverlay(); openDetail(_currentDetailIdx); }, 800);
+    return;
+  }
+
+  // Odošli na Sheets
+  if(btn) { btn.disabled = true; btn.textContent = 'Ukladám…'; }
+  var url = scriptUrl(
+    'action=updateRecord' +
+    '&row=' + item.row +
+    '&kapitacia=' + kap +
+    '&kategoria=' + encodeURIComponent(kategoria) +
+    '&aflamil_n=' + aflN + '&aflamil_eur=' + aflEur +
+    '&suprax_n='  + supN + '&suprax_eur='  + supEur +
+    '&vidonorm_n=' + vidN + '&vidonorm_eur=' + vidEur +
+    '&cavinton_n=' + cavN + '&cavinton_eur=' + cavEur +
+    '&rocny_potential=' + total +
+    '&scenar=' + encodeURIComponent(scenar) +
+    '&odporucanie=' + encodeURIComponent(odporucanie) +
+    '&poznamka=' + encodeURIComponent(pozn)
+  );
+
+  fetch(url, { cache: 'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      if(!data || !data.ok) throw new Error('updateRecord: no ok');
+      // Aktualizuj lokálnu cache
+      item.kapitacia = kap; item.kategoria = kategoria;
+      item.aflamil_n = aflN; item.aflamil_eur = aflEur;
+      item.suprax_n  = supN; item.suprax_eur  = supEur;
+      item.vidonorm_n  = vidN; item.vidonorm_eur  = vidEur;
+      item.cavinton_n  = cavN; item.cavinton_eur  = cavEur;
+      item.rocny_potential = total; item.scenar = scenar; item.odporucanie = odporucanie;
+      item.poznamka = pozn;
+      // Vynuť čerstvé načítanie histórie pri ďalšom otvorení
+      _histPromise = null;
+      if(btn) { btn.disabled = false; btn.textContent = 'Uložiť zmeny'; }
+      showMsg('✓ Záznam uložený', false);
+      setTimeout(function() { closeEditOverlay(); openDetail(_currentDetailIdx); }, 800);
+    })
+    .catch(function() {
+      if(btn) { btn.disabled = false; btn.textContent = 'Uložiť zmeny'; }
+      showMsg('⚠ Chyba pri ukladaní. Skús znova.', true);
+    });
 }
 
 // ── PING LOGIN — zapíše posledný prístup do Sheets ──

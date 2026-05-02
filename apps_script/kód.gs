@@ -700,6 +700,40 @@ function doGet(e) {
       });
     }
 
+    // ── ÚPRAVA ZÁZNAMU (len admin) ──
+    // URL: ?action=updateRecord&row=42&kapitacia=2000&kategoria=A&...
+    if(action === 'updateRecord') {
+      if(!requireToken(e)) return jsonResponse({ok: false, error: 'Unauthorized'});
+      var p = e.parameter;
+      var rowNum = parseInt(p.row);
+      if(!rowNum || rowNum < 2) return jsonResponse({ok: false, error: 'invalid row'});
+
+      var sheet = ss.getSheets()[0];
+      var lastCol = sheet.getLastColumn();
+      if(lastCol < 1) return jsonResponse({ok: false, error: 'empty sheet'});
+      var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0]
+        .map(function(h){ return String(h||'').trim().toLowerCase(); });
+
+      function setField(key, value) {
+        var idx = headers.indexOf(key);
+        if(idx === -1) return;
+        sheet.getRange(rowNum, idx + 1).setValue(value);
+      }
+
+      var numFields = ['kapitacia','aflamil_n','aflamil_eur','suprax_n','suprax_eur',
+                       'vidonorm_n','vidonorm_eur','cavinton_n','cavinton_eur','rocny_potential'];
+      var txtFields = ['kategoria','scenar','odporucanie','poznamka'];
+
+      numFields.forEach(function(key) {
+        if(p[key] !== undefined && p[key] !== '') setField(key, parseFloat(p[key]) || 0);
+      });
+      txtFields.forEach(function(key) {
+        if(p[key] !== undefined) setField(key, p[key]);
+      });
+
+      return jsonResponse({ok: true});
+    }
+
     return jsonResponse({error: 'unknown action'});
 
   } catch(err) {
