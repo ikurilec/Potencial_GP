@@ -3852,11 +3852,15 @@ function closeHistory() {
 }
 
 var _currentDetailIdx = -1;
+var _currentDetailItem = null;      // referencia na aktuálne otvorený záznam (rep aj admin)
+var _currentDetailReopenFn = null;  // funkcia na znovuotvorenie detailu po edit
 
 function openDetail(idx) {
   var item = _histDetailItems[idx];
   if(!item) return;
   _currentDetailIdx = idx;
+  _currentDetailItem = item;
+  _currentDetailReopenFn = function() { openDetail(idx); };
   // Schovaj manažérsky produktový panel
   var prodPanel = document.getElementById('mgr-detail-prod-panel');
   if(prodPanel){ prodPanel.style.display = 'none'; prodPanel.innerHTML = ''; }
@@ -4010,7 +4014,7 @@ function closeDetail() {
 // ── EDIT OVERLAY — úprava záznamu (len admin/manažér) ──
 
 function openEditRecord() {
-  var item = _histDetailItems[_currentDetailIdx];
+  var item = _currentDetailItem;
   if(!item) return;
   // Vyplň hlavičku
   var sub = document.getElementById('edit-hdr-sub');
@@ -4060,7 +4064,7 @@ function closeEditOverlay() {
 }
 
 function saveEditRecord() {
-  var item = _histDetailItems[_currentDetailIdx];
+  var item = _currentDetailItem;
   if(!item || !item.row) return;
 
   var btn  = document.getElementById('edit-save-btn');
@@ -4155,7 +4159,7 @@ function saveEditRecord() {
       _histPromise = null;
       if(btn) { btn.disabled = false; btn.textContent = 'Uložiť zmeny'; }
       showMsg('✓ Záznam uložený', false);
-      setTimeout(function() { closeEditOverlay(); openDetail(_currentDetailIdx); }, 800);
+      setTimeout(function() { closeEditOverlay(); if(_currentDetailReopenFn) _currentDetailReopenFn(); }, 800);
     })
     .catch(function() {
       if(btn) { btn.disabled = false; btn.textContent = 'Uložiť zmeny'; }
@@ -5724,6 +5728,20 @@ function mgrOpenVisit(idx){
   if(!overlay){
     mgrShowToast('CHYBA: detail-overlay element sa nenašiel');
     return;
+  }
+
+  // Nastav referenciu pre edit overlay
+  _currentDetailItem = item;
+  _currentDetailReopenFn = (function(capturedIdx) {
+    return function() { mgrOpenVisit(capturedIdx); };
+  })(idx);
+
+  // Zobraz edit tlačidlo len pre admin rolu
+  var editWrap = document.getElementById('detail-edit-wrap');
+  if(editWrap) {
+    var mgrSession = getSession();
+    var isMgrAdmin = mgrSession && mgrSession.role === 'admin';
+    editWrap.style.display = (isMgrAdmin && item.row) ? 'block' : 'none';
   }
 
   overlay.className = 'detail-overlay show';
