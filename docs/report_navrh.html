@@ -478,71 +478,34 @@
     <div>
       <div class="rpt-section-label">Plnenie per produkt</div>
 
-      <!-- SCENÁR A: MS tbl+sáčky ≥ Q1 → Aflamil Family -->
-      <div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:10px;padding:8px 10px 6px;margin-bottom:8px">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-          <span style="font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#1D4ED8">✓ Aflamil Family</span>
-          <span style="font-size:9px;color:#3B82F6">MS tbl+sáčky ≥ Q1 (19.2% ≥ 18.5%) — krém sa počíta do plánu</span>
-        </div>
-        <div class="rpt-prod-grid">
-          <div class="rpt-prod-card" style="grid-column:1/-1;border-color:#BFDBFE;background:#fff">
-            <div class="rpt-prod-header">
-              <div class="rpt-prod-name">
-                <div class="rpt-prod-dot" style="background:#1D4ED8"></div>
-                Aflamil Family (krém + tbl + sáčky)
-              </div>
-              <div class="rpt-prod-pct green">92%</div>
-            </div>
-            <div class="rpt-prod-bar-wrap">
-              <div class="rpt-prod-bar-fill" style="width:92%;background:linear-gradient(90deg,#059669,#34D399)"></div>
-            </div>
-            <div class="rpt-prod-numbers">
-              <strong>13 800 €</strong> z 15 000 €
-            </div>
-            <div class="rpt-prod-plan-note">Q2 plán 45 000 € · 33% kvartálu · krém 3 900 € + tbl+sáčky 9 900 €</div>
-          </div>
-        </div>
-      </div>
+      <!-- AFLAMIL FAMILY PRAVIDLO — vždy zobrazené -->
+      <div style="background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:12px;padding:12px 14px;margin-bottom:10px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#64748B;margin-bottom:10px">Aflamil — pravidlo plánu</div>
 
-      <!-- SCENÁR B: MS tbl+sáčky < Q1 → krém má vlastný plán, nepočíta sa spolu -->
-      <div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:10px;padding:8px 10px 6px;margin-bottom:10px">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-          <span style="font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#C2410C">⚠ Aflamil — MS poklesol</span>
-          <span style="font-size:9px;color:#EA580C">MS tbl+sáčky &lt; Q1 (17.1% &lt; 18.5%) — krém sa nepočíta spolu</span>
-        </div>
-        <div class="rpt-prod-grid">
-          <div class="rpt-prod-card" style="border-color:#FED7AA;background:#fff">
-            <div class="rpt-prod-header">
-              <div class="rpt-prod-name">
-                <div class="rpt-prod-dot" style="background:#60A5FA"></div>
-                Aflamil tbl a sáčky
-              </div>
-              <div class="rpt-prod-pct orange">86%</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+
+          <!-- Scenár: MS neklesne → Family -->
+          <div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:10px;padding:10px 12px">
+            <div style="font-size:9px;font-weight:700;color:#1D4ED8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">✓ MS neklesne</div>
+            <div style="font-size:10px;color:#1E40AF;margin-bottom:8px;line-height:1.4">MS tbl+sáčky ≥ Q predtým</div>
+            <div style="font-size:11px;font-weight:700;color:#0C1E35;margin-bottom:2px">Aflamil Family</div>
+            <div style="font-size:9.5px;color:#3B82F6;line-height:1.4">krém + tbl + sáčky = <strong>jeden spoločný plán</strong></div>
+            <div style="margin-top:8px;padding-top:8px;border-top:1px solid #BFDBFE">
+              <div style="font-size:9px;color:#64748B">Príklad: 13 800 € z 15 000 € = <strong style="color:#059669">92%</strong></div>
             </div>
-            <div class="rpt-prod-bar-wrap">
-              <div class="rpt-prod-bar-fill" style="width:86%;background:linear-gradient(90deg,#D97706,#FBBF24)"></div>
-            </div>
-            <div class="rpt-prod-numbers">
-              <strong>8 600 €</strong> z 10 000 €
-            </div>
-            <div class="rpt-prod-plan-note">Q2 plán 30 000 € · 33% kvartálu</div>
           </div>
-          <div class="rpt-prod-card" style="border-color:#FED7AA;background:#fff">
-            <div class="rpt-prod-header">
-              <div class="rpt-prod-name">
-                <div class="rpt-prod-dot" style="background:#3B82F6"></div>
-                Aflamil krém
-              </div>
-              <div class="rpt-prod-pct green">104%</div>
+
+          <!-- Scenár: MS klesne → separátne -->
+          <div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:10px;padding:10px 12px">
+            <div style="font-size:9px;font-weight:700;color:#C2410C;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">⚠ MS klesne</div>
+            <div style="font-size:10px;color:#C2410C;margin-bottom:8px;line-height:1.4">MS tbl+sáčky &lt; Q predtým</div>
+            <div style="font-size:11px;font-weight:700;color:#0C1E35;margin-bottom:2px">Separátne plány</div>
+            <div style="font-size:9.5px;color:#EA580C;line-height:1.4">krém <strong>sa nepočíta</strong> k tbl+sáčky — každý plán zvlášť</div>
+            <div style="margin-top:8px;padding-top:8px;border-top:1px solid #FED7AA">
+              <div style="font-size:9px;color:#64748B">tbl+sáčky: 8 600 € z 10 000 € = <strong style="color:#D97706">86%</strong></div>
             </div>
-            <div class="rpt-prod-bar-wrap">
-              <div class="rpt-prod-bar-fill" style="width:100%;background:linear-gradient(90deg,#059669,#34D399)"></div>
-            </div>
-            <div class="rpt-prod-numbers">
-              <strong>7 800 €</strong> z 7 500 €
-            </div>
-            <div class="rpt-prod-plan-note">Q2 plán 22 500 € · 33% kvartálu · len vlastný plán</div>
           </div>
+
         </div>
       </div>
 
