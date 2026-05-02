@@ -667,6 +667,8 @@
   .mgr-subtabs{display:flex;gap:6px;margin:0 0 10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06);position:sticky;top:0;z-index:100}
   .mgr-subtab{flex:1;padding:13px 4px;border:none;background:transparent;font-size:12px;font-weight:700;color:#64748B;cursor:pointer;border-radius:9px;font-family:inherit;transition:all .15s;-webkit-tap-highlight-color:transparent}
   .mgr-subtab.active{background:#0C1E35;color:#fff}
+  .mgr-subtab-rpt{background:#EFF6FF !important;color:#1D4ED8 !important;border:1.5px solid #BFDBFE !important;flex:0 0 auto;padding:13px 10px !important}
+  .mgr-subtab-rpt:active{background:#DBEAFE !important}
   .mgr-plnenie-view{display:none}
   body.mgr-subtab-plnenie .mgr-plnenie-view{display:block}
   body.mgr-subtab-plnenie .mgr-list-wrap,
@@ -1097,6 +1099,7 @@
     <button type="button" class="mgr-subtab active" data-tab="plnenie" onclick="mgrSwitchSubtab('plnenie')">💊 Plnenie</button>
     <button type="button" class="mgr-subtab" data-tab="visits" onclick="mgrSwitchSubtab('visits')">📋 Návštevy</button>
     <button type="button" class="mgr-subtab" data-tab="leaderboard" onclick="mgrSwitchSubtab('leaderboard')">🏆 Rebríček</button>
+    <button type="button" class="mgr-subtab mgr-subtab-rpt" id="mgr-subtab-reporty" style="display:none" onclick="downloadAllReportsPdf()">📄 PDF</button>
   </div>
 
   <!-- PTR indicator — zdieľaný pre Návštevy aj Plnenie -->
@@ -1815,7 +1818,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.12.0';
+var APP_VERSION = '2.13.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5050,6 +5053,13 @@ function mgrEnter(roleKey){
 
   // Skroluj na vrch
   window.scrollTo(0, 0);
+
+  // Tlačidlo PDF Reporty — viditeľné iba pre admin/bum/boss/pm
+  var rptBtn = document.getElementById('mgr-subtab-reporty');
+  if (rptBtn) {
+    var adminRoles = ['admin','bum','boss','pm','amwest','ameast'];
+    rptBtn.style.display = adminRoles.indexOf(roleKey) !== -1 ? '' : 'none';
+  }
 
   mgrLoadData();
   // Plnenie je default tab — načítaj všetky kvartály hneď pri vstupe
@@ -10115,6 +10125,528 @@ function preloadAllPharmaData() {
   }, 1000);
 })();
 
+// ═══════════════════════════════════════════════════════
+// ═══  REPORTY — PDF generovanie (v2.13.0)            ═══
+// ═══════════════════════════════════════════════════════
+
+var RPT_SK_MONTHS = ['','január','február','marec','apríl','máj','jún','júl','august','september','október','november','december'];
+
+function rptPeriod() {
+  var now = new Date();
+  var m = now.getMonth(); // 0-based; lastMonth = m (0→Dec predch. roka)
+  var repMonth = m === 0 ? 12 : m;
+  var repYear  = m === 0 ? now.getFullYear() - 1 : now.getFullYear();
+  var q = Math.ceil(repMonth / 3);
+  var lbl = RPT_SK_MONTHS[repMonth];
+  return { month: repMonth, year: repYear, q: q,
+           label: lbl + ' ' + repYear,
+           labelCap: lbl.charAt(0).toUpperCase() + lbl.slice(1) + ' ' + repYear };
+}
+
+function rptVisits(username, month, year) {
+  var list = (MGR_STATE.reps[username] && MGR_STATE.reps[username].visits) || [];
+  return list.filter(function(v) {
+    var d = parseLbDatum(v.datum || v.dateKey || '');
+    return d && d.getFullYear() === year && d.getMonth() + 1 === month;
+  });
+}
+
+function rptPlnenieForRep(username, q, month, year) {
+  var qc = PL_STATE.qCache[q];
+  if (!qc || !qc.data) return null;
+  var data = qc.data;
+  var plan    = data.plan    && data.plan[username];
+  var predaje = data.predaje && data.predaje[username];
+  if (!plan) return null;
+  var byMonth = (predaje && predaje.byMonth) || {};
+  var mPred   = byMonth[month] || {};
+  var prods   = plnenieSortProducts(Object.keys(plan));
+  var prodRes = {}, totalPlan = 0, totalPred = 0;
+  prods.forEach(function(prod) {
+    var qPlan  = plan[prod] || 0;
+    var mPlan  = plnenieMonthlyPlans(year, q, qPlan)[month] || 0;
+    var pred   = mPred[prod] || 0;
+    var pct    = mPlan > 0 ? Math.round(pred / mPlan * 100) : null;
+    prodRes[plnenieNormalizeKey(prod)] = { label: plnenieDisplayName(prod), plan: mPlan, predaje: pred, pct: pct };
+    totalPlan += mPlan;
+    totalPred += pred;
+  });
+  return { prods: prodRes, prodOrder: prods.map(plnenieNormalizeKey),
+           totalPlan: totalPlan, totalPred: totalPred,
+           totalPct: totalPlan > 0 ? Math.round(totalPred / totalPlan * 100) : null };
+}
+
+function rptMsLast(pharmaCode, oblast) {
+  var d = PHARMA_GRAF_STATE.cache[pharmaCode + '_' + oblast];
+  if (!d || !d.rows || !d.rows.length) return null;
+  var rows = d.rows, last = rows[rows.length - 1], prev = rows.length > 1 ? rows[rows.length - 2] : null;
+  return {
+    nasPct: parseFloat(last.nas_ms) || 0,
+    trend:  prev ? +((parseFloat(last.nas_ms) - parseFloat(prev.nas_ms)).toFixed(1)) : 0,
+    k1: last.k1_nazov ? { name: last.k1_nazov, pct: parseFloat(last.k1_ms)||0,
+          trend: prev ? +((parseFloat(last.k1_ms)-parseFloat(prev.k1_ms)).toFixed(1)) : 0 } : null
+  };
+}
+
+function rptFmtEur(v) {
+  return Math.round(v || 0).toLocaleString('sk') + ' €';
+}
+
+function rptColorHex(pct) {
+  if (pct === null || pct === undefined) return '#94A3B8';
+  if (pct >= 100) return '#059669';
+  if (pct >= 80)  return '#D97706';
+  return '#DC2626';
+}
+
+function rptTrendStr(trend) {
+  if (trend > 0) return { s: '↑ +' + trend + '%', c: '#DC2626' };  // konkurent rastie = zlé = červená
+  if (trend < 0) return { s: '↓ ' + trend + '%',  c: '#059669' };
+  return { s: '→ 0.0%', c: '#94A3B8' };
+}
+
+// Spoločná hlavička CSS pre všetky reporty
+function rptCss() {
+  return '<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;background:#EAECF2}</style>' +
+         '<link rel="preconnect" href="https://fonts.googleapis.com">' +
+         '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap">';
+}
+
+function rptWrap(content, repName, subtitle) {
+  var now = new Date();
+  var dateStr = now.getDate() + '. ' + (now.getMonth()+1) + '. ' + now.getFullYear();
+  return rptCss() +
+    '<div style="font-family:\'Outfit\',Arial,sans-serif;max-width:420px;background:#EAECF2;padding:14px 14px 20px;min-height:100%">' +
+      content +
+      '<div style="text-align:center;padding:14px 0 4px;font-size:9px;color:#94A3B8">' +
+        'Gedeon Richter Slovakia s.r.o. · Vygenerované ' + dateStr +
+      '</div>' +
+    '</div>';
+}
+
+// ── Plnenie blok (zdieľaný pre rep aj AM/MGMT) ──
+function rptPlnenieBlock(pl, title) {
+  if (!pl) return '<div style="background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:10px;font-size:12px;color:#94A3B8">Plnenie — dáta nie sú dostupné</div>';
+  var totalColor = rptColorHex(pl.totalPct);
+  var totalStr   = pl.totalPct !== null ? pl.totalPct + '%' : '—';
+  var rows = pl.prodOrder.map(function(key) {
+    var pd = pl.prods[key]; if (!pd) return '';
+    var pct = pd.pct; var bar = pct === null ? 0 : Math.min(100, pct);
+    var col = rptColorHex(pct);
+    return '<div style="margin-bottom:9px">' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:3px">' +
+        '<span style="font-size:11px;font-weight:600;color:#334155">' + pd.label + '</span>' +
+        '<span style="font-size:11px;font-weight:800;color:' + col + '">' + (pct !== null ? pct + '%' : '—') + '</span>' +
+      '</div>' +
+      '<div style="height:8px;background:#E2E8F0;border-radius:4px;overflow:hidden">' +
+        '<div style="height:100%;width:' + bar + '%;background:' + col + ';border-radius:4px"></div>' +
+      '</div>' +
+      '<div style="font-size:9px;color:#94A3B8;margin-top:2px">' + rptFmtEur(pd.predaje) + ' z ' + rptFmtEur(pd.plan) + '</div>' +
+    '</div>';
+  }).join('');
+  return '<div style="background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:10px">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' +
+      '<div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#94A3B8;text-transform:uppercase">' + (title || 'PLNENIE PLÁNU') + '</div>' +
+      '<div style="font-size:16px;font-weight:800;color:' + totalColor + '">' + totalStr + '</div>' +
+    '</div>' +
+    rows +
+  '</div>';
+}
+
+// ── MS blok ──
+function rptMsBlock(oblast, title) {
+  var PHARMA_REPORT_PRODS = [
+    { label: 'Aflamil krém',    code: 'AFLcrm'  },
+    { label: 'Aflamil tbl',     code: 'AFLtbl'  },
+    { label: 'Suprax',          code: 'SUP'     },
+    { label: 'Vidonorm',        code: 'VID'     },
+    { label: 'Cavinton Forte',  code: 'CAV'     },
+    { label: 'Kogavant',        code: 'KOGGOL'  }
+  ];
+  var rows = PHARMA_REPORT_PRODS.map(function(pp) {
+    var ms = rptMsLast(pp.code, oblast); if (!ms) return '';
+    var t = rptTrendStr(ms.trend);
+    var k1html = ms.k1 ? ('<div style="font-size:9px;color:#94A3B8;margin-top:1px">vs <span style="color:#64748B;font-weight:600">' + ms.k1.name + '</span></div>') : '';
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #F1F5F9">' +
+      '<div><div style="font-size:11px;font-weight:700;color:#0C1E35">' + pp.label + '</div>' + k1html + '</div>' +
+      '<div style="text-align:right;flex-shrink:0;padding-left:10px">' +
+        '<div style="font-size:13px;font-weight:800;color:#0C1E35">' + ms.nasPct.toFixed(1) + '%</div>' +
+        '<div style="font-size:10px;font-weight:700;color:' + t.c + '">' + t.s + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+  if (!rows) return '';
+  return '<div style="background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:10px">' +
+    '<div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#94A3B8;text-transform:uppercase;margin-bottom:4px">' + (title || 'TRHOVÝ PODIEL') + '</div>' +
+    '<div style="font-size:9px;color:#94A3B8;margin-bottom:8px">↑ červená = konkurent rastie · ↓ zelená = konkurent klesá</div>' +
+    rows +
+  '</div>';
+}
+
+// ══ REP REPORT ══
+function rptBuildRepHtml(username) {
+  var p = rptPeriod();
+  var repName = MGR_REP_NAMES[username] || username;
+  var region  = (USERS_LOCAL[username] && USERS_LOCAL[username].region) || '';
+
+  var visits = rptVisits(username, p.month, p.year);
+  var segC = { A:0, B:0, C:0 };
+  visits.forEach(function(v) { var k = String(v.kategoria||'').toUpperCase(); if(segC[k]!==undefined) segC[k]++; });
+
+  var pl = rptPlnenieForRep(username, p.q, p.month, p.year);
+  var totalColor = rptColorHex(pl && pl.totalPct);
+  var totalStr   = pl && pl.totalPct !== null ? pl.totalPct + '%' : '—';
+
+  var header =
+    '<div style="background:linear-gradient(135deg,#0C1E35,#1A3A5C);border-radius:14px;padding:18px 20px 16px;margin-bottom:10px;color:#fff">' +
+      '<div style="font-size:9px;font-weight:700;letter-spacing:.1em;color:#7AABCC;text-transform:uppercase;margin-bottom:5px">MESAČNÝ REPORT</div>' +
+      '<div style="font-size:19px;font-weight:800;line-height:1.2">' + repName + '</div>' +
+      '<div style="font-size:11px;color:#CBD5E1;margin-top:3px">' + p.labelCap + (region ? ' · ' + region : '') + '</div>' +
+      '<div style="display:flex;gap:8px;margin-top:14px">' +
+        '<div style="flex:1;background:rgba(255,255,255,.1);border-radius:10px;padding:10px;text-align:center">' +
+          '<div style="font-size:22px;font-weight:800">' + visits.length + '</div>' +
+          '<div style="font-size:9px;color:#94A3B8;margin-top:2px">návštev</div>' +
+        '</div>' +
+        '<div style="flex:1;background:rgba(255,255,255,.1);border-radius:10px;padding:10px;text-align:center">' +
+          '<div style="font-size:22px;font-weight:800;color:' + totalColor + '">' + totalStr + '</div>' +
+          '<div style="font-size:9px;color:#94A3B8;margin-top:2px">Q' + p.q + ' plnenie</div>' +
+        '</div>' +
+        '<div style="flex:1;background:rgba(255,255,255,.1);border-radius:10px;padding:10px;text-align:center">' +
+          '<div style="font-size:22px;font-weight:800">' + (segC.A + segC.B) + '</div>' +
+          '<div style="font-size:9px;color:#94A3B8;margin-top:2px">GS návštevy</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+  var visitBlock =
+    '<div style="background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:10px">' +
+      '<div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#94A3B8;text-transform:uppercase;margin-bottom:10px">NÁVŠTEVY · ' + p.labelCap + '</div>' +
+      '<div style="display:flex;gap:8px">' +
+        rptSegPill('A', segC.A, visits.length, '#1E40AF', '#DBEAFE') +
+        rptSegPill('B', segC.B, visits.length, '#065F46', '#D1FAE5') +
+        rptSegPill('C', segC.C, visits.length, '#475569', '#F1F5F9') +
+      '</div>' +
+    '</div>';
+
+  return rptWrap(header + visitBlock + rptPlnenieBlock(pl, 'PLNENIE · Q' + p.q + ' ' + p.year) + rptMsBlock(region, 'TRHOVÝ PODIEL · ' + p.labelCap));
+}
+
+function rptSegPill(seg, count, total, color, bg) {
+  var pct = total > 0 ? Math.round(count / total * 100) : 0;
+  return '<div style="flex:1;background:' + bg + ';border-radius:10px;padding:10px 6px;text-align:center">' +
+    '<div style="font-size:20px;font-weight:800;color:' + color + '">' + count + '</div>' +
+    '<div style="font-size:9.5px;font-weight:700;color:' + color + ';margin-top:2px">Seg ' + seg + '</div>' +
+    '<div style="font-size:9px;color:' + color + ';opacity:.65">' + pct + '%</div>' +
+  '</div>';
+}
+
+// ══ AM REPORT ══
+function rptBuildAmHtml(isWest) {
+  var p = rptPeriod();
+  var reps     = isWest ? MGR_AM_WEST : MGR_AM_EAST;
+  var label    = isWest ? 'West' : 'East';
+  var oblast   = isWest ? 'BAMA' : 'KE'; // fallback - v praxi sa berie z prvého repa
+
+  // Zisti typickú oblasť zo Sheets
+  if (reps.length > 0 && USERS_LOCAL[reps[0]]) {
+    oblast = USERS_LOCAL[reps[0]].region || oblast;
+  }
+
+  var totalVisits = 0;
+  var repRows = '';
+  var atRisk = [];
+  var totalPlanSum = 0, totalPredSum = 0;
+
+  reps.forEach(function(username) {
+    var name    = MGR_REP_NAMES[username] || username;
+    var visits  = rptVisits(username, p.month, p.year);
+    var pl      = rptPlnenieForRep(username, p.q, p.month, p.year);
+    var pct     = pl && pl.totalPct !== null ? pl.totalPct : null;
+    var col     = rptColorHex(pct);
+    var pctStr  = pct !== null ? pct + '%' : '—';
+    totalVisits += visits.length;
+    if (pl) { totalPlanSum += pl.totalPlan; totalPredSum += pl.totalPred; }
+    if (pct !== null && pct < 85) {
+      var worstProds = Object.keys(pl.prods)
+        .filter(function(k){ return pl.prods[k].pct !== null; })
+        .sort(function(a,b){ return (pl.prods[a].pct||999) - (pl.prods[b].pct||999); })
+        .slice(0, 3);
+      atRisk.push({ name: name, pct: pct, prods: worstProds.map(function(k){ return pl.prods[k]; }) });
+    }
+    repRows +=
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid #F8FAFC">' +
+        '<div>' +
+          '<div style="font-size:11.5px;font-weight:700;color:#0C1E35">' + name + '</div>' +
+          '<div style="font-size:9.5px;color:#94A3B8">' + visits.length + ' návštev</div>' +
+        '</div>' +
+        '<div style="font-size:14px;font-weight:800;color:' + col + '">' + pctStr + '</div>' +
+      '</div>';
+  });
+
+  var overallPct = totalPlanSum > 0 ? Math.round(totalPredSum / totalPlanSum * 100) : null;
+  var overallColor = rptColorHex(overallPct);
+
+  var header =
+    '<div style="background:linear-gradient(135deg,#0C1E35,#1A3A5C);border-radius:14px;padding:18px 20px 16px;margin-bottom:10px;color:#fff">' +
+      '<div style="font-size:9px;font-weight:700;letter-spacing:.1em;color:#7AABCC;text-transform:uppercase;margin-bottom:5px">AM REPORT · ' + label.toUpperCase() + '</div>' +
+      '<div style="font-size:19px;font-weight:800">Area Manager ' + label + '</div>' +
+      '<div style="font-size:11px;color:#CBD5E1;margin-top:3px">' + p.labelCap + '</div>' +
+      '<div style="display:flex;gap:8px;margin-top:14px">' +
+        '<div style="flex:1;background:rgba(255,255,255,.1);border-radius:10px;padding:10px;text-align:center">' +
+          '<div style="font-size:22px;font-weight:800">' + totalVisits + '</div>' +
+          '<div style="font-size:9px;color:#94A3B8;margin-top:2px">návštev</div>' +
+        '</div>' +
+        '<div style="flex:1;background:rgba(255,255,255,.1);border-radius:10px;padding:10px;text-align:center">' +
+          '<div style="font-size:22px;font-weight:800;color:' + overallColor + '">' + (overallPct !== null ? overallPct + '%' : '—') + '</div>' +
+          '<div style="font-size:9px;color:#94A3B8;margin-top:2px">Q' + p.q + ' plnenie</div>' +
+        '</div>' +
+        '<div style="flex:1;background:rgba(255,255,255,.1);border-radius:10px;padding:10px;text-align:center">' +
+          '<div style="font-size:22px;font-weight:800">' + reps.length + '</div>' +
+          '<div style="font-size:9px;color:#94A3B8;margin-top:2px">reprezentantov</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+  var repBlock =
+    '<div style="background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:10px">' +
+      '<div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#94A3B8;text-transform:uppercase;margin-bottom:4px">PREHĽAD TÍMU</div>' +
+      repRows +
+    '</div>';
+
+  var atRiskBlock = '';
+  if (atRisk.length > 0) {
+    atRiskBlock = '<div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:12px;padding:14px 16px;margin-bottom:10px">' +
+      '<div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#92400E;text-transform:uppercase;margin-bottom:10px">⚠️ POTREBUJE POZORNOSŤ</div>' +
+      atRisk.map(function(rep) {
+        var prodBadges = rep.prods.map(function(pd) {
+          return '<span style="background:#FEE2E2;color:#991B1B;font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:10px">' + pd.label + ' ' + (pd.pct !== null ? pd.pct + '%' : '—') + '</span>';
+        }).join(' ');
+        return '<div style="margin-bottom:10px">' +
+          '<div style="display:flex;justify-content:space-between;margin-bottom:5px">' +
+            '<span style="font-size:12px;font-weight:700;color:#0C1E35">' + rep.name + '</span>' +
+            '<span style="font-size:13px;font-weight:800;color:#DC2626">' + rep.pct + '%</span>' +
+          '</div>' +
+          '<div style="display:flex;flex-wrap:wrap;gap:4px">' + prodBadges + '</div>' +
+        '</div>';
+      }).join('') +
+    '</div>';
+  }
+
+  return rptWrap(header + repBlock + atRiskBlock + rptMsBlock(oblast, 'TRHOVÝ PODIEL · ' + label.toUpperCase() + ' · ' + p.labelCap));
+}
+
+// ══ MANAGEMENT REPORT ══
+function rptBuildMgmtHtml() {
+  var p = rptPeriod();
+  var allReps = MGR_ALL;
+
+  var totalVisits = 0, totalPlan = 0, totalPred = 0;
+  var westVisits = 0, westPlan = 0, westPred = 0;
+  var eastVisits = 0, eastPlan = 0, eastPred = 0;
+  var atRisk = [];
+  var repTableRows = '';
+
+  function processRep(username) {
+    var name    = MGR_REP_NAMES[username] || username;
+    var isWest  = MGR_AM_WEST.indexOf(username) !== -1;
+    var visits  = rptVisits(username, p.month, p.year);
+    var pl      = rptPlnenieForRep(username, p.q, p.month, p.year);
+    var pct     = pl && pl.totalPct !== null ? pl.totalPct : null;
+    var col     = rptColorHex(pct);
+    totalVisits += visits.length;
+    if (isWest) westVisits += visits.length; else eastVisits += visits.length;
+    if (pl) {
+      totalPlan += pl.totalPlan; totalPred += pl.totalPred;
+      if (isWest) { westPlan += pl.totalPlan; westPred += pl.totalPred; }
+      else        { eastPlan += pl.totalPlan; eastPred += pl.totalPred; }
+    }
+    if (pct !== null && pct < 80) {
+      var worstProds = pl ? Object.keys(pl.prods)
+        .filter(function(k){ return pl.prods[k].pct !== null; })
+        .sort(function(a,b){ return (pl.prods[a].pct||999) - (pl.prods[b].pct||999); })
+        .slice(0, 3)
+        .map(function(k){ return pl.prods[k]; }) : [];
+      atRisk.push({ name: name, pct: pct, isWest: isWest, prods: worstProds });
+    }
+    repTableRows +=
+      '<tr style="border-bottom:1px solid #F1F5F9">' +
+        '<td style="padding:7px 8px;font-size:11px;font-weight:700;color:#0C1E35">' + name + '</td>' +
+        '<td style="padding:7px 4px;font-size:10px;color:#64748B;text-align:center">' + (isWest ? 'W' : 'E') + '</td>' +
+        '<td style="padding:7px 4px;font-size:11px;font-weight:600;color:#334155;text-align:right">' + visits.length + '</td>' +
+        '<td style="padding:7px 8px;font-size:12px;font-weight:800;color:' + col + ';text-align:right">' + (pct !== null ? pct + '%' : '—') + '</td>' +
+      '</tr>';
+  }
+
+  allReps.forEach(processRep);
+
+  var skPct   = totalPlan > 0 ? Math.round(totalPred / totalPlan * 100) : null;
+  var westPct = westPlan  > 0 ? Math.round(westPred  / westPlan  * 100) : null;
+  var eastPct = eastPlan  > 0 ? Math.round(eastPred  / eastPlan  * 100) : null;
+
+  var header =
+    '<div style="background:linear-gradient(135deg,#0C1E35,#1A3A5C);border-radius:14px;padding:18px 20px 16px;margin-bottom:10px;color:#fff">' +
+      '<div style="font-size:9px;font-weight:700;letter-spacing:.1em;color:#7AABCC;text-transform:uppercase;margin-bottom:5px">MANAŽÉRSKY REPORT · SLOVENSKO</div>' +
+      '<div style="font-size:19px;font-weight:800">Prehľad Slovensko</div>' +
+      '<div style="font-size:11px;color:#CBD5E1;margin-top:3px">' + p.labelCap + ' · Q' + p.q + ' ' + p.year + '</div>' +
+      '<div style="display:flex;gap:8px;margin-top:14px">' +
+        '<div style="flex:1;background:rgba(255,255,255,.1);border-radius:10px;padding:10px;text-align:center">' +
+          '<div style="font-size:22px;font-weight:800">' + totalVisits + '</div>' +
+          '<div style="font-size:9px;color:#94A3B8;margin-top:2px">návštev</div>' +
+        '</div>' +
+        '<div style="flex:1;background:rgba(255,255,255,.1);border-radius:10px;padding:10px;text-align:center">' +
+          '<div style="font-size:22px;font-weight:800;color:' + rptColorHex(skPct) + '">' + (skPct !== null ? skPct + '%' : '—') + '</div>' +
+          '<div style="font-size:9px;color:#94A3B8;margin-top:2px">plnenie Q' + p.q + '</div>' +
+        '</div>' +
+        '<div style="flex:1;background:rgba(255,255,255,.1);border-radius:10px;padding:10px;text-align:center">' +
+          '<div style="font-size:22px;font-weight:800">' + allReps.length + '</div>' +
+          '<div style="font-size:9px;color:#94A3B8;margin-top:2px">reprezentantov</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+  var regBlock =
+    '<div style="display:flex;gap:8px;margin-bottom:10px">' +
+      rptRegCard('West', westVisits, westPct, p.q) +
+      rptRegCard('East', eastVisits, eastPct, p.q) +
+    '</div>';
+
+  var atRiskBlock = '';
+  if (atRisk.length > 0) {
+    atRiskBlock = '<div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:12px;padding:14px 16px;margin-bottom:10px">' +
+      '<div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#92400E;text-transform:uppercase;margin-bottom:10px">⚠️ POTREBUJÚ POZORNOSŤ</div>' +
+      atRisk.map(function(rep) {
+        var prodBadges = rep.prods.map(function(pd) {
+          return '<span style="background:#FEE2E2;color:#991B1B;font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:10px">' + pd.label + ' ' + (pd.pct !== null ? pd.pct + '%' : '—') + '</span>';
+        }).join(' ');
+        return '<div style="margin-bottom:10px">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">' +
+            '<span style="font-size:12px;font-weight:700;color:#0C1E35">' + rep.name + ' <span style="font-size:9px;color:#64748B;font-weight:400">' + (rep.isWest ? 'West' : 'East') + '</span></span>' +
+            '<span style="font-size:13px;font-weight:800;color:#DC2626">' + rep.pct + '%</span>' +
+          '</div>' +
+          '<div style="display:flex;flex-wrap:wrap;gap:4px">' + prodBadges + '</div>' +
+        '</div>';
+      }).join('') +
+    '</div>';
+  }
+
+  var repTable =
+    '<div style="background:#fff;border-radius:12px;overflow:hidden;margin-bottom:10px">' +
+      '<div style="padding:12px 16px 10px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#94A3B8;text-transform:uppercase;border-bottom:1px solid #F1F5F9">VŠETCI REPREZENTANTI</div>' +
+      '<table style="width:100%;border-collapse:collapse">' +
+        '<tr style="background:#F8FAFC">' +
+          '<th style="padding:7px 8px;font-size:9.5px;font-weight:700;color:#64748B;text-align:left">Meno</th>' +
+          '<th style="padding:7px 4px;font-size:9.5px;font-weight:700;color:#64748B;text-align:center">Reg.</th>' +
+          '<th style="padding:7px 4px;font-size:9.5px;font-weight:700;color:#64748B;text-align:right">Návštevy</th>' +
+          '<th style="padding:7px 8px;font-size:9.5px;font-weight:700;color:#64748B;text-align:right">Plnenie</th>' +
+        '</tr>' +
+        repTableRows +
+      '</table>' +
+    '</div>';
+
+  return rptWrap(header + regBlock + atRiskBlock + repTable + rptMsBlock('KE', 'TRHOVÝ PODIEL SLOVENSKO · ' + p.labelCap));
+}
+
+function rptRegCard(label, visits, pct, q) {
+  var col = rptColorHex(pct);
+  return '<div style="flex:1;background:#fff;border-radius:12px;padding:14px;text-align:center">' +
+    '<div style="font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;margin-bottom:8px">' + label + '</div>' +
+    '<div style="font-size:22px;font-weight:800;color:' + col + '">' + (pct !== null ? pct + '%' : '—') + '</div>' +
+    '<div style="font-size:9.5px;color:#64748B;margin-top:2px">Q' + q + ' plnenie</div>' +
+    '<div style="font-size:11px;font-weight:600;color:#334155;margin-top:6px">' + visits + ' návštev</div>' +
+  '</div>';
+}
+
+// ══ ORCHESTRÁTOR ══
+function downloadAllReportsPdf() {
+  if (typeof html2pdf === 'undefined') {
+    alert('Knižnica html2pdf sa nepodarila načítať. Skontroluj pripojenie a skús znova.');
+    return;
+  }
+  var overlay = document.getElementById('rpt-progress-overlay');
+  var title   = document.getElementById('rpt-progress-title');
+  var sub     = document.getElementById('rpt-progress-sub');
+  var bar     = document.getElementById('rpt-progress-bar');
+  var count   = document.getElementById('rpt-progress-count');
+
+  overlay.style.display = 'flex';
+
+  var p = rptPeriod();
+  var monthSlug = p.month + '_' + p.year;
+
+  // Zostav zoznam PDF-iek
+  var tasks = [];
+  MGR_ALL.forEach(function(username) {
+    var name = (MGR_REP_NAMES[username] || username).replace(/\s+/g, '_');
+    tasks.push({ label: MGR_REP_NAMES[username] || username, filename: 'Report_' + name + '_' + monthSlug + '.pdf', html: null, type: 'rep', username: username });
+  });
+  tasks.push({ label: 'AM West', filename: 'AM_West_' + monthSlug + '.pdf', html: null, type: 'amwest' });
+  tasks.push({ label: 'AM East', filename: 'AM_East_' + monthSlug + '.pdf', html: null, type: 'ameast' });
+  tasks.push({ label: 'Management Slovensko', filename: 'Management_Slovensko_' + monthSlug + '.pdf', html: null, type: 'mgmt' });
+
+  var total = tasks.length;
+  var done  = 0;
+
+  function setProgress(msg, idx) {
+    title.textContent = 'Generujem reporty...';
+    sub.textContent   = msg;
+    bar.style.width   = Math.round((idx / total) * 100) + '%';
+    count.textContent = idx + ' / ' + total;
+  }
+
+  function pdfFromHtml(htmlStr, filename) {
+    return new Promise(function(resolve) {
+      var el = document.createElement('div');
+      el.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:420px;overflow:visible;background:#EAECF2';
+      el.innerHTML = htmlStr;
+      document.body.appendChild(el);
+      var opts = {
+        margin: 0,
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.92 },
+        html2canvas: { scale: 2, useCORS: true, letterRendering: true, logging: false },
+        jsPDF: { unit: 'px', format: [420, Math.max(el.scrollHeight, 600)], orientation: 'portrait' }
+      };
+      html2pdf().set(opts).from(el).save().then(function() {
+        document.body.removeChild(el);
+        resolve();
+      }).catch(function() {
+        if (document.body.contains(el)) document.body.removeChild(el);
+        resolve(); // pokračuj aj pri chybe
+      });
+    });
+  }
+
+  function runNext(idx) {
+    if (idx >= tasks.length) {
+      // Hotovo
+      title.textContent = '✅ Hotovo!';
+      sub.textContent   = total + ' PDF súborov stiahnutých';
+      bar.style.width   = '100%';
+      count.textContent = '';
+      setTimeout(function() { overlay.style.display = 'none'; }, 2000);
+      return;
+    }
+    var task = tasks[idx];
+    setProgress(task.label, idx);
+
+    // Generuj HTML
+    var html = '';
+    try {
+      if (task.type === 'rep')    html = rptBuildRepHtml(task.username);
+      else if (task.type === 'amwest') html = rptBuildAmHtml(true);
+      else if (task.type === 'ameast') html = rptBuildAmHtml(false);
+      else                        html = rptBuildMgmtHtml();
+    } catch(e) { html = '<div style="padding:20px;font-family:Arial;color:red">Chyba generovania: ' + (e.message||e) + '</div>'; }
+
+    pdfFromHtml(html, task.filename).then(function() {
+      done++;
+      runNext(idx + 1);
+    });
+  }
+
+  runNext(0);
+}
+
 </script>
 
 <!-- ── LOGOUT CONFIRM ── -->
@@ -10263,6 +10795,19 @@ function preloadAllPharmaData() {
   </div>
 
 </div>
+
+<!-- ── RPT PROGRESS OVERLAY ── -->
+<div id="rpt-progress-overlay" style="display:none;position:fixed;inset:0;background:rgba(12,30,53,.96);z-index:99998;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:'Outfit',sans-serif">
+  <div style="font-size:36px;margin-bottom:14px">📄</div>
+  <div id="rpt-progress-title" style="font-size:17px;font-weight:800;margin-bottom:6px">Generujem reporty...</div>
+  <div id="rpt-progress-sub" style="font-size:13px;color:#94A3B8;margin-bottom:18px;text-align:center;padding:0 32px"></div>
+  <div style="width:220px;height:5px;background:rgba(255,255,255,.15);border-radius:3px">
+    <div id="rpt-progress-bar" style="height:100%;background:#3B82F6;border-radius:3px;transition:width .3s;width:0%"></div>
+  </div>
+  <div id="rpt-progress-count" style="font-size:11px;color:#64748B;margin-top:8px"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 </body>
 </html>
