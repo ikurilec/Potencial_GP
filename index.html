@@ -1821,7 +1821,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.22';
+var APP_VERSION = '2.13.23';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10519,12 +10519,22 @@ var RPT_SEG_LABELS = { A1:'Platinum', B1:'Gold', A2:'Silver 1', B2:'Silver 2' };
 var RPT_SEG_COLORS = { A1:'#7C3AED', B1:'#D97706', A2:'#64748B', B2:'#94A3B8' };
 
 // ── MS 4-card grid for rep report ──
-// oblasts môže byť string alebo pole — pre každý produkt skúsi všetky, kým nájde dáta
+// oblasts môže byť string alebo pole — pre každý produkt skúsi všetky, kým nájde dáta.
+// Ak nenájde nič v zadaných oblastiach, prehľadá celý cache (best-effort fallback).
 function rptMsForProd(code, oblasts) {
-  var arr = Array.isArray(oblasts) ? oblasts : [oblasts];
+  var arr = Array.isArray(oblasts) ? oblasts : (oblasts ? [oblasts] : []);
   for (var i = 0; i < arr.length; i++) {
     var ms = rptMsLast(code, arr[i]);
     if (ms) return ms;
+  }
+  // Fallback: skús ľubovoľnú oblasť z cache pre tento kód
+  var prefix = code + '_';
+  var keys = Object.keys(PHARMA_GRAF_STATE.cache);
+  for (var j = 0; j < keys.length; j++) {
+    if (keys[j].indexOf(prefix) === 0) {
+      var ms2 = rptMsLast(code, keys[j].slice(prefix.length));
+      if (ms2) return ms2;
+    }
   }
   return null;
 }
