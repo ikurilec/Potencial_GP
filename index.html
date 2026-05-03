@@ -1821,7 +1821,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.5';
+var APP_VERSION = '2.13.6';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10254,6 +10254,23 @@ function rptShortName(fullName) {
   return fullName;
 }
 
+function rptLbPosition(username) {
+  var counts = {};
+  MGR_ALL.forEach(function(u) {
+    var s = {};
+    rptAllVisits(u).forEach(function(v) { if (v.lekar) s[v.lekar] = true; });
+    counts[u] = Object.keys(s).length;
+  });
+  var sorted = MGR_ALL.slice().sort(function(a,b){ return counts[b]-counts[a]; });
+  var idx = sorted.indexOf(username);
+  return {
+    pos: idx + 1, total: sorted.length,
+    myCount: counts[username] || 0,
+    before: idx > 0 ? { name: rptShortName(MGR_REP_NAMES[sorted[idx-1]] || sorted[idx-1]), count: counts[sorted[idx-1]] } : null,
+    after:  idx < sorted.length-1 ? { name: rptShortName(MGR_REP_NAMES[sorted[idx+1]] || sorted[idx+1]), count: counts[sorted[idx+1]] } : null
+  };
+}
+
 var RPT_PROD_COLORS = {
   'aflamil krém': '#3B82F6', 'aflamil krem': '#3B82F6', 'aflcrm': '#3B82F6',
   'aflamil tbl a sáčky': '#60A5FA', 'aflamil tbl a sacky': '#60A5FA', 'aflamil tbl': '#60A5FA',
@@ -10442,6 +10459,16 @@ function rptSegRowGrayHtml(lbl, count, maxCount) {
     '<span class="rpt-seg-val" style="color:#CBD5E1">' + count + '</span>' +
   '</div>';
 }
+function rptNpSegRowHtml(label, color, visited, total) {
+  var pct = total > 0 ? Math.round(visited/total*100) : 0;
+  var barW = total > 0 ? Math.round(visited/total*100) : 0;
+  return '<div style="display:flex;align-items:center;gap:8px">' +
+    '<span style="font-size:10px;font-weight:700;color:' + color + ';width:58px;flex-shrink:0">' + label + '</span>' +
+    '<div style="flex:1;background:#E2E8F0;border-radius:3px;height:6px;overflow:hidden"><div style="height:100%;border-radius:3px;background:' + color + ';width:' + barW + '%"></div></div>' +
+    '<span style="font-size:10px;font-weight:600;color:#0C1E35;width:36px;text-align:right;flex-shrink:0">' + visited + '/' + total + '</span>' +
+    '<span style="font-size:10px;font-weight:700;color:' + color + ';width:32px;text-align:right;flex-shrink:0">' + pct + '%</span>' +
+  '</div>';
+}
 function rptDbSegRowHtml(lbl, count, maxSeg, color, total) {
   var w = maxSeg > 0 ? Math.round(count / maxSeg * 100) : 0;
   var pct = total > 0 ? Math.round(count / total * 100) : 0;
@@ -10488,6 +10515,9 @@ function rptAtRiskHtml(atRisk, showWE) {
     '<div style="display:flex;flex-direction:column;gap:8px">' + rows + '</div>' +
   '</div>';
 }
+
+var RPT_SEG_LABELS = { A1:'Platinum', B1:'Gold', A2:'Silver 1', B2:'Silver 2' };
+var RPT_SEG_COLORS = { A1:'#7C3AED', B1:'#D97706', A2:'#64748B', B2:'#94A3B8' };
 
 // ── MS 4-card grid for rep report ──
 function rptMsGridHtml(oblast) {
@@ -10568,26 +10598,26 @@ function rptDbBlockHtml(reps, label) {
   if (!total) return '';
   var gsCount = segCounts.A1 + segCounts.A2 + segCounts.B1 + segCounts.B2;
   var otherCount = segCounts.B3 + segCounts.C + segCounts.other;
-  var maxSeg = Math.max(segCounts.A1, segCounts.A2, segCounts.B1, segCounts.B2, otherCount, 1);
+  var maxSeg = Math.max(segCounts.A1, segCounts.B1, segCounts.A2, segCounts.B2, otherCount, 1);
   return '<div class="rpt-db-card">' +
     '<div class="rpt-db-top-row">' +
       '<div><div class="rpt-db-total-num">' + total + '</div><div class="rpt-db-total-lbl">VŠL so zisteným potenciálom</div></div>' +
       '<div class="rpt-db-right">' +
         '<div class="rpt-db-gs-badge">⭐ ' + gsCount + ' <span style="font-size:9.5px;font-weight:500;color:#3B82F6">prioritných</span></div>' +
-        '<div class="rpt-db-gs-sub">A1 + A2 + B1 + B2</div>' +
+        '<div class="rpt-db-gs-sub">Platinum + Gold + Silver 1 + Silver 2</div>' +
       '</div>' +
     '</div>' +
     '<div class="rpt-db-seg-rows">' +
-      rptDbSegRowHtml('A1', segCounts.A1, maxSeg, '#7C3AED', total) +
-      rptDbSegRowHtml('A2', segCounts.A2, maxSeg, '#D97706', total) +
-      rptDbSegRowHtml('B1', segCounts.B1, maxSeg, '#64748B', total) +
-      rptDbSegRowHtml('B2', segCounts.B2, maxSeg, '#94A3B8', total) +
+      rptDbSegRowHtml('Platinum', segCounts.A1, maxSeg, '#7C3AED', total) +
+      rptDbSegRowHtml('Gold',     segCounts.B1, maxSeg, '#D97706', total) +
+      rptDbSegRowHtml('Silver 1', segCounts.A2, maxSeg, '#64748B', total) +
+      rptDbSegRowHtml('Silver 2', segCounts.B2, maxSeg, '#94A3B8', total) +
       '<div style="height:1px;background:#E2E8F0;margin:3px 0"></div>' +
       rptDbSegRowOtherHtml('ostatní', otherCount, maxSeg, total) +
     '</div>' +
     '<div style="margin-top:12px;padding-top:10px;border-top:1px solid #E2E8F0;display:flex;justify-content:space-between;font-size:9.5px;color:#94A3B8;flex-wrap:wrap;gap:3px">' +
       '<span>priemer na reprezentanta: <strong style="color:#0C1E35">' + Math.round(total / Math.max(reps.length,1)) + '</strong> lekárov</span>' +
-      '<span>zlatý štvorec (A1+A2): <strong style="color:#7C3AED">' + (segCounts.A1+segCounts.A2) + '</strong></span>' +
+      '<span>zlatý štvorec (Pt + Au): <strong style="color:#7C3AED">' + (segCounts.A1+segCounts.A2) + '</strong></span>' +
     '</div>' +
   '</div>';
 }
@@ -10649,13 +10679,16 @@ function rptBuildRepHtml(username) {
       '<span class="rpt-predikcia-val">' + pred.pct + '%</span>' +
       '<span style="color:#64748B;font-size:10px">(≈ ' + rptFmtEur(pred.eur) + ' z ' + rptFmtEur(pred.qPlan) + ')</span></div>';
   }
+  var qPctRep = Math.round(p.qMonth / 3 * 100);
   var plCard = pl ?
     '<div class="rpt-plnenie-card">' +
       '<div class="rpt-plnenie-top">' +
         (noPlan
           ? '<div style="font-size:13px;font-weight:600;color:#94B8D4;line-height:1.4">Plán Q' + p.q + ' ešte<br>nie je zadaný</div>'
           : '<div class="rpt-plnenie-pct ' + totalCls + '">' + totalPct + '%</div>') +
-        '<div class="rpt-plnenie-meta"><div class="rpt-plnenie-eur">' + rptFmtEur(pl.totalPred) + '</div><div class="rpt-plnenie-plan">' + (noPlan ? 'predaje za mesiac' : 'z plánu ' + rptFmtEur(pl.totalPlan)) + '</div></div>' +
+        '<div class="rpt-plnenie-meta"><div class="rpt-plnenie-eur">' + rptFmtEur(pl.totalPred) + '</div><div class="rpt-plnenie-plan">' + (noPlan ? 'predaje za mesiac' : 'z plánu ' + rptFmtEur(pl.totalPlan)) + '</div>' +
+          (!noPlan && pl.qPlanTotal > 0 ? '<div style="font-size:9.5px;color:#64A4D8;margin-top:3px">Q' + p.q + ' plán ' + rptFmtEur(pl.qPlanTotal) + ' · ' + qPctRep + '% kvartálu</div>' : '') +
+        '</div>' +
       '</div>' +
       (noPlan ? '' : '<div class="rpt-main-bar-wrap"><div class="rpt-main-bar-fill ' + totalCls + '" style="width:' + Math.min(100,totalPct||0) + '%"></div></div>') +
       predHtml +
@@ -10664,55 +10697,112 @@ function rptBuildRepHtml(username) {
 
   var prodsHtml = '';
   if (pl) {
-    pl.prodOrder.forEach(function(key) {
+    var repProdOrder = pl.prodOrder;
+    repProdOrder.forEach(function(key, idx) {
       var pd = pl.prods[key]; if (!pd) return;
       var pct = pd.pct; var bar = pct === null ? 0 : Math.min(100,pct);
       var cls = rptColorClass(pct);
-      prodsHtml += '<div class="rpt-prod-card">' +
+      var isLast = (idx === repProdOrder.length - 1) && (repProdOrder.length % 2 !== 0);
+      var qProdPct = Math.round(p.qMonth / 3 * 100);
+      prodsHtml += '<div class="rpt-prod-card"' + (isLast ? ' style="grid-column:1/-1"' : '') + '>' +
         '<div class="rpt-prod-header">' +
           '<div class="rpt-prod-name"><div class="rpt-prod-dot" style="background:' + pd.dot + '"></div>' + pd.label + '</div>' +
           '<div class="rpt-prod-pct ' + cls + '">' + (pct !== null ? pct + '%' : '—') + '</div>' +
         '</div>' +
         '<div class="rpt-prod-bar-wrap"><div class="rpt-prod-bar-fill" style="width:' + bar + '%;background:' + rptGradientVal(pct) + '"></div></div>' +
         '<div class="rpt-prod-numbers"><strong>' + rptFmtEur(pd.predaje) + '</strong> z ' + rptFmtEur(pd.plan) + '</div>' +
+        (pd.plan > 0 ? '<div class="rpt-prod-plan-note">Q' + p.q + ' plán ' + rptFmtEur(pd.plan * 3) + ' · ' + qProdPct + '% kvartálu</div>' : '') +
       '</div>';
     });
   }
 
-  var maxSeg = Math.max(segThis.A1, segThis.A2, segThis.B1, segThis.B2, segThis.ine, 1);
+  // Compute total unique docs per segment in rep's DB (for per-segment coverage bars)
+  var dbSegDocs = { A1:{}, A2:{}, B1:{}, B2:{} };
+  allV.forEach(function(v) {
+    var k = RPT_SCENAR_SEG[v.scenar];
+    if (k && v.lekar) dbSegDocs[k][v.lekar] = true;
+  });
+  var dbSeg = {
+    A1: Object.keys(dbSegDocs.A1).length,
+    A2: Object.keys(dbSegDocs.A2).length,
+    B1: Object.keys(dbSegDocs.B1).length,
+    B2: Object.keys(dbSegDocs.B2).length
+  };
+
   var visitsHtml = '<div class="rpt-visits-grid">' +
     '<div class="rpt-visit-card">' +
       '<div class="rpt-visit-big">' + visits.length + '</div>' +
       '<div class="rpt-visit-lbl">Návštev celkom</div>' +
-      '<div class="rpt-seg-rows">' +
-        rptSegRowHtml('A1', segThis.A1, maxSeg, '#0C1E35') +
-        rptSegRowHtml('A2', segThis.A2, maxSeg, '#1D4ED8') +
-        rptSegRowHtml('B1', segThis.B1, maxSeg, '#3B82F6') +
-        rptSegRowHtml('B2', segThis.B2, maxSeg, '#93C5FD') +
-        (segThis.ine > 0 ? rptSegRowGrayHtml('iné', segThis.ine, maxSeg) : '') +
-      '</div>' +
     '</div>' +
     '<div class="rpt-gs-card">' +
       '<div class="rpt-gs-big">' + gsPct + '%</div>' +
-      '<div class="rpt-gs-lbl">Pokrytie golden square</div>' +
-      '<div class="rpt-gs-sub">' + gsVisited + ' z ' + gsTotal + ' lekárov A1+A2+B1+B2</div>' +
-      '<div class="rpt-seg-rows" style="margin-top:14px">' +
-        rptSegRowHtml('A1', segThis.A1, Math.max(gsVisited,1), '#1D4ED8') +
-        rptSegRowHtml('A2', segThis.A2, Math.max(gsVisited,1), '#3B82F6') +
-        rptSegRowHtml('B1', segThis.B1, Math.max(gsVisited,1), '#60A5FA') +
-        rptSegRowHtml('B2', segThis.B2, Math.max(gsVisited,1), '#BFDBFE') +
-      '</div>' +
+      '<div class="rpt-gs-lbl">Golden square</div>' +
+      '<div class="rpt-gs-sub">pokrytie A1/A2/B1/B2</div>' +
+      '<div style="font-size:10px;color:#64748B;margin-top:4px">' + gsVisited + ' z ' + gsTotal + ' prioritných lekárov</div>' +
+    '</div>' +
+  '</div>' +
+  '<div class="rpt-visit-card" style="margin-top:10px;background:#F8FAFC;border:1px solid #E2E8F0">' +
+    '<div style="font-size:9.5px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Navštívení per segment</div>' +
+    '<div style="display:flex;flex-direction:column;gap:6px">' +
+      rptNpSegRowHtml('Platinum', '#7C3AED', segThis.A1, Math.max(dbSeg.A1, 1)) +
+      rptNpSegRowHtml('Gold',     '#D97706', segThis.B1, Math.max(dbSeg.B1, 1)) +
+      rptNpSegRowHtml('Silver 1', '#64748B', segThis.A2, Math.max(dbSeg.A2, 1)) +
+      rptNpSegRowHtml('Silver 2', '#94A3B8', segThis.B2, Math.max(dbSeg.B2, 1)) +
     '</div>' +
   '</div>';
 
+  // Lekári v databáze section for rep
+  var repDbAllSet = {};
+  var repDbSegCounts = { A1:0, A2:0, B1:0, B2:0, other:0 };
+  allV.forEach(function(v) {
+    if (!v.lekar || repDbAllSet[v.lekar]) return;
+    repDbAllSet[v.lekar] = true;
+    var k = RPT_SCENAR_SEG[v.scenar] || 'other';
+    if (repDbSegCounts[k] !== undefined) repDbSegCounts[k]++;
+    else repDbSegCounts.other++;
+  });
+  var repDbTotal = Object.keys(repDbAllSet).length;
+  var repDbGsCount = repDbSegCounts.A1 + repDbSegCounts.A2 + repDbSegCounts.B1 + repDbSegCounts.B2;
+  var repDbOther = repDbTotal - repDbGsCount;
+  var repDbMaxSeg = Math.max(repDbSegCounts.A1, repDbSegCounts.B1, repDbSegCounts.A2, repDbSegCounts.B2, repDbOther, 1);
+
+  var lbInfo = rptLbPosition(username);
+  var lbWidgetHtml = '<div style="font-size:10px;font-weight:700;color:#3B82F6;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Rebríček — nahodení lekári</div>' +
+    '<div style="font-size:48px;font-weight:800;color:#1D4ED8;line-height:1">#' + lbInfo.pos + '</div>' +
+    '<div style="font-size:11px;color:#3B82F6;font-weight:600">z ' + lbInfo.total + ' reprezentantov</div>' +
+    '<div style="width:100%;border-top:1px solid #BFDBFE;margin:8px 0"></div>' +
+    (lbInfo.before ? '<div style="font-size:10px;color:#64748B">Pred tebou: <strong style="color:#0C1E35">' + lbInfo.before.name + ' (' + lbInfo.before.count + ')</strong></div>' : '') +
+    '<div style="font-size:10px;color:#64748B">Ty: <strong style="color:#1D4ED8">' + rptShortName(repName) + ' (' + lbInfo.myCount + ')</strong></div>' +
+    (lbInfo.after ? '<div style="font-size:10px;color:#64748B">Za tebou: <strong style="color:#0C1E35">' + lbInfo.after.name + ' (' + lbInfo.after.count + ')</strong></div>' : '');
+
+  var repDbHtml = repDbTotal > 0 ? '<div class="rpt-visits-grid">' +
+    '<div class="rpt-visit-card">' +
+      '<div class="rpt-visit-big">' + repDbTotal + '</div>' +
+      '<div class="rpt-visit-lbl">VŠL so zisteným potenciálom</div>' +
+      '<div class="rpt-db-seg-rows" style="margin-top:10px">' +
+        rptDbSegRowHtml('Platinum', repDbSegCounts.A1, repDbMaxSeg, '#7C3AED', repDbTotal) +
+        rptDbSegRowHtml('Gold',     repDbSegCounts.B1, repDbMaxSeg, '#D97706', repDbTotal) +
+        rptDbSegRowHtml('Silver 1', repDbSegCounts.A2, repDbMaxSeg, '#64748B', repDbTotal) +
+        rptDbSegRowHtml('Silver 2', repDbSegCounts.B2, repDbMaxSeg, '#94A3B8', repDbTotal) +
+        '<div style="height:1px;background:#E2E8F0;margin:3px 0"></div>' +
+        rptDbSegRowOtherHtml('ostatní', repDbOther, repDbMaxSeg, repDbTotal) +
+      '</div>' +
+    '</div>' +
+    '<div class="rpt-gs-card">' + lbWidgetHtml + '</div>' +
+  '</div>' : '';
+
   var msGrid = rptMsGridHtml(region);
-  var msComp = rptMsCompetitorHtml(region);
   var body = '<div class="rpt-body">' +
     '<div><div class="rpt-section-label">Plnenie plánu — ' + p.label + '</div>' + plCard + '</div>' +
-    (prodsHtml ? '<div><div class="rpt-section-label">Plnenie per produkt</div><div class="rpt-prod-grid">' + prodsHtml + '</div></div>' : '') +
     '<div><div class="rpt-section-label">Návštevy lekárov — ' + p.label + '</div>' + visitsHtml + '</div>' +
-    '<div><div class="rpt-section-label">Trhový podiel — posledné dostupné dáta</div>' + msGrid + '</div>' +
-    '<div><div class="rpt-section-label">Pohyby konkurencie — ' + region + '</div>' + msComp + '</div>' +
+    (prodsHtml ? '<div><div class="rpt-section-label">Plnenie per produkt</div><div class="rpt-prod-grid">' + prodsHtml + '</div></div>' : '') +
+    (repDbHtml ? '<div><div class="rpt-section-label">Lekári v databáze</div>' + repDbHtml + '</div>' : '') +
+    '<div>' +
+      '<div class="rpt-section-label">Trhový podiel — ' + region + '</div>' +
+      msGrid +
+      '<div style="font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#94A3B8;margin:14px 0 8px">Pohyby konkurencie</div>' +
+      rptMsCompetitorHtml(region) +
+    '</div>' +
   '</div>';
 
   return '<!DOCTYPE html><html><head><meta charset="UTF-8">' + rptCss() + '</head><body><div class="page">' +
