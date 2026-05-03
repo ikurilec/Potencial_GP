@@ -1821,7 +1821,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.26';
+var APP_VERSION = '2.13.27';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10432,6 +10432,17 @@ function rptCss() {
     '.rpt-footer{background:#F8FAFC;border-top:1px solid #E2E8F0;padding:12px 22px;display:flex;justify-content:space-between;align-items:center}' +
     '.rpt-footer-brand{font-size:10px;font-weight:700;color:#94A3B8;letter-spacing:.05em;text-transform:uppercase}' +
     '.rpt-footer-date{font-size:9.5px;color:#CBD5E1}' +
+    '@page{margin:10mm}' +
+    '@media print{' +
+      '*,*::before,*::after{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}' +
+      'body{padding:0!important;background:#fff!important}' +
+      '.page{max-width:100%!important;border-radius:0!important;box-shadow:none!important;overflow:visible!important}' +
+      '.rpt-header{break-after:avoid}' +
+      '.rpt-body>div{break-inside:avoid}' +
+      '.rpt-section-label{break-after:avoid}' +
+      '.rpt-prod-card,.rpt-rep-card,.rpt-visit-card,.rpt-gs-card,.rpt-ms-card,.rpt-db-card,.region-card,.lekar-card,.rpt-plnenie-card{break-inside:avoid}' +
+      '.rpt-prod-grid,.rpt-rep-grid,.rpt-visits-grid,.rpt-ms-grid,.region-grid,.lekar-grid{break-inside:avoid}' +
+    '}' +
   '</style>';
 }
 
