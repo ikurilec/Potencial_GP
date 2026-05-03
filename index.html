@@ -1821,7 +1821,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.16';
+var APP_VERSION = '2.13.17';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11091,7 +11091,12 @@ function rptIosOpen() {
   if (!combined) return;
   var win = window.open('', '_blank');
   if (win) {
-    try { win.document.write(combined); win.document.close(); return; } catch(e) { win = null; }
+    try {
+      win.document.write(combined);
+      win.document.close();
+      document.getElementById('rpt-progress-overlay').style.display = 'none';
+      return;
+    } catch(e) { win = null; }
   }
   alert('Vyskakovacie okná sú stále blokované.\nChoď do: Nastavenia › Safari › Blokovanie vyskakovacích okien — a vypni.');
 }
@@ -11182,7 +11187,8 @@ function downloadAllReportsPdf() {
     if (!win) {
       title.textContent = '📄 Reporty sú pripravené';
       sub.innerHTML = 'Ťukni na tlačidlo nižšie. Ak sa nič neotvorí,<br>povol vyskakovacie okná:<br><strong>Nastavenia › Safari › Blokovanie vyskakovacích okien</strong> — vypni.<br><br>' +
-        '<button onclick="rptIosOpen()" style="padding:12px 24px;background:#0C1E35;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer">Otvoriť reporty</button>';
+        '<button onclick="rptIosOpen()" style="padding:12px 24px;background:#0C1E35;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer">Otvoriť reporty</button>' +
+        '<br><br><button onclick="document.getElementById(\'rpt-progress-overlay\').style.display=\'none\'" style="padding:10px 20px;background:transparent;color:#94A3B8;border:none;font-size:14px;cursor:pointer;text-decoration:underline">Zrušiť</button>';
       overlay.style.display = 'flex';
     } else {
       overlay.style.display = 'none';
@@ -11238,11 +11244,23 @@ function downloadAllReportsPdf() {
     count.textContent = idx + ' / ' + total;
   }
 
+  // Vloží rpt CSS do document.head pri prvom volaní — html2canvas ho potom vidí
+  if (!document.getElementById('rpt-pdf-styles')) {
+    var _rptStyleEl = document.createElement('style');
+    _rptStyleEl.id = 'rpt-pdf-styles';
+    var _rptStyleStr = rptCss(); // '<style>...css...</style>'
+    _rptStyleEl.textContent = _rptStyleStr.replace(/^<style[^>]*>|<\/style>$/gi, '');
+    document.head.appendChild(_rptStyleEl);
+  }
+
   function pdfFromHtml(htmlStr, filename) {
     return new Promise(function(resolve) {
+      // Extrahovať iba <body> obsah — celý HTML dokument ako innerHTML nefunguje spoľahlivo
+      var bodyM = htmlStr.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+      var bodyContent = bodyM ? bodyM[1] : htmlStr;
       var el = document.createElement('div');
       el.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:420px;overflow:visible;background:#EAECF2';
-      el.innerHTML = htmlStr;
+      el.innerHTML = bodyContent;
       document.body.appendChild(el);
       var opts = {
         margin: 0,
