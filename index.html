@@ -1821,7 +1821,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.11';
+var APP_VERSION = '2.13.12';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10524,55 +10524,55 @@ function rptMsGridHtml(oblast) {
     { label: 'Aflamil krém', code: 'AFLcrm' }, { label: 'Aflamil tbl', code: 'AFLtbl' },
     { label: 'Suprax',       code: 'SUP' },     { label: 'Vidonorm',    code: 'VID' },
     { label: 'Cavinton',     code: 'CAV' },     { label: 'Junod',       code: 'JUN' },
-    { label: 'Kogavant',     code: 'KOGGOL' }
+    { label: 'Kogavant',     code: 'KOGGOL' },  { label: 'Telexer',     code: 'TEL' }
   ];
   var cards = '';
   PRODS.forEach(function(pp) {
-    var ms = rptMsLast(pp.code, oblast); if (!ms) return;
-    var t = rptTrendStr(ms.trend);
-    var deltaCls = ms.trend > 0 ? ' up' : ms.trend < 0 ? ' down' : '';
+    var ms = rptMsLast(pp.code, oblast);
+    var val  = ms ? ms.nasPct.toFixed(1) + '%' : '—';
+    var t    = ms ? rptTrendStr(ms.trend) : { s: '—', c: '#94A3B8' };
+    var deltaCls = ms && ms.trend > 0 ? ' up' : ms && ms.trend < 0 ? ' down' : '';
     cards += '<div class="rpt-ms-card">' +
       '<div class="rpt-ms-prod">' + pp.label + '</div>' +
-      '<div class="rpt-ms-val">' + ms.nasPct.toFixed(1) + '%</div>' +
+      '<div class="rpt-ms-val" style="' + (ms ? '' : 'color:#CBD5E1') + '">' + val + '</div>' +
       '<div class="rpt-ms-delta' + deltaCls + '">' + t.s + '</div>' +
     '</div>';
   });
-  if (!cards) return '<div class="rpt-ms-grid"><div class="rpt-ms-placeholder">📊 Dáta trhovho podielu nie sú k dispozícii.<br><span style="font-size:9.5px;color:#CBD5E1">Aktualizujú sa po nahraťí IQVIA dát do Sheets.</span></div></div>';
   return '<div class="rpt-ms-grid">' + cards + '</div>';
 }
 
 // ── Competitor rows block (rep / AM / MGMT) ──
 function rptMsCompetitorHtml(oblast) {
   var PRODS = [
-    { label: 'Aflamil krém', code: 'AFLcrm', dot: '#3B82F6' },
-    { label: 'Aflamil tbl', code: 'AFLtbl', dot: '#60A5FA' },
-    { label: 'Suprax', code: 'SUP', dot: '#8B5CF6' },
-    { label: 'Vidonorm', code: 'VID', dot: '#10B981' },
-    { label: 'Cavinton Forte', code: 'CAV', dot: '#F59E0B' },
-    { label: 'Junod', code: 'JUN', dot: '#EC4899' },
-    { label: 'Kogavant', code: 'KOGGOL', dot: '#14B8A6' }
+    { label: 'Aflamil krém',  code: 'AFLcrm',  dot: '#3B82F6' },
+    { label: 'Aflamil tbl',   code: 'AFLtbl',  dot: '#60A5FA' },
+    { label: 'Suprax',        code: 'SUP',      dot: '#8B5CF6' },
+    { label: 'Vidonorm',      code: 'VID',      dot: '#10B981' },
+    { label: 'Cavinton Forte',code: 'CAV',      dot: '#F59E0B' },
+    { label: 'Junod',         code: 'JUN',      dot: '#EC4899' },
+    { label: 'Kogavant',      code: 'KOGGOL',   dot: '#14B8A6' },
+    { label: 'Telexer',       code: 'TEL',      dot: '#0EA5E9' }
   ];
   var rows = '';
   PRODS.forEach(function(pp) {
-    var ms = rptMsLast(pp.code, oblast); if (!ms) return;
-    var t = rptTrendStr(ms.trend);
+    var ms = rptMsLast(pp.code, oblast);
+    var t  = ms ? rptTrendStr(ms.trend) : { s: '—', c: '#94A3B8' };
     rows += '<div style="background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:9px 12px;display:flex;align-items:center;justify-content:space-between">' +
       '<div style="display:flex;align-items:center;gap:8px">' +
         '<div style="width:7px;height:7px;border-radius:50%;background:' + pp.dot + ';flex-shrink:0"></div>' +
         '<div>' +
           '<div style="font-size:10.5px;font-weight:700;color:#0C1E35">' + pp.label + '</div>' +
-          (ms.k1 ? '<div style="font-size:9.5px;color:#94A3B8;margin-top:1px">vs <span style="color:#64748B;font-weight:600">' + ms.k1.name + '</span></div>' : '') +
+          (ms && ms.k1 ? '<div style="font-size:9.5px;color:#94A3B8;margin-top:1px">vs <span style="color:#64748B;font-weight:600">' + ms.k1.name + '</span></div>' : '') +
         '</div>' +
       '</div>' +
       '<div style="flex-shrink:0;text-align:right;padding-left:10px">' +
-        '<div style="font-size:12px;font-weight:700;color:#0C1E35">' + ms.nasPct.toFixed(1) + '%</div>' +
+        '<div style="font-size:12px;font-weight:700;color:' + (ms ? '#0C1E35' : '#CBD5E1') + '">' + (ms ? ms.nasPct.toFixed(1) + '%' : '—') + '</div>' +
         '<div style="font-size:10px;font-weight:700;color:' + t.c + ';white-space:nowrap">' + t.s + '</div>' +
       '</div>' +
     '</div>';
   });
-  if (!rows) return '<div style="text-align:center;color:#94A3B8;font-size:12px;padding:16px">Dáta trhovho podielu nie sú k dispozícii.</div>';
   return '<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:14px;padding:16px 18px">' +
-    '<div style="font-size:9px;color:#94A3B8;margin-bottom:12px">↑ <span style="color:#DC2626;font-weight:600">cervená</span> = konkurent rastie (hrozba) &nbsp;·&nbsp; ↓ <span style="color:#059669;font-weight:600">zelená</span> = konkurent klesá</div>' +
+    '<div style="font-size:9px;color:#94A3B8;margin-bottom:12px">↑ <span style="color:#DC2626;font-weight:600">červená</span> = konkurent rastie (hrozba) &nbsp;·&nbsp; ↓ <span style="color:#059669;font-weight:600">zelená</span> = konkurent klesá</div>' +
     '<div style="display:flex;flex-direction:column;gap:6px">' + rows + '</div>' +
   '</div>';
 }
