@@ -1821,7 +1821,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.4';
+var APP_VERSION = '2.13.5';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9113,7 +9113,7 @@ function loadPharmaGrafData(code, oblast, callback) {
     .then(function(r) { return r.json(); })
     .then(function(resp) {
       delete PHARMA_GRAF_STATE.loading[cacheKey];
-      if (resp.ok && resp.rows && resp.rows.length >= 2) {
+      if (resp.ok && resp.rows && resp.rows.length >= 1) {
         PHARMA_GRAF_STATE.cache[cacheKey] = resp;
         if (callback) callback(resp);
       }
@@ -10186,15 +10186,35 @@ function rptPlnenieForRep(username, q, month, year) {
 }
 
 function rptMsLast(pharmaCode, oblast) {
+  // Graf cache — mesačné dáta s trendmi a konkurentmi
   var d = PHARMA_GRAF_STATE.cache[pharmaCode + '_' + oblast];
-  if (!d || !d.rows || !d.rows.length) return null;
-  var rows = d.rows, last = rows[rows.length - 1], prev = rows.length > 1 ? rows[rows.length - 2] : null;
-  return {
-    nasPct: parseFloat(last.nas_ms) || 0,
-    trend:  prev ? +((parseFloat(last.nas_ms) - parseFloat(prev.nas_ms)).toFixed(1)) : 0,
-    k1: last.k1_nazov ? { name: last.k1_nazov, pct: parseFloat(last.k1_ms)||0,
-          trend: prev ? +((parseFloat(last.k1_ms)-parseFloat(prev.k1_ms)).toFixed(1)) : 0 } : null
-  };
+  if (d && d.rows && d.rows.length) {
+    var rows = d.rows, last = rows[rows.length - 1], prev = rows.length > 1 ? rows[rows.length - 2] : null;
+    return {
+      nasPct: parseFloat(last.nas_ms) || 0,
+      trend:  prev ? +((parseFloat(last.nas_ms) - parseFloat(prev.nas_ms)).toFixed(1)) : 0,
+      k1: last.k1_nazov ? { name: last.k1_nazov, pct: parseFloat(last.k1_ms)||0,
+            trend: prev ? +((parseFloat(last.k1_ms)-parseFloat(prev.k1_ms)).toFixed(1)) : 0 } : null
+    };
+  }
+  // Fallback — summary cache (getPharmaData), hľadáme najnovší kvartal
+  var prefix = pharmaCode + '_' + oblast + '_';
+  var bestKey = null;
+  Object.keys(PHARMA_STATE.cache).forEach(function(k) {
+    if (k.indexOf(prefix) === 0 && (!bestKey || k > bestKey)) bestKey = k;
+  });
+  if (bestKey) {
+    var d2 = PHARMA_STATE.cache[bestKey];
+    if (d2 && d2.summary && d2.summary.length) {
+      var summ = d2.summary, last2 = summ[summ.length-1], prev2 = summ.length > 1 ? summ[summ.length-2] : null;
+      return {
+        nasPct: parseFloat(last2.terit_ms) || 0,
+        trend: prev2 ? +((parseFloat(last2.terit_ms) - parseFloat(prev2.terit_ms)).toFixed(1)) : 0,
+        k1: null
+      };
+    }
+  }
+  return null;
 }
 
 function rptFmtEur(v) {
@@ -10492,7 +10512,7 @@ function rptMsGridHtml(oblast) {
   return '<div class="rpt-ms-grid">' + cards + '</div>';
 }
 
-// ── Competitor rows block (AM / MGMT) ──
+// ── Competitor rows block (rep / AM / MGMT) ──
 function rptMsCompetitorHtml(oblast) {
   var PRODS = [
     { label: 'Aflamil krém', code: 'AFLcrm', dot: '#3B82F6' },
@@ -10500,6 +10520,7 @@ function rptMsCompetitorHtml(oblast) {
     { label: 'Suprax', code: 'SUP', dot: '#8B5CF6' },
     { label: 'Vidonorm', code: 'VID', dot: '#10B981' },
     { label: 'Cavinton Forte', code: 'CAV', dot: '#F59E0B' },
+    { label: 'Junod', code: 'JUN', dot: '#EC4899' },
     { label: 'Kogavant', code: 'KOGGOL', dot: '#14B8A6' }
   ];
   var rows = '';
@@ -10684,11 +10705,14 @@ function rptBuildRepHtml(username) {
     '</div>' +
   '</div>';
 
+  var msGrid = rptMsGridHtml(region);
+  var msComp = rptMsCompetitorHtml(region);
   var body = '<div class="rpt-body">' +
     '<div><div class="rpt-section-label">Plnenie plánu — ' + p.label + '</div>' + plCard + '</div>' +
     (prodsHtml ? '<div><div class="rpt-section-label">Plnenie per produkt</div><div class="rpt-prod-grid">' + prodsHtml + '</div></div>' : '') +
     '<div><div class="rpt-section-label">Návštevy lekárov — ' + p.label + '</div>' + visitsHtml + '</div>' +
-    '<div><div class="rpt-section-label">Trhový podiel — posledné dostupné dáta</div>' + rptMsGridHtml(region) + '</div>' +
+    '<div><div class="rpt-section-label">Trhový podiel — posledné dostupné dáta</div>' + msGrid + '</div>' +
+    '<div><div class="rpt-section-label">Pohyby konkurencie — ' + region + '</div>' + msComp + '</div>' +
   '</div>';
 
   return '<!DOCTYPE html><html><head><meta charset="UTF-8">' + rptCss() + '</head><body><div class="page">' +
