@@ -1821,7 +1821,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.23';
+var APP_VERSION = '2.13.24';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10705,7 +10705,7 @@ function rptBuildRepHtml(username) {
     '</div>' +
     '<div class="rpt-header-stats">' +
       '<div class="rpt-hstat"><div class="rpt-hstat-val' + (noPlan ? '' : ' ' + totalCls) + '" style="' + (noPlan ? 'font-size:13px;color:#94B8D4' : '') + '">' + (noPlan ? 'bez plánu' : totalPct + '%') + '</div><div class="rpt-hstat-lbl">Plnenie mesiaca</div></div>' +
-      '<div class="rpt-hstat"><div class="rpt-hstat-val">' + visits.length + '</div><div class="rpt-hstat-lbl">Návštevy celkom</div></div>' +
+      '<div class="rpt-hstat"><div class="rpt-hstat-val">' + visits.length + '</div><div class="rpt-hstat-lbl">Lekárov tento mesiac</div></div>' +
       '<div class="rpt-hstat"><div class="rpt-hstat-val ' + gsCls + '">' + gsPct + '%</div><div class="rpt-hstat-lbl">GS v portfóliu</div></div>' +
     '</div>' +
   '</div>';
@@ -10756,7 +10756,7 @@ function rptBuildRepHtml(username) {
   var visitsHtml = '<div class="rpt-visits-grid">' +
     '<div class="rpt-visit-card">' +
       '<div class="rpt-visit-big">' + visits.length + '</div>' +
-      '<div class="rpt-visit-lbl">Návštev celkom</div>' +
+      '<div class="rpt-visit-lbl">Lekárov tento mesiac</div>' +
     '</div>' +
     '<div class="rpt-gs-card">' +
       '<div class="rpt-gs-big">' + gsPct + '%</div>' +
@@ -10873,7 +10873,7 @@ function rptBuildAmHtml(isWest) {
         '<div class="rpt-rep-pct ' + cls + '">' + (pct !== null ? pct + '%' : '—') + '</div></div>' +
       '<div class="rpt-rep-bar-wrap"><div class="rpt-rep-bar-fill" style="width:' + Math.min(100,pct||0) + '%;background:' + rptGradientVal(pct) + '"></div></div>' +
       '<div class="rpt-rep-eur"><strong>' + rptFmtEur(pl ? pl.totalPred : 0) + '</strong> z ' + rptFmtEur(pl ? pl.totalPlan : 0) + '</div>' +
-      '<div style="font-size:9.5px;color:#94A3B8;margin-top:3px">' + visits.length + ' návštev · GS ' + gsCount2 + '/' + allCount2 + ' (' + gsPct2 + '%)</div>' +
+      '<div style="font-size:9.5px;color:#94A3B8;margin-top:3px">' + visits.length + ' lekárov · GS ' + gsCount2 + '/' + allCount2 + ' (' + gsPct2 + '%)</div>' +
     '</div>';
   });
 
@@ -10891,7 +10891,7 @@ function rptBuildAmHtml(isWest) {
     '</div>' +
     '<div class="rpt-header-stats">' +
       '<div class="rpt-hstat"><div class="rpt-hstat-val ' + overallCls + '">' + (overallPct !== null ? overallPct + '%' : '—') + '</div><div class="rpt-hstat-lbl">Plnenie ' + label + ' (celok)</div></div>' +
-      '<div class="rpt-hstat"><div class="rpt-hstat-val">' + totalVisits + '</div><div class="rpt-hstat-lbl">Návštev celkom</div></div>' +
+      '<div class="rpt-hstat"><div class="rpt-hstat-val">' + totalVisits + '</div><div class="rpt-hstat-lbl">Lekárov tento mesiac</div></div>' +
       '<div class="rpt-hstat"><div class="rpt-hstat-val small ' + overallCls + '">' + rptFmtEur(totalPredSum) + '</div><div class="rpt-hstat-lbl">z plánu ' + rptFmtEur(totalPlanSum) + '</div></div>' +
     '</div>' +
   '</div>';
@@ -11058,14 +11058,14 @@ function rptBuildMgmtHtml() {
       '<div class="region-label">West · ' + MGR_AM_WEST.length + ' reprezentantov</div>' +
       '<div class="region-pct ' + rptColorClass(westPct) + '">' + (westPct !== null ? westPct + '%' : '—') + '</div>' +
       '<div class="region-eur">' + rptFmtEur(westPred) + ' z ' + rptFmtEur(westPlan) + '</div>' +
-      '<div style="font-size:10px;color:#64A4D8;margin-top:2px">' + westVisits + ' návštev</div>' +
+      '<div style="font-size:10px;color:#64A4D8;margin-top:2px">' + westVisits + ' lekárov</div>' +
       '<div class="region-bar-wrap"><div class="region-bar-fill" style="width:' + Math.min(100,westPct||0) + '%;background:' + rptGradientVal(westPct) + '"></div></div>' +
     '</div>' +
     '<div class="region-card east">' +
       '<div class="region-label">East · ' + MGR_AM_EAST.length + ' reprezentantov</div>' +
       '<div class="region-pct ' + rptColorClass(eastPct) + '">' + (eastPct !== null ? eastPct + '%' : '—') + '</div>' +
       '<div class="region-eur">' + rptFmtEur(eastPred) + ' z ' + rptFmtEur(eastPlan) + '</div>' +
-      '<div style="font-size:10px;color:#64A4D8;margin-top:2px">' + eastVisits + ' návštev</div>' +
+      '<div style="font-size:10px;color:#64A4D8;margin-top:2px">' + eastVisits + ' lekárov</div>' +
       '<div class="region-bar-wrap"><div class="region-bar-fill" style="width:' + Math.min(100,eastPct||0) + '%;background:' + rptGradientVal(eastPct) + '"></div></div>' +
     '</div>' +
   '</div>';
@@ -11079,7 +11079,7 @@ function rptBuildMgmtHtml() {
     return '<tr class="rep-row">' +
       '<td class="rep-pos' + posCls + '">' + pos + '</td>' +
       '<td class="rep-name-cell"><div>' + rptShortName(r.name) + ' <span class="rep-region-tag ' + (r.isWest ? 'w' : 'e') + '">' + (r.isWest ? 'W' : 'E') + '</span></div>' +
-        '<div style="font-size:9px;color:#94A3B8;font-weight:400;margin-top:1px">' + r.visits + ' návštev · GS ' + r.gsCount + '/' + r.allCount + ' (' + r.gsPct + '%)</div></td>' +
+        '<div style="font-size:9px;color:#94A3B8;font-weight:400;margin-top:1px">' + r.visits + ' lekárov · GS ' + r.gsCount + '/' + r.allCount + ' (' + r.gsPct + '%)</div></td>' +
       '<td class="rep-bar-cell"><div class="rep-mini-bar"><div class="rep-mini-fill" style="width:' + Math.min(100,r.pct||0) + '%;background:' + barColor + '"></div></div></td>' +
       '<td class="rep-pct-cell ' + (r.pct !== null ? pctCls : '') + '">' + (r.pct !== null ? r.pct + '%' : '—') + '</td>' +
     '</tr>';
