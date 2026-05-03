@@ -1821,7 +1821,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.32';
+var APP_VERSION = '2.13.33';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10439,31 +10439,31 @@ function rptCss() {
       'body{padding:0 5mm!important;background:#fff!important}' +
       '.rpt-hc{padding:0!important;margin:0!important}' +
       '.page{max-width:100%!important;border-radius:0!important;box-shadow:none!important;overflow:visible!important}' +
-      '.rpt-header{padding:10px 14px 8px!important;break-after:avoid}' +
-      '.rpt-rep-name{font-size:15px!important}' +
-      '.rpt-header-stats{gap:4px!important}' +
-      '.rpt-hstat{padding:4px 7px!important}' +
-      '.rpt-hstat-val{font-size:12px!important}' +
-      '.rpt-body{padding:8px 12px 10px!important;gap:7px!important}' +
-      '.rpt-section-label{margin-bottom:4px!important;font-size:8px!important;break-after:avoid}' +
-      '.rpt-plnenie-card{padding:8px 10px!important;margin-bottom:4px!important;break-inside:avoid}' +
-      '.rpt-plnenie-pct{font-size:22px!important}' +
-      '.rpt-plnenie-top{margin-bottom:6px!important}' +
-      '.rpt-main-bar-wrap{height:6px!important;margin-bottom:4px!important}' +
-      '.rpt-predikcia-row{padding-top:4px!important;font-size:8px!important}' +
-      '.rpt-prod-grid,.rpt-rep-grid,.rpt-visits-grid,.rpt-ms-grid,.region-grid,.lekar-grid{gap:4px!important;break-inside:avoid}' +
-      '.rpt-prod-card,.rpt-rep-card,.rpt-visit-card,.rpt-gs-card{padding:6px 8px!important;break-inside:avoid}' +
-      '.rpt-ms-card{padding:5px 4px!important;break-inside:avoid}' +
-      '.rpt-db-card{padding:8px 10px!important;break-inside:avoid}' +
-      '.rpt-db-top-row{margin-bottom:5px!important;padding-bottom:5px!important}' +
-      '.rpt-db-total-num{font-size:18px!important}' +
-      '.region-card{padding:8px 10px!important;break-inside:avoid}' +
-      '.region-pct{font-size:20px!important}' +
-      '.lekar-card{padding:6px 8px!important;break-inside:avoid}' +
-      '.rpt-visit-big,.rpt-gs-big,.lekar-big{font-size:18px!important}' +
-      '.rpt-footer{padding:5px 12px!important}' +
-      '.rpt-ms-comp-wrap{padding:5px 7px!important}' +
-      '.rpt-comp-lbl{margin:4px 0 3px!important}' +
+      '.rpt-header{padding:16px 20px 14px!important;break-after:avoid}' +
+      '.rpt-rep-name{font-size:18px!important}' +
+      '.rpt-header-stats{gap:6px!important}' +
+      '.rpt-hstat{padding:7px 10px!important}' +
+      '.rpt-hstat-val{font-size:16px!important}' +
+      '.rpt-body{padding:14px 18px 18px!important;gap:12px!important}' +
+      '.rpt-section-label{margin-bottom:6px!important;font-size:9.5px!important;break-after:avoid}' +
+      '.rpt-plnenie-card{padding:12px 14px!important;margin-bottom:8px!important;break-inside:avoid}' +
+      '.rpt-plnenie-pct{font-size:30px!important}' +
+      '.rpt-plnenie-top{margin-bottom:10px!important}' +
+      '.rpt-main-bar-wrap{height:8px!important;margin-bottom:7px!important}' +
+      '.rpt-predikcia-row{padding-top:6px!important;font-size:10px!important}' +
+      '.rpt-prod-grid,.rpt-rep-grid,.rpt-visits-grid,.rpt-ms-grid,.region-grid,.lekar-grid{gap:6px!important;break-inside:avoid}' +
+      '.rpt-prod-card,.rpt-rep-card,.rpt-visit-card,.rpt-gs-card{padding:9px 11px!important;break-inside:avoid}' +
+      '.rpt-ms-card{padding:6px 5px!important;break-inside:avoid}' +
+      '.rpt-db-card{padding:10px 12px!important;break-inside:avoid}' +
+      '.rpt-db-top-row{margin-bottom:7px!important;padding-bottom:7px!important}' +
+      '.rpt-db-total-num{font-size:22px!important}' +
+      '.region-card{padding:10px 12px!important;break-inside:avoid}' +
+      '.region-pct{font-size:24px!important}' +
+      '.lekar-card{padding:8px 10px!important;break-inside:avoid}' +
+      '.rpt-visit-big,.rpt-gs-big,.lekar-big{font-size:22px!important}' +
+      '.rpt-footer{padding:6px 14px!important}' +
+      '.rpt-ms-comp-wrap{padding:7px 9px!important}' +
+      '.rpt-comp-lbl{margin:5px 0 4px!important}' +
     '}' +
   '</style>';
 }
@@ -11318,9 +11318,10 @@ function downloadAllReportsPdf() {
       'document.body.appendChild(cl);' +
       'var h=cl.offsetHeight;' +
       'document.body.removeChild(cl);' +
-      // A4 pri 96dpi, 5mm okraje: ~1085px — meranie je bez print CSS kompaktovania, preto mensi target
-      'var t=760;' +
-      'if(h>t)pe.style.zoom=(t/h).toFixed(3);' +
+      // A4=1122px pri 96dpi; print CSS zmensi obsah ~15%, takze screen-ekvivalent plnej strany ~1300px
+      // Vzdy aplikujeme zoom aby sme stranku zaplnili, nie len zabranil preteceniu
+      'var t=1260;' +
+      'var z=t/h;if(z>1.6)z=1.6;pe.style.zoom=z.toFixed(3);' +
       'setTimeout(function(){window.print();setTimeout(function(){pe.style.zoom="";},2500);},100);' +
     '};' +
       'nav.appendChild(pb);' +
