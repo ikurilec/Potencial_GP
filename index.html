@@ -1821,7 +1821,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.7';
+var APP_VERSION = '2.13.8';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10716,19 +10716,6 @@ function rptBuildRepHtml(username) {
     });
   }
 
-  // Total unique doctors per segment across ALL representatives
-  var allRepSegDocs = { A1:{}, A2:{}, B1:{}, B2:{} };
-  _histAllItems.forEach(function(v) {
-    var k = RPT_SCENAR_SEG[v.scenar];
-    if (k && v.lekar) allRepSegDocs[k][v.lekar] = true;
-  });
-  var allRepSeg = {
-    A1: Object.keys(allRepSegDocs.A1).length,
-    A2: Object.keys(allRepSegDocs.A2).length,
-    B1: Object.keys(allRepSegDocs.B1).length,
-    B2: Object.keys(allRepSegDocs.B2).length
-  };
-
   var visitsHtml = '<div class="rpt-visits-grid">' +
     '<div class="rpt-visit-card">' +
       '<div class="rpt-visit-big">' + visits.length + '</div>' +
@@ -10739,15 +10726,6 @@ function rptBuildRepHtml(username) {
       '<div class="rpt-gs-lbl">Golden square</div>' +
       '<div class="rpt-gs-sub">pokrytie A1/A2/B1/B2</div>' +
       '<div style="font-size:10px;color:#64748B;margin-top:4px">' + gsVisited + ' z ' + gsTotal + ' prioritných lekárov</div>' +
-    '</div>' +
-  '</div>' +
-  '<div class="rpt-visit-card" style="margin-top:10px;background:#F8FAFC;border:1px solid #E2E8F0">' +
-    '<div style="font-size:9.5px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Navštívení per segment</div>' +
-    '<div style="display:flex;flex-direction:column;gap:6px">' +
-      rptNpSegRowHtml('Platinum', '#7C3AED', segThis.A1, Math.max(allRepSeg.A1, 1)) +
-      rptNpSegRowHtml('Gold',     '#D97706', segThis.B1, Math.max(allRepSeg.B1, 1)) +
-      rptNpSegRowHtml('Silver 1', '#64748B', segThis.A2, Math.max(allRepSeg.A2, 1)) +
-      rptNpSegRowHtml('Silver 2', '#94A3B8', segThis.B2, Math.max(allRepSeg.B2, 1)) +
     '</div>' +
   '</div>';
 
