@@ -1821,7 +1821,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.12';
+var APP_VERSION = '2.13.13';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11087,12 +11087,48 @@ function rptBuildMgmtHtml() {
 }
 
 // ══ ORCHESTRÁTOR ══
+function rptFetchPharmaForAllReps(oblasts, onDone) {
+  var q    = plnenieCurrentQ();
+  var year = (new Date()).getFullYear();
+  var kvartal = pharmaKvartalCode(year, q);
+  var allCodes = [];
+  Object.keys(PHARMA_CODES).forEach(function(key) {
+    PHARMA_CODES[key].forEach(function(code) { if (allCodes.indexOf(code) < 0) allCodes.push(code); });
+  });
+  oblasts.forEach(function(oblast) {
+    allCodes.forEach(function(code) {
+      loadPharmaGrafData(code, oblast, null);
+      loadPharmaData(code, oblast, kvartal);
+    });
+  });
+  // Poll kým všetky fetche dokončia
+  function check() {
+    var loading = Object.keys(PHARMA_GRAF_STATE.loading).length + Object.keys(PHARMA_STATE.loading).length;
+    if (loading === 0) { onDone(); } else { setTimeout(check, 300); }
+  }
+  setTimeout(check, 200);
+}
+
 function downloadAllReportsPdf() {
   var p = rptPeriod();
+
+  // Zbierame unikátne oblasti všetkých reprezentantov
+  var oblasts = [];
+  MGR_ALL.forEach(function(u) {
+    var r = (USERS_LOCAL[u] && USERS_LOCAL[u].region) || '';
+    if (r && oblasts.indexOf(r) < 0) oblasts.push(r);
+  });
 
   // iOS Safari nepodporuje download atribút — otvoríme kombinovanú HTML stránku s print tlačidlom
   var isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   if (isIos) {
+    var overlay = document.getElementById('rpt-progress-overlay');
+    var title   = document.getElementById('rpt-progress-title');
+    var sub     = document.getElementById('rpt-progress-sub');
+    overlay.style.display = 'flex';
+    title.textContent = 'Načítavam trhové dáta…';
+    sub.textContent = '';
+    rptFetchPharmaForAllReps(oblasts, function() {
     var pages = [];
     var allTasks = [];
     MGR_ALL.forEach(function(u) { allTasks.push({ type: 'rep', username: u }); });
@@ -11121,6 +11157,8 @@ function downloadAllReportsPdf() {
     var win = window.open('', '_blank');
     if (win) { win.document.write(combined); win.document.close(); }
     else { alert('Povoľ vyskakovacie okná pre túto stránku a skús znova.'); }
+    overlay.style.display = 'none';
+    }); // koniec rptFetchPharmaForAllReps
     return;
   }
 
@@ -11135,6 +11173,11 @@ function downloadAllReportsPdf() {
   var count   = document.getElementById('rpt-progress-count');
 
   overlay.style.display = 'flex';
+  title.textContent = 'Načítavam trhové dáta…';
+  sub.textContent = '';
+
+  rptFetchPharmaForAllReps(oblasts, function() {
+  title.textContent = 'Generujem reporty…';
 
   var monthSlug = p.month + '_' + p.year;
 
@@ -11210,6 +11253,7 @@ function downloadAllReportsPdf() {
   }
 
   runNext(0);
+  }); // koniec rptFetchPharmaForAllReps
 }
 
 </script>
