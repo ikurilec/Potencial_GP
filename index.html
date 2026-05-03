@@ -1821,7 +1821,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.27';
+var APP_VERSION = '2.13.28';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10432,16 +10432,35 @@ function rptCss() {
     '.rpt-footer{background:#F8FAFC;border-top:1px solid #E2E8F0;padding:12px 22px;display:flex;justify-content:space-between;align-items:center}' +
     '.rpt-footer-brand{font-size:10px;font-weight:700;color:#94A3B8;letter-spacing:.05em;text-transform:uppercase}' +
     '.rpt-footer-date{font-size:9.5px;color:#CBD5E1}' +
-    '@page{margin:10mm}' +
+    '@page{size:A4 portrait;margin:5mm}' +
     '@media print{' +
       '*,*::before,*::after{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}' +
       'body{padding:0!important;background:#fff!important}' +
       '.page{max-width:100%!important;border-radius:0!important;box-shadow:none!important;overflow:visible!important}' +
-      '.rpt-header{break-after:avoid}' +
+      '.rpt-header{padding:10px 14px 8px!important;break-after:avoid}' +
+      '.rpt-rep-name{font-size:15px!important}' +
+      '.rpt-header-stats{gap:4px!important}' +
+      '.rpt-hstat{padding:4px 7px!important}' +
+      '.rpt-hstat-val{font-size:12px!important}' +
+      '.rpt-body{padding:8px 12px 10px!important;gap:7px!important}' +
+      '.rpt-section-label{margin-bottom:4px!important;font-size:8px!important;break-after:avoid}' +
+      '.rpt-plnenie-card{padding:8px 10px!important;margin-bottom:4px!important;break-inside:avoid}' +
+      '.rpt-plnenie-pct{font-size:22px!important}' +
+      '.rpt-plnenie-top{margin-bottom:6px!important}' +
+      '.rpt-main-bar-wrap{height:6px!important;margin-bottom:4px!important}' +
+      '.rpt-predikcia-row{padding-top:4px!important;font-size:8px!important}' +
+      '.rpt-prod-grid,.rpt-rep-grid,.rpt-visits-grid,.rpt-ms-grid,.region-grid,.lekar-grid{gap:4px!important;break-inside:avoid}' +
+      '.rpt-prod-card,.rpt-rep-card,.rpt-visit-card,.rpt-gs-card{padding:6px 8px!important;break-inside:avoid}' +
+      '.rpt-ms-card{padding:5px 4px!important;break-inside:avoid}' +
+      '.rpt-db-card{padding:8px 10px!important;break-inside:avoid}' +
+      '.rpt-db-top-row{margin-bottom:5px!important;padding-bottom:5px!important}' +
+      '.rpt-db-total-num{font-size:18px!important}' +
+      '.region-card{padding:8px 10px!important;break-inside:avoid}' +
+      '.region-pct{font-size:20px!important}' +
+      '.lekar-card{padding:6px 8px!important;break-inside:avoid}' +
+      '.rpt-visit-big,.rpt-gs-big,.lekar-big{font-size:18px!important}' +
+      '.rpt-footer{padding:5px 12px!important}' +
       '.rpt-body>div{break-inside:avoid}' +
-      '.rpt-section-label{break-after:avoid}' +
-      '.rpt-prod-card,.rpt-rep-card,.rpt-visit-card,.rpt-gs-card,.rpt-ms-card,.rpt-db-card,.region-card,.lekar-card,.rpt-plnenie-card{break-inside:avoid}' +
-      '.rpt-prod-grid,.rpt-rep-grid,.rpt-visits-grid,.rpt-ms-grid,.region-grid,.lekar-grid{break-inside:avoid}' +
     '}' +
   '</style>';
 }
@@ -11276,7 +11295,21 @@ function downloadAllReportsPdf() {
       'var pb=document.createElement("button");' +
       'pb.className="rpt-pb";' +
       'pb.textContent="🖨 PDF";' +
-      'pb.onclick=function(){window.print()};' +
+      'pb.onclick=function(){' +
+      'var pe=document.querySelector("#rc .page");' +
+      'if(!pe){window.print();return;}' +
+      'pe.style.zoom="";' +
+      // Zmeraj výšku pri šírke 700px (blízko A4) pomocou klonovania — bez blikania
+      'var cl=pe.cloneNode(true);' +
+      'cl.style.cssText="position:fixed;top:-99999px;left:0;width:700px;max-width:700px;overflow:visible;zoom:1;visibility:hidden";' +
+      'document.body.appendChild(cl);' +
+      'var h=cl.offsetHeight;' +
+      'document.body.removeChild(cl);' +
+      // A4 pri 96dpi, 5mm okraje hore+dole: 287mm ≈ 1085px — s rezervou 1020
+      'var t=1020;' +
+      'if(h>t)pe.style.zoom=(t/h).toFixed(3);' +
+      'setTimeout(function(){window.print();setTimeout(function(){pe.style.zoom="";},2500);},100);' +
+    '};' +
       'nav.appendChild(pb);' +
       'sv(0);' +
       '<\/script>' +
