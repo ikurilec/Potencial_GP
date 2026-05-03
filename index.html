@@ -1821,7 +1821,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.25';
+var APP_VERSION = '2.13.26';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11226,7 +11226,7 @@ function downloadAllReportsPdf() {
         hubList.push({ t: navTitle, b: m ? m[1] : html });
       } catch(e) {}
     });
-    // JSON.stringify + escapovanie </script> aby HTML parser neskrachoval
+    // JSON.stringify + escape script-closing tag aby HTML parser neskrachoval
     var hubJson = JSON.stringify(hubList).replace(/<\/script/gi, '<\\/script');
     var combined = '<!DOCTYPE html><html><head>' +
       '<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
