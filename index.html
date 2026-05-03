@@ -1821,7 +1821,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.18';
+var APP_VERSION = '2.13.19';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10580,6 +10580,21 @@ function rptMsCompetitorHtml(oblast) {
 // scenar → golden-square segment (A1/A2/B1/B2) alebo null
 var RPT_SCENAR_SEG = { top:'A1', zvysit3:'A2', udrzat:'B1', zvysit:'B2' };
 
+// Vráti mapu lekar → scenar podľa POSLEDNÉHO záznamu (doktori s vyradit nesmú byť v GS)
+function rptCurrentScenarMap(allVisits) {
+  var latestDate = {}, result = {};
+  allVisits.forEach(function(v) {
+    if (!v.lekar) return;
+    var d = parseLbDatum(v.datum || v.dateKey || '');
+    if (!d) return;
+    if (!latestDate[v.lekar] || d > latestDate[v.lekar]) {
+      latestDate[v.lekar] = d;
+      result[v.lekar] = v.scenar;
+    }
+  });
+  return result; // lekar → aktuálny scenar
+}
+
 // ── DB (doctors) block for AM/MGMT ──
 function rptDbBlockHtml(reps, label) {
   var segCounts = { A1:0, A2:0, B1:0, B2:0, other:0 };
@@ -10634,17 +10649,20 @@ function rptBuildRepHtml(username) {
   var allV   = rptAllVisits(username);
 
   var segThis = { A1:0, A2:0, B1:0, B2:0, ine:0 };
+  // allGsSet — GS doktori podľa AKTUÁLNEHO (posledného) scenáru; vyradit sa vylučuje
+  var curScenar = rptCurrentScenarMap(allV);
+  var allGsSet  = {};
+  Object.keys(curScenar).forEach(function(lekar) {
+    if (RPT_SCENAR_SEG[curScenar[lekar]]) allGsSet[lekar] = true;
+  });
   var gsSetThis = {};
   visits.forEach(function(v) {
     var k = RPT_SCENAR_SEG[v.scenar];
-    if (k) { segThis[k]++; gsSetThis[v.lekar]=true; }
+    if (k) segThis[k]++;
     else segThis.ine++;
+    if (v.lekar && allGsSet[v.lekar]) gsSetThis[v.lekar] = true;
   });
   var gsVisited = Object.keys(gsSetThis).length;
-  var allGsSet  = {};
-  allV.forEach(function(v) {
-    if (RPT_SCENAR_SEG[v.scenar]) allGsSet[v.lekar]=true;
-  });
   var gsTotal = Object.keys(allGsSet).length || 1;
   var gsPct   = Math.round(gsVisited / gsTotal * 100);
   var gsCls   = rptColorClass(gsPct >= 70 ? 100 : gsPct >= 50 ? 95 : 0);
@@ -10958,14 +10976,13 @@ function rptBuildMgmtHtml() {
         .slice(0,3).map(function(k){ return pl.prods[k]; }) : [];
       atRisk.push({ name: rptShortName(name), pct: pct, isWest: isWest, prods: worstProds });
     }
+    var curScenar3 = rptCurrentScenarMap(rptAllVisits(username));
+    var allGs3 = {};
+    Object.keys(curScenar3).forEach(function(lekar) {
+      if (RPT_SCENAR_SEG[curScenar3[lekar]]) allGs3[lekar] = true;
+    });
     var gsUniq3 = {};
-    visits.forEach(function(v){
-      if (RPT_SCENAR_SEG[v.scenar]) gsUniq3[v.lekar]=true;
-    });
-    var allGs3={};
-    rptAllVisits(username).forEach(function(v){
-      if (RPT_SCENAR_SEG[v.scenar]) allGs3[v.lekar]=true;
-    });
+    visits.forEach(function(v){ if (v.lekar && allGs3[v.lekar]) gsUniq3[v.lekar] = true; });
     var gsPct3 = Math.round(Object.keys(gsUniq3).length / Math.max(Object.keys(allGs3).length,1) * 100);
     repRanked.push({ username:username, name:name, isWest:isWest, visits:visits.length, pct:pct, gsPct:gsPct3 });
   });
