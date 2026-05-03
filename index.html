@@ -1821,7 +1821,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.1';
+var APP_VERSION = '2.13.4';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10472,8 +10472,10 @@ function rptAtRiskHtml(atRisk, showWE) {
 // ── MS 4-card grid for rep report ──
 function rptMsGridHtml(oblast) {
   var PRODS = [
-    { label: 'Aflamil', code: 'AFLcrm' }, { label: 'Suprax', code: 'SUP' },
-    { label: 'Vidonorm', code: 'VID' },   { label: 'Cavinton', code: 'CAV' }
+    { label: 'Aflamil krém', code: 'AFLcrm' }, { label: 'Aflamil tbl', code: 'AFLtbl' },
+    { label: 'Suprax',       code: 'SUP' },     { label: 'Vidonorm',    code: 'VID' },
+    { label: 'Cavinton',     code: 'CAV' },     { label: 'Junod',       code: 'JUN' },
+    { label: 'Kogavant',     code: 'KOGGOL' }
   ];
   var cards = '';
   PRODS.forEach(function(pp) {
@@ -10525,15 +10527,18 @@ function rptMsCompetitorHtml(oblast) {
   '</div>';
 }
 
+// scenar → golden-square segment (A1/A2/B1/B2) alebo null
+var RPT_SCENAR_SEG = { top:'A1', zvysit3:'A2', udrzat:'B1', zvysit:'B2' };
+
 // ── DB (doctors) block for AM/MGMT ──
 function rptDbBlockHtml(reps, label) {
-  var segCounts = { A1:0, A2:0, B1:0, B2:0, B3:0, C:0, other:0 };
+  var segCounts = { A1:0, A2:0, B1:0, B2:0, other:0 };
   var docSet = {};
   reps.forEach(function(username) {
     rptAllVisits(username).forEach(function(v) {
       if (!v.lekar || docSet[v.lekar]) return;
       docSet[v.lekar] = true;
-      var k = (v.kategoria || '').toUpperCase().replace(/\s+/g,'');
+      var k = RPT_SCENAR_SEG[v.scenar] || 'other';
       if (segCounts[k] !== undefined) segCounts[k]++;
       else segCounts.other++;
     });
@@ -10581,21 +10586,21 @@ function rptBuildRepHtml(username) {
   var segThis = { A1:0, A2:0, B1:0, B2:0, ine:0 };
   var gsSetThis = {};
   visits.forEach(function(v) {
-    var k = (v.kategoria||'').toUpperCase().replace(/\s+/g,'');
-    if (k==='A1'||k==='A2'||k==='B1'||k==='B2') { segThis[k]++; gsSetThis[v.lekar]=true; }
+    var k = RPT_SCENAR_SEG[v.scenar];
+    if (k) { segThis[k]++; gsSetThis[v.lekar]=true; }
     else segThis.ine++;
   });
   var gsVisited = Object.keys(gsSetThis).length;
   var allGsSet  = {};
   allV.forEach(function(v) {
-    var k = (v.kategoria||'').toUpperCase().replace(/\s+/g,'');
-    if (k==='A1'||k==='A2'||k==='B1'||k==='B2') allGsSet[v.lekar]=true;
+    if (RPT_SCENAR_SEG[v.scenar]) allGsSet[v.lekar]=true;
   });
   var gsTotal = Object.keys(allGsSet).length || 1;
   var gsPct   = Math.round(gsVisited / gsTotal * 100);
   var gsCls   = rptColorClass(gsPct >= 70 ? 100 : gsPct >= 50 ? 95 : 0);
 
   var pl      = rptPlnenieForRep(username, p.q, p.month, p.year);
+  var noPlan  = pl && (!pl.totalPlan || pl.totalPlan === 0);
   var totalPct = pl && pl.totalPct !== null ? pl.totalPct : null;
   var totalCls = rptColorClass(totalPct);
   var pred     = rptPredikcia(username, p.q, p.month, p.year);
@@ -10611,7 +10616,7 @@ function rptBuildRepHtml(username) {
       '</div>' +
     '</div>' +
     '<div class="rpt-header-stats">' +
-      '<div class="rpt-hstat"><div class="rpt-hstat-val ' + totalCls + '">' + (totalPct !== null ? totalPct + '%' : '—') + '</div><div class="rpt-hstat-lbl">Plnenie mesiaca</div></div>' +
+      '<div class="rpt-hstat"><div class="rpt-hstat-val' + (noPlan ? '' : ' ' + totalCls) + '" style="' + (noPlan ? 'font-size:13px;color:#94B8D4' : '') + '">' + (noPlan ? 'bez plánu' : totalPct + '%') + '</div><div class="rpt-hstat-lbl">Plnenie mesiaca</div></div>' +
       '<div class="rpt-hstat"><div class="rpt-hstat-val">' + visits.length + '</div><div class="rpt-hstat-lbl">Návštevy celkom</div></div>' +
       '<div class="rpt-hstat"><div class="rpt-hstat-val ' + gsCls + '">' + gsPct + '%</div><div class="rpt-hstat-lbl">Pokrytie golden square</div></div>' +
     '</div>' +
@@ -10626,10 +10631,12 @@ function rptBuildRepHtml(username) {
   var plCard = pl ?
     '<div class="rpt-plnenie-card">' +
       '<div class="rpt-plnenie-top">' +
-        '<div class="rpt-plnenie-pct ' + totalCls + '">' + (totalPct !== null ? totalPct + '%' : '—') + '</div>' +
-        '<div class="rpt-plnenie-meta"><div class="rpt-plnenie-eur">' + rptFmtEur(pl.totalPred) + '</div><div class="rpt-plnenie-plan">z plánu ' + rptFmtEur(pl.totalPlan) + '</div></div>' +
+        (noPlan
+          ? '<div style="font-size:13px;font-weight:600;color:#94B8D4;line-height:1.4">Plán Q' + p.q + ' ešte<br>nie je zadaný</div>'
+          : '<div class="rpt-plnenie-pct ' + totalCls + '">' + totalPct + '%</div>') +
+        '<div class="rpt-plnenie-meta"><div class="rpt-plnenie-eur">' + rptFmtEur(pl.totalPred) + '</div><div class="rpt-plnenie-plan">' + (noPlan ? 'predaje za mesiac' : 'z plánu ' + rptFmtEur(pl.totalPlan)) + '</div></div>' +
       '</div>' +
-      '<div class="rpt-main-bar-wrap"><div class="rpt-main-bar-fill ' + totalCls + '" style="width:' + Math.min(100,totalPct||0) + '%"></div></div>' +
+      (noPlan ? '' : '<div class="rpt-main-bar-wrap"><div class="rpt-main-bar-fill ' + totalCls + '" style="width:' + Math.min(100,totalPct||0) + '%"></div></div>') +
       predHtml +
     '</div>' :
     '<div class="rpt-plnenie-card"><div style="font-size:12px;color:#94B8D4">Plnenie — dáta nie sú dostupné</div></div>';
@@ -10727,13 +10734,11 @@ function rptBuildAmHtml(isWest) {
     }
     var gsUniqThis = {};
     visits.forEach(function(v) {
-      var k=(v.kategoria||'').toUpperCase().replace(/\s+/g,'');
-      if(k==='A1'||k==='A2'||k==='B1'||k==='B2') gsUniqThis[v.lekar]=true;
+      if (RPT_SCENAR_SEG[v.scenar]) gsUniqThis[v.lekar]=true;
     });
     var allGsSet2={};
     rptAllVisits(username).forEach(function(v){
-      var k=(v.kategoria||'').toUpperCase().replace(/\s+/g,'');
-      if(k==='A1'||k==='A2'||k==='B1'||k==='B2') allGsSet2[v.lekar]=true;
+      if (RPT_SCENAR_SEG[v.scenar]) allGsSet2[v.lekar]=true;
     });
     var gsPct2 = Math.round(Object.keys(gsUniqThis).length / Math.max(Object.keys(allGsSet2).length,1) * 100);
     repCards += '<div class="rpt-rep-card">' +
@@ -10864,13 +10869,11 @@ function rptBuildMgmtHtml() {
     }
     var gsUniq3 = {};
     visits.forEach(function(v){
-      var k=(v.kategoria||'').toUpperCase().replace(/\s+/g,'');
-      if(k==='A1'||k==='A2'||k==='B1'||k==='B2') gsUniq3[v.lekar]=true;
+      if (RPT_SCENAR_SEG[v.scenar]) gsUniq3[v.lekar]=true;
     });
     var allGs3={};
     rptAllVisits(username).forEach(function(v){
-      var k=(v.kategoria||'').toUpperCase().replace(/\s+/g,'');
-      if(k==='A1'||k==='A2'||k==='B1'||k==='B2') allGs3[v.lekar]=true;
+      if (RPT_SCENAR_SEG[v.scenar]) allGs3[v.lekar]=true;
     });
     var gsPct3 = Math.round(Object.keys(gsUniq3).length / Math.max(Object.keys(allGs3).length,1) * 100);
     repRanked.push({ username:username, name:name, isWest:isWest, visits:visits.length, pct:pct, gsPct:gsPct3 });
