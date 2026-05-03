@@ -1821,7 +1821,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.19';
+var APP_VERSION = '2.13.20';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10649,23 +10649,23 @@ function rptBuildRepHtml(username) {
   var allV   = rptAllVisits(username);
 
   var segThis = { A1:0, A2:0, B1:0, B2:0, ine:0 };
-  // allGsSet — GS doktori podľa AKTUÁLNEHO (posledného) scenáru; vyradit sa vylučuje
+  // GS portfólio: GS doktori (posledný scenar) vs. všetci doktori
   var curScenar = rptCurrentScenarMap(allV);
   var allGsSet  = {};
   Object.keys(curScenar).forEach(function(lekar) {
     if (RPT_SCENAR_SEG[curScenar[lekar]]) allGsSet[lekar] = true;
   });
-  var gsSetThis = {};
+  var allDocsSet = {};
+  allV.forEach(function(v) { if (v.lekar) allDocsSet[v.lekar] = true; });
   visits.forEach(function(v) {
     var k = RPT_SCENAR_SEG[v.scenar];
     if (k) segThis[k]++;
     else segThis.ine++;
-    if (v.lekar && allGsSet[v.lekar]) gsSetThis[v.lekar] = true;
   });
-  var gsVisited = Object.keys(gsSetThis).length;
-  var gsTotal = Object.keys(allGsSet).length || 1;
-  var gsPct   = Math.round(gsVisited / gsTotal * 100);
-  var gsCls   = rptColorClass(gsPct >= 70 ? 100 : gsPct >= 50 ? 95 : 0);
+  var gsCount  = Object.keys(allGsSet).length;   // doktori na navštívenie
+  var allCount = Object.keys(allDocsSet).length; // všetci doktori celkom
+  var gsPct    = allCount > 0 ? Math.round(gsCount / allCount * 100) : 0;
+  var gsCls    = rptColorClass(gsPct >= 70 ? 100 : gsPct >= 50 ? 95 : 0);
 
   var pl      = rptPlnenieForRep(username, p.q, p.month, p.year);
   var noPlan  = pl && (!pl.totalPlan || pl.totalPlan === 0);
@@ -10686,7 +10686,7 @@ function rptBuildRepHtml(username) {
     '<div class="rpt-header-stats">' +
       '<div class="rpt-hstat"><div class="rpt-hstat-val' + (noPlan ? '' : ' ' + totalCls) + '" style="' + (noPlan ? 'font-size:13px;color:#94B8D4' : '') + '">' + (noPlan ? 'bez plánu' : totalPct + '%') + '</div><div class="rpt-hstat-lbl">Plnenie mesiaca</div></div>' +
       '<div class="rpt-hstat"><div class="rpt-hstat-val">' + visits.length + '</div><div class="rpt-hstat-lbl">Návštevy celkom</div></div>' +
-      '<div class="rpt-hstat"><div class="rpt-hstat-val ' + gsCls + '">' + gsPct + '%</div><div class="rpt-hstat-lbl">Pokrytie golden square</div></div>' +
+      '<div class="rpt-hstat"><div class="rpt-hstat-val ' + gsCls + '">' + gsPct + '%</div><div class="rpt-hstat-lbl">GS v portfóliu</div></div>' +
     '</div>' +
   '</div>';
 
@@ -10740,9 +10740,9 @@ function rptBuildRepHtml(username) {
     '</div>' +
     '<div class="rpt-gs-card">' +
       '<div class="rpt-gs-big">' + gsPct + '%</div>' +
-      '<div class="rpt-gs-lbl">Golden square</div>' +
-      '<div class="rpt-gs-sub">pokrytie A1/A2/B1/B2</div>' +
-      '<div style="font-size:10px;color:#64748B;margin-top:4px">' + gsVisited + ' z ' + gsTotal + ' prioritných lekárov</div>' +
+      '<div class="rpt-gs-lbl">GS v portfóliu</div>' +
+      '<div class="rpt-gs-sub">A1/A2/B1/B2 z celku</div>' +
+      '<div style="font-size:10px;color:#64748B;margin-top:4px">' + gsCount + ' navštevovať · ' + (allCount - gsCount) + ' nenavštevovať</div>' +
     '</div>' +
   '</div>';
 
@@ -10976,15 +10976,17 @@ function rptBuildMgmtHtml() {
         .slice(0,3).map(function(k){ return pl.prods[k]; }) : [];
       atRisk.push({ name: rptShortName(name), pct: pct, isWest: isWest, prods: worstProds });
     }
-    var curScenar3 = rptCurrentScenarMap(rptAllVisits(username));
-    var allGs3 = {};
+    var allV3 = rptAllVisits(username);
+    var curScenar3 = rptCurrentScenarMap(allV3);
+    var allGs3 = {}, allDocs3 = {};
+    allV3.forEach(function(v) { if (v.lekar) allDocs3[v.lekar] = true; });
     Object.keys(curScenar3).forEach(function(lekar) {
       if (RPT_SCENAR_SEG[curScenar3[lekar]]) allGs3[lekar] = true;
     });
-    var gsUniq3 = {};
-    visits.forEach(function(v){ if (v.lekar && allGs3[v.lekar]) gsUniq3[v.lekar] = true; });
-    var gsPct3 = Math.round(Object.keys(gsUniq3).length / Math.max(Object.keys(allGs3).length,1) * 100);
-    repRanked.push({ username:username, name:name, isWest:isWest, visits:visits.length, pct:pct, gsPct:gsPct3 });
+    var gsCount3 = Object.keys(allGs3).length;
+    var allCount3 = Object.keys(allDocs3).length || 1;
+    var gsPct3 = Math.round(gsCount3 / allCount3 * 100);
+    repRanked.push({ username:username, name:name, isWest:isWest, visits:visits.length, pct:pct, gsPct:gsPct3, gsCount:gsCount3, allCount:allCount3 });
   });
 
   repRanked.sort(function(a,b){ return (b.pct||0)-(a.pct||0); });
@@ -11059,7 +11061,7 @@ function rptBuildMgmtHtml() {
     return '<tr class="rep-row">' +
       '<td class="rep-pos' + posCls + '">' + pos + '</td>' +
       '<td class="rep-name-cell"><div>' + rptShortName(r.name) + ' <span class="rep-region-tag ' + (r.isWest ? 'w' : 'e') + '">' + (r.isWest ? 'W' : 'E') + '</span></div>' +
-        '<div style="font-size:9px;color:#94A3B8;font-weight:400;margin-top:1px">' + r.visits + ' návštev · GS ' + r.gsPct + '%</div></td>' +
+        '<div style="font-size:9px;color:#94A3B8;font-weight:400;margin-top:1px">' + r.visits + ' návštev · GS ' + r.gsCount + '/' + r.allCount + ' (' + r.gsPct + '%)</div></td>' +
       '<td class="rep-bar-cell"><div class="rep-mini-bar"><div class="rep-mini-fill" style="width:' + Math.min(100,r.pct||0) + '%;background:' + barColor + '"></div></div></td>' +
       '<td class="rep-pct-cell ' + (r.pct !== null ? pctCls : '') + '">' + (r.pct !== null ? r.pct + '%' : '—') + '</td>' +
     '</tr>';
