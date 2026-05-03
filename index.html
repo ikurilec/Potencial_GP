@@ -772,10 +772,10 @@
   .pl-notif-btn{display:flex;align-items:center;gap:9px;background:#fff;border:1.5px solid #E2E8F0;border-radius:12px;padding:11px 14px;font-family:inherit;font-size:13px;font-weight:600;color:#334155;text-align:left;cursor:default}
   .pl-notif-btn .pl-notif-icon{font-size:16px;flex-shrink:0}
   .pl-notif-btn .pl-notif-lbl{flex:1;line-height:1.3}
-  .pl-notif-action{background:#0C1E35;border:none;border-radius:8px;padding:5px 11px;font-family:inherit;font-size:12px;font-weight:600;color:#fff;cursor:pointer;flex-shrink:0;transition:background .15s;-webkit-tap-highlight-color:transparent}
-  .pl-notif-action:active{background:#1E3A5F}
-  .pl-notif-btn.saving .pl-notif-action{background:#94A3B8;pointer-events:none}
-  .pl-notif-btn.done .pl-notif-action{background:#059669}
+  .pl-notif-action{background:#fff;border:1.5px solid #BFDBFE;border-radius:8px;padding:5px 11px;font-family:inherit;font-size:12px;font-weight:600;color:#2563EB;cursor:pointer;flex-shrink:0;transition:background .15s,border-color .15s;-webkit-tap-highlight-color:transparent}
+  .pl-notif-action:active{background:#EFF6FF;border-color:#93C5FD}
+  .pl-notif-btn.saving .pl-notif-action{color:#94A3B8;border-color:#E2E8F0;pointer-events:none}
+  .pl-notif-btn.done .pl-notif-action{color:#059669;border-color:#BBF7D0}
   /* ── Notifikačný banner pre reprezentantov ── */
   .notif-banner{position:fixed;inset:0;z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px;background:rgba(0,0,0,.45);animation:notifFadeIn .2s ease both}
   @keyframes notifFadeIn{from{opacity:0}to{opacity:1}}
@@ -1201,10 +1201,12 @@
       </div>
     </div>
     <!-- PDF Report tlačidlo — iba pre admin rolu -->
-    <div id="pl-rpt-btn-wrap" style="display:none;padding:0 0 24px;margin-top:8px">
-      <button type="button" id="mgr-subtab-reporty" onclick="downloadAllReportsPdf()" style="width:100%;padding:14px 16px;background:#0C1E35;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.01em;-webkit-tap-highlight-color:transparent;touch-action:manipulation">
-        <span style="font-size:18px">📄</span> Stiahnuť mesačné reporty (PDF)
-      </button>
+    <div id="pl-rpt-btn-wrap" style="display:none;padding:0 0 24px;margin-top:0">
+      <div class="pl-notif-btn" onclick="downloadAllReportsPdf()" style="cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation">
+        <span class="pl-notif-icon">📄</span>
+        <span class="pl-notif-lbl">Stiahnuť mesačné reporty (PDF)</span>
+        <button type="button" class="pl-notif-action" id="mgr-subtab-reporty" onclick="event.stopPropagation();downloadAllReportsPdf()">Otvoriť</button>
+      </div>
     </div>
     </div>
   </div>
@@ -1821,7 +1823,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.41';
+var APP_VERSION = '2.13.42';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
