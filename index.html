@@ -1821,7 +1821,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.8';
+var APP_VERSION = '2.13.9';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11113,9 +11113,11 @@ function downloadAllReportsPdf() {
       } catch(e) {}
     });
     var combined = '<!DOCTYPE html><html><head><meta charset="UTF-8">' + rptCss() +
-      '<style>@media print{.rpt-print-btn{display:none!important}}' +
-      '.rpt-print-btn{position:fixed;top:16px;right:16px;z-index:9999;padding:13px 22px;background:#0C1E35;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.25)}</style>' +
+      '<style>@media print{.rpt-print-btn,.rpt-back-btn{display:none!important}}' +
+      '.rpt-print-btn{position:fixed;top:16px;right:16px;z-index:9999;padding:13px 22px;background:#0C1E35;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.25)}' +
+      '.rpt-back-btn{position:fixed;top:16px;left:16px;z-index:9999;padding:13px 22px;background:#fff;color:#0C1E35;border:2px solid #E2E8F0;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.12)}</style>' +
       '</head><body style="margin:0;background:#EAECF2">' +
+      '<button class="rpt-back-btn" onclick="window.close()">← Späť</button>' +
       '<button class="rpt-print-btn" onclick="window.print()">🖨️ Uložiť ako PDF</button>' +
       pages.join('') + '</body></html>';
     var win = window.open('', '_blank');
