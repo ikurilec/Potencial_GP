@@ -1821,7 +1821,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.39';
+var APP_VERSION = '2.13.40';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11265,7 +11265,7 @@ function downloadAllReportsPdf() {
     // JSON.stringify + escape script-closing tag aby HTML parser neskrachoval
     var hubJson = JSON.stringify(hubList).replace(/<\/script/gi, '<\\/script');
     var combined = '<!DOCTYPE html><html><head>' +
-      '<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reporty — Gedeon Richter</title>' +
+      '<meta charset="UTF-8"><meta name="viewport" content="width=794"><title>Reporty — Gedeon Richter</title>' +
       rptCss() +
       '<style>' +
       '.rpt-hn{position:fixed;top:0;left:0;right:0;z-index:9999;background:#0C1E35;display:flex;align-items:center;gap:5px;padding:9px 10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;box-shadow:0 2px 12px rgba(0,0,0,.35)}' +
@@ -11317,7 +11317,7 @@ function downloadAllReportsPdf() {
       'pe.style.zoom="";' +
       // Zmeraj výšku pri šírke 700px (blízko A4) pomocou klonovania — bez blikania
       'var cl=pe.cloneNode(true);' +
-      'cl.style.cssText="position:fixed;top:-99999px;left:0;width:700px;max-width:700px;overflow:visible;zoom:1;visibility:hidden";' +
+      'cl.style.cssText="position:fixed;top:-99999px;left:0;width:756px;max-width:756px;overflow:visible;zoom:1;visibility:hidden";' +
       'document.body.appendChild(cl);' +
       'var h=cl.offsetHeight;' +
       'document.body.removeChild(cl);' +
