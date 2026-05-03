@@ -1821,7 +1821,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.30';
+var APP_VERSION = '2.13.31';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10460,7 +10460,6 @@ function rptCss() {
       '.lekar-card{padding:6px 8px!important;break-inside:avoid}' +
       '.rpt-visit-big,.rpt-gs-big,.lekar-big{font-size:18px!important}' +
       '.rpt-footer{padding:5px 12px!important}' +
-      '.rpt-body>div{break-inside:avoid}' +
     '}' +
   '</style>';
 }
@@ -10607,19 +10606,23 @@ function rptMsCompetitorHtml(oblasts) {
   PRODS.forEach(function(pp) {
     var ms = rptMsForProd(pp.code, oblasts);
     var t  = ms ? rptTrendStr(ms.trend) : { s: '—', c: '#94A3B8' };
-    cards += '<div style="background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:8px 10px;break-inside:avoid;page-break-inside:avoid">' +
-      '<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">' +
-        '<div style="width:6px;height:6px;border-radius:50%;background:' + pp.dot + ';flex-shrink:0"></div>' +
-        '<div style="font-size:9.5px;font-weight:700;color:#0C1E35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + pp.label + '</div>' +
+    cards += '<div style="background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:6px 9px;display:flex;align-items:center;justify-content:space-between;break-inside:avoid;page-break-inside:avoid">' +
+      '<div style="min-width:0;flex:1">' +
+        '<div style="display:flex;align-items:center;gap:4px">' +
+          '<div style="width:5px;height:5px;border-radius:50%;background:' + pp.dot + ';flex-shrink:0"></div>' +
+          '<div style="font-size:9px;font-weight:700;color:#0C1E35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + pp.label + '</div>' +
+        '</div>' +
+        (ms && ms.k1 ? '<div style="font-size:8px;color:#94A3B8;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">vs <span style="color:#64748B;font-weight:600">' + ms.k1.name + '</span></div>' : '') +
       '</div>' +
-      '<div style="font-size:15px;font-weight:800;color:' + (ms ? '#0C1E35' : '#CBD5E1') + ';line-height:1">' + (ms ? ms.nasPct.toFixed(1) + '%' : '—') + '</div>' +
-      (ms && ms.k1 ? '<div style="font-size:8.5px;color:#94A3B8;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">vs <span style="color:#64748B;font-weight:600">' + ms.k1.name + '</span></div>' : '<div style="height:12px"></div>') +
-      '<div style="font-size:9.5px;font-weight:700;color:' + t.c + ';margin-top:1px">' + t.s + '</div>' +
+      '<div style="flex-shrink:0;text-align:right;padding-left:6px">' +
+        '<div style="font-size:12px;font-weight:800;color:' + (ms ? '#0C1E35' : '#CBD5E1') + ';line-height:1">' + (ms ? ms.nasPct.toFixed(1) + '%' : '—') + '</div>' +
+        '<div style="font-size:8.5px;font-weight:700;color:' + t.c + ';margin-top:2px">' + t.s + '</div>' +
+      '</div>' +
     '</div>';
   });
-  return '<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:14px;padding:12px 14px;break-inside:avoid;page-break-inside:avoid">' +
-    '<div style="font-size:8.5px;color:#94A3B8;margin-bottom:8px">↑ <span style="color:#DC2626;font-weight:600">červená</span> = konkurent rastie (hrozba) &nbsp;·&nbsp; ↓ <span style="color:#059669;font-weight:600">zelená</span> = konkurent klesá</div>' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">' + cards + '</div>' +
+  return '<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:14px;padding:10px 12px">' +
+    '<div style="font-size:8px;color:#94A3B8;margin-bottom:7px">↑ <span style="color:#DC2626;font-weight:600">červená</span> = konkurent rastie &nbsp;·&nbsp; ↓ <span style="color:#059669;font-weight:600">zelená</span> = klesá</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">' + cards + '</div>' +
   '</div>';
 }
 
@@ -11311,8 +11314,8 @@ function downloadAllReportsPdf() {
       'document.body.appendChild(cl);' +
       'var h=cl.offsetHeight;' +
       'document.body.removeChild(cl);' +
-      // A4 pri 96dpi, 5mm okraje hore+dole: 287mm ≈ 1085px — s rezervou 1020
-      'var t=1020;' +
+      // A4 pri 96dpi, 5mm okraje: ~1085px — meranie je bez print CSS kompaktovania, preto mensi target
+      'var t=880;' +
       'if(h>t)pe.style.zoom=(t/h).toFixed(3);' +
       'setTimeout(function(){window.print();setTimeout(function(){pe.style.zoom="";},2500);},100);' +
     '};' +
