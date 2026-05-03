@@ -1821,7 +1821,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.21';
+var APP_VERSION = '2.13.22';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11170,9 +11170,11 @@ function downloadAllReportsPdf() {
     if (r && oblasts.indexOf(r) < 0) oblasts.push(r);
   });
 
-  // iOS Safari nepodporuje download atribút — otvoríme kombinovanú HTML stránku s print tlačidlom
-  var isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-  if (isIos) {
+  // Mobily (iOS + Android) — otvoriť kombinovanú HTML stránku s tlačidlom Uložiť ako PDF
+  // html2pdf/html2canvas je nespoľahlivý na mobilných WebView (prázdne strany, rendering bugs)
+  var ua = navigator.userAgent;
+  var isMobile = (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) || /Android/.test(ua);
+  if (isMobile) {
     var overlay = document.getElementById('rpt-progress-overlay');
     var title   = document.getElementById('rpt-progress-title');
     var sub     = document.getElementById('rpt-progress-sub');
