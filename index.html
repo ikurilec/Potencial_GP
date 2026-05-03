@@ -1821,7 +1821,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.24';
+var APP_VERSION = '2.13.25';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11199,7 +11199,8 @@ function downloadAllReportsPdf() {
         ' <button onclick="document.getElementById(\'rpt-progress-overlay\').style.display=\'none\'" style="padding:10px 22px;background:#E2E8F0;color:#334155;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-left:8px">Zrušiť</button>';
       return;
     }
-    var pages = [];
+    // Zostav zoznam reportov pre hub stránku (navigácia + tlač jednotlivo)
+    var hubList = [];
     var allTasks = [];
     MGR_ALL.forEach(function(u) { allTasks.push({ type: 'rep', username: u }); });
     allTasks.push({ type: 'amwest' });
@@ -11207,23 +11208,68 @@ function downloadAllReportsPdf() {
     allTasks.push({ type: 'mgmt' });
     allTasks.forEach(function(task) {
       try {
-        var html;
-        if (task.type === 'rep')         html = rptBuildRepHtml(task.username);
-        else if (task.type === 'amwest') html = rptBuildAmHtml(true);
-        else if (task.type === 'ameast') html = rptBuildAmHtml(false);
-        else                             html = rptBuildMgmtHtml();
-        var m = html.match(/<body>([\s\S]*)<\/body>/i);
-        if (m) pages.push('<div style="page-break-after:always">' + m[1] + '</div>');
+        var html, navTitle;
+        if (task.type === 'rep') {
+          html = rptBuildRepHtml(task.username);
+          navTitle = rptShortName(MGR_REP_NAMES[task.username] || task.username);
+        } else if (task.type === 'amwest') {
+          html = rptBuildAmHtml(true);
+          navTitle = 'AM West';
+        } else if (task.type === 'ameast') {
+          html = rptBuildAmHtml(false);
+          navTitle = 'AM East';
+        } else {
+          html = rptBuildMgmtHtml();
+          navTitle = 'SK';
+        }
+        var m = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+        hubList.push({ t: navTitle, b: m ? m[1] : html });
       } catch(e) {}
     });
-    var combined = '<!DOCTYPE html><html><head><meta charset="UTF-8">' + rptCss() +
-      '<style>@media print{.rpt-print-btn,.rpt-back-btn{display:none!important}}' +
-      '.rpt-print-btn{position:fixed;top:16px;right:16px;z-index:9999;padding:13px 22px;background:#0C1E35;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.25)}' +
-      '.rpt-back-btn{position:fixed;top:16px;left:16px;z-index:9999;padding:13px 22px;background:#fff;color:#0C1E35;border:2px solid #E2E8F0;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.12)}</style>' +
+    // JSON.stringify + escapovanie </script> aby HTML parser neskrachoval
+    var hubJson = JSON.stringify(hubList).replace(/<\/script/gi, '<\\/script');
+    var combined = '<!DOCTYPE html><html><head>' +
+      '<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+      rptCss() +
+      '<style>' +
+      '.rpt-hn{position:fixed;top:0;left:0;right:0;z-index:9999;background:#0C1E35;display:flex;align-items:center;gap:5px;padding:9px 10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;box-shadow:0 2px 12px rgba(0,0,0,.35)}' +
+      '.rpt-hn::-webkit-scrollbar{display:none}' +
+      '.rpt-nb{flex-shrink:0;padding:6px 12px;background:rgba(255,255,255,.13);color:#fff;border:none;border-radius:18px;font-size:11.5px;cursor:pointer;white-space:nowrap;font-family:inherit;-webkit-tap-highlight-color:transparent;touch-action:manipulation}' +
+      '.rpt-nb.a{background:#fff;color:#0C1E35;font-weight:700}' +
+      '.rpt-pb{flex-shrink:0;margin-left:6px;padding:7px 15px;background:#16A34A;color:#fff;border:none;border-radius:18px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;touch-action:manipulation}' +
+      '.rpt-hc{padding-top:52px}' +
+      '@media print{.rpt-hn{display:none!important}.rpt-hc{padding-top:0!important}}' +
+      '</style>' +
       '</head><body style="margin:0;background:#EAECF2">' +
-      '<button class="rpt-back-btn" onclick="window.close()">← Späť</button>' +
-      '<button class="rpt-print-btn" onclick="window.print()">🖨️ Uložiť ako PDF</button>' +
-      pages.join('') + '</body></html>';
+      '<div class="rpt-hn" id="rn"></div>' +
+      '<div class="rpt-hc" id="rc"></div>' +
+      '<script>' +
+      'var R=' + hubJson + ';' +
+      'var c=0;' +
+      'function sv(i,e){' +
+        'c=i;' +
+        'document.getElementById("rc").innerHTML=R[i].b;' +
+        'var bs=document.querySelectorAll(".rpt-nb");' +
+        'for(var j=0;j<bs.length;j++)bs[j].className="rpt-nb"+(j===i?" a":"");' +
+        'window.scrollTo(0,0);' +
+        'if(e)e.currentTarget.scrollIntoView({inline:"center",behavior:"smooth"});' +
+      '}' +
+      'var nav=document.getElementById("rn");' +
+      'R.forEach(function(r,i){' +
+        'var b=document.createElement("button");' +
+        'b.className="rpt-nb"+(i===0?" a":"");' +
+        'b.textContent=r.t;' +
+        'b.onclick=function(e){sv(i,e)};' +
+        'nav.appendChild(b);' +
+      '});' +
+      'var pb=document.createElement("button");' +
+      'pb.className="rpt-pb";' +
+      'pb.textContent="🖨 PDF";' +
+      'pb.onclick=function(){window.print()};' +
+      'nav.appendChild(pb);' +
+      'sv(0);' +
+      '<\/script>' +
+      '</body></html>';
     window._rptIosCombined = combined; // uložíme do globálnej, nie do onclick
     var win = window.open('', '_blank');
     if (win) {
