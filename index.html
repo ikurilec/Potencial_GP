@@ -1821,7 +1821,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.15';
+var APP_VERSION = '2.13.16';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11086,6 +11086,16 @@ function rptBuildMgmtHtml() {
     header + body + rptFooterHtml() + '</div></body></html>';
 }
 
+function rptIosOpen() {
+  var combined = window._rptIosCombined;
+  if (!combined) return;
+  var win = window.open('', '_blank');
+  if (win) {
+    try { win.document.write(combined); win.document.close(); return; } catch(e) { win = null; }
+  }
+  alert('Vyskakovacie okná sú stále blokované.\nChoď do: Nastavenia › Safari › Blokovanie vyskakovacích okien — a vypni.');
+}
+
 // ══ ORCHESTRÁTOR ══
 // onDone(ok) — ok=true dáta načítané, ok=false timeout/chyba
 function rptFetchPharmaForAllReps(oblasts, onDone) {
@@ -11164,15 +11174,18 @@ function downloadAllReportsPdf() {
       '<button class="rpt-back-btn" onclick="window.close()">← Späť</button>' +
       '<button class="rpt-print-btn" onclick="window.print()">🖨️ Uložiť ako PDF</button>' +
       pages.join('') + '</body></html>';
+    window._rptIosCombined = combined; // uložíme do globálnej, nie do onclick
     var win = window.open('', '_blank');
-    overlay.style.display = 'none';
+    if (win) {
+      try { win.document.write(combined); win.document.close(); } catch(e) { win = null; }
+    }
     if (!win) {
-      title.textContent = '📄 Reporty pripravené';
-      sub.innerHTML = 'Ťukni na tlačidlo nižšie a ak sa nič neotvorí,<br>povol vyskakovacie okná v nastaveniach Safari.<br><br>' +
-        '<button onclick="(function(){var w=window.open(\'\',\'_blank\');if(w){w.document.write(' + JSON.stringify(combined) + ');w.document.close();}else{alert(\'Stále blokované — choď do Nastavenia > Safari > Blokovať vyskakovacie okná a vypni.\')}})()" style="padding:12px 24px;background:#0C1E35;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">Otvoriť reporty</button>';
+      title.textContent = '📄 Reporty sú pripravené';
+      sub.innerHTML = 'Ťukni na tlačidlo nižšie. Ak sa nič neotvorí,<br>povol vyskakovacie okná:<br><strong>Nastavenia › Safari › Blokovanie vyskakovacích okien</strong> — vypni.<br><br>' +
+        '<button onclick="rptIosOpen()" style="padding:12px 24px;background:#0C1E35;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer">Otvoriť reporty</button>';
       overlay.style.display = 'flex';
     } else {
-      win.document.write(combined); win.document.close();
+      overlay.style.display = 'none';
     }
     }); // koniec rptFetchPharmaForAllReps
     return;
