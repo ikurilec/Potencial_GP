@@ -1821,7 +1821,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.10';
+var APP_VERSION = '2.13.11';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9968,10 +9968,9 @@ function preloadAllPharmaData() {
   });
 
   if (document.body.classList.contains('manager-mode')) {
-    // East reps zdieľajú KE pharma dáta; West reps majú vlastné oblasti (BAMA, BASE)
     var seenOblasts = {};
-    MGR_ALL.forEach(function(username) {
-      var oblast = rptPharmaOblast(username);
+    Object.keys(USERS_LOCAL).forEach(function(username) {
+      var oblast = (USERS_LOCAL[username] && USERS_LOCAL[username].region) || '';
       if (!oblast || seenOblasts[oblast]) return;
       seenOblasts[oblast] = true;
       allCodes.forEach(function(code) {
@@ -9980,8 +9979,7 @@ function preloadAllPharmaData() {
       });
     });
   } else {
-    // Pre prihláseneho reprezentanta — East → KE, West → raw region
-    var oblast = rptPharmaOblast(session.username) || session.region || '';
+    var oblast = (USERS_LOCAL[session.username] && USERS_LOCAL[session.username].region) || session.region || '';
     if (oblast) allCodes.forEach(function(code) {
       loadPharmaData(code, oblast, kvartal);
       loadPharmaGrafData(code, oblast, null);
@@ -10185,12 +10183,6 @@ function rptPlnenieForRep(username, q, month, year) {
            qPlanTotal: Object.keys(plan).reduce(function(s,k){ return s+(plan[k]||0); },0) };
 }
 
-// Pharma data je v Sheets uložená pod oblasťou KE (pre všetkých East representantov)
-// a pod raw region pre West (BAMA/BASE). Individuálne mestá East (PP, MI, DS...) nemajú vlastné dáta.
-function rptPharmaOblast(username) {
-  if (MGR_AM_EAST.indexOf(username) !== -1) return 'KE';
-  return (USERS_LOCAL[username] && USERS_LOCAL[username].region) || '';
-}
 
 function rptMsLast(pharmaCode, oblast) {
   // Graf cache — mesačné dáta s trendmi a konkurentmi
@@ -10634,7 +10626,6 @@ function rptBuildRepHtml(username) {
   var p = rptPeriod();
   var repName  = MGR_REP_NAMES[username] || username;
   var region   = (USERS_LOCAL[username] && USERS_LOCAL[username].region) || '';
-  var pharmaOblast = rptPharmaOblast(username);
   var groupLbl = MGR_AM_WEST.indexOf(username) !== -1 ? 'West' : 'East';
   var now = new Date();
   var footerDate = now.getDate() + '. ' + (now.getMonth()+1) + '. ' + now.getFullYear();
@@ -10777,7 +10768,7 @@ function rptBuildRepHtml(username) {
     '<div class="rpt-gs-card">' + lbWidgetHtml + '</div>' +
   '</div>' : '';
 
-  var msGrid = rptMsGridHtml(pharmaOblast);
+  var msGrid = rptMsGridHtml(region);
   var body = '<div class="rpt-body">' +
     '<div><div class="rpt-section-label">Plnenie plánu — ' + p.label + '</div>' + plCard + '</div>' +
     '<div><div class="rpt-section-label">Návštevy lekárov — ' + p.label + '</div>' + visitsHtml + '</div>' +
@@ -10787,7 +10778,7 @@ function rptBuildRepHtml(username) {
       '<div class="rpt-section-label">Trhový podiel — ' + region + '</div>' +
       msGrid +
       '<div style="font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#94A3B8;margin:14px 0 8px">Pohyby konkurencie</div>' +
-      rptMsCompetitorHtml(pharmaOblast) +
+      rptMsCompetitorHtml(region) +
     '</div>' +
   '</div>';
 
@@ -10800,9 +10791,8 @@ function rptBuildAmHtml(isWest) {
   var p = rptPeriod();
   var reps   = isWest ? MGR_AM_WEST : MGR_AM_EAST;
   var label  = isWest ? 'West' : 'East';
-  var oblast = isWest
-    ? ((reps.length > 0 && USERS_LOCAL[reps[0]]) ? USERS_LOCAL[reps[0]].region || '' : '')
-    : 'KE'; // East reps zdieľajú KE pharma dáta
+  var oblast = '';
+  if (reps.length > 0 && USERS_LOCAL[reps[0]]) oblast = USERS_LOCAL[reps[0]].region || '';
   var now = new Date();
   var footerDate = now.getDate() + '. ' + (now.getMonth()+1) + '. ' + now.getFullYear();
 
@@ -11079,7 +11069,8 @@ function rptBuildMgmtHtml() {
     '</div>';
   });
 
-  var skOblast = 'KE'; // East territory pharma dáta pre SK prehľad
+  var skOblast = '';
+  if (MGR_AM_EAST.length > 0 && USERS_LOCAL[MGR_AM_EAST[0]]) skOblast = USERS_LOCAL[MGR_AM_EAST[0]].region || '';
 
   var body = '<div class="rpt-body">' +
     rptAtRiskHtml(atRisk, true) +
