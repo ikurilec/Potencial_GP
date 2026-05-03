@@ -1821,7 +1821,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.6';
+var APP_VERSION = '2.13.7';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10716,17 +10716,17 @@ function rptBuildRepHtml(username) {
     });
   }
 
-  // Compute total unique docs per segment in rep's DB (for per-segment coverage bars)
-  var dbSegDocs = { A1:{}, A2:{}, B1:{}, B2:{} };
-  allV.forEach(function(v) {
+  // Total unique doctors per segment across ALL representatives
+  var allRepSegDocs = { A1:{}, A2:{}, B1:{}, B2:{} };
+  _histAllItems.forEach(function(v) {
     var k = RPT_SCENAR_SEG[v.scenar];
-    if (k && v.lekar) dbSegDocs[k][v.lekar] = true;
+    if (k && v.lekar) allRepSegDocs[k][v.lekar] = true;
   });
-  var dbSeg = {
-    A1: Object.keys(dbSegDocs.A1).length,
-    A2: Object.keys(dbSegDocs.A2).length,
-    B1: Object.keys(dbSegDocs.B1).length,
-    B2: Object.keys(dbSegDocs.B2).length
+  var allRepSeg = {
+    A1: Object.keys(allRepSegDocs.A1).length,
+    A2: Object.keys(allRepSegDocs.A2).length,
+    B1: Object.keys(allRepSegDocs.B1).length,
+    B2: Object.keys(allRepSegDocs.B2).length
   };
 
   var visitsHtml = '<div class="rpt-visits-grid">' +
@@ -10744,10 +10744,10 @@ function rptBuildRepHtml(username) {
   '<div class="rpt-visit-card" style="margin-top:10px;background:#F8FAFC;border:1px solid #E2E8F0">' +
     '<div style="font-size:9.5px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Navštívení per segment</div>' +
     '<div style="display:flex;flex-direction:column;gap:6px">' +
-      rptNpSegRowHtml('Platinum', '#7C3AED', segThis.A1, Math.max(dbSeg.A1, 1)) +
-      rptNpSegRowHtml('Gold',     '#D97706', segThis.B1, Math.max(dbSeg.B1, 1)) +
-      rptNpSegRowHtml('Silver 1', '#64748B', segThis.A2, Math.max(dbSeg.A2, 1)) +
-      rptNpSegRowHtml('Silver 2', '#94A3B8', segThis.B2, Math.max(dbSeg.B2, 1)) +
+      rptNpSegRowHtml('Platinum', '#7C3AED', segThis.A1, Math.max(allRepSeg.A1, 1)) +
+      rptNpSegRowHtml('Gold',     '#D97706', segThis.B1, Math.max(allRepSeg.B1, 1)) +
+      rptNpSegRowHtml('Silver 1', '#64748B', segThis.A2, Math.max(allRepSeg.A2, 1)) +
+      rptNpSegRowHtml('Silver 2', '#94A3B8', segThis.B2, Math.max(allRepSeg.B2, 1)) +
     '</div>' +
   '</div>';
 
