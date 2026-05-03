@@ -1821,7 +1821,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.13';
+var APP_VERSION = '2.13.14';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11101,10 +11101,10 @@ function rptFetchPharmaForAllReps(oblasts, onDone) {
       loadPharmaData(code, oblast, kvartal);
     });
   });
-  // Poll kým všetky fetche dokončia
+  var deadline = Date.now() + 12000; // max 12 sekúnd
   function check() {
     var loading = Object.keys(PHARMA_GRAF_STATE.loading).length + Object.keys(PHARMA_STATE.loading).length;
-    if (loading === 0) { onDone(); } else { setTimeout(check, 300); }
+    if (loading === 0 || Date.now() > deadline) { onDone(); } else { setTimeout(check, 300); }
   }
   setTimeout(check, 200);
 }
