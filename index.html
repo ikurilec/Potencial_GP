@@ -1821,7 +1821,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.17';
+var APP_VERSION = '2.13.18';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11102,29 +11102,35 @@ function rptIosOpen() {
 }
 
 // ══ ORCHESTRÁTOR ══
-// onDone(ok) — ok=true dáta načítané, ok=false timeout/chyba
+// Načíta pharma GRAF dáta pre všetky oblasti (iba getPharmaGraf, nie getPharmaData —
+// report číta iba PHARMA_GRAF_STATE). Pokračuje aj s čiastočnými dátami po 20s.
 function rptFetchPharmaForAllReps(oblasts, onDone) {
-  var q    = plnenieCurrentQ();
-  var year = (new Date()).getFullYear();
-  var kvartal = pharmaKvartalCode(year, q);
   var allCodes = [];
   Object.keys(PHARMA_CODES).forEach(function(key) {
     PHARMA_CODES[key].forEach(function(code) { if (allCodes.indexOf(code) < 0) allCodes.push(code); });
   });
+  // Spusti iba fetchne, ktoré ešte nie sú v cache ani loading (preload ich mohol spustiť skôr)
   oblasts.forEach(function(oblast) {
     allCodes.forEach(function(code) {
-      loadPharmaGrafData(code, oblast, null);
-      loadPharmaData(code, oblast, kvartal);
+      loadPharmaGrafData(code, oblast, null); // vnútorný guard preskočí ak cached/loading
     });
   });
-  var deadline = Date.now() + 12000;
+  // Ak nič nenačítavame (všetko v cache z preloadu), okamžite hotovo
+  if (Object.keys(PHARMA_GRAF_STATE.loading).length === 0) { onDone(true); return; }
+  var deadline = Date.now() + 20000; // 20s pre pomalé mobilné spojenie
   function check() {
-    var loading = Object.keys(PHARMA_GRAF_STATE.loading).length + Object.keys(PHARMA_STATE.loading).length;
-    if (loading === 0) { onDone(true); }
-    else if (Date.now() > deadline) { onDone(false); }
-    else { setTimeout(check, 300); }
+    if (Object.keys(PHARMA_GRAF_STATE.loading).length === 0) { onDone(true); return; }
+    if (Date.now() > deadline) {
+      // Timeout — pokračuj s tým čo sa stihlo načítať (report ukáže — pre chýbajúce)
+      var hasAny = oblasts.some(function(ob) {
+        return allCodes.some(function(code) { return !!PHARMA_GRAF_STATE.cache[code + '_' + ob]; });
+      });
+      onDone(hasAny);
+      return;
+    }
+    setTimeout(check, 400);
   }
-  setTimeout(check, 200);
+  setTimeout(check, 300);
 }
 
 function downloadAllReportsPdf() {
