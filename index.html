@@ -1821,7 +1821,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.29';
+var APP_VERSION = '2.13.30';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10603,27 +10603,23 @@ function rptMsCompetitorHtml(oblasts) {
     { label: 'Kogavant',      code: 'KOGGOL',   dot: '#14B8A6' },
     { label: 'Telexer',       code: 'TEL',      dot: '#0EA5E9' }
   ];
-  var rows = '';
+  var cards = '';
   PRODS.forEach(function(pp) {
     var ms = rptMsForProd(pp.code, oblasts);
     var t  = ms ? rptTrendStr(ms.trend) : { s: '—', c: '#94A3B8' };
-    rows += '<div style="background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:9px 12px;display:flex;align-items:center;justify-content:space-between">' +
-      '<div style="display:flex;align-items:center;gap:8px">' +
-        '<div style="width:7px;height:7px;border-radius:50%;background:' + pp.dot + ';flex-shrink:0"></div>' +
-        '<div>' +
-          '<div style="font-size:10.5px;font-weight:700;color:#0C1E35">' + pp.label + '</div>' +
-          (ms && ms.k1 ? '<div style="font-size:9.5px;color:#94A3B8;margin-top:1px">vs <span style="color:#64748B;font-weight:600">' + ms.k1.name + '</span></div>' : '') +
-        '</div>' +
+    cards += '<div style="background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:8px 10px;break-inside:avoid;page-break-inside:avoid">' +
+      '<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">' +
+        '<div style="width:6px;height:6px;border-radius:50%;background:' + pp.dot + ';flex-shrink:0"></div>' +
+        '<div style="font-size:9.5px;font-weight:700;color:#0C1E35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + pp.label + '</div>' +
       '</div>' +
-      '<div style="flex-shrink:0;text-align:right;padding-left:10px">' +
-        '<div style="font-size:12px;font-weight:700;color:' + (ms ? '#0C1E35' : '#CBD5E1') + '">' + (ms ? ms.nasPct.toFixed(1) + '%' : '—') + '</div>' +
-        '<div style="font-size:10px;font-weight:700;color:' + t.c + ';white-space:nowrap">' + t.s + '</div>' +
-      '</div>' +
+      '<div style="font-size:15px;font-weight:800;color:' + (ms ? '#0C1E35' : '#CBD5E1') + ';line-height:1">' + (ms ? ms.nasPct.toFixed(1) + '%' : '—') + '</div>' +
+      (ms && ms.k1 ? '<div style="font-size:8.5px;color:#94A3B8;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">vs <span style="color:#64748B;font-weight:600">' + ms.k1.name + '</span></div>' : '<div style="height:12px"></div>') +
+      '<div style="font-size:9.5px;font-weight:700;color:' + t.c + ';margin-top:1px">' + t.s + '</div>' +
     '</div>';
   });
-  return '<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:14px;padding:16px 18px">' +
-    '<div style="font-size:9px;color:#94A3B8;margin-bottom:12px">↑ <span style="color:#DC2626;font-weight:600">červená</span> = konkurent rastie (hrozba) &nbsp;·&nbsp; ↓ <span style="color:#059669;font-weight:600">zelená</span> = konkurent klesá</div>' +
-    '<div style="display:flex;flex-direction:column;gap:6px">' + rows + '</div>' +
+  return '<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:14px;padding:12px 14px;break-inside:avoid;page-break-inside:avoid">' +
+    '<div style="font-size:8.5px;color:#94A3B8;margin-bottom:8px">↑ <span style="color:#DC2626;font-weight:600">červená</span> = konkurent rastie (hrozba) &nbsp;·&nbsp; ↓ <span style="color:#059669;font-weight:600">zelená</span> = konkurent klesá</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">' + cards + '</div>' +
   '</div>';
 }
 
