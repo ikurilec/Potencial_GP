@@ -10995,6 +10995,40 @@ function rptBuildMgmtHtml() {
 
 // ══ ORCHESTRÁTOR ══
 function downloadAllReportsPdf() {
+  var p = rptPeriod();
+
+  // iOS Safari nepodporuje download atribút — otvoríme kombinovanú HTML stránku s print tlačidlom
+  var isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  if (isIos) {
+    var pages = [];
+    var allTasks = [];
+    MGR_ALL.forEach(function(u) { allTasks.push({ type: 'rep', username: u }); });
+    allTasks.push({ type: 'amwest' });
+    allTasks.push({ type: 'ameast' });
+    allTasks.push({ type: 'mgmt' });
+    allTasks.forEach(function(task) {
+      try {
+        var html;
+        if (task.type === 'rep')         html = rptBuildRepHtml(task.username);
+        else if (task.type === 'amwest') html = rptBuildAmHtml(true);
+        else if (task.type === 'ameast') html = rptBuildAmHtml(false);
+        else                             html = rptBuildMgmtHtml();
+        var m = html.match(/<body>([\s\S]*)<\/body>/i);
+        if (m) pages.push('<div style="page-break-after:always">' + m[1] + '</div>');
+      } catch(e) {}
+    });
+    var combined = '<!DOCTYPE html><html><head><meta charset="UTF-8">' + rptCss() +
+      '<style>@media print{.rpt-print-btn{display:none!important}}' +
+      '.rpt-print-btn{position:fixed;top:16px;right:16px;z-index:9999;padding:13px 22px;background:#0C1E35;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.25)}</style>' +
+      '</head><body style="margin:0;background:#EAECF2">' +
+      '<button class="rpt-print-btn" onclick="window.print()">🖨️ Uložiť ako PDF</button>' +
+      pages.join('') + '</body></html>';
+    var win = window.open('', '_blank');
+    if (win) { win.document.write(combined); win.document.close(); }
+    else { alert('Povoľ vyskakovacie okná pre túto stránku a skús znova.'); }
+    return;
+  }
+
   if (typeof html2pdf === 'undefined') {
     alert('Knižnica html2pdf sa nepodarila načítať. Skontroluj pripojenie a skús znova.');
     return;
@@ -11007,7 +11041,6 @@ function downloadAllReportsPdf() {
 
   overlay.style.display = 'flex';
 
-  var p = rptPeriod();
   var monthSlug = p.month + '_' + p.year;
 
   // Zostav zoznam PDF-iek
