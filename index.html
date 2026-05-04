@@ -1823,7 +1823,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.42';
+var APP_VERSION = '2.13.43';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -4989,7 +4989,7 @@ var MGR_ROLE_CFG = {
 
 var MGR_SEG_LBL = { top:'Platinum', udrzat:'Gold', zvysit3:'Silver A', zvysit:'Silver B', frekvencia:'Bronze', vyradit:'Inactive' };
 
-var MGR_STATE = { role:null, sort:'activity', reps:{}, currentRep:null, lastLogins:{}, dynamicRegion:null, managers:[] };
+var MGR_STATE = { role:null, sort:'activity', reps:{}, currentRep:null, lastLogins:{}, dynamicRegion:null, managers:[], repsLoaded:false };
 
 // Explicitný whitelist manažérskych účtov (zodpovedá login sheetu)
 // Kľúč = username, hodnota = manažérska rola v tejto appke
@@ -5059,11 +5059,9 @@ function mgrEnter(roleKey){
   // Skroluj na vrch
   window.scrollTo(0, 0);
 
-  // Tlačidlo PDF Reporty — viditeľné iba pre admin
+  // Tlačidlo PDF Reporty — skryté kým sa dáta nenačítajú (zobrazí sa v plnenieRenderSummary)
   var rptWrap = document.getElementById('pl-rpt-btn-wrap');
-  if (rptWrap) {
-    rptWrap.style.display = roleKey === 'admin' ? '' : 'none';
-  }
+  if (rptWrap) rptWrap.style.display = 'none';
 
   mgrLoadData();
   // Plnenie je default tab — načítaj všetky kvartály hneď pri vstupe
@@ -5128,6 +5126,7 @@ function mgrLoadReps(repList){
     repList.forEach(function(username) {
       MGR_STATE.reps[username] = { visits: [], error: false };
     });
+    MGR_STATE.repsLoaded = true;
     mgrRenderList();
     return;
   }
@@ -5152,12 +5151,16 @@ function mgrLoadReps(repList){
         var rows = allHist[username] || [];
         MGR_STATE.reps[username] = { visits: mgrNormalizeVisits(rows), error: false };
       });
+      MGR_STATE.repsLoaded = true;
       mgrRenderList();
     } else {
       // Fallback — načítaj postupne po jednom
       var idx = 0;
       function loadNext(){
-        if(idx >= repList.length) return;
+        if(idx >= repList.length){
+          MGR_STATE.repsLoaded = true;
+          return;
+        }
         var username = repList[idx++];
         mgrFetchWithRetry(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username)))
           .then(function(rows){
@@ -7513,6 +7516,9 @@ function plnenieRenderSummaryEmpty() {
   if (west) { west.textContent = '—'; west.className = 'pl-region-val pl-none'; }
   var east = document.getElementById('pl-region-east');
   if (east) { east.textContent = '—'; east.className = 'pl-region-val pl-none'; }
+  // Skryť report tlačidlo kým dáta nie sú načítané
+  var rptW = document.getElementById('pl-rpt-btn-wrap');
+  if (rptW) rptW.style.display = 'none';
 }
 
 function plnenieRenderSummary() {
@@ -7571,6 +7577,9 @@ function plnenieRenderSummary() {
       });
     }
   }
+  // Report tlačidlo — ukáž po načítaní dát, iba pre admin
+  var rptW = document.getElementById('pl-rpt-btn-wrap');
+  if (rptW) rptW.style.display = MGR_STATE.role === 'admin' ? '' : 'none';
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -11210,6 +11219,16 @@ function rptFetchPharmaForAllReps(oblasts, onDone) {
 
 function downloadAllReportsPdf() {
   var p = rptPeriod();
+
+  // Kontrola či sú dáta načítané
+  if (!MGR_STATE.repsLoaded) {
+    alert('Dáta návštev sa ešte načítavajú. Počkaj chvíľu a skús znova.');
+    return;
+  }
+  if (!PL_STATE.qCache[p.q]) {
+    alert('Dáta plnenia za Q' + p.q + ' sa ešte načítavajú. Počkaj chvíľu a skús znova.');
+    return;
+  }
 
   // Zbierame unikátne oblasti všetkých reprezentantov
   var oblasts = [];
