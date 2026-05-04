@@ -26,7 +26,15 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.13.52** (na `main` aj `test` vetve) — obsahuje všetko z predchádzajúcich verzií plus reporty, oprava % plnenia a Aflamil/Krém pravidlo plánu.
+**2.13.53** (na `main` aj `test` vetve) — obsahuje všetko z predchádzajúcich verzií plus reporty, oprava % plnenia, Aflamil/Krém pravidlo plánu a predikcia per produkt.
+
+### v2.13.53 — Predikcia per produkt v manažérskom Plnení
+
+Produktové karty v sumári Slovensko/West/East majú nový layout:
+- **Hore:** názov produktu vľavo, aktuálne % plnenia + šípka vpravo
+- **Dole:** `predikcia XX,XX%` sivým písmom (iba pre aktuálny Q, iba ak sú dokončené mesiace)
+
+Predikcia sa počíta cez `plnenieCalcPredikciaSummary(p.planEUR, p.predajeEUR, q, year)` — rovnaká logika ako celkový Slovensko sumár.
 
 ### v2.13.52 — Oprava % plnenia v reportoch + Aflamil/Krém pravidlo plánu
 
