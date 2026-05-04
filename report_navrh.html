@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Návrh — Mesačný report reprezentanta</title>
+<style>
+  /* ── Page / PDF setup ── */
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: #F0F2F8;
+    color: #0C1E35;
+    padding: 32px 20px;
+  }
+
+  .page {
+    max-width: 680px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 4px 32px rgba(12,30,53,.12);
+  }
+
+  /* ── Header ── */
+  .rpt-header {
+    background: #0C1E35;
+    padding: 28px 32px 24px;
+    color: #fff;
+  }
+  .rpt-header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 18px;
+  }
+  .rpt-brand {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: #64A4D8;
+    margin-bottom: 4px;
+  }
+  .rpt-rep-name {
+    font-size: 22px;
+    font-weight: 800;
+    color: #fff;
+  }
+  .rpt-rep-region {
+    font-size: 13px;
+    color: #94B8D4;
+    margin-top: 2px;
+  }
+  .rpt-period-badge {
+    background: rgba(255,255,255,.1);
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 10px;
+    padding: 8px 14px;
+    text-align: right;
+  }
+  .rpt-period-month {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+  }
+  .rpt-period-q {
+    font-size: 11px;
+    color: #94B8D4;
+    margin-top: 1px;
+  }
+
+  /* Header stats row */
+  .rpt-header-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .rpt-hstat {
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 10px;
+    padding: 10px 14px;
+  }
+  .rpt-hstat-val {
+    font-size: 20px;
+    font-weight: 800;
+    color: #fff;
+  }
+  .rpt-hstat-val.green { color: #34D399; }
+  .rpt-hstat-val.orange { color: #FBBF24; }
+  .rpt-hstat-val.red { color: #F87171; }
+  .rpt-hstat-lbl {
+    font-size: 10.5px;
+    color: #94B8D4;
+    margin-top: 2px;
+    font-weight: 500;
+  }
+
+  /* ── Body ── */
+  .rpt-body {
+    padding: 24px 28px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* Section label */
+  .rpt-section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: #94A3B8;
+    margin-bottom: 10px;
+  }
+
+  /* ── Plnenie card (big summary) ── */
+  .rpt-plnenie-card {
+    background: #0C1E35;
+    border-radius: 14px;
+    padding: 20px 22px;
+    color: #fff;
+  }
+  .rpt-plnenie-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .rpt-plnenie-pct {
+    font-size: 42px;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .rpt-plnenie-pct.green { color: #34D399; }
+  .rpt-plnenie-pct.orange { color: #FBBF24; }
+  .rpt-plnenie-pct.red { color: #F87171; }
+  .rpt-plnenie-meta {
+    text-align: right;
+  }
+  .rpt-plnenie-eur {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+  }
+  .rpt-plnenie-plan {
+    font-size: 11px;
+    color: #94B8D4;
+    margin-top: 2px;
+  }
+
+  /* overall progress bar */
+  .rpt-main-bar-wrap {
+    background: rgba(255,255,255,.12);
+    border-radius: 6px;
+    height: 10px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+  .rpt-main-bar-fill {
+    height: 100%;
+    border-radius: 6px;
+    background: linear-gradient(90deg, #059669, #34D399);
+  }
+  .rpt-main-bar-fill.orange { background: linear-gradient(90deg, #D97706, #FBBF24); }
+  .rpt-main-bar-fill.red { background: linear-gradient(90deg, #DC2626, #F87171); }
+
+  .rpt-predikcia-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,.1);
+    font-size: 12px;
+    color: #94B8D4;
+  }
+  .rpt-predikcia-val {
+    font-weight: 700;
+    color: #FBBF24;
+    font-size: 13px;
+  }
+
+  /* ── Produkty ── */
+  .rpt-prod-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .rpt-prod-card {
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .rpt-prod-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .rpt-prod-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: #0C1E35;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .rpt-prod-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .rpt-prod-pct {
+    font-size: 14px;
+    font-weight: 800;
+  }
+  .rpt-prod-pct.green { color: #059669; }
+  .rpt-prod-pct.orange { color: #D97706; }
+  .rpt-prod-pct.red { color: #DC2626; }
+
+  .rpt-prod-bar-wrap {
+    background: #CBD5E1;
+    border-radius: 4px;
+    height: 7px;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+  .rpt-prod-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+  }
+  .rpt-prod-numbers {
+    font-size: 10.5px;
+    color: #64748B;
+  }
+  .rpt-prod-numbers strong {
+    color: #0C1E35;
+    font-weight: 600;
+  }
+  .rpt-prod-plan-note {
+    font-size: 9px;
+    color: #94A3B8;
+    margin-top: 3px;
+  }
+
+  /* ── Návštevy ── */
+  .rpt-visits-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .rpt-visit-card {
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 16px 18px;
+  }
+  .rpt-visit-big {
+    font-size: 32px;
+    font-weight: 800;
+    color: #0C1E35;
+    line-height: 1;
+  }
+  .rpt-visit-lbl {
+    font-size: 11px;
+    color: #64748B;
+    margin-top: 4px;
+    font-weight: 500;
+  }
+  .rpt-gs-card {
+    background: #EFF6FF;
+    border: 1.5px solid #BFDBFE;
+    border-radius: 12px;
+    padding: 16px 18px;
+  }
+  .rpt-gs-big {
+    font-size: 32px;
+    font-weight: 800;
+    color: #1D4ED8;
+    line-height: 1;
+  }
+  .rpt-gs-lbl {
+    font-size: 11px;
+    color: #3B82F6;
+    margin-top: 4px;
+    font-weight: 500;
+  }
+  .rpt-gs-sub {
+    font-size: 10px;
+    color: #93C5FD;
+    margin-top: 2px;
+  }
+
+  /* visit breakdown mini */
+  .rpt-seg-rows {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .rpt-seg-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+  }
+  .rpt-seg-label {
+    width: 28px;
+    font-weight: 700;
+    color: #0C1E35;
+  }
+  .rpt-seg-bar-wrap {
+    flex: 1;
+    background: #E2E8F0;
+    border-radius: 3px;
+    height: 5px;
+    overflow: hidden;
+  }
+  .rpt-seg-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: #3B82F6;
+  }
+  .rpt-seg-val {
+    color: #64748B;
+    width: 32px;
+    text-align: right;
+  }
+
+  /* ── Trhový podiel ── */
+  .rpt-ms-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .rpt-ms-card {
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    padding: 10px 6px;
+    text-align: center;
+  }
+  .rpt-ms-prod {
+    font-size: 8.5px;
+    font-weight: 700;
+    color: #64748B;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    margin-bottom: 6px;
+    word-break: break-word;
+  }
+  .rpt-ms-val {
+    font-size: 18px;
+    font-weight: 800;
+    color: #0C1E35;
+  }
+  .rpt-ms-delta {
+    font-size: 10px;
+    font-weight: 600;
+    margin-top: 3px;
+  }
+  .rpt-ms-delta.up { color: #059669; }
+  .rpt-ms-delta.down { color: #DC2626; }
+  .rpt-ms-placeholder {
+    background: #F8FAFC;
+    border: 1.5px dashed #CBD5E1;
+    border-radius: 10px;
+    padding: 18px;
+    text-align: center;
+    color: #94A3B8;
+    font-size: 12px;
+    grid-column: 1 / -1;
+  }
+
+  /* ── Footer ── */
+  .rpt-footer {
+    background: #F8FAFC;
+    border-top: 1px solid #E2E8F0;
+    padding: 14px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .rpt-footer-brand {
+    font-size: 11px;
+    font-weight: 700;
+    color: #94A3B8;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+  }
+  .rpt-footer-date {
+    font-size: 10.5px;
+    color: #CBD5E1;
+  }
+
+  /* ── Preview label (nie v PDF) ── */
+  .preview-label {
+    text-align: center;
+    font-size: 12px;
+    color: #94A3B8;
+    padding: 12px 0 24px;
+    font-family: 'Outfit', sans-serif;
+  }
+  .preview-label strong { color: #0C1E35; }
+</style>
+</head>
+<body>
+
+<div class="preview-label">
+  <strong>NÁVRH</strong> — Mesačný report reprezentanta · nie sú ešte reálne dáta, všetky čísla sú ilustračné
+</div>
+
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="rpt-header">
+    <div class="rpt-header-top">
+      <div>
+        <div class="rpt-brand">Gedeon Richter Slovakia · Potenciál GP</div>
+        <div class="rpt-rep-name">Jana Bohovičová</div>
+        <div class="rpt-rep-region">Región: BAMA · West</div>
+      </div>
+      <div class="rpt-period-badge">
+        <div class="rpt-period-month">Apríl 2026</div>
+        <div class="rpt-period-q">Q2 · 1. mesiac</div>
+      </div>
+    </div>
+
+    <div class="rpt-header-stats">
+      <div class="rpt-hstat">
+        <div class="rpt-hstat-val orange">82%</div>
+        <div class="rpt-hstat-lbl">Plnenie mesiaca</div>
+      </div>
+      <div class="rpt-hstat">
+        <div class="rpt-hstat-val">24</div>
+        <div class="rpt-hstat-lbl">Návštevy celkom</div>
+      </div>
+      <div class="rpt-hstat">
+        <div class="rpt-hstat-val green">68%</div>
+        <div class="rpt-hstat-lbl">Pokrytie golden square</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div class="rpt-body">
+
+    <!-- PLNENIE SUMMARY -->
+    <div>
+      <div class="rpt-section-label">Plnenie plánu — apríl 2026</div>
+      <div class="rpt-plnenie-card">
+        <div class="rpt-plnenie-top">
+          <div class="rpt-plnenie-pct orange">82%</div>
+          <div class="rpt-plnenie-meta">
+            <div class="rpt-plnenie-eur">24 600 €</div>
+            <div class="rpt-plnenie-plan">z plánu 30 000 €</div>
+            <div style="font-size:9.5px;color:#64A4D8;margin-top:3px">Q2 plán 90 000 € · 33% kvartálu</div>
+          </div>
+        </div>
+        <div class="rpt-main-bar-wrap">
+          <div class="rpt-main-bar-fill orange" style="width:82%"></div>
+        </div>
+        <div class="rpt-predikcia-row">
+          <span>📈 Predikcia konca Q2 pri tomto tempe:</span>
+          <span class="rpt-predikcia-val">79%</span>
+          <span style="color:#64748B;font-size:11px">(≈ 71 100 € z 90 000 €)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- NÁVŠTEVY LEKÁROV -->
+    <div>
+      <div class="rpt-section-label">Návštevy lekárov — apríl 2026</div>
+      <div class="rpt-visits-grid">
+        <div class="rpt-visit-card">
+          <div class="rpt-visit-big">24</div>
+          <div class="rpt-visit-lbl">Návštev celkom</div>
+        </div>
+        <div class="rpt-gs-card" style="display:flex;flex-direction:column;justify-content:center">
+          <div style="font-size:11px;font-weight:700;color:#3B82F6;margin-bottom:2px">Golden square</div>
+          <div class="rpt-gs-big">68%</div>
+          <div class="rpt-gs-lbl">pokrytie A1 / A2 / B1 / B2</div>
+          <div class="rpt-gs-sub">21 z 31 prioritných lekárov</div>
+        </div>
+      </div>
+      <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:14px 16px;margin-top:10px">
+        <div style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Navštívení per segment</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:10px;font-weight:700;color:#7C3AED;width:58px;flex-shrink:0">Platinum</span>
+            <div style="flex:1;background:#E2E8F0;border-radius:3px;height:6px;overflow:hidden"><div style="height:100%;border-radius:3px;background:#7C3AED;width:82%"></div></div>
+            <span style="font-size:10px;font-weight:600;color:#0C1E35;width:36px;text-align:right;flex-shrink:0">14/17</span>
+            <span style="font-size:10px;font-weight:700;color:#7C3AED;width:32px;text-align:right;flex-shrink:0">82%</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:10px;font-weight:700;color:#D97706;width:58px;flex-shrink:0">Gold</span>
+            <div style="flex:1;background:#E2E8F0;border-radius:3px;height:6px;overflow:hidden"><div style="height:100%;border-radius:3px;background:#D97706;width:79%"></div></div>
+            <span style="font-size:10px;font-weight:600;color:#0C1E35;width:36px;text-align:right;flex-shrink:0">11/14</span>
+            <span style="font-size:10px;font-weight:700;color:#D97706;width:32px;text-align:right;flex-shrink:0">79%</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:10px;font-weight:700;color:#64748B;width:58px;flex-shrink:0">Silver 1</span>
+            <div style="flex:1;background:#E2E8F0;border-radius:3px;height:6px;overflow:hidden"><div style="height:100%;border-radius:3px;background:#64748B;width:45%"></div></div>
+            <span style="font-size:10px;font-weight:600;color:#0C1E35;width:36px;text-align:right;flex-shrink:0">5/11</span>
+            <span style="font-size:10px;color:#94A3B8;width:32px;text-align:right;flex-shrink:0">45%</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:10px;font-weight:700;color:#94A3B8;width:58px;flex-shrink:0">Silver 2</span>
+            <div style="flex:1;background:#E2E8F0;border-radius:3px;height:6px;overflow:hidden"><div style="height:100%;border-radius:3px;background:#94A3B8;width:22%"></div></div>
+            <span style="font-size:10px;font-weight:600;color:#0C1E35;width:36px;text-align:right;flex-shrink:0">2/9</span>
+            <span style="font-size:10px;color:#94A3B8;width:32px;text-align:right;flex-shrink:0">22%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRODUKTY -->
+    <div>
+      <div class="rpt-section-label">Plnenie per produkt</div>
+
+      <!-- AFLAMIL FAMILY PRAVIDLO — vždy zobrazené -->
+      <div style="background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:12px;padding:12px 14px;margin-bottom:10px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#64748B;margin-bottom:10px">Aflamil — pravidlo plánu</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+
+          <!-- Scenár: MS neklesne → krém pomôže -->
+          <div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:10px;padding:10px 12px">
+            <div style="font-size:9px;font-weight:700;color:#1D4ED8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">✓ MS neklesne</div>
+            <div style="font-size:10px;color:#1E40AF;margin-bottom:8px;line-height:1.4">MS tbl+sáčky ≥ Q predtým</div>
+            <div style="font-size:11px;font-weight:700;color:#0C1E35;margin-bottom:2px">Krém ti pomáha</div>
+            <div style="font-size:9.5px;color:#3B82F6;line-height:1.4">Predaje krému sa ti <strong>zarátajú do plnenia plánu za produkt Aflamil</strong></div>
+            <div style="margin-top:8px;padding-top:8px;border-top:1px solid #BFDBFE">
+              <div style="font-size:9px;color:#64748B;margin-bottom:4px">Príklad plnenia plánu za Aflamil (krém + tbl+sáčky):</div>
+              <div style="font-size:20px;font-weight:800;color:#059669">92%</div>
+            </div>
+          </div>
+
+          <!-- Scenár: MS klesne → krém sa nezaráta -->
+          <div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:10px;padding:10px 12px">
+            <div style="font-size:9px;font-weight:700;color:#C2410C;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">⚠ MS klesne</div>
+            <div style="font-size:10px;color:#C2410C;margin-bottom:8px;line-height:1.4">MS tbl+sáčky &lt; Q predtým</div>
+            <div style="font-size:11px;font-weight:700;color:#0C1E35;margin-bottom:2px">Krém sa nezaráta</div>
+            <div style="font-size:9.5px;color:#EA580C;line-height:1.4">Predaje krému sa <strong>nepočítajú do plnenia plánu za produkt Aflamil</strong> — ráta sa len to čo si predal tbl+sáčky</div>
+            <div style="margin-top:8px;padding-top:8px;border-top:1px solid #FED7AA">
+              <div style="font-size:9px;color:#64748B;margin-bottom:4px">Plnenie Aflamil (len tbl+sáčky):</div>
+              <div style="font-size:20px;font-weight:800;color:#D97706;margin-bottom:8px">86%</div>
+              <div style="font-size:9px;color:#64748B;margin-bottom:4px">Krém — vlastný plán (7 800 € z 7 500 €):</div>
+              <div style="font-size:20px;font-weight:800;color:#059669">104%</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="rpt-prod-grid">
+
+        <div class="rpt-prod-card">
+          <div class="rpt-prod-header">
+            <div class="rpt-prod-name">
+              <div class="rpt-prod-dot" style="background:#8B5CF6"></div>
+              Suprax
+            </div>
+            <div style="text-align:right">
+              <div class="rpt-prod-pct green">104%</div>
+              <div style="font-size:9px;color:#059669;margin-top:1px">↑ vs. Q1</div>
+            </div>
+          </div>
+          <div class="rpt-prod-bar-wrap">
+            <div class="rpt-prod-bar-fill" style="width:100%;background:linear-gradient(90deg,#059669,#34D399)"></div>
+          </div>
+          <div class="rpt-prod-numbers">
+            <strong>7 280 €</strong> z 7 000 €
+          </div>
+          <div class="rpt-prod-plan-note">Q2 plán 21 000 € · 33% kvartálu</div>
+        </div>
+
+        <div class="rpt-prod-card">
+          <div class="rpt-prod-header">
+            <div class="rpt-prod-name">
+              <div class="rpt-prod-dot" style="background:#10B981"></div>
+              Vidonorm
+            </div>
+            <div style="text-align:right">
+              <div class="rpt-prod-pct red">61%</div>
+              <div style="font-size:9px;color:#DC2626;margin-top:1px">↓ vs. Q1</div>
+            </div>
+          </div>
+          <div class="rpt-prod-bar-wrap">
+            <div class="rpt-prod-bar-fill" style="width:61%;background:linear-gradient(90deg,#DC2626,#F87171)"></div>
+          </div>
+          <div class="rpt-prod-numbers">
+            <strong>3 660 €</strong> z 6 000 €
+          </div>
+          <div class="rpt-prod-plan-note">Q2 plán 18 000 € · 33% kvartálu</div>
+        </div>
+
+        <div class="rpt-prod-card">
+          <div class="rpt-prod-header">
+            <div class="rpt-prod-name">
+              <div class="rpt-prod-dot" style="background:#F59E0B"></div>
+              Cavinton Forte
+            </div>
+            <div style="text-align:right">
+              <div class="rpt-prod-pct orange">85%</div>
+              <div style="font-size:9px;color:#059669;margin-top:1px">↑ vs. Q1</div>
+            </div>
+          </div>
+          <div class="rpt-prod-bar-wrap">
+            <div class="rpt-prod-bar-fill" style="width:85%;background:linear-gradient(90deg,#D97706,#FBBF24)"></div>
+          </div>
+          <div class="rpt-prod-numbers">
+            <strong>5 950 €</strong> z 7 000 €
+          </div>
+          <div class="rpt-prod-plan-note">Q2 plán 21 000 € · 33% kvartálu</div>
+        </div>
+
+        <div class="rpt-prod-card">
+          <div class="rpt-prod-header">
+            <div class="rpt-prod-name">
+              <div class="rpt-prod-dot" style="background:#EC4899"></div>
+              Junod
+            </div>
+            <div style="text-align:right">
+              <div class="rpt-prod-pct orange">91%</div>
+              <div style="font-size:9px;color:#94A3B8;margin-top:1px">→ vs. Q1</div>
+            </div>
+          </div>
+          <div class="rpt-prod-bar-wrap">
+            <div class="rpt-prod-bar-fill" style="width:91%;background:linear-gradient(90deg,#D97706,#FBBF24)"></div>
+          </div>
+          <div class="rpt-prod-numbers">
+            <strong>2 730 €</strong> z 3 000 €
+          </div>
+          <div class="rpt-prod-plan-note">Q2 plán 9 000 € · 33% kvartálu</div>
+        </div>
+
+        <div class="rpt-prod-card" style="grid-column: 1 / -1">
+          <div class="rpt-prod-header">
+            <div class="rpt-prod-name">
+              <div class="rpt-prod-dot" style="background:#14B8A6"></div>
+              Kogavant
+            </div>
+            <div style="text-align:right">
+              <div class="rpt-prod-pct red">54%</div>
+              <div style="font-size:9px;color:#DC2626;margin-top:1px">↓ vs. Q1</div>
+            </div>
+          </div>
+          <div class="rpt-prod-bar-wrap">
+            <div class="rpt-prod-bar-fill" style="width:54%;background:linear-gradient(90deg,#DC2626,#F87171)"></div>
+          </div>
+          <div class="rpt-prod-numbers">
+            <strong>1 620 €</strong> z 3 000 €
+          </div>
+          <div class="rpt-prod-plan-note">Q2 plán 9 000 € · 33% kvartálu</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- LEKÁRI V DATABÁZE -->
+    <div>
+      <div class="rpt-section-label">Lekári v databáze — apríl 2026</div>
+      <div class="rpt-visits-grid">
+
+        <div class="rpt-visit-card">
+          <div class="rpt-visit-big">87</div>
+          <div class="rpt-visit-lbl">VŠL so zisteným potenciálom</div>
+          <div class="rpt-seg-rows">
+            <div class="rpt-seg-row">
+              <span class="rpt-seg-label" style="font-size:10px;color:#7C3AED;width:52px">Platinum</span>
+              <div class="rpt-seg-bar-wrap"><div class="rpt-seg-bar-fill" style="width:85%;background:#7C3AED"></div></div>
+              <span class="rpt-seg-val">17</span>
+            </div>
+            <div class="rpt-seg-row">
+              <span class="rpt-seg-label" style="font-size:10px;color:#D97706;width:52px">Gold</span>
+              <div class="rpt-seg-bar-wrap"><div class="rpt-seg-bar-fill" style="width:70%;background:#D97706"></div></div>
+              <span class="rpt-seg-val">14</span>
+            </div>
+            <div class="rpt-seg-row">
+              <span class="rpt-seg-label" style="font-size:10px;color:#64748B;width:52px">Silver 1</span>
+              <div class="rpt-seg-bar-wrap"><div class="rpt-seg-bar-fill" style="width:55%;background:#64748B"></div></div>
+              <span class="rpt-seg-val">11</span>
+            </div>
+            <div class="rpt-seg-row">
+              <span class="rpt-seg-label" style="font-size:10px;color:#94A3B8;width:52px">Silver 2</span>
+              <div class="rpt-seg-bar-wrap"><div class="rpt-seg-bar-fill" style="width:45%;background:#94A3B8"></div></div>
+              <span class="rpt-seg-val">9</span>
+            </div>
+            <div class="rpt-seg-row">
+              <span class="rpt-seg-label" style="font-size:10px;color:#CBD5E1;width:52px">ostatní</span>
+              <div class="rpt-seg-bar-wrap"><div class="rpt-seg-bar-fill" style="width:90%;background:#CBD5E1"></div></div>
+              <span class="rpt-seg-val" style="color:#CBD5E1">36</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="rpt-gs-card" style="display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:6px">
+          <div style="font-size:11px;font-weight:700;color:#3B82F6;text-transform:uppercase;letter-spacing:.06em">Rebríček — nahodení lekári</div>
+          <div style="font-size:56px;font-weight:800;color:#1D4ED8;line-height:1">#3</div>
+          <div style="font-size:12px;color:#3B82F6;font-weight:600">z 12 reprezentantov</div>
+          <div style="width:100%;border-top:1px solid #BFDBFE;margin:8px 0"></div>
+          <div style="font-size:10px;color:#64748B">Pred tebou: <strong style="color:#0C1E35">M. Horváth (102)</strong></div>
+          <div style="font-size:10px;color:#64748B">Ty: <strong style="color:#1D4ED8">J. Bohovičová (87)</strong></div>
+          <div style="font-size:10px;color:#64748B">Za tebou: <strong style="color:#0C1E35">P. Kováč (81)</strong></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- TRHOVÝ PODIEL -->
+    <div>
+      <div class="rpt-section-label">Trhový podiel — región BAMA · marec 2026</div>
+      <div class="rpt-ms-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px">
+        <div class="rpt-ms-card">
+          <div class="rpt-ms-prod">Aflamil krém</div>
+          <div class="rpt-ms-val">14.2%</div>
+          <div class="rpt-ms-delta up">↑ +1.1%</div>
+        </div>
+        <div class="rpt-ms-card">
+          <div class="rpt-ms-prod">Aflamil tbl</div>
+          <div class="rpt-ms-val">8.7%</div>
+          <div class="rpt-ms-delta up">↑ +0.3%</div>
+        </div>
+        <div class="rpt-ms-card">
+          <div class="rpt-ms-prod">Suprax</div>
+          <div class="rpt-ms-val">22.8%</div>
+          <div class="rpt-ms-delta down">↓ −0.4%</div>
+        </div>
+        <div class="rpt-ms-card">
+          <div class="rpt-ms-prod">Vidonorm</div>
+          <div class="rpt-ms-val">9.1%</div>
+          <div class="rpt-ms-delta up">↑ +0.7%</div>
+        </div>
+        <div class="rpt-ms-card">
+          <div class="rpt-ms-prod">Cavinton</div>
+          <div class="rpt-ms-val">18.5%</div>
+          <div class="rpt-ms-delta down">↓ −0.2%</div>
+        </div>
+        <div class="rpt-ms-card">
+          <div class="rpt-ms-prod">Junod</div>
+          <div class="rpt-ms-val">11.3%</div>
+          <div class="rpt-ms-delta up">↑ +0.5%</div>
+        </div>
+        <div class="rpt-ms-card">
+          <div class="rpt-ms-prod">Kogavant</div>
+          <div class="rpt-ms-val">6.4%</div>
+          <div class="rpt-ms-delta down">↓ −0.1%</div>
+        </div>
+      </div>
+
+      <!-- KONKURENCIA -->
+      <div style="font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#94A3B8;margin-bottom:8px">Pohyby konkurencie</div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:9px 12px;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:7px;height:7px;border-radius:50%;background:#3B82F6;flex-shrink:0"></div><div><div style="font-size:10.5px;font-weight:700;color:#0C1E35">Aflamil krém</div><div style="font-size:9.5px;color:#94A3B8;margin-top:1px">vs <span style="color:#64748B;font-weight:600">FLECTOR</span></div></div></div>
+          <div style="flex-shrink:0;text-align:right;padding-left:10px"><div style="font-size:12px;font-weight:700;color:#0C1E35">17.8%</div><div style="font-size:10px;font-weight:700;color:#DC2626;white-space:nowrap">↑ +1.2%</div></div>
+        </div>
+        <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:9px 12px;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:7px;height:7px;border-radius:50%;background:#60A5FA;flex-shrink:0"></div><div><div style="font-size:10.5px;font-weight:700;color:#0C1E35">Aflamil tbl</div><div style="font-size:9.5px;color:#94A3B8;margin-top:1px">vs <span style="color:#64748B;font-weight:600">IBALGIN DUO</span></div></div></div>
+          <div style="flex-shrink:0;text-align:right;padding-left:10px"><div style="font-size:12px;font-weight:700;color:#0C1E35">14.2%</div><div style="font-size:10px;font-weight:700;color:#DC2626;white-space:nowrap">↑ +0.8%</div></div>
+        </div>
+        <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:9px 12px;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:7px;height:7px;border-radius:50%;background:#8B5CF6;flex-shrink:0"></div><div><div style="font-size:10.5px;font-weight:700;color:#0C1E35">Suprax</div><div style="font-size:9.5px;color:#94A3B8;margin-top:1px">vs <span style="color:#64748B;font-weight:600">ZINNAT</span></div></div></div>
+          <div style="flex-shrink:0;text-align:right;padding-left:10px"><div style="font-size:12px;font-weight:700;color:#0C1E35">15.2%</div><div style="font-size:10px;font-weight:700;color:#059669;white-space:nowrap">↓ −0.5%</div></div>
+        </div>
+        <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:9px 12px;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:7px;height:7px;border-radius:50%;background:#10B981;flex-shrink:0"></div><div><div style="font-size:10.5px;font-weight:700;color:#0C1E35">Vidonorm</div><div style="font-size:9.5px;color:#94A3B8;margin-top:1px">vs <span style="color:#64748B;font-weight:600">TANAKAN</span></div></div></div>
+          <div style="flex-shrink:0;text-align:right;padding-left:10px"><div style="font-size:12px;font-weight:700;color:#0C1E35">8.8%</div><div style="font-size:10px;font-weight:700;color:#94A3B8;white-space:nowrap">→ 0.0%</div></div>
+        </div>
+        <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:9px 12px;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:7px;height:7px;border-radius:50%;background:#14B8A6;flex-shrink:0"></div><div><div style="font-size:10.5px;font-weight:700;color:#0C1E35">Kogavant</div><div style="font-size:9.5px;color:#94A3B8;margin-top:1px">vs <span style="color:#64748B;font-weight:600">MEMANTINE gen.</span></div></div></div>
+          <div style="flex-shrink:0;text-align:right;padding-left:10px"><div style="font-size:12px;font-weight:700;color:#0C1E35">24.1%</div><div style="font-size:10px;font-weight:700;color:#DC2626;white-space:nowrap">↑ +2.3%</div></div>
+        </div>
+      </div>
+      <div style="font-size:9px;color:#CBD5E1;margin-top:8px">↑ červená = konkurent rastie (hrozba) · ↓ zelená = konkurent klesá</div>
+    </div>
+
+  </div><!-- /rpt-body -->
+
+  <!-- FOOTER -->
+  <div class="rpt-footer">
+    <div class="rpt-footer-brand">Gedeon Richter Slovakia s.r.o.</div>
+    <div class="rpt-footer-date">Vygenerované: 2. 5. 2026</div>
+  </div>
+
+</div><!-- /page -->
+
+
+</body>
+</html>

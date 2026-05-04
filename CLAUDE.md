@@ -26,21 +26,65 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.2.57** (na `main` vetve) — obsahuje:
-- Pull-to-refresh (blokovaný pri otvorených overlayoch)
-- Rebríček (s iOS/Android fixom)
-- Dynamické načítavanie AM West/East zo Sheets
-- `pingLogin` / `posledny_login` tracking
-- Manažéri v admin móde
-- Scroll pill pod kartou lekára
-- Fix duplicitného formulára (`initTutorial` fix)
-- Funkčné zatváracie tlačidlá
-- Retry + batched loading reprezentantov
-- `getAllHistory` endpoint
+**2.13.59** (na `main` aj `test` vetve) — obsahuje všetko z predchádzajúcich verzií plus reporty, oprava % plnenia, Aflamil/Krém pravidlo plánu, predikcia per produkt a funkčný fallback trhového podielu na predchádzajúci Q.
 
-## Verzia na `test` vetve
+### v2.13.59 — Trhový podiel Q2 fallback — finálna oprava (3 bugy)
 
-**2.10.2** — obsahuje všetko z predchádzajúcich verzií plus milestone celebrácia, PWA Android manifest a back button handling.
+Oprava série bugov v automatickom fallbacku na predchádzajúci Q keď IQVIA dáta pre aktuálny Q ešte nie sú nahrané:
+
+**Bug 1 — `pharmaKvartalPrev` zero-padding:**
+- `pharmaKvartalPrev('2602')` vracal `'261'` namiesto `'2601'` — chýbal `'0'` pred číslom kvartálu
+- Oprava: `return (yy < 10 ? '0'+yy : ''+yy) + (qq < 10 ? '0'+qq : ''+qq)`
+- Dôsledok bugu: server dostal nesprávny kvartal kód → vrátil prázdne `okresy` → "Žiadne dáta po okresoch"
+
+**Bug 2 — filter reálnych dát podľa mesiacov aktuálneho Q:**
+- `summArr` obsahuje historické dáta (posledných 12 mesiacov) bez filtrovania podľa kvartálu
+- Predchádzajúci check `hasRealSummData` kontroloval všetky riadky vrátane starých Q1 mesiacov → vrátil `true` → fallback sa nespustil
+- Oprava: `summArr.some()` teraz kontroluje iba riadky kde `months.indexOf(s.mesiac) >= 0` (len mesiace aktuálneho Q)
+
+**Bug 3 — fallback v `pharmaRender` namiesto len `loadPharmaData`:**
+- Pôvodný fallback v `loadPharmaData` bol podmienený na `PHARMA_STATE.activeCode === code` — pri preloade po prihlásení (overlay zavretý) sa nespustil, prázdne Q2 dáta sa cachovali
+- Doplnený fallback priamo v `pharmaRender` zachytí všetky prípady vrátane cache hitov
+
+**Správanie po oprave:**
+- Keď Q2 IQVIA dáta nie sú nahrané, overlay automaticky zobrazí Q1 dáta (MS hodnoty aj okresy)
+- Keď prídu Q2 dáta (napr. apríl '2604' s reálnymi hodnotami), `hasRealSummData = true` → Q2 sa zobrazí priamo bez fallbacku
+- Žiadna zmena kódu nie je potrebná pri nahrávaní nových dát
+
+### v2.13.54–56 — Trhový podiel — prvé pokusy o fallback (nahradené v2.13.59)
+
+Pomocná funkcia `pharmaKvartalPrev(kvartal)` pridaná v v2.13.54 — vypočíta kód predchádzajúceho kvartálu (`'2602'` → `'2601'`, `'2601'` → `'2504'`). Fallback logika bola postupne dopĺňaná v v2.13.54 (ok:true+empty), v2.13.55 (ok:false), v2.13.56 (pharmaRender level) — finálna oprava je v2.13.59.
+
+### v2.13.53 — Predikcia per produkt v manažérskom Plnení
+
+Produktové karty v sumári Slovensko/West/East majú nový layout:
+- **Hore:** názov produktu vľavo, aktuálne % plnenia + šípka vpravo
+- **Dole:** `predikcia XX,XX%` sivým písmom (iba pre aktuálny Q, iba ak sú dokončené mesiace)
+
+Predikcia sa počíta cez `plnenieCalcPredikciaSummary(p.planEUR, p.predajeEUR, q, year)` — rovnaká logika ako celkový Slovensko sumár.
+
+### v2.13.52 — Oprava % plnenia v reportoch + Aflamil/Krém pravidlo plánu
+
+#### Oprava nesúladu % plnenia (rptPlnenieForRep)
+- `rptPlnenieForRep()` kompletne prepísaná aby zrkadlila `plnenieBuildAggregates` presne:
+  - Používa `planProducts` (nie `Object.keys(plan[username])`) pre správny zoznam produktov
+  - Používa `predaje[rep].total` (nie súčet `byMonth`) ako autoritatívnu hodnotu predajov
+  - Zahŕňa do súčtu iba produkty kde `plan > 0` — eliminovalo nesúlad napr. 35% vs 29.84%
+- `rptFmtPct(val)` — nový helper: všetky % hodnoty v reportoch na 2 desatinné miesta (`"29.84%"` nie `"30%"`)
+- Oprava `ReferenceError: cumActual` — premenná bola zmazaná ale stále referencovaná → záložky reprezentantov v hub page ticho zmizali; opravené na `pd.predaje`
+
+#### Aflamil / Krém — Pravidlo plánu (rep report)
+Nová sekcia v reporte každého reprezentanta (zobrazí sa iba ak má v pláne oba produkty `aflamil_tablety_sacky` aj `aflamil_kr` s plánom > 0):
+
+**Ľavá karta — ✓ MS NEKLESNE** (modrá):
+- "Krém ti pomáha" — predaje krému sa zarátajú do plnenia Aflamil
+- Zobrazuje kombinované % = `(tbl_predaje + kr_predaje) / (tbl_plan + kr_plan)`
+
+**Pravá karta — ⚠ MS KLESNE** (jantárová):
+- "Krém sa nezaráta" — každý produkt má vlastný plán
+- Zobrazuje `tbl+sáčky %` a `krém %` osobitne pod sebou, vrátane EUR hodnôt krému
+
+Sekcia je informatívna — ukazuje oba scenáre vždy, nie len ten aktuálny.
 
 ### v2.10.2 — Android back button pre PWA standalone mód
 

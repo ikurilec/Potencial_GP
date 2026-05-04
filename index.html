@@ -14,7 +14,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Potenci&#225;l v&#353;eobecn&#233;ho lek&#225;ra</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@700&family=Cormorant+Garamond:ital@1&display=swap');
   *{box-sizing:border-box;margin:0;padding:0}
   button,a,input,select,textarea,[role="button"]{touch-action:manipulation}
   html,body{background:#EAECF2;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Arial,sans-serif;color:#1A2A3A}
@@ -557,11 +557,12 @@
   /* ── LOGIN ── */
   .login-screen{display:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:4000;flex-direction:column;align-items:center;background:#EAECF2;overflow-y:auto}
   .login-screen.show{display:flex}
-  .login-hero{background:#0C1E35;width:100%;padding:52px 28px 80px;position:relative;overflow:hidden;text-align:center;flex-shrink:0}
+  .login-hero{background:#0C1E35;width:100%;padding:44px 28px 80px;position:relative;overflow:hidden;text-align:center;flex-shrink:0}
   .login-hero::before{content:'';position:absolute;top:-80px;right:-60px;width:300px;height:300px;border-radius:50%;background:rgba(255,255,255,.04)}
   .login-hero::after{content:'';position:absolute;bottom:-40px;left:-40px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.03)}
-  .login-icon{width:68px;height:68px;background:linear-gradient(135deg,#1D4ED8,#3B82F6);border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px;box-shadow:0 8px 28px rgba(37,99,235,.4);position:relative;z-index:1}
-  .login-title{font-size:26px;font-weight:800;color:#fff;letter-spacing:-.03em;margin-bottom:4px;position:relative;z-index:1;font-family:-apple-system,BlinkMacSystemFont,sans-serif}
+  .login-kanji{font-size:76px;color:rgba(255,255,255,.88);margin:0 auto 0px;position:relative;z-index:1;line-height:1;font-weight:400;text-shadow:0 6px 32px rgba(59,130,246,.3);letter-spacing:.04em}
+  .login-title{font-size:44px;font-weight:400;font-style:italic;color:#fff;letter-spacing:.16em;margin-bottom:12px;position:relative;z-index:1;font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif}
+  .login-motto{font-size:11px;color:rgba(255,255,255,.42);position:relative;z-index:1;letter-spacing:.025em;line-height:1.6;padding:0 16px;font-style:italic}
   .login-subtitle{font-size:12px;color:#5B8DB8;font-weight:500;position:relative;z-index:1}
   .login-dots{display:flex;gap:8px;justify-content:center;margin-top:14px;position:relative;z-index:1}
   .login-dot{display:flex;align-items:center;gap:4px;font-size:10px;color:rgba(255,255,255,.45);background:rgba(255,255,255,.07);border-radius:20px;padding:3px 8px}
@@ -1200,6 +1201,14 @@
         <button type="button" class="pl-notif-action" id="pl-notif-status-pharma" onclick="plnenieSetNotif('pharma')">Odoslať</button>
       </div>
     </div>
+    <!-- PDF Report tlačidlo — iba pre admin rolu -->
+    <div id="pl-rpt-btn-wrap" style="display:none;padding:0 0 24px;margin-top:0">
+      <div class="pl-notif-btn" onclick="downloadAllReportsPdf()" style="cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation">
+        <span class="pl-notif-icon">📄</span>
+        <span class="pl-notif-lbl">Stiahnuť mesačné reporty (PDF)</span>
+        <button type="button" class="pl-notif-action" id="mgr-subtab-reporty" onclick="event.stopPropagation();downloadAllReportsPdf()">Otvoriť</button>
+      </div>
+    </div>
     </div>
   </div>
 
@@ -1815,7 +1824,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.12.0';
+var APP_VERSION = '2.13.59';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -4981,7 +4990,7 @@ var MGR_ROLE_CFG = {
 
 var MGR_SEG_LBL = { top:'Platinum', udrzat:'Gold', zvysit3:'Silver A', zvysit:'Silver B', frekvencia:'Bronze', vyradit:'Inactive' };
 
-var MGR_STATE = { role:null, sort:'activity', reps:{}, currentRep:null, lastLogins:{}, dynamicRegion:null, managers:[] };
+var MGR_STATE = { role:null, sort:'activity', reps:{}, currentRep:null, lastLogins:{}, dynamicRegion:null, managers:[], repsLoaded:false };
 
 // Explicitný whitelist manažérskych účtov (zodpovedá login sheetu)
 // Kľúč = username, hodnota = manažérska rola v tejto appke
@@ -5051,6 +5060,10 @@ function mgrEnter(roleKey){
   // Skroluj na vrch
   window.scrollTo(0, 0);
 
+  // Tlačidlo PDF Reporty — skryté kým sa dáta nenačítajú (zobrazí sa v plnenieRenderSummary)
+  var rptWrap = document.getElementById('pl-rpt-btn-wrap');
+  if (rptWrap) rptWrap.style.display = 'none';
+
   mgrLoadData();
   // Plnenie je default tab — načítaj všetky kvartály hneď pri vstupe
   plnenieLoadAllQuarters();
@@ -5114,6 +5127,7 @@ function mgrLoadReps(repList){
     repList.forEach(function(username) {
       MGR_STATE.reps[username] = { visits: [], error: false };
     });
+    MGR_STATE.repsLoaded = true;
     mgrRenderList();
     return;
   }
@@ -5138,12 +5152,16 @@ function mgrLoadReps(repList){
         var rows = allHist[username] || [];
         MGR_STATE.reps[username] = { visits: mgrNormalizeVisits(rows), error: false };
       });
+      MGR_STATE.repsLoaded = true;
       mgrRenderList();
     } else {
       // Fallback — načítaj postupne po jednom
       var idx = 0;
       function loadNext(){
-        if(idx >= repList.length) return;
+        if(idx >= repList.length){
+          MGR_STATE.repsLoaded = true;
+          return;
+        }
         var username = repList[idx++];
         mgrFetchWithRetry(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username)))
           .then(function(rows){
@@ -7499,6 +7517,9 @@ function plnenieRenderSummaryEmpty() {
   if (west) { west.textContent = '—'; west.className = 'pl-region-val pl-none'; }
   var east = document.getElementById('pl-region-east');
   if (east) { east.textContent = '—'; east.className = 'pl-region-val pl-none'; }
+  // Skryť report tlačidlo kým dáta nie sú načítané
+  var rptW = document.getElementById('pl-rpt-btn-wrap');
+  if (rptW) rptW.style.display = 'none';
 }
 
 function plnenieRenderSummary() {
@@ -7542,12 +7563,19 @@ function plnenieRenderSummary() {
       prods.innerHTML = agg.products.map(function(p){
         var safeKey = p.key.replace(/'/g, "\\'");
         var safeLbl = p.label.replace(/'/g, "\\'");
-        return '<div class="pl-sum-prod pl-sum-prod-c" onclick="openProdSheet(\'' + safeKey + '\',\'' + safeLbl + '\')">' +
-               '<span class="pl-sum-prod-name">' + mgrEscape(p.label) + '</span>' +
-               '<div style="display:flex;align-items:center;gap:2px;flex-shrink:0">' +
-                 '<strong class="' + plnenieColorClass(p.pct) + '" data-pct="' + (isNaN(p.pct) ? '' : p.pct) + '">0,00%</strong>' +
-                 '<span class="pl-sum-prod-chev">›</span>' +
+        var predPct = plnenieCalcPredikciaSummary(p.planEUR, p.predajeEUR, PL_STATE.q, PL_STATE.year);
+        var predHtml = predPct !== null
+          ? '<span style="font-size:9px;color:#94A3B8;font-weight:500;white-space:nowrap">predikcia ' + plnenieFormatPct(predPct) + '</span>'
+          : '';
+        return '<div class="pl-sum-prod pl-sum-prod-c" style="flex-direction:column;align-items:stretch;gap:2px" onclick="openProdSheet(\'' + safeKey + '\',\'' + safeLbl + '\')">' +
+               '<div style="display:flex;align-items:center;justify-content:space-between;gap:4px">' +
+                 '<span class="pl-sum-prod-name" style="-webkit-line-clamp:unset;overflow:visible">' + mgrEscape(p.label) + '</span>' +
+                 '<div style="display:flex;align-items:center;gap:2px;flex-shrink:0">' +
+                   '<strong class="' + plnenieColorClass(p.pct) + '" data-pct="' + (isNaN(p.pct) ? '' : p.pct) + '">0,00%</strong>' +
+                   '<span class="pl-sum-prod-chev">›</span>' +
+                 '</div>' +
                '</div>' +
+               predHtml +
                '</div>';
       }).join('');
       Array.from(prods.querySelectorAll('strong[data-pct]')).forEach(function(el, i) {
@@ -7557,6 +7585,9 @@ function plnenieRenderSummary() {
       });
     }
   }
+  // Report tlačidlo — ukáž po načítaní dát, iba pre admin
+  var rptW = document.getElementById('pl-rpt-btn-wrap');
+  if (rptW) rptW.style.display = MGR_STATE.role === 'admin' ? '' : 'none';
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -8939,6 +8970,13 @@ function pharmaKvartalCode(year, q) {
   return String(year).slice(2) + (q < 10 ? '0' + q : String(q));
 }
 
+function pharmaKvartalPrev(kvartal) {
+  var yy = parseInt(kvartal.slice(0, 2), 10);
+  var qq = parseInt(kvartal.slice(2), 10);
+  if (qq === 1) { yy -= 1; qq = 4; } else { qq -= 1; }
+  return (yy < 10 ? '0' + yy : '' + yy) + (qq < 10 ? '0' + qq : '' + qq);
+}
+
 function pharmaQuarterMonths(kvartal) {
   var yy   = kvartal.slice(0, 2);
   var q    = parseInt(kvartal.slice(2), 10);
@@ -9050,6 +9088,23 @@ function loadPharmaData(code, oblast, kvartal) {
     .then(function(resp) {
       delete PHARMA_STATE.loading[cacheKey];
       if (resp.ok) {
+        var hasData = (resp.summary && resp.summary.length > 0) || (resp.okresy && resp.okresy.length > 0);
+        if (!hasData) {
+          // Dáta pre tento Q ešte nie sú (IQVIA nenahrané) — skús predchádzajúci Q
+          if (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal) {
+            var prevKv = pharmaKvartalPrev(kvartal);
+            var prevQNum = parseInt(prevKv.slice(2), 10);
+            var prevYear = 2000 + parseInt(prevKv.slice(0, 2), 10);
+            PHARMA_STATE.kvartal = prevKv;
+            var titleEl = document.getElementById('pharma-ms-title');
+            if (titleEl) {
+              var parts = titleEl.textContent.split(' · ');
+              if (parts.length >= 2) { parts[1] = 'Q' + prevQNum + ' ' + prevYear; titleEl.textContent = parts.join(' · '); }
+            }
+            loadPharmaData(code, oblast, prevKv);
+          }
+          return; // neulož prázdny cache — pri ďalšom otvorení skúsi znova
+        }
         PHARMA_STATE.cache[cacheKey] = resp;
         if (PHARMA_STATE.activeCode === code &&
             PHARMA_STATE.oblast     === oblast &&
@@ -9059,9 +9114,18 @@ function loadPharmaData(code, oblast, kvartal) {
         // Ak je otvorený product drill-down sheet, updatni MS bunky
         if (typeof prodSheetUpdateMsCells === 'function') prodSheetUpdateMsCells();
       } else {
+        // ok:false — skús tiež predchádzajúci Q (môže ísť o chýbajúce Q2 dáta)
         if (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal) {
-          var bodyEl = document.getElementById('pharma-ms-body');
-          if (bodyEl) bodyEl.innerHTML = '<div class="pharma-ms-loading">Dáta nie sú dostupné pre oblasť ' + mgrEscape(oblast) + '.</div>';
+          var prevKvF = pharmaKvartalPrev(kvartal);
+          var prevQNumF = parseInt(prevKvF.slice(2), 10);
+          var prevYearF = 2000 + parseInt(prevKvF.slice(0, 2), 10);
+          PHARMA_STATE.kvartal = prevKvF;
+          var titleElF = document.getElementById('pharma-ms-title');
+          if (titleElF) {
+            var partsF = titleElF.textContent.split(' · ');
+            if (partsF.length >= 2) { partsF[1] = 'Q' + prevQNumF + ' ' + prevYearF; titleElF.textContent = partsF.join(' · '); }
+          }
+          loadPharmaData(code, oblast, prevKvF);
         }
       }
     })
@@ -9101,7 +9165,7 @@ function loadPharmaGrafData(code, oblast, callback) {
     .then(function(r) { return r.json(); })
     .then(function(resp) {
       delete PHARMA_GRAF_STATE.loading[cacheKey];
-      if (resp.ok && resp.rows && resp.rows.length >= 2) {
+      if (resp.ok && resp.rows && resp.rows.length >= 1) {
         PHARMA_GRAF_STATE.cache[cacheKey] = resp;
         if (callback) callback(resp);
       }
@@ -9770,6 +9834,30 @@ function pharmaRender(code) {
   var months  = pharmaQuarterMonths(PHARMA_STATE.kvartal);
   var summArr = d.summary || [];
   var okresy  = d.okresy  || [];
+
+  // Ak sú dáta prázdne alebo bez reálnych hodnôt pre aktuálny Q (IQVIA nenahrané), prepni na predchádzajúci Q
+  var hasRealSummData = summArr.some(function(s) {
+    if (months.indexOf(s.mesiac) < 0) return false; // len mesiace aktuálneho Q
+    var tv = parseFloat(s.terit_ms); var sv = parseFloat(s.sk_ms);
+    return (!isNaN(tv) && tv > 0) || (!isNaN(sv) && sv > 0);
+  });
+  if (!hasRealSummData && !okresy.length) {
+    var prevKvR = pharmaKvartalPrev(PHARMA_STATE.kvartal);
+    if (prevKvR !== PHARMA_STATE.kvartal) {
+      delete PHARMA_STATE.cache[cacheKey]; // vymaž prázdny cache záznam
+      PHARMA_STATE.kvartal = prevKvR;
+      var prevQNumR = parseInt(prevKvR.slice(2), 10);
+      var prevYearR = 2000 + parseInt(prevKvR.slice(0, 2), 10);
+      var titleElR = document.getElementById('pharma-ms-title');
+      if (titleElR) {
+        var partsR = titleElR.textContent.split(' · ');
+        if (partsR.length >= 2) { partsR[1] = 'Q' + prevQNumR + ' ' + prevYearR; titleElR.textContent = partsR.join(' · '); }
+      }
+      loadPharmaData(code, PHARMA_STATE.oblast, prevKvR);
+      return;
+    }
+  }
+
   var q       = parseInt(PHARMA_STATE.kvartal.slice(2), 10);
   var yy      = PHARMA_STATE.kvartal.slice(0, 2);
 
@@ -9956,7 +10044,6 @@ function preloadAllPharmaData() {
   });
 
   if (document.body.classList.contains('manager-mode')) {
-    // Pre každého reps predloaduj jeho vlastnú oblast — rovnaká logika ako pri rep login
     var seenOblasts = {};
     Object.keys(USERS_LOCAL).forEach(function(username) {
       var oblast = (USERS_LOCAL[username] && USERS_LOCAL[username].region) || '';
@@ -9968,7 +10055,6 @@ function preloadAllPharmaData() {
       });
     });
   } else {
-    // Raw hodnota bez normalizácie — konzistentné so Sheets kľúčmi
     var oblast = (USERS_LOCAL[session.username] && USERS_LOCAL[session.username].region) || session.region || '';
     if (oblast) allCodes.forEach(function(code) {
       loadPharmaData(code, oblast, kvartal);
@@ -10115,6 +10201,1570 @@ function preloadAllPharmaData() {
   }, 1000);
 })();
 
+// ═══════════════════════════════════════════════════════
+// ═══  REPORTY — PDF generovanie (v2.13.1)            ═══
+// ═══════════════════════════════════════════════════════
+
+var RPT_SK_MONTHS = ['','január','február','marec','apríl','máj','jún','júl','august','september','október','november','december'];
+
+function rptPeriod() {
+  var now = new Date();
+  var m = now.getMonth(); // 0-based; in May (4) → last completed = April = month 4
+  var repMonth = m === 0 ? 12 : m;
+  var repYear  = m === 0 ? now.getFullYear() - 1 : now.getFullYear();
+  var q = Math.ceil(repMonth / 3);
+  var qMonth = ((repMonth - 1) % 3) + 1;
+  var lbl = RPT_SK_MONTHS[repMonth];
+  var lblCap = lbl.charAt(0).toUpperCase() + lbl.slice(1);
+  return { month: repMonth, year: repYear, q: q, qMonth: qMonth,
+           label: lbl + ' ' + repYear,
+           labelCap: lblCap + ' ' + repYear };
+}
+
+function rptVisits(username, month, year) {
+  var list = (MGR_STATE.reps[username] && MGR_STATE.reps[username].visits) || [];
+  return list.filter(function(v) {
+    var d = parseLbDatum(v.datum || v.dateKey || '');
+    return d && d.getFullYear() === year && d.getMonth() + 1 === month;
+  });
+}
+
+function rptAllVisits(username) {
+  return (MGR_STATE.reps[username] && MGR_STATE.reps[username].visits) || [];
+}
+
+function rptPlnenieForRep(username, q, month, year) {
+  var qc = PL_STATE.qCache[q];
+  if (!qc || !qc.data) return null;
+  var data = qc.data;
+  var planRep    = data.plan    && data.plan[username];
+  var predajeRep = data.predaje && data.predaje[username];
+  if (!planRep) return null;
+  var byMonth      = (predajeRep && predajeRep.byMonth) || {};
+  var predajeTotal = (predajeRep && predajeRep.total)   || {};
+  var planProducts = data.planProducts || Object.keys(planRep);
+
+  // Q mesiace a WD pozície míľnikov
+  var qMonths = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[q] || [];
+  var totalWD = 0, wdByMonth = {};
+  qMonths.forEach(function(m) { var wd = plnenieWorkingDays(year, m); wdByMonth[m] = wd; totalWD += wd; });
+  var wdPcts = {}, cumWD = 0;
+  qMonths.forEach(function(m) { cumWD += wdByMonth[m]; wdPcts[m] = totalWD > 0 ? Math.round(cumWD / totalWD * 10000) / 100 : 0; });
+
+  // Rovnaká logika ako plnenieBuildAggregates: normalizované kľúče, len plan>0
+  var sortedRawKeys = plnenieSortProducts(planProducts);
+  var prodRes = {}, totalPlan = 0, totalPred = 0;
+  sortedRawKeys.forEach(function(rawKey) {
+    var key    = plnenieNormalizeKey(rawKey);
+    var qPlan  = parseFloat(planRep[key]); if (isNaN(qPlan)) qPlan = 0;
+    var qActual = parseFloat(predajeTotal[key]); if (isNaN(qActual)) qActual = 0;
+    var mPlans = plnenieMonthlyPlans(year, q, qPlan);
+    var monthData = {};
+    qMonths.forEach(function(m) {
+      var mAct = (byMonth[m] && byMonth[m][key] !== undefined) ? (byMonth[m][key] || 0) : null;
+      monthData[m] = { plan: mPlans[m] || 0, actual: mAct };
+    });
+    var pct = qPlan > 0 ? Math.round(qActual / qPlan * 10000) / 100 : null;
+    prodRes[key] = {
+      label: plnenieDisplayName(rawKey), plan: qPlan, predaje: qActual, pct: pct,
+      rawKey: rawKey, qPlan: qPlan, monthData: monthData,
+      dot: PL_PROD_DOT_COLORS[key] || '#94A3B8'
+    };
+    if (qPlan > 0) { totalPlan += qPlan; totalPred += qActual; }
+  });
+  return { prods: prodRes, prodOrder: sortedRawKeys.map(plnenieNormalizeKey),
+           totalPlan: totalPlan, totalPred: totalPred,
+           totalPct: totalPlan > 0 ? Math.round(totalPred / totalPlan * 10000) / 100 : null,
+           qPlanTotal: totalPlan, qMonths: qMonths, wdPcts: wdPcts };
+}
+
+
+function rptMsLast(pharmaCode, oblast) {
+  // Graf cache — mesačné dáta s trendmi a konkurentmi
+  var d = PHARMA_GRAF_STATE.cache[pharmaCode + '_' + oblast];
+  if (d && d.rows && d.rows.length) {
+    var rows = d.rows, last = rows[rows.length - 1], prev = rows.length > 1 ? rows[rows.length - 2] : null;
+    return {
+      nasPct: parseFloat(last.nas_ms) || 0,
+      trend:  prev ? +((parseFloat(last.nas_ms) - parseFloat(prev.nas_ms)).toFixed(1)) : 0,
+      k1: last.k1_nazov ? { name: last.k1_nazov, pct: parseFloat(last.k1_ms)||0,
+            trend: prev ? +((parseFloat(last.k1_ms)-parseFloat(prev.k1_ms)).toFixed(1)) : 0 } : null
+    };
+  }
+  // Fallback — summary cache (getPharmaData), hľadáme najnovší kvartal
+  var prefix = pharmaCode + '_' + oblast + '_';
+  var bestKey = null;
+  Object.keys(PHARMA_STATE.cache).forEach(function(k) {
+    if (k.indexOf(prefix) === 0 && (!bestKey || k > bestKey)) bestKey = k;
+  });
+  if (bestKey) {
+    var d2 = PHARMA_STATE.cache[bestKey];
+    if (d2 && d2.summary && d2.summary.length) {
+      var summ = d2.summary, last2 = summ[summ.length-1], prev2 = summ.length > 1 ? summ[summ.length-2] : null;
+      return {
+        nasPct: parseFloat(last2.terit_ms) || 0,
+        trend: prev2 ? +((parseFloat(last2.terit_ms) - parseFloat(prev2.terit_ms)).toFixed(1)) : 0,
+        k1: null
+      };
+    }
+  }
+  return null;
+}
+
+function rptFmtEur(v) {
+  return Math.round(v || 0).toLocaleString('sk') + ' €';
+}
+
+function rptFmtPct(val) {
+  if (val === null || val === undefined || isNaN(val)) return '—';
+  return (Math.round(val * 100) / 100).toFixed(2) + '%';
+}
+
+function rptColorClass(pct) {
+  if (pct === null || pct === undefined) return '';
+  if (pct >= 100) return 'green';
+  if (pct >= 95)  return 'orange';
+  return 'red';
+}
+
+function rptColorHex(pct) {
+  if (pct === null || pct === undefined) return '#94A3B8';
+  if (pct >= 100) return '#059669';
+  if (pct >= 95)  return '#D97706';
+  return '#DC2626';
+}
+
+function rptGradientVal(pct) {
+  if (pct === null || pct === undefined) return '#CBD5E1';
+  if (pct >= 100) return 'linear-gradient(90deg,#059669,#34D399)';
+  if (pct >= 95)  return 'linear-gradient(90deg,#D97706,#FBBF24)';
+  return 'linear-gradient(90deg,#DC2626,#F87171)';
+}
+
+function rptTrendStr(trend) {
+  if (trend > 0) return { s: '↑ +' + trend.toFixed(1) + '%', c: '#DC2626' };
+  if (trend < 0) return { s: '↓ ' + trend.toFixed(1) + '%', c: '#059669' };
+  return { s: '→ 0.0%', c: '#94A3B8' };
+}
+
+function rptShortName(fullName) {
+  var parts = (fullName || '').trim().split(/\s+/);
+  if (parts.length >= 2) return parts[0].charAt(0) + '. ' + parts.slice(1).join(' ');
+  return fullName;
+}
+
+function rptLbPosition(username) {
+  var counts = {};
+  MGR_ALL.forEach(function(u) {
+    var s = {};
+    rptAllVisits(u).forEach(function(v) { if (v.lekar) s[v.lekar] = true; });
+    counts[u] = Object.keys(s).length;
+  });
+  var sorted = MGR_ALL.slice().sort(function(a,b){ return counts[b]-counts[a]; });
+  var idx = sorted.indexOf(username);
+  return {
+    pos: idx + 1, total: sorted.length,
+    myCount: counts[username] || 0,
+    before: idx > 0 ? { name: rptShortName(MGR_REP_NAMES[sorted[idx-1]] || sorted[idx-1]), count: counts[sorted[idx-1]] } : null,
+    after:  idx < sorted.length-1 ? { name: rptShortName(MGR_REP_NAMES[sorted[idx+1]] || sorted[idx+1]), count: counts[sorted[idx+1]] } : null
+  };
+}
+
+var RPT_PROD_COLORS = {
+  'aflamil krém': '#3B82F6', 'aflamil krem': '#3B82F6', 'aflcrm': '#3B82F6',
+  'aflamil tbl a sáčky': '#60A5FA', 'aflamil tbl a sacky': '#60A5FA', 'aflamil tbl': '#60A5FA',
+  'suprax': '#8B5CF6', 'vidonorm': '#10B981',
+  'cavinton forte': '#F59E0B', 'cavinton': '#F59E0B',
+  'junod': '#EC4899', 'kogavant': '#14B8A6', 'koggol': '#14B8A6'
+};
+function rptProdDotColor(label) {
+  var k = (label || '').toLowerCase().replace(/\s+/g,' ').trim();
+  return RPT_PROD_COLORS[k] || '#94A3B8';
+}
+
+function rptPredikciaProd(username, q, month, year, prodRawKey) {
+  var qc = PL_STATE.qCache[q]; if (!qc || !qc.data) return null;
+  var plan = qc.data.plan && qc.data.plan[username];
+  var predaje = qc.data.predaje && qc.data.predaje[username];
+  if (!plan || !plan[prodRawKey]) return null;
+  var byMonth = (predaje && predaje.byMonth) || {};
+  var qStart = (q - 1) * 3 + 1;
+  var sumPlan = 0, sumPred = 0;
+  for (var cm = qStart; cm <= month; cm++) {
+    var mPredObj = byMonth[cm] || {};
+    sumPlan += (plnenieMonthlyPlans(year, q, plan[prodRawKey] || 0)[cm] || 0);
+    sumPred += (mPredObj[prodRawKey] || 0);
+  }
+  if (sumPlan === 0) return null;
+  var qPlanProd = plan[prodRawKey] || 0;
+  var predPct = Math.round(sumPred / sumPlan * 10000) / 100;
+  return { pct: predPct, eur: Math.round(predPct / 100 * qPlanProd), qPlan: qPlanProd };
+}
+
+function rptPredikcia(username, q, month, year) {
+  var qc = PL_STATE.qCache[q]; if (!qc || !qc.data) return null;
+  var plan = qc.data.plan && qc.data.plan[username];
+  var predaje = qc.data.predaje && qc.data.predaje[username];
+  if (!plan || !predaje) return null;
+  var byMonth = predaje.byMonth || {};
+  var qStart = (q - 1) * 3 + 1;
+  var sumPlan = 0, sumPred = 0;
+  for (var cm = qStart; cm <= month; cm++) {
+    var mPredObj = byMonth[cm] || {};
+    Object.keys(plan).forEach(function(prod) {
+      if (!plan[prod]) return; // skoč produkty bez plánu (napr. Telexer)
+      sumPlan += (plnenieMonthlyPlans(year, q, plan[prod]||0)[cm] || 0);
+      sumPred += (mPredObj[prod] || 0);
+    });
+  }
+  if (sumPlan === 0) return null;
+  var qPlanTotal = Object.keys(plan).reduce(function(s,k){ return s+(plan[k]||0); },0);
+  var predPct = Math.round(sumPred / sumPlan * 10000) / 100;
+  return { pct: predPct, eur: Math.round(predPct / 100 * qPlanTotal), qPlan: qPlanTotal };
+}
+
+// Agregovaná predikcia pre skupinu reprezentantov (AM East/West, SK celok)
+// Rovnaká logika ako rptPredikcia ale sčíta cez všetkých repov v poli
+function rptPredikciaSummary(reps, q, month, year) {
+  var qc = PL_STATE.qCache[q]; if (!qc || !qc.data) return null;
+  var qStart = (q - 1) * 3 + 1;
+  var sumPlan = 0, sumPred = 0, qPlanTotal = 0;
+  reps.forEach(function(username) {
+    var plan = qc.data.plan && qc.data.plan[username]; if (!plan) return;
+    var predaje = qc.data.predaje && qc.data.predaje[username]; if (!predaje) return;
+    var byMonth = predaje.byMonth || {};
+    qPlanTotal += Object.keys(plan).reduce(function(s,k){ return s+(plan[k]||0); },0);
+    for (var cm = qStart; cm <= month; cm++) {
+      var mPredObj = byMonth[cm] || {};
+      Object.keys(plan).forEach(function(prod) {
+        if (!plan[prod]) return;
+        sumPlan += (plnenieMonthlyPlans(year, q, plan[prod]||0)[cm] || 0);
+        sumPred += (mPredObj[prod] || 0);
+      });
+    }
+  });
+  if (sumPlan === 0) return null;
+  var predPct = Math.round(sumPred / sumPlan * 10000) / 100;
+  return { pct: predPct, eur: Math.round(predPct / 100 * qPlanTotal), qPlan: qPlanTotal };
+}
+
+// ── Full CSS embedded in every generated report HTML ──
+function rptCss() {
+  return '<style>' +
+    '@import url(\'https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap\');' +
+    '*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}' +
+    'body{font-family:\'Outfit\',sans-serif;background:#F0F2F8;color:#0C1E35;padding:20px 14px}' +
+    '.page{max-width:680px;margin:0 auto;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 4px 32px rgba(12,30,53,.12)}' +
+    '.rpt-header{background:#0C1E35;padding:24px 26px 20px;color:#fff}' +
+    '.rpt-header-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}' +
+    '.rpt-brand{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#64A4D8;margin-bottom:4px}' +
+    '.rpt-rep-name{font-size:20px;font-weight:800;color:#fff}' +
+    '.rpt-rep-region{font-size:12px;color:#94B8D4;margin-top:2px}' +
+    '.rpt-period-badge{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:7px 12px;text-align:right;flex-shrink:0}' +
+    '.rpt-period-month{font-size:14px;font-weight:700;color:#fff}' +
+    '.rpt-period-q{font-size:10px;color:#94B8D4;margin-top:1px}' +
+    '.rpt-header-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}' +
+    '.rpt-hstat{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 12px}' +
+    '.rpt-hstat-val{font-size:18px;font-weight:800;color:#fff}' +
+    '.rpt-hstat-val.green{color:#34D399}.rpt-hstat-val.orange{color:#FBBF24}.rpt-hstat-val.red{color:#F87171}' +
+    '.rpt-hstat-val.small{font-size:13px;line-height:1.3;margin-top:1px}' +
+    '.rpt-hstat-lbl{font-size:9.5px;color:#94B8D4;margin-top:2px;font-weight:500}' +
+    '.rpt-body{padding:20px 22px 28px;display:flex;flex-direction:column;gap:18px}' +
+    '.rpt-section-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#94A3B8;margin-bottom:10px}' +
+    '.rpt-plnenie-card{background:#0C1E35;border-radius:14px;padding:18px 20px;color:#fff;margin-bottom:12px}' +
+    '.rpt-plnenie-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}' +
+    '.rpt-plnenie-pct{font-size:40px;font-weight:800;line-height:1}' +
+    '.rpt-plnenie-pct.green{color:#34D399}.rpt-plnenie-pct.orange{color:#FBBF24}.rpt-plnenie-pct.red{color:#F87171}' +
+    '.rpt-plnenie-meta{text-align:right}' +
+    '.rpt-plnenie-eur{font-size:16px;font-weight:700;color:#fff}' +
+    '.rpt-plnenie-plan{font-size:10px;color:#94B8D4;margin-top:2px}' +
+    '.rpt-main-bar-wrap{background:rgba(255,255,255,.12);border-radius:6px;height:10px;overflow:hidden;margin-bottom:10px}' +
+    '.rpt-main-bar-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,#059669,#34D399)}' +
+    '.rpt-main-bar-fill.orange{background:linear-gradient(90deg,#D97706,#FBBF24)}' +
+    '.rpt-main-bar-fill.red{background:linear-gradient(90deg,#DC2626,#F87171)}' +
+    '.rpt-predikcia-row{display:flex;align-items:center;gap:8px;padding-top:9px;border-top:1px solid rgba(255,255,255,.1);font-size:11px;color:#94B8D4;flex-wrap:wrap}' +
+    '.rpt-predikcia-val{font-weight:700;color:#FBBF24;font-size:12px}' +
+    '.rpt-prod-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}' +
+    '.rpt-prod-card{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:12px 14px}' +
+    '.rpt-prod-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}' +
+    '.rpt-prod-name{font-size:13px;font-weight:700;color:#0C1E35;display:flex;align-items:center;gap:5px}' +
+    '.rpt-prod-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}' +
+    '.rpt-prod-pct{font-size:16px;font-weight:800}' +
+    '.rpt-prod-pct.green{color:#059669}.rpt-prod-pct.orange{color:#D97706}.rpt-prod-pct.red{color:#DC2626}' +
+    '.rpt-prod-bar-wrap{background:#CBD5E1;border-radius:4px;height:6px;overflow:hidden;margin-bottom:5px}' +
+    '.rpt-prod-bar-fill{height:100%;border-radius:4px}' +
+    '.rpt-prod-numbers{font-size:12px;color:#64748B;text-align:center}' +
+    '.rpt-prod-numbers strong{color:#0C1E35;font-weight:600}' +
+    '.rpt-prod-plan-note{font-size:11px;color:#94A3B8;margin-top:2px}' +
+    '.rpt-visits-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}' +
+    '.rpt-visit-card{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}' +
+    '.rpt-visit-big{font-size:32px;font-weight:800;color:#0C1E35;line-height:1}' +
+    '.rpt-visit-lbl{font-size:12px;color:#64748B;margin-top:4px;font-weight:500}' +
+    '.rpt-gs-card{background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}' +
+    '.rpt-gs-big{font-size:32px;font-weight:800;color:#1D4ED8;line-height:1}' +
+    '.rpt-gs-lbl{font-size:12px;color:#3B82F6;margin-top:4px;font-weight:500}' +
+    '.rpt-gs-sub{font-size:11px;color:#93C5FD;margin-top:2px}' +
+    '.rpt-seg-rows{margin-top:10px;display:flex;flex-direction:column;gap:4px}' +
+    '.rpt-seg-row{display:flex;align-items:center;gap:6px;font-size:10px}' +
+    '.rpt-seg-label{width:24px;font-weight:700;color:#0C1E35;flex-shrink:0}' +
+    '.rpt-seg-bar-wrap{flex:1;background:#E2E8F0;border-radius:3px;height:5px;overflow:hidden}' +
+    '.rpt-seg-bar-fill{height:100%;border-radius:3px;background:#3B82F6}' +
+    '.rpt-seg-val{color:#64748B;width:28px;text-align:right;flex-shrink:0}' +
+    '.rpt-ms-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}' +
+    '.rpt-ms-card{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px 8px;text-align:center}' +
+    '.rpt-ms-prod{font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}' +
+    '.rpt-ms-val{font-size:19px;font-weight:800;color:#0C1E35}' +
+    '.rpt-ms-delta{font-size:11px;font-weight:600;margin-top:2px}' +
+    '.rpt-ms-delta.up{color:#059669}.rpt-ms-delta.down{color:#DC2626}' +
+    '.rpt-ms-placeholder{background:#F8FAFC;border:1.5px dashed #CBD5E1;border-radius:10px;padding:16px;text-align:center;color:#94A3B8;font-size:11px;grid-column:1/-1}' +
+    '.rpt-rep-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}' +
+    '.rpt-rep-card{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:12px 14px}' +
+    '.rpt-rep-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}' +
+    '.rpt-rep-name-text{font-size:12px;font-weight:700;color:#0C1E35}' +
+    '.rpt-rep-pct{font-size:15px;font-weight:800}' +
+    '.rpt-rep-pct.green{color:#059669}.rpt-rep-pct.orange{color:#D97706}.rpt-rep-pct.red{color:#DC2626}' +
+    '.rpt-rep-bar-wrap{background:#CBD5E1;border-radius:4px;height:6px;overflow:hidden;margin-bottom:5px}' +
+    '.rpt-rep-bar-fill{height:100%;border-radius:4px}' +
+    '.rpt-rep-eur{font-size:10px;color:#64748B}' +
+    '.rpt-rep-eur strong{color:#0C1E35;font-weight:600}' +
+    '.rpt-db-card{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:14px;padding:16px 18px}' +
+    '.rpt-db-top-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid #E2E8F0;gap:12px}' +
+    '.rpt-db-total-num{font-size:34px;font-weight:800;color:#0C1E35;line-height:1}' +
+    '.rpt-db-total-lbl{font-size:11px;color:#64748B;font-weight:500;margin-top:3px}' +
+    '.rpt-db-right{text-align:right;flex-shrink:0}' +
+    '.rpt-db-gs-badge{display:inline-flex;align-items:center;gap:4px;background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:8px;padding:5px 10px;font-size:13px;font-weight:700;color:#1D4ED8;margin-bottom:3px}' +
+    '.rpt-db-gs-sub{font-size:9px;color:#93C5FD}' +
+    '.rpt-db-seg-rows{display:flex;flex-direction:column;gap:6px}' +
+    '.rpt-db-seg-row{display:flex;align-items:center;gap:8px;font-size:10px}' +
+    '.rpt-db-seg-lbl{width:50px;font-weight:700;flex-shrink:0}' +
+    '.rpt-db-seg-cnt{width:26px;font-size:11px;font-weight:800;text-align:right;flex-shrink:0}' +
+    '.rpt-db-seg-bar-wrap{flex:1;background:#E2E8F0;border-radius:3px;height:5px;overflow:hidden}' +
+    '.rpt-db-seg-bar-fill{height:100%;border-radius:3px}' +
+    '.rpt-db-seg-pct{width:28px;text-align:right;color:#94A3B8;font-size:9px;flex-shrink:0}' +
+    '.region-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}' +
+    '.region-card{border-radius:14px;padding:16px 18px}' +
+    '.region-card.west{background:#0C1E35;color:#fff}.region-card.east{background:#1E3A5F;color:#fff}' +
+    '.region-label{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#64A4D8;margin-bottom:5px}' +
+    '.region-pct{font-size:34px;font-weight:800;line-height:1}' +
+    '.region-pct.orange{color:#FBBF24}.region-pct.green{color:#34D399}.region-pct.red{color:#F87171}' +
+    '.region-eur{font-size:11px;color:#94B8D4;margin-top:3px}' +
+    '.region-bar-wrap{background:rgba(255,255,255,.12);border-radius:4px;height:6px;overflow:hidden;margin-top:9px}' +
+    '.region-bar-fill{height:100%;border-radius:4px}' +
+    '.rep-table{width:100%;border-collapse:collapse}' +
+    '.rep-table th{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#94A3B8;text-align:left;padding:0 6px 7px}' +
+    '.rep-table th:last-child{text-align:right}' +
+    '.rep-row td{padding:8px 6px;font-size:10.5px;border-bottom:1px solid #F1F5F9}' +
+    '.rep-row:last-child td{border-bottom:none}' +
+    '.rep-pos{font-weight:800;color:#94A3B8;width:20px}' +
+    '.rep-pos.gold{color:#F59E0B}.rep-pos.bronze{color:#D97706}' +
+    '.rep-name-cell{font-weight:600;color:#0C1E35}' +
+    '.rep-region-tag{font-size:8px;font-weight:600;padding:1px 5px;border-radius:20px;margin-left:4px}' +
+    '.rep-region-tag.w{background:#EFF6FF;color:#1D4ED8}.rep-region-tag.e{background:#F0FDF4;color:#15803D}' +
+    '.rep-bar-cell{width:70px}' +
+    '.rep-mini-bar{background:#E2E8F0;border-radius:3px;height:5px;overflow:hidden}' +
+    '.rep-mini-fill{height:100%;border-radius:3px}' +
+    '.rep-pct-cell{font-weight:800;text-align:right;font-size:11px}' +
+    '.rep-pct-cell.g{color:#059669}.rep-pct-cell.o{color:#D97706}.rep-pct-cell.r{color:#DC2626}' +
+    '.lekar-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}' +
+    '.lekar-card{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:14px 16px}' +
+    '.lekar-big{font-size:28px;font-weight:800;color:#0C1E35;line-height:1}' +
+    '.lekar-lbl{font-size:10px;color:#64748B;margin-top:3px;font-weight:500}' +
+    '.seg-rows{margin-top:10px;display:flex;flex-direction:column;gap:4px}' +
+    '.seg-row{display:flex;align-items:center;gap:7px;font-size:10px}' +
+    '.seg-bar-wrap{flex:1;background:#E2E8F0;border-radius:3px;height:4px;overflow:hidden}' +
+    '.seg-bar-fill{height:100%;border-radius:3px}' +
+    '.seg-val{color:#64748B;width:32px;text-align:right;font-size:9.5px}' +
+    '.rpt-footer{background:#F8FAFC;border-top:1px solid #E2E8F0;padding:12px 22px;display:flex;justify-content:space-between;align-items:center}' +
+    '.rpt-footer-brand{font-size:10px;font-weight:700;color:#94A3B8;letter-spacing:.05em;text-transform:uppercase}' +
+    '.rpt-footer-date{font-size:9.5px;color:#CBD5E1}' +
+    '.rpt-ms-wrap{position:relative;margin:7px 0 26px}' +
+    '.rpt-ms-track{background:#E2E8F0;border-radius:4px;height:7px;overflow:hidden}' +
+    '.rpt-ms-fill{height:100%;border-radius:4px}' +
+    '.rpt-ms-m{position:absolute;top:-1px;transform:translateX(-50%)}' +
+    '.rpt-ms-m-line{width:1.5px;height:9px;background:#334155;margin:0 auto}' +
+    '.rpt-ms-m-lbl{font-size:9px;color:#64748B;white-space:nowrap;text-align:center;position:absolute;left:50%;transform:translateX(-50%);top:10px;font-weight:600}' +
+    '.rpt-mr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-top:8px;border-top:1px solid #F1F5F9;padding-top:8px}' +
+    '.rpt-mr-cell{text-align:center}' +
+    '.rpt-mr-cell-lbl{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#94A3B8;margin-bottom:3px}' +
+    '.rpt-mr-cell-val{font-size:13px;font-weight:700;line-height:1.2}' +
+    '.rpt-mr-cell-plan{font-size:10px;color:#94A3B8;margin-top:2px}' +
+    '@page{size:A4 portrait;margin:0}' +
+    '@media print{' +
+      '*,*::before,*::after{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}' +
+      'html,body{height:auto!important;min-height:0!important}' +
+      'body{padding:0 5mm!important;background:#fff!important}' +
+      '.rpt-hc{padding:0!important;margin:0!important}' +
+      '.page{max-width:100%!important;border-radius:0!important;box-shadow:none!important;overflow:visible!important}' +
+      '.rpt-header{padding:10px 14px 8px!important}' +
+      '.rpt-rep-name{font-size:15px!important}' +
+      '.rpt-header-stats{gap:4px!important}' +
+      '.rpt-hstat{padding:4px 7px!important}' +
+      '.rpt-hstat-val{font-size:12px!important}' +
+      '.rpt-body{padding:8px 12px 10px!important;gap:7px!important}' +
+      '.rpt-section-label{margin-bottom:4px!important;font-size:8px!important}' +
+      '.rpt-plnenie-card{padding:8px 10px!important;margin-bottom:4px!important;break-inside:avoid}' +
+      '.rpt-plnenie-pct{font-size:22px!important}' +
+      '.rpt-plnenie-top{margin-bottom:6px!important}' +
+      '.rpt-main-bar-wrap{height:6px!important;margin-bottom:4px!important}' +
+      '.rpt-predikcia-row{padding-top:4px!important;font-size:8px!important}' +
+      '.rpt-prod-grid{grid-template-columns:repeat(4,1fr)!important;gap:4px!important;break-inside:avoid}' +
+      '.rpt-rep-grid,.rpt-visits-grid,.rpt-ms-grid,.region-grid,.lekar-grid{gap:4px!important;break-inside:avoid}' +
+      '.rpt-prod-card{padding:6px 8px!important;break-inside:avoid}' +
+      '.rpt-prod-header{margin-bottom:3px!important}' +
+      '.rpt-rep-card,.rpt-visit-card,.rpt-gs-card{padding:6px 8px!important;break-inside:avoid}' +
+      '.rpt-ms-card{padding:5px 4px!important;break-inside:avoid}' +
+      '.rpt-db-card{padding:8px 10px!important;break-inside:avoid}' +
+      '.rpt-db-top-row{margin-bottom:5px!important;padding-bottom:5px!important}' +
+      '.rpt-db-total-num{font-size:18px!important}' +
+      '.region-card{padding:8px 10px!important;break-inside:avoid}' +
+      '.region-pct{font-size:20px!important}' +
+      '.lekar-card{padding:6px 8px!important;break-inside:avoid}' +
+      '.rpt-visit-big,.rpt-gs-big,.lekar-big{font-size:18px!important}' +
+      '.rpt-footer{padding:5px 12px!important}' +
+      '.rpt-ms-comp-wrap{padding:5px 7px!important}' +
+      '.rpt-comp-lbl{margin:3px 0 3px!important}' +
+    '}' +
+  '</style>';
+}
+
+function rptFooterHtml() {
+  var now = new Date();
+  var d = now.getDate() + '. ' + (now.getMonth()+1) + '. ' + now.getFullYear();
+  return '<div class="rpt-footer"><div class="rpt-footer-brand">Gedeon Richter Slovakia s.r.o.</div><div class="rpt-footer-date">Vygenerované: ' + d + '</div></div>';
+}
+
+// ── Segment row helpers ──
+function rptSegRowHtml(lbl, count, maxCount, color) {
+  var w = maxCount > 0 ? Math.round(count / maxCount * 100) : 0;
+  return '<div class="rpt-seg-row">' +
+    '<span class="rpt-seg-label" style="color:' + color + '">' + lbl + '</span>' +
+    '<div class="rpt-seg-bar-wrap"><div class="rpt-seg-bar-fill" style="width:' + w + '%;background:' + color + '"></div></div>' +
+    '<span class="rpt-seg-val">' + count + '</span>' +
+  '</div>';
+}
+function rptSegRowGrayHtml(lbl, count, maxCount) {
+  var w = maxCount > 0 ? Math.round(count / maxCount * 100) : 0;
+  return '<div class="rpt-seg-row">' +
+    '<span class="rpt-seg-label" style="color:#94A3B8">' + lbl + '</span>' +
+    '<div class="rpt-seg-bar-wrap"><div class="rpt-seg-bar-fill" style="width:' + w + '%;background:#CBD5E1"></div></div>' +
+    '<span class="rpt-seg-val" style="color:#CBD5E1">' + count + '</span>' +
+  '</div>';
+}
+function rptNpSegRowHtml(label, color, visited, total) {
+  var pct = total > 0 ? Math.round(visited/total*10000)/100 : 0;
+  var barW = total > 0 ? Math.round(visited/total*100) : 0;
+  return '<div style="display:flex;align-items:center;gap:8px">' +
+    '<span style="font-size:10px;font-weight:700;color:' + color + ';width:58px;flex-shrink:0">' + label + '</span>' +
+    '<div style="flex:1;background:#E2E8F0;border-radius:3px;height:6px;overflow:hidden"><div style="height:100%;border-radius:3px;background:' + color + ';width:' + barW + '%"></div></div>' +
+    '<span style="font-size:10px;font-weight:600;color:#0C1E35;width:36px;text-align:right;flex-shrink:0">' + visited + '/' + total + '</span>' +
+    '<span style="font-size:10px;font-weight:700;color:' + color + ';width:42px;text-align:right;flex-shrink:0">' + rptFmtPct(pct) + '</span>' +
+  '</div>';
+}
+function rptDbSegRowHtml(lbl, count, maxSeg, color, total) {
+  var w = maxSeg > 0 ? Math.round(count / maxSeg * 100) : 0;
+  var pct = total > 0 ? Math.round(count / total * 10000) / 100 : 0;
+  return '<div class="rpt-db-seg-row">' +
+    '<span class="rpt-db-seg-lbl" style="color:' + color + '">' + lbl + '</span>' +
+    '<span class="rpt-db-seg-cnt" style="color:' + color + '">' + count + '</span>' +
+    '<div class="rpt-db-seg-bar-wrap"><div class="rpt-db-seg-bar-fill" style="width:' + w + '%;background:' + color + '"></div></div>' +
+    '<span class="rpt-db-seg-pct">' + rptFmtPct(pct) + '</span>' +
+  '</div>';
+}
+function rptDbSegRowOtherHtml(lbl, count, maxSeg, total) {
+  var w = maxSeg > 0 ? Math.round(count / maxSeg * 100) : 0;
+  var pct = total > 0 ? Math.round(count / total * 10000) / 100 : 0;
+  return '<div class="rpt-db-seg-row">' +
+    '<span class="rpt-db-seg-lbl" style="color:#CBD5E1">' + lbl + '</span>' +
+    '<span class="rpt-db-seg-cnt" style="color:#CBD5E1">' + count + '</span>' +
+    '<div class="rpt-db-seg-bar-wrap"><div class="rpt-db-seg-bar-fill" style="width:' + w + '%;background:#E2E8F0"></div></div>' +
+    '<span class="rpt-db-seg-pct" style="color:#E2E8F0">' + rptFmtPct(pct) + '</span>' +
+  '</div>';
+}
+
+// ── "Potrebuje pozornosť" orange box ──
+function rptAtRiskHtml(atRisk, showWE) {
+  if (!atRisk.length) return '';
+  var rows = atRisk.map(function(rep, idx) {
+    var alpha = Math.max(0.03, 0.07 - idx * 0.015);
+    var bg = 'rgba(220,38,38,' + alpha.toFixed(2) + ')';
+    var weBadge = showWE ? '<span style="font-size:8px;padding:1px 5px;border-radius:10px;margin-left:5px;' + (rep.isWest ? 'background:#EFF6FF;color:#1D4ED8' : 'background:#F0FDF4;color:#15803D') + '">' + (rep.isWest ? 'W' : 'E') + '</span>' : '';
+    var badges = rep.prods.map(function(pd) {
+      var isRed = pd.pct !== null && pd.pct < 80;
+      var badgeSty = isRed ? 'background:#FEE2E2;border:1px solid #FECACA;color:#DC2626' : 'background:#FEF3C7;border:1px solid #FDE68A;color:#D97706';
+      return '<span style="' + badgeSty + ';border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700">' + pd.label + ' ' + rptFmtPct(pd.pct) + '</span>';
+    }).join(' ');
+    return '<div style="padding:10px 12px;background:' + bg + ';border-radius:8px">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">' +
+        '<div><span style="font-size:12px;font-weight:700;color:#0C1E35">' + rep.name + '</span>' + weBadge + '</div>' +
+        '<span style="font-size:14px;font-weight:800;color:#DC2626">' + rptFmtPct(rep.pct) + '</span>' +
+      '</div>' +
+      (badges ? '<div style="font-size:9.5px;color:#94A3B8;margin-bottom:6px">Produkty ťahajúce plán dole:</div><div style="display:flex;gap:6px;flex-wrap:wrap">' + badges + '</div>' : '') +
+    '</div>';
+  }).join('');
+  return '<div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:12px;padding:14px 16px">' +
+    '<div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#C2410C;margin-bottom:10px">⚠ Potrebuje pozornosť</div>' +
+    '<div style="display:flex;flex-direction:column;gap:8px">' + rows + '</div>' +
+  '</div>';
+}
+
+var RPT_SEG_LABELS = { A1:'Platinum', B1:'Gold', A2:'Silver 1', B2:'Silver 2' };
+var RPT_SEG_COLORS = { A1:'#7C3AED', B1:'#D97706', A2:'#64748B', B2:'#94A3B8' };
+
+// ── MS 4-card grid for rep report ──
+// oblasts môže byť string alebo pole — pre každý produkt skúsi všetky, kým nájde dáta.
+// Ak nenájde nič v zadaných oblastiach, prehľadá celý cache (best-effort fallback).
+function rptMsForProd(code, oblasts) {
+  var arr = Array.isArray(oblasts) ? oblasts : (oblasts ? [oblasts] : []);
+  for (var i = 0; i < arr.length; i++) {
+    var ms = rptMsLast(code, arr[i]);
+    if (ms) return ms;
+  }
+  // Fallback: skús ľubovoľnú oblasť z cache pre tento kód
+  var prefix = code + '_';
+  var keys = Object.keys(PHARMA_GRAF_STATE.cache);
+  for (var j = 0; j < keys.length; j++) {
+    if (keys[j].indexOf(prefix) === 0) {
+      var ms2 = rptMsLast(code, keys[j].slice(prefix.length));
+      if (ms2) return ms2;
+    }
+  }
+  return null;
+}
+
+function rptMsGridHtml(oblasts) {
+  var PRODS = [
+    { label: 'Aflamil krém', code: 'AFLcrm' }, { label: 'Aflamil tbl', code: 'AFLtbl' },
+    { label: 'Suprax',       code: 'SUP' },     { label: 'Vidonorm',    code: 'VID' },
+    { label: 'Cavinton',     code: 'CAV' },     { label: 'Junod',       code: 'JUN' },
+    { label: 'Kogavant',     code: 'KOGGOL' },  { label: 'Telexer',     code: 'TEL' }
+  ];
+  var cards = '';
+  PRODS.forEach(function(pp) {
+    var ms = rptMsForProd(pp.code, oblasts);
+    var val  = ms ? ms.nasPct.toFixed(1) + '%' : '—';
+    var t    = ms ? rptTrendStr(ms.trend) : { s: '—', c: '#94A3B8' };
+    var deltaCls = ms && ms.trend > 0 ? ' up' : ms && ms.trend < 0 ? ' down' : '';
+    cards += '<div class="rpt-ms-card">' +
+      '<div class="rpt-ms-prod">' + pp.label + '</div>' +
+      '<div class="rpt-ms-val" style="' + (ms ? '' : 'color:#CBD5E1') + '">' + val + '</div>' +
+      '<div class="rpt-ms-delta' + deltaCls + '">' + t.s + '</div>' +
+    '</div>';
+  });
+  return '<div class="rpt-ms-grid">' + cards + '</div>';
+}
+
+// ── Competitor rows block (rep / AM / MGMT) ──
+function rptMsCompetitorHtml(oblasts) {
+  var PRODS = [
+    { label: 'Aflamil krém',  code: 'AFLcrm',  dot: '#3B82F6' },
+    { label: 'Aflamil tbl',   code: 'AFLtbl',  dot: '#60A5FA' },
+    { label: 'Suprax',        code: 'SUP',      dot: '#8B5CF6' },
+    { label: 'Vidonorm',      code: 'VID',      dot: '#10B981' },
+    { label: 'Cavinton Forte',code: 'CAV',      dot: '#F59E0B' },
+    { label: 'Junod',         code: 'JUN',      dot: '#EC4899' },
+    { label: 'Kogavant',      code: 'KOGGOL',   dot: '#14B8A6' },
+    { label: 'Telexer',       code: 'TEL',      dot: '#0EA5E9' }
+  ];
+  var cards = '';
+  PRODS.forEach(function(pp) {
+    var ms = rptMsForProd(pp.code, oblasts);
+    var t  = ms ? rptTrendStr(ms.trend) : { s: '—', c: '#94A3B8' };
+    cards += '<div style="background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:6px 9px;display:flex;align-items:center;justify-content:space-between;break-inside:avoid;page-break-inside:avoid">' +
+      '<div style="min-width:0;flex:1">' +
+        '<div style="display:flex;align-items:center;gap:4px">' +
+          '<div style="width:7px;height:7px;border-radius:50%;background:' + pp.dot + ';flex-shrink:0"></div>' +
+          '<div style="font-size:11px;font-weight:700;color:#0C1E35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + pp.label + '</div>' +
+        '</div>' +
+        (ms && ms.k1 ? '<div style="font-size:10px;color:#94A3B8;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">vs <span style="color:#64748B;font-weight:600">' + ms.k1.name + '</span></div>' : '') +
+      '</div>' +
+      '<div style="flex-shrink:0;text-align:right;padding-left:6px">' +
+        '<div style="font-size:14px;font-weight:800;color:' + (ms ? '#0C1E35' : '#CBD5E1') + ';line-height:1">' + (ms ? ms.nasPct.toFixed(1) + '%' : '—') + '</div>' +
+        '<div style="font-size:11px;font-weight:700;color:' + t.c + ';margin-top:2px">' + t.s + '</div>' +
+      '</div>' +
+    '</div>';
+  });
+  return '<div class="rpt-ms-comp-wrap" style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:14px;padding:10px 12px">' +
+    '<div style="font-size:10px;color:#94A3B8;margin-bottom:9px">↑ <span style="color:#DC2626;font-weight:600">červená</span> = konkurent rastie &nbsp;·&nbsp; ↓ <span style="color:#059669;font-weight:600">zelená</span> = klesá</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">' + cards + '</div>' +
+  '</div>';
+}
+
+// scenar → golden-square segment (A1/A2/B1/B2) alebo null
+var RPT_SCENAR_SEG = { top:'A1', zvysit3:'A2', udrzat:'B1', zvysit:'B2' };
+
+// Vráti mapu lekar → scenar podľa POSLEDNÉHO záznamu (doktori s vyradit nesmú byť v GS)
+function rptCurrentScenarMap(allVisits) {
+  var latestDate = {}, result = {};
+  allVisits.forEach(function(v) {
+    if (!v.lekar) return;
+    var d = parseLbDatum(v.datum || v.dateKey || '');
+    if (!d) return;
+    if (!latestDate[v.lekar] || d > latestDate[v.lekar]) {
+      latestDate[v.lekar] = d;
+      result[v.lekar] = v.scenar;
+    }
+  });
+  return result; // lekar → aktuálny scenar
+}
+
+// ── DB (doctors) block for AM/MGMT ──
+function rptDbBlockHtml(reps, label) {
+  var segCounts = { A1:0, A2:0, B1:0, B2:0, other:0 };
+  var docSet = {};
+  reps.forEach(function(username) {
+    rptAllVisits(username).forEach(function(v) {
+      if (!v.lekar || docSet[v.lekar]) return;
+      docSet[v.lekar] = true;
+      var k = RPT_SCENAR_SEG[v.scenar] || 'other';
+      if (segCounts[k] !== undefined) segCounts[k]++;
+      else segCounts.other++;
+    });
+  });
+  var total = Object.keys(docSet).length;
+  if (!total) return '';
+  var gsCount = segCounts.A1 + segCounts.A2 + segCounts.B1 + segCounts.B2;
+  var otherCount = segCounts.B3 + segCounts.C + segCounts.other;
+  var maxSeg = Math.max(segCounts.A1, segCounts.B1, segCounts.A2, segCounts.B2, otherCount, 1);
+  return '<div class="rpt-db-card">' +
+    '<div class="rpt-db-top-row">' +
+      '<div><div class="rpt-db-total-num">' + total + '</div><div class="rpt-db-total-lbl">VŠL so zisteným potenciálom</div></div>' +
+      '<div class="rpt-db-right">' +
+        '<div class="rpt-db-gs-badge">⭐ ' + gsCount + ' <span style="font-size:9.5px;font-weight:500;color:#3B82F6">prioritných</span></div>' +
+        '<div class="rpt-db-gs-sub">Platinum + Gold + Silver 1 + Silver 2</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="rpt-db-seg-rows">' +
+      rptDbSegRowHtml('Platinum', segCounts.A1, maxSeg, '#7C3AED', total) +
+      rptDbSegRowHtml('Gold',     segCounts.B1, maxSeg, '#D97706', total) +
+      rptDbSegRowHtml('Silver 1', segCounts.A2, maxSeg, '#64748B', total) +
+      rptDbSegRowHtml('Silver 2', segCounts.B2, maxSeg, '#94A3B8', total) +
+      '<div style="height:1px;background:#E2E8F0;margin:3px 0"></div>' +
+      rptDbSegRowOtherHtml('ostatní', otherCount, maxSeg, total) +
+    '</div>' +
+    '<div style="margin-top:12px;padding-top:10px;border-top:1px solid #E2E8F0;display:flex;justify-content:space-between;font-size:9.5px;color:#94A3B8;flex-wrap:wrap;gap:3px">' +
+      '<span>priemer na reprezentanta: <strong style="color:#0C1E35">' + Math.round(total / Math.max(reps.length,1)) + '</strong> lekárov</span>' +
+      '<span>zlatý štvorec (Pt + Au): <strong style="color:#7C3AED">' + (segCounts.A1+segCounts.A2) + '</strong></span>' +
+    '</div>' +
+  '</div>';
+}
+
+// ══ Aflamil / Krém pravidlo plánu ══
+function rptAflRuleHtml(pl) {
+  if (!pl || !pl.prods) return '';
+  var tblPd = pl.prods['aflamil_tablety_sacky'];
+  var krPd  = pl.prods['aflamil_kr'];
+  if (!tblPd || !krPd || !(tblPd.plan > 0) || !(krPd.plan > 0)) return '';
+
+  // MS NEKLESNE: oba predaje / oba plány
+  var nekPred  = tblPd.predaje + krPd.predaje;
+  var nekPlan  = tblPd.plan + krPd.plan;
+  var nekPct   = nekPlan > 0 ? Math.round(nekPred / nekPlan * 10000) / 100 : null;
+  var nekColor = nekPct === null ? '#94A3B8' : nekPct >= 100 ? '#059669' : nekPct >= 95 ? '#D97706' : '#DC2626';
+
+  // MS KLESNE: každý produkt zvlášť
+  var klnTblPct   = tblPd.pct;
+  var klnKrPct    = krPd.pct;
+  var klnTblColor = klnTblPct === null ? '#94A3B8' : klnTblPct >= 100 ? '#059669' : klnTblPct >= 95 ? '#D97706' : '#DC2626';
+  var klnKrColor  = klnKrPct  === null ? '#94A3B8' : klnKrPct  >= 100 ? '#059669' : klnKrPct  >= 95 ? '#D97706' : '#DC2626';
+
+  return '<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:14px;overflow:hidden">' +
+    '<div style="background:#0C1E35;padding:9px 16px">' +
+      '<span style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#94B8D4">Aflamil — Pravidlo plánu</span>' +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px">' +
+      // Ľavá karta — MS NEKLESNE
+      '<div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:10px;padding:13px">' +
+        '<div style="display:inline-flex;align-items:center;font-size:9.5px;font-weight:700;padding:2px 9px;border-radius:20px;background:#DBEAFE;color:#1E40AF;margin-bottom:5px">✓ MS NEKLESNE</div>' +
+        '<div style="font-size:10px;color:#3B82F6;margin-bottom:8px">MS tbl+sáčky ≥ Q predtým</div>' +
+        '<div style="font-size:12px;font-weight:700;color:#0C1E35;margin-bottom:5px">Krém ti pomáha</div>' +
+        '<div style="font-size:10px;color:#64748B;margin-bottom:10px;line-height:1.45">Predaje krému sa ti <strong style="color:#0C1E35">zarátajú</strong> do plnenia plánu za produkt <strong style="color:#0C1E35">Aflamil</strong></div>' +
+        '<div style="height:1px;background:#BFDBFE;margin-bottom:10px"></div>' +
+        '<div style="font-size:9.5px;color:#64748B;margin-bottom:4px">Príklad plnenia plánu za Aflamil (krém + tbl+sáčky):</div>' +
+        '<div style="font-size:28px;font-weight:800;color:' + nekColor + ';line-height:1">' + rptFmtPct(nekPct) + '</div>' +
+      '</div>' +
+      // Pravá karta — MS KLESNE
+      '<div style="background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:10px;padding:13px">' +
+        '<div style="display:inline-flex;align-items:center;font-size:9.5px;font-weight:700;padding:2px 9px;border-radius:20px;background:#FEF3C7;color:#92400E;margin-bottom:5px">⚠ MS KLESNE</div>' +
+        '<div style="font-size:10px;color:#D97706;margin-bottom:8px">MS tbl+sáčky &lt; Q predtým</div>' +
+        '<div style="font-size:12px;font-weight:700;color:#0C1E35;margin-bottom:5px">Krém sa nezaráta</div>' +
+        '<div style="font-size:10px;color:#64748B;margin-bottom:10px;line-height:1.45">Predaje krému sa <strong style="color:#0C1E35">nepočítajú</strong> do plnenia plánu za produkt <strong style="color:#0C1E35">Aflamil</strong> — ráta sa len to čo si predal tbl+sáčky</div>' +
+        '<div style="height:1px;background:#FDE68A;margin-bottom:10px"></div>' +
+        '<div style="font-size:9.5px;color:#64748B;margin-bottom:4px">Plnenie Aflamil (len tbl+sáčky):</div>' +
+        '<div style="font-size:28px;font-weight:800;color:' + klnTblColor + ';line-height:1;margin-bottom:10px">' + rptFmtPct(klnTblPct) + '</div>' +
+        '<div style="font-size:9.5px;color:#64748B;margin-bottom:4px">Krém — vlastný plán (' + rptFmtEur(krPd.predaje) + ' z ' + rptFmtEur(krPd.plan) + '):</div>' +
+        '<div style="font-size:28px;font-weight:800;color:' + klnKrColor + ';line-height:1">' + rptFmtPct(klnKrPct) + '</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+// ══ REP REPORT ══
+function rptBuildRepHtml(username) {
+  var p = rptPeriod();
+  var repName  = MGR_REP_NAMES[username] || username;
+  var region   = (USERS_LOCAL[username] && USERS_LOCAL[username].region) || '';
+  var groupLbl = MGR_AM_WEST.indexOf(username) !== -1 ? 'West' : 'East';
+  var now = new Date();
+  var footerDate = now.getDate() + '. ' + (now.getMonth()+1) + '. ' + now.getFullYear();
+
+  var visits = rptVisits(username, p.month, p.year);
+  var allV   = rptAllVisits(username);
+  // Q total — unikátni lekári navštívení v celom kvartáli
+  var qMonthsList = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[p.q] || [];
+  var qVisitsSet = {};
+  allV.forEach(function(v) {
+    var d = parseLbDatum(v.datum || v.dateKey || '');
+    if (!d || d.getFullYear() !== p.year) return;
+    var m = d.getMonth() + 1;
+    if (qMonthsList.indexOf(m) >= 0 && v.lekar) qVisitsSet[v.lekar] = true;
+  });
+  var qVisitsCount = Object.keys(qVisitsSet).length;
+
+  var segThis = { A1:0, A2:0, B1:0, B2:0, ine:0 };
+  // GS portfólio: GS doktori (posledný scenar) vs. všetci doktori
+  var curScenar = rptCurrentScenarMap(allV);
+  var allGsSet  = {};
+  Object.keys(curScenar).forEach(function(lekar) {
+    if (RPT_SCENAR_SEG[curScenar[lekar]]) allGsSet[lekar] = true;
+  });
+  var allDocsSet = {};
+  allV.forEach(function(v) { if (v.lekar) allDocsSet[v.lekar] = true; });
+  visits.forEach(function(v) {
+    var k = RPT_SCENAR_SEG[v.scenar];
+    if (k) segThis[k]++;
+    else segThis.ine++;
+  });
+  var gsCount  = Object.keys(allGsSet).length;   // doktori na navštívenie
+  var allCount = Object.keys(allDocsSet).length; // všetci doktori celkom
+  var gsPct    = allCount > 0 ? Math.round(gsCount / allCount * 10000) / 100 : 0;
+  var gsCls    = rptColorClass(gsPct >= 70 ? 100 : gsPct >= 50 ? 95 : 0);
+
+  var pl      = rptPlnenieForRep(username, p.q, p.month, p.year);
+  var noPlan  = pl && (!pl.totalPlan || pl.totalPlan === 0);
+  var totalPct = pl && pl.totalPct !== null ? pl.totalPct : null;
+  var totalCls = rptColorClass(totalPct);
+  var pred     = rptPredikcia(username, p.q, p.month, p.year);
+
+  var header = '<div class="rpt-header">' +
+    '<div class="rpt-header-top">' +
+      '<div><div class="rpt-brand">Gedeon Richter Slovakia · Potenciál GP</div>' +
+      '<div class="rpt-rep-name">' + repName + '</div>' +
+      '<div class="rpt-rep-region">Región: ' + region + ' · ' + groupLbl + '</div></div>' +
+      '<div class="rpt-period-badge">' +
+        '<div class="rpt-period-month">' + p.labelCap + '</div>' +
+        '<div class="rpt-period-q">Q' + p.q + ' · ' + p.qMonth + '. mesiac</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="rpt-header-stats">' +
+      '<div class="rpt-hstat"><div class="rpt-hstat-val' + (noPlan ? '' : ' ' + totalCls) + '" style="' + (noPlan ? 'font-size:13px;color:#94B8D4' : '') + '">' + (noPlan ? 'bez plánu' : rptFmtPct(totalPct)) + '</div><div class="rpt-hstat-lbl">Plnenie Q' + p.q + '</div></div>' +
+      '<div class="rpt-hstat"><div class="rpt-hstat-val">' + qVisitsCount + '</div><div class="rpt-hstat-lbl">Lekárov v Q' + p.q + '</div></div>' +
+      '<div class="rpt-hstat"><div class="rpt-hstat-val ' + gsCls + '">' + rptFmtPct(gsPct) + '</div><div class="rpt-hstat-lbl">GS v portfóliu</div></div>' +
+    '</div>' +
+  '</div>';
+
+  var predHtml = '';
+  if (pred) {
+    predHtml = '<div class="rpt-predikcia-row"><span>📈 Predikcia konca Q' + p.q + ' pri tomto tempe:</span>' +
+      '<span class="rpt-predikcia-val">' + rptFmtPct(pred.pct) + '</span>' +
+      '<span style="color:#64748B;font-size:10px">(≈ ' + rptFmtEur(pred.eur) + ' z ' + rptFmtEur(pred.qPlan) + ')</span></div>';
+  }
+  var plCard = pl ?
+    '<div class="rpt-plnenie-card">' +
+      '<div class="rpt-plnenie-top">' +
+        (noPlan
+          ? '<div style="font-size:13px;font-weight:600;color:#94B8D4;line-height:1.4">Plán Q' + p.q + ' ešte<br>nie je zadaný</div>'
+          : '<div class="rpt-plnenie-pct ' + totalCls + '">' + rptFmtPct(totalPct) + '</div>') +
+        '<div class="rpt-plnenie-meta"><div class="rpt-plnenie-eur">' + rptFmtEur(pl.totalPred) + '</div>' +
+          '<div class="rpt-plnenie-plan">' + (noPlan ? 'predaje v Q' + p.q : 'z Q' + p.q + ' plánu ' + rptFmtEur(pl.totalPlan)) + '</div>' +
+        '</div>' +
+      '</div>' +
+      (noPlan ? '' : '<div class="rpt-main-bar-wrap"><div class="rpt-main-bar-fill ' + totalCls + '" style="width:' + Math.min(100,totalPct||0) + '%"></div></div>') +
+      predHtml +
+    '</div>' :
+    '<div class="rpt-plnenie-card"><div style="font-size:12px;color:#94B8D4">Plnenie — dáta nie sú dostupné</div></div>';
+
+  var RPT_SK_M = { 1:'Jan',2:'Feb',3:'Mar',4:'Apr',5:'Máj',6:'Jún',7:'Júl',8:'Aug',9:'Sep',10:'Okt',11:'Nov',12:'Dec' };
+  var prodsHtml = '';
+  if (pl) {
+    var repProdOrder = pl.prodOrder;
+    var qMonths = pl.qMonths || [];
+    var wdPcts  = pl.wdPcts  || {};
+    repProdOrder.forEach(function(key, idx) {
+      var pd = pl.prods[key]; if (!pd) return;
+      var pct = pd.pct;
+      var cls = rptColorClass(pct);
+      var isLast = (idx === repProdOrder.length - 1) && (repProdOrder.length % 2 !== 0);
+
+      // Progress bar — rovnako ako pd.pct (z predaje.total, nie byMonth súčet)
+      var cumFillPct = pd.pct !== null ? Math.min(100, pd.pct) : 0;
+
+      // Milestone ticky (iba medzi mesiacmi, nie na konci)
+      var milestonesHtml = '';
+      qMonths.slice(0, -1).forEach(function(m) {
+        var leftPct = wdPcts[m] || 0;
+        milestonesHtml += '<div class="rpt-ms-m" style="left:' + leftPct + '%">' +
+          '<div class="rpt-ms-m-line"></div>' +
+          '<div class="rpt-ms-m-lbl">' + RPT_SK_M[m] + ' · ' + rptFmtPct(leftPct) + '</div>' +
+        '</div>';
+      });
+
+      // Mesačné riadky
+      var monthRowsHtml = '';
+      if (pd.monthData) {
+        monthRowsHtml = '<div class="rpt-mr-grid">' + qMonths.map(function(m) {
+          var md = pd.monthData[m];
+          var hasActual = md && md.actual !== null;
+          var actColor = (hasActual && md.plan > 0)
+            ? (md.actual >= md.plan ? '#059669' : md.actual >= md.plan * 0.95 ? '#D97706' : '#DC2626')
+            : '#CBD5E1';
+          return '<div class="rpt-mr-cell">' +
+            '<div class="rpt-mr-cell-lbl">' + RPT_SK_M[m].toUpperCase() + '</div>' +
+            '<div class="rpt-mr-cell-val" style="color:' + actColor + '">' + (hasActual ? rptFmtEur(md.actual) : '—') + '</div>' +
+            '<div class="rpt-mr-cell-plan">plán ' + rptFmtEur(md ? md.plan : 0) + '</div>' +
+          '</div>';
+        }).join('') + '</div>';
+      }
+
+      prodsHtml += '<div class="rpt-prod-card"' + (isLast ? ' style="grid-column:1/-1"' : '') + '>' +
+        '<div class="rpt-prod-header">' +
+          '<div class="rpt-prod-name"><div class="rpt-prod-dot" style="background:' + pd.dot + '"></div>' + pd.label + '</div>' +
+          '<div class="rpt-prod-pct ' + cls + '">' + rptFmtPct(pct) + '</div>' +
+        '</div>' +
+        '<div class="rpt-ms-wrap">' +
+          '<div class="rpt-ms-track"><div class="rpt-ms-fill" style="width:' + cumFillPct + '%;background:' + rptGradientVal(cumFillPct) + '"></div></div>' +
+          milestonesHtml +
+        '</div>' +
+        monthRowsHtml +
+        (pd.qPlan > 0 ? '<div class="rpt-prod-numbers" style="margin-top:6px"><strong>' + rptFmtEur(pd.predaje) + '</strong> z Q plánu ' + rptFmtEur(pd.qPlan) + '</div>' : '') +
+        (function() {
+          var pp = rptPredikciaProd(username, p.q, p.month, p.year, pd.rawKey);
+          if (!pp) return '';
+          var ppCls = pp.pct >= 100 ? '#059669' : pp.pct >= 70 ? '#D97706' : '#DC2626';
+          return '<div style="font-size:9px;color:#64748B;margin-top:4px;text-align:center">📈 predikcia Q: <strong style="color:' + ppCls + '">' + rptFmtPct(pp.pct) + '</strong></div>';
+        })() +
+      '</div>';
+    });
+  }
+
+  var visitsHtml = '<div class="rpt-visits-grid">' +
+    '<div class="rpt-visit-card">' +
+      '<div class="rpt-visit-big">' + qVisitsCount + '</div>' +
+      '<div class="rpt-visit-lbl">lekárov so zisteným potenciálom a kapitáciou v Q' + p.q + '</div>' +
+    '</div>' +
+    '<div class="rpt-gs-card">' +
+      '<div class="rpt-gs-big">' + rptFmtPct(gsPct) + '</div>' +
+      '<div class="rpt-gs-lbl">GS v portfóliu</div>' +
+      '<div class="rpt-gs-sub">A1/A2/B1/B2 z celku</div>' +
+      '<div style="font-size:10px;color:#64748B;margin-top:4px">' + gsCount + ' navštevovať · ' + (allCount - gsCount) + ' nenavštevovať</div>' +
+    '</div>' +
+  '</div>';
+
+  // Lekári v databáze section for rep
+  var repDbAllSet = {};
+  var repDbSegCounts = { A1:0, A2:0, B1:0, B2:0, other:0 };
+  allV.forEach(function(v) {
+    if (!v.lekar || repDbAllSet[v.lekar]) return;
+    repDbAllSet[v.lekar] = true;
+    var k = RPT_SCENAR_SEG[v.scenar] || 'other';
+    if (repDbSegCounts[k] !== undefined) repDbSegCounts[k]++;
+    else repDbSegCounts.other++;
+  });
+  var repDbTotal = Object.keys(repDbAllSet).length;
+  var repDbGsCount = repDbSegCounts.A1 + repDbSegCounts.A2 + repDbSegCounts.B1 + repDbSegCounts.B2;
+  var repDbOther = repDbTotal - repDbGsCount;
+  var repDbMaxSeg = Math.max(repDbSegCounts.A1, repDbSegCounts.B1, repDbSegCounts.A2, repDbSegCounts.B2, repDbOther, 1);
+
+  var lbInfo = rptLbPosition(username);
+  var lbWidgetHtml = '<div style="font-size:10px;font-weight:700;color:#3B82F6;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Rebríček — nahodení lekári</div>' +
+    '<div style="font-size:48px;font-weight:800;color:#1D4ED8;line-height:1">#' + lbInfo.pos + '</div>' +
+    '<div style="font-size:11px;color:#3B82F6;font-weight:600">z ' + lbInfo.total + ' reprezentantov</div>' +
+    '<div style="width:100%;border-top:1px solid #BFDBFE;margin:8px 0"></div>' +
+    (lbInfo.before ? '<div style="font-size:10px;color:#64748B">Pred tebou: <strong style="color:#0C1E35">' + lbInfo.before.name + ' (' + lbInfo.before.count + ')</strong></div>' : '') +
+    '<div style="font-size:10px;color:#64748B">Ty: <strong style="color:#1D4ED8">' + rptShortName(repName) + ' (' + lbInfo.myCount + ')</strong></div>' +
+    (lbInfo.after ? '<div style="font-size:10px;color:#64748B">Za tebou: <strong style="color:#0C1E35">' + lbInfo.after.name + ' (' + lbInfo.after.count + ')</strong></div>' : '');
+
+  var repDbHtml = repDbTotal > 0 ? '<div class="rpt-visits-grid">' +
+    '<div class="rpt-visit-card">' +
+      '<div class="rpt-visit-big">' + repDbTotal + '</div>' +
+      '<div class="rpt-visit-lbl">VŠL so zisteným potenciálom</div>' +
+      '<div class="rpt-db-seg-rows" style="margin-top:10px">' +
+        rptDbSegRowHtml('Platinum', repDbSegCounts.A1, repDbMaxSeg, '#7C3AED', repDbTotal) +
+        rptDbSegRowHtml('Gold',     repDbSegCounts.B1, repDbMaxSeg, '#D97706', repDbTotal) +
+        rptDbSegRowHtml('Silver 1', repDbSegCounts.A2, repDbMaxSeg, '#64748B', repDbTotal) +
+        rptDbSegRowHtml('Silver 2', repDbSegCounts.B2, repDbMaxSeg, '#94A3B8', repDbTotal) +
+        '<div style="height:1px;background:#E2E8F0;margin:3px 0"></div>' +
+        rptDbSegRowOtherHtml('ostatní', repDbOther, repDbMaxSeg, repDbTotal) +
+      '</div>' +
+    '</div>' +
+    '<div class="rpt-gs-card">' + lbWidgetHtml + '</div>' +
+  '</div>' : '';
+
+  var msGrid = rptMsGridHtml(region);
+  var body = '<div class="rpt-body">' +
+    '<div><div class="rpt-section-label">Plnenie plánu — Q' + p.q + ' ' + p.year + '</div>' + plCard + '</div>' +
+    '<div><div class="rpt-section-label">Návštevy lekárov — Q' + p.q + ' ' + p.year + '</div>' + visitsHtml + '</div>' +
+    (prodsHtml ? '<div><div class="rpt-section-label">Plnenie per produkt</div><div class="rpt-prod-grid">' + prodsHtml + '</div></div>' : '') +
+    (function() { var afl = rptAflRuleHtml(pl); return afl ? '<div><div class="rpt-section-label">Pravidlo Aflamil / Krém</div>' + afl + '</div>' : ''; })() +
+    (repDbHtml ? '<div><div class="rpt-section-label">Lekári v databáze</div>' + repDbHtml + '</div>' : '') +
+    '<div>' +
+      '<div class="rpt-section-label">Trhový podiel — ' + region + '</div>' +
+      msGrid +
+      '<div class="rpt-comp-lbl" style="font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#94A3B8;margin:14px 0 8px">Pohyby konkurencie</div>' +
+      rptMsCompetitorHtml(region) +
+    '</div>' +
+  '</div>';
+
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8">' + rptCss() + '</head><body><div class="page">' +
+    header + body + rptFooterHtml() + '</div></body></html>';
+}
+
+// ══ AM REPORT ══
+function rptBuildAmHtml(isWest) {
+  var p = rptPeriod();
+  var reps   = isWest ? MGR_AM_WEST : MGR_AM_EAST;
+  var label  = isWest ? 'West' : 'East';
+  var oblasts = [];
+  reps.forEach(function(u) { var r = (USERS_LOCAL[u] && USERS_LOCAL[u].region) || ''; if (r && oblasts.indexOf(r) < 0) oblasts.push(r); });
+  var now = new Date();
+  var footerDate = now.getDate() + '. ' + (now.getMonth()+1) + '. ' + now.getFullYear();
+
+  var totalVisits = 0, totalPlanSum = 0, totalPredSum = 0;
+  var atRisk = [], repCards = '';
+  var prodSums = {};
+  var qMonthsAm = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[p.q] || [];
+
+  reps.forEach(function(username) {
+    var name   = MGR_REP_NAMES[username] || username;
+    var allV2  = rptAllVisits(username);
+    var pl     = rptPlnenieForRep(username, p.q, p.month, p.year);
+    var pct    = pl && pl.totalPct !== null ? pl.totalPct : null;
+    var cls    = rptColorClass(pct);
+    // Q unikátni lekári
+    var qVSet2 = {};
+    allV2.forEach(function(v) {
+      var d = parseLbDatum(v.datum || v.dateKey || '');
+      if (!d || d.getFullYear() !== p.year) return;
+      var m = d.getMonth() + 1;
+      if (qMonthsAm.indexOf(m) >= 0 && v.lekar) qVSet2[v.lekar] = true;
+    });
+    var qV2 = Object.keys(qVSet2).length;
+    totalVisits += qV2;
+    if (pl) {
+      totalPlanSum += pl.totalPlan; totalPredSum += pl.totalPred;
+      pl.prodOrder.forEach(function(key) {
+        var pd = pl.prods[key];
+        if (!prodSums[key]) prodSums[key] = { label: pd.label, plan:0, pred:0, dot: pd.dot };
+        prodSums[key].plan += pd.plan; prodSums[key].pred += pd.predaje;
+      });
+    }
+    if (pct !== null && pct < 85) {
+      var worstProds = pl ? Object.keys(pl.prods)
+        .filter(function(k){ return pl.prods[k].pct !== null; })
+        .sort(function(a,b){ return (pl.prods[a].pct||999)-(pl.prods[b].pct||999); })
+        .slice(0,3).map(function(k){ return pl.prods[k]; }) : [];
+      atRisk.push({ name: rptShortName(name), pct: pct, prods: worstProds });
+    }
+    var curScenar2 = rptCurrentScenarMap(allV2);
+    var allGs2 = {}, allDocs2 = {};
+    allV2.forEach(function(v) { if (v.lekar) allDocs2[v.lekar] = true; });
+    Object.keys(curScenar2).forEach(function(l) { if (RPT_SCENAR_SEG[curScenar2[l]]) allGs2[l] = true; });
+    var gsCount2 = Object.keys(allGs2).length, allCount2 = Object.keys(allDocs2).length || 1;
+    var gsPct2 = Math.round(gsCount2 / allCount2 * 10000) / 100;
+    repCards += '<div class="rpt-rep-card">' +
+      '<div class="rpt-rep-header"><div class="rpt-rep-name-text">' + rptShortName(name) + '</div>' +
+        '<div class="rpt-rep-pct ' + cls + '">' + rptFmtPct(pct) + '</div></div>' +
+      '<div class="rpt-rep-bar-wrap"><div class="rpt-rep-bar-fill" style="width:' + Math.min(100,pct||0) + '%;background:' + rptGradientVal(pct) + '"></div></div>' +
+      '<div class="rpt-rep-eur"><strong>' + rptFmtEur(pl ? pl.totalPred : 0) + '</strong> z Q' + p.q + ' plánu ' + rptFmtEur(pl ? pl.totalPlan : 0) + '</div>' +
+      '<div style="font-size:9.5px;color:#94A3B8;margin-top:3px">' + qV2 + ' lekárov Q' + p.q + ' · GS ' + gsCount2 + '/' + allCount2 + ' (' + rptFmtPct(gsPct2) + ')</div>' +
+    '</div>';
+  });
+
+  var overallPct = totalPlanSum > 0 ? Math.round(totalPredSum / totalPlanSum * 10000) / 100 : null;
+  var overallCls = rptColorClass(overallPct);
+  var qPct = Math.round(p.qMonth / 3 * 100);
+
+  var header = '<div class="rpt-header">' +
+    '<div class="rpt-header-top">' +
+      '<div><div class="rpt-brand">Gedeon Richter Slovakia · Potenciál GP</div>' +
+      '<div class="rpt-rep-name">AM ' + label + ' — Súhrnný report</div>' +
+      '<div class="rpt-rep-region">Región: ' + label + ' · ' + reps.length + ' reprezentantov</div></div>' +
+      '<div class="rpt-period-badge"><div class="rpt-period-month">' + p.labelCap + '</div>' +
+        '<div class="rpt-period-q">Q' + p.q + ' · ' + p.qMonth + '. mesiac</div></div>' +
+    '</div>' +
+    '<div class="rpt-header-stats">' +
+      '<div class="rpt-hstat"><div class="rpt-hstat-val ' + overallCls + '">' + rptFmtPct(overallPct) + '</div><div class="rpt-hstat-lbl">Plnenie ' + label + ' Q' + p.q + '</div></div>' +
+      '<div class="rpt-hstat"><div class="rpt-hstat-val">' + totalVisits + '</div><div class="rpt-hstat-lbl">Lekárov v Q' + p.q + '</div></div>' +
+      '<div class="rpt-hstat"><div class="rpt-hstat-val small ' + overallCls + '">' + rptFmtEur(totalPredSum) + '</div><div class="rpt-hstat-lbl">z Q' + p.q + ' plánu ' + rptFmtEur(totalPlanSum) + '</div></div>' +
+    '</div>' +
+  '</div>';
+
+  var pred2 = rptPredikciaSummary(reps, p.q, p.month, p.year);
+  var predHtml2 = '';
+  if (pred2) {
+    predHtml2 = '<div style="display:flex;align-items:center;gap:8px;padding-top:9px;border-top:1px solid rgba(255,255,255,.1);font-size:11px;color:#94B8D4;flex-wrap:wrap">' +
+      '<span>📈 Predikcia konca Q' + p.q + ' pri tomto tempe:</span>' +
+      '<strong style="color:#FBBF24;font-size:12px">' + rptFmtPct(pred2.pct) + '</strong>' +
+      '<span style="color:#64748B;font-size:10px;margin-left:auto">≈ ' + rptFmtEur(pred2.eur) + ' z ' + rptFmtEur(pred2.qPlan) + '</span>' +
+    '</div>';
+  }
+  var darkCard = '<div class="rpt-plnenie-card">' +
+    '<div class="rpt-plnenie-top">' +
+      '<div><div class="rpt-plnenie-pct ' + overallCls + '">' + rptFmtPct(overallPct) + '</div>' +
+        '<div style="font-size:10px;color:#94B8D4;margin-top:3px">plnenie Q' + p.q + ' · ' + label + '</div></div>' +
+      '<div class="rpt-plnenie-meta"><div class="rpt-plnenie-eur">' + rptFmtEur(totalPredSum) + '</div>' +
+        '<div class="rpt-plnenie-plan">z Q' + p.q + ' plánu ' + rptFmtEur(totalPlanSum) + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="rpt-main-bar-wrap"><div class="rpt-main-bar-fill ' + overallCls + '" style="width:' + Math.min(100,overallPct||0) + '%"></div></div>' +
+    predHtml2 +
+  '</div>';
+
+  var legendNote = '<div style="display:flex;align-items:center;gap:12px;margin-top:9px;padding:7px 10px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:7px">' +
+    '<div style="display:flex;align-items:center;gap:4px;font-size:9.5px;color:#64748B"><div style="width:7px;height:7px;border-radius:50%;background:#059669;flex-shrink:0"></div>≥ 100%</div>' +
+    '<div style="display:flex;align-items:center;gap:4px;font-size:9.5px;color:#64748B"><div style="width:7px;height:7px;border-radius:50%;background:#D97706;flex-shrink:0"></div>≥ 95%</div>' +
+    '<div style="display:flex;align-items:center;gap:4px;font-size:9.5px;color:#64748B"><div style="width:7px;height:7px;border-radius:50%;background:#DC2626;flex-shrink:0"></div>&lt; 95%</div>' +
+    '<div style="margin-left:auto;font-size:9.5px;color:#94A3B8;font-style:italic">Q' + p.q + ' plán: ' + rptFmtEur(totalPlanSum / Math.max(reps.length,1)) + ' / rep</div>' +
+  '</div>';
+
+  var amProdsHtml = '';
+  var prodOrder2 = plnenieSortProducts(Object.keys(prodSums));
+  prodOrder2.forEach(function(key, idx) {
+    var pd = prodSums[key]; if (!pd) return;
+    var pct2 = pd.plan > 0 ? Math.round(pd.pred / pd.plan * 10000) / 100 : null;
+    var cls2 = rptColorClass(pct2);
+    var isLast = (idx === prodOrder2.length - 1) && (prodOrder2.length % 2 !== 0);
+    amProdsHtml += '<div class="rpt-prod-card"' + (isLast ? ' style="grid-column:1/-1"' : '') + '>' +
+      '<div class="rpt-prod-header">' +
+        '<div class="rpt-prod-name"><div class="rpt-prod-dot" style="background:' + pd.dot + '"></div>' + pd.label + '</div>' +
+        '<div class="rpt-prod-pct ' + cls2 + '">' + rptFmtPct(pct2) + '</div>' +
+      '</div>' +
+      '<div class="rpt-prod-bar-wrap"><div class="rpt-prod-bar-fill" style="width:' + Math.min(100,pct2||0) + '%;background:' + rptGradientVal(pct2) + '"></div></div>' +
+      '<div class="rpt-prod-numbers"><strong>' + rptFmtEur(pd.pred) + '</strong> z Q' + p.q + ' plánu ' + rptFmtEur(pd.plan) + '</div>' +
+    '</div>';
+  });
+
+  var body = '<div class="rpt-body">' +
+    rptAtRiskHtml(atRisk, false) +
+    '<div><div class="rpt-section-label">Plnenie per reprezentant — Q' + p.q + ' ' + p.year + '</div>' + darkCard + '<div class="rpt-rep-grid">' + repCards + '</div>' + legendNote + '</div>' +
+    (amProdsHtml ? '<div><div class="rpt-section-label">Plnenie per produkt — ' + label + ' · Q' + p.q + ' ' + p.year + '</div><div class="rpt-prod-grid">' + amProdsHtml + '</div></div>' : '') +
+    '<div><div class="rpt-section-label">Lekári v databáze — ' + label + '</div>' + rptDbBlockHtml(reps, label) + '</div>' +
+    '<div><div class="rpt-section-label">Pohyby konkurencie — ' + label + ' · ' + p.label + '</div>' + rptMsCompetitorHtml(oblasts) + '</div>' +
+  '</div>';
+
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8">' + rptCss() + '</head><body><div class="page">' +
+    header + body + rptFooterHtml() + '</div></body></html>';
+}
+
+// ══ MANAGEMENT REPORT ══
+function rptBuildMgmtHtml() {
+  var p = rptPeriod();
+  var allReps = MGR_ALL;
+  var now = new Date();
+  var footerDate = now.getDate() + '. ' + (now.getMonth()+1) + '. ' + now.getFullYear();
+
+  var totalVisits=0, totalPlan=0, totalPred=0;
+  var westVisits=0, westPlan=0, westPred=0;
+  var eastVisits=0, eastPlan=0, eastPred=0;
+  var atRisk=[], prodSums={};
+  var repRanked = [];
+  var qMonthsMgmt = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[p.q] || [];
+
+  allReps.forEach(function(username) {
+    var name   = MGR_REP_NAMES[username] || username;
+    var isWest = MGR_AM_WEST.indexOf(username) !== -1;
+    var allV3  = rptAllVisits(username);
+    var pl     = rptPlnenieForRep(username, p.q, p.month, p.year);
+    var pct    = pl && pl.totalPct !== null ? pl.totalPct : null;
+    // Q unikátni lekári
+    var qVSet3 = {};
+    allV3.forEach(function(v) {
+      var d = parseLbDatum(v.datum || v.dateKey || '');
+      if (!d || d.getFullYear() !== p.year) return;
+      var m = d.getMonth() + 1;
+      if (qMonthsMgmt.indexOf(m) >= 0 && v.lekar) qVSet3[v.lekar] = true;
+    });
+    var qV3 = Object.keys(qVSet3).length;
+    totalVisits += qV3;
+    if (isWest) westVisits += qV3; else eastVisits += qV3;
+    if (pl) {
+      totalPlan += pl.totalPlan; totalPred += pl.totalPred;
+      if (isWest) { westPlan += pl.totalPlan; westPred += pl.totalPred; }
+      else        { eastPlan += pl.totalPlan; eastPred += pl.totalPred; }
+      pl.prodOrder.forEach(function(key) {
+        var pd = pl.prods[key];
+        if (!prodSums[key]) prodSums[key] = { label:pd.label, plan:0, pred:0, dot:pd.dot };
+        prodSums[key].plan += pd.plan; prodSums[key].pred += pd.predaje;
+      });
+    }
+    if (pct !== null && pct < 80) {
+      var worstProds = pl ? Object.keys(pl.prods)
+        .filter(function(k){ return pl.prods[k].pct !== null; })
+        .sort(function(a,b){ return (pl.prods[a].pct||999)-(pl.prods[b].pct||999); })
+        .slice(0,3).map(function(k){ return pl.prods[k]; }) : [];
+      atRisk.push({ name: rptShortName(name), pct: pct, isWest: isWest, prods: worstProds });
+    }
+    var curScenar3 = rptCurrentScenarMap(allV3);
+    var allGs3 = {}, allDocs3 = {};
+    allV3.forEach(function(v) { if (v.lekar) allDocs3[v.lekar] = true; });
+    Object.keys(curScenar3).forEach(function(lekar) {
+      if (RPT_SCENAR_SEG[curScenar3[lekar]]) allGs3[lekar] = true;
+    });
+    var gsCount3 = Object.keys(allGs3).length;
+    var allCount3 = Object.keys(allDocs3).length || 1;
+    var gsPct3 = Math.round(gsCount3 / allCount3 * 10000) / 100;
+    repRanked.push({ username:username, name:name, isWest:isWest, visits:qV3, pct:pct, gsPct:gsPct3, gsCount:gsCount3, allCount:allCount3 });
+  });
+
+  repRanked.sort(function(a,b){ return (b.pct||0)-(a.pct||0); });
+
+  var skPct   = totalPlan  > 0 ? Math.round(totalPred  / totalPlan  * 10000) / 100 : null;
+  var westPct = westPlan   > 0 ? Math.round(westPred   / westPlan   * 10000) / 100 : null;
+  var eastPct = eastPlan   > 0 ? Math.round(eastPred   / eastPlan   * 10000) / 100 : null;
+  var skCls   = rptColorClass(skPct);
+  var qPct    = Math.round(p.qMonth / 3 * 100);
+
+  // Count unique doctors SK
+  var allDocSet={};
+  allReps.forEach(function(u){ rptAllVisits(u).forEach(function(v){ if(v.lekar) allDocSet[v.lekar]=true; }); });
+  var totalDoctors = Object.keys(allDocSet).length;
+
+  var header = '<div class="rpt-header">' +
+    '<div class="rpt-header-top">' +
+      '<div><div class="rpt-brand">Gedeon Richter Slovakia · Potenciál GP</div>' +
+      '<div class="rpt-rep-name">Management — Slovensko</div>' +
+      '<div class="rpt-rep-region">Admin / Boss / PM / BUM</div></div>' +
+      '<div class="rpt-period-badge"><div class="rpt-period-month">' + p.labelCap + '</div>' +
+        '<div class="rpt-period-q">Q' + p.q + ' · ' + p.qMonth + '. mesiac</div></div>' +
+    '</div>' +
+    '<div class="rpt-header-stats">' +
+      '<div class="rpt-hstat"><div class="rpt-hstat-val ' + skCls + '">' + rptFmtPct(skPct) + '</div><div class="rpt-hstat-lbl">Plnenie Slovensko Q' + p.q + '</div></div>' +
+      '<div class="rpt-hstat"><div class="rpt-hstat-val">' + allReps.length + '</div><div class="rpt-hstat-lbl">Reprezentantov</div></div>' +
+      '<div class="rpt-hstat"><div class="rpt-hstat-val">' + totalDoctors + '</div><div class="rpt-hstat-lbl">VŠL v databáze</div></div>' +
+    '</div>' +
+  '</div>';
+
+  var pred3 = rptPredikciaSummary(allReps, p.q, p.month, p.year);
+  var predHtml3 = '';
+  if (pred3) {
+    predHtml3 = '<div class="rpt-predikcia-row"><span>📈 Predikcia konca Q' + p.q + ' pri tomto tempe:</span>' +
+      '<span class="rpt-predikcia-val">' + rptFmtPct(pred3.pct) + '</span>' +
+      '<span style="color:#64748B;font-size:10px">(≈ ' + rptFmtEur(pred3.eur) + ' z ' + rptFmtEur(pred3.qPlan) + ')</span></div>';
+  }
+  var skCard = '<div class="rpt-plnenie-card">' +
+    '<div class="rpt-plnenie-top">' +
+      '<div class="rpt-plnenie-pct ' + skCls + '">' + rptFmtPct(skPct) + '</div>' +
+      '<div class="rpt-plnenie-meta"><div class="rpt-plnenie-eur">' + rptFmtEur(totalPred) + '</div>' +
+        '<div class="rpt-plnenie-plan">z Q' + p.q + ' plánu ' + rptFmtEur(totalPlan) + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="rpt-main-bar-wrap"><div class="rpt-main-bar-fill ' + skCls + '" style="width:' + Math.min(100,skPct||0) + '%"></div></div>' +
+    predHtml3 +
+  '</div>';
+
+  var regionGrid = '<div class="region-grid">' +
+    '<div class="region-card west">' +
+      '<div class="region-label">West · ' + MGR_AM_WEST.length + ' reprezentantov</div>' +
+      '<div class="region-pct ' + rptColorClass(westPct) + '">' + rptFmtPct(westPct) + '</div>' +
+      '<div class="region-eur">' + rptFmtEur(westPred) + ' z Q' + p.q + ' plánu ' + rptFmtEur(westPlan) + '</div>' +
+      '<div style="font-size:10px;color:#64A4D8;margin-top:2px">' + westVisits + ' lekárov v Q' + p.q + '</div>' +
+      '<div class="region-bar-wrap"><div class="region-bar-fill" style="width:' + Math.min(100,westPct||0) + '%;background:' + rptGradientVal(westPct) + '"></div></div>' +
+    '</div>' +
+    '<div class="region-card east">' +
+      '<div class="region-label">East · ' + MGR_AM_EAST.length + ' reprezentantov</div>' +
+      '<div class="region-pct ' + rptColorClass(eastPct) + '">' + rptFmtPct(eastPct) + '</div>' +
+      '<div class="region-eur">' + rptFmtEur(eastPred) + ' z Q' + p.q + ' plánu ' + rptFmtEur(eastPlan) + '</div>' +
+      '<div style="font-size:10px;color:#64A4D8;margin-top:2px">' + eastVisits + ' lekárov v Q' + p.q + '</div>' +
+      '<div class="region-bar-wrap"><div class="region-bar-fill" style="width:' + Math.min(100,eastPct||0) + '%;background:' + rptGradientVal(eastPct) + '"></div></div>' +
+    '</div>' +
+  '</div>';
+
+  var medals = ['🥇','🥈','🥉'];
+  var repTableRows2 = repRanked.map(function(r, idx) {
+    var pctCls = r.pct >= 100 ? 'g' : r.pct >= 95 ? 'o' : 'r';
+    var barColor = r.pct >= 100 ? '#059669' : r.pct >= 95 ? '#D97706' : '#DC2626';
+    var pos = idx < 3 ? medals[idx] : (idx+1) + '.';
+    var posCls = idx === 0 ? ' gold' : idx === 2 ? ' bronze' : '';
+    return '<tr class="rep-row">' +
+      '<td class="rep-pos' + posCls + '">' + pos + '</td>' +
+      '<td class="rep-name-cell"><div>' + rptShortName(r.name) + ' <span class="rep-region-tag ' + (r.isWest ? 'w' : 'e') + '">' + (r.isWest ? 'W' : 'E') + '</span></div>' +
+        '<div style="font-size:9px;color:#94A3B8;font-weight:400;margin-top:1px">' + r.visits + ' lekárov Q' + p.q + ' · GS ' + r.gsCount + '/' + r.allCount + ' (' + rptFmtPct(r.gsPct) + ')</div></td>' +
+      '<td class="rep-bar-cell"><div class="rep-mini-bar"><div class="rep-mini-fill" style="width:' + Math.min(100,r.pct||0) + '%;background:' + barColor + '"></div></div></td>' +
+      '<td class="rep-pct-cell ' + (r.pct !== null ? pctCls : '') + '">' + rptFmtPct(r.pct) + '</td>' +
+    '</tr>';
+  }).join('');
+  var repTable2 = '<table class="rep-table"><thead><tr>' +
+    '<th>#</th><th>Reprezentant</th><th class="rep-bar-cell"></th><th style="text-align:right">%</th>' +
+  '</tr></thead><tbody>' + repTableRows2 + '</tbody></table>';
+
+  var mgmtProdsHtml = '';
+  var prodOrder3 = plnenieSortProducts(Object.keys(prodSums));
+  prodOrder3.forEach(function(key, idx) {
+    var pd = prodSums[key]; if (!pd) return;
+    var pct3 = pd.plan > 0 ? Math.round(pd.pred / pd.plan * 10000) / 100 : null;
+    var cls3 = rptColorClass(pct3);
+    var isLast = (idx === prodOrder3.length - 1) && (prodOrder3.length % 2 !== 0);
+    mgmtProdsHtml += '<div class="rpt-prod-card"' + (isLast ? ' style="grid-column:1/-1"' : '') + '>' +
+      '<div class="rpt-prod-header">' +
+        '<div class="rpt-prod-name"><div class="rpt-prod-dot" style="background:' + pd.dot + '"></div>' + pd.label + '</div>' +
+        '<div class="rpt-prod-pct ' + cls3 + '">' + rptFmtPct(pct3) + '</div>' +
+      '</div>' +
+      '<div class="rpt-prod-bar-wrap"><div class="rpt-prod-bar-fill" style="width:' + Math.min(100,pct3||0) + '%;background:' + rptGradientVal(pct3) + '"></div></div>' +
+      '<div class="rpt-prod-numbers"><strong>' + rptFmtEur(pd.pred) + '</strong> z Q' + p.q + ' plánu ' + rptFmtEur(pd.plan) + '</div>' +
+    '</div>';
+  });
+
+  var skOblasts = [];
+  allReps.forEach(function(u) { var r = (USERS_LOCAL[u] && USERS_LOCAL[u].region) || ''; if (r && skOblasts.indexOf(r) < 0) skOblasts.push(r); });
+
+  var body = '<div class="rpt-body">' +
+    rptAtRiskHtml(atRisk, true) +
+    '<div><div class="rpt-section-label">Plnenie plánu — Slovensko · Q' + p.q + ' ' + p.year + '</div>' + skCard + '</div>' +
+    '<div><div class="rpt-section-label">West vs East — Q' + p.q + ' ' + p.year + '</div>' + regionGrid + '</div>' +
+    '<div><div class="rpt-section-label">Plnenie per reprezentant — Slovensko · Q' + p.q + ' ' + p.year + '</div>' + repTable2 + '</div>' +
+    (mgmtProdsHtml ? '<div><div class="rpt-section-label">Plnenie per produkt — Slovensko · Q' + p.q + ' ' + p.year + '</div><div class="rpt-prod-grid">' + mgmtProdsHtml + '</div></div>' : '') +
+    '<div><div class="rpt-section-label">Lekári v databáze — Slovensko</div>' + rptDbBlockHtml(allReps, 'SK') + '</div>' +
+    '<div><div class="rpt-section-label">Pohyby konkurencie — Slovensko · ' + p.label + '</div>' + rptMsCompetitorHtml(skOblasts) + '</div>' +
+  '</div>';
+
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8">' + rptCss() + '</head><body><div class="page">' +
+    header + body + rptFooterHtml() + '</div></body></html>';
+}
+
+function rptIosOpen() {
+  var combined = window._rptIosCombined;
+  if (!combined) return;
+  var win = window.open('', '_blank');
+  if (win) {
+    try {
+      win.document.write(combined);
+      win.document.close();
+      document.getElementById('rpt-progress-overlay').style.display = 'none';
+      return;
+    } catch(e) { win = null; }
+  }
+  alert('Vyskakovacie okná sú stále blokované.\nChoď do: Nastavenia › Safari › Blokovanie vyskakovacích okien — a vypni.');
+}
+
+// ══ ORCHESTRÁTOR ══
+// Načíta pharma GRAF dáta pre všetky oblasti (iba getPharmaGraf, nie getPharmaData —
+// report číta iba PHARMA_GRAF_STATE). Pokračuje aj s čiastočnými dátami po 20s.
+function rptFetchPharmaForAllReps(oblasts, onDone) {
+  var allCodes = [];
+  Object.keys(PHARMA_CODES).forEach(function(key) {
+    PHARMA_CODES[key].forEach(function(code) { if (allCodes.indexOf(code) < 0) allCodes.push(code); });
+  });
+  // Spusti iba fetchne, ktoré ešte nie sú v cache ani loading (preload ich mohol spustiť skôr)
+  oblasts.forEach(function(oblast) {
+    allCodes.forEach(function(code) {
+      loadPharmaGrafData(code, oblast, null); // vnútorný guard preskočí ak cached/loading
+    });
+  });
+  // Ak nič nenačítavame (všetko v cache z preloadu), okamžite hotovo
+  if (Object.keys(PHARMA_GRAF_STATE.loading).length === 0) { onDone(true); return; }
+  var deadline = Date.now() + 20000; // 20s pre pomalé mobilné spojenie
+  function check() {
+    if (Object.keys(PHARMA_GRAF_STATE.loading).length === 0) { onDone(true); return; }
+    if (Date.now() > deadline) {
+      // Timeout — pokračuj s tým čo sa stihlo načítať (report ukáže — pre chýbajúce)
+      var hasAny = oblasts.some(function(ob) {
+        return allCodes.some(function(code) { return !!PHARMA_GRAF_STATE.cache[code + '_' + ob]; });
+      });
+      onDone(hasAny);
+      return;
+    }
+    setTimeout(check, 400);
+  }
+  setTimeout(check, 300);
+}
+
+function downloadAllReportsPdf() {
+  var p = rptPeriod();
+
+  // Kontrola či sú dáta načítané
+  if (!MGR_STATE.repsLoaded) {
+    alert('Dáta návštev sa ešte načítavajú. Počkaj chvíľu a skús znova.');
+    return;
+  }
+  if (!PL_STATE.qCache[p.q]) {
+    alert('Dáta plnenia za Q' + p.q + ' sa ešte načítavajú. Počkaj chvíľu a skús znova.');
+    return;
+  }
+
+  // Zbierame unikátne oblasti všetkých reprezentantov
+  var oblasts = [];
+  MGR_ALL.forEach(function(u) {
+    var r = (USERS_LOCAL[u] && USERS_LOCAL[u].region) || '';
+    if (r && oblasts.indexOf(r) < 0) oblasts.push(r);
+  });
+
+  // Mobily (iOS + Android) — otvoriť kombinovanú HTML stránku s tlačidlom Uložiť ako PDF
+  // html2pdf/html2canvas je nespoľahlivý na mobilných WebView (prázdne strany, rendering bugs)
+  var ua = navigator.userAgent;
+  var isMobile = true; // hub stránka + natívny browser print pre všetky zariadenia
+  if (isMobile) {
+    var overlay = document.getElementById('rpt-progress-overlay');
+    var title   = document.getElementById('rpt-progress-title');
+    var sub     = document.getElementById('rpt-progress-sub');
+    overlay.style.display = 'flex';
+    title.textContent = 'Načítavam trhové dáta…';
+    sub.textContent = '';
+    rptFetchPharmaForAllReps(oblasts, function(ok) {
+    if (!ok) {
+      title.textContent = '⚠️ Chyba načítavania';
+      sub.innerHTML = 'Trhové dáta sa nepodarilo načítať.<br><br>' +
+        '<button onclick="downloadAllReportsPdf()" style="padding:10px 22px;background:#0C1E35;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">Skúsiť znova</button>' +
+        ' <button onclick="document.getElementById(\'rpt-progress-overlay\').style.display=\'none\'" style="padding:10px 22px;background:#E2E8F0;color:#334155;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-left:8px">Zrušiť</button>';
+      return;
+    }
+    // Zostav zoznam reportov pre hub stránku (navigácia + tlač jednotlivo)
+    var hubList = [];
+    var allTasks = [];
+    MGR_ALL.forEach(function(u) { allTasks.push({ type: 'rep', username: u }); });
+    allTasks.push({ type: 'amwest' });
+    allTasks.push({ type: 'ameast' });
+    allTasks.push({ type: 'mgmt' });
+    allTasks.forEach(function(task) {
+      try {
+        var html, navTitle;
+        if (task.type === 'rep') {
+          html = rptBuildRepHtml(task.username);
+          navTitle = rptShortName(MGR_REP_NAMES[task.username] || task.username);
+        } else if (task.type === 'amwest') {
+          html = rptBuildAmHtml(true);
+          navTitle = 'AM West';
+        } else if (task.type === 'ameast') {
+          html = rptBuildAmHtml(false);
+          navTitle = 'AM East';
+        } else {
+          html = rptBuildMgmtHtml();
+          navTitle = 'SK';
+        }
+        var m = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+        hubList.push({ t: navTitle, b: m ? m[1] : html });
+      } catch(e) {}
+    });
+    // JSON.stringify + escape script-closing tag aby HTML parser neskrachoval
+    var hubJson = JSON.stringify(hubList).replace(/<\/script/gi, '<\\/script');
+    var combined = '<!DOCTYPE html><html><head>' +
+      '<meta charset="UTF-8"><meta name="viewport" content="width=794"><title>Reporty — Gedeon Richter</title>' +
+      rptCss() +
+      '<style>' +
+      '.rpt-hn{position:fixed;top:0;left:0;right:0;z-index:9999;background:#0C1E35;display:flex;align-items:center;gap:5px;padding:9px 10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;box-shadow:0 2px 12px rgba(0,0,0,.35)}' +
+      '.rpt-hn::-webkit-scrollbar{display:none}' +
+      '.rpt-nb{flex-shrink:0;padding:6px 12px;background:rgba(255,255,255,.13);color:#fff;border:none;border-radius:18px;font-size:11.5px;cursor:pointer;white-space:nowrap;font-family:inherit;-webkit-tap-highlight-color:transparent;touch-action:manipulation}' +
+      '.rpt-nb.a{background:#fff;color:#0C1E35;font-weight:700}' +
+      '.rpt-pb{flex-shrink:0;margin-left:6px;padding:7px 15px;background:#16A34A;color:#fff;border:none;border-radius:18px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;touch-action:manipulation}' +
+      '.rpt-cb{flex-shrink:0;margin-right:2px;padding:6px 11px;background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:18px;font-size:13px;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;touch-action:manipulation}' +
+      '.rpt-sep{width:1px;height:18px;background:rgba(255,255,255,.2);flex-shrink:0}' +
+      '.rpt-hc{padding-top:52px}' +
+      '@media print{.rpt-hn{display:none!important}.rpt-hc{padding-top:0!important}}' +
+      '</style>' +
+      '</head><body style="margin:0;background:#EAECF2">' +
+      '<div class="rpt-hn" id="rn"></div>' +
+      '<div class="rpt-hc" id="rc"></div>' +
+      '<script>' +
+      'var R=' + hubJson + ';' +
+      'var c=0;' +
+      'function sv(i,e){' +
+        'c=i;' +
+        'document.getElementById("rc").innerHTML=R[i].b;' +
+        'var bs=document.querySelectorAll(".rpt-nb");' +
+        'for(var j=0;j<bs.length;j++)bs[j].className="rpt-nb"+(j===i?" a":"");' +
+        'window.scrollTo(0,0);' +
+        'if(e)e.currentTarget.scrollIntoView({inline:"center",behavior:"smooth"});' +
+      '}' +
+      'var nav=document.getElementById("rn");' +
+      'var cb=document.createElement("button");' +
+      'cb.className="rpt-cb";' +
+      'cb.textContent="✕";' +
+      'cb.onclick=function(){window.close();};' +
+      'nav.appendChild(cb);' +
+      'var sep=document.createElement("div");' +
+      'sep.className="rpt-sep";' +
+      'nav.appendChild(sep);' +
+      'R.forEach(function(r,i){' +
+        'var b=document.createElement("button");' +
+        'b.className="rpt-nb"+(i===0?" a":"");' +
+        'b.textContent=r.t;' +
+        'b.onclick=function(e){sv(i,e)};' +
+        'nav.appendChild(b);' +
+      '});' +
+      'var pb=document.createElement("button");' +
+      'pb.className="rpt-pb";' +
+      'pb.textContent="🖨 PDF";' +
+      'pb.onclick=function(){' +
+      'var pe=document.querySelector("#rc .page");' +
+      'if(!pe){window.print();return;}' +
+      // Zmeraj výšku obsahu pri šírke 756px klonom (bez blikania)
+      'var cl=pe.cloneNode(true);' +
+      'cl.style.cssText="position:fixed;top:-99999px;left:0;width:756px;max-width:756px;overflow:visible;zoom:1;visibility:hidden";' +
+      'document.body.appendChild(cl);var h=cl.offsetHeight;document.body.removeChild(cl);' +
+      // iOS: zoom + klasický print v aktuálnom okne
+      'var isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;' +
+      'if(isIOS){' +
+        'var ds=document.getElementById("rpt-dyn-pg");' +
+        'if(!ds){ds=document.createElement("style");ds.id="rpt-dyn-pg";document.head.appendChild(ds);}' +
+        'ds.textContent="@page{size:794px "+(h+60)+"px;margin:0}";' +
+        'var t=1100;if(h>t){var jz=t/h;if(jz<0.72)pe.style.zoom=jz.toFixed(3);}' +
+        'setTimeout(function(){window.print();setTimeout(function(){pe.style.zoom="";},2500);},200);' +
+        'return;' +
+      '}' +
+      // Desktop: popup s custom @page — screen CSS (bez @media print kompresie) = čitateľné PDF bez bielej plochy
+      'var css="";' +
+      'for(var si=0;si<document.styleSheets.length;si++){try{var srs=document.styleSheets[si].cssRules;if(srs)for(var sj=0;sj<srs.length;sj++){var rt=srs[sj].cssText;if(rt.indexOf("@page")<0&&rt.indexOf("@media print")<0)css+=rt+" ";}}catch(e){}}' +
+      'var pw=window.open("","_blank");' +
+      'if(!pw){window.print();return;}' +
+      // @page + overrides v initial document.write — Chrome ich zachytí pri printovaní
+      'pw.document.write("<!DOCTYPE html><html><head><meta charset=UTF-8><meta name=viewport content=width=756>' +
+      '<style>@page{size:756px "+(h+40)+"px;margin:0}' +
+      'body{margin:0!important;padding:0!important;background:#fff!important}' +
+      '.page{max-width:756px!important;margin:0!important;border-radius:0!important;box-shadow:none!important;overflow:visible!important}' +
+      '*,*::before,*::after{print-color-adjust:exact!important;-webkit-print-color-adjust:exact!important}' +
+      '</style></head><body></body></html>");' +
+      'pw.document.close();' +
+      // CSS cez textContent — vyhýba sa problémom s úvodzovkami v @import URL
+      'var s2=pw.document.createElement("style");s2.textContent=css;pw.document.head.appendChild(s2);' +
+      'pw.document.body.innerHTML=pe.outerHTML;' +
+      'var printed=false;' +
+      'function doPrint(){if(printed)return;printed=true;pw.print();}' +
+      'setTimeout(doPrint,900);' +
+    '};' +
+      'nav.appendChild(pb);' +
+      'sv(0);' +
+      '<\/script>' +
+      '</body></html>';
+    window._rptIosCombined = combined; // uložíme do globálnej, nie do onclick
+    var win = window.open('', '_blank');
+    if (win) {
+      try { win.document.write(combined); win.document.close(); } catch(e) { win = null; }
+    }
+    if (!win) {
+      title.textContent = '📄 Reporty sú pripravené';
+      sub.innerHTML = 'Ťukni na tlačidlo nižšie. Ak sa nič neotvorí,<br>povol vyskakovacie okná:<br><strong>Nastavenia › Safari › Blokovanie vyskakovacích okien</strong> — vypni.<br><br>' +
+        '<button onclick="rptIosOpen()" style="padding:12px 24px;background:#0C1E35;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer">Otvoriť reporty</button>' +
+        '<br><br><button onclick="document.getElementById(\'rpt-progress-overlay\').style.display=\'none\'" style="padding:10px 20px;background:transparent;color:#94A3B8;border:none;font-size:14px;cursor:pointer;text-decoration:underline">Zrušiť</button>';
+      overlay.style.display = 'flex';
+    } else {
+      overlay.style.display = 'none';
+    }
+    }); // koniec rptFetchPharmaForAllReps
+    return;
+  }
+
+  if (typeof html2pdf === 'undefined') {
+    alert('Knižnica html2pdf sa nepodarila načítať. Skontroluj pripojenie a skús znova.');
+    return;
+  }
+  var overlay = document.getElementById('rpt-progress-overlay');
+  var title   = document.getElementById('rpt-progress-title');
+  var sub     = document.getElementById('rpt-progress-sub');
+  var bar     = document.getElementById('rpt-progress-bar');
+  var count   = document.getElementById('rpt-progress-count');
+
+  overlay.style.display = 'flex';
+  title.textContent = 'Načítavam trhové dáta…';
+  sub.textContent = '';
+
+  rptFetchPharmaForAllReps(oblasts, function(ok) {
+  if (!ok) {
+    title.textContent = '⚠️ Chyba načítavania';
+    sub.innerHTML = 'Trhové dáta sa nepodarilo načítať.<br><br>' +
+      '<button onclick="downloadAllReportsPdf()" style="padding:10px 22px;background:#0C1E35;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">Skúsiť znova</button>' +
+      ' <button onclick="document.getElementById(\'rpt-progress-overlay\').style.display=\'none\'" style="padding:10px 22px;background:#E2E8F0;color:#334155;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-left:8px">Zrušiť</button>';
+    bar.style.width = '0%';
+    return;
+  }
+  title.textContent = 'Generujem reporty…';
+
+  var monthSlug = p.month + '_' + p.year;
+
+  // Zostav zoznam PDF-iek
+  var tasks = [];
+  MGR_ALL.forEach(function(username) {
+    var name = (MGR_REP_NAMES[username] || username).replace(/\s+/g, '_');
+    tasks.push({ label: MGR_REP_NAMES[username] || username, filename: 'Report_' + name + '_' + monthSlug + '.pdf', html: null, type: 'rep', username: username });
+  });
+  tasks.push({ label: 'AM West', filename: 'AM_West_' + monthSlug + '.pdf', html: null, type: 'amwest' });
+  tasks.push({ label: 'AM East', filename: 'AM_East_' + monthSlug + '.pdf', html: null, type: 'ameast' });
+  tasks.push({ label: 'Management Slovensko', filename: 'Management_Slovensko_' + monthSlug + '.pdf', html: null, type: 'mgmt' });
+
+  var total = tasks.length;
+  var done  = 0;
+
+  function setProgress(msg, idx) {
+    title.textContent = 'Generujem reporty...';
+    sub.textContent   = msg;
+    bar.style.width   = Math.round((idx / total) * 100) + '%';
+    count.textContent = idx + ' / ' + total;
+  }
+
+  // Vloží rpt CSS do document.head pri prvom volaní — html2canvas ho potom vidí
+  if (!document.getElementById('rpt-pdf-styles')) {
+    var _rptStyleEl = document.createElement('style');
+    _rptStyleEl.id = 'rpt-pdf-styles';
+    var _rptStyleStr = rptCss(); // '<style>...css...</style>'
+    _rptStyleEl.textContent = _rptStyleStr.replace(/^<style[^>]*>|<\/style>$/gi, '');
+    document.head.appendChild(_rptStyleEl);
+  }
+
+  function pdfFromHtml(htmlStr, filename) {
+    return new Promise(function(resolve) {
+      // Extrahovať iba <body> obsah — celý HTML dokument ako innerHTML nefunguje spoľahlivo
+      var bodyM = htmlStr.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+      var bodyContent = bodyM ? bodyM[1] : htmlStr;
+      var el = document.createElement('div');
+      el.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:420px;overflow:visible;background:#EAECF2';
+      el.innerHTML = bodyContent;
+      document.body.appendChild(el);
+      var opts = {
+        margin: 0,
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.92 },
+        html2canvas: { scale: 2, useCORS: true, letterRendering: true, logging: false },
+        jsPDF: { unit: 'px', format: [420, Math.max(el.scrollHeight, 600)], orientation: 'portrait' }
+      };
+      html2pdf().set(opts).from(el).save().then(function() {
+        document.body.removeChild(el);
+        resolve();
+      }).catch(function() {
+        if (document.body.contains(el)) document.body.removeChild(el);
+        resolve(); // pokračuj aj pri chybe
+      });
+    });
+  }
+
+  function runNext(idx) {
+    if (idx >= tasks.length) {
+      // Hotovo
+      title.textContent = '✅ Hotovo!';
+      sub.textContent   = total + ' PDF súborov stiahnutých';
+      bar.style.width   = '100%';
+      count.textContent = '';
+      setTimeout(function() { overlay.style.display = 'none'; }, 2000);
+      return;
+    }
+    var task = tasks[idx];
+    setProgress(task.label, idx);
+
+    // Generuj HTML
+    var html = '';
+    try {
+      if (task.type === 'rep')    html = rptBuildRepHtml(task.username);
+      else if (task.type === 'amwest') html = rptBuildAmHtml(true);
+      else if (task.type === 'ameast') html = rptBuildAmHtml(false);
+      else                        html = rptBuildMgmtHtml();
+    } catch(e) { html = '<div style="padding:20px;font-family:Arial;color:red">Chyba generovania: ' + (e.message||e) + '</div>'; }
+
+    pdfFromHtml(html, task.filename).then(function() {
+      done++;
+      runNext(idx + 1);
+    });
+  }
+
+  runNext(0);
+  }); // koniec rptFetchPharmaForAllReps
+}
+
 </script>
 
 <!-- ── LOGOUT CONFIRM ── -->
@@ -10216,10 +11866,10 @@ function preloadAllPharmaData() {
 <div class="login-screen" id="login-screen">
 
   <div class="login-hero">
-    <div class="login-icon">💊</div>
-    <div class="login-title">Potenciál GP</div>
-    <div class="login-subtitle">Gedeon Richter Slovakia</div>
-    <div class="login-dots">
+    <div class="login-kanji">悟り</div>
+    <div class="login-title">Satori</div>
+    <div class="login-motto">Ten, kto vidí jasne, necháva náhodu iným.</div>
+    <div class="login-dots" style="margin-top:20px">
       <div class="login-dot"><div class="ldot" style="background:#34D399"></div>Vidonorm</div>
       <div class="login-dot"><div class="ldot" style="background:#60A5FA"></div>Aflamil</div>
       <div class="login-dot"><div class="ldot" style="background:#C084FC"></div>Suprax</div>
@@ -10263,6 +11913,19 @@ function preloadAllPharmaData() {
   </div>
 
 </div>
+
+<!-- ── RPT PROGRESS OVERLAY ── -->
+<div id="rpt-progress-overlay" style="display:none;position:fixed;inset:0;background:rgba(12,30,53,.96);z-index:99998;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:'Outfit',sans-serif">
+  <div style="font-size:36px;margin-bottom:14px">📄</div>
+  <div id="rpt-progress-title" style="font-size:17px;font-weight:800;margin-bottom:6px">Generujem reporty...</div>
+  <div id="rpt-progress-sub" style="font-size:13px;color:#94A3B8;margin-bottom:18px;text-align:center;padding:0 32px"></div>
+  <div style="width:220px;height:5px;background:rgba(255,255,255,.15);border-radius:3px">
+    <div id="rpt-progress-bar" style="height:100%;background:#3B82F6;border-radius:3px;transition:width .3s;width:0%"></div>
+  </div>
+  <div id="rpt-progress-count" style="font-size:11px;color:#64748B;margin-top:8px"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 </body>
 </html>
