@@ -26,17 +26,34 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.13.54** (na `main` aj `test` vetve) — obsahuje všetko z predchádzajúcich verzií plus reporty, oprava % plnenia, Aflamil/Krém pravidlo plánu, predikcia per produkt a fallback trhového podielu.
+**2.13.59** (na `main` aj `test` vetve) — obsahuje všetko z predchádzajúcich verzií plus reporty, oprava % plnenia, Aflamil/Krém pravidlo plánu, predikcia per produkt a funkčný fallback trhového podielu na predchádzajúci Q.
 
-### v2.13.54 — Trhový podiel — automatický fallback na predchádzajúci Q
+### v2.13.59 — Trhový podiel Q2 fallback — finálna oprava (3 bugy)
 
-Keď IQVIA dáta pre aktuálny Q ešte nie sú nahrané do Sheets (prázdne `summary` a `okresy`):
-- `loadPharmaData` detekuje prázdnu odpoveď a **neulož ju do cache** (aby pri ďalšom otvorení skúsil znova)
-- Ak je overlay otvorený, automaticky prepne `PHARMA_STATE.kvartal` na predchádzajúci Q (`pharmaKvartalPrev()`) a aktualizuje titulok
-- Znovu zavolá `loadPharmaData` s Q-1 → zobrazí posledné dostupné dáta
-- Keď Q2 dáta prídu, prázdny cache neexistuje → ďalší fetch načíta správne Q2 dáta
+Oprava série bugov v automatickom fallbacku na predchádzajúci Q keď IQVIA dáta pre aktuálny Q ešte nie sú nahrané:
 
-Nová pomocná funkcia `pharmaKvartalPrev(kvartal)` — vypočíta kód predchádzajúceho kvartálu (`'2602'` → `'2601'`, `'2601'` → `'2504'`).
+**Bug 1 — `pharmaKvartalPrev` zero-padding:**
+- `pharmaKvartalPrev('2602')` vracal `'261'` namiesto `'2601'` — chýbal `'0'` pred číslom kvartálu
+- Oprava: `return (yy < 10 ? '0'+yy : ''+yy) + (qq < 10 ? '0'+qq : ''+qq)`
+- Dôsledok bugu: server dostal nesprávny kvartal kód → vrátil prázdne `okresy` → "Žiadne dáta po okresoch"
+
+**Bug 2 — filter reálnych dát podľa mesiacov aktuálneho Q:**
+- `summArr` obsahuje historické dáta (posledných 12 mesiacov) bez filtrovania podľa kvartálu
+- Predchádzajúci check `hasRealSummData` kontroloval všetky riadky vrátane starých Q1 mesiacov → vrátil `true` → fallback sa nespustil
+- Oprava: `summArr.some()` teraz kontroluje iba riadky kde `months.indexOf(s.mesiac) >= 0` (len mesiace aktuálneho Q)
+
+**Bug 3 — fallback v `pharmaRender` namiesto len `loadPharmaData`:**
+- Pôvodný fallback v `loadPharmaData` bol podmienený na `PHARMA_STATE.activeCode === code` — pri preloade po prihlásení (overlay zavretý) sa nespustil, prázdne Q2 dáta sa cachovali
+- Doplnený fallback priamo v `pharmaRender` zachytí všetky prípady vrátane cache hitov
+
+**Správanie po oprave:**
+- Keď Q2 IQVIA dáta nie sú nahrané, overlay automaticky zobrazí Q1 dáta (MS hodnoty aj okresy)
+- Keď prídu Q2 dáta (napr. apríl '2604' s reálnymi hodnotami), `hasRealSummData = true` → Q2 sa zobrazí priamo bez fallbacku
+- Žiadna zmena kódu nie je potrebná pri nahrávaní nových dát
+
+### v2.13.54–56 — Trhový podiel — prvé pokusy o fallback (nahradené v2.13.59)
+
+Pomocná funkcia `pharmaKvartalPrev(kvartal)` pridaná v v2.13.54 — vypočíta kód predchádzajúceho kvartálu (`'2602'` → `'2601'`, `'2601'` → `'2504'`). Fallback logika bola postupne dopĺňaná v v2.13.54 (ok:true+empty), v2.13.55 (ok:false), v2.13.56 (pharmaRender level) — finálna oprava je v2.13.59.
 
 ### v2.13.53 — Predikcia per produkt v manažérskom Plnení
 
