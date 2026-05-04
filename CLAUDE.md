@@ -26,7 +26,17 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.13.53** (na `main` aj `test` vetve) — obsahuje všetko z predchádzajúcich verzií plus reporty, oprava % plnenia, Aflamil/Krém pravidlo plánu a predikcia per produkt.
+**2.13.54** (na `main` aj `test` vetve) — obsahuje všetko z predchádzajúcich verzií plus reporty, oprava % plnenia, Aflamil/Krém pravidlo plánu, predikcia per produkt a fallback trhového podielu.
+
+### v2.13.54 — Trhový podiel — automatický fallback na predchádzajúci Q
+
+Keď IQVIA dáta pre aktuálny Q ešte nie sú nahrané do Sheets (prázdne `summary` a `okresy`):
+- `loadPharmaData` detekuje prázdnu odpoveď a **neulož ju do cache** (aby pri ďalšom otvorení skúsil znova)
+- Ak je overlay otvorený, automaticky prepne `PHARMA_STATE.kvartal` na predchádzajúci Q (`pharmaKvartalPrev()`) a aktualizuje titulok
+- Znovu zavolá `loadPharmaData` s Q-1 → zobrazí posledné dostupné dáta
+- Keď Q2 dáta prídu, prázdny cache neexistuje → ďalší fetch načíta správne Q2 dáta
+
+Nová pomocná funkcia `pharmaKvartalPrev(kvartal)` — vypočíta kód predchádzajúceho kvartálu (`'2602'` → `'2601'`, `'2601'` → `'2504'`).
 
 ### v2.13.53 — Predikcia per produkt v manažérskom Plnení
 
