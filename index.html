@@ -1823,7 +1823,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.54';
+var APP_VERSION = '2.13.55';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9113,9 +9113,18 @@ function loadPharmaData(code, oblast, kvartal) {
         // Ak je otvorený product drill-down sheet, updatni MS bunky
         if (typeof prodSheetUpdateMsCells === 'function') prodSheetUpdateMsCells();
       } else {
+        // ok:false — skús tiež predchádzajúci Q (môže ísť o chýbajúce Q2 dáta)
         if (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal) {
-          var bodyEl = document.getElementById('pharma-ms-body');
-          if (bodyEl) bodyEl.innerHTML = '<div class="pharma-ms-loading">Dáta nie sú dostupné pre oblasť ' + mgrEscape(oblast) + '.</div>';
+          var prevKvF = pharmaKvartalPrev(kvartal);
+          var prevQNumF = parseInt(prevKvF.slice(2), 10);
+          var prevYearF = 2000 + parseInt(prevKvF.slice(0, 2), 10);
+          PHARMA_STATE.kvartal = prevKvF;
+          var titleElF = document.getElementById('pharma-ms-title');
+          if (titleElF) {
+            var partsF = titleElF.textContent.split(' · ');
+            if (partsF.length >= 2) { partsF[1] = 'Q' + prevQNumF + ' ' + prevYearF; titleElF.textContent = partsF.join(' · '); }
+          }
+          loadPharmaData(code, oblast, prevKvF);
         }
       }
     })
