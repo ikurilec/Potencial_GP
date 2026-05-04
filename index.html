@@ -1823,7 +1823,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.55';
+var APP_VERSION = '2.13.56';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9833,6 +9833,25 @@ function pharmaRender(code) {
   var months  = pharmaQuarterMonths(PHARMA_STATE.kvartal);
   var summArr = d.summary || [];
   var okresy  = d.okresy  || [];
+
+  // Ak sú dáta prázdne (Q ešte nenahrané), prepni na predchádzajúci Q
+  if (!summArr.length && !okresy.length) {
+    var prevKvR = pharmaKvartalPrev(PHARMA_STATE.kvartal);
+    if (prevKvR !== PHARMA_STATE.kvartal) {
+      delete PHARMA_STATE.cache[cacheKey]; // vymaž prázdny cache záznam
+      PHARMA_STATE.kvartal = prevKvR;
+      var prevQNumR = parseInt(prevKvR.slice(2), 10);
+      var prevYearR = 2000 + parseInt(prevKvR.slice(0, 2), 10);
+      var titleElR = document.getElementById('pharma-ms-title');
+      if (titleElR) {
+        var partsR = titleElR.textContent.split(' · ');
+        if (partsR.length >= 2) { partsR[1] = 'Q' + prevQNumR + ' ' + prevYearR; titleElR.textContent = partsR.join(' · '); }
+      }
+      loadPharmaData(code, PHARMA_STATE.oblast, prevKvR);
+      return;
+    }
+  }
+
   var q       = parseInt(PHARMA_STATE.kvartal.slice(2), 10);
   var yy      = PHARMA_STATE.kvartal.slice(0, 2);
 
