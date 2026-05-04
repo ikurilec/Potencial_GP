@@ -1823,7 +1823,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.56';
+var APP_VERSION = '2.13.59';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8973,7 +8973,7 @@ function pharmaKvartalPrev(kvartal) {
   var yy = parseInt(kvartal.slice(0, 2), 10);
   var qq = parseInt(kvartal.slice(2), 10);
   if (qq === 1) { yy -= 1; qq = 4; } else { qq -= 1; }
-  return (yy < 10 ? '0' + yy : '' + yy) + '' + qq;
+  return (yy < 10 ? '0' + yy : '' + yy) + (qq < 10 ? '0' + qq : '' + qq);
 }
 
 function pharmaQuarterMonths(kvartal) {
@@ -9834,8 +9834,13 @@ function pharmaRender(code) {
   var summArr = d.summary || [];
   var okresy  = d.okresy  || [];
 
-  // Ak sú dáta prázdne (Q ešte nenahrané), prepni na predchádzajúci Q
-  if (!summArr.length && !okresy.length) {
+  // Ak sú dáta prázdne alebo bez reálnych hodnôt pre aktuálny Q (IQVIA nenahrané), prepni na predchádzajúci Q
+  var hasRealSummData = summArr.some(function(s) {
+    if (months.indexOf(s.mesiac) < 0) return false; // len mesiace aktuálneho Q
+    var tv = parseFloat(s.terit_ms); var sv = parseFloat(s.sk_ms);
+    return (!isNaN(tv) && tv > 0) || (!isNaN(sv) && sv > 0);
+  });
+  if (!hasRealSummData && !okresy.length) {
     var prevKvR = pharmaKvartalPrev(PHARMA_STATE.kvartal);
     if (prevKvR !== PHARMA_STATE.kvartal) {
       delete PHARMA_STATE.cache[cacheKey]; // vymaž prázdny cache záznam
