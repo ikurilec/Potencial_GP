@@ -1823,7 +1823,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.43';
+var APP_VERSION = '2.13.52';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10172,26 +10172,45 @@ function rptPlnenieForRep(username, q, month, year) {
   var qc = PL_STATE.qCache[q];
   if (!qc || !qc.data) return null;
   var data = qc.data;
-  var plan    = data.plan    && data.plan[username];
-  var predaje = data.predaje && data.predaje[username];
-  if (!plan) return null;
-  var byMonth = (predaje && predaje.byMonth) || {};
-  var mPred   = byMonth[month] || {};
-  var prods   = plnenieSortProducts(Object.keys(plan));
+  var planRep    = data.plan    && data.plan[username];
+  var predajeRep = data.predaje && data.predaje[username];
+  if (!planRep) return null;
+  var byMonth      = (predajeRep && predajeRep.byMonth) || {};
+  var predajeTotal = (predajeRep && predajeRep.total)   || {};
+  var planProducts = data.planProducts || Object.keys(planRep);
+
+  // Q mesiace a WD pozície míľnikov
+  var qMonths = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[q] || [];
+  var totalWD = 0, wdByMonth = {};
+  qMonths.forEach(function(m) { var wd = plnenieWorkingDays(year, m); wdByMonth[m] = wd; totalWD += wd; });
+  var wdPcts = {}, cumWD = 0;
+  qMonths.forEach(function(m) { cumWD += wdByMonth[m]; wdPcts[m] = totalWD > 0 ? Math.round(cumWD / totalWD * 10000) / 100 : 0; });
+
+  // Rovnaká logika ako plnenieBuildAggregates: normalizované kľúče, len plan>0
+  var sortedRawKeys = plnenieSortProducts(planProducts);
   var prodRes = {}, totalPlan = 0, totalPred = 0;
-  prods.forEach(function(prod) {
-    var qPlan  = plan[prod] || 0;
-    var mPlan  = plnenieMonthlyPlans(year, q, qPlan)[month] || 0;
-    var pred   = mPred[prod] || 0;
-    var pct    = mPlan > 0 ? Math.round(pred / mPlan * 100) : null;
-    prodRes[plnenieNormalizeKey(prod)] = { label: plnenieDisplayName(prod), plan: mPlan, predaje: pred, pct: pct };
-    totalPlan += mPlan;
-    totalPred += pred;
+  sortedRawKeys.forEach(function(rawKey) {
+    var key    = plnenieNormalizeKey(rawKey);
+    var qPlan  = parseFloat(planRep[key]); if (isNaN(qPlan)) qPlan = 0;
+    var qActual = parseFloat(predajeTotal[key]); if (isNaN(qActual)) qActual = 0;
+    var mPlans = plnenieMonthlyPlans(year, q, qPlan);
+    var monthData = {};
+    qMonths.forEach(function(m) {
+      var mAct = (byMonth[m] && byMonth[m][key] !== undefined) ? (byMonth[m][key] || 0) : null;
+      monthData[m] = { plan: mPlans[m] || 0, actual: mAct };
+    });
+    var pct = qPlan > 0 ? Math.round(qActual / qPlan * 10000) / 100 : null;
+    prodRes[key] = {
+      label: plnenieDisplayName(rawKey), plan: qPlan, predaje: qActual, pct: pct,
+      rawKey: rawKey, qPlan: qPlan, monthData: monthData,
+      dot: PL_PROD_DOT_COLORS[key] || '#94A3B8'
+    };
+    if (qPlan > 0) { totalPlan += qPlan; totalPred += qActual; }
   });
-  return { prods: prodRes, prodOrder: prods.map(plnenieNormalizeKey),
+  return { prods: prodRes, prodOrder: sortedRawKeys.map(plnenieNormalizeKey),
            totalPlan: totalPlan, totalPred: totalPred,
-           totalPct: totalPlan > 0 ? Math.round(totalPred / totalPlan * 100) : null,
-           qPlanTotal: Object.keys(plan).reduce(function(s,k){ return s+(plan[k]||0); },0) };
+           totalPct: totalPlan > 0 ? Math.round(totalPred / totalPlan * 10000) / 100 : null,
+           qPlanTotal: totalPlan, qMonths: qMonths, wdPcts: wdPcts };
 }
 
 
@@ -10229,6 +10248,11 @@ function rptMsLast(pharmaCode, oblast) {
 
 function rptFmtEur(v) {
   return Math.round(v || 0).toLocaleString('sk') + ' €';
+}
+
+function rptFmtPct(val) {
+  if (val === null || val === undefined || isNaN(val)) return '—';
+  return (Math.round(val * 100) / 100).toFixed(2) + '%';
 }
 
 function rptColorClass(pct) {
@@ -10293,6 +10317,25 @@ function rptProdDotColor(label) {
   return RPT_PROD_COLORS[k] || '#94A3B8';
 }
 
+function rptPredikciaProd(username, q, month, year, prodRawKey) {
+  var qc = PL_STATE.qCache[q]; if (!qc || !qc.data) return null;
+  var plan = qc.data.plan && qc.data.plan[username];
+  var predaje = qc.data.predaje && qc.data.predaje[username];
+  if (!plan || !plan[prodRawKey]) return null;
+  var byMonth = (predaje && predaje.byMonth) || {};
+  var qStart = (q - 1) * 3 + 1;
+  var sumPlan = 0, sumPred = 0;
+  for (var cm = qStart; cm <= month; cm++) {
+    var mPredObj = byMonth[cm] || {};
+    sumPlan += (plnenieMonthlyPlans(year, q, plan[prodRawKey] || 0)[cm] || 0);
+    sumPred += (mPredObj[prodRawKey] || 0);
+  }
+  if (sumPlan === 0) return null;
+  var qPlanProd = plan[prodRawKey] || 0;
+  var predPct = Math.round(sumPred / sumPlan * 10000) / 100;
+  return { pct: predPct, eur: Math.round(predPct / 100 * qPlanProd), qPlan: qPlanProd };
+}
+
 function rptPredikcia(username, q, month, year) {
   var qc = PL_STATE.qCache[q]; if (!qc || !qc.data) return null;
   var plan = qc.data.plan && qc.data.plan[username];
@@ -10304,13 +10347,39 @@ function rptPredikcia(username, q, month, year) {
   for (var cm = qStart; cm <= month; cm++) {
     var mPredObj = byMonth[cm] || {};
     Object.keys(plan).forEach(function(prod) {
+      if (!plan[prod]) return; // skoč produkty bez plánu (napr. Telexer)
       sumPlan += (plnenieMonthlyPlans(year, q, plan[prod]||0)[cm] || 0);
       sumPred += (mPredObj[prod] || 0);
     });
   }
   if (sumPlan === 0) return null;
   var qPlanTotal = Object.keys(plan).reduce(function(s,k){ return s+(plan[k]||0); },0);
-  var predPct = Math.round(sumPred / sumPlan * 100);
+  var predPct = Math.round(sumPred / sumPlan * 10000) / 100;
+  return { pct: predPct, eur: Math.round(predPct / 100 * qPlanTotal), qPlan: qPlanTotal };
+}
+
+// Agregovaná predikcia pre skupinu reprezentantov (AM East/West, SK celok)
+// Rovnaká logika ako rptPredikcia ale sčíta cez všetkých repov v poli
+function rptPredikciaSummary(reps, q, month, year) {
+  var qc = PL_STATE.qCache[q]; if (!qc || !qc.data) return null;
+  var qStart = (q - 1) * 3 + 1;
+  var sumPlan = 0, sumPred = 0, qPlanTotal = 0;
+  reps.forEach(function(username) {
+    var plan = qc.data.plan && qc.data.plan[username]; if (!plan) return;
+    var predaje = qc.data.predaje && qc.data.predaje[username]; if (!predaje) return;
+    var byMonth = predaje.byMonth || {};
+    qPlanTotal += Object.keys(plan).reduce(function(s,k){ return s+(plan[k]||0); },0);
+    for (var cm = qStart; cm <= month; cm++) {
+      var mPredObj = byMonth[cm] || {};
+      Object.keys(plan).forEach(function(prod) {
+        if (!plan[prod]) return;
+        sumPlan += (plnenieMonthlyPlans(year, q, plan[prod]||0)[cm] || 0);
+        sumPred += (mPredObj[prod] || 0);
+      });
+    }
+  });
+  if (sumPlan === 0) return null;
+  var predPct = Math.round(sumPred / sumPlan * 10000) / 100;
   return { pct: predPct, eur: Math.round(predPct / 100 * qPlanTotal), qPlan: qPlanTotal };
 }
 
@@ -10353,23 +10422,23 @@ function rptCss() {
     '.rpt-prod-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}' +
     '.rpt-prod-card{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:12px 14px}' +
     '.rpt-prod-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}' +
-    '.rpt-prod-name{font-size:11px;font-weight:700;color:#0C1E35;display:flex;align-items:center;gap:5px}' +
-    '.rpt-prod-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}' +
-    '.rpt-prod-pct{font-size:13px;font-weight:800}' +
+    '.rpt-prod-name{font-size:13px;font-weight:700;color:#0C1E35;display:flex;align-items:center;gap:5px}' +
+    '.rpt-prod-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}' +
+    '.rpt-prod-pct{font-size:16px;font-weight:800}' +
     '.rpt-prod-pct.green{color:#059669}.rpt-prod-pct.orange{color:#D97706}.rpt-prod-pct.red{color:#DC2626}' +
     '.rpt-prod-bar-wrap{background:#CBD5E1;border-radius:4px;height:6px;overflow:hidden;margin-bottom:5px}' +
     '.rpt-prod-bar-fill{height:100%;border-radius:4px}' +
-    '.rpt-prod-numbers{font-size:10px;color:#64748B}' +
+    '.rpt-prod-numbers{font-size:12px;color:#64748B;text-align:center}' +
     '.rpt-prod-numbers strong{color:#0C1E35;font-weight:600}' +
-    '.rpt-prod-plan-note{font-size:9px;color:#94A3B8;margin-top:2px}' +
+    '.rpt-prod-plan-note{font-size:11px;color:#94A3B8;margin-top:2px}' +
     '.rpt-visits-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}' +
-    '.rpt-visit-card{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:14px 16px}' +
-    '.rpt-visit-big{font-size:28px;font-weight:800;color:#0C1E35;line-height:1}' +
-    '.rpt-visit-lbl{font-size:10px;color:#64748B;margin-top:3px;font-weight:500}' +
-    '.rpt-gs-card{background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:12px;padding:14px 16px}' +
-    '.rpt-gs-big{font-size:28px;font-weight:800;color:#1D4ED8;line-height:1}' +
-    '.rpt-gs-lbl{font-size:10px;color:#3B82F6;margin-top:3px;font-weight:500}' +
-    '.rpt-gs-sub{font-size:9px;color:#93C5FD;margin-top:1px}' +
+    '.rpt-visit-card{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}' +
+    '.rpt-visit-big{font-size:32px;font-weight:800;color:#0C1E35;line-height:1}' +
+    '.rpt-visit-lbl{font-size:12px;color:#64748B;margin-top:4px;font-weight:500}' +
+    '.rpt-gs-card{background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}' +
+    '.rpt-gs-big{font-size:32px;font-weight:800;color:#1D4ED8;line-height:1}' +
+    '.rpt-gs-lbl{font-size:12px;color:#3B82F6;margin-top:4px;font-weight:500}' +
+    '.rpt-gs-sub{font-size:11px;color:#93C5FD;margin-top:2px}' +
     '.rpt-seg-rows{margin-top:10px;display:flex;flex-direction:column;gap:4px}' +
     '.rpt-seg-row{display:flex;align-items:center;gap:6px;font-size:10px}' +
     '.rpt-seg-label{width:24px;font-weight:700;color:#0C1E35;flex-shrink:0}' +
@@ -10378,9 +10447,9 @@ function rptCss() {
     '.rpt-seg-val{color:#64748B;width:28px;text-align:right;flex-shrink:0}' +
     '.rpt-ms-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}' +
     '.rpt-ms-card{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px 8px;text-align:center}' +
-    '.rpt-ms-prod{font-size:8.5px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}' +
-    '.rpt-ms-val{font-size:16px;font-weight:800;color:#0C1E35}' +
-    '.rpt-ms-delta{font-size:9.5px;font-weight:600;margin-top:2px}' +
+    '.rpt-ms-prod{font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}' +
+    '.rpt-ms-val{font-size:19px;font-weight:800;color:#0C1E35}' +
+    '.rpt-ms-delta{font-size:11px;font-weight:600;margin-top:2px}' +
     '.rpt-ms-delta.up{color:#059669}.rpt-ms-delta.down{color:#DC2626}' +
     '.rpt-ms-placeholder{background:#F8FAFC;border:1.5px dashed #CBD5E1;border-radius:10px;padding:16px;text-align:center;color:#94A3B8;font-size:11px;grid-column:1/-1}' +
     '.rpt-rep-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}' +
@@ -10443,6 +10512,17 @@ function rptCss() {
     '.rpt-footer{background:#F8FAFC;border-top:1px solid #E2E8F0;padding:12px 22px;display:flex;justify-content:space-between;align-items:center}' +
     '.rpt-footer-brand{font-size:10px;font-weight:700;color:#94A3B8;letter-spacing:.05em;text-transform:uppercase}' +
     '.rpt-footer-date{font-size:9.5px;color:#CBD5E1}' +
+    '.rpt-ms-wrap{position:relative;margin:7px 0 26px}' +
+    '.rpt-ms-track{background:#E2E8F0;border-radius:4px;height:7px;overflow:hidden}' +
+    '.rpt-ms-fill{height:100%;border-radius:4px}' +
+    '.rpt-ms-m{position:absolute;top:-1px;transform:translateX(-50%)}' +
+    '.rpt-ms-m-line{width:1.5px;height:9px;background:#334155;margin:0 auto}' +
+    '.rpt-ms-m-lbl{font-size:9px;color:#64748B;white-space:nowrap;text-align:center;position:absolute;left:50%;transform:translateX(-50%);top:10px;font-weight:600}' +
+    '.rpt-mr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-top:8px;border-top:1px solid #F1F5F9;padding-top:8px}' +
+    '.rpt-mr-cell{text-align:center}' +
+    '.rpt-mr-cell-lbl{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#94A3B8;margin-bottom:3px}' +
+    '.rpt-mr-cell-val{font-size:13px;font-weight:700;line-height:1.2}' +
+    '.rpt-mr-cell-plan{font-size:10px;color:#94A3B8;margin-top:2px}' +
     '@page{size:A4 portrait;margin:0}' +
     '@media print{' +
       '*,*::before,*::after{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}' +
@@ -10506,33 +10586,33 @@ function rptSegRowGrayHtml(lbl, count, maxCount) {
   '</div>';
 }
 function rptNpSegRowHtml(label, color, visited, total) {
-  var pct = total > 0 ? Math.round(visited/total*100) : 0;
+  var pct = total > 0 ? Math.round(visited/total*10000)/100 : 0;
   var barW = total > 0 ? Math.round(visited/total*100) : 0;
   return '<div style="display:flex;align-items:center;gap:8px">' +
     '<span style="font-size:10px;font-weight:700;color:' + color + ';width:58px;flex-shrink:0">' + label + '</span>' +
     '<div style="flex:1;background:#E2E8F0;border-radius:3px;height:6px;overflow:hidden"><div style="height:100%;border-radius:3px;background:' + color + ';width:' + barW + '%"></div></div>' +
     '<span style="font-size:10px;font-weight:600;color:#0C1E35;width:36px;text-align:right;flex-shrink:0">' + visited + '/' + total + '</span>' +
-    '<span style="font-size:10px;font-weight:700;color:' + color + ';width:32px;text-align:right;flex-shrink:0">' + pct + '%</span>' +
+    '<span style="font-size:10px;font-weight:700;color:' + color + ';width:42px;text-align:right;flex-shrink:0">' + rptFmtPct(pct) + '</span>' +
   '</div>';
 }
 function rptDbSegRowHtml(lbl, count, maxSeg, color, total) {
   var w = maxSeg > 0 ? Math.round(count / maxSeg * 100) : 0;
-  var pct = total > 0 ? Math.round(count / total * 100) : 0;
+  var pct = total > 0 ? Math.round(count / total * 10000) / 100 : 0;
   return '<div class="rpt-db-seg-row">' +
     '<span class="rpt-db-seg-lbl" style="color:' + color + '">' + lbl + '</span>' +
     '<span class="rpt-db-seg-cnt" style="color:' + color + '">' + count + '</span>' +
     '<div class="rpt-db-seg-bar-wrap"><div class="rpt-db-seg-bar-fill" style="width:' + w + '%;background:' + color + '"></div></div>' +
-    '<span class="rpt-db-seg-pct">' + pct + '%</span>' +
+    '<span class="rpt-db-seg-pct">' + rptFmtPct(pct) + '</span>' +
   '</div>';
 }
 function rptDbSegRowOtherHtml(lbl, count, maxSeg, total) {
   var w = maxSeg > 0 ? Math.round(count / maxSeg * 100) : 0;
-  var pct = total > 0 ? Math.round(count / total * 100) : 0;
+  var pct = total > 0 ? Math.round(count / total * 10000) / 100 : 0;
   return '<div class="rpt-db-seg-row">' +
     '<span class="rpt-db-seg-lbl" style="color:#CBD5E1">' + lbl + '</span>' +
     '<span class="rpt-db-seg-cnt" style="color:#CBD5E1">' + count + '</span>' +
     '<div class="rpt-db-seg-bar-wrap"><div class="rpt-db-seg-bar-fill" style="width:' + w + '%;background:#E2E8F0"></div></div>' +
-    '<span class="rpt-db-seg-pct" style="color:#E2E8F0">' + pct + '%</span>' +
+    '<span class="rpt-db-seg-pct" style="color:#E2E8F0">' + rptFmtPct(pct) + '</span>' +
   '</div>';
 }
 
@@ -10546,12 +10626,12 @@ function rptAtRiskHtml(atRisk, showWE) {
     var badges = rep.prods.map(function(pd) {
       var isRed = pd.pct !== null && pd.pct < 80;
       var badgeSty = isRed ? 'background:#FEE2E2;border:1px solid #FECACA;color:#DC2626' : 'background:#FEF3C7;border:1px solid #FDE68A;color:#D97706';
-      return '<span style="' + badgeSty + ';border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700">' + pd.label + ' ' + (pd.pct !== null ? pd.pct + '%' : '—') + '</span>';
+      return '<span style="' + badgeSty + ';border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700">' + pd.label + ' ' + rptFmtPct(pd.pct) + '</span>';
     }).join(' ');
     return '<div style="padding:10px 12px;background:' + bg + ';border-radius:8px">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">' +
         '<div><span style="font-size:12px;font-weight:700;color:#0C1E35">' + rep.name + '</span>' + weBadge + '</div>' +
-        '<span style="font-size:14px;font-weight:800;color:#DC2626">' + rep.pct + '%</span>' +
+        '<span style="font-size:14px;font-weight:800;color:#DC2626">' + rptFmtPct(rep.pct) + '</span>' +
       '</div>' +
       (badges ? '<div style="font-size:9.5px;color:#94A3B8;margin-bottom:6px">Produkty ťahajúce plán dole:</div><div style="display:flex;gap:6px;flex-wrap:wrap">' + badges + '</div>' : '') +
     '</div>';
@@ -10627,19 +10707,19 @@ function rptMsCompetitorHtml(oblasts) {
     cards += '<div style="background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:6px 9px;display:flex;align-items:center;justify-content:space-between;break-inside:avoid;page-break-inside:avoid">' +
       '<div style="min-width:0;flex:1">' +
         '<div style="display:flex;align-items:center;gap:4px">' +
-          '<div style="width:5px;height:5px;border-radius:50%;background:' + pp.dot + ';flex-shrink:0"></div>' +
-          '<div style="font-size:9px;font-weight:700;color:#0C1E35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + pp.label + '</div>' +
+          '<div style="width:7px;height:7px;border-radius:50%;background:' + pp.dot + ';flex-shrink:0"></div>' +
+          '<div style="font-size:11px;font-weight:700;color:#0C1E35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + pp.label + '</div>' +
         '</div>' +
-        (ms && ms.k1 ? '<div style="font-size:8px;color:#94A3B8;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">vs <span style="color:#64748B;font-weight:600">' + ms.k1.name + '</span></div>' : '') +
+        (ms && ms.k1 ? '<div style="font-size:10px;color:#94A3B8;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">vs <span style="color:#64748B;font-weight:600">' + ms.k1.name + '</span></div>' : '') +
       '</div>' +
       '<div style="flex-shrink:0;text-align:right;padding-left:6px">' +
-        '<div style="font-size:12px;font-weight:800;color:' + (ms ? '#0C1E35' : '#CBD5E1') + ';line-height:1">' + (ms ? ms.nasPct.toFixed(1) + '%' : '—') + '</div>' +
-        '<div style="font-size:8.5px;font-weight:700;color:' + t.c + ';margin-top:2px">' + t.s + '</div>' +
+        '<div style="font-size:14px;font-weight:800;color:' + (ms ? '#0C1E35' : '#CBD5E1') + ';line-height:1">' + (ms ? ms.nasPct.toFixed(1) + '%' : '—') + '</div>' +
+        '<div style="font-size:11px;font-weight:700;color:' + t.c + ';margin-top:2px">' + t.s + '</div>' +
       '</div>' +
     '</div>';
   });
   return '<div class="rpt-ms-comp-wrap" style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:14px;padding:10px 12px">' +
-    '<div style="font-size:8px;color:#94A3B8;margin-bottom:7px">↑ <span style="color:#DC2626;font-weight:600">červená</span> = konkurent rastie &nbsp;·&nbsp; ↓ <span style="color:#059669;font-weight:600">zelená</span> = klesá</div>' +
+    '<div style="font-size:10px;color:#94A3B8;margin-bottom:9px">↑ <span style="color:#DC2626;font-weight:600">červená</span> = konkurent rastie &nbsp;·&nbsp; ↓ <span style="color:#059669;font-weight:600">zelená</span> = klesá</div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">' + cards + '</div>' +
   '</div>';
 }
@@ -10703,6 +10783,56 @@ function rptDbBlockHtml(reps, label) {
   '</div>';
 }
 
+// ══ Aflamil / Krém pravidlo plánu ══
+function rptAflRuleHtml(pl) {
+  if (!pl || !pl.prods) return '';
+  var tblPd = pl.prods['aflamil_tablety_sacky'];
+  var krPd  = pl.prods['aflamil_kr'];
+  if (!tblPd || !krPd || !(tblPd.plan > 0) || !(krPd.plan > 0)) return '';
+
+  // MS NEKLESNE: oba predaje / oba plány
+  var nekPred  = tblPd.predaje + krPd.predaje;
+  var nekPlan  = tblPd.plan + krPd.plan;
+  var nekPct   = nekPlan > 0 ? Math.round(nekPred / nekPlan * 10000) / 100 : null;
+  var nekColor = nekPct === null ? '#94A3B8' : nekPct >= 100 ? '#059669' : nekPct >= 95 ? '#D97706' : '#DC2626';
+
+  // MS KLESNE: každý produkt zvlášť
+  var klnTblPct   = tblPd.pct;
+  var klnKrPct    = krPd.pct;
+  var klnTblColor = klnTblPct === null ? '#94A3B8' : klnTblPct >= 100 ? '#059669' : klnTblPct >= 95 ? '#D97706' : '#DC2626';
+  var klnKrColor  = klnKrPct  === null ? '#94A3B8' : klnKrPct  >= 100 ? '#059669' : klnKrPct  >= 95 ? '#D97706' : '#DC2626';
+
+  return '<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:14px;overflow:hidden">' +
+    '<div style="background:#0C1E35;padding:9px 16px">' +
+      '<span style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#94B8D4">Aflamil — Pravidlo plánu</span>' +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px">' +
+      // Ľavá karta — MS NEKLESNE
+      '<div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:10px;padding:13px">' +
+        '<div style="display:inline-flex;align-items:center;font-size:9.5px;font-weight:700;padding:2px 9px;border-radius:20px;background:#DBEAFE;color:#1E40AF;margin-bottom:5px">✓ MS NEKLESNE</div>' +
+        '<div style="font-size:10px;color:#3B82F6;margin-bottom:8px">MS tbl+sáčky ≥ Q predtým</div>' +
+        '<div style="font-size:12px;font-weight:700;color:#0C1E35;margin-bottom:5px">Krém ti pomáha</div>' +
+        '<div style="font-size:10px;color:#64748B;margin-bottom:10px;line-height:1.45">Predaje krému sa ti <strong style="color:#0C1E35">zarátajú</strong> do plnenia plánu za produkt <strong style="color:#0C1E35">Aflamil</strong></div>' +
+        '<div style="height:1px;background:#BFDBFE;margin-bottom:10px"></div>' +
+        '<div style="font-size:9.5px;color:#64748B;margin-bottom:4px">Príklad plnenia plánu za Aflamil (krém + tbl+sáčky):</div>' +
+        '<div style="font-size:28px;font-weight:800;color:' + nekColor + ';line-height:1">' + rptFmtPct(nekPct) + '</div>' +
+      '</div>' +
+      // Pravá karta — MS KLESNE
+      '<div style="background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:10px;padding:13px">' +
+        '<div style="display:inline-flex;align-items:center;font-size:9.5px;font-weight:700;padding:2px 9px;border-radius:20px;background:#FEF3C7;color:#92400E;margin-bottom:5px">⚠ MS KLESNE</div>' +
+        '<div style="font-size:10px;color:#D97706;margin-bottom:8px">MS tbl+sáčky &lt; Q predtým</div>' +
+        '<div style="font-size:12px;font-weight:700;color:#0C1E35;margin-bottom:5px">Krém sa nezaráta</div>' +
+        '<div style="font-size:10px;color:#64748B;margin-bottom:10px;line-height:1.45">Predaje krému sa <strong style="color:#0C1E35">nepočítajú</strong> do plnenia plánu za produkt <strong style="color:#0C1E35">Aflamil</strong> — ráta sa len to čo si predal tbl+sáčky</div>' +
+        '<div style="height:1px;background:#FDE68A;margin-bottom:10px"></div>' +
+        '<div style="font-size:9.5px;color:#64748B;margin-bottom:4px">Plnenie Aflamil (len tbl+sáčky):</div>' +
+        '<div style="font-size:28px;font-weight:800;color:' + klnTblColor + ';line-height:1;margin-bottom:10px">' + rptFmtPct(klnTblPct) + '</div>' +
+        '<div style="font-size:9.5px;color:#64748B;margin-bottom:4px">Krém — vlastný plán (' + rptFmtEur(krPd.predaje) + ' z ' + rptFmtEur(krPd.plan) + '):</div>' +
+        '<div style="font-size:28px;font-weight:800;color:' + klnKrColor + ';line-height:1">' + rptFmtPct(klnKrPct) + '</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
 // ══ REP REPORT ══
 function rptBuildRepHtml(username) {
   var p = rptPeriod();
@@ -10714,6 +10844,16 @@ function rptBuildRepHtml(username) {
 
   var visits = rptVisits(username, p.month, p.year);
   var allV   = rptAllVisits(username);
+  // Q total — unikátni lekári navštívení v celom kvartáli
+  var qMonthsList = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[p.q] || [];
+  var qVisitsSet = {};
+  allV.forEach(function(v) {
+    var d = parseLbDatum(v.datum || v.dateKey || '');
+    if (!d || d.getFullYear() !== p.year) return;
+    var m = d.getMonth() + 1;
+    if (qMonthsList.indexOf(m) >= 0 && v.lekar) qVisitsSet[v.lekar] = true;
+  });
+  var qVisitsCount = Object.keys(qVisitsSet).length;
 
   var segThis = { A1:0, A2:0, B1:0, B2:0, ine:0 };
   // GS portfólio: GS doktori (posledný scenar) vs. všetci doktori
@@ -10731,7 +10871,7 @@ function rptBuildRepHtml(username) {
   });
   var gsCount  = Object.keys(allGsSet).length;   // doktori na navštívenie
   var allCount = Object.keys(allDocsSet).length; // všetci doktori celkom
-  var gsPct    = allCount > 0 ? Math.round(gsCount / allCount * 100) : 0;
+  var gsPct    = allCount > 0 ? Math.round(gsCount / allCount * 10000) / 100 : 0;
   var gsCls    = rptColorClass(gsPct >= 70 ? 100 : gsPct >= 50 ? 95 : 0);
 
   var pl      = rptPlnenieForRep(username, p.q, p.month, p.year);
@@ -10751,27 +10891,26 @@ function rptBuildRepHtml(username) {
       '</div>' +
     '</div>' +
     '<div class="rpt-header-stats">' +
-      '<div class="rpt-hstat"><div class="rpt-hstat-val' + (noPlan ? '' : ' ' + totalCls) + '" style="' + (noPlan ? 'font-size:13px;color:#94B8D4' : '') + '">' + (noPlan ? 'bez plánu' : totalPct + '%') + '</div><div class="rpt-hstat-lbl">Plnenie mesiaca</div></div>' +
-      '<div class="rpt-hstat"><div class="rpt-hstat-val">' + visits.length + '</div><div class="rpt-hstat-lbl">Lekárov tento mesiac</div></div>' +
-      '<div class="rpt-hstat"><div class="rpt-hstat-val ' + gsCls + '">' + gsPct + '%</div><div class="rpt-hstat-lbl">GS v portfóliu</div></div>' +
+      '<div class="rpt-hstat"><div class="rpt-hstat-val' + (noPlan ? '' : ' ' + totalCls) + '" style="' + (noPlan ? 'font-size:13px;color:#94B8D4' : '') + '">' + (noPlan ? 'bez plánu' : rptFmtPct(totalPct)) + '</div><div class="rpt-hstat-lbl">Plnenie Q' + p.q + '</div></div>' +
+      '<div class="rpt-hstat"><div class="rpt-hstat-val">' + qVisitsCount + '</div><div class="rpt-hstat-lbl">Lekárov v Q' + p.q + '</div></div>' +
+      '<div class="rpt-hstat"><div class="rpt-hstat-val ' + gsCls + '">' + rptFmtPct(gsPct) + '</div><div class="rpt-hstat-lbl">GS v portfóliu</div></div>' +
     '</div>' +
   '</div>';
 
   var predHtml = '';
   if (pred) {
     predHtml = '<div class="rpt-predikcia-row"><span>📈 Predikcia konca Q' + p.q + ' pri tomto tempe:</span>' +
-      '<span class="rpt-predikcia-val">' + pred.pct + '%</span>' +
+      '<span class="rpt-predikcia-val">' + rptFmtPct(pred.pct) + '</span>' +
       '<span style="color:#64748B;font-size:10px">(≈ ' + rptFmtEur(pred.eur) + ' z ' + rptFmtEur(pred.qPlan) + ')</span></div>';
   }
-  var qPctRep = Math.round(p.qMonth / 3 * 100);
   var plCard = pl ?
     '<div class="rpt-plnenie-card">' +
       '<div class="rpt-plnenie-top">' +
         (noPlan
           ? '<div style="font-size:13px;font-weight:600;color:#94B8D4;line-height:1.4">Plán Q' + p.q + ' ešte<br>nie je zadaný</div>'
-          : '<div class="rpt-plnenie-pct ' + totalCls + '">' + totalPct + '%</div>') +
-        '<div class="rpt-plnenie-meta"><div class="rpt-plnenie-eur">' + rptFmtEur(pl.totalPred) + '</div><div class="rpt-plnenie-plan">' + (noPlan ? 'predaje za mesiac' : 'z plánu ' + rptFmtEur(pl.totalPlan)) + '</div>' +
-          (!noPlan && pl.qPlanTotal > 0 ? '<div style="font-size:9.5px;color:#64A4D8;margin-top:3px">Q' + p.q + ' plán ' + rptFmtEur(pl.qPlanTotal) + ' · ' + qPctRep + '% kvartálu</div>' : '') +
+          : '<div class="rpt-plnenie-pct ' + totalCls + '">' + rptFmtPct(totalPct) + '</div>') +
+        '<div class="rpt-plnenie-meta"><div class="rpt-plnenie-eur">' + rptFmtEur(pl.totalPred) + '</div>' +
+          '<div class="rpt-plnenie-plan">' + (noPlan ? 'predaje v Q' + p.q : 'z Q' + p.q + ' plánu ' + rptFmtEur(pl.totalPlan)) + '</div>' +
         '</div>' +
       '</div>' +
       (noPlan ? '' : '<div class="rpt-main-bar-wrap"><div class="rpt-main-bar-fill ' + totalCls + '" style="width:' + Math.min(100,totalPct||0) + '%"></div></div>') +
@@ -10779,34 +10918,76 @@ function rptBuildRepHtml(username) {
     '</div>' :
     '<div class="rpt-plnenie-card"><div style="font-size:12px;color:#94B8D4">Plnenie — dáta nie sú dostupné</div></div>';
 
+  var RPT_SK_M = { 1:'Jan',2:'Feb',3:'Mar',4:'Apr',5:'Máj',6:'Jún',7:'Júl',8:'Aug',9:'Sep',10:'Okt',11:'Nov',12:'Dec' };
   var prodsHtml = '';
   if (pl) {
     var repProdOrder = pl.prodOrder;
+    var qMonths = pl.qMonths || [];
+    var wdPcts  = pl.wdPcts  || {};
     repProdOrder.forEach(function(key, idx) {
       var pd = pl.prods[key]; if (!pd) return;
-      var pct = pd.pct; var bar = pct === null ? 0 : Math.min(100,pct);
+      var pct = pd.pct;
       var cls = rptColorClass(pct);
       var isLast = (idx === repProdOrder.length - 1) && (repProdOrder.length % 2 !== 0);
-      var qProdPct = Math.round(p.qMonth / 3 * 100);
+
+      // Progress bar — rovnako ako pd.pct (z predaje.total, nie byMonth súčet)
+      var cumFillPct = pd.pct !== null ? Math.min(100, pd.pct) : 0;
+
+      // Milestone ticky (iba medzi mesiacmi, nie na konci)
+      var milestonesHtml = '';
+      qMonths.slice(0, -1).forEach(function(m) {
+        var leftPct = wdPcts[m] || 0;
+        milestonesHtml += '<div class="rpt-ms-m" style="left:' + leftPct + '%">' +
+          '<div class="rpt-ms-m-line"></div>' +
+          '<div class="rpt-ms-m-lbl">' + RPT_SK_M[m] + ' · ' + rptFmtPct(leftPct) + '</div>' +
+        '</div>';
+      });
+
+      // Mesačné riadky
+      var monthRowsHtml = '';
+      if (pd.monthData) {
+        monthRowsHtml = '<div class="rpt-mr-grid">' + qMonths.map(function(m) {
+          var md = pd.monthData[m];
+          var hasActual = md && md.actual !== null;
+          var actColor = (hasActual && md.plan > 0)
+            ? (md.actual >= md.plan ? '#059669' : md.actual >= md.plan * 0.95 ? '#D97706' : '#DC2626')
+            : '#CBD5E1';
+          return '<div class="rpt-mr-cell">' +
+            '<div class="rpt-mr-cell-lbl">' + RPT_SK_M[m].toUpperCase() + '</div>' +
+            '<div class="rpt-mr-cell-val" style="color:' + actColor + '">' + (hasActual ? rptFmtEur(md.actual) : '—') + '</div>' +
+            '<div class="rpt-mr-cell-plan">plán ' + rptFmtEur(md ? md.plan : 0) + '</div>' +
+          '</div>';
+        }).join('') + '</div>';
+      }
+
       prodsHtml += '<div class="rpt-prod-card"' + (isLast ? ' style="grid-column:1/-1"' : '') + '>' +
         '<div class="rpt-prod-header">' +
           '<div class="rpt-prod-name"><div class="rpt-prod-dot" style="background:' + pd.dot + '"></div>' + pd.label + '</div>' +
-          '<div class="rpt-prod-pct ' + cls + '">' + (pct !== null ? pct + '%' : '—') + '</div>' +
+          '<div class="rpt-prod-pct ' + cls + '">' + rptFmtPct(pct) + '</div>' +
         '</div>' +
-        '<div class="rpt-prod-bar-wrap"><div class="rpt-prod-bar-fill" style="width:' + bar + '%;background:' + rptGradientVal(pct) + '"></div></div>' +
-        '<div class="rpt-prod-numbers"><strong>' + rptFmtEur(pd.predaje) + '</strong> z ' + rptFmtEur(pd.plan) + '</div>' +
-        (pd.plan > 0 ? '<div class="rpt-prod-plan-note">Q' + p.q + ' plán ' + rptFmtEur(pd.plan * 3) + ' · ' + qProdPct + '% kvartálu</div>' : '') +
+        '<div class="rpt-ms-wrap">' +
+          '<div class="rpt-ms-track"><div class="rpt-ms-fill" style="width:' + cumFillPct + '%;background:' + rptGradientVal(cumFillPct) + '"></div></div>' +
+          milestonesHtml +
+        '</div>' +
+        monthRowsHtml +
+        (pd.qPlan > 0 ? '<div class="rpt-prod-numbers" style="margin-top:6px"><strong>' + rptFmtEur(pd.predaje) + '</strong> z Q plánu ' + rptFmtEur(pd.qPlan) + '</div>' : '') +
+        (function() {
+          var pp = rptPredikciaProd(username, p.q, p.month, p.year, pd.rawKey);
+          if (!pp) return '';
+          var ppCls = pp.pct >= 100 ? '#059669' : pp.pct >= 70 ? '#D97706' : '#DC2626';
+          return '<div style="font-size:9px;color:#64748B;margin-top:4px;text-align:center">📈 predikcia Q: <strong style="color:' + ppCls + '">' + rptFmtPct(pp.pct) + '</strong></div>';
+        })() +
       '</div>';
     });
   }
 
   var visitsHtml = '<div class="rpt-visits-grid">' +
     '<div class="rpt-visit-card">' +
-      '<div class="rpt-visit-big">' + visits.length + '</div>' +
-      '<div class="rpt-visit-lbl">Lekárov tento mesiac</div>' +
+      '<div class="rpt-visit-big">' + qVisitsCount + '</div>' +
+      '<div class="rpt-visit-lbl">lekárov so zisteným potenciálom a kapitáciou v Q' + p.q + '</div>' +
     '</div>' +
     '<div class="rpt-gs-card">' +
-      '<div class="rpt-gs-big">' + gsPct + '%</div>' +
+      '<div class="rpt-gs-big">' + rptFmtPct(gsPct) + '</div>' +
       '<div class="rpt-gs-lbl">GS v portfóliu</div>' +
       '<div class="rpt-gs-sub">A1/A2/B1/B2 z celku</div>' +
       '<div style="font-size:10px;color:#64748B;margin-top:4px">' + gsCount + ' navštevovať · ' + (allCount - gsCount) + ' nenavštevovať</div>' +
@@ -10855,9 +11036,10 @@ function rptBuildRepHtml(username) {
 
   var msGrid = rptMsGridHtml(region);
   var body = '<div class="rpt-body">' +
-    '<div><div class="rpt-section-label">Plnenie plánu — ' + p.label + '</div>' + plCard + '</div>' +
-    '<div><div class="rpt-section-label">Návštevy lekárov — ' + p.label + '</div>' + visitsHtml + '</div>' +
+    '<div><div class="rpt-section-label">Plnenie plánu — Q' + p.q + ' ' + p.year + '</div>' + plCard + '</div>' +
+    '<div><div class="rpt-section-label">Návštevy lekárov — Q' + p.q + ' ' + p.year + '</div>' + visitsHtml + '</div>' +
     (prodsHtml ? '<div><div class="rpt-section-label">Plnenie per produkt</div><div class="rpt-prod-grid">' + prodsHtml + '</div></div>' : '') +
+    (function() { var afl = rptAflRuleHtml(pl); return afl ? '<div><div class="rpt-section-label">Pravidlo Aflamil / Krém</div>' + afl + '</div>' : ''; })() +
     (repDbHtml ? '<div><div class="rpt-section-label">Lekári v databáze</div>' + repDbHtml + '</div>' : '') +
     '<div>' +
       '<div class="rpt-section-label">Trhový podiel — ' + region + '</div>' +
@@ -10881,20 +11063,29 @@ function rptBuildAmHtml(isWest) {
   var now = new Date();
   var footerDate = now.getDate() + '. ' + (now.getMonth()+1) + '. ' + now.getFullYear();
 
-  var totalVisits = 0, totalPlanSum = 0, totalPredSum = 0, qPlanTotal = 0;
+  var totalVisits = 0, totalPlanSum = 0, totalPredSum = 0;
   var atRisk = [], repCards = '';
   var prodSums = {};
+  var qMonthsAm = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[p.q] || [];
 
   reps.forEach(function(username) {
     var name   = MGR_REP_NAMES[username] || username;
-    var visits = rptVisits(username, p.month, p.year);
+    var allV2  = rptAllVisits(username);
     var pl     = rptPlnenieForRep(username, p.q, p.month, p.year);
     var pct    = pl && pl.totalPct !== null ? pl.totalPct : null;
     var cls    = rptColorClass(pct);
-    totalVisits += visits.length;
+    // Q unikátni lekári
+    var qVSet2 = {};
+    allV2.forEach(function(v) {
+      var d = parseLbDatum(v.datum || v.dateKey || '');
+      if (!d || d.getFullYear() !== p.year) return;
+      var m = d.getMonth() + 1;
+      if (qMonthsAm.indexOf(m) >= 0 && v.lekar) qVSet2[v.lekar] = true;
+    });
+    var qV2 = Object.keys(qVSet2).length;
+    totalVisits += qV2;
     if (pl) {
       totalPlanSum += pl.totalPlan; totalPredSum += pl.totalPred;
-      qPlanTotal += pl.qPlanTotal || 0;
       pl.prodOrder.forEach(function(key) {
         var pd = pl.prods[key];
         if (!prodSums[key]) prodSums[key] = { label: pd.label, plan:0, pred:0, dot: pd.dot };
@@ -10908,23 +11099,22 @@ function rptBuildAmHtml(isWest) {
         .slice(0,3).map(function(k){ return pl.prods[k]; }) : [];
       atRisk.push({ name: rptShortName(name), pct: pct, prods: worstProds });
     }
-    var allV2 = rptAllVisits(username);
     var curScenar2 = rptCurrentScenarMap(allV2);
     var allGs2 = {}, allDocs2 = {};
     allV2.forEach(function(v) { if (v.lekar) allDocs2[v.lekar] = true; });
     Object.keys(curScenar2).forEach(function(l) { if (RPT_SCENAR_SEG[curScenar2[l]]) allGs2[l] = true; });
     var gsCount2 = Object.keys(allGs2).length, allCount2 = Object.keys(allDocs2).length || 1;
-    var gsPct2 = Math.round(gsCount2 / allCount2 * 100);
+    var gsPct2 = Math.round(gsCount2 / allCount2 * 10000) / 100;
     repCards += '<div class="rpt-rep-card">' +
       '<div class="rpt-rep-header"><div class="rpt-rep-name-text">' + rptShortName(name) + '</div>' +
-        '<div class="rpt-rep-pct ' + cls + '">' + (pct !== null ? pct + '%' : '—') + '</div></div>' +
+        '<div class="rpt-rep-pct ' + cls + '">' + rptFmtPct(pct) + '</div></div>' +
       '<div class="rpt-rep-bar-wrap"><div class="rpt-rep-bar-fill" style="width:' + Math.min(100,pct||0) + '%;background:' + rptGradientVal(pct) + '"></div></div>' +
-      '<div class="rpt-rep-eur"><strong>' + rptFmtEur(pl ? pl.totalPred : 0) + '</strong> z ' + rptFmtEur(pl ? pl.totalPlan : 0) + '</div>' +
-      '<div style="font-size:9.5px;color:#94A3B8;margin-top:3px">' + visits.length + ' lekárov · GS ' + gsCount2 + '/' + allCount2 + ' (' + gsPct2 + '%)</div>' +
+      '<div class="rpt-rep-eur"><strong>' + rptFmtEur(pl ? pl.totalPred : 0) + '</strong> z Q' + p.q + ' plánu ' + rptFmtEur(pl ? pl.totalPlan : 0) + '</div>' +
+      '<div style="font-size:9.5px;color:#94A3B8;margin-top:3px">' + qV2 + ' lekárov Q' + p.q + ' · GS ' + gsCount2 + '/' + allCount2 + ' (' + rptFmtPct(gsPct2) + ')</div>' +
     '</div>';
   });
 
-  var overallPct = totalPlanSum > 0 ? Math.round(totalPredSum / totalPlanSum * 100) : null;
+  var overallPct = totalPlanSum > 0 ? Math.round(totalPredSum / totalPlanSum * 10000) / 100 : null;
   var overallCls = rptColorClass(overallPct);
   var qPct = Math.round(p.qMonth / 3 * 100);
 
@@ -10937,28 +11127,27 @@ function rptBuildAmHtml(isWest) {
         '<div class="rpt-period-q">Q' + p.q + ' · ' + p.qMonth + '. mesiac</div></div>' +
     '</div>' +
     '<div class="rpt-header-stats">' +
-      '<div class="rpt-hstat"><div class="rpt-hstat-val ' + overallCls + '">' + (overallPct !== null ? overallPct + '%' : '—') + '</div><div class="rpt-hstat-lbl">Plnenie ' + label + ' (celok)</div></div>' +
-      '<div class="rpt-hstat"><div class="rpt-hstat-val">' + totalVisits + '</div><div class="rpt-hstat-lbl">Lekárov tento mesiac</div></div>' +
-      '<div class="rpt-hstat"><div class="rpt-hstat-val small ' + overallCls + '">' + rptFmtEur(totalPredSum) + '</div><div class="rpt-hstat-lbl">z plánu ' + rptFmtEur(totalPlanSum) + '</div></div>' +
+      '<div class="rpt-hstat"><div class="rpt-hstat-val ' + overallCls + '">' + rptFmtPct(overallPct) + '</div><div class="rpt-hstat-lbl">Plnenie ' + label + ' Q' + p.q + '</div></div>' +
+      '<div class="rpt-hstat"><div class="rpt-hstat-val">' + totalVisits + '</div><div class="rpt-hstat-lbl">Lekárov v Q' + p.q + '</div></div>' +
+      '<div class="rpt-hstat"><div class="rpt-hstat-val small ' + overallCls + '">' + rptFmtEur(totalPredSum) + '</div><div class="rpt-hstat-lbl">z Q' + p.q + ' plánu ' + rptFmtEur(totalPlanSum) + '</div></div>' +
     '</div>' +
   '</div>';
 
+  var pred2 = rptPredikciaSummary(reps, p.q, p.month, p.year);
   var predHtml2 = '';
-  if (overallPct !== null && qPlanTotal > 0) {
-    var predEur2 = Math.round(overallPct / 100 * qPlanTotal);
+  if (pred2) {
     predHtml2 = '<div style="display:flex;align-items:center;gap:8px;padding-top:9px;border-top:1px solid rgba(255,255,255,.1);font-size:11px;color:#94B8D4;flex-wrap:wrap">' +
       '<span>📈 Predikcia konca Q' + p.q + ' pri tomto tempe:</span>' +
-      '<strong style="color:#FBBF24;font-size:12px">' + overallPct + '%</strong>' +
-      '<span style="color:#64748B;font-size:10px;margin-left:auto">≈ ' + rptFmtEur(predEur2) + ' z ' + rptFmtEur(qPlanTotal) + '</span>' +
+      '<strong style="color:#FBBF24;font-size:12px">' + rptFmtPct(pred2.pct) + '</strong>' +
+      '<span style="color:#64748B;font-size:10px;margin-left:auto">≈ ' + rptFmtEur(pred2.eur) + ' z ' + rptFmtEur(pred2.qPlan) + '</span>' +
     '</div>';
   }
   var darkCard = '<div class="rpt-plnenie-card">' +
     '<div class="rpt-plnenie-top">' +
-      '<div><div class="rpt-plnenie-pct ' + overallCls + '">' + (overallPct !== null ? overallPct + '%' : '—') + '</div>' +
-        '<div style="font-size:10px;color:#94B8D4;margin-top:3px">celkové plnenie ' + label + '</div></div>' +
+      '<div><div class="rpt-plnenie-pct ' + overallCls + '">' + rptFmtPct(overallPct) + '</div>' +
+        '<div style="font-size:10px;color:#94B8D4;margin-top:3px">plnenie Q' + p.q + ' · ' + label + '</div></div>' +
       '<div class="rpt-plnenie-meta"><div class="rpt-plnenie-eur">' + rptFmtEur(totalPredSum) + '</div>' +
-        '<div class="rpt-plnenie-plan">z plánu ' + rptFmtEur(totalPlanSum) + '</div>' +
-        (qPlanTotal > 0 ? '<div style="font-size:9px;color:#64A4D8;margin-top:2px">Q' + p.q + ' plán ' + rptFmtEur(qPlanTotal) + ' · ' + qPct + '% kvartálu</div>' : '') +
+        '<div class="rpt-plnenie-plan">z Q' + p.q + ' plánu ' + rptFmtEur(totalPlanSum) + '</div>' +
       '</div>' +
     '</div>' +
     '<div class="rpt-main-bar-wrap"><div class="rpt-main-bar-fill ' + overallCls + '" style="width:' + Math.min(100,overallPct||0) + '%"></div></div>' +
@@ -10969,32 +11158,31 @@ function rptBuildAmHtml(isWest) {
     '<div style="display:flex;align-items:center;gap:4px;font-size:9.5px;color:#64748B"><div style="width:7px;height:7px;border-radius:50%;background:#059669;flex-shrink:0"></div>≥ 100%</div>' +
     '<div style="display:flex;align-items:center;gap:4px;font-size:9.5px;color:#64748B"><div style="width:7px;height:7px;border-radius:50%;background:#D97706;flex-shrink:0"></div>≥ 95%</div>' +
     '<div style="display:flex;align-items:center;gap:4px;font-size:9.5px;color:#64748B"><div style="width:7px;height:7px;border-radius:50%;background:#DC2626;flex-shrink:0"></div>&lt; 95%</div>' +
-    '<div style="margin-left:auto;font-size:9.5px;color:#94A3B8;font-style:italic">mesačný plán: ' + rptFmtEur(totalPlanSum / Math.max(reps.length,1)) + ' / rep</div>' +
+    '<div style="margin-left:auto;font-size:9.5px;color:#94A3B8;font-style:italic">Q' + p.q + ' plán: ' + rptFmtEur(totalPlanSum / Math.max(reps.length,1)) + ' / rep</div>' +
   '</div>';
 
   var amProdsHtml = '';
   var prodOrder2 = plnenieSortProducts(Object.keys(prodSums));
   prodOrder2.forEach(function(key, idx) {
     var pd = prodSums[key]; if (!pd) return;
-    var pct2 = pd.plan > 0 ? Math.round(pd.pred / pd.plan * 100) : null;
+    var pct2 = pd.plan > 0 ? Math.round(pd.pred / pd.plan * 10000) / 100 : null;
     var cls2 = rptColorClass(pct2);
     var isLast = (idx === prodOrder2.length - 1) && (prodOrder2.length % 2 !== 0);
     amProdsHtml += '<div class="rpt-prod-card"' + (isLast ? ' style="grid-column:1/-1"' : '') + '>' +
       '<div class="rpt-prod-header">' +
         '<div class="rpt-prod-name"><div class="rpt-prod-dot" style="background:' + pd.dot + '"></div>' + pd.label + '</div>' +
-        '<div class="rpt-prod-pct ' + cls2 + '">' + (pct2 !== null ? pct2 + '%' : '—') + '</div>' +
+        '<div class="rpt-prod-pct ' + cls2 + '">' + rptFmtPct(pct2) + '</div>' +
       '</div>' +
       '<div class="rpt-prod-bar-wrap"><div class="rpt-prod-bar-fill" style="width:' + Math.min(100,pct2||0) + '%;background:' + rptGradientVal(pct2) + '"></div></div>' +
-      '<div class="rpt-prod-numbers"><strong>' + rptFmtEur(pd.pred) + '</strong> z ' + rptFmtEur(pd.plan) + '</div>' +
-      (qPct > 0 ? '<div class="rpt-prod-plan-note">' + qPct + '% kvartálu</div>' : '') +
+      '<div class="rpt-prod-numbers"><strong>' + rptFmtEur(pd.pred) + '</strong> z Q' + p.q + ' plánu ' + rptFmtEur(pd.plan) + '</div>' +
     '</div>';
   });
 
   var body = '<div class="rpt-body">' +
     rptAtRiskHtml(atRisk, false) +
-    '<div><div class="rpt-section-label">Plnenie per reprezentant — ' + p.label + '</div>' + darkCard + '<div class="rpt-rep-grid">' + repCards + '</div>' + legendNote + '</div>' +
-    (amProdsHtml ? '<div><div class="rpt-section-label">Plnenie per produkt — ' + label + ' agregát · ' + p.label + '</div><div class="rpt-prod-grid">' + amProdsHtml + '</div></div>' : '') +
-    '<div><div class="rpt-section-label">Lekári v databáze — ' + label + ' · ' + p.label + '</div>' + rptDbBlockHtml(reps, label) + '</div>' +
+    '<div><div class="rpt-section-label">Plnenie per reprezentant — Q' + p.q + ' ' + p.year + '</div>' + darkCard + '<div class="rpt-rep-grid">' + repCards + '</div>' + legendNote + '</div>' +
+    (amProdsHtml ? '<div><div class="rpt-section-label">Plnenie per produkt — ' + label + ' · Q' + p.q + ' ' + p.year + '</div><div class="rpt-prod-grid">' + amProdsHtml + '</div></div>' : '') +
+    '<div><div class="rpt-section-label">Lekári v databáze — ' + label + '</div>' + rptDbBlockHtml(reps, label) + '</div>' +
     '<div><div class="rpt-section-label">Pohyby konkurencie — ' + label + ' · ' + p.label + '</div>' + rptMsCompetitorHtml(oblasts) + '</div>' +
   '</div>';
 
@@ -11009,23 +11197,32 @@ function rptBuildMgmtHtml() {
   var now = new Date();
   var footerDate = now.getDate() + '. ' + (now.getMonth()+1) + '. ' + now.getFullYear();
 
-  var totalVisits=0, totalPlan=0, totalPred=0, totalQPlan=0;
+  var totalVisits=0, totalPlan=0, totalPred=0;
   var westVisits=0, westPlan=0, westPred=0;
   var eastVisits=0, eastPlan=0, eastPred=0;
   var atRisk=[], prodSums={};
   var repRanked = [];
+  var qMonthsMgmt = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[p.q] || [];
 
   allReps.forEach(function(username) {
     var name   = MGR_REP_NAMES[username] || username;
     var isWest = MGR_AM_WEST.indexOf(username) !== -1;
-    var visits = rptVisits(username, p.month, p.year);
+    var allV3  = rptAllVisits(username);
     var pl     = rptPlnenieForRep(username, p.q, p.month, p.year);
     var pct    = pl && pl.totalPct !== null ? pl.totalPct : null;
-    totalVisits += visits.length;
-    if (isWest) westVisits += visits.length; else eastVisits += visits.length;
+    // Q unikátni lekári
+    var qVSet3 = {};
+    allV3.forEach(function(v) {
+      var d = parseLbDatum(v.datum || v.dateKey || '');
+      if (!d || d.getFullYear() !== p.year) return;
+      var m = d.getMonth() + 1;
+      if (qMonthsMgmt.indexOf(m) >= 0 && v.lekar) qVSet3[v.lekar] = true;
+    });
+    var qV3 = Object.keys(qVSet3).length;
+    totalVisits += qV3;
+    if (isWest) westVisits += qV3; else eastVisits += qV3;
     if (pl) {
       totalPlan += pl.totalPlan; totalPred += pl.totalPred;
-      totalQPlan += pl.qPlanTotal || 0;
       if (isWest) { westPlan += pl.totalPlan; westPred += pl.totalPred; }
       else        { eastPlan += pl.totalPlan; eastPred += pl.totalPred; }
       pl.prodOrder.forEach(function(key) {
@@ -11041,7 +11238,6 @@ function rptBuildMgmtHtml() {
         .slice(0,3).map(function(k){ return pl.prods[k]; }) : [];
       atRisk.push({ name: rptShortName(name), pct: pct, isWest: isWest, prods: worstProds });
     }
-    var allV3 = rptAllVisits(username);
     var curScenar3 = rptCurrentScenarMap(allV3);
     var allGs3 = {}, allDocs3 = {};
     allV3.forEach(function(v) { if (v.lekar) allDocs3[v.lekar] = true; });
@@ -11050,15 +11246,15 @@ function rptBuildMgmtHtml() {
     });
     var gsCount3 = Object.keys(allGs3).length;
     var allCount3 = Object.keys(allDocs3).length || 1;
-    var gsPct3 = Math.round(gsCount3 / allCount3 * 100);
-    repRanked.push({ username:username, name:name, isWest:isWest, visits:visits.length, pct:pct, gsPct:gsPct3, gsCount:gsCount3, allCount:allCount3 });
+    var gsPct3 = Math.round(gsCount3 / allCount3 * 10000) / 100;
+    repRanked.push({ username:username, name:name, isWest:isWest, visits:qV3, pct:pct, gsPct:gsPct3, gsCount:gsCount3, allCount:allCount3 });
   });
 
   repRanked.sort(function(a,b){ return (b.pct||0)-(a.pct||0); });
 
-  var skPct   = totalPlan  > 0 ? Math.round(totalPred  / totalPlan  * 100) : null;
-  var westPct = westPlan   > 0 ? Math.round(westPred   / westPlan   * 100) : null;
-  var eastPct = eastPlan   > 0 ? Math.round(eastPred   / eastPlan   * 100) : null;
+  var skPct   = totalPlan  > 0 ? Math.round(totalPred  / totalPlan  * 10000) / 100 : null;
+  var westPct = westPlan   > 0 ? Math.round(westPred   / westPlan   * 10000) / 100 : null;
+  var eastPct = eastPlan   > 0 ? Math.round(eastPred   / eastPlan   * 10000) / 100 : null;
   var skCls   = rptColorClass(skPct);
   var qPct    = Math.round(p.qMonth / 3 * 100);
 
@@ -11076,24 +11272,24 @@ function rptBuildMgmtHtml() {
         '<div class="rpt-period-q">Q' + p.q + ' · ' + p.qMonth + '. mesiac</div></div>' +
     '</div>' +
     '<div class="rpt-header-stats">' +
-      '<div class="rpt-hstat"><div class="rpt-hstat-val ' + skCls + '">' + (skPct !== null ? skPct + '%' : '—') + '</div><div class="rpt-hstat-lbl">Plnenie Slovensko</div></div>' +
+      '<div class="rpt-hstat"><div class="rpt-hstat-val ' + skCls + '">' + rptFmtPct(skPct) + '</div><div class="rpt-hstat-lbl">Plnenie Slovensko Q' + p.q + '</div></div>' +
       '<div class="rpt-hstat"><div class="rpt-hstat-val">' + allReps.length + '</div><div class="rpt-hstat-lbl">Reprezentantov</div></div>' +
       '<div class="rpt-hstat"><div class="rpt-hstat-val">' + totalDoctors + '</div><div class="rpt-hstat-lbl">VŠL v databáze</div></div>' +
     '</div>' +
   '</div>';
 
+  var pred3 = rptPredikciaSummary(allReps, p.q, p.month, p.year);
   var predHtml3 = '';
-  if (skPct !== null && totalQPlan > 0) {
+  if (pred3) {
     predHtml3 = '<div class="rpt-predikcia-row"><span>📈 Predikcia konca Q' + p.q + ' pri tomto tempe:</span>' +
-      '<span class="rpt-predikcia-val">' + skPct + '%</span>' +
-      '<span style="color:#64748B;font-size:10px">(≈ ' + rptFmtEur(Math.round(skPct/100*totalQPlan)) + ' z ' + rptFmtEur(totalQPlan) + ')</span></div>';
+      '<span class="rpt-predikcia-val">' + rptFmtPct(pred3.pct) + '</span>' +
+      '<span style="color:#64748B;font-size:10px">(≈ ' + rptFmtEur(pred3.eur) + ' z ' + rptFmtEur(pred3.qPlan) + ')</span></div>';
   }
   var skCard = '<div class="rpt-plnenie-card">' +
     '<div class="rpt-plnenie-top">' +
-      '<div class="rpt-plnenie-pct ' + skCls + '">' + (skPct !== null ? skPct + '%' : '—') + '</div>' +
+      '<div class="rpt-plnenie-pct ' + skCls + '">' + rptFmtPct(skPct) + '</div>' +
       '<div class="rpt-plnenie-meta"><div class="rpt-plnenie-eur">' + rptFmtEur(totalPred) + '</div>' +
-        '<div class="rpt-plnenie-plan">z plánu ' + rptFmtEur(totalPlan) + '</div>' +
-        (totalQPlan > 0 ? '<div style="font-size:9px;color:#64A4D8;margin-top:2px">Q' + p.q + ' plán ' + rptFmtEur(totalQPlan) + ' · ' + qPct + '% kvartálu</div>' : '') +
+        '<div class="rpt-plnenie-plan">z Q' + p.q + ' plánu ' + rptFmtEur(totalPlan) + '</div>' +
       '</div>' +
     '</div>' +
     '<div class="rpt-main-bar-wrap"><div class="rpt-main-bar-fill ' + skCls + '" style="width:' + Math.min(100,skPct||0) + '%"></div></div>' +
@@ -11103,16 +11299,16 @@ function rptBuildMgmtHtml() {
   var regionGrid = '<div class="region-grid">' +
     '<div class="region-card west">' +
       '<div class="region-label">West · ' + MGR_AM_WEST.length + ' reprezentantov</div>' +
-      '<div class="region-pct ' + rptColorClass(westPct) + '">' + (westPct !== null ? westPct + '%' : '—') + '</div>' +
-      '<div class="region-eur">' + rptFmtEur(westPred) + ' z ' + rptFmtEur(westPlan) + '</div>' +
-      '<div style="font-size:10px;color:#64A4D8;margin-top:2px">' + westVisits + ' lekárov</div>' +
+      '<div class="region-pct ' + rptColorClass(westPct) + '">' + rptFmtPct(westPct) + '</div>' +
+      '<div class="region-eur">' + rptFmtEur(westPred) + ' z Q' + p.q + ' plánu ' + rptFmtEur(westPlan) + '</div>' +
+      '<div style="font-size:10px;color:#64A4D8;margin-top:2px">' + westVisits + ' lekárov v Q' + p.q + '</div>' +
       '<div class="region-bar-wrap"><div class="region-bar-fill" style="width:' + Math.min(100,westPct||0) + '%;background:' + rptGradientVal(westPct) + '"></div></div>' +
     '</div>' +
     '<div class="region-card east">' +
       '<div class="region-label">East · ' + MGR_AM_EAST.length + ' reprezentantov</div>' +
-      '<div class="region-pct ' + rptColorClass(eastPct) + '">' + (eastPct !== null ? eastPct + '%' : '—') + '</div>' +
-      '<div class="region-eur">' + rptFmtEur(eastPred) + ' z ' + rptFmtEur(eastPlan) + '</div>' +
-      '<div style="font-size:10px;color:#64A4D8;margin-top:2px">' + eastVisits + ' lekárov</div>' +
+      '<div class="region-pct ' + rptColorClass(eastPct) + '">' + rptFmtPct(eastPct) + '</div>' +
+      '<div class="region-eur">' + rptFmtEur(eastPred) + ' z Q' + p.q + ' plánu ' + rptFmtEur(eastPlan) + '</div>' +
+      '<div style="font-size:10px;color:#64A4D8;margin-top:2px">' + eastVisits + ' lekárov v Q' + p.q + '</div>' +
       '<div class="region-bar-wrap"><div class="region-bar-fill" style="width:' + Math.min(100,eastPct||0) + '%;background:' + rptGradientVal(eastPct) + '"></div></div>' +
     '</div>' +
   '</div>';
@@ -11126,9 +11322,9 @@ function rptBuildMgmtHtml() {
     return '<tr class="rep-row">' +
       '<td class="rep-pos' + posCls + '">' + pos + '</td>' +
       '<td class="rep-name-cell"><div>' + rptShortName(r.name) + ' <span class="rep-region-tag ' + (r.isWest ? 'w' : 'e') + '">' + (r.isWest ? 'W' : 'E') + '</span></div>' +
-        '<div style="font-size:9px;color:#94A3B8;font-weight:400;margin-top:1px">' + r.visits + ' lekárov · GS ' + r.gsCount + '/' + r.allCount + ' (' + r.gsPct + '%)</div></td>' +
+        '<div style="font-size:9px;color:#94A3B8;font-weight:400;margin-top:1px">' + r.visits + ' lekárov Q' + p.q + ' · GS ' + r.gsCount + '/' + r.allCount + ' (' + rptFmtPct(r.gsPct) + ')</div></td>' +
       '<td class="rep-bar-cell"><div class="rep-mini-bar"><div class="rep-mini-fill" style="width:' + Math.min(100,r.pct||0) + '%;background:' + barColor + '"></div></div></td>' +
-      '<td class="rep-pct-cell ' + (r.pct !== null ? pctCls : '') + '">' + (r.pct !== null ? r.pct + '%' : '—') + '</td>' +
+      '<td class="rep-pct-cell ' + (r.pct !== null ? pctCls : '') + '">' + rptFmtPct(r.pct) + '</td>' +
     '</tr>';
   }).join('');
   var repTable2 = '<table class="rep-table"><thead><tr>' +
@@ -11139,17 +11335,16 @@ function rptBuildMgmtHtml() {
   var prodOrder3 = plnenieSortProducts(Object.keys(prodSums));
   prodOrder3.forEach(function(key, idx) {
     var pd = prodSums[key]; if (!pd) return;
-    var pct3 = pd.plan > 0 ? Math.round(pd.pred / pd.plan * 100) : null;
+    var pct3 = pd.plan > 0 ? Math.round(pd.pred / pd.plan * 10000) / 100 : null;
     var cls3 = rptColorClass(pct3);
     var isLast = (idx === prodOrder3.length - 1) && (prodOrder3.length % 2 !== 0);
     mgmtProdsHtml += '<div class="rpt-prod-card"' + (isLast ? ' style="grid-column:1/-1"' : '') + '>' +
       '<div class="rpt-prod-header">' +
         '<div class="rpt-prod-name"><div class="rpt-prod-dot" style="background:' + pd.dot + '"></div>' + pd.label + '</div>' +
-        '<div class="rpt-prod-pct ' + cls3 + '">' + (pct3 !== null ? pct3 + '%' : '—') + '</div>' +
+        '<div class="rpt-prod-pct ' + cls3 + '">' + rptFmtPct(pct3) + '</div>' +
       '</div>' +
       '<div class="rpt-prod-bar-wrap"><div class="rpt-prod-bar-fill" style="width:' + Math.min(100,pct3||0) + '%;background:' + rptGradientVal(pct3) + '"></div></div>' +
-      '<div class="rpt-prod-numbers"><strong>' + rptFmtEur(pd.pred) + '</strong> z ' + rptFmtEur(pd.plan) + '</div>' +
-      (totalQPlan > 0 ? '<div class="rpt-prod-plan-note">' + qPct + '% kvartálu</div>' : '') +
+      '<div class="rpt-prod-numbers"><strong>' + rptFmtEur(pd.pred) + '</strong> z Q' + p.q + ' plánu ' + rptFmtEur(pd.plan) + '</div>' +
     '</div>';
   });
 
@@ -11158,10 +11353,10 @@ function rptBuildMgmtHtml() {
 
   var body = '<div class="rpt-body">' +
     rptAtRiskHtml(atRisk, true) +
-    '<div><div class="rpt-section-label">Plnenie plánu — Slovensko</div>' + skCard + '</div>' +
-    '<div><div class="rpt-section-label">West vs East</div>' + regionGrid + '</div>' +
-    '<div><div class="rpt-section-label">Plnenie per reprezentant — celé Slovensko</div>' + repTable2 + '</div>' +
-    (mgmtProdsHtml ? '<div><div class="rpt-section-label">Plnenie per produkt — Slovensko</div><div class="rpt-prod-grid">' + mgmtProdsHtml + '</div></div>' : '') +
+    '<div><div class="rpt-section-label">Plnenie plánu — Slovensko · Q' + p.q + ' ' + p.year + '</div>' + skCard + '</div>' +
+    '<div><div class="rpt-section-label">West vs East — Q' + p.q + ' ' + p.year + '</div>' + regionGrid + '</div>' +
+    '<div><div class="rpt-section-label">Plnenie per reprezentant — Slovensko · Q' + p.q + ' ' + p.year + '</div>' + repTable2 + '</div>' +
+    (mgmtProdsHtml ? '<div><div class="rpt-section-label">Plnenie per produkt — Slovensko · Q' + p.q + ' ' + p.year + '</div><div class="rpt-prod-grid">' + mgmtProdsHtml + '</div></div>' : '') +
     '<div><div class="rpt-section-label">Lekári v databáze — Slovensko</div>' + rptDbBlockHtml(allReps, 'SK') + '</div>' +
     '<div><div class="rpt-section-label">Pohyby konkurencie — Slovensko · ' + p.label + '</div>' + rptMsCompetitorHtml(skOblasts) + '</div>' +
   '</div>';
@@ -11240,7 +11435,7 @@ function downloadAllReportsPdf() {
   // Mobily (iOS + Android) — otvoriť kombinovanú HTML stránku s tlačidlom Uložiť ako PDF
   // html2pdf/html2canvas je nespoľahlivý na mobilných WebView (prázdne strany, rendering bugs)
   var ua = navigator.userAgent;
-  var isMobile = (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) || /Android/.test(ua);
+  var isMobile = true; // hub stránka + natívny browser print pre všetky zariadenia
   if (isMobile) {
     var overlay = document.getElementById('rpt-progress-overlay');
     var title   = document.getElementById('rpt-progress-title');
@@ -11335,17 +11530,39 @@ function downloadAllReportsPdf() {
       'pb.onclick=function(){' +
       'var pe=document.querySelector("#rc .page");' +
       'if(!pe){window.print();return;}' +
-      'pe.style.zoom="";' +
-      // Zmeraj výšku pri šírke 700px (blízko A4) pomocou klonovania — bez blikania
+      // Zmeraj výšku obsahu pri šírke 756px klonom (bez blikania)
       'var cl=pe.cloneNode(true);' +
       'cl.style.cssText="position:fixed;top:-99999px;left:0;width:756px;max-width:756px;overflow:visible;zoom:1;visibility:hidden";' +
-      'document.body.appendChild(cl);' +
-      'var h=cl.offsetHeight;' +
-      'document.body.removeChild(cl);' +
-      // CSS zoom:0.72 je baseline pre iOS; JS override len ak je obsah dlhsi nez 0.72 moze zvladnut
-      'var t=1100;' +
-      'if(h>t){var jz=(t/h);if(jz<0.72)pe.style.zoom=jz.toFixed(3);}' +
-      'setTimeout(function(){window.print();setTimeout(function(){pe.style.zoom="";},2500);},100);' +
+      'document.body.appendChild(cl);var h=cl.offsetHeight;document.body.removeChild(cl);' +
+      // iOS: zoom + klasický print v aktuálnom okne
+      'var isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;' +
+      'if(isIOS){' +
+        'var ds=document.getElementById("rpt-dyn-pg");' +
+        'if(!ds){ds=document.createElement("style");ds.id="rpt-dyn-pg";document.head.appendChild(ds);}' +
+        'ds.textContent="@page{size:794px "+(h+60)+"px;margin:0}";' +
+        'var t=1100;if(h>t){var jz=t/h;if(jz<0.72)pe.style.zoom=jz.toFixed(3);}' +
+        'setTimeout(function(){window.print();setTimeout(function(){pe.style.zoom="";},2500);},200);' +
+        'return;' +
+      '}' +
+      // Desktop: popup s custom @page — screen CSS (bez @media print kompresie) = čitateľné PDF bez bielej plochy
+      'var css="";' +
+      'for(var si=0;si<document.styleSheets.length;si++){try{var srs=document.styleSheets[si].cssRules;if(srs)for(var sj=0;sj<srs.length;sj++){var rt=srs[sj].cssText;if(rt.indexOf("@page")<0&&rt.indexOf("@media print")<0)css+=rt+" ";}}catch(e){}}' +
+      'var pw=window.open("","_blank");' +
+      'if(!pw){window.print();return;}' +
+      // @page + overrides v initial document.write — Chrome ich zachytí pri printovaní
+      'pw.document.write("<!DOCTYPE html><html><head><meta charset=UTF-8><meta name=viewport content=width=756>' +
+      '<style>@page{size:756px "+(h+40)+"px;margin:0}' +
+      'body{margin:0!important;padding:0!important;background:#fff!important}' +
+      '.page{max-width:756px!important;margin:0!important;border-radius:0!important;box-shadow:none!important;overflow:visible!important}' +
+      '*,*::before,*::after{print-color-adjust:exact!important;-webkit-print-color-adjust:exact!important}' +
+      '</style></head><body></body></html>");' +
+      'pw.document.close();' +
+      // CSS cez textContent — vyhýba sa problémom s úvodzovkami v @import URL
+      'var s2=pw.document.createElement("style");s2.textContent=css;pw.document.head.appendChild(s2);' +
+      'pw.document.body.innerHTML=pe.outerHTML;' +
+      'var printed=false;' +
+      'function doPrint(){if(printed)return;printed=true;pw.print();}' +
+      'setTimeout(doPrint,900);' +
     '};' +
       'nav.appendChild(pb);' +
       'sv(0);' +
