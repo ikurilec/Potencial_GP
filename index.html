@@ -1823,7 +1823,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.52';
+var APP_VERSION = '2.13.53';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7562,12 +7562,19 @@ function plnenieRenderSummary() {
       prods.innerHTML = agg.products.map(function(p){
         var safeKey = p.key.replace(/'/g, "\\'");
         var safeLbl = p.label.replace(/'/g, "\\'");
-        return '<div class="pl-sum-prod pl-sum-prod-c" onclick="openProdSheet(\'' + safeKey + '\',\'' + safeLbl + '\')">' +
-               '<span class="pl-sum-prod-name">' + mgrEscape(p.label) + '</span>' +
-               '<div style="display:flex;align-items:center;gap:2px;flex-shrink:0">' +
-                 '<strong class="' + plnenieColorClass(p.pct) + '" data-pct="' + (isNaN(p.pct) ? '' : p.pct) + '">0,00%</strong>' +
-                 '<span class="pl-sum-prod-chev">›</span>' +
+        var predPct = plnenieCalcPredikciaSummary(p.planEUR, p.predajeEUR, PL_STATE.q, PL_STATE.year);
+        var predHtml = predPct !== null
+          ? '<span style="font-size:9px;color:#94A3B8;font-weight:500;white-space:nowrap">predikcia ' + plnenieFormatPct(predPct) + '</span>'
+          : '';
+        return '<div class="pl-sum-prod pl-sum-prod-c" style="flex-direction:column;align-items:stretch;gap:2px" onclick="openProdSheet(\'' + safeKey + '\',\'' + safeLbl + '\')">' +
+               '<div style="display:flex;align-items:center;justify-content:space-between;gap:4px">' +
+                 '<span class="pl-sum-prod-name" style="-webkit-line-clamp:unset;overflow:visible">' + mgrEscape(p.label) + '</span>' +
+                 '<div style="display:flex;align-items:center;gap:2px;flex-shrink:0">' +
+                   '<strong class="' + plnenieColorClass(p.pct) + '" data-pct="' + (isNaN(p.pct) ? '' : p.pct) + '">0,00%</strong>' +
+                   '<span class="pl-sum-prod-chev">›</span>' +
+                 '</div>' +
                '</div>' +
+               predHtml +
                '</div>';
       }).join('');
       Array.from(prods.querySelectorAll('strong[data-pct]')).forEach(function(el, i) {
