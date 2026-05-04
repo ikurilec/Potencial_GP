@@ -4,7 +4,7 @@
 // ║  cache-first pre ostatné assety (rýchly štart, offline ready).║
 // ╚══════════════════════════════════════════════════════════════╝
 
-var CACHE_NAME = 'potencial-vl-v1';
+var CACHE_NAME = 'potencial-vl-v3';
 
 self.addEventListener('install', function(event){
   // Okamžitá aktivácia — nechceme čakať na zavretie všetkých kariet
@@ -13,17 +13,24 @@ self.addEventListener('install', function(event){
 
 self.addEventListener('activate', function(event){
   event.waitUntil(
-    Promise.all([
-      // Zmazať staré verzie cache
-      caches.keys().then(function(names){
-        return Promise.all(
-          names.filter(function(n){ return n !== CACHE_NAME; })
-               .map(function(n){ return caches.delete(n); })
-        );
-      }),
-      // Prevziať kontrolu nad všetkými otvorenými oknami okamžite
-      self.clients.claim()
-    ])
+    // Zmazať VŠETKY staré cache
+    caches.keys()
+      .then(function(names){
+        return Promise.all(names.map(function(n){ return caches.delete(n); }));
+      })
+      .then(function(){
+        // Prevziať kontrolu nad všetkými otvorenými oknami okamžite
+        return self.clients.claim();
+      })
+      .then(function(){
+        // Vynútiť reload všetkých otvorených okien — dostanú čerstvé HTML
+        return self.clients.matchAll({ type: 'window' });
+      })
+      .then(function(clients){
+        clients.forEach(function(client){
+          try { client.navigate(client.url); } catch(e){}
+        });
+      })
   );
 });
 
