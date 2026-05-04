@@ -1823,7 +1823,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.53';
+var APP_VERSION = '2.13.54';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8969,6 +8969,13 @@ function pharmaKvartalCode(year, q) {
   return String(year).slice(2) + (q < 10 ? '0' + q : String(q));
 }
 
+function pharmaKvartalPrev(kvartal) {
+  var yy = parseInt(kvartal.slice(0, 2), 10);
+  var qq = parseInt(kvartal.slice(2), 10);
+  if (qq === 1) { yy -= 1; qq = 4; } else { qq -= 1; }
+  return (yy < 10 ? '0' + yy : '' + yy) + '' + qq;
+}
+
 function pharmaQuarterMonths(kvartal) {
   var yy   = kvartal.slice(0, 2);
   var q    = parseInt(kvartal.slice(2), 10);
@@ -9080,6 +9087,23 @@ function loadPharmaData(code, oblast, kvartal) {
     .then(function(resp) {
       delete PHARMA_STATE.loading[cacheKey];
       if (resp.ok) {
+        var hasData = (resp.summary && resp.summary.length > 0) || (resp.okresy && resp.okresy.length > 0);
+        if (!hasData) {
+          // Dáta pre tento Q ešte nie sú (IQVIA nenahrané) — skús predchádzajúci Q
+          if (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal) {
+            var prevKv = pharmaKvartalPrev(kvartal);
+            var prevQNum = parseInt(prevKv.slice(2), 10);
+            var prevYear = 2000 + parseInt(prevKv.slice(0, 2), 10);
+            PHARMA_STATE.kvartal = prevKv;
+            var titleEl = document.getElementById('pharma-ms-title');
+            if (titleEl) {
+              var parts = titleEl.textContent.split(' · ');
+              if (parts.length >= 2) { parts[1] = 'Q' + prevQNum + ' ' + prevYear; titleEl.textContent = parts.join(' · '); }
+            }
+            loadPharmaData(code, oblast, prevKv);
+          }
+          return; // neulož prázdny cache — pri ďalšom otvorení skúsi znova
+        }
         PHARMA_STATE.cache[cacheKey] = resp;
         if (PHARMA_STATE.activeCode === code &&
             PHARMA_STATE.oblast     === oblast &&
