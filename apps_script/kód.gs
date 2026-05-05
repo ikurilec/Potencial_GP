@@ -560,6 +560,21 @@ function doGet(e) {
       return jsonResponse({ok: true});
     }
 
+    // ── SATORI VOTE — zaznamená hlas reprezentanta (👍/👎) do tabu SatoriVotes ──
+    if(action === 'satoriVote') {
+      if(!requireToken(e)) return jsonResponse({ok: false, error: 'Unauthorized'});
+      var username = (e.parameter.username || '').trim();
+      var vote = (e.parameter.vote || '').trim(); // 'up' alebo 'down'
+      if(!username || !vote) return jsonResponse({ok: false, error: 'missing params'});
+      var voteSheet = ss.getSheetByName('SatoriVotes');
+      if(!voteSheet) {
+        voteSheet = ss.insertSheet('SatoriVotes');
+        voteSheet.appendRow(['timestamp', 'username', 'vote']);
+      }
+      voteSheet.appendRow([new Date(), username, vote]);
+      return jsonResponse({ok: true});
+    }
+
     // ── MILESTONE ŠTATISTIKY — celkový počet unikátnych lekárov v systéme ──
     if(action === 'getMilestoneStats') {
       var sheet = ss.getSheets()[0];
