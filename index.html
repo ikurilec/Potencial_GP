@@ -138,6 +138,20 @@
   .wn-item-title{font-size:13.5px;font-weight:700;color:#0F172A;margin-bottom:2px;font-family:'Outfit',sans-serif}
   .wn-item-desc{font-size:12px;color:#64748B;line-height:1.4}
   .wn-btn{width:100%;background:linear-gradient(135deg,#1E40AF,#2563EB);color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;font-family:'Outfit',sans-serif;cursor:pointer;margin-top:16px;letter-spacing:.01em}
+  /* ── Satori rebrand overlay ── */
+  .satori-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.65);z-index:2001;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}
+  .satori-overlay.show{display:flex}
+  .satori-box{background:#fff;border-radius:24px;width:100%;max-width:370px;overflow:hidden;animation:slideUp .38s cubic-bezier(.16,1,.3,1);display:flex;flex-direction:column}
+  .satori-hero{background:linear-gradient(170deg,#0C1E35 0%,#0E2A4A 60%,#0C1E35 100%);flex-shrink:0;overflow:hidden}
+  .satori-hero svg{width:100%;height:auto;display:block}
+  .satori-body{padding:16px 22px 6px;flex:1}
+  .satori-notice{font-size:10.5px;font-weight:700;color:#3B82F6;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;text-align:center}
+  .satori-body-title{font-size:17px;font-weight:800;color:#0F172A;font-family:'Outfit',sans-serif;margin-bottom:8px;line-height:1.25}
+  .satori-body-text{font-size:13px;color:#475569;line-height:1.55;margin:0}
+  .satori-body-text strong{color:#0F172A}
+  .satori-body-motto{font-size:11.5px;color:#94A3B8;font-style:italic;margin-top:10px;padding-top:10px;border-top:1px solid #F1F5F9;text-align:center}
+  .satori-footer{padding:12px 22px 20px;flex-shrink:0}
+  .satori-btn{width:100%;background:linear-gradient(135deg,#1E40AF,#2563EB);color:#fff;border:none;border-radius:14px;padding:13px;font-size:15px;font-weight:700;font-family:'Outfit',sans-serif;cursor:pointer;letter-spacing:.01em;touch-action:manipulation}
   .lb-overlay.show{display:block}
   .lb-box{background:#fff;border-radius:16px;overflow:hidden;}
   .lb-hdr{padding:0 0 14px;text-align:center}
@@ -1521,6 +1535,138 @@
     </div>
   </div>
 
+  <!-- ── SATORI REBRAND OVERLAY ── -->
+  <div class="satori-overlay" id="satori-overlay">
+    <div class="satori-box">
+      <div class="satori-hero">
+        <svg viewBox="0 0 280 202" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="srBg" cx="50%" cy="42%" r="62%">
+              <stop offset="0%" stop-color="#1E3A8A" stop-opacity="0.4"/>
+              <stop offset="100%" stop-color="#0C1E35" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="srGrad" x1="0" y1="165" x2="0" y2="186" gradientUnits="userSpaceOnUse">
+              <stop offset="0%"   stop-color="#FFFFFF"/>
+              <stop offset="40%"  stop-color="#DCE8F2"/>
+              <stop offset="100%" stop-color="#8AAABF"/>
+            </linearGradient>
+            <linearGradient id="srLine" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%"   stop-color="rgba(255,255,255,0)"/>
+              <stop offset="25%"  stop-color="rgba(255,255,255,0.5)"/>
+              <stop offset="50%"  stop-color="rgba(255,255,255,0.75)"/>
+              <stop offset="75%"  stop-color="rgba(255,255,255,0.5)"/>
+              <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+            </linearGradient>
+            <filter id="srEGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="b"/>
+              <feColorMatrix in="b" type="matrix" values="0 0 0 0 0.5 0 0 0 0 0.7 0 0 0 0 1 0 0 0 0.35 0" result="c"/>
+              <feMerge><feMergeNode in="c"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+            <filter id="srShadow">
+              <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#000C1E" flood-opacity="0.65"/>
+            </filter>
+            <filter id="smBlur" x="-80%" y="-300%" width="260%" height="700%">
+              <feGaussianBlur stdDeviation="5"/>
+            </filter>
+          </defs>
+          <rect width="280" height="202" fill="url(#srBg)"/>
+          <!-- Enso: stred (140,76), polomer 68 -->
+          <path d="M 148 8.5 A 68 68 0 1 1 132 8.5"
+            fill="none" stroke="rgba(255,255,255,0.84)" stroke-width="5.5"
+            stroke-linecap="butt" filter="url(#srEGlow)"/>
+          <!-- Kanji -->
+          <text x="140" y="76" text-anchor="middle" dominant-baseline="middle"
+            font-size="52" fill="rgba(255,255,255,0.9)" font-family="serif">悟り</text>
+          <!-- Oddelovač — gradient čiara -->
+          <line x1="18" y1="154" x2="262" y2="154" stroke="url(#srLine)" stroke-width="1.3"/>
+          <!-- Dym — elipsy stúpajú zo spodu SATORI textu, plynulý easing -->
+          <g filter="url(#smBlur)">
+            <ellipse cx="95" cy="188" rx="15" ry="9" fill="rgba(235,245,255,0.88)">
+              <animate attributeName="cx" values="95;87" dur="4.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+              <animate attributeName="cy" values="188;155" dur="4.5s" calcMode="spline" keySplines="0.3 0 0.1 1" repeatCount="indefinite"/>
+              <animate attributeName="rx" values="15;34" dur="4.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+              <animate attributeName="ry" values="9;19"  dur="4.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.88;0.6;0" keyTimes="0;0.45;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.1 1" dur="4.5s" repeatCount="indefinite"/>
+            </ellipse>
+            <ellipse cx="140" cy="185" rx="19" ry="11" fill="rgba(235,245,255,0.84)">
+              <animate attributeName="cx" values="140;144" dur="5s" begin="0.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+              <animate attributeName="cy" values="185;148" dur="5s" begin="0.5s" calcMode="spline" keySplines="0.3 0 0.1 1" repeatCount="indefinite"/>
+              <animate attributeName="rx" values="19;40" dur="5s" begin="0.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+              <animate attributeName="ry" values="11;22" dur="5s" begin="0.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.84;0.55;0" keyTimes="0;0.45;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.1 1" dur="5s" begin="0.5s" repeatCount="indefinite"/>
+            </ellipse>
+            <ellipse cx="185" cy="187" rx="13" ry="8" fill="rgba(235,245,255,0.84)">
+              <animate attributeName="cx" values="185;194" dur="4s" begin="1s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+              <animate attributeName="cy" values="187;157" dur="4s" begin="1s" calcMode="spline" keySplines="0.3 0 0.1 1" repeatCount="indefinite"/>
+              <animate attributeName="rx" values="13;30" dur="4s" begin="1s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+              <animate attributeName="ry" values="8;17"  dur="4s" begin="1s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.84;0.52;0" keyTimes="0;0.45;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.1 1" dur="4s" begin="1s" repeatCount="indefinite"/>
+            </ellipse>
+            <ellipse cx="115" cy="191" rx="12" ry="8" fill="rgba(235,245,255,0.8)">
+              <animate attributeName="cx" values="115;108" dur="5.5s" begin="2s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+              <animate attributeName="cy" values="191;161" dur="5.5s" begin="2s" calcMode="spline" keySplines="0.3 0 0.1 1" repeatCount="indefinite"/>
+              <animate attributeName="rx" values="12;27" dur="5.5s" begin="2s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+              <animate attributeName="ry" values="8;16"  dur="5.5s" begin="2s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.8;0.5;0" keyTimes="0;0.45;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.1 1" dur="5.5s" begin="2s" repeatCount="indefinite"/>
+            </ellipse>
+            <ellipse cx="163" cy="188" rx="12" ry="8" fill="rgba(235,245,255,0.82)">
+              <animate attributeName="cx" values="163;170" dur="4.2s" begin="1.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+              <animate attributeName="cy" values="188;157" dur="4.2s" begin="1.5s" calcMode="spline" keySplines="0.3 0 0.1 1" repeatCount="indefinite"/>
+              <animate attributeName="rx" values="12;28" dur="4.2s" begin="1.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+              <animate attributeName="ry" values="8;16"  dur="4.2s" begin="1.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.82;0.5;0" keyTimes="0;0.45;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.1 1" dur="4.2s" begin="1.5s" repeatCount="indefinite"/>
+            </ellipse>
+            <ellipse cx="72" cy="186" rx="10" ry="7" fill="rgba(235,245,255,0.74)">
+              <animate attributeName="cx" values="72;63" dur="4.8s" begin="0.3s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+              <animate attributeName="cy" values="186;159" dur="4.8s" begin="0.3s" calcMode="spline" keySplines="0.3 0 0.1 1" repeatCount="indefinite"/>
+              <animate attributeName="rx" values="10;23" dur="4.8s" begin="0.3s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+              <animate attributeName="ry" values="7;14"  dur="4.8s" begin="0.3s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.74;0.44;0" keyTimes="0;0.45;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.1 1" dur="4.8s" begin="0.3s" repeatCount="indefinite"/>
+            </ellipse>
+            <ellipse cx="208" cy="189" rx="10" ry="7" fill="rgba(235,245,255,0.74)">
+              <animate attributeName="cx" values="208;216" dur="3.8s" begin="2.8s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+              <animate attributeName="cy" values="189;163" dur="3.8s" begin="2.8s" calcMode="spline" keySplines="0.3 0 0.1 1" repeatCount="indefinite"/>
+              <animate attributeName="rx" values="10;22" dur="3.8s" begin="2.8s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+              <animate attributeName="ry" values="7;13"  dur="3.8s" begin="2.8s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.74;0.44;0" keyTimes="0;0.45;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.1 1" dur="3.8s" begin="2.8s" repeatCount="indefinite"/>
+            </ellipse>
+            <ellipse cx="140" cy="193" rx="23" ry="13" fill="rgba(235,245,255,0.68)">
+              <animate attributeName="cx" values="140;133" dur="6s" begin="3.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+              <animate attributeName="cy" values="193;156" dur="6s" begin="3.5s" calcMode="spline" keySplines="0.3 0 0.1 1" repeatCount="indefinite"/>
+              <animate attributeName="rx" values="23;44" dur="6s" begin="3.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+              <animate attributeName="ry" values="13;25" dur="6s" begin="3.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.68;0.4;0" keyTimes="0;0.45;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.1 1" dur="6s" begin="3.5s" repeatCount="indefinite"/>
+            </ellipse>
+          </g>
+          <!-- SATORI tieň -->
+          <text x="141" y="183" text-anchor="middle" font-size="35"
+            fill="rgba(0,12,30,0.55)" font-family="'Cinzel','Palatino Linotype',serif" letter-spacing="10">SATORI</text>
+          <!-- SATORI gradient -->
+          <text x="140" y="182" text-anchor="middle" font-size="35"
+            fill="url(#srGrad)" font-family="'Cinzel','Palatino Linotype',serif"
+            letter-spacing="10" filter="url(#srShadow)">SATORI</text>
+          <!-- Moto -->
+          <text x="140" y="197" text-anchor="middle" font-size="10"
+            fill="rgba(255,255,255,0.5)" font-family="-apple-system,sans-serif"
+            font-style="italic">Ten, kto vidí jasne, necháva náhodu iným.</text>
+        </svg>
+      </div>
+      <div class="satori-body">
+        <div class="satori-notice">Nové meno · Nové logo</div>
+        <div class="satori-body-title">Možno si si to už všimol — ak nie, tak teraz áno 😄</div>
+        <p class="satori-body-text"><strong>Satori</strong> (悟り) pochádza z japonskej zen filozofie. Označuje moment náhleho, hlbokého pochopenia — nie postupného, ale okamžitého.<br><br>Ten záblesk, keď reprezentant vie presne kde stojí, kam smeruje a čo ho čaká.</p>
+        <div class="satori-body-motto">„Ten, kto vidí jasne, necháva náhodu iným."</div>
+      </div>
+      <div class="satori-footer">
+        <div style="text-align:center;font-size:13px;font-weight:600;color:#64748B;margin-bottom:12px">Ako sa ti to páči?</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <button class="satori-btn" style="background:linear-gradient(135deg,#059669,#10B981);font-size:22px;padding:14px" onclick="satoriVote('up')">👍</button>
+          <button class="satori-btn" style="background:linear-gradient(135deg,#DC2626,#EF4444);font-size:22px;padding:14px" onclick="satoriVote('down')">👎</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="restore-overlay" id="restore-overlay">
     <div class="restore-box">
       <div class="restore-icon">📋</div>
@@ -1819,7 +1965,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.14.1';
+var APP_VERSION = '2.15.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -2186,7 +2332,7 @@ function devModeInit() {
   var mgrRole = mgrDetectRole(fakeUser);
   if (mgrRole) {
     mgrEnter(mgrRole);
-    setTimeout(function(){ wnShow(true); }, 400);
+    setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(true);}else{checkMilestone();} }, 400);
   }
 }
 
@@ -4600,7 +4746,7 @@ function tutorialSkip() {
   // Zobraziť What's New po dokončení tutoriálu (pre nových používateľov)
   var session = getSession();
   var isManager = session && (['admin','bum','boss','pm','am'].indexOf(session.role) !== -1);
-  setTimeout(function(){ wnShow(isManager); }, 400);
+  setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(isManager);}else{checkMilestone();} }, 400);
 }
 
 function initTutorial() {
@@ -4703,7 +4849,7 @@ function loginSuccess(username, name, role, region) {
   if(mgrRole){
     mgrEnter(mgrRole);
     try { mgrDedupUnique(); } catch(e){}
-    setTimeout(function(){ wnShow(true); }, 600);
+    setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(true);}else{checkMilestone();} }, 600);
     setTimeout(function(){
       lbFetchApprovedQ(function(){
         lbLoadData();
@@ -4720,12 +4866,10 @@ function loginSuccess(username, name, role, region) {
       checkNotifications();
       startNotifPolling();
     }
-    // Skontroluj míľnik 200 lekárov
-    setTimeout(function(){ checkMilestone(); }, 3000);
     return;
   }
   if(localStorage.getItem(TUTORIAL_KEY)){
-    setTimeout(function(){ wnShow(false); }, 600);
+    setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(false);}else{checkMilestone();} }, 600);
   }
   initTutorial();
   // refreshBadgeFromSheets je nahradená loadInitData() vyššie — história sa načíta cez getInitData
@@ -4754,8 +4898,6 @@ function loginSuccess(username, name, role, region) {
   // Agresívny dedup po prihlásení — eliminácia prípadných duplicitov
   setTimeout(function(){ try { mgrDedupUnique(); } catch(e){} }, 100);
   setTimeout(function(){ try { mgrDedupUnique(); } catch(e){} }, 600);
-  // Skontroluj míľnik 200 lekárov — s miernym oneskorením aby appka stihla načítať
-  setTimeout(function(){ checkMilestone(); }, 3000);
   window.scrollTo({top: 0, behavior: 'instant'});
 }
 
@@ -6040,6 +6182,44 @@ function wnShow(isManager){
 function wnClose(){
   var overlay = document.getElementById('wn-overlay');
   if(overlay) overlay.classList.remove('show');
+  setTimeout(checkMilestone, 400);
+}
+
+// ── Satori rebrand overlay ──
+var SATORI_KEY = 'satori_rebrand_v1';
+
+function satoriShouldShow() {
+  if (IS_DEV || window.location.hostname === 'localhost') return true;
+  try { return !localStorage.getItem(SATORI_KEY); } catch(e) { return false; }
+}
+
+function satoriShow() {
+  if (!satoriShouldShow()) return;
+  var overlay = document.getElementById('satori-overlay');
+  if (!overlay) return;
+  wnClose();
+  overlay.classList.add('show');
+  if (!IS_DEV && window.location.hostname !== 'localhost') {
+    try { localStorage.setItem(SATORI_KEY, '1'); } catch(e) {}
+  }
+}
+
+function satoriClose() {
+  var overlay = document.getElementById('satori-overlay');
+  if (overlay) overlay.classList.remove('show');
+  setTimeout(function() {
+    var isManager = document.body.classList.contains('manager-mode');
+    if (wnShouldShow()) { wnShow(isManager); }
+    else { checkMilestone(); }
+  }, 350);
+}
+
+function satoriVote(vote) {
+  satoriClose();
+  var session = getSession();
+  var username = (session && session.username) || 'unknown';
+  var url = scriptUrl('action=satoriVote&username=' + encodeURIComponent(username) + '&vote=' + vote);
+  fetch(url).catch(function(){});
 }
 
 var LB_STATE = { period: 'all', mode: 'navstevy', data: null, loading: false, showConfetti: false };
