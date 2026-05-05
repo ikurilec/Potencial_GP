@@ -3,34 +3,22 @@
     <style>@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400&amp;display=swap');</style>
 
     <radialGradient id="bg" cx="50%" cy="44%" r="52%">
-      <stop offset="0%" stop-color="#1E3A8A" stop-opacity="0.32"/>
+      <stop offset="0%" stop-color="#1E3A8A" stop-opacity="0.28"/>
       <stop offset="100%" stop-color="#0C1E35" stop-opacity="0"/>
     </radialGradient>
-
-    <filter id="kGlow" x="-40%" y="-40%" width="180%" height="180%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blur"/>
-      <feColorMatrix in="blur" type="matrix"
-        values="0 0 0 0 0.24
-                0 0 0 0 0.51
-                0 0 0 0 0.96
-                0 0 0 0.5 0" result="c"/>
-      <feMerge>
-        <feMergeNode in="c"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
 
     <filter id="eGlow" x="-12%" y="-12%" width="124%" height="124%">
       <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur"/>
       <feColorMatrix in="blur" type="matrix"
-        values="0 0 0 0 0.55
-                0 0 0 0 0.72
-                0 0 0 0 1
-                0 0 0 0.3 0" result="c"/>
-      <feMerge>
-        <feMergeNode in="c"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
+        values="0 0 0 0 0.55 0 0 0 0 0.72 0 0 0 0 1 0 0 0 0.28 0" result="c"/>
+      <feMerge><feMergeNode in="c"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <filter id="kGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur"/>
+      <feColorMatrix in="blur" type="matrix"
+        values="0 0 0 0 0.24 0 0 0 0 0.51 0 0 0 0 0.96 0 0 0 0.45 0" result="c"/>
+      <feMerge><feMergeNode in="c"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
   </defs>
 
@@ -38,48 +26,52 @@
   <rect width="600" height="600" fill="url(#bg)"/>
 
   <!--
-    Enso — medzera 18° hore (pri 12 hod)
+    Enso — medzera 22° hore, butt linecaps = čistý rez
     Stred: (300, 248), polomer: 138
-    Medzera: 261° až 279° (18° pri vrchole)
-    Začiatok oblúka: 279°
-      x = 300 + 138·cos(279°) = 300 + 138·0.156 = 321.6
-      y = 248 + 138·sin(279°) = 248 + 138·(−0.988) = 248 − 136.3 = 111.7
-    Koniec oblúka: 261°
-      x = 300 + 138·cos(261°) = 300 + 138·(−0.156) = 278.4
-      y = 248 + 138·sin(261°) = 248 + 138·(−0.988) = 248 − 136.3 = 111.7
+    Medzera: 259° až 281°
+    Začiatok 281°: x=300+138·cos281°=300+138·0.191=326.3, y=248+138·sin281°=248-135.3=112.7
+    Koniec   259°: x=300+138·cos259°=300+138·(-0.191)=273.7, y=248+138·sin259°=248-135.3=112.7
   -->
-  <path d="M 321.6 111.7 A 138 138 0 1 1 278.4 111.7"
+  <path d="M 326.3 112.7 A 138 138 0 1 1 273.7 112.7"
     fill="none"
-    stroke="rgba(255,255,255,0.80)"
+    stroke="rgba(255,255,255,0.78)"
     stroke-width="10"
-    stroke-linecap="round"
+    stroke-linecap="butt"
     filter="url(#eGlow)"/>
 
-  <!-- Kanji — glow vrstva -->
-  <text x="300" y="260"
+  <!-- Hanko rám — červený zaoblený obdĺžnik okolo kanji -->
+  <rect x="190" y="200" width="220" height="110"
+    rx="13" ry="13"
+    fill="none"
+    stroke="#C0392B"
+    stroke-width="2.2"
+    opacity="0.88"/>
+
+  <!-- Kanji — glow -->
+  <text x="300" y="257"
     text-anchor="middle"
     dominant-baseline="middle"
-    font-size="86"
+    font-size="84"
     fill="rgba(255,255,255,0.15)"
     font-family="serif"
     filter="url(#kGlow)">悟り</text>
 
   <!-- Kanji — hlavný text -->
-  <text x="300" y="260"
+  <text x="300" y="257"
     text-anchor="middle"
     dominant-baseline="middle"
-    font-size="86"
+    font-size="84"
     fill="rgba(255,255,255,0.91)"
     font-family="serif">悟り</text>
 
-  <!-- Linka -->
-  <line x1="268" y1="348" x2="332" y2="348"
-    stroke="rgba(255,255,255,0.18)" stroke-width="0.7"/>
-  <circle cx="264" cy="348" r="1.4" fill="rgba(255,255,255,0.26)"/>
-  <circle cx="336" cy="348" r="1.4" fill="rgba(255,255,255,0.26)"/>
+  <!-- Dlhšia linka pod kruhom — červená -->
+  <line x1="155" y1="352" x2="445" y2="352"
+    stroke="#C0392B"
+    stroke-width="1.4"
+    opacity="0.7"/>
 
   <!-- SATORI -->
-  <text x="300" y="394"
+  <text x="300" y="398"
     text-anchor="middle"
     font-size="30"
     fill="rgba(255,255,255,0.95)"
