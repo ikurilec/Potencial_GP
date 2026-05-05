@@ -1819,7 +1819,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.14.0';
+var APP_VERSION = '2.14.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8857,6 +8857,19 @@ function aflamilFamilyHtml(plan, predajeTotal, predajeByMonth, qMonths, mileston
   var tblMP    = plnenieMonthlyPlans(year, q, tblPlan);
   var krMP     = plnenieMonthlyPlans(year, q, krPlan);
 
+  // Predikcia: súčet tbl+kr za dokončené mesiace
+  var famPredajeEURDone = 0;
+  qMonths.forEach(function(m) {
+    if (m < curMonth) {
+      famPredajeEURDone += (parseFloat((predajeByMonth[m] || {})[tblKey]) || 0) +
+                           (parseFloat((predajeByMonth[m] || {})[krKey])  || 0);
+    }
+  });
+  var famPredikcia = plnenieCalcPredikciaSummary(famPlan, famPredajeEURDone, q, year);
+  var famPredHtml = (famPredikcia !== null && famPlan > 0)
+    ? '<div class="prod-pred">predikcia konca kvartálu <span>' + plnenieFormatPct(famPredikcia) + '</span></div>'
+    : '';
+
   var monthRowsHtml = qMonths.map(function(m) {
     var tblM   = parseFloat((predajeByMonth[m] || {})[tblKey]) || 0;
     var krM    = parseFloat((predajeByMonth[m] || {})[krKey])  || 0;
@@ -8883,6 +8896,7 @@ function aflamilFamilyHtml(plan, predajeTotal, predajeByMonth, qMonths, mileston
       ? '<div class="bar-wrap"><div class="bar-track"><div class="bar-fill ' + famColor + '" style="width:0" data-bar-w="' + barWidth + '"></div>' + milestonesHtml + '</div>' + msLabelsHtml + '</div>'
       : '') +
     '<div class="prod-money"><strong>' + plnenieFormatEUR(famSales) + '</strong> z plánu ' + plnenieFormatEUR(famPlan) + '</div>' +
+    famPredHtml +
     msHtml +
     '<div class="month-rows">' + monthRowsHtml + '</div>' +
   '</div>';
