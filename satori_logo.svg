@@ -8,7 +8,7 @@
     </radialGradient>
 
     <!-- Metalický gradient pre SATORI (zhora dole) -->
-    <linearGradient id="satoriGrad" x1="0" y1="388" x2="0" y2="422" gradientUnits="userSpaceOnUse">
+    <linearGradient id="satoriGrad" x1="0" y1="398" x2="0" y2="432" gradientUnits="userSpaceOnUse">
       <stop offset="0%"   stop-color="#FFFFFF"/>
       <stop offset="45%"  stop-color="#DCE8F2"/>
       <stop offset="100%" stop-color="#8AAABF"/>
@@ -37,8 +37,14 @@
   <rect width="600" height="600" fill="#0C1E35"/>
   <rect width="600" height="600" fill="url(#bg)"/>
 
-  <!-- Enso -->
-  <path d="M 321.4 138 A 112 112 0 1 1 278.6 138"
+  <!--
+    Enso — menší, polomer 98
+    Stred: (300, 244), polomer: 98
+    Medzera 22° hore (259°–281°)
+    Začiatok 281°: x=300+98·0.191=318.7, y=244+98·(−0.982)=244−96.2=147.8
+    Koniec   259°: x=300+98·(−0.191)=281.3, y=244+98·(−0.982)=147.8
+  -->
+  <path d="M 318.7 147.8 A 98 98 0 1 1 281.3 147.8"
     fill="none"
     stroke="rgba(255,255,255,0.80)"
     stroke-width="10"
@@ -46,29 +52,29 @@
     filter="url(#eGlow)"/>
 
   <!-- Kanji — glow -->
-  <text x="300" y="253"
+  <text x="300" y="249"
     text-anchor="middle"
     dominant-baseline="middle"
-    font-size="82"
+    font-size="78"
     fill="rgba(255,255,255,0.15)"
     font-family="serif"
     filter="url(#kGlow)">悟り</text>
 
   <!-- Kanji — hlavný -->
-  <text x="300" y="253"
+  <text x="300" y="249"
     text-anchor="middle"
     dominant-baseline="middle"
-    font-size="82"
+    font-size="78"
     fill="rgba(255,255,255,0.91)"
     font-family="serif">悟り</text>
 
-  <!-- Linka -->
-  <line x1="150" y1="368" x2="450" y2="368"
+  <!-- Linka — s medzerou od kruhu (kruh končí na y=342, linka na y=378) -->
+  <line x1="150" y1="378" x2="450" y2="378"
     stroke="rgba(255,255,255,0.22)"
     stroke-width="1.2"/>
 
   <!-- SATORI — tieň vrstva -->
-  <text x="302" y="411"
+  <text x="302" y="421"
     text-anchor="middle"
     font-size="32"
     fill="rgba(0,12,30,0.6)"
@@ -77,7 +83,7 @@
     letter-spacing="15">SATORI</text>
 
   <!-- SATORI — metalický gradient -->
-  <text x="300" y="408"
+  <text x="300" y="418"
     text-anchor="middle"
     font-size="32"
     fill="url(#satoriGrad)"
@@ -87,7 +93,7 @@
     filter="url(#satoriShadow)">SATORI</text>
 
   <!-- Motto -->
-  <text x="300" y="448"
+  <text x="300" y="458"
     text-anchor="middle"
     font-size="11"
     fill="rgba(255,255,255,0.42)"
