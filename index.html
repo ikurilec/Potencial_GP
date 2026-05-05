@@ -7392,27 +7392,33 @@ function plnenieBuildAggregates(resp) {
   // do planEUR a predajeEUR započítavame IBA produkty, kde DANÝ rep má plán > 0.
   // Rep bez plánu na produkt X nekontribuuje svojimi predajmi pre X do svojho %.
   var activeReps = plnenieGetActiveReps();
+  var curMonthForPred = (new Date()).getMonth() + 1;
   var repAgg = {};
   activeReps.forEach(function(rep){
     var rPlan = plan[rep] || {};
     var rPredajeTotal = (predaje[rep] && predaje[rep].total) || {};
-    var planEUR = 0, predajeEUR = 0;
+    var rByMonth = (predaje[rep] && predaje[rep].byMonth) || {};
+    var planEUR = 0, predajeEUR = 0, predajeEURDone = 0;
     allProdKeys.forEach(function(key){
       var p = prodVal(rPlan, key);
       if (p > 0) {
         planEUR += p;
         predajeEUR += prodVal(rPredajeTotal, key);
+        for (var m = 1; m <= 12; m++) {
+          if (m < curMonthForPred && rByMonth[m]) predajeEURDone += prodVal(rByMonth[m], key);
+        }
       }
     });
     var pct = (planEUR > 0) ? (predajeEUR / planEUR * 100) : null;
-    repAgg[rep] = { planEUR: planEUR, predajeEUR: predajeEUR, pct: pct };
+    repAgg[rep] = { planEUR: planEUR, predajeEUR: predajeEUR, predajeEURDone: predajeEURDone, pct: pct };
   });
 
   // Sumár pre aktívnych repov (Slovensko / West / East podľa roly)
-  var skPlan = 0, skPredaje = 0;
+  var skPlan = 0, skPredaje = 0, skPredajeDone = 0;
   activeReps.forEach(function(rep){
     skPlan += repAgg[rep].planEUR;
     skPredaje += repAgg[rep].predajeEUR;
+    skPredajeDone += repAgg[rep].predajeEURDone;
   });
   var skPct = (skPlan > 0) ? (skPredaje / skPlan * 100) : null;
 
@@ -7420,16 +7426,18 @@ function plnenieBuildAggregates(resp) {
   var regionAgg = {};
   [['west', MGR_AM_WEST], ['east', MGR_AM_EAST]].forEach(function(pair){
     var regionKey = pair[0], list = pair[1];
-    var rPlan = 0, rPredaje = 0;
+    var rPlan = 0, rPredaje = 0, rPredajeDone = 0;
     list.forEach(function(rep){
       if (repAgg[rep]) {
         rPlan += repAgg[rep].planEUR;
         rPredaje += repAgg[rep].predajeEUR;
+        rPredajeDone += repAgg[rep].predajeEURDone;
       }
     });
     regionAgg[regionKey] = {
       planEUR: rPlan,
       predajeEUR: rPredaje,
+      predajeEURDone: rPredajeDone,
       pct: (rPlan > 0) ? (rPredaje / rPlan * 100) : null
     };
   });
@@ -7437,12 +7445,16 @@ function plnenieBuildAggregates(resp) {
   // Per-produkt summary — iba produkty, kde aspoň jeden aktívny rep má plán > 0.
   var productsToShow = [];
   allProdKeys.forEach(function(key){
-    var pSum = 0, sSum = 0;
+    var pSum = 0, sSum = 0, sSumDone = 0;
     activeReps.forEach(function(rep){
       var p = prodVal(plan[rep], key);
       if (p > 0) {
         pSum += p;
         sSum += prodVal((predaje[rep] && predaje[rep].total) || {}, key);
+        var rByMonth = (predaje[rep] && predaje[rep].byMonth) || {};
+        for (var m = 1; m <= 12; m++) {
+          if (m < curMonthForPred && rByMonth[m]) sSumDone += prodVal(rByMonth[m], key);
+        }
       }
     });
     if (pSum > 0) {
@@ -7451,6 +7463,7 @@ function plnenieBuildAggregates(resp) {
         label: plnenieDisplayName(allProdsMap[key]),
         planEUR: pSum,
         predajeEUR: sSum,
+        predajeEURDone: sSumDone,
         pct: sSum / pSum * 100
       });
     }
@@ -7482,7 +7495,7 @@ function plnenieBuildAggregates(resp) {
   });
 
   return {
-    sk: { planEUR: skPlan, predajeEUR: skPredaje, pct: skPct },
+    sk: { planEUR: skPlan, predajeEUR: skPredaje, predajeEURDone: skPredajeDone, pct: skPct },
     regions: regionAgg,
     products: productsToShow,
     reps: repList
@@ -7534,7 +7547,7 @@ function plnenieRenderSummary() {
   // Predikcia pre summary — sk.predajeEUR delíme súčtom mesačných plánov pre dokončené mesiace
   var predEl = document.getElementById('pl-sum-pred');
   if (predEl) {
-    var skPredikcia = plnenieCalcPredikciaSummary(sk.planEUR, sk.predajeEUR, PL_STATE.q, PL_STATE.year);
+    var skPredikcia = plnenieCalcPredikciaSummary(sk.planEUR, sk.predajeEURDone, PL_STATE.q, PL_STATE.year);
     if (skPredikcia !== null) {
       predEl.style.display = '';
       predEl.innerHTML = 'predikcia konca kvartálu <span>' + plnenieFormatPct(skPredikcia) + '</span>';
@@ -7560,7 +7573,7 @@ function plnenieRenderSummary() {
       prods.innerHTML = agg.products.map(function(p){
         var safeKey = p.key.replace(/'/g, "\\'");
         var safeLbl = p.label.replace(/'/g, "\\'");
-        var predPct = plnenieCalcPredikciaSummary(p.planEUR, p.predajeEUR, PL_STATE.q, PL_STATE.year);
+        var predPct = plnenieCalcPredikciaSummary(p.planEUR, p.predajeEURDone, PL_STATE.q, PL_STATE.year);
         var predHtml = predPct !== null
           ? '<span style="font-size:9px;color:#94A3B8;font-weight:500;white-space:nowrap">predikcia ' + plnenieFormatPct(predPct) + '</span>'
           : '';
@@ -8000,7 +8013,7 @@ function plnenieRenderRegions() {
   }
   var westPred = document.getElementById('pl-region-west-pred');
   if (westPred) {
-    var wp = plnenieCalcPredikciaSummary(regions.west.planEUR, regions.west.predajeEUR, PL_STATE.q, PL_STATE.year);
+    var wp = plnenieCalcPredikciaSummary(regions.west.planEUR, regions.west.predajeEURDone, PL_STATE.q, PL_STATE.year);
     if (wp !== null) { westPred.style.display = ''; westPred.innerHTML = 'predikcia <span>' + plnenieFormatPct(wp) + '</span>'; }
     else { westPred.style.display = 'none'; }
   }
@@ -8011,7 +8024,7 @@ function plnenieRenderRegions() {
   }
   var eastPred = document.getElementById('pl-region-east-pred');
   if (eastPred) {
-    var ep = plnenieCalcPredikciaSummary(regions.east.planEUR, regions.east.predajeEUR, PL_STATE.q, PL_STATE.year);
+    var ep = plnenieCalcPredikciaSummary(regions.east.planEUR, regions.east.predajeEURDone, PL_STATE.q, PL_STATE.year);
     if (ep !== null) { eastPred.style.display = ''; eastPred.innerHTML = 'predikcia <span>' + plnenieFormatPct(ep) + '</span>'; }
     else { eastPred.style.display = 'none'; }
   }
@@ -8209,8 +8222,7 @@ function plnenieMonthlyPlans(year, q, qPlanTotal) {
 // productKey: ak null → počíta celkovú predikciu (súčet všetkých produktov v mesiaci)
 //             ak string → počíta predikciu iba pre daný produkt
 // Vracia % alebo null ak nie sú dostupné dáta (Q nie je aktuálny, alebo žiadne dokončené mesiace).
-// Predikcia pre súhrnné karty (SK, West, East) — používa predajeEUR priamo (už agregované).
-// predajeEUR = skutočné predaje za všetky dostupné mesiace Q (budúce mesiace = 0, takže OK)
+// Predikcia pre súhrnné karty (SK, West, East) — predajeEUR musí byť len za dokončené mesiace (predajeEURDone).
 // Delí súčtom mesačných plánov pre dokončené mesiace.
 function plnenieCalcPredikciaSummary(qPlanTotal, predajeEUR, q, year) {
   if (plnenieCurrentQ() !== q) return null;
