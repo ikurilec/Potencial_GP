@@ -1819,7 +1819,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.66';
+var APP_VERSION = '2.14.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -2091,7 +2091,8 @@ var MOCK_PHARMA_DATA = (function() {
     return [
       { mesiac:'2601', terit_ms: terit + 1.2, sk_ms: sk + 0.8 },
       { mesiac:'2602', terit_ms: terit + 0.3, sk_ms: sk - 0.2 },
-      { mesiac:'2603', terit_ms: terit,        sk_ms: sk }
+      { mesiac:'2603', terit_ms: terit,        sk_ms: sk },
+      { mesiac:'2604', terit_ms: terit + 1.8,  sk_ms: sk + 1.1 }  // Apríl — mock Q2
     ];
   }
   function makeOkresy(prodLabel, baseMs, basePat, totPat) {
@@ -8455,7 +8456,17 @@ function plnenieRenderDetail() {
   var milestonesHtml = plnenieMilestonesHtml(PL_STATE.year, PL_STATE.q);
   var msLabelsHtml   = plnenieMsLabelsHtml(PL_STATE.year, PL_STATE.q);
 
-  prodsEl.innerHTML = plnenieSortProducts(planProducts).map(function(rawProdKey) {
+  // Aflamil Family karta — manažérsky detail
+  var mgrHasTbl = planProducts.some(function(p){ return plnenieNormalizeKey(p) === 'aflamil_tablety_sacky'; });
+  var mgrHasKr  = planProducts.some(function(p){ return plnenieNormalizeKey(p) === 'aflamil_kr'; });
+  var mgrTblPlan = parseFloat(plan['aflamil_tablety_sacky']); if (isNaN(mgrTblPlan)) mgrTblPlan = 0;
+  var mgrKrPlan  = parseFloat(plan['aflamil_kr']);            if (isNaN(mgrKrPlan))  mgrKrPlan  = 0;
+  var mgrOblast  = (USERS_LOCAL[username] && USERS_LOCAL[username].region) || '';
+  var mgrFamHtml = (mgrHasTbl && mgrHasKr && mgrTblPlan > 0 && mgrKrPlan > 0)
+    ? aflamilFamilyHtml(plan, predajeTotal, predajeByMonth, qMonths, milestonesHtml, msLabelsHtml, username, mgrOblast, PL_STATE.year, PL_STATE.q)
+    : '';
+
+  prodsEl.innerHTML = mgrFamHtml + plnenieSortProducts(planProducts).map(function(rawProdKey) {
     var key = plnenieNormalizeKey(rawProdKey);
     var label = plnenieDisplayName(rawProdKey);
     var dotColor = PL_PROD_DOT_COLORS[key] || '#94A3B8';
@@ -8741,6 +8752,142 @@ function repPlnenieUpdateQTabs() {
   });
 }
 
+// ── AFLAMIL FAMILY ─────────────────────────────────────────────────────────
+// Vráti MS porovnanie pre AFLtbl: running avg aktuálneho Q vs Q1 priemer
+// username — rep ktorého dáta sa zobrazujú (rep mód = session.username, mgr mód = detailRep)
+// oblast   — región rep (raw hodnota zo USERS_LOCAL, bez normalizácie)
+// year, q  — zobrazovaný rok a kvartál
+function aflamilFamilyMsData(username, oblast, year, q) {
+  if (!oblast) return null;
+  var kvartal = pharmaKvartalCode(year, q);
+  var prevKv  = pharmaKvartalPrev(kvartal);
+
+  // Skús Q2 cache — summArr obsahuje posledných 12 mes. vrátane Q1
+  var d = PHARMA_STATE.cache['AFLtbl_' + oblast + '_' + kvartal];
+  // Fallback na Q1 cache (keď Q2 data ešte nie sú nahrané)
+  if (!d || !d.summary) d = PHARMA_STATE.cache['AFLtbl_' + oblast + '_' + prevKv];
+  if (!d || !d.summary) return null;
+
+  var summArr  = d.summary;
+  var q1Months  = pharmaQuarterMonths(pharmaKvartalCode(year, 1)); // ['2601','2602','2603']
+  var curMonths = pharmaQuarterMonths(kvartal);                    // ['2604','2605','2606']
+
+  function extractVals(months) {
+    var vals = [], labels = [];
+    months.forEach(function(m) {
+      for (var i = 0; i < summArr.length; i++) {
+        if (summArr[i].mesiac === m) {
+          var tv = parseFloat(summArr[i].terit_ms);
+          if (!isNaN(tv) && tv > 0) {
+            vals.push(tv);
+            labels.push(PHARMA_MONTH_SK[parseInt(m.slice(2), 10)] || m);
+          }
+          break;
+        }
+      }
+    });
+    return { vals: vals, labels: labels };
+  }
+
+  var q1   = extractVals(q1Months);
+  var cur  = extractVals(curMonths);
+  var q1Avg  = q1.vals.length  ? q1.vals.reduce(function(a,b){return a+b;},0)  / q1.vals.length  : null;
+  var curAvg = cur.vals.length ? cur.vals.reduce(function(a,b){return a+b;},0) / cur.vals.length : null;
+
+  // Label: "Apr" / "Apr+Máj" / "Apr+Máj+Jún"
+  var curLabel = cur.labels.length === 0 ? '' :
+    cur.labels.length === 1 ? cur.labels[0] :
+    cur.labels.slice(0, -1).join('+') + '+' + cur.labels[cur.labels.length - 1];
+
+  return {
+    q1Avg:    q1Avg,
+    curAvg:   curAvg,
+    curLabel: curLabel,
+    klesá:    (q1Avg !== null && curAvg !== null) ? (curAvg < q1Avg) : null
+  };
+}
+
+// Vygeneruje HTML kartu Aflamil Family (kombinácia tbl+sáčky + krém)
+// username, oblast — pre MS fetch; year, q — zobrazovaný kvartál
+function aflamilFamilyHtml(plan, predajeTotal, predajeByMonth, qMonths, milestonesHtml, msLabelsHtml, username, oblast, year, q) {
+  var tblKey = 'aflamil_tablety_sacky';
+  var krKey  = 'aflamil_kr';
+  var tblPlan  = parseFloat(plan[tblKey])          || 0;
+  var krPlan   = parseFloat(plan[krKey])           || 0;
+  var tblSales = parseFloat(predajeTotal[tblKey])  || 0;
+  var krSales  = parseFloat(predajeTotal[krKey])   || 0;
+
+  var famPlan  = tblPlan + krPlan;
+  var famSales = tblSales + krSales;
+  var famPct   = famPlan > 0 ? (famSales / famPlan * 100) : null;
+  var famColor = plnenieDetailColorClass(famPct);
+  var barWidth = famPct !== null ? Math.min(famPct, 100) : 0;
+
+  // MS porovnanie
+  var msData = aflamilFamilyMsData(username, oblast, year, q);
+  var msHtml = '';
+  if (msData && msData.q1Avg !== null && msData.curAvg !== null) {
+    // Máme oba priemery — zobraz porovnanie
+    var klesá   = msData.klesá;
+    var arrow   = klesá ? '↓' : '↑';
+    var color   = klesá ? '#92400E' : '#065F46';
+    var bgColor = klesá ? '#FEF3C7' : '#D1FAE5';
+    var msg     = klesá
+      ? 'klesáš — Aflamil Family plán <strong>zatiaľ neplatí</strong>'
+      : 'stúpol si — Aflamil Family plán <strong>zatiaľ platí</strong>';
+    msHtml = '<div style="background:' + bgColor + ';color:' + color + ';border-radius:8px;padding:7px 10px;margin:7px 0 4px;font-size:12px;line-height:1.5;">' +
+      arrow + ' <strong>' + msData.curLabel + ': ' + msData.curAvg.toFixed(1) + '%</strong>' +
+      ' &nbsp;vs&nbsp; Q1 priemer ' + msData.q1Avg.toFixed(1) + '% — ' + msg +
+      '</div>';
+  } else if (msData && msData.q1Avg !== null && !msData.curAvg) {
+    // Máme Q1, ale Q2 dáta ešte nie sú (IQVIA chodí ~15. v mesiaci)
+    msHtml = '<div style="background:#F1F5F9;color:#64748B;border-radius:8px;padding:7px 10px;margin:7px 0 4px;font-size:12px;line-height:1.5;">' +
+      '⏳ MS dáta za Q2 zatiaľ nie sú k dispozícii &nbsp;·&nbsp; Q1 priemer: <strong>' + msData.q1Avg.toFixed(1) + '%</strong>' +
+      '</div>';
+  } else {
+    // Žiadne pharma dáta — cache prázdna alebo región neznámy
+    msHtml = '<div style="background:#F1F5F9;color:#64748B;border-radius:8px;padding:7px 10px;margin:7px 0 4px;font-size:12px;">' +
+      '⏳ MS dáta zatiaľ nie sú k dispozícii na posúdenie' +
+      '</div>';
+  }
+
+  // Month rows (kombinované)
+  var curQ     = plnenieCurrentQ();
+  var curMonth = (new Date()).getMonth() + 1;
+  var tblMP    = plnenieMonthlyPlans(year, q, tblPlan);
+  var krMP     = plnenieMonthlyPlans(year, q, krPlan);
+
+  var monthRowsHtml = qMonths.map(function(m) {
+    var tblM   = parseFloat((predajeByMonth[m] || {})[tblKey]) || 0;
+    var krM    = parseFloat((predajeByMonth[m] || {})[krKey])  || 0;
+    var mVal   = tblM + krM;
+    var mPlan  = (tblMP[m] || 0) + (krMP[m] || 0);
+    var mPct   = mPlan > 0 ? mVal / mPlan * 100 : null;
+    var isFuture = (q === curQ && m > curMonth) || q > curQ;
+    var mValCls  = isFuture ? 'future' : (mPlan > 0 && mVal > 0 ? plnenieDetailColorClass(mPct) : 'future');
+    var mDisplay = mVal > 0 ? plnenieFormatEUR(mVal) : '—';
+    var rowPast  = !isFuture ? ' past' : '';
+    return '<div class="mrow">' +
+      '<div class="mrow-lbl' + rowPast + '">' + (PL_MONTH_LABELS[m] || 'M'+m) + '</div>' +
+      '<div class="mrow-val ' + mValCls + '">' + mDisplay + '</div>' +
+      (mPlan > 0 ? '<div class="mrow-plan' + rowPast + '">plán ' + plnenieFormatEUR(mPlan) + '</div>' : '') +
+    '</div>';
+  }).join('');
+
+  return '<div class="prod-item-adv" style="border:3px dashed #93C5FD;background:#fff;margin-bottom:4px;">' +
+    '<div class="prod-adv-top">' +
+      '<div class="prod-adv-name"><div class="prod-dot" style="background:#3B82F6"></div><strong>Aflamil Family</strong></div>' +
+      '<div class="prod-adv-pct ' + famColor + '">' + plnenieFormatPct(famPct) + '</div>' +
+    '</div>' +
+    (famPlan > 0
+      ? '<div class="bar-wrap"><div class="bar-track"><div class="bar-fill ' + famColor + '" style="width:0" data-bar-w="' + barWidth + '"></div>' + milestonesHtml + '</div>' + msLabelsHtml + '</div>'
+      : '') +
+    '<div class="prod-money"><strong>' + plnenieFormatEUR(famSales) + '</strong> z plánu ' + plnenieFormatEUR(famPlan) + '</div>' +
+    msHtml +
+    '<div class="month-rows">' + monthRowsHtml + '</div>' +
+  '</div>';
+}
+
 function repPlnenieRenderLoading() {
   var prodsEl = document.getElementById('rep-pl-prods');
   if (prodsEl) prodsEl.innerHTML = skelRepPl();
@@ -8818,7 +8965,17 @@ function repPlnenieRender() {
   var milestonesHtml = plnenieMilestonesHtml(REP_PL_STATE.year, REP_PL_STATE.q);
   var msLabelsHtml   = plnenieMsLabelsHtml(REP_PL_STATE.year, REP_PL_STATE.q);
 
-  prodsEl.innerHTML = plnenieSortProducts(planProducts).map(function(rawProdKey) {
+  // Aflamil Family karta — zobrazí sa ak má rep plán pre oba AFL produkty
+  var hasTbl = planProducts.some(function(p){ return plnenieNormalizeKey(p) === 'aflamil_tablety_sacky'; });
+  var hasKr  = planProducts.some(function(p){ return plnenieNormalizeKey(p) === 'aflamil_kr'; });
+  var tblPlanCheck = parseFloat(plan['aflamil_tablety_sacky']); if (isNaN(tblPlanCheck)) tblPlanCheck = 0;
+  var krPlanCheck  = parseFloat(plan['aflamil_kr']);            if (isNaN(krPlanCheck))  krPlanCheck  = 0;
+  var repOblast = (USERS_LOCAL[username] && USERS_LOCAL[username].region) || '';
+  var famHtml = (hasTbl && hasKr && tblPlanCheck > 0 && krPlanCheck > 0)
+    ? aflamilFamilyHtml(plan, predajeTotal, predajeByMonth, qMonths, milestonesHtml, msLabelsHtml, username, repOblast, REP_PL_STATE.year, REP_PL_STATE.q)
+    : '';
+
+  prodsEl.innerHTML = famHtml + plnenieSortProducts(planProducts).map(function(rawProdKey) {
     var key = plnenieNormalizeKey(rawProdKey);
     var label = plnenieDisplayName(rawProdKey);
     var dotColor = PL_PROD_DOT_COLORS[key] || '#94A3B8';
