@@ -4,7 +4,7 @@
 // ║  cache-first pre ostatné assety (rýchly štart, offline ready).║
 // ╚══════════════════════════════════════════════════════════════╝
 
-var CACHE_NAME = 'potencial-vl-v3';
+var CACHE_NAME = 'potencial-vl-v4';
 
 self.addEventListener('install', function(event){
   // Okamžitá aktivácia — nechceme čakať na zavretie všetkých kariet
