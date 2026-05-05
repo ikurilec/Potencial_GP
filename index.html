@@ -1965,7 +1965,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.15.0';
+var APP_VERSION = '2.14.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -3167,10 +3167,12 @@ function startFireworks() {
 var _milestoneStopFn = null;
 
 function checkMilestone() {
-  try { if(localStorage.getItem('milestone_200_shown')) return; } catch(e) {}
+  if (window.location.hostname !== 'localhost') {
+    try { if(localStorage.getItem('milestone_200_shown')) return; } catch(e) {}
+  }
   var promise;
   if(typeof IS_DEV !== 'undefined' && IS_DEV) {
-    promise = Promise.resolve({ total: 200, highPotentialPct: 68, vyraditPct: 14 });
+    promise = Promise.resolve({ total: 200, highPotentialPct: 79, vyraditPct: 21 });
   } else if(window._cachedMilestoneStats) {
     // Cache z loadInitData — vyhne sa zbytočnému fetchu
     promise = Promise.resolve(window._cachedMilestoneStats);
@@ -5055,6 +5057,7 @@ function initLogin() {
     var mgrRole = mgrDetectRole(session);
     if(mgrRole){
       mgrEnter(mgrRole);
+      setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(true);}else{checkMilestone();} }, 400);
       setTimeout(function(){
         lbFetchApprovedQ(function(){ lbLoadData(); lbPreloadPlnenie(); });
       }, 2000);
@@ -5066,6 +5069,7 @@ function initLogin() {
       return;
     }
     setTimeout(function(){ updateHdrForUser(session); }, 300);
+    setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(false);}else{checkMilestone();} }, 600);
     // refreshBadgeFromSheets nahradená loadInitData() vyššie
     // Preload rebríček + Plnenie Q (leaderboard) paralelne -- oba startuju po 2s
     setTimeout(function(){
@@ -6139,6 +6143,7 @@ var WN_CONTENT_MGR = {
   ]
 };
 function wnShouldShow(){
+  if (window.location.hostname === 'localhost') return true;
   try { return !localStorage.getItem(WN_KEY); } catch(e){ return false; }
 }
 
@@ -6181,8 +6186,10 @@ function wnShow(isManager){
 
 function wnClose(){
   var overlay = document.getElementById('wn-overlay');
-  if(overlay) overlay.classList.remove('show');
-  setTimeout(checkMilestone, 400);
+  if(!overlay) return;
+  var wasShowing = overlay.classList.contains('show');
+  overlay.classList.remove('show');
+  if(wasShowing) setTimeout(checkMilestone, 400);
 }
 
 // ── Satori rebrand overlay ──
@@ -6345,7 +6352,7 @@ function loadInitData(username, _attempt) {
       return { login: login, meno: MGR_REP_NAMES[login] || login, rola: 'rep west', region: regionStr };
     });
     if(mockReps.length) { buildRepData(mockReps); REP_LIST_STATE.loaded = true; }
-    window._cachedMilestoneStats = { total: 200, highPotentialPct: 68, vyraditPct: 14 };
+    window._cachedMilestoneStats = { total: 200, highPotentialPct: 79, vyraditPct: 21 };
     return Promise.resolve({ ok: true });
   }
 
