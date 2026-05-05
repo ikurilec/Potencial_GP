@@ -1,28 +1,36 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
   <defs>
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&amp;display=swap');
-    </style>
+    <style>@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400&amp;display=swap');</style>
 
-    <radialGradient id="bgGlow" cx="50%" cy="44%" r="42%">
-      <stop offset="0%" stop-color="#3B82F6" stop-opacity="0.28"/>
+    <radialGradient id="bg" cx="50%" cy="42%" r="55%">
+      <stop offset="0%" stop-color="#1E3A8A" stop-opacity="0.35"/>
       <stop offset="100%" stop-color="#0C1E35" stop-opacity="0"/>
     </radialGradient>
 
-    <radialGradient id="bgGlow2" cx="50%" cy="44%" r="70%">
-      <stop offset="0%" stop-color="#1D4ED8" stop-opacity="0.12"/>
-      <stop offset="100%" stop-color="#0C1E35" stop-opacity="0"/>
-    </radialGradient>
-
-    <filter id="kanjiGlow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="18" result="blur"/>
+    <!-- Modrý glow za kanji -->
+    <filter id="kGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="14" result="blur"/>
       <feColorMatrix in="blur" type="matrix"
-        values="0 0 0 0 0.37
+        values="0 0 0 0 0.24
                 0 0 0 0 0.51
-                0 0 0 0 0.98
-                0 0 0 0.7 0" result="coloredBlur"/>
+                0 0 0 0 0.96
+                0 0 0 0.55 0" result="c"/>
       <feMerge>
-        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="c"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Jemný glow na enso -->
+    <filter id="ensoGlow" x="-15%" y="-15%" width="130%" height="130%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur"/>
+      <feColorMatrix in="blur" type="matrix"
+        values="0 0 0 0 0.6
+                0 0 0 0 0.75
+                0 0 0 0 1
+                0 0 0 0.35 0" result="c"/>
+      <feMerge>
+        <feMergeNode in="c"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
@@ -30,47 +38,61 @@
 
   <!-- Pozadie -->
   <rect width="600" height="600" fill="#0C1E35"/>
-  <rect width="600" height="600" fill="url(#bgGlow2)"/>
-  <rect width="600" height="600" fill="url(#bgGlow)"/>
+  <rect width="600" height="600" fill="url(#bg)"/>
 
-  <!-- Dekoratívne kruhy -->
-  <circle cx="300" cy="262" r="195" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1.5"/>
-  <circle cx="300" cy="262" r="215" fill="none" stroke="rgba(59,130,246,0.07)" stroke-width="1"/>
-  <circle cx="300" cy="262" r="240" fill="none" stroke="rgba(255,255,255,0.025)" stroke-width="1"/>
+  <!--
+    Enso kruh (禅円) — 330° oblúk, medzera hore-vpravo (1–2 hod)
+    Stred: (300, 252), polomer: 150
+    Začiatok 330°: (300+150·cos330°, 252+150·sin330°) = (429.9, 177)
+    Koniec   300°: (300+150·cos300°, 252+150·sin300°) = (375,  122.1)
+  -->
+  <path d="M 429.9 177 A 150 150 0 1 1 375 122.1"
+    fill="none"
+    stroke="rgba(255,255,255,0.82)"
+    stroke-width="11"
+    stroke-linecap="round"
+    filter="url(#ensoGlow)"/>
 
-  <!-- Kanji 悟り — glow vrstva -->
-  <text x="300" y="330"
+  <!-- Kanji 悟り — glow vrstva (bluish) -->
+  <text x="300" y="282"
     text-anchor="middle"
-    font-size="168"
-    fill="rgba(255,255,255,0.15)"
+    dominant-baseline="middle"
+    font-size="90"
+    fill="rgba(255,255,255,0.18)"
     font-family="serif"
-    filter="url(#kanjiGlow)">悟り</text>
+    filter="url(#kGlow)">悟り</text>
 
   <!-- Kanji 悟り — hlavný text -->
-  <text x="300" y="330"
+  <text x="300" y="282"
     text-anchor="middle"
-    font-size="168"
+    dominant-baseline="middle"
+    font-size="90"
     fill="rgba(255,255,255,0.92)"
     font-family="serif">悟り</text>
 
-  <!-- Deliaca linka -->
-  <line x1="264" y1="358" x2="336" y2="358" stroke="rgba(255,255,255,0.24)" stroke-width="0.8"/>
+  <!-- Tenká linka pod ensom -->
+  <line x1="265" y1="356" x2="335" y2="356"
+    stroke="rgba(255,255,255,0.2)" stroke-width="0.75"/>
+
+  <!-- Malé dekoratívne bodky na koncoch linky -->
+  <circle cx="261" cy="356" r="1.6" fill="rgba(255,255,255,0.28)"/>
+  <circle cx="339" cy="356" r="1.6" fill="rgba(255,255,255,0.28)"/>
 
   <!-- SATORI -->
-  <text x="300" y="412"
+  <text x="300" y="404"
     text-anchor="middle"
-    font-size="36"
-    fill="white"
+    font-size="30"
+    fill="rgba(255,255,255,0.96)"
     font-family="'Cinzel', 'Palatino Linotype', Palatino, serif"
     font-weight="400"
-    letter-spacing="18">SATORI</text>
+    letter-spacing="15">SATORI</text>
 
-  <!-- Motto -->
-  <text x="300" y="462"
+  <!-- Drobný text pod — voliteľné -->
+  <text x="300" y="442"
     text-anchor="middle"
-    font-size="12"
-    fill="rgba(255,255,255,0.52)"
-    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-    letter-spacing="0.5">Ten, kto vidí jasne, necháva náhodu iným.</text>
+    font-size="10.5"
+    fill="rgba(255,255,255,0.38)"
+    font-family="-apple-system, BlinkMacSystemFont, sans-serif"
+    letter-spacing="2.5">GEDEON RICHTER SLOVAKIA</text>
 
 </svg>
