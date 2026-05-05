@@ -1819,7 +1819,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.65';
+var APP_VERSION = '2.13.66';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -4912,7 +4912,9 @@ function initLogin() {
     var mgrRole = mgrDetectRole(session);
     if(mgrRole){
       mgrEnter(mgrRole);
-      setTimeout(function(){ lbLoadData(); lbPreloadPlnenie(); }, 2000);
+      setTimeout(function(){
+        lbFetchApprovedQ(function(){ lbLoadData(); lbPreloadPlnenie(); });
+      }, 2000);
       setTimeout(function(){
         REP_PL_STATE.year = REP_PL_STATE.year || (new Date()).getFullYear();
         REP_PL_STATE.q    = REP_PL_STATE.q    || plnenieCurrentQ();
