@@ -1819,7 +1819,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.13.64';
+var APP_VERSION = '2.13.65';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6613,7 +6613,7 @@ function lbPreloadPlnenie() {
   mgrFetchWithRetry(url, 3)
     .then(function(resp) {
       if (!resp || !resp.ok) throw new Error('No data');
-      var agg = plnenieBuildAggregates(resp);
+      var agg = plnenieBuildAggregates(resp, lastQ);
       LB_PLNENIE_CACHE = { q: lastQ, data: resp, aggregates: agg };
     })
     .catch(function() {
@@ -7297,7 +7297,7 @@ function plnenieLoadAllQuarters() {
     qs.forEach(function(q) {
       var resp = MOCK_PLNENIE['Q' + q];
       if (resp) {
-        var agg = plnenieBuildAggregates(resp);
+        var agg = plnenieBuildAggregates(resp, q);
         PL_STATE.qCache[q] = { data: resp, aggregates: agg };
         if (q === PL_STATE.q) {
           PL_STATE.data = resp;
@@ -7320,7 +7320,7 @@ function plnenieLoadAllQuarters() {
     mgrFetchWithRetry(url, 3)
       .then(function(resp) {
         if (!resp || !resp.ok) throw new Error('No data for Q' + q);
-        var agg = plnenieBuildAggregates(resp);
+        var agg = plnenieBuildAggregates(resp, q);
         PL_STATE.qCache[q] = { data: resp, aggregates: agg };
         // Ak práve zobrazujeme tento Q, hneď renderuj
         if (q === PL_STATE.q) {
@@ -7367,7 +7367,7 @@ function plnenieSumLabel() {
   return 'Slovensko';
 }
 
-function plnenieBuildAggregates(resp) {
+function plnenieBuildAggregates(resp, q) {
   var plan = resp.plan || {};
   var predaje = resp.predaje || {};
   var planProducts = resp.planProducts || [];
@@ -7393,6 +7393,7 @@ function plnenieBuildAggregates(resp) {
   // Rep bez plánu na produkt X nekontribuuje svojimi predajmi pre X do svojho %.
   var activeReps = plnenieGetActiveReps();
   var curMonthForPred = (new Date()).getMonth() + 1;
+  var qMonths = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[q] || [];
   var repAgg = {};
   activeReps.forEach(function(rep){
     var rPlan = plan[rep] || {};
@@ -7405,7 +7406,7 @@ function plnenieBuildAggregates(resp) {
         planEUR += p;
         predajeEUR += prodVal(rPredajeTotal, key);
         for (var m = 1; m <= 12; m++) {
-          if (m < curMonthForPred && rByMonth[m]) predajeEURDone += prodVal(rByMonth[m], key);
+          if (m < curMonthForPred && qMonths.indexOf(m) >= 0 && rByMonth[m]) predajeEURDone += prodVal(rByMonth[m], key);
         }
       }
     });
@@ -7453,7 +7454,7 @@ function plnenieBuildAggregates(resp) {
         sSum += prodVal((predaje[rep] && predaje[rep].total) || {}, key);
         var rByMonth = (predaje[rep] && predaje[rep].byMonth) || {};
         for (var m = 1; m <= 12; m++) {
-          if (m < curMonthForPred && rByMonth[m]) sSumDone += prodVal(rByMonth[m], key);
+          if (m < curMonthForPred && qMonths.indexOf(m) >= 0 && rByMonth[m]) sSumDone += prodVal(rByMonth[m], key);
         }
       }
     });
@@ -7484,6 +7485,7 @@ function plnenieBuildAggregates(resp) {
       username: rep,
       planEUR: repAgg[rep].planEUR,
       predajeEUR: repAgg[rep].predajeEUR,
+      predajeEURDone: repAgg[rep].predajeEURDone,
       pct: repAgg[rep].pct
     };
   });
@@ -8402,7 +8404,7 @@ function plnenieRenderDetail() {
   var repColorCls = plnenieDetailColorClass(repPct);
   var resp = PL_STATE.data || {};
   var predajeByMonth = (resp.predaje && resp.predaje[username] && resp.predaje[username].byMonth) || {};
-  var repPredikcia = plnenieCalcPredikcia(PL_STATE.q, PL_STATE.year, repPlan, predajeByMonth, null);
+  var repPredikcia = repRow ? plnenieCalcPredikciaSummary(repRow.planEUR, repRow.predajeEURDone, PL_STATE.q, PL_STATE.year) : null;
 
   // Tmavá súhrnná karta
   var noData = (repPlan === 0 && repPredaje === 0);
@@ -8550,16 +8552,13 @@ function plnenieRenderDetailTrend(username) {
     var cached = PL_STATE.qCache[q];
     var pct = null;
     var repPlanEUR = 0;
-    var byMonth = {};
+    var predajeEURDone = 0;
     if (cached && cached.aggregates && cached.aggregates.reps) {
       for (var i = 0; i < cached.aggregates.reps.length; i++) {
-        if (cached.aggregates.reps[i].username === username) { pct = cached.aggregates.reps[i].pct; repPlanEUR = cached.aggregates.reps[i].planEUR || 0; break; }
+        if (cached.aggregates.reps[i].username === username) { pct = cached.aggregates.reps[i].pct; repPlanEUR = cached.aggregates.reps[i].planEUR || 0; predajeEURDone = cached.aggregates.reps[i].predajeEURDone || 0; break; }
       }
     }
-    if (cached && cached.data && cached.data.predaje && cached.data.predaje[username]) {
-      byMonth = cached.data.predaje[username].byMonth || {};
-    }
-    var predikcia = plnenieCalcPredikcia(q, year, repPlanEUR, byMonth, null);
+    var predikcia = plnenieCalcPredikciaSummary(repPlanEUR, predajeEURDone, q, year);
     qData.push({ q: q, pct: pct, predikcia: predikcia, isCurrent: q === curQ, isFuture: q > curQ });
   }
 
@@ -8656,7 +8655,7 @@ function repPlnenieLoad() {
     mgrFetchWithRetry(url, 3)
       .then(function(resp) {
         if (!resp || !resp.ok) throw new Error('No data Q' + q);
-        var agg = plnenieBuildAggregates(resp);
+        var agg = plnenieBuildAggregates(resp, q);
         REP_PL_STATE.qCache[q] = { data: resp, aggregates: agg };
         if (q === REP_PL_STATE.q) {
           REP_PL_STATE.data = resp;
@@ -8774,8 +8773,7 @@ function repPlnenieRender() {
   var repPredaje = repRow ? repRow.predajeEUR : 0;
   var repColorCls = plnenieDetailColorClass(repPct);
   var noData = (repPlan === 0 && repPredaje === 0);
-  var repByMonth = (REP_PL_STATE.data && REP_PL_STATE.data.predaje && REP_PL_STATE.data.predaje[username] && REP_PL_STATE.data.predaje[username].byMonth) || {};
-  var repPredikcia = plnenieCalcPredikcia(REP_PL_STATE.q, REP_PL_STATE.year, repPlan, repByMonth, null);
+  var repPredikcia = repRow ? plnenieCalcPredikciaSummary(repRow.planEUR, repRow.predajeEURDone, REP_PL_STATE.q, REP_PL_STATE.year) : null;
 
   // Celková karta
   if (totalCardEl) {
@@ -8894,16 +8892,13 @@ function repPlnenieRenderTrend(username) {
     var cached = REP_PL_STATE.qCache[q];
     var pct = null;
     var repPlanEUR = 0;
-    var byMonth = {};
+    var predajeEURDone = 0;
     if (cached && cached.aggregates && cached.aggregates.reps) {
       for (var i = 0; i < cached.aggregates.reps.length; i++) {
-        if (cached.aggregates.reps[i].username === username) { pct = cached.aggregates.reps[i].pct; repPlanEUR = cached.aggregates.reps[i].planEUR || 0; break; }
+        if (cached.aggregates.reps[i].username === username) { pct = cached.aggregates.reps[i].pct; repPlanEUR = cached.aggregates.reps[i].planEUR || 0; predajeEURDone = cached.aggregates.reps[i].predajeEURDone || 0; break; }
       }
     }
-    if (cached && cached.data && cached.data.predaje && cached.data.predaje[username]) {
-      byMonth = cached.data.predaje[username].byMonth || {};
-    }
-    var predikcia = plnenieCalcPredikcia(q, year, repPlanEUR, byMonth, null);
+    var predikcia = plnenieCalcPredikciaSummary(repPlanEUR, predajeEURDone, q, year);
     qData.push({ q: q, pct: pct, predikcia: predikcia, isCurrent: q === curQ });
   }
 
