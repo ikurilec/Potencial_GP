@@ -7,7 +7,7 @@
       <stop offset="100%" stop-color="#0C1E35" stop-opacity="0"/>
     </radialGradient>
 
-    <filter id="eGlow" x="-12%" y="-12%" width="124%" height="124%">
+    <filter id="eGlow" x="-15%" y="-15%" width="130%" height="130%">
       <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur"/>
       <feColorMatrix in="blur" type="matrix"
         values="0 0 0 0 0.55 0 0 0 0 0.72 0 0 0 0 1 0 0 0 0.28 0" result="c"/>
@@ -26,52 +26,43 @@
   <rect width="600" height="600" fill="url(#bg)"/>
 
   <!--
-    Enso — medzera 22° hore, butt linecaps = čistý rez
-    Stred: (300, 248), polomer: 138
-    Medzera: 259° až 281°
-    Začiatok 281°: x=300+138·cos281°=300+138·0.191=326.3, y=248+138·sin281°=248-135.3=112.7
-    Koniec   259°: x=300+138·cos259°=300+138·(-0.191)=273.7, y=248+138·sin259°=248-135.3=112.7
+    Enso — menší, biely, butt linecaps
+    Stred: (300, 248), polomer: 112
+    Medzera 22° hore (259°–281°)
+    Začiatok 281°: x=300+112·0.191=321.4, y=248+112·(−0.982)=138
+    Koniec   259°: x=300+112·(−0.191)=278.6, y=248+112·(−0.982)=138
   -->
-  <path d="M 326.3 112.7 A 138 138 0 1 1 273.7 112.7"
+  <path d="M 321.4 138 A 112 112 0 1 1 278.6 138"
     fill="none"
-    stroke="rgba(255,255,255,0.78)"
+    stroke="rgba(255,255,255,0.80)"
     stroke-width="10"
     stroke-linecap="butt"
     filter="url(#eGlow)"/>
 
-  <!-- Hanko rám — červený zaoblený obdĺžnik okolo kanji -->
-  <rect x="190" y="200" width="220" height="110"
-    rx="13" ry="13"
-    fill="none"
-    stroke="#C0392B"
-    stroke-width="2.2"
-    opacity="0.88"/>
-
   <!-- Kanji — glow -->
-  <text x="300" y="257"
+  <text x="300" y="253"
     text-anchor="middle"
     dominant-baseline="middle"
-    font-size="84"
+    font-size="82"
     fill="rgba(255,255,255,0.15)"
     font-family="serif"
     filter="url(#kGlow)">悟り</text>
 
   <!-- Kanji — hlavný text -->
-  <text x="300" y="257"
+  <text x="300" y="253"
     text-anchor="middle"
     dominant-baseline="middle"
-    font-size="84"
+    font-size="82"
     fill="rgba(255,255,255,0.91)"
     font-family="serif">悟り</text>
 
-  <!-- Dlhšia linka pod kruhom — červená -->
-  <line x1="155" y1="352" x2="445" y2="352"
-    stroke="#C0392B"
-    stroke-width="1.4"
-    opacity="0.7"/>
+  <!-- Dlhšia biela linka pod kruhom -->
+  <line x1="150" y1="368" x2="450" y2="368"
+    stroke="rgba(255,255,255,0.28)"
+    stroke-width="1.2"/>
 
   <!-- SATORI -->
-  <text x="300" y="398"
+  <text x="300" y="408"
     text-anchor="middle"
     font-size="30"
     fill="rgba(255,255,255,0.95)"
