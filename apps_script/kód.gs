@@ -560,6 +560,21 @@ function doGet(e) {
       return jsonResponse({ok: true});
     }
 
+    // ── SATORI VOTE — zaznamená hlas reprezentanta (👍/👎) do tabu SatoriVotes ──
+    if(action === 'satoriVote') {
+      if(!requireToken(e)) return jsonResponse({ok: false, error: 'Unauthorized'});
+      var username = (e.parameter.username || '').trim();
+      var vote = (e.parameter.vote || '').trim(); // 'up' alebo 'down'
+      if(!username || !vote) return jsonResponse({ok: false, error: 'missing params'});
+      var voteSheet = ss.getSheetByName('SatoriVotes');
+      if(!voteSheet) {
+        voteSheet = ss.insertSheet('SatoriVotes');
+        voteSheet.appendRow(['timestamp', 'username', 'vote']);
+      }
+      voteSheet.appendRow([new Date(), username, vote]);
+      return jsonResponse({ok: true});
+    }
+
     // ── MILESTONE ŠTATISTIKY — celkový počet unikátnych lekárov v systéme ──
     if(action === 'getMilestoneStats') {
       var sheet = ss.getSheets()[0];
@@ -581,8 +596,9 @@ function doGet(e) {
       }
       var total = Object.keys(doctors).length;
       var highCount = 0, vyraditCount = 0;
+      var ACTIVE_SCENARS = ['top','udrzat','zvysit3','zvysit','frekvencia'];
       Object.keys(doctors).forEach(function(k) {
-        if(doctors[k].rp >= 3700) highCount++;
+        if(ACTIVE_SCENARS.indexOf(doctors[k].sc) !== -1) highCount++;
         if(doctors[k].sc === 'vyradit') vyraditCount++;
       });
       return jsonResponse({
@@ -649,8 +665,9 @@ function doGet(e) {
         }
         var total = Object.keys(doctors).length;
         var highCount = 0, vyraditCount = 0;
+        var ACTIVE_SCENARS = ['top','udrzat','zvysit3','zvysit','frekvencia'];
         Object.keys(doctors).forEach(function(k) {
-          if(doctors[k].rp >= 3700) highCount++;
+          if(ACTIVE_SCENARS.indexOf(doctors[k].sc) !== -1) highCount++;
           if(doctors[k].sc === 'vyradit') vyraditCount++;
         });
         milestoneStats = {
