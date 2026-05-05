@@ -2,33 +2,31 @@
   <defs>
     <style>@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400&amp;display=swap');</style>
 
-    <radialGradient id="bg" cx="50%" cy="42%" r="55%">
-      <stop offset="0%" stop-color="#1E3A8A" stop-opacity="0.35"/>
+    <radialGradient id="bg" cx="50%" cy="44%" r="52%">
+      <stop offset="0%" stop-color="#1E3A8A" stop-opacity="0.32"/>
       <stop offset="100%" stop-color="#0C1E35" stop-opacity="0"/>
     </radialGradient>
 
-    <!-- Modrý glow za kanji -->
     <filter id="kGlow" x="-40%" y="-40%" width="180%" height="180%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="14" result="blur"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blur"/>
       <feColorMatrix in="blur" type="matrix"
         values="0 0 0 0 0.24
                 0 0 0 0 0.51
                 0 0 0 0 0.96
-                0 0 0 0.55 0" result="c"/>
+                0 0 0 0.5 0" result="c"/>
       <feMerge>
         <feMergeNode in="c"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
 
-    <!-- Jemný glow na enso -->
-    <filter id="ensoGlow" x="-15%" y="-15%" width="130%" height="130%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur"/>
+    <filter id="eGlow" x="-12%" y="-12%" width="124%" height="124%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur"/>
       <feColorMatrix in="blur" type="matrix"
-        values="0 0 0 0 0.6
-                0 0 0 0 0.75
+        values="0 0 0 0 0.55
+                0 0 0 0 0.72
                 0 0 0 0 1
-                0 0 0 0.35 0" result="c"/>
+                0 0 0 0.3 0" result="c"/>
       <feMerge>
         <feMergeNode in="c"/>
         <feMergeNode in="SourceGraphic"/>
@@ -36,63 +34,57 @@
     </filter>
   </defs>
 
-  <!-- Pozadie -->
   <rect width="600" height="600" fill="#0C1E35"/>
   <rect width="600" height="600" fill="url(#bg)"/>
 
   <!--
-    Enso kruh (禅円) — 330° oblúk, medzera hore-vpravo (1–2 hod)
-    Stred: (300, 252), polomer: 150
-    Začiatok 330°: (300+150·cos330°, 252+150·sin330°) = (429.9, 177)
-    Koniec   300°: (300+150·cos300°, 252+150·sin300°) = (375,  122.1)
+    Enso — medzera 18° hore (pri 12 hod)
+    Stred: (300, 248), polomer: 138
+    Medzera: 261° až 279° (18° pri vrchole)
+    Začiatok oblúka: 279°
+      x = 300 + 138·cos(279°) = 300 + 138·0.156 = 321.6
+      y = 248 + 138·sin(279°) = 248 + 138·(−0.988) = 248 − 136.3 = 111.7
+    Koniec oblúka: 261°
+      x = 300 + 138·cos(261°) = 300 + 138·(−0.156) = 278.4
+      y = 248 + 138·sin(261°) = 248 + 138·(−0.988) = 248 − 136.3 = 111.7
   -->
-  <path d="M 429.9 177 A 150 150 0 1 1 375 122.1"
+  <path d="M 321.6 111.7 A 138 138 0 1 1 278.4 111.7"
     fill="none"
-    stroke="rgba(255,255,255,0.82)"
-    stroke-width="11"
+    stroke="rgba(255,255,255,0.80)"
+    stroke-width="10"
     stroke-linecap="round"
-    filter="url(#ensoGlow)"/>
+    filter="url(#eGlow)"/>
 
-  <!-- Kanji 悟り — glow vrstva (bluish) -->
-  <text x="300" y="282"
+  <!-- Kanji — glow vrstva -->
+  <text x="300" y="260"
     text-anchor="middle"
     dominant-baseline="middle"
-    font-size="90"
-    fill="rgba(255,255,255,0.18)"
+    font-size="86"
+    fill="rgba(255,255,255,0.15)"
     font-family="serif"
     filter="url(#kGlow)">悟り</text>
 
-  <!-- Kanji 悟り — hlavný text -->
-  <text x="300" y="282"
+  <!-- Kanji — hlavný text -->
+  <text x="300" y="260"
     text-anchor="middle"
     dominant-baseline="middle"
-    font-size="90"
-    fill="rgba(255,255,255,0.92)"
+    font-size="86"
+    fill="rgba(255,255,255,0.91)"
     font-family="serif">悟り</text>
 
-  <!-- Tenká linka pod ensom -->
-  <line x1="265" y1="356" x2="335" y2="356"
-    stroke="rgba(255,255,255,0.2)" stroke-width="0.75"/>
-
-  <!-- Malé dekoratívne bodky na koncoch linky -->
-  <circle cx="261" cy="356" r="1.6" fill="rgba(255,255,255,0.28)"/>
-  <circle cx="339" cy="356" r="1.6" fill="rgba(255,255,255,0.28)"/>
+  <!-- Linka -->
+  <line x1="268" y1="348" x2="332" y2="348"
+    stroke="rgba(255,255,255,0.18)" stroke-width="0.7"/>
+  <circle cx="264" cy="348" r="1.4" fill="rgba(255,255,255,0.26)"/>
+  <circle cx="336" cy="348" r="1.4" fill="rgba(255,255,255,0.26)"/>
 
   <!-- SATORI -->
-  <text x="300" y="404"
+  <text x="300" y="394"
     text-anchor="middle"
     font-size="30"
-    fill="rgba(255,255,255,0.96)"
+    fill="rgba(255,255,255,0.95)"
     font-family="'Cinzel', 'Palatino Linotype', Palatino, serif"
     font-weight="400"
     letter-spacing="15">SATORI</text>
-
-  <!-- Drobný text pod — voliteľné -->
-  <text x="300" y="442"
-    text-anchor="middle"
-    font-size="10.5"
-    fill="rgba(255,255,255,0.38)"
-    font-family="-apple-system, BlinkMacSystemFont, sans-serif"
-    letter-spacing="2.5">GEDEON RICHTER SLOVAKIA</text>
 
 </svg>
