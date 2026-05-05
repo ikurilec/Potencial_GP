@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Satori icon generator</title>
+<style>
+  body { background:#1a1a2e; color:#fff; font-family:sans-serif; padding:32px; display:flex; flex-direction:column; align-items:center; gap:24px; }
+  canvas { border-radius:22%; display:block; }
+  .row { display:flex; gap:32px; align-items:flex-end; }
+  .col { display:flex; flex-direction:column; align-items:center; gap:12px; }
+  button { background:#2563EB; color:#fff; border:none; padding:10px 22px; border-radius:8px; cursor:pointer; font-size:14px; }
+  button:hover { background:#1D4ED8; }
+  label { font-size:12px; color:#94a3b8; }
+</style>
+</head>
+<body>
+<h2 style="margin:0">Satori — icon generator</h2>
+<div class="row">
+  <div class="col">
+    <label>512 × 512</label>
+    <canvas id="c512" width="512" height="512"></canvas>
+    <button onclick="dl('c512','icon-512.png')">⬇ Stiahnuť icon-512.png</button>
+  </div>
+  <div class="col">
+    <label>192 × 192</label>
+    <canvas id="c192" width="192" height="192"></canvas>
+    <button onclick="dl('c192','icon-192.png')">⬇ Stiahnuť icon-192.png</button>
+  </div>
+</div>
+<p style="color:#64748b;font-size:12px">Ulož oba súbory do koreňového adresára projektu (vedľa index.html).</p>
+
+<script>
+function drawIcon(canvas) {
+  var s = canvas.width;
+  var ctx = canvas.getContext('2d');
+  var cx = s / 2, cy = s / 2;
+  var R = s * 0.34; // polomer enso
+
+  // Pozadie
+  ctx.fillStyle = '#0C1E35';
+  ctx.fillRect(0, 0, s, s);
+
+  // Jemné radiálne svetlo v strede
+  var grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, s * 0.5);
+  grad.addColorStop(0, 'rgba(30,58,138,0.35)');
+  grad.addColorStop(1, 'rgba(12,30,53,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, s, s);
+
+  // Enso — medzera hore (11° na každú stranu od 270°, teda 259°–281°)
+  var gapHalf = 11 * Math.PI / 180;
+  var startA = -Math.PI/2 + gapHalf;  // 259°
+  var endA   = -Math.PI/2 - gapHalf;  // 281° (= -101°)
+
+  // Glow pod enso
+  ctx.save();
+  ctx.shadowColor = 'rgba(140,185,255,0.45)';
+  ctx.shadowBlur = s * 0.04;
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, startA, endA, false);
+  ctx.strokeStyle = 'rgba(255,255,255,0.80)';
+  ctx.lineWidth = s * 0.036;
+  ctx.lineCap = 'butt';
+  ctx.stroke();
+  ctx.restore();
+
+  // Kanji 悟り — glow vrstva
+  var fontSize = s * 0.28;
+  ctx.font = fontSize + 'px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'rgba(255,255,255,0.10)';
+  ctx.shadowColor = 'rgba(60,130,245,0.5)';
+  ctx.shadowBlur = s * 0.06;
+  ctx.fillText('悟り', cx, cy);
+
+  // Kanji — hlavná vrstva
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = 'rgba(255,255,255,0.90)';
+  ctx.fillText('悟り', cx, cy);
+}
+
+var c512 = document.getElementById('c512');
+var c192 = document.getElementById('c192');
+drawIcon(c512);
+drawIcon(c192);
+
+function dl(id, name) {
+  var a = document.createElement('a');
+  a.download = name;
+  a.href = document.getElementById(id).toDataURL('image/png');
+  a.click();
+}
+</script>
+</body>
+</html>
