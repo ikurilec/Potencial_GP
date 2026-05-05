@@ -596,8 +596,9 @@ function doGet(e) {
       }
       var total = Object.keys(doctors).length;
       var highCount = 0, vyraditCount = 0;
+      var ACTIVE_SCENARS = ['top','udrzat','zvysit3','zvysit','frekvencia'];
       Object.keys(doctors).forEach(function(k) {
-        if(doctors[k].rp >= 3700) highCount++;
+        if(ACTIVE_SCENARS.indexOf(doctors[k].sc) !== -1) highCount++;
         if(doctors[k].sc === 'vyradit') vyraditCount++;
       });
       return jsonResponse({
@@ -664,8 +665,9 @@ function doGet(e) {
         }
         var total = Object.keys(doctors).length;
         var highCount = 0, vyraditCount = 0;
+        var ACTIVE_SCENARS = ['top','udrzat','zvysit3','zvysit','frekvencia'];
         Object.keys(doctors).forEach(function(k) {
-          if(doctors[k].rp >= 3700) highCount++;
+          if(ACTIVE_SCENARS.indexOf(doctors[k].sc) !== -1) highCount++;
           if(doctors[k].sc === 'vyradit') vyraditCount++;
         });
         milestoneStats = {
