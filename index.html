@@ -95,7 +95,7 @@
   body.manager-mode .app > .send-popup.show,
   body.manager-mode .app > .restore-overlay.show,
   body.manager-mode .app > .tutorial-overlay.show,
-  body.manager-mode .app > .wn-overlay.show{display:flex !important}
+  body.manager-mode .wn-overlay.show{display:flex !important}
   body.manager-mode .app > .lb-overlay.show{display:block !important}
   /* Leaderboard overlay */
 
@@ -316,7 +316,7 @@
   .info-title{font-size:14px;font-weight:600;color:#1A2A3A;margin-bottom:14px}
   .info-grid-3{display:flex;flex-direction:column;gap:12px}
   @media(max-width:520px){.info-grid-3{grid-template-columns:1fr}}
-  @media(max-width:480px){.app{padding:8px}.hdr{padding:10px 14px}}
+  @media(max-width:480px){.app{padding:8px}.hdr{padding:10px 14px}.gyn-inner{padding:8px}.gyn-mgr-hdr{padding:10px 14px}}
   .info-field{display:flex;flex-direction:column;gap:4px}
   .info-label{font-size:10px;font-weight:600;color:#64748B;letter-spacing:.06em;text-transform:uppercase}
   .info-input{height:44px;padding:0 13px;border-radius:9px;border:1.5px solid #E2E8F0;background:#F8FAFC;font-size:16px;font-family:inherit;color:#1A2A3A;outline:none;transition:border-color .18s;width:100%;-webkit-appearance:none}
@@ -1057,6 +1057,85 @@
   .rep-pl-inner .trend-lbl.current{color:#059669;font-weight:700}
   .rep-pl-inner .trend-ms{position:absolute;left:-5px;right:-5px;height:3px;background:#0F172A;z-index:2;pointer-events:none}
   .rep-pl-inner .trend-ms-lbl{position:absolute;left:50%;transform:translateX(-50%);font-size:11px;font-weight:600;color:#94A3B8;white-space:nowrap;z-index:3;pointer-events:none;line-height:1}
+
+  /* ═══════════════════════════════════════════════════════
+     GYN LINKA — základné štýly
+  ═══════════════════════════════════════════════════════ */
+  #gyn-view{display:none}
+  #gyn-view.show{display:block}
+  .gyn-inner{max-width:660px;margin:0 auto}
+  .gyn-hdr{background:#0C1E35;padding:20px 16px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10}
+  .gyn-hdr-logo{font-size:20px}
+  .gyn-hdr-title{flex:1;min-width:0}
+  .gyn-hdr-title h1{font-size:15px;font-weight:800;color:#fff;margin:0;line-height:1.2}
+  .gyn-hdr-title p{font-size:11px;color:#94A3B8;margin:0;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .gyn-hdr-logout{background:rgba(255,255,255,.1);border:none;color:#94A3B8;font-size:12px;padding:6px 10px;border-radius:8px;cursor:pointer;font-family:inherit;white-space:nowrap}
+  .gyn-hdr-logout:active{background:rgba(255,255,255,.18)}
+  .gyn-body{padding:16px}
+  .gyn-linia-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;margin-bottom:16px}
+  .gyn-linia-badge.pill{background:#EFF6FF;color:#1D4ED8;border:1.5px solid #BFDBFE}
+  .gyn-linia-badge.patch{background:#FFF7ED;color:#C2410C;border:1.5px solid #FED7AA}
+  .gyn-card{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+  .gyn-card-title{font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+  .gyn-card h2{font-size:22px;font-weight:800;color:#0C1E35;margin:0 0 2px}
+  .gyn-card p{font-size:13px;color:#64748B;margin:0}
+  .gyn-team-section{margin-bottom:16px}
+  .gyn-team-label{font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+  .gyn-rep-row{background:#fff;border-radius:10px;padding:12px 14px;margin-bottom:6px;display:flex;align-items:center;gap:10px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+  .gyn-rep-avatar{width:34px;height:34px;border-radius:50%;background:#0C1E35;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+  .gyn-rep-name{font-size:13px;font-weight:600;color:#0F172A;flex:1}
+  .gyn-rep-region{font-size:11px;color:#94A3B8;font-weight:600}
+  .gyn-coming{background:#fff;border-radius:14px;padding:32px 16px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+  .gyn-coming p{font-size:14px;color:#64748B;margin:8px 0 0}
+  .gyn-mgr-hdr{background:#0C1E35;border-radius:18px;padding:10px 20px 10px;margin:0 0 10px;box-shadow:0 10px 40px rgba(10,25,50,.30),0 2px 8px rgba(10,25,50,.15);position:relative;overflow:hidden;min-height:60px}
+  .gyn-mgr-hdr::before{content:'';position:absolute;top:-60px;right:-40px;width:240px;height:240px;border-radius:50%;background:rgba(255,255,255,.04)}
+  .gyn-mgr-hdr-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;position:relative;z-index:1}
+  .gyn-mgr-hdr-title{font-size:19px;font-weight:700;color:#fff;line-height:1.1;letter-spacing:.01em;font-family:'Outfit','SF Pro Display',-apple-system,sans-serif}
+  .gyn-mgr-hdr-sub{font-size:10px;color:#5B8DB8;margin-top:2px;letter-spacing:.02em}
+  /* GYN NAV TABS */
+  .gyn-nav{display:flex;gap:6px;margin:0 0 10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06);position:sticky;top:0;z-index:100}
+  .gyn-nav-btn{flex:1;padding:13px 4px;border:none;border-radius:9px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;background:transparent;color:#64748B;touch-action:manipulation;transition:all .15s;-webkit-tap-highlight-color:transparent}
+  .gyn-nav-btn.active{background:#0C1E35;color:#fff}
+  /* GYN Q TABS */
+  .gyn-q-row{display:flex;gap:6px;padding:12px 12px 0;overflow-x:auto}
+  .gyn-q-btn{padding:6px 16px;border:none;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:#E2E8F0;color:#64748B;white-space:nowrap;flex-shrink:0;position:relative;touch-action:manipulation}
+  .gyn-q-btn.active{background:#0C1E35;color:#fff}
+  .gyn-q-btn .qcur{position:absolute;top:2px;right:4px;width:6px;height:6px;border-radius:50%;background:#10B981;display:none}
+  .gyn-q-btn.cur .qcur{display:block}
+  /* GYN TOTAL CARD */
+  .gyn-tc{background:#0C1E35;border-radius:14px;padding:16px;margin:12px 0;color:#fff;position:relative;overflow:hidden}
+  .gyn-tc::before{content:'';position:absolute;top:-40px;right:-30px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.04)}
+  .gyn-tc-pct{font-size:38px;font-weight:800;line-height:1;position:relative;z-index:1}
+  .gyn-tc-pct.g{color:#34D399}.gyn-tc-pct.o{color:#FBBF24}.gyn-tc-pct.r{color:#F87171}.gyn-tc-pct.n{color:#64748B}
+  .gyn-tc-label{font-size:11px;color:#5B8DB8;margin-top:4px;position:relative;z-index:1}
+  .gyn-tc-eur{display:flex;gap:16px;margin-top:10px;position:relative;z-index:1}
+  .gyn-tc-eur-item{font-size:11px;color:#94A3B8}
+  .gyn-tc-eur-item strong{display:block;font-size:14px;color:#fff;font-weight:700}
+  /* GYN PRODUCT BARS */
+  .gyn-prod{background:#fff;border-radius:10px;padding:12px 14px;margin:0 0 8px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+  .gyn-prod-name{font-size:12px;font-weight:700;color:#0C1E35;margin-bottom:6px}
+  .gyn-prod-track{height:8px;background:#E2E8F0;border-radius:4px;overflow:hidden;margin-bottom:4px}
+  .gyn-prod-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,#60A5FA,#2563EB)}
+  .gyn-prod-fill.g{background:linear-gradient(90deg,#34D399,#059669)}
+  .gyn-prod-fill.o{background:linear-gradient(90deg,#FBBF24,#D97706)}
+  .gyn-prod-fill.r{background:linear-gradient(90deg,#F87171,#DC2626)}
+  .gyn-prod-foot{display:flex;justify-content:space-between;font-size:10px;color:#94A3B8}
+  .gyn-prod-pct{font-size:12px;font-weight:700;color:#0C1E35}
+  .gyn-prod-pct.g{color:#059669}.gyn-prod-pct.o{color:#D97706}.gyn-prod-pct.r{color:#DC2626}
+  /* GYN REP ROWS (manager plnenie) */
+  .gyn-rep-pl{background:#fff;border-radius:10px;padding:12px 14px;margin:0 0 6px;display:flex;align-items:center;gap:10px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+  .gyn-rep-pl-av{width:36px;height:36px;border-radius:50%;background:#0C1E35;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+  .gyn-rep-pl-info{flex:1;min-width:0}
+  .gyn-rep-pl-name{font-size:13px;font-weight:600;color:#0F172A}
+  .gyn-rep-pl-meta{font-size:10px;color:#94A3B8;font-weight:600}
+  .gyn-rep-pl-pct{font-size:15px;font-weight:800}
+  .gyn-rep-pl-pct.g{color:#059669}.gyn-rep-pl-pct.o{color:#D97706}.gyn-rep-pl-pct.r{color:#DC2626}.gyn-rep-pl-pct.n{color:#94A3B8}
+  .gyn-section-lbl{font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.5px;padding:12px 0 6px}
+  #gyn-view .pl-section-lbl{text-align:center}
+  .gyn-empty{padding:48px 16px;text-align:center}
+  .gyn-empty-icon{font-size:36px}
+  .gyn-empty-title{font-size:16px;font-weight:800;color:#0C1E35;margin-top:8px}
+  .gyn-empty-sub{font-size:13px;color:#64748B;margin-top:6px}
 </style>
 </head>
 <body>
@@ -1523,150 +1602,6 @@
     </div>
   </div>
 
-  <!-- ── WHAT'S NEW OVERLAY ── -->
-  <div class="wn-overlay" id="wn-overlay">
-    <div class="wn-box">
-      <div class="wn-hdr">
-        <div class="wn-icon-wrap" id="wn-icon">🆕</div>
-        <div class="wn-title" id="wn-title">Čo je nové v appke</div>
-        <div class="wn-sub" id="wn-sub">Aktualizácia</div>
-      </div>
-      <div class="wn-body" id="wn-body"></div>
-    </div>
-  </div>
-
-  <!-- ── SATORI REBRAND OVERLAY ── -->
-  <div class="satori-overlay" id="satori-overlay">
-    <div class="satori-box">
-      <div class="satori-hero">
-        <svg viewBox="0 0 280 202" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <radialGradient id="srBg" cx="50%" cy="42%" r="62%">
-              <stop offset="0%" stop-color="#1E3A8A" stop-opacity="0.4"/>
-              <stop offset="100%" stop-color="#0C1E35" stop-opacity="0"/>
-            </radialGradient>
-            <linearGradient id="srGrad" x1="0" y1="165" x2="0" y2="186" gradientUnits="userSpaceOnUse">
-              <stop offset="0%"   stop-color="#FFFFFF"/>
-              <stop offset="40%"  stop-color="#DCE8F2"/>
-              <stop offset="100%" stop-color="#8AAABF"/>
-            </linearGradient>
-            <linearGradient id="srLine" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%"   stop-color="rgba(255,255,255,0)"/>
-              <stop offset="25%"  stop-color="rgba(255,255,255,0.5)"/>
-              <stop offset="50%"  stop-color="rgba(255,255,255,0.75)"/>
-              <stop offset="75%"  stop-color="rgba(255,255,255,0.5)"/>
-              <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
-            </linearGradient>
-            <filter id="srEGlow" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="b"/>
-              <feColorMatrix in="b" type="matrix" values="0 0 0 0 0.5 0 0 0 0 0.7 0 0 0 0 1 0 0 0 0.35 0" result="c"/>
-              <feMerge><feMergeNode in="c"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-            <filter id="srShadow">
-              <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#000C1E" flood-opacity="0.65"/>
-            </filter>
-            <filter id="smBlur" x="-80%" y="-300%" width="260%" height="700%">
-              <feGaussianBlur stdDeviation="5"/>
-            </filter>
-          </defs>
-          <rect width="280" height="202" fill="url(#srBg)"/>
-          <!-- Enso: stred (140,76), polomer 68 -->
-          <path d="M 148 8.5 A 68 68 0 1 1 132 8.5"
-            fill="none" stroke="rgba(255,255,255,0.84)" stroke-width="5.5"
-            stroke-linecap="butt" filter="url(#srEGlow)"/>
-          <!-- Kanji -->
-          <text x="140" y="76" text-anchor="middle" dominant-baseline="middle"
-            font-size="52" fill="rgba(255,255,255,0.9)" font-family="serif">悟り</text>
-          <!-- Oddelovač — gradient čiara -->
-          <line x1="18" y1="154" x2="262" y2="154" stroke="url(#srLine)" stroke-width="1.3"/>
-          <!-- Dym — elipsy stúpajú zo spodu SATORI textu, plynulý easing -->
-          <g filter="url(#smBlur)">
-            <ellipse cx="95" cy="188" rx="15" ry="9" fill="rgba(235,245,255,0.88)">
-              <animate attributeName="cx" values="95;87" dur="4.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
-              <animate attributeName="cy" values="188;155" dur="4.5s" calcMode="spline" keySplines="0.3 0 0.1 1" repeatCount="indefinite"/>
-              <animate attributeName="rx" values="15;34" dur="4.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
-              <animate attributeName="ry" values="9;19"  dur="4.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
-              <animate attributeName="opacity" values="0.88;0.6;0" keyTimes="0;0.45;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.1 1" dur="4.5s" repeatCount="indefinite"/>
-            </ellipse>
-            <ellipse cx="140" cy="185" rx="19" ry="11" fill="rgba(235,245,255,0.84)">
-              <animate attributeName="cx" values="140;144" dur="5s" begin="0.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
-              <animate attributeName="cy" values="185;148" dur="5s" begin="0.5s" calcMode="spline" keySplines="0.3 0 0.1 1" repeatCount="indefinite"/>
-              <animate attributeName="rx" values="19;40" dur="5s" begin="0.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
-              <animate attributeName="ry" values="11;22" dur="5s" begin="0.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
-              <animate attributeName="opacity" values="0.84;0.55;0" keyTimes="0;0.45;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.1 1" dur="5s" begin="0.5s" repeatCount="indefinite"/>
-            </ellipse>
-            <ellipse cx="185" cy="187" rx="13" ry="8" fill="rgba(235,245,255,0.84)">
-              <animate attributeName="cx" values="185;194" dur="4s" begin="1s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
-              <animate attributeName="cy" values="187;157" dur="4s" begin="1s" calcMode="spline" keySplines="0.3 0 0.1 1" repeatCount="indefinite"/>
-              <animate attributeName="rx" values="13;30" dur="4s" begin="1s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
-              <animate attributeName="ry" values="8;17"  dur="4s" begin="1s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
-              <animate attributeName="opacity" values="0.84;0.52;0" keyTimes="0;0.45;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.1 1" dur="4s" begin="1s" repeatCount="indefinite"/>
-            </ellipse>
-            <ellipse cx="115" cy="191" rx="12" ry="8" fill="rgba(235,245,255,0.8)">
-              <animate attributeName="cx" values="115;108" dur="5.5s" begin="2s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
-              <animate attributeName="cy" values="191;161" dur="5.5s" begin="2s" calcMode="spline" keySplines="0.3 0 0.1 1" repeatCount="indefinite"/>
-              <animate attributeName="rx" values="12;27" dur="5.5s" begin="2s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
-              <animate attributeName="ry" values="8;16"  dur="5.5s" begin="2s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
-              <animate attributeName="opacity" values="0.8;0.5;0" keyTimes="0;0.45;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.1 1" dur="5.5s" begin="2s" repeatCount="indefinite"/>
-            </ellipse>
-            <ellipse cx="163" cy="188" rx="12" ry="8" fill="rgba(235,245,255,0.82)">
-              <animate attributeName="cx" values="163;170" dur="4.2s" begin="1.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
-              <animate attributeName="cy" values="188;157" dur="4.2s" begin="1.5s" calcMode="spline" keySplines="0.3 0 0.1 1" repeatCount="indefinite"/>
-              <animate attributeName="rx" values="12;28" dur="4.2s" begin="1.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
-              <animate attributeName="ry" values="8;16"  dur="4.2s" begin="1.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
-              <animate attributeName="opacity" values="0.82;0.5;0" keyTimes="0;0.45;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.1 1" dur="4.2s" begin="1.5s" repeatCount="indefinite"/>
-            </ellipse>
-            <ellipse cx="72" cy="186" rx="10" ry="7" fill="rgba(235,245,255,0.74)">
-              <animate attributeName="cx" values="72;63" dur="4.8s" begin="0.3s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
-              <animate attributeName="cy" values="186;159" dur="4.8s" begin="0.3s" calcMode="spline" keySplines="0.3 0 0.1 1" repeatCount="indefinite"/>
-              <animate attributeName="rx" values="10;23" dur="4.8s" begin="0.3s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
-              <animate attributeName="ry" values="7;14"  dur="4.8s" begin="0.3s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
-              <animate attributeName="opacity" values="0.74;0.44;0" keyTimes="0;0.45;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.1 1" dur="4.8s" begin="0.3s" repeatCount="indefinite"/>
-            </ellipse>
-            <ellipse cx="208" cy="189" rx="10" ry="7" fill="rgba(235,245,255,0.74)">
-              <animate attributeName="cx" values="208;216" dur="3.8s" begin="2.8s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
-              <animate attributeName="cy" values="189;163" dur="3.8s" begin="2.8s" calcMode="spline" keySplines="0.3 0 0.1 1" repeatCount="indefinite"/>
-              <animate attributeName="rx" values="10;22" dur="3.8s" begin="2.8s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
-              <animate attributeName="ry" values="7;13"  dur="3.8s" begin="2.8s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
-              <animate attributeName="opacity" values="0.74;0.44;0" keyTimes="0;0.45;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.1 1" dur="3.8s" begin="2.8s" repeatCount="indefinite"/>
-            </ellipse>
-            <ellipse cx="140" cy="193" rx="23" ry="13" fill="rgba(235,245,255,0.68)">
-              <animate attributeName="cx" values="140;133" dur="6s" begin="3.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
-              <animate attributeName="cy" values="193;156" dur="6s" begin="3.5s" calcMode="spline" keySplines="0.3 0 0.1 1" repeatCount="indefinite"/>
-              <animate attributeName="rx" values="23;44" dur="6s" begin="3.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
-              <animate attributeName="ry" values="13;25" dur="6s" begin="3.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
-              <animate attributeName="opacity" values="0.68;0.4;0" keyTimes="0;0.45;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.1 1" dur="6s" begin="3.5s" repeatCount="indefinite"/>
-            </ellipse>
-          </g>
-          <!-- SATORI tieň -->
-          <text x="141" y="183" text-anchor="middle" font-size="35"
-            fill="rgba(0,12,30,0.55)" font-family="'Cinzel','Palatino Linotype',serif" letter-spacing="10">SATORI</text>
-          <!-- SATORI gradient -->
-          <text x="140" y="182" text-anchor="middle" font-size="35"
-            fill="url(#srGrad)" font-family="'Cinzel','Palatino Linotype',serif"
-            letter-spacing="10" filter="url(#srShadow)">SATORI</text>
-          <!-- Moto -->
-          <text x="140" y="197" text-anchor="middle" font-size="10"
-            fill="rgba(255,255,255,0.5)" font-family="-apple-system,sans-serif"
-            font-style="italic">Ten, kto vidí jasne, necháva náhodu iným.</text>
-        </svg>
-      </div>
-      <div class="satori-body">
-        <div class="satori-notice">Nové meno · Nové logo</div>
-        <div class="satori-body-title">Možno si si to už všimol — ak nie, tak teraz áno 😄</div>
-        <p class="satori-body-text"><strong>Satori</strong> (悟り) pochádza z japonskej zen filozofie. Označuje moment náhleho, hlbokého pochopenia — nie postupného, ale okamžitého.<br><br>Ten záblesk, keď reprezentant vie presne kde stojí, kam smeruje a čo ho čaká.</p>
-        <div class="satori-body-motto">„Ten, kto vidí jasne, necháva náhodu iným."</div>
-      </div>
-      <div class="satori-footer">
-        <div style="text-align:center;font-size:13px;font-weight:600;color:#64748B;margin-bottom:12px">Ako sa ti to páči?</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <button class="satori-btn" style="background:linear-gradient(135deg,#059669,#10B981);font-size:22px;padding:14px" onclick="satoriVote('up')">👍</button>
-          <button class="satori-btn" style="background:linear-gradient(135deg,#DC2626,#EF4444);font-size:22px;padding:14px" onclick="satoriVote('down')">👎</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <div class="restore-overlay" id="restore-overlay">
     <div class="restore-box">
       <div class="restore-icon">📋</div>
@@ -1965,7 +1900,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.15.1';
+var APP_VERSION = '2.16.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -2145,6 +2080,13 @@ var API_TOKEN  = 'GR-Slovakia-2026-xK9mP'; // musí sedieť s hodnotou v Apps Sc
 // Helper — pridá token ku každej URL smerujúcej na SCRIPT_URL
 function scriptUrl(params) {
   return SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(API_TOKEN);
+}
+
+// ── GYN LINKA ──
+var GYN_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwOZxhmwH9jwGTQroagVzhibavO8XowAQpiryp4567SNfHWevk9UHSwqY_v-zuZd5WQ/exec';
+var GYN_API_TOKEN  = 'gr-gyn-2026';
+function gynScriptUrl(params) {
+  return GYN_SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(GYN_API_TOKEN);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -4323,8 +4265,9 @@ function saveEditRecord() {
 // ── PING LOGIN — zapíše posledný prístup do Sheets ──
 function pingLogin(username){
   if(!username) return;
-  // Tichý fire-and-forget — nečakáme na odpoveď
-  fetch(SCRIPT_URL + '?action=pingLogin&reprezentant=' + encodeURIComponent(username), {
+  var session = getSession();
+  var url = (session && session.line === 'gyn') ? GYN_SCRIPT_URL : SCRIPT_URL;
+  fetch(url + '?action=pingLogin&reprezentant=' + encodeURIComponent(username), {
     cache: 'no-store'
   }).catch(function(){});
 }
@@ -4924,26 +4867,31 @@ function doLogin() {
   btn.disabled = true;
   btn.textContent = 'Prihlasujem...';
 
-  fetch(SCRIPT_URL + '?action=login&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password))
-    .then(function(r){ return r.json(); })
-    .then(function(data) {
-      btn.disabled = false;
-      btn.textContent = 'Prihlásiť sa →';
-      if(data.ok) {
-        loginSuccess(username, data.name, data.role, data.region);
-      } else {
-        errEl.classList.add('show');
-        userEl.classList.add('err');
-        passEl.classList.add('err');
-        haptic('error');
-      }
-    })
-    .catch(function() {
-      btn.disabled = false;
-      btn.textContent = 'Prihlásiť sa →';
-      errEl.textContent = 'Nie je pripojenie na internet. Skontroluj sieť a skús znova.';
+  var loginParams = '?action=login&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password);
+  var gpFetch  = fetch(SCRIPT_URL     + loginParams).then(function(r){ return r.json(); }).catch(function(){ return {ok:false}; });
+  var gynFetch = fetch(GYN_SCRIPT_URL + loginParams).then(function(r){ return r.json(); }).catch(function(){ return {ok:false}; });
+
+  Promise.all([gpFetch, gynFetch]).then(function(results) {
+    btn.disabled = false;
+    btn.textContent = 'Prihlásiť sa →';
+    var gpData  = results[0];
+    var gynData = results[1];
+    if(gpData.ok) {
+      loginSuccess(username, gpData.name, gpData.role, gpData.region);
+    } else if(gynData.ok) {
+      gynLoginSuccess(username, gynData);
+    } else {
       errEl.classList.add('show');
-    });
+      userEl.classList.add('err');
+      passEl.classList.add('err');
+      haptic('error');
+    }
+  }).catch(function() {
+    btn.disabled = false;
+    btn.textContent = 'Prihlásiť sa →';
+    errEl.textContent = 'Nie je pripojenie na internet. Skontroluj sieť a skús znova.';
+    errEl.classList.add('show');
+  });
 }
 
 function toggleLoginEye() {
@@ -5044,6 +4992,11 @@ function initLogin() {
     }
   }
   var session = getSession();
+  if(session && session.username && session.line === 'gyn') {
+    document.querySelector('.app').style.visibility = 'visible';
+    gynEnter(session);
+    return;
+  }
   if(session && session.username) {
     var appEl = document.querySelector('.app');
     if(appEl) appEl.style.visibility = 'visible';
@@ -5093,6 +5046,344 @@ function initLogin() {
     document.getElementById('login-screen').classList.add('show');
   }
 }
+
+// ═══════════════════════════════════════════════════════════
+//   GYN LINKA — login + dashboard
+// ═══════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════
+//   GYN LINKA — stav a pomocné funkcie
+// ═══════════════════════════════════════════════════════════
+
+var GYN_STATE   = { repList: [] };
+var GYN_APP     = { nav: 'plnenie', q: 1, year: 2026, plCache: {}, plLoading: false };
+var GYN_LINIA_LABEL = { pill: '💊 Pill', patch: '🩹 Patch' };
+var GYN_ROLE_LABEL  = { 'gyn-rep':'Reprezentant', 'gyn-am':'Area Manager', 'gyn-pm':'Produktový manažér', 'gyn-bum':'Business Unit Manager' };
+
+function gynEsc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function gynFmtPct(pct) {
+  if(pct === null || pct === undefined) return '—';
+  return pct.toFixed(1) + '%';
+}
+function gynFmtEur(val) {
+  if(!val) return '0 €';
+  return Math.round(val).toLocaleString('sk-SK') + ' €';
+}
+function gynInitials(name) {
+  if(!name) return '?';
+  return name.split(' ').map(function(w){ return w[0]||''; }).join('').substring(0,2).toUpperCase();
+}
+function gynColorClass(pct) {
+  if(pct === null || pct === undefined) return 'n';
+  if(pct >= 100) return 'g';
+  if(pct >= 70)  return 'o';
+  return 'r';
+}
+function gynBuildRepAgg(username, data) {
+  var plan  = (data.plan    && data.plan[username])    || {};
+  var pred  = (data.predaje && data.predaje[username]) || { total:{}, byMonth:{} };
+  var prods = data.planProducts || [];
+  var totalPlan = 0, totalPred = 0, items = [];
+  prods.forEach(function(pName) {
+    var pk  = pName.trim().toLowerCase();
+    var pv  = plan[pk] || 0;
+    var sv  = (pred.total && pred.total[pk]) || 0;
+    if(pv > 0 || sv > 0) {
+      totalPlan += pv; totalPred += sv;
+      items.push({ name: pName, plan: pv, predaj: sv, pct: pv > 0 ? sv/pv*100 : null });
+    }
+  });
+  return { totalPlan: totalPlan, totalPred: totalPred,
+           pct: totalPlan > 0 ? totalPred/totalPlan*100 : null, prods: items };
+}
+
+// ── Login & vstup ──
+function gynLoginSuccess(username, data) {
+  var user = { username: username, name: data.name, role: data.role,
+               linia: data.linia||'', region: data.region||'', line: 'gyn' };
+  setSession(user);
+  haptic('success');
+  var appEl = document.querySelector('.app');
+  if(appEl){ appEl.style.visibility='visible'; appEl.classList.add('app-enter');
+             setTimeout(function(){ appEl.classList.remove('app-enter'); }, 500); }
+  document.getElementById('login-screen').classList.remove('show');
+  pingLogin(username);
+  gynEnter(user);
+}
+
+function gynEnter(user) {
+  var appEl = document.querySelector('.app');
+  if(appEl) appEl.style.display = 'none';
+  GYN_APP.q = plnenieCurrentQ();
+  GYN_APP.year = new Date().getFullYear();
+  document.getElementById('gyn-view').classList.add('show');
+  gynRenderShell(user);
+  gynRenderContent(user);
+  setTimeout(function(){ gynLoadRepList(user); }, 600);
+  setTimeout(function(){ satoriShow(); }, 800);
+}
+
+function gynExit() {
+  clearSession();
+  location.reload();
+}
+
+function gynLoadRepList(user) {
+  fetch(gynScriptUrl('action=getRepList'), { cache: 'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if(data.ok && data.reps) {
+        GYN_STATE.repList = data.reps;
+        if(GYN_APP.nav === 'plnenie') gynRenderContent(user);
+      }
+    }).catch(function(){});
+}
+
+// ── Shell (header + nav) — renderuje sa raz, obsah sa vymieňa ──
+function gynRenderShell(user) {
+  var isRep     = user.role === 'gyn-rep';
+  var roleLabel = GYN_ROLE_LABEL[user.role] || user.role;
+  var liniaLabel = GYN_LINIA_LABEL[user.linia] || '';
+  var hdrTitle  = isRep ? 'Gyn linka' : 'Manažérsky pohľad';
+  var hdrSub    = isRep
+    ? gynEsc((liniaLabel||user.linia) + ' · ' + (user.region||'') + ' · ' + (user.name||''))
+    : gynEsc((user.name||'') + ' · ' + roleLabel + ' · Gynekológia');
+
+  document.getElementById('gyn-view').innerHTML =
+    '<div class="gyn-inner">' +
+      '<div class="gyn-mgr-hdr">' +
+        '<div class="gyn-mgr-hdr-row">' +
+          '<div style="flex:1;min-width:0">' +
+            '<div class="gyn-mgr-hdr-title">' + hdrTitle + '</div>' +
+            '<div class="gyn-mgr-hdr-sub">' + hdrSub + '</div>' +
+          '</div>' +
+          '<button class="logout-btn" onclick="gynExit()">&#9099; Odhlásiť</button>' +
+        '</div>' +
+      '</div>' +
+      '<nav class="gyn-nav" id="gyn-nav">' +
+        '<button class="gyn-nav-btn active" data-tab="plnenie"     onclick="gynNavTo(\'plnenie\')">💊 Plnenie</button>' +
+        '<button class="gyn-nav-btn"        data-tab="visits"      onclick="gynNavTo(\'visits\')">📋 Návštevy</button>' +
+        '<button class="gyn-nav-btn"        data-tab="leaderboard" onclick="gynNavTo(\'leaderboard\')">🏆 Rebríček</button>' +
+      '</nav>' +
+      '<div id="gyn-content"></div>' +
+    '</div>';
+}
+
+// ── Navigácia medzi tabmi ──
+function gynNavTo(tab) {
+  GYN_APP.nav = tab;
+  document.querySelectorAll('#gyn-nav .gyn-nav-btn').forEach(function(b){
+    b.classList.toggle('active', b.getAttribute('data-tab') === tab);
+  });
+  gynRenderContent(getSession());
+}
+
+function gynSwitchQ(q) {
+  GYN_APP.q = q;
+  var gynEl = document.getElementById('gyn-content');
+  if(gynEl) gynEl.querySelectorAll('.pl-q-tab').forEach(function(b){
+    var bq = parseInt(b.getAttribute('data-q'));
+    b.classList.toggle('active',   bq === q);
+    b.classList.toggle('current',  bq === plnenieCurrentQ());
+    b.classList.toggle('future',   bq > plnenieCurrentQ());
+  });
+  gynRenderContent(getSession());
+}
+
+function gynRenderContent(user) {
+  var el = document.getElementById('gyn-content');
+  if(!el || !user) return;
+  if(GYN_APP.nav === 'plnenie')      gynPlnenieShow(el, user);
+  else if(GYN_APP.nav === 'leaderboard') gynLbShow(el);
+  else                                gynHistShow(el);
+}
+
+// ── Q tabs HTML — rovnaké triedy ako Golem ──
+function gynQTabsHtml() {
+  var curQ = plnenieCurrentQ();
+  return '<div class="pl-q-tabs">' +
+    [1,2,3,4].map(function(q){
+      var cls = (q === GYN_APP.q ? ' active' : '') + (q === curQ ? ' current' : '') + (q > curQ ? ' future' : '');
+      return '<button class="pl-q-tab'+cls+'" data-q="'+q+'" onclick="gynSwitchQ('+q+')">Q'+q+'</button>';
+    }).join('') +
+  '</div>';
+}
+
+// ── PLNENIE ──
+function gynPlnenieShow(el, user) {
+  var q = GYN_APP.q;
+  if(GYN_APP.plCache[q]) { gynPlnenieRender(el, user, GYN_APP.plCache[q]); return; }
+  el.innerHTML = gynQTabsHtml() +
+    '<div style="padding:32px 0;text-align:center;color:#64748B;font-size:13px">Načítavam...</div>';
+  if(GYN_APP.plLoading) return;
+  GYN_APP.plLoading = true;
+  fetch(gynScriptUrl('action=getPlnenieAll&rok='+GYN_APP.year+'&Q='+q), {cache:'no-store'})
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      GYN_APP.plLoading = false;
+      GYN_APP.plCache[q] = data;
+      if(GYN_APP.nav === 'plnenie') gynPlnenieRender(el, user, data);
+    })
+    .catch(function(){
+      GYN_APP.plLoading = false;
+      el.innerHTML = gynQTabsHtml() +
+        '<div style="padding:32px 0;text-align:center;color:#EF4444;font-size:13px">Chyba načítavania. Skús znova.</div>';
+    });
+}
+
+function gynPlnenieRender(el, user, data) {
+  if(user.role === 'gyn-rep') gynPlnenieRenderRep(el, user, data);
+  else                         gynPlnenieRenderMgr(el, user, data);
+}
+
+function gynPlnenieRenderRep(el, user, data) {
+  var agg = gynBuildRepAgg(user.username, data);
+  var cls = gynColorClass(agg.pct);
+  var html = gynQTabsHtml() +
+    '<div class="gyn-tc">' +
+      '<div class="gyn-tc-pct '+cls+'">' + gynFmtPct(agg.pct) + '</div>' +
+      '<div class="gyn-tc-label">Plnenie Q' + GYN_APP.q + ' ' + GYN_APP.year + '</div>' +
+      '<div class="gyn-tc-eur">' +
+        '<div class="gyn-tc-eur-item"><strong>' + gynFmtEur(agg.totalPred) + '</strong>predaje</div>' +
+        '<div class="gyn-tc-eur-item"><strong>' + gynFmtEur(agg.totalPlan) + '</strong>plán</div>' +
+      '</div>' +
+    '</div>';
+  if(agg.totalPlan === 0) {
+    html += '<div style="padding:16px 0;text-align:center;color:#94A3B8;font-size:13px">' +
+      'Plán pre Q' + GYN_APP.q + ' zatiaľ nebol zadaný.</div>';
+  } else {
+    html += '<div class="gyn-section-lbl">Per produkt</div>';
+    agg.prods.forEach(function(p){
+      var pc  = gynColorClass(p.pct);
+      var barW = p.pct !== null ? Math.min(100, p.pct).toFixed(1) : 0;
+      html += '<div class="gyn-prod">' +
+        '<div class="gyn-prod-name">' + gynEsc(p.name) + '</div>' +
+        '<div class="gyn-prod-track"><div class="gyn-prod-fill '+pc+'" style="width:'+barW+'%"></div></div>' +
+        '<div class="gyn-prod-foot">' +
+          '<span>' + gynFmtEur(p.predaj) + ' / ' + gynFmtEur(p.plan) + '</span>' +
+          '<span class="gyn-prod-pct '+pc+'">' + gynFmtPct(p.pct) + '</span>' +
+        '</div>' +
+      '</div>';
+    });
+  }
+  el.innerHTML = html;
+}
+
+function gynPlnenieRenderMgr(el, user, data) {
+  var reps = GYN_STATE.repList;
+  if(!reps.length) {
+    el.innerHTML = gynQTabsHtml() +
+      '<div style="padding:32px 0;text-align:center;color:#64748B;font-size:13px">Načítavam reprezentantov...</div>';
+    return;
+  }
+  var q = GYN_APP.q, year = GYN_APP.year;
+
+  // Per-rep agregáty
+  var allAggs = reps.map(function(r){ return { rep: r, agg: gynBuildRepAgg(r.login, data) }; });
+
+  // Celkové súčty
+  var totPlan=0, totPred=0, pillPlan=0, pillPred=0, patchPlan=0, patchPred=0;
+  allAggs.forEach(function(a){
+    totPlan+=a.agg.totalPlan; totPred+=a.agg.totalPred;
+    if(a.rep.linia==='pill')  { pillPlan+=a.agg.totalPlan;  pillPred+=a.agg.totalPred; }
+    if(a.rep.linia==='patch') { patchPlan+=a.agg.totalPlan; patchPred+=a.agg.totalPred; }
+  });
+  var totPct   = totPlan   > 0 ? totPred/totPlan*100     : null;
+  var pillPct  = pillPlan  > 0 ? pillPred/pillPlan*100   : null;
+  var patchPct = patchPlan > 0 ? patchPred/patchPlan*100 : null;
+
+  // Produktové súčty
+  var prodAggs = [];
+  (data.planProducts || []).forEach(function(pName){
+    var pk=pName.trim().toLowerCase(), pv=0, sv=0;
+    reps.forEach(function(r){
+      var pl=(data.plan&&data.plan[r.login])||{};
+      var pr=(data.predaje&&data.predaje[r.login])||{total:{}};
+      pv+=pl[pk]||0; sv+=(pr.total&&pr.total[pk])||0;
+    });
+    if(pv>0||sv>0) prodAggs.push({ name:pName, plan:pv, predaj:sv, pct:pv>0?sv/pv*100:null });
+  });
+
+  var clsTot = plnenieColorClass(totPct);
+  var html = gynQTabsHtml() +
+    '<div class="pl-sum-big">' +
+        '<div class="pl-sum-big-row">' +
+          '<div>' +
+            '<div class="pl-sum-lbl">GYN · Q'+q+' '+year+'</div>' +
+            '<div class="pl-sum-big-val '+clsTot+'">' + gynFmtPct(totPct) + '</div>' +
+          '</div>' +
+          '<div style="text-align:right">' +
+            '<div class="pl-sum-big-total"><strong>' + gynFmtEur(totPred) + '</strong></div>' +
+            '<div class="pl-sum-big-plan">z plánu ' + gynFmtEur(totPlan) + '</div>' +
+          '</div>' +
+        '</div>';
+
+  if(prodAggs.length) {
+    html += '<div class="pl-sum-prods">';
+    prodAggs.forEach(function(p){
+      var pc = plnenieColorClass(p.pct);
+      html += '<div class="pl-sum-prod pl-sum-prod-c" style="flex-direction:column;align-items:stretch;gap:2px">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:4px">' +
+          '<span class="pl-sum-prod-name">' + gynEsc(p.name) + '</span>' +
+          '<strong class="'+pc+'">' + gynFmtPct(p.pct) + '</strong>' +
+        '</div></div>';
+    });
+    html += '</div>';
+  }
+  html += '</div>'; // pl-sum-big
+
+  // Pill / Patch karty
+  html += '<div class="pl-regions">' +
+    '<div class="pl-region-card">' +
+      '<div class="pl-region-lbl">Pill</div>' +
+      '<div class="pl-region-val '+plnenieColorClass(pillPct)+'">' + gynFmtPct(pillPct) + '</div>' +
+    '</div>' +
+    '<div class="pl-region-card">' +
+      '<div class="pl-region-lbl">Patch</div>' +
+      '<div class="pl-region-val '+plnenieColorClass(patchPct)+'">' + gynFmtPct(patchPct) + '</div>' +
+    '</div>' +
+  '</div>';
+
+  // Reprezentanti — Pill potom Patch, zoradení % desc, bez medailí
+  [{ label:'💊 Pill', linia:'pill' }, { label:'🩹 Patch', linia:'patch' }].forEach(function(group){
+    var items = allAggs.filter(function(a){ return a.rep.linia === group.linia; });
+    if(!items.length) return;
+    items.sort(function(a,b){
+      if(a.agg.pct===null&&b.agg.pct===null) return 0;
+      if(a.agg.pct===null) return 1; if(b.agg.pct===null) return -1;
+      return b.agg.pct-a.agg.pct;
+    });
+    html += '<div class="pl-section-lbl">' + group.label + '</div>';
+    items.forEach(function(a){
+      html += '<div class="gyn-rep-pl">' +
+        '<div class="gyn-rep-pl-av">' + gynInitials(a.rep.meno) + '</div>' +
+        '<div class="gyn-rep-pl-info">' +
+          '<div class="gyn-rep-pl-name">' + gynEsc(a.rep.meno) + '</div>' +
+          '<div class="gyn-rep-pl-meta">' + gynEsc(a.rep.region||'') + '</div>' +
+        '</div>' +
+        '<div class="gyn-rep-pl-pct '+gynColorClass(a.agg.pct)+'">' + gynFmtPct(a.agg.pct) + '</div>' +
+      '</div>';
+    });
+  });
+  el.innerHTML = html;
+}
+
+// ── REBRÍČEK & NÁVŠTEVY — placeholder ──
+function gynLbShow(el) {
+  el.innerHTML = '<div class="gyn-empty"><div class="gyn-empty-icon">🏆</div>' +
+    '<div class="gyn-empty-title">Rebríček</div>' +
+    '<div class="gyn-empty-sub">Príde v najbližšej verzii</div></div>';
+}
+function gynHistShow(el) {
+  el.innerHTML = '<div class="gyn-empty"><div class="gyn-empty-icon">📋</div>' +
+    '<div class="gyn-empty-title">Návštevy</div>' +
+    '<div class="gyn-empty-sub">Príde v najbližšej verzii</div></div>';
+}
+
+// backward-compat stub (gynRenderDashboard bola volaná z gynLoadRepList)
+function gynRenderDashboard(user) { gynRenderContent(user); }
 
 // Enter key on login fields
 document.addEventListener('DOMContentLoaded', function(){
@@ -6215,6 +6506,8 @@ function satoriClose() {
   var overlay = document.getElementById('satori-overlay');
   if (overlay) overlay.classList.remove('show');
   setTimeout(function() {
+    var gynView = document.getElementById('gyn-view');
+    if (gynView && gynView.classList.contains('show')) return; // gyn — WN nechceme
     var isManager = document.body.classList.contains('manager-mode');
     if (wnShouldShow()) { wnShow(isManager); }
     else { checkMilestone(); }
@@ -6225,7 +6518,10 @@ function satoriVote(vote) {
   satoriClose();
   var session = getSession();
   var username = (session && session.username) || 'unknown';
-  var url = scriptUrl('action=satoriVote&username=' + encodeURIComponent(username) + '&vote=' + vote);
+  var gynView = document.getElementById('gyn-view');
+  var isGyn = gynView && gynView.classList.contains('show');
+  var params = 'action=satoriVote&username=' + encodeURIComponent(username) + '&vote=' + vote;
+  var url = isGyn ? gynScriptUrl(params) : scriptUrl(params);
   fetch(url).catch(function(){});
 }
 
@@ -12332,5 +12628,143 @@ function downloadAllReportsPdf() {
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
+<div id="gyn-view"></div>
+
+<!-- ── WHAT'S NEW OVERLAY — mimo .app, funguje aj pre gyn ── -->
+<div class="wn-overlay" id="wn-overlay">
+  <div class="wn-box">
+    <div class="wn-hdr">
+      <div class="wn-icon-wrap" id="wn-icon">🆕</div>
+      <div class="wn-title" id="wn-title">Čo je nové v appke</div>
+      <div class="wn-sub" id="wn-sub">Aktualizácia</div>
+    </div>
+    <div class="wn-body" id="wn-body"></div>
+  </div>
+</div>
+
+<!-- ── SATORI REBRAND OVERLAY — mimo .app, funguje aj pre gyn ── -->
+<div class="satori-overlay" id="satori-overlay">
+  <div class="satori-box">
+    <div class="satori-hero">
+      <svg viewBox="0 0 280 202" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="srBg" cx="50%" cy="42%" r="62%">
+            <stop offset="0%" stop-color="#1E3A8A" stop-opacity="0.4"/>
+            <stop offset="100%" stop-color="#0C1E35" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="srGrad" x1="0" y1="165" x2="0" y2="186" gradientUnits="userSpaceOnUse">
+            <stop offset="0%"   stop-color="#FFFFFF"/>
+            <stop offset="40%"  stop-color="#DCE8F2"/>
+            <stop offset="100%" stop-color="#8AAABF"/>
+          </linearGradient>
+          <linearGradient id="srLine" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%"   stop-color="rgba(255,255,255,0)"/>
+            <stop offset="25%"  stop-color="rgba(255,255,255,0.5)"/>
+            <stop offset="50%"  stop-color="rgba(255,255,255,0.75)"/>
+            <stop offset="75%"  stop-color="rgba(255,255,255,0.5)"/>
+            <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+          </linearGradient>
+          <filter id="srEGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="b"/>
+            <feColorMatrix in="b" type="matrix" values="0 0 0 0 0.5 0 0 0 0 0.7 0 0 0 0 1 0 0 0 0.35 0" result="c"/>
+            <feMerge><feMergeNode in="c"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <filter id="srShadow">
+            <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#000C1E" flood-opacity="0.65"/>
+          </filter>
+          <filter id="smBlur" x="-80%" y="-300%" width="260%" height="700%">
+            <feGaussianBlur stdDeviation="5"/>
+          </filter>
+        </defs>
+        <rect width="280" height="202" fill="url(#srBg)"/>
+        <path d="M 148 8.5 A 68 68 0 1 1 132 8.5"
+          fill="none" stroke="rgba(255,255,255,0.84)" stroke-width="5.5"
+          stroke-linecap="butt" filter="url(#srEGlow)"/>
+        <text x="140" y="76" text-anchor="middle" dominant-baseline="middle"
+          font-size="52" fill="rgba(255,255,255,0.9)" font-family="serif">悟り</text>
+        <line x1="18" y1="154" x2="262" y2="154" stroke="url(#srLine)" stroke-width="1.3"/>
+        <g filter="url(#smBlur)">
+          <ellipse cx="95" cy="188" rx="15" ry="9" fill="rgba(235,245,255,0.88)">
+            <animate attributeName="cx" values="95;87" dur="4.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+            <animate attributeName="cy" values="188;155" dur="4.5s" calcMode="spline" keySplines="0.3 0 0.1 1" repeatCount="indefinite"/>
+            <animate attributeName="rx" values="15;34" dur="4.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+            <animate attributeName="ry" values="9;19"  dur="4.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.88;0.6;0" keyTimes="0;0.45;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.1 1" dur="4.5s" repeatCount="indefinite"/>
+          </ellipse>
+          <ellipse cx="140" cy="185" rx="19" ry="11" fill="rgba(235,245,255,0.84)">
+            <animate attributeName="cx" values="140;144" dur="5s" begin="0.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+            <animate attributeName="cy" values="185;148" dur="5s" begin="0.5s" calcMode="spline" keySplines="0.3 0 0.1 1" repeatCount="indefinite"/>
+            <animate attributeName="rx" values="19;40" dur="5s" begin="0.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+            <animate attributeName="ry" values="11;22" dur="5s" begin="0.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.84;0.55;0" keyTimes="0;0.45;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.1 1" dur="5s" begin="0.5s" repeatCount="indefinite"/>
+          </ellipse>
+          <ellipse cx="185" cy="187" rx="13" ry="8" fill="rgba(235,245,255,0.84)">
+            <animate attributeName="cx" values="185;194" dur="4s" begin="1s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+            <animate attributeName="cy" values="187;157" dur="4s" begin="1s" calcMode="spline" keySplines="0.3 0 0.1 1" repeatCount="indefinite"/>
+            <animate attributeName="rx" values="13;30" dur="4s" begin="1s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+            <animate attributeName="ry" values="8;17"  dur="4s" begin="1s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.84;0.52;0" keyTimes="0;0.45;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.1 1" dur="4s" begin="1s" repeatCount="indefinite"/>
+          </ellipse>
+          <ellipse cx="115" cy="191" rx="12" ry="8" fill="rgba(235,245,255,0.8)">
+            <animate attributeName="cx" values="115;108" dur="5.5s" begin="2s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+            <animate attributeName="cy" values="191;161" dur="5.5s" begin="2s" calcMode="spline" keySplines="0.3 0 0.1 1" repeatCount="indefinite"/>
+            <animate attributeName="rx" values="12;27" dur="5.5s" begin="2s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+            <animate attributeName="ry" values="8;16"  dur="5.5s" begin="2s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.8;0.5;0" keyTimes="0;0.45;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.1 1" dur="5.5s" begin="2s" repeatCount="indefinite"/>
+          </ellipse>
+          <ellipse cx="163" cy="188" rx="12" ry="8" fill="rgba(235,245,255,0.82)">
+            <animate attributeName="cx" values="163;170" dur="4.2s" begin="1.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+            <animate attributeName="cy" values="188;157" dur="4.2s" begin="1.5s" calcMode="spline" keySplines="0.3 0 0.1 1" repeatCount="indefinite"/>
+            <animate attributeName="rx" values="12;28" dur="4.2s" begin="1.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+            <animate attributeName="ry" values="8;16"  dur="4.2s" begin="1.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.82;0.5;0" keyTimes="0;0.45;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.1 1" dur="4.2s" begin="1.5s" repeatCount="indefinite"/>
+          </ellipse>
+          <ellipse cx="72" cy="186" rx="10" ry="7" fill="rgba(235,245,255,0.74)">
+            <animate attributeName="cx" values="72;63" dur="4.8s" begin="0.3s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+            <animate attributeName="cy" values="186;159" dur="4.8s" begin="0.3s" calcMode="spline" keySplines="0.3 0 0.1 1" repeatCount="indefinite"/>
+            <animate attributeName="rx" values="10;23" dur="4.8s" begin="0.3s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+            <animate attributeName="ry" values="7;14"  dur="4.8s" begin="0.3s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.74;0.44;0" keyTimes="0;0.45;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.1 1" dur="4.8s" begin="0.3s" repeatCount="indefinite"/>
+          </ellipse>
+          <ellipse cx="208" cy="189" rx="10" ry="7" fill="rgba(235,245,255,0.74)">
+            <animate attributeName="cx" values="208;216" dur="3.8s" begin="2.8s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+            <animate attributeName="cy" values="189;163" dur="3.8s" begin="2.8s" calcMode="spline" keySplines="0.3 0 0.1 1" repeatCount="indefinite"/>
+            <animate attributeName="rx" values="10;22" dur="3.8s" begin="2.8s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+            <animate attributeName="ry" values="7;13"  dur="3.8s" begin="2.8s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.74;0.44;0" keyTimes="0;0.45;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.1 1" dur="3.8s" begin="2.8s" repeatCount="indefinite"/>
+          </ellipse>
+          <ellipse cx="140" cy="193" rx="23" ry="13" fill="rgba(235,245,255,0.68)">
+            <animate attributeName="cx" values="140;133" dur="6s" begin="3.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+            <animate attributeName="cy" values="193;156" dur="6s" begin="3.5s" calcMode="spline" keySplines="0.3 0 0.1 1" repeatCount="indefinite"/>
+            <animate attributeName="rx" values="23;44" dur="6s" begin="3.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+            <animate attributeName="ry" values="13;25" dur="6s" begin="3.5s" calcMode="spline" keySplines="0.4 0 0.6 1" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.68;0.4;0" keyTimes="0;0.45;1" calcMode="spline" keySplines="0 0 1 1;0.3 0 0.1 1" dur="6s" begin="3.5s" repeatCount="indefinite"/>
+          </ellipse>
+        </g>
+        <text x="141" y="183" text-anchor="middle" font-size="35"
+          fill="rgba(0,12,30,0.55)" font-family="'Cinzel','Palatino Linotype',serif" letter-spacing="10">SATORI</text>
+        <text x="140" y="182" text-anchor="middle" font-size="35"
+          fill="url(#srGrad)" font-family="'Cinzel','Palatino Linotype',serif"
+          letter-spacing="10" filter="url(#srShadow)">SATORI</text>
+        <text x="140" y="197" text-anchor="middle" font-size="10"
+          fill="rgba(255,255,255,0.5)" font-family="-apple-system,sans-serif"
+          font-style="italic">Ten, kto vidí jasne, necháva náhodu iným.</text>
+      </svg>
+    </div>
+    <div class="satori-body">
+      <div class="satori-notice">Nové meno · Nové logo</div>
+      <div class="satori-body-title">Možno si si to už všimol — ak nie, tak teraz áno 😄</div>
+      <p class="satori-body-text"><strong>Satori</strong> (悟り) pochádza z japonskej zen filozofie. Označuje moment náhleho, hlbokého pochopenia — nie postupného, ale okamžitého.<br><br>Ten záblesk, keď reprezentant vie presne kde stojí, kam smeruje a čo ho čaká.</p>
+      <div class="satori-body-motto">„Ten, kto vidí jasne, necháva náhodu iným."</div>
+    </div>
+    <div class="satori-footer">
+      <div style="text-align:center;font-size:13px;font-weight:600;color:#64748B;margin-bottom:12px">Ako sa ti to páči?</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <button class="satori-btn" style="background:linear-gradient(135deg,#059669,#10B981);font-size:22px;padding:14px" onclick="satoriVote('up')">👍</button>
+        <button class="satori-btn" style="background:linear-gradient(135deg,#DC2626,#EF4444);font-size:22px;padding:14px" onclick="satoriVote('down')">👎</button>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
