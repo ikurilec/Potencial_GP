@@ -213,6 +213,85 @@ function doGet(e) {
       return jsonResp({ok: true});
     }
 
+    // ── PHARMA DATA — trhový podiel pre gyn produkty ──
+    // URL: ?action=getPharmaData&oblast=BAPA&produkt=Levosert&kvartal=2601&token=xxx
+    if (action === 'getPharmaData') {
+      if (!requireToken(e)) return jsonResp({ok: false, error: 'Unauthorized'});
+      var oblast  = (e.parameter.oblast  || '').trim().toUpperCase();
+      var produkt = (e.parameter.produkt || '').trim();
+      var kvartal = (e.parameter.kvartal || '').trim();
+      if (!oblast || !produkt) return jsonResp({ok: false, error: 'missing params'});
+
+      function hdrIdx(hdr, name) { return hdr.indexOf(name); }
+
+      // ── Summary (PharmaData_Summary) ──
+      var summRows = [];
+      var summSheet = ss.getSheetByName('PharmaData_Summary');
+      if (summSheet) {
+        var sd = summSheet.getDataRange().getValues();
+        if (sd.length > 1) {
+          var sh = sd[0].map(function(c){ return String(c||'').trim().toLowerCase(); });
+          var siP = hdrIdx(sh, 'produkt'),  siO = hdrIdx(sh, 'oblast'),  siM = hdrIdx(sh, 'mesiac');
+          var siT = hdrIdx(sh, 'terit_ms'), siS = hdrIdx(sh, 'sk_ms');
+          for (var i = 1; i < sd.length; i++) {
+            var r = sd[i];
+            if (String(r[siP] || '').trim() !== produkt) continue;
+            if (String(r[siO] || '').trim().toUpperCase() !== oblast) continue;
+            summRows.push({
+              mesiac:   String(r[siM] || '').trim(),
+              terit_ms: parseFloat(r[siT]) || 0,
+              sk_ms:    parseFloat(r[siS]) || 0
+            });
+          }
+        }
+      }
+
+      // ── Okresy (PharmaData_Okresy) ──
+      var okresyRows = [];
+      if (kvartal) {
+        var okrSheet = ss.getSheetByName('PharmaData_Okresy');
+        if (okrSheet) {
+          var od = okrSheet.getDataRange().getValues();
+          if (od.length > 1) {
+            var oh = od[0].map(function(c){ return String(c||'').trim().toLowerCase(); });
+            var oiP=hdrIdx(oh,'produkt'), oiO=hdrIdx(oh,'oblast'), oiOkr=hdrIdx(oh,'okres'), oiK=hdrIdx(oh,'kvartal');
+            var oiN1=hdrIdx(oh,'nas_m1'), oiN2=hdrIdx(oh,'nas_m2'), oiN3=hdrIdx(oh,'nas_m3');
+            function komp(row, prefix) {
+              var iN = hdrIdx(oh, prefix+'_nazov'),
+                  iM1 = hdrIdx(oh, prefix+'_m1'),
+                  iM2 = hdrIdx(oh, prefix+'_m2'),
+                  iM3 = hdrIdx(oh, prefix+'_m3');
+              var name = String(row[iN]||'').trim();
+              if (!name) return null;
+              return {
+                name: name,
+                m1: parseFloat(row[iM1]) || null,
+                m2: parseFloat(row[iM2]) || null,
+                m3: parseFloat(row[iM3]) || null
+              };
+            }
+            for (var i = 1; i < od.length; i++) {
+              var r = od[i];
+              if (String(r[oiP] || '').trim() !== produkt) continue;
+              if (String(r[oiO] || '').trim().toUpperCase() !== oblast) continue;
+              if (String(r[oiK] || '').trim() !== kvartal) continue;
+              okresyRows.push({
+                okres:  String(r[oiOkr] || '').trim(),
+                nas_m1: parseFloat(r[oiN1]) || null,
+                nas_m2: parseFloat(r[oiN2]) || null,
+                nas_m3: parseFloat(r[oiN3]) || null,
+                k1: komp(r, 'k1'),
+                k2: komp(r, 'k2'),
+                k3: komp(r, 'k3')
+              });
+            }
+          }
+        }
+      }
+
+      return jsonResp({ok: true, summary: summRows, okresy: okresyRows});
+    }
+
     // ─────────────────────────────────────────────────────────
     // BUDÚCE ENDPOINTY (fáza 2 — návštevy gynekológov)
     // ─────────────────────────────────────────────────────────
