@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<title>Gyn Pharma konverter — IQVIA → Sheets</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#EAECF2;min-height:100vh;padding:24px 16px;color:#1A2A3A}
+.app{max-width:1100px;margin:0 auto}
+.hdr{background:#0C1E35;color:#fff;border-radius:16px;padding:18px 22px;margin-bottom:14px;box-shadow:0 10px 40px rgba(10,25,50,.25)}
+.hdr h1{font-size:20px;font-weight:800;margin-bottom:3px;letter-spacing:-.01em}
+.hdr p{font-size:12px;color:#7AABCC}
+.step{background:#fff;border-radius:14px;padding:16px 20px;margin-bottom:10px;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+.step-num{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;background:#0C1E35;color:#fff;font-size:12px;font-weight:700;border-radius:50%;margin-right:8px}
+.step-title{font-size:14px;font-weight:700;display:flex;align-items:center;margin-bottom:10px}
+.drop-zone{border:2px dashed #CBD5E1;border-radius:12px;padding:32px;text-align:center;color:#64748B;font-size:14px;transition:all .2s;cursor:pointer;background:#F8FAFC}
+.drop-zone:hover,.drop-zone.dragover{border-color:#3B82F6;background:#EFF6FF;color:#2563EB}
+.drop-zone-icon{font-size:32px;margin-bottom:6px}
+.drop-zone-sub{font-size:11px;margin-top:4px;color:#94A3B8}
+.files{margin-top:10px}
+.file-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#F8FAFC;border-radius:8px;margin-bottom:4px;font-size:12px}
+.file-item.ok{background:#ECFDF5;color:#065F46}
+.file-item.err{background:#FEF2F2;color:#991B1B}
+.file-item.warn{background:#FEF3C7;color:#92400E}
+.file-item.skip{background:#F1F5F9;color:#64748B;opacity:.7}
+.file-name{flex:1;font-weight:600;font-family:monospace;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-info{font-size:11px;opacity:.85}
+.tabs{display:flex;gap:6px;margin:12px 0 8px;flex-wrap:wrap}
+.tab{padding:8px 14px;background:#F1F5F9;border:none;border-radius:9px;font-size:12px;font-weight:700;color:#64748B;cursor:pointer;font-family:inherit}
+.tab.active{background:#0C1E35;color:#fff}
+.preview-wrap{overflow-x:auto;margin-top:6px;border-radius:8px;border:1px solid #E2E8F0;max-height:400px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:11px;font-family:monospace}
+th{background:#F1F5F9;color:#0F172A;font-weight:700;padding:7px 9px;text-align:left;position:sticky;top:0;white-space:nowrap;border-bottom:2px solid #CBD5E1}
+td{padding:5px 9px;border-bottom:1px solid #F1F5F9;white-space:nowrap}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+td.zero{color:#CBD5E1}
+tr:hover{background:#F8FAFC}
+.empty-state{text-align:center;padding:30px;color:#94A3B8;font-size:13px;font-style:italic}
+.actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.btn{padding:10px 16px;border-radius:9px;border:none;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
+.btn-primary{background:#16A34A;color:#fff;box-shadow:0 4px 12px rgba(22,163,74,.3)}
+.btn-primary:hover{background:#15803D}
+.btn-secondary{background:#fff;color:#0C1E35;border:1.5px solid #E2E8F0}
+.btn-link{background:transparent;color:#64748B;font-size:12px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0C1E35;color:#fff;padding:10px 18px;border-radius:9px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .25s}
+.toast.show{opacity:1}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:10px}
+.summary-card{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px 12px}
+.summary-lbl{font-size:10px;color:#64748B;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.summary-val{font-size:16px;font-weight:800;margin-top:2px;color:#0F172A}
+.hint{background:#FEF3C7;border-left:4px solid #F59E0B;padding:10px 14px;border-radius:8px;margin-bottom:10px;font-size:12px;color:#92400E}
+.debug{background:#0F172A;color:#94A3B8;padding:12px 14px;border-radius:8px;font-family:monospace;font-size:11px;max-height:200px;overflow-y:auto;white-space:pre-wrap;margin-top:8px}
+.lib-status{padding:6px 10px;border-radius:6px;font-size:11px;font-weight:600;display:inline-block;margin-left:10px}
+.lib-status.ok{background:#ECFDF5;color:#065F46}
+.lib-status.err{background:#FEF2F2;color:#991B1B}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="hdr">
+    <h1>📊 Gyn Pharma konverter <span class="lib-status" id="lib-status">...</span></h1>
+    <p>IQVIA mesačné súbory (ESC, LEV, RYE, LEN) → TSV pre PharmaData_Summary + PharmaData_Okresy</p>
+  </div>
+
+  <div class="step">
+    <div class="step-title"><span class="step-num">1</span>Vlož IQVIA xlsx súbory</div>
+    <div class="drop-zone" id="drop-zone">
+      <div class="drop-zone-icon">📂</div>
+      <div>Pretiahni sem xlsx (alebo celý priečinok) alebo klikni</div>
+      <div class="drop-zone-sub">Patch (ESC/LEV/RYE/LEN) + Pill (KCPERCEPCIA) súbory. KOG/rozdiel/.DS_Store sa preskočia.</div>
+      <input type="file" id="file-input" multiple accept=".xlsx" style="display:none">
+    </div>
+    <div class="files" id="files"></div>
+    <div class="debug" id="debug" style="display:none"></div>
+  </div>
+
+  <div class="step">
+    <div class="step-title"><span class="step-num">2</span>Náhľad</div>
+    <div id="preview-body">
+      <div class="empty-state">Zatiaľ žiadne dáta. Pridaj súbory vyššie.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-title"><span class="step-num">3</span>Vlož do gyn Google Sheets</div>
+    <div class="hint">
+      <strong>Postup:</strong> 1) Klik na záložku <code>Summary</code> nižšie → kopíruj → vlož do gyn Sheets do tabu <code>PharmaData_Summary</code>. 2) To isté pre <code>Okresy</code> → tab <code>PharmaData_Okresy</code>. (Tabu vytvor ak neexistuje.)
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// Library check
+if(typeof XLSX === 'undefined'){
+  document.getElementById('lib-status').className = 'lib-status err';
+  document.getElementById('lib-status').textContent = '✗ XLSX library nenačítaná (skontroluj internet)';
+} else {
+  document.getElementById('lib-status').className = 'lib-status ok';
+  document.getElementById('lib-status').textContent = '✓ pripravené (XLSX v' + (XLSX.version || '?') + ')';
+}
+
+// ── Konfigurácia ──
+// Patch produkty z _PRODKÓD_REGION.xlsx (MS_SK + Box štruktúra)
+var PRODUCT_MAP = {
+  'ESC': { name: 'Escapelle', columns: ['ESCAPELLE'] },
+  'LEV': { name: 'Levosert',  columns: ['LEVOSERT', 'LEVOSERT SHI'] },
+  'RYE': { name: 'Ryeqo',     columns: ['RYEQO'] },
+  'LEN': { name: 'Lenzetto',  columns: ['LENZETTO'] }
+};
+var PATCH_REGIONS = ['BAPA', 'SEPA', 'STPA', 'VYPA', 'ZAPA'];
+var PILL_REGIONS  = ['BAPI', 'SEPI', 'STPI', 'VYPI', 'ZAPI'];
+
+// Pill produkty extrahované z KCPERCEPCIA súborov (KC sheet)
+// kľúč = názov produktu v IQVIA súbore, hodnota = názov v Sheete (musí sedieť s Plan/Predaje)
+var PILL_PRODUCT_MAP = {
+  'DROVELIS': 'Drovelis',
+  'EVRA':     'Evra',
+  'BELARA':   'Belara',
+  'DAYLETTE': 'Daylette',
+  'DAYLLA':   'Daylla',
+  'MAITALON': 'Maitalon',
+  'MISTRA':   'Mistra',
+  'AZALIA':   'Azalia'
+};
+// Mapovanie pill region → patch region (pre produkty ktoré majú byť v oboch líniách, napr. Azalia patrí do patch ale dáta sú v pill súbore)
+var PILL_TO_PATCH_REGION = { 'BAPI':'BAPA','SEPI':'SEPA','STPI':'STPA','VYPI':'VYPA','ZAPI':'ZAPA' };
+// Pill produkty ktoré sa majú duplikovať aj pod patch región (Azalia je patch produkt, dáta v pill súboroch)
+var DUPLICATE_TO_PATCH = ['Azalia'];
+
+// Surové pill počty pacientov (pre SK MS výpočet po načítaní všetkých 5 regiónov)
+// Štruktúra: { region: { product: { yymm: patients } }, regionTotals: { region: { yymm: totalPatients } } }
+var PILL_RAW = { byRegion: {}, regionTotals: {} };
+
+// ── State ──
+var fileResults = []; // { file, status, productCode, region, snapshotYYMM, summaryRows, okresyRows, error }
+var currentTab = 'summary';
+
+// ── Helpers ──
+function toast(msg, dur){
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, dur||2200);
+}
+function log(msg){
+  var d = document.getElementById('debug');
+  d.style.display = 'block';
+  d.textContent += msg + '\n';
+  d.scrollTop = d.scrollHeight;
+}
+function clearLog(){
+  var d = document.getElementById('debug');
+  d.textContent = '';
+  d.style.display = 'none';
+}
+
+// Klasifikuj súbor podľa názvu — vracia { type, code, region, snapshotYYMM }
+function classifyFile(name){
+  if(/^\.|DS_Store/.test(name)) return { type:'skip', reason:'systémový súbor' };
+  if(/^rozdiel_/i.test(name)) return { type:'skip', reason:'rozdiel súbor (change %, nie pre MS)' };
+  if(/_KOG_/i.test(name)) return { type:'skip', reason:'Kogavant — preskočené' };
+
+  // YYYYMM → interný YYMM formát (napr. 202603 → 2603)
+  function parseSnapshot(s){
+    var n = parseInt(s, 10);
+    if(s.length === 6) return n - 200000;  // 202603 → 2603
+    return n;                                // 2603 → 2603 (fallback)
+  }
+
+  // Pill: YYYYMM_KCPERCEPCIA_REGION.xlsx
+  var pm = name.match(/^(\d{4,6})_KCPERCEPCIA_([A-Z]{4})\.xlsx$/i);
+  if(pm) {
+    var pillRegion = pm[2].toUpperCase();
+    if(PILL_REGIONS.indexOf(pillRegion) === -1) return { type:'unknown', reason:'pill region "'+pillRegion+'" neznámy' };
+    return { type:'pill', region: pillRegion, snapshotYYMM: parseSnapshot(pm[1]) };
+  }
+
+  // Patch: YYYYMM_PRODKOD_REGION.xlsx
+  var m = name.match(/^(\d{4,6})_([A-Z]+)_([A-Z]{4})\.xlsx$/i);
+  if(!m) return { type:'unknown', reason:'neznámy formát názvu' };
+  var snapshotYYMM = parseSnapshot(m[1]);
+  var code = m[2].toUpperCase();
+  var region = m[3].toUpperCase();
+  if(!PRODUCT_MAP[code]) return { type:'unknown', reason:'produkt "'+code+'" nie je v PRODUCT_MAP' };
+  if(PATCH_REGIONS.indexOf(region) === -1) return { type:'unknown', reason:'patch region "'+region+'" neznámy' };
+  return { type:'patch', code: code, region: region, snapshotYYMM: snapshotYYMM };
+}
+
+function parseFile(file){
+  return new Promise(function(resolve, reject){
+    var reader = new FileReader();
+    reader.onload = function(e){
+      try {
+        var data = new Uint8Array(e.target.result);
+        var wb = XLSX.read(data, { type:'array', cellDates:true });
+        resolve(wb);
+      } catch(err){ reject(err); }
+    };
+    reader.onerror = function(){ reject(new Error('FileReader error')); };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// Quartal kód YYQQ z mesiaca YYMM, napr. 2603 (March 2026) → '2601' (Q1 2026)
+function monthToQuartal(yymm){
+  var year = Math.floor(yymm / 100);
+  var month = yymm % 100;
+  var q = Math.ceil(month / 3);
+  return (year < 10 ? '0'+year : ''+year) + '0' + q;
+}
+
+// Mesiac v rámci kvartálu (1, 2 alebo 3)
+function monthInQuartal(yymm){
+  var month = yymm % 100;
+  return ((month - 1) % 3) + 1;
+}
+
+// Spracuje KCPERCEPCIA súbor (Pill produkty)
+function processPillFile(file, wb, cls){
+  var ws = wb.Sheets['KC'];
+  if(!ws) {
+    log('  ✗ KC sheet chýba');
+    return { ok:false, file, status:'err', error:'KC sheet chýba' };
+  }
+  var rows = XLSX.utils.sheet_to_json(ws, { header:1, raw:true });
+
+  // Header riadok: Okres | Korporat | Product | Data | 1 | 2 | 3 | 10 | 11 | 12 | Grand Total
+  var hdrIdx = -1;
+  for(var i = 0; i < rows.length; i++){
+    if(rows[i] && rows[i][0] === 'Okres' && rows[i][1] === 'Korporat'){ hdrIdx = i; break; }
+  }
+  if(hdrIdx === -1){ log('  ✗ KC header nenájdený'); return { ok:false, file, status:'err', error:'KC header nenájdený' }; }
+
+  // Identifikuj month columns
+  var monthCols = [];
+  for(var j = 4; j < rows[hdrIdx].length; j++){
+    var h = rows[hdrIdx][j];
+    if(typeof h === 'number' && h >= 1 && h <= 12) monthCols.push({ idx: j, month: h });
+  }
+  // Konverz mesiac (1..12) na YYMM (months 1-3 = 2026, 10-12 = 2025 — vzhľadom na 202603 snapshot)
+  function monthToYYMM(m, snapshotYYMM){
+    var snapYear = Math.floor(snapshotYYMM / 100); // 26
+    var snapMonth = snapshotYYMM % 100;             // 3
+    // Ak m > snapMonth → predošlý rok, inak aktuálny rok
+    var year = (m > snapMonth) ? snapYear - 1 : snapYear;
+    return year * 100 + m;
+  }
+
+  // Per-district per-product per-month patient counts
+  var districtData = {}; // { okres: { product: { yymm: patients } } }
+  var districtTotals = {}; // { okres: { yymm: totalPatients } }
+  var curOkres = null, curKorp = null, curProd = null;
+  for(var i = hdrIdx + 1; i < rows.length; i++){
+    var r = rows[i];
+    if(!r) continue;
+    if(r[0]) curOkres = String(r[0]).trim();
+    if(r[1]) curKorp = String(r[1]).trim();
+    if(r[2]) curProd = String(r[2]).trim();
+    var dataType = String(r[3] || '').trim();
+    if(!curOkres || curOkres === 'Total MS Patient' || curOkres === 'Grand Total') continue;
+    if(dataType !== 'Patient') continue;
+    if(!districtData[curOkres]) districtData[curOkres] = {};
+    if(!districtData[curOkres][curProd]) districtData[curOkres][curProd] = {};
+    if(!districtTotals[curOkres]) districtTotals[curOkres] = {};
+    monthCols.forEach(function(mc){
+      var v = parseFloat(r[mc.idx] || 0) || 0;
+      var yymm = monthToYYMM(mc.month, cls.snapshotYYMM);
+      districtData[curOkres][curProd][yymm] = (districtData[curOkres][curProd][yymm] || 0) + v;
+      districtTotals[curOkres][yymm] = (districtTotals[curOkres][yymm] || 0) + v;
+    });
+  }
+
+  log('  KC: ' + Object.keys(districtData).length + ' okresov, ' + monthCols.length + ' mesiacov');
+
+  // Spočítaj region totals + per-product totals pre SK MS výpočet (uložíme do result, rebuild v getSummaryRows)
+  var regionTotalsByYymm = {}; // { yymm: total }
+  Object.keys(districtTotals).forEach(function(d){
+    Object.keys(districtTotals[d]).forEach(function(yymm){
+      regionTotalsByYymm[yymm] = (regionTotalsByYymm[yymm] || 0) + districtTotals[d][yymm];
+    });
+  });
+  var productTotalsByYymm = {}; // { product: { yymm: total } }
+  Object.keys(PILL_PRODUCT_MAP).forEach(function(prodKey){
+    productTotalsByYymm[prodKey] = {};
+    Object.keys(districtData).forEach(function(d){
+      var pd = districtData[d][prodKey];
+      if(!pd) return;
+      Object.keys(pd).forEach(function(yymm){
+        productTotalsByYymm[prodKey][yymm] = (productTotalsByYymm[prodKey][yymm] || 0) + pd[yymm];
+      });
+    });
+  });
+
+  // Generate Summary rows: per produkt × oblast × mesiac → terit_ms (sk_ms doplníme post-load)
+  var summaryRows = [];
+  Object.keys(PILL_PRODUCT_MAP).forEach(function(prodKey){
+    var prodName = PILL_PRODUCT_MAP[prodKey];
+    var allYymm = {};
+    Object.keys(districtData).forEach(function(d){
+      var pd = districtData[d][prodKey] || {};
+      Object.keys(pd).forEach(function(y){ allYymm[y] = true; });
+    });
+    Object.keys(allYymm).forEach(function(yymm){
+      var ourTotal = 0;
+      Object.keys(districtData).forEach(function(d){
+        ourTotal += (districtData[d][prodKey] && districtData[d][prodKey][yymm]) || 0;
+      });
+      var regionTotal = regionTotalsByYymm[yymm] || 0;
+      var teritMs = regionTotal > 0 ? ourTotal / regionTotal : 0;
+      var addRegions = [cls.region];
+      // Duplicate to patch region for products like Azalia
+      if(DUPLICATE_TO_PATCH.indexOf(prodName) !== -1) {
+        addRegions.push(PILL_TO_PATCH_REGION[cls.region]);
+      }
+      addRegions.forEach(function(reg){
+        summaryRows.push({
+          produkt: prodName,
+          oblast: reg,
+          mesiac: parseInt(yymm, 10),
+          terit_ms: teritMs.toFixed(4),
+          sk_ms: '' // doplnené po načítaní všetkých regiónov v getSummaryRows()
+        });
+      });
+    });
+  });
+
+  // Generate Okresy rows: per produkt × oblast × okres × kvartal
+  // Q sa určí podľa snapshotYYMM (typicky aktuálny Q = Q1 2026 pre snapshot 2603)
+  function yymmToQuartal(yymm){
+    var year = Math.floor(yymm / 100);
+    var month = yymm % 100;
+    var q = Math.ceil(month / 3);
+    return (year < 10 ? '0'+year : ''+year) + '0' + q;
+  }
+  function yymmToMonthInQuartal(yymm){
+    var month = yymm % 100;
+    return ((month - 1) % 3) + 1;
+  }
+  function quartalToYymms(quartal){
+    var year = parseInt(quartal.slice(0, 2), 10);
+    var q = parseInt(quartal.slice(2), 10);
+    var startMonth = (q - 1) * 3 + 1;
+    return [year * 100 + startMonth, year * 100 + startMonth + 1, year * 100 + startMonth + 2];
+  }
+
+  // Pre každý mesiac v dátach → Q
+  var allYymms = {};
+  Object.keys(districtTotals).forEach(function(d){
+    Object.keys(districtTotals[d]).forEach(function(y){ allYymms[y] = true; });
+  });
+  var allQuartals = {};
+  Object.keys(allYymms).forEach(function(y){ allQuartals[yymmToQuartal(y)] = true; });
+
+  var okresyRows = [];
+  Object.keys(PILL_PRODUCT_MAP).forEach(function(prodKey){
+    var prodName = PILL_PRODUCT_MAP[prodKey];
+    Object.keys(allQuartals).forEach(function(quartal){
+      var qYymms = quartalToYymms(quartal);
+      Object.keys(districtData).forEach(function(district){
+        var pd = districtData[district][prodKey];
+        if(!pd) return;
+        var hasData = qYymms.some(function(y){ return pd[y] !== undefined; });
+        if(!hasData) return;
+
+        // Top 3 konkurenti pre tento okres+kvartal (excluding our product)
+        var compList = [];
+        Object.keys(districtData[district]).forEach(function(p){
+          if(p === prodKey) return;
+          var pat = 0;
+          qYymms.forEach(function(y){ pat += districtData[district][p][y] || 0; });
+          if(pat > 0) compList.push({ name: p, patients: pat });
+        });
+        compList.sort(function(a, b){ return b.patients - a.patients; });
+        var top3 = compList.slice(0, 3);
+
+        // Vypočítaj MS pre náš produkt + top3 v každom mesiaci Q
+        function msForProd(p, yymm){
+          var our = (districtData[district][p] && districtData[district][p][yymm]) || 0;
+          var tot = (districtTotals[district] && districtTotals[district][yymm]) || 0;
+          return tot > 0 ? (our / tot * 100) : 0;
+        }
+        var addRegions = [cls.region];
+        if(DUPLICATE_TO_PATCH.indexOf(prodName) !== -1) addRegions.push(PILL_TO_PATCH_REGION[cls.region]);
+        addRegions.forEach(function(reg){
+          var row = {
+            produkt: prodName,
+            oblast: reg,
+            okres: district,
+            kvartal: quartal,
+            nas_m1: msForProd(prodKey, qYymms[0]).toFixed(2),
+            nas_m2: msForProd(prodKey, qYymms[1]).toFixed(2),
+            nas_m3: msForProd(prodKey, qYymms[2]).toFixed(2),
+            k1_nazov: top3[0] ? top3[0].name : '',
+            k1_m1: top3[0] ? msForProd(top3[0].name, qYymms[0]).toFixed(2) : '',
+            k1_m2: top3[0] ? msForProd(top3[0].name, qYymms[1]).toFixed(2) : '',
+            k1_m3: top3[0] ? msForProd(top3[0].name, qYymms[2]).toFixed(2) : '',
+            k2_nazov: top3[1] ? top3[1].name : '',
+            k2_m1: top3[1] ? msForProd(top3[1].name, qYymms[0]).toFixed(2) : '',
+            k2_m2: top3[1] ? msForProd(top3[1].name, qYymms[1]).toFixed(2) : '',
+            k2_m3: top3[1] ? msForProd(top3[1].name, qYymms[2]).toFixed(2) : '',
+            k3_nazov: top3[2] ? top3[2].name : '',
+            k3_m1: top3[2] ? msForProd(top3[2].name, qYymms[0]).toFixed(2) : '',
+            k3_m2: top3[2] ? msForProd(top3[2].name, qYymms[1]).toFixed(2) : '',
+            k3_m3: top3[2] ? msForProd(top3[2].name, qYymms[2]).toFixed(2) : ''
+          };
+          okresyRows.push(row);
+        });
+      });
+    });
+  });
+
+  log('  → ' + summaryRows.length + ' summary, ' + okresyRows.length + ' okresy riadkov');
+  return {
+    ok: true, file, status: 'ok',
+    productCode: 'PILL', region: cls.region, snapshotYYMM: cls.snapshotYYMM,
+    summaryRows: summaryRows, okresyRows: okresyRows,
+    pillRegionTotals: regionTotalsByYymm,   // pre SK MS rebuild
+    pillProductTotals: productTotalsByYymm  // pre SK MS rebuild
+  };
+}
+
+async function processFile(file){
+  var cls = classifyFile(file.name);
+  if(cls.type === 'skip')    return { ok:false, file, status:'skip',    reason: cls.reason };
+  if(cls.type === 'unknown') return { ok:false, file, status:'unknown', reason: cls.reason };
+
+  try {
+    log('Súbor: ' + file.name);
+    var wb = await parseFile(file);
+
+    // ── PILL súbor (KCPERCEPCIA) ──
+    if(cls.type === 'pill') {
+      return processPillFile(file, wb, cls);
+    }
+
+    // ── PATCH súbor (ESC/LEV/RYE/LEN) ──
+    var prod = PRODUCT_MAP[cls.code];
+
+    // ── PARSE MS_SK sheet → Summary rows ──
+    var summaryRows = [];
+    if(wb.Sheets['MS_SK']) {
+      var msRows = XLSX.utils.sheet_to_json(wb.Sheets['MS_SK'], { header:1, raw:true });
+      // Header: Mesiac | MSBOX | MSEUR | Predaj_BOX | Trh_BOX | Predaj_EUR | Trh_EUR
+      for(var i = 1; i < msRows.length; i++){
+        var r = msRows[i];
+        if(!r[0] || isNaN(parseInt(r[0]))) continue;
+        var yymm = parseInt(r[0], 10);
+        var skMs = parseFloat(r[1]); // MSBOX = SK MS (national, identical across region files)
+        if(isNaN(skMs)) skMs = 0;
+        // terit_ms zatiaľ nie je v MS_SK (musíme dopočítať z Box sheet — len pre snapshot mesiac)
+        summaryRows.push({
+          produkt: prod.name,
+          oblast: cls.region,
+          mesiac: yymm,
+          terit_ms: '', // doplníme nižšie pre snapshot mesiac
+          sk_ms: skMs
+        });
+      }
+      log('  MS_SK: ' + summaryRows.length + ' mesiacov (SK MS)');
+    } else {
+      log('  ⚠ MS_SK sheet chýba');
+    }
+
+    // ── PARSE Box sheet → Okresy rows + terit_ms pre snapshot mesiac ──
+    // Niektoré produkty (napr. ESC) nemajú Box sheet → terit_ms = sk_ms pre všetky mesiace (fallback)
+    var okresyRows = [];
+    var teritMsForSnapshot = null;
+    var hasBox = !!wb.Sheets['Box'];
+    if(!hasBox) {
+      log('  ⚠ Box sheet chýba — terit_ms = sk_ms (fallback, žiadne regionálne dáta)');
+      summaryRows.forEach(function(s){ s.terit_ms = s.sk_ms; });
+    }
+    if(hasBox) {
+      var boxRows = XLSX.utils.sheet_to_json(wb.Sheets['Box'], { header:1, raw:true });
+      // Hľadáme header riadok: ['Okres', 'Data', 'PRODUCT1', 'PRODUCT2', ..., 'Grand Total']
+      var headerRowIdx = -1;
+      for(var i = 0; i < boxRows.length; i++){
+        if(boxRows[i] && boxRows[i][0] === 'Okres' && boxRows[i][1] === 'Data') {
+          headerRowIdx = i;
+          break;
+        }
+      }
+      if(headerRowIdx < 0) {
+        log('  ⚠ Box header nenájdený');
+      } else {
+        var header = boxRows[headerRowIdx];
+        // Identifikácia stĺpcov: nás (LEVOSERT atď.) vs konkurenti
+        var ourCols = []; // indexy stĺpcov pre náš produkt
+        var competCols = []; // [{name, idx}] pre konkurentov
+        for(var k = 2; k < header.length; k++){
+          var colName = String(header[k] || '').trim().toUpperCase();
+          if(!colName || colName === 'GRAND TOTAL') continue;
+          if(prod.columns.indexOf(colName) !== -1) ourCols.push(k);
+          else competCols.push({ name: colName, idx: k });
+        }
+
+        // Iterate over district rows — each district has 2 rows: Box (counts) and MS Box %
+        var snapshotYYMM = cls.snapshotYYMM;
+        var snapshotMonth = snapshotYYMM % 100;
+        var qInQuartal = monthInQuartal(snapshotYYMM);
+        var quartal = monthToQuartal(snapshotYYMM);
+
+        // Pre dopočítanie teritoriálneho MS — sumy boxov v regióne
+        var sumOurBox = 0, sumTotalBox = 0;
+        // Komp. súčty — na výber top 3
+        var competTotals = {};
+        competCols.forEach(function(c){ competTotals[c.name] = 0; });
+
+        var districtData = []; // [{okres, our_box, our_ms_pct, comp:{name:{box, ms_pct}}, total_box}]
+        for(var i = headerRowIdx + 1; i < boxRows.length; i++){
+          var row = boxRows[i];
+          if(!row || !row[0]) continue;
+          var okres = String(row[0] || '').trim();
+          if(!okres || okres === 'Grand Total') continue;
+          var dataType = String(row[1] || '').trim();
+          if(dataType !== 'Box') continue;
+          // Box row — i+1 by mal byť MS Box %
+          var msRow = boxRows[i+1] || [];
+          var msType = String(msRow[1] || '').trim();
+          if(msType !== 'MS Box %') continue;
+
+          // Náš produkt — sčítaj všetky "ourCols"
+          var ourBox = 0, ourMs = 0;
+          ourCols.forEach(function(idx){
+            ourBox += parseFloat(row[idx] || 0) || 0;
+            ourMs  += parseFloat(msRow[idx] || 0) || 0;
+          });
+          var grandTotal = parseFloat(row[row.length - 1] || 0) || 0;
+
+          var compEntries = [];
+          competCols.forEach(function(c){
+            var box = parseFloat(row[c.idx] || 0) || 0;
+            var ms  = parseFloat(msRow[c.idx] || 0) || 0;
+            if(box > 0) compEntries.push({ name: c.name, box: box, ms: ms });
+            competTotals[c.name] += box;
+          });
+          districtData.push({
+            okres: okres,
+            our_box: ourBox,
+            our_ms: ourMs,
+            grandTotal: grandTotal,
+            competitors: compEntries
+          });
+          sumOurBox += ourBox;
+          sumTotalBox += grandTotal;
+        }
+
+        // Top 3 globálni konkurenti pre tento region (na konzistenciu naprieč okresmi)
+        var topCompets = competCols.slice().sort(function(a,b){
+          return (competTotals[b.name] || 0) - (competTotals[a.name] || 0);
+        }).slice(0, 3).map(function(c){ return c.name; });
+
+        // Generate Okresy rows
+        districtData.forEach(function(d){
+          var row = {
+            produkt: prod.name,
+            oblast: cls.region,
+            okres: d.okres,
+            kvartal: quartal,
+            nas_m1: '',
+            nas_m2: '',
+            nas_m3: '',
+            k1_nazov: topCompets[0] || '',
+            k1_m1: '', k1_m2: '', k1_m3: '',
+            k2_nazov: topCompets[1] || '',
+            k2_m1: '', k2_m2: '', k2_m3: '',
+            k3_nazov: topCompets[2] || '',
+            k3_m1: '', k3_m2: '', k3_m3: ''
+          };
+          row['nas_m' + qInQuartal] = (d.our_ms * 100).toFixed(2);
+          // Konkurenti — len top 3
+          d.competitors.forEach(function(c){
+            var idx = topCompets.indexOf(c.name);
+            if(idx === -1) return;
+            row['k' + (idx+1) + '_m' + qInQuartal] = (c.ms * 100).toFixed(2);
+          });
+          okresyRows.push(row);
+        });
+
+        // Teritoriálny MS pre snapshot mesiac (sum boxov v regióne)
+        teritMsForSnapshot = sumTotalBox > 0 ? sumOurBox / sumTotalBox : 0;
+        log('  Box: ' + districtData.length + ' okresov, top3 konkurenti: ' + topCompets.join(', '));
+        log('  Terit MS pre ' + snapshotYYMM + ': ' + (teritMsForSnapshot * 100).toFixed(2) + '%');
+
+        // Doplň terit_ms do summary pre snapshot mesiac
+        summaryRows.forEach(function(s){
+          if(s.mesiac === snapshotYYMM) {
+            s.terit_ms = (teritMsForSnapshot * 100 / 100).toFixed(4); // ratio (0.2191)
+          }
+        });
+      }
+    }
+
+    return {
+      ok: true,
+      file,
+      status: 'ok',
+      productCode: cls.code,
+      region: cls.region,
+      snapshotYYMM: cls.snapshotYYMM,
+      summaryRows: summaryRows,
+      okresyRows: okresyRows
+    };
+  } catch(err){
+    log('  ✗ CHYBA: ' + err.message);
+    return { ok:false, file, status:'err', error: err.message };
+  }
+}
+
+async function handleFiles(files){
+  if(fileResults.length === 0){ clearLog(); log('Spracovávam ' + files.length + ' súborov...'); }
+  else log('Pridávam ' + files.length + ' súborov...');
+  for(var i = 0; i < files.length; i++){
+    var file = files[i];
+    var existingIdx = fileResults.findIndex(function(r){ return r.file && r.file.name === file.name; });
+    var result = await processFile(file);
+    if(existingIdx !== -1){ fileResults[existingIdx] = result; log('  (prepísaný)'); }
+    else fileResults.push(result);
+  }
+  renderFileList();
+  renderPreview();
+}
+
+function removeFile(idx){ fileResults.splice(idx, 1); renderFileList(); renderPreview(); }
+function resetAll(){
+  fileResults = [];
+  PILL_RAW = { byRegion: {}, regionTotals: {} };
+  clearLog(); renderFileList(); renderPreview();
+}
+
+function renderFileList(){
+  var c = document.getElementById('files');
+  c.innerHTML = '';
+  if(!fileResults.length) return;
+  var ok = fileResults.filter(function(r){ return r.status === 'ok'; }).length;
+  var sk = fileResults.filter(function(r){ return r.status === 'skip'; }).length;
+  var hdr = document.createElement('div');
+  hdr.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin:6px 0;font-size:11px;color:#64748B';
+  hdr.innerHTML = '<span><strong>'+fileResults.length+'</strong> súborov · <strong style="color:#16A34A">'+ok+'</strong> spracovaných · <strong style="color:#94A3B8">'+sk+'</strong> preskočených</span>' +
+                  '<button onclick="resetAll()" style="background:transparent;border:1px solid #E2E8F0;color:#DC2626;font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:inherit">✕ Vyčistiť</button>';
+  c.appendChild(hdr);
+  fileResults.forEach(function(r, idx){
+    var item = document.createElement('div');
+    var cls = 'file-item ', icon, info;
+    if(r.status === 'ok')      { cls+='ok'; icon='✓'; info=r.productCode + '·' + r.region + ' · ' + r.summaryRows.length + ' mes, ' + r.okresyRows.length + ' okresov'; }
+    else if(r.status === 'skip'){ cls+='skip'; icon='−'; info=r.reason; }
+    else if(r.status === 'unknown'){ cls+='warn'; icon='?'; info=r.reason; }
+    else                       { cls+='err'; icon='✗'; info=r.error || 'chyba'; }
+    item.className = cls;
+    item.innerHTML = '<span>'+icon+'</span><span class="file-name">'+r.file.name+'</span><span class="file-info">'+info+'</span>'+
+                     '<button onclick="removeFile('+idx+')" style="background:transparent;border:none;cursor:pointer;font-size:14px;opacity:.5">✕</button>';
+    c.appendChild(item);
+  });
+}
+
+function getSummaryRows(){
+  var all = [];
+  fileResults.forEach(function(r){ if(r.status === 'ok') all = all.concat(r.summaryRows); });
+
+  // SK MS pre pill produkty — rebuild z fileResults (každý pill file má pillProductTotals + pillRegionTotals)
+  // Per yymm: SK = sum(productTotals across regions) / sum(regionTotals across regions)
+  var skMsByProd = {}; // { productName: { yymm: skMs } }
+  Object.keys(PILL_PRODUCT_MAP).forEach(function(prodKey){
+    var prodName = PILL_PRODUCT_MAP[prodKey];
+    var byYymm = {}; // { yymm: { our, total } }
+    fileResults.forEach(function(r){
+      if(r.status !== 'ok' || r.productCode !== 'PILL') return;
+      var pt = r.pillProductTotals[prodKey] || {};
+      var rt = r.pillRegionTotals || {};
+      Object.keys(pt).forEach(function(yymm){
+        if(!byYymm[yymm]) byYymm[yymm] = { our: 0, total: 0 };
+        byYymm[yymm].our += pt[yymm];
+      });
+      Object.keys(rt).forEach(function(yymm){
+        if(!byYymm[yymm]) byYymm[yymm] = { our: 0, total: 0 };
+        byYymm[yymm].total += rt[yymm];
+      });
+    });
+    skMsByProd[prodName] = {};
+    Object.keys(byYymm).forEach(function(yymm){
+      var b = byYymm[yymm];
+      skMsByProd[prodName][yymm] = b.total > 0 ? (b.our / b.total).toFixed(4) : '';
+    });
+  });
+  // Doplň sk_ms do pill summary rows (kde je sk_ms zatiaľ '')
+  all.forEach(function(row){
+    if(row.sk_ms === '' && skMsByProd[row.produkt] && skMsByProd[row.produkt][row.mesiac] !== undefined) {
+      row.sk_ms = skMsByProd[row.produkt][row.mesiac];
+    }
+  });
+
+  // Sort: produkt, oblast, mesiac
+  all.sort(function(a,b){
+    if(a.produkt !== b.produkt) return a.produkt.localeCompare(b.produkt);
+    if(a.oblast  !== b.oblast)  return a.oblast.localeCompare(b.oblast);
+    return a.mesiac - b.mesiac;
+  });
+  return all;
+}
+
+function getOkresyRows(){
+  // Group by produkt+oblast+okres+kvartal — multiple files for same combo merge values
+  var map = {};
+  fileResults.forEach(function(r){
+    if(r.status !== 'ok') return;
+    r.okresyRows.forEach(function(row){
+      var key = row.produkt + '|' + row.oblast + '|' + row.okres + '|' + row.kvartal;
+      if(!map[key]) map[key] = JSON.parse(JSON.stringify(row));
+      else {
+        // Merge — overwrite empty fields with non-empty
+        Object.keys(row).forEach(function(k){
+          if(row[k] !== '' && row[k] !== undefined && row[k] !== null) map[key][k] = row[k];
+        });
+      }
+    });
+  });
+  var all = Object.keys(map).map(function(k){ return map[k]; });
+  all.sort(function(a,b){
+    if(a.produkt !== b.produkt) return a.produkt.localeCompare(b.produkt);
+    if(a.oblast  !== b.oblast)  return a.oblast.localeCompare(b.oblast);
+    if(a.kvartal !== b.kvartal) return a.kvartal.localeCompare(b.kvartal);
+    return a.okres.localeCompare(b.okres);
+  });
+  return all;
+}
+
+function setTab(tab){ currentTab = tab; renderPreview(); }
+
+function renderPreview(){
+  var body = document.getElementById('preview-body');
+  var sumRows = getSummaryRows();
+  var okrRows = getOkresyRows();
+
+  if(sumRows.length === 0 && okrRows.length === 0){
+    body.innerHTML = '<div class="empty-state">Zatiaľ žiadne validné dáta. ' +
+      (fileResults.length > 0 ? 'Skontroluj log nižšie.' : 'Pridaj súbory vyššie.') + '</div>';
+    return;
+  }
+  body.innerHTML =
+    '<div class="summary">' +
+      '<div class="summary-card"><div class="summary-lbl">Summary riadkov</div><div class="summary-val">'+sumRows.length+'</div></div>' +
+      '<div class="summary-card"><div class="summary-lbl">Okresy riadkov</div><div class="summary-val">'+okrRows.length+'</div></div>' +
+    '</div>' +
+    '<div class="tabs">' +
+      '<button class="tab '+(currentTab==='summary'?'active':'')+'" onclick="setTab(\'summary\')">📊 Summary ('+sumRows.length+')</button>' +
+      '<button class="tab '+(currentTab==='okresy'?'active':'')+'" onclick="setTab(\'okresy\')">📍 Okresy ('+okrRows.length+')</button>' +
+    '</div>' +
+    '<div class="preview-wrap"><table id="preview-table"></table></div>' +
+    '<div class="actions">' +
+      '<button class="btn btn-primary" onclick="copyTab()">📋 Kopírovať '+(currentTab==='summary'?'Summary':'Okresy')+' (TSV)</button>' +
+      '<button class="btn btn-link" onclick="resetAll()">↻ Začať znova</button>' +
+    '</div>';
+  renderTable(currentTab === 'summary' ? sumRows : okrRows);
+}
+
+function renderTable(rows){
+  var t = document.getElementById('preview-table');
+  if(!t || !rows.length) { if(t) t.innerHTML = ''; return; }
+  var cols = Object.keys(rows[0]);
+  var html = '<thead><tr>';
+  cols.forEach(function(c){ html += '<th>'+c+'</th>'; });
+  html += '</tr></thead><tbody>';
+  rows.slice(0, 200).forEach(function(r){
+    html += '<tr>';
+    cols.forEach(function(c){
+      var v = r[c];
+      var isNum = typeof v === 'number' || (typeof v === 'string' && /^-?\d+(\.\d+)?$/.test(v));
+      html += '<td'+(isNum ? ' class="num"' : '')+'>'+(v===''||v===undefined||v===null ? '' : v)+'</td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody>';
+  if(rows.length > 200) html += '<tfoot><tr><td colspan="'+cols.length+'" style="text-align:center;color:#94A3B8;font-style:italic">... a ďalších '+(rows.length-200)+' riadkov</td></tr></tfoot>';
+  t.innerHTML = html;
+}
+
+function copyTab(){
+  var rows = currentTab === 'summary' ? getSummaryRows() : getOkresyRows();
+  if(!rows.length) return toast('Žiadne dáta na skopírovanie');
+  var cols = Object.keys(rows[0]);
+  var lines = [cols.join('\t')];
+  rows.forEach(function(r){
+    lines.push(cols.map(function(c){ var v = r[c]; return (v===''||v===undefined||v===null) ? '' : v; }).join('\t'));
+  });
+  navigator.clipboard.writeText(lines.join('\n')).then(function(){
+    toast('✓ '+rows.length+' riadkov skopírovaných — vlož do Sheets');
+  }).catch(function(err){ toast('✗ Chyba: ' + err.message); });
+}
+
+// Drag & drop with folder support
+var dz = document.getElementById('drop-zone');
+var fi = document.getElementById('file-input');
+dz.addEventListener('click', function(){ fi.click(); });
+dz.addEventListener('dragover', function(e){ e.preventDefault(); dz.classList.add('dragover'); });
+dz.addEventListener('dragleave', function(){ dz.classList.remove('dragover'); });
+dz.addEventListener('drop', function(e){
+  e.preventDefault(); dz.classList.remove('dragover');
+  var items = e.dataTransfer.items;
+  if(items && items.length && items[0].webkitGetAsEntry){
+    var all = []; var pending = 0;
+    function walk(entry){
+      pending++;
+      if(entry.isFile){ entry.file(function(f){ all.push(f); pending--; if(!pending) handleFiles(all); }); }
+      else if(entry.isDirectory){
+        var rdr = entry.createReader();
+        rdr.readEntries(function(es){ es.forEach(walk); pending--; if(!pending) handleFiles(all); });
+      } else { pending--; }
+    }
+    var any = false;
+    for(var i = 0; i < items.length; i++){ var ent = items[i].webkitGetAsEntry(); if(ent){ any = true; walk(ent); } }
+    if(!any && e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+  } else if(e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+});
+fi.addEventListener('change', function(e){ if(e.target.files.length) handleFiles(e.target.files); });
+</script>
+</body>
+</html>
