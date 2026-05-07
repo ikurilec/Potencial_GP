@@ -1900,7 +1900,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.16.7';
+var APP_VERSION = '2.16.8';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9865,7 +9865,14 @@ function loadPharmaData(code, oblast, kvartal) {
     .then(function(resp) {
       delete PHARMA_STATE.loading[cacheKey];
       if (resp.ok) {
-        var hasData = (resp.summary && resp.summary.length > 0) || (resp.okresy && resp.okresy.length > 0);
+        // Skontroluj či dáta obsahujú reálne hodnoty (nie len prázdne riadky)
+        var hasRealSumm = resp.summary && resp.summary.some(function(s){
+          return (parseFloat(s.terit_ms) > 0) || (parseFloat(s.sk_ms) > 0);
+        });
+        var hasRealOkr = resp.okresy && resp.okresy.some(function(o){
+          return (parseFloat(o.nas_m1) > 0) || (parseFloat(o.nas_m2) > 0) || (parseFloat(o.nas_m3) > 0);
+        });
+        var hasData = hasRealSumm || hasRealOkr;
         if (!hasData) {
           // Dáta pre tento Q ešte nie sú (IQVIA nenahrané) — skús predchádzajúci Q
           if (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal) {
@@ -10618,7 +10625,12 @@ function pharmaRender(code) {
     var tv = parseFloat(s.terit_ms); var sv = parseFloat(s.sk_ms);
     return (!isNaN(tv) && tv > 0) || (!isNaN(sv) && sv > 0);
   });
-  if (!hasRealSummData && !okresy.length) {
+  // Okresy môžu existovať ako prázdne riadky (Q2 ešte nenahrané) — kontroluj reálne hodnoty
+  var hasRealOkresyData = okresy.some(function(o) {
+    var m1 = parseFloat(o.nas_m1), m2 = parseFloat(o.nas_m2), m3 = parseFloat(o.nas_m3);
+    return (!isNaN(m1) && m1 > 0) || (!isNaN(m2) && m2 > 0) || (!isNaN(m3) && m3 > 0);
+  });
+  if (!hasRealSummData && !hasRealOkresyData) {
     var prevKvR = pharmaKvartalPrev(PHARMA_STATE.kvartal);
     if (prevKvR !== PHARMA_STATE.kvartal) {
       delete PHARMA_STATE.cache[cacheKey]; // vymaž prázdny cache záznam
