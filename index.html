@@ -1900,7 +1900,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.16.2';
+var APP_VERSION = '2.16.3';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5060,15 +5060,65 @@ var GYN_APP     = { nav: 'plnenie', q: 1, year: 2026, plCache: {}, plLoading: fa
 var GYN_LINIA_LABEL = { pill: '💊 Pill', patch: '🩹 Patch' };
 var GYN_ROLE_LABEL  = { 'gyn-rep':'Reprezentant', 'gyn-am':'Area Manager', 'gyn-pm':'Produktový manažér', 'gyn-bum':'Business Unit Manager' };
 // Mapovanie produkt → línia (kľúč = lowercase názov produktu zo Sheets)
+// 'both' = produkt patrí do Pill aj Patch (zobrazí sa v oboch sekciách)
 var GYN_PRODUCT_LINIA = {
   // Pill
-  'azalia':'pill','belara':'pill','daylette':'pill','daylla':'pill','drovelis':'pill',
-  'escapelle':'pill','evra':'pill','immunocaps':'pill','maitalon':'pill','mistra':'pill',
+  'belara':'pill','daylette':'pill','daylla':'pill','drovelis':'pill',
+  'evra':'pill','immunocaps':'pill','maitalon':'pill','mistra':'pill',
   'papilocare hgel':'pill',
-  // Patch
+  // Patch (azalia presunutá z pill keďže je to patch produkt)
+  'azalia':'patch',
   'globifer':'patch','lenzetto':'patch','levosert':'patch','lidbree':'patch',
-  'ovosicare':'patch','ryeqo':'patch'
+  'ovosicare':'patch','ryeqo':'patch',
+  // Both lines
+  'escapelle':'both'
 };
+// Mapovanie PILL login → PATCH login (rovnaký región, prefix I → A)
+// Používa sa na presmerovanie produktov ktoré patria k patch repovi ale predávajú ich pill repi
+var GYN_PILL_TO_PATCH = {
+  'b.sivakova':       'k.basternakova',  // BAPI → BAPA
+  'a.almanova':       'sepa',            // SEPI → SEPA
+  'l.petrasova':      'm.bohacik',       // STPI → STPA
+  'j.tavoda':         'm.olejnakova',    // VYPI → VYPA
+  'k.stefanovicova':  'a.slezackova'     // ZAPI → ZAPA
+};
+// Produkty ktoré sa majú presunúť z pill repa na zodpovedajúceho patch repa
+var GYN_REASSIGN_TO_PATCH = ['azalia'];
+
+function gynPreprocessData(data) {
+  if(!data || !data.predaje) return data;
+  GYN_REASSIGN_TO_PATCH.forEach(function(prod){
+    Object.keys(GYN_PILL_TO_PATCH).forEach(function(pillLogin){
+      var patchLogin = GYN_PILL_TO_PATCH[pillLogin];
+      // Plan
+      if(data.plan && data.plan[pillLogin] && data.plan[pillLogin][prod]) {
+        if(!data.plan[patchLogin]) data.plan[patchLogin] = {};
+        data.plan[patchLogin][prod] = (data.plan[patchLogin][prod]||0) + data.plan[pillLogin][prod];
+        delete data.plan[pillLogin][prod];
+      }
+      // Predaje total + byMonth
+      var pillP = data.predaje[pillLogin];
+      if(!pillP) return;
+      if(pillP.total && pillP.total[prod]) {
+        if(!data.predaje[patchLogin]) data.predaje[patchLogin] = {total:{}, byMonth:{}};
+        if(!data.predaje[patchLogin].total) data.predaje[patchLogin].total = {};
+        data.predaje[patchLogin].total[prod] = (data.predaje[patchLogin].total[prod]||0) + pillP.total[prod];
+        delete pillP.total[prod];
+      }
+      if(pillP.byMonth) {
+        Object.keys(pillP.byMonth).forEach(function(m){
+          if(pillP.byMonth[m] && pillP.byMonth[m][prod]) {
+            if(!data.predaje[patchLogin].byMonth) data.predaje[patchLogin].byMonth = {};
+            if(!data.predaje[patchLogin].byMonth[m]) data.predaje[patchLogin].byMonth[m] = {};
+            data.predaje[patchLogin].byMonth[m][prod] = (data.predaje[patchLogin].byMonth[m][prod]||0) + pillP.byMonth[m][prod];
+            delete pillP.byMonth[m][prod];
+          }
+        });
+      }
+    });
+  });
+  return data;
+}
 
 function gynEsc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -5244,6 +5294,7 @@ function gynPlnenieShow(el, user) {
     .then(function(r){ return r.json(); })
     .then(function(data){
       GYN_APP.plLoading = false;
+      gynPreprocessData(data);
       GYN_APP.plCache[q] = data;
       if(GYN_APP.nav === 'plnenie') gynPlnenieRender(el, user, data);
     })
@@ -5348,8 +5399,9 @@ function gynPlnenieRenderMgr(el, user, data) {
     var pillP = [], patchP = [], otherP = [];
     prodAggs.forEach(function(p){
       var lin = GYN_PRODUCT_LINIA[p.name.trim().toLowerCase()];
-      if(lin === 'pill')  pillP.push(p);
+      if(lin === 'pill')       pillP.push(p);
       else if(lin === 'patch') patchP.push(p);
+      else if(lin === 'both')  { pillP.push(p); patchP.push(p); }
       else otherP.push(p);
     });
     function renderProdCards(list) {
