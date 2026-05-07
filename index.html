@@ -1124,6 +1124,9 @@
   .gyn-prod-pct.g{color:#059669}.gyn-prod-pct.o{color:#D97706}.gyn-prod-pct.r{color:#DC2626}
   /* GYN REP ROWS (manager plnenie) */
   .gyn-rep-pl{background:#fff;border-radius:10px;padding:12px 14px;margin:0 0 6px;display:flex;align-items:center;gap:10px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+  .gyn-rep-pl-clickable{cursor:pointer;transition:transform .12s,box-shadow .12s}
+  .gyn-rep-pl-clickable:active{transform:scale(0.99);box-shadow:0 0 0 1px #CBD5E1 inset}
+  .gyn-rep-pl-clickable:hover{box-shadow:0 2px 8px rgba(15,23,42,.08)}
   .gyn-rep-pl-av{width:36px;height:36px;border-radius:50%;background:#0C1E35;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
   .gyn-rep-pl-info{flex:1;min-width:0}
   .gyn-rep-pl-name{font-size:13px;font-weight:600;color:#0F172A}
@@ -1900,7 +1903,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.16.8';
+var APP_VERSION = '2.16.9';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5056,7 +5059,8 @@ function initLogin() {
 // ═══════════════════════════════════════════════════════════
 
 var GYN_STATE   = { repList: [] };
-var GYN_APP     = { nav: 'plnenie', q: 1, year: 2026, plCache: {}, plLoading: false };
+var GYN_APP     = { nav: 'plnenie', q: 1, year: 2026, plCache: {}, plLoading: false,
+                    detailLogin: null, detailMeno: '', detailRegion: '' };
 var GYN_LINIA_LABEL = { pill: '💊 Pill', patch: '🩹 Patch' };
 var GYN_ROLE_LABEL  = { 'gyn-rep':'Reprezentant', 'gyn-am':'Area Manager', 'gyn-pm':'Produktový manažér', 'gyn-bum':'Business Unit Manager' };
 // Mapovanie produkt → línia (kľúč = lowercase názov produktu zo Sheets)
@@ -5273,6 +5277,8 @@ function gynRenderShell(user) {
 // ── Navigácia medzi tabmi ──
 function gynNavTo(tab) {
   GYN_APP.nav = tab;
+  // pri prepnutí na ľubovoľný tab zatvor otvorený rep detail
+  GYN_APP.detailLogin = null;
   document.querySelectorAll('#gyn-nav .gyn-nav-btn').forEach(function(b){
     b.classList.toggle('active', b.getAttribute('data-tab') === tab);
   });
@@ -5334,8 +5340,71 @@ function gynPlnenieShow(el, user) {
 }
 
 function gynPlnenieRender(el, user, data) {
-  if(user.role === 'gyn-rep') gynPlnenieRenderRep(el, user, data);
-  else                         gynPlnenieRenderMgr(el, user, data);
+  if(user.role === 'gyn-rep')           gynPlnenieRenderRep(el, user, data);
+  else if(GYN_APP.detailLogin)          gynPlnenieRenderRepDetail(el, data);
+  else                                   gynPlnenieRenderMgr(el, user, data);
+}
+
+function gynOpenRepDetail(login, meno, region) {
+  GYN_APP.detailLogin  = login;
+  GYN_APP.detailMeno   = meno;
+  GYN_APP.detailRegion = region;
+  window.scrollTo(0, 0);
+  gynRenderContent(getSession());
+}
+
+function gynCloseRepDetail() {
+  GYN_APP.detailLogin = null;
+  GYN_APP.detailMeno  = '';
+  GYN_APP.detailRegion = '';
+  gynRenderContent(getSession());
+}
+
+function gynPlnenieRenderRepDetail(el, data) {
+  var login  = GYN_APP.detailLogin;
+  var meno   = GYN_APP.detailMeno   || login;
+  var region = GYN_APP.detailRegion || '';
+  var agg    = gynBuildRepAgg(login, data);
+  var cls    = gynColorClass(agg.pct);
+
+  // Header s back tlačidlom + meno + región
+  var html =
+    '<div style="display:flex;align-items:center;gap:10px;margin:0 0 12px">' +
+      '<button type="button" class="mgr-back" onclick="gynCloseRepDetail()">← Späť</button>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:14px;font-weight:700;color:#0F172A">' + gynEsc(meno) + '</div>' +
+        '<div style="font-size:11px;color:#94A3B8;font-weight:600">' + gynEsc(region) + '</div>' +
+      '</div>' +
+    '</div>' +
+    gynQTabsHtml() +
+    '<div class="gyn-tc">' +
+      '<div class="gyn-tc-pct '+cls+'">' + gynFmtPct(agg.pct) + '</div>' +
+      '<div class="gyn-tc-label">Plnenie Q' + GYN_APP.q + ' ' + GYN_APP.year + '</div>' +
+      '<div class="gyn-tc-eur">' +
+        '<div class="gyn-tc-eur-item"><strong>' + gynFmtEur(agg.totalPred) + '</strong>predaje</div>' +
+        '<div class="gyn-tc-eur-item"><strong>' + gynFmtEur(agg.totalPlan) + '</strong>plán</div>' +
+      '</div>' +
+    '</div>';
+
+  if(agg.prods.length === 0) {
+    html += '<div style="padding:16px 0;text-align:center;color:#94A3B8;font-size:13px">' +
+      'Pre Q' + GYN_APP.q + ' nie sú žiadne plány ani predaje.</div>';
+  } else {
+    html += '<div class="gyn-section-lbl">Per produkt</div>';
+    agg.prods.forEach(function(p){
+      var pc   = gynColorClass(p.pct);
+      var barW = p.pct !== null ? Math.min(100, p.pct).toFixed(1) : 0;
+      html += '<div class="gyn-prod">' +
+        '<div class="gyn-prod-name">' + gynEsc(p.name) + '</div>' +
+        '<div class="gyn-prod-track"><div class="gyn-prod-fill '+pc+'" style="width:'+barW+'%"></div></div>' +
+        '<div class="gyn-prod-foot">' +
+          '<span>' + gynFmtEur(p.predaj) + ' / ' + gynFmtEur(p.plan) + '</span>' +
+          '<span class="gyn-prod-pct '+pc+'">' + gynFmtPct(p.pct) + '</span>' +
+        '</div>' +
+      '</div>';
+    });
+  }
+  el.innerHTML = html;
 }
 
 function gynPlnenieRenderRep(el, user, data) {
@@ -5474,13 +5543,17 @@ function gynPlnenieRenderMgr(el, user, data) {
     });
     html += '<div class="pl-section-lbl">' + group.label + '</div>';
     items.forEach(function(a){
-      html += '<div class="gyn-rep-pl">' +
+      var menoAttr   = (a.rep.meno   || '').replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+      var regionAttr = (a.rep.region || '').replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+      var loginAttr  = (a.rep.login  || '').replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+      html += '<div class="gyn-rep-pl gyn-rep-pl-clickable" onclick="gynOpenRepDetail(\''+loginAttr+'\',\''+menoAttr+'\',\''+regionAttr+'\')">' +
         '<div class="gyn-rep-pl-av">' + gynInitials(a.rep.meno) + '</div>' +
         '<div class="gyn-rep-pl-info">' +
           '<div class="gyn-rep-pl-name">' + gynEsc(a.rep.meno) + '</div>' +
           '<div class="gyn-rep-pl-meta">' + gynEsc(a.rep.region||'') + '</div>' +
         '</div>' +
         '<div class="gyn-rep-pl-pct '+gynColorClass(a.agg.pct)+'">' + gynFmtPctOrEur(a.agg.pct, a.agg.totalPred) + '</div>' +
+        '<div style="color:#94A3B8;font-size:18px;margin-left:4px">›</div>' +
       '</div>';
     });
   });
