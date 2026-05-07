@@ -1903,7 +1903,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.16.10';
+var APP_VERSION = '2.16.11';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5616,15 +5616,16 @@ function gynPlnenieRenderMgr(el, user, data) {
   });
 
   var clsTot = plnenieColorClass(totPct);
+  var totPctAttr = (totPct !== null && !isNaN(totPct)) ? totPct : '';
   var html = gynQTabsHtml() +
     '<div class="pl-sum-big">' +
         '<div class="pl-sum-big-row">' +
           '<div>' +
             '<div class="pl-sum-lbl">SLOVENSKO · ' + plnenieQLabel(q, year) + '</div>' +
-            '<div class="pl-sum-big-val '+clsTot+'">' + gynFmtPct(totPct) + '</div>' +
+            '<div class="pl-sum-big-val '+clsTot+'" id="gyn-sum-pct" data-pct="'+totPctAttr+'">' + (totPct !== null ? '0,00%' : '—') + '</div>' +
           '</div>' +
           '<div style="text-align:right">' +
-            '<div class="pl-sum-big-total"><strong>' + gynFmtEur(totPred) + '</strong></div>' +
+            '<div class="pl-sum-big-total"><strong id="gyn-sum-eur">0 €</strong></div>' +
             '<div class="pl-sum-big-plan">z plánu ' + gynFmtEur(totPlan) + '</div>' +
           '</div>' +
         '</div>';
@@ -5645,10 +5646,12 @@ function gynPlnenieRenderMgr(el, user, data) {
         var predHtml = (p.predikcia !== null && p.predikcia !== undefined)
           ? '<span style="font-size:9px;color:#94A3B8;font-weight:500;white-space:nowrap">predikcia ' + plnenieFormatPct(p.predikcia) + '</span>'
           : '';
+        var pctAttr  = (p.pct !== null && !isNaN(p.pct)) ? p.pct : '';
+        var initVal  = (p.pct !== null && !isNaN(p.pct)) ? '0,00%' : gynFmtPctOrEur(p.pct, p.predaj);
         out += '<div class="pl-sum-prod pl-sum-prod-c" style="flex-direction:column;align-items:stretch;gap:2px">' +
           '<div style="display:flex;align-items:center;justify-content:space-between;gap:4px">' +
             '<span class="pl-sum-prod-name">' + gynEsc(p.name) + '</span>' +
-            '<strong class="'+pc+'">' + gynFmtPctOrEur(p.pct, p.predaj) + '</strong>' +
+            '<strong class="'+pc+'" data-pct="'+pctAttr+'">' + initVal + '</strong>' +
           '</div>' +
           predHtml +
           '</div>';
@@ -5674,9 +5677,11 @@ function gynPlnenieRenderMgr(el, user, data) {
     var predHtml = (predikcia !== null)
       ? '<div style="font-size:10.5px;color:#94A3B8;font-weight:500;margin-top:4px">predikcia ' + plnenieFormatPct(predikcia) + '</div>'
       : '';
+    var pctAttr = (pct !== null && !isNaN(pct)) ? pct : '';
+    var initVal = (pct !== null && !isNaN(pct)) ? '0,00%' : gynFmtPctOrEur(pct, pred);
     return '<div class="pl-region-card">' +
       '<div class="pl-region-lbl">' + label + '</div>' +
-      '<div class="pl-region-val '+plnenieColorClass(pct)+'">' + gynFmtPctOrEur(pct, pred) + '</div>' +
+      '<div class="pl-region-val '+plnenieColorClass(pct)+'" data-pct="'+pctAttr+'">' + initVal + '</div>' +
       predHtml +
     '</div>';
   }
@@ -5725,13 +5730,38 @@ function gynPlnenieRenderMgr(el, user, data) {
           '<div class="pl-rep-name">' + gynEsc(a.rep.meno) + '</div>' +
           '<div class="pl-rep-meta">' + gynEsc(a.rep.region||'') + '</div>' +
         '</div>' +
-        '<div class="pl-rep-pct '+plnenieColorClass(a.agg.pct)+'">' + (a.agg.pct !== null ? plnenieFormatPct(a.agg.pct) : (a.agg.totalPred > 0 ? plnenieFormatEUR(a.agg.totalPred) : '—')) + '</div>' +
+        '<div class="pl-rep-pct '+plnenieColorClass(a.agg.pct)+'" data-pct="'+((a.agg.pct !== null && !isNaN(a.agg.pct)) ? a.agg.pct : '')+'">' + (a.agg.pct !== null ? '0,00%' : (a.agg.totalPred > 0 ? plnenieFormatEUR(a.agg.totalPred) : '—')) + '</div>' +
         '<div class="pl-rep-chev">›</div>' +
       '</div>';
     });
     html += '</div>'; // pl-rep-list
   });
   el.innerHTML = html;
+
+  // ── Animácie count-up ──
+  // 1) Veľké celkové %
+  var bigPctEl = el.querySelector('#gyn-sum-pct');
+  if(bigPctEl && bigPctEl.getAttribute('data-pct') !== '') {
+    plnenieCountUp(bigPctEl, parseFloat(bigPctEl.getAttribute('data-pct')));
+  }
+  // 2) Celkové predaje EUR
+  var bigEurEl = el.querySelector('#gyn-sum-eur');
+  if(bigEurEl) plnenieCountUpEUR(bigEurEl, totPred);
+  // 3) Produktové karty (staggered)
+  el.querySelectorAll('.pl-sum-prods strong[data-pct]').forEach(function(p, i){
+    var v = parseFloat(p.getAttribute('data-pct'));
+    if(!isNaN(v)) setTimeout(function(){ plnenieCountUp(p, v); }, i * 60);
+  });
+  // 4) PILL / PATCH karty
+  el.querySelectorAll('.pl-region-val[data-pct]').forEach(function(r, i){
+    var v = parseFloat(r.getAttribute('data-pct'));
+    if(!isNaN(v)) setTimeout(function(){ plnenieCountUp(r, v); }, 100 + i * 100);
+  });
+  // 5) Rep karty (staggered)
+  el.querySelectorAll('.pl-rep-pct[data-pct]').forEach(function(r, i){
+    var v = parseFloat(r.getAttribute('data-pct'));
+    if(!isNaN(v)) setTimeout(function(){ plnenieCountUp(r, v); }, 200 + i * 50);
+  });
 }
 
 // ── REBRÍČEK & NÁVŠTEVY — placeholder ──
