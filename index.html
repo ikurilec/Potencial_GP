@@ -1900,7 +1900,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.16.6';
+var APP_VERSION = '2.16.7';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5089,16 +5089,15 @@ var GYN_REASSIGN_TO_PATCH = ['azalia'];
 
 function gynPreprocessData(data) {
   if(!data || !data.predaje) return data;
+  // 1) Reassign — produkty ako Azalia presunúť z pill repa na patch repa
   GYN_REASSIGN_TO_PATCH.forEach(function(prod){
     Object.keys(GYN_PILL_TO_PATCH).forEach(function(pillLogin){
       var patchLogin = GYN_PILL_TO_PATCH[pillLogin];
-      // Plan
       if(data.plan && data.plan[pillLogin] && data.plan[pillLogin][prod]) {
         if(!data.plan[patchLogin]) data.plan[patchLogin] = {};
         data.plan[patchLogin][prod] = (data.plan[patchLogin][prod]||0) + data.plan[pillLogin][prod];
         delete data.plan[pillLogin][prod];
       }
-      // Predaje total + byMonth
       var pillP = data.predaje[pillLogin];
       if(!pillP) return;
       if(pillP.total && pillP.total[prod]) {
@@ -5114,6 +5113,32 @@ function gynPreprocessData(data) {
             if(!data.predaje[patchLogin].byMonth[m]) data.predaje[patchLogin].byMonth[m] = {};
             data.predaje[patchLogin].byMonth[m][prod] = (data.predaje[patchLogin].byMonth[m][prod]||0) + pillP.byMonth[m][prod];
             delete pillP.byMonth[m][prod];
+          }
+        });
+      }
+    });
+  });
+  // 2) Both-line produkty (Escapelle) — predaje zduplikuj z pill repa do patch repa
+  // (plán je už duplikovaný v Sheete; predaje boli len u pill repa → bez tohto by patch rep mal predaje 0)
+  var BOTH_PRODS = [];
+  Object.keys(GYN_PRODUCT_LINIA).forEach(function(pk){
+    if(GYN_PRODUCT_LINIA[pk] === 'both') BOTH_PRODS.push(pk);
+  });
+  BOTH_PRODS.forEach(function(prod){
+    Object.keys(GYN_PILL_TO_PATCH).forEach(function(pillLogin){
+      var patchLogin = GYN_PILL_TO_PATCH[pillLogin];
+      var pillP = data.predaje[pillLogin];
+      if(!pillP || !pillP.total || !pillP.total[prod]) return;
+      if(!data.predaje[patchLogin]) data.predaje[patchLogin] = {total:{}, byMonth:{}};
+      if(!data.predaje[patchLogin].total) data.predaje[patchLogin].total = {};
+      // copy (nie delete)
+      data.predaje[patchLogin].total[prod] = (data.predaje[patchLogin].total[prod]||0) + pillP.total[prod];
+      if(pillP.byMonth) {
+        Object.keys(pillP.byMonth).forEach(function(m){
+          if(pillP.byMonth[m] && pillP.byMonth[m][prod]) {
+            if(!data.predaje[patchLogin].byMonth) data.predaje[patchLogin].byMonth = {};
+            if(!data.predaje[patchLogin].byMonth[m]) data.predaje[patchLogin].byMonth[m] = {};
+            data.predaje[patchLogin].byMonth[m][prod] = (data.predaje[patchLogin].byMonth[m][prod]||0) + pillP.byMonth[m][prod];
           }
         });
       }
