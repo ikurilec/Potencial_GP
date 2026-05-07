@@ -1908,7 +1908,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.17.0';
+var APP_VERSION = '2.17.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5698,7 +5698,7 @@ function gynPharmaRender(resp) {
     // Posledných 6 mesiacov (rovnako ako Golem)
     var trendRows = summary.slice(-6);
     var n = trendRows.length;
-    var W = 480, H = 220, padL = 44, padR = 30, padT = 18, padB = 42;
+    var W = 480, H = 220, padL = 44, padR = 70, padT = 18, padB = 42;
     var cW = W - padL - padR, cH = H - padT - padB;
 
     // Y rozsah — pomôže nám ukázať aj konkurentov
@@ -5753,7 +5753,7 @@ function gynPharmaRender(resp) {
     svg += '<path d="'+fillPath+'" fill="url(#gynNasGrad)"/>';
 
     // SK MS čiara (svetlomodrá prerušovaná)
-    svg += '<polyline class="gpharma-line" data-line-key="sk" points="'+skPts+'" fill="none" stroke="#93C5FD" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4,3" opacity="0.85"/>';
+    svg += '<polyline class="gpharma-line" data-line-key="sk" points="'+skPts+'" fill="none" stroke="#93C5FD" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5,4" opacity="0.85"/>';
 
     // Konkurenti
     compLines.forEach(function(c, ci){
@@ -5764,15 +5764,15 @@ function gynPharmaRender(resp) {
         return v != null ? xPos(i).toFixed(1)+','+yPos(v/100).toFixed(1) : null;
       }).filter(Boolean).join(' ');
       if(pts){
-        svg += '<polyline class="gpharma-line" data-line-key="k'+ci+'" points="'+pts+'" fill="none" stroke="'+compColors[ci%compColors.length]+'" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"/>';
+        svg += '<polyline class="gpharma-line" data-line-key="k'+ci+'" points="'+pts+'" fill="none" stroke="'+compColors[ci%compColors.length]+'" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity="0.78"/>';
       }
     });
 
     // Náš produkt — výrazná čiara
-    svg += '<polyline class="gpharma-line" data-line-key="nas" points="'+teritPts+'" fill="none" stroke="'+teritColor+'" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>';
+    svg += '<polyline class="gpharma-line" data-line-key="nas" points="'+teritPts+'" fill="none" stroke="'+teritColor+'" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/>';
     // Body na našej čiare
     trendRows.forEach(function(s, i){
-      svg += '<circle cx="'+xPos(i)+'" cy="'+yPos(s.terit_ms||0)+'" r="3" fill="'+teritColor+'" stroke="#fff" stroke-width="1.5"/>';
+      svg += '<circle cx="'+xPos(i)+'" cy="'+yPos(s.terit_ms||0)+'" r="4" fill="'+teritColor+'" stroke="#fff" stroke-width="2"/>';
     });
     // Last value badge
     if(n > 0) {
