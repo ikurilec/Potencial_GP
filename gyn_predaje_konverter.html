@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<title>Gyn Predaje konverter — IQVIA → Sheets</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#EAECF2;min-height:100vh;padding:24px 16px;color:#1A2A3A}
+.app{max-width:1100px;margin:0 auto}
+.hdr{background:#0C1E35;color:#fff;border-radius:16px;padding:18px 22px;margin-bottom:14px;box-shadow:0 10px 40px rgba(10,25,50,.25)}
+.hdr h1{font-size:20px;font-weight:800;margin-bottom:3px;letter-spacing:-.01em}
+.hdr p{font-size:12px;color:#7AABCC}
+.step{background:#fff;border-radius:14px;padding:16px 20px;margin-bottom:10px;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+.step-num{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;background:#0C1E35;color:#fff;font-size:12px;font-weight:700;border-radius:50%;margin-right:8px}
+.step-title{font-size:14px;font-weight:700;display:flex;align-items:center;margin-bottom:10px}
+.drop-zone{border:2px dashed #CBD5E1;border-radius:12px;padding:32px;text-align:center;color:#64748B;font-size:14px;transition:all .2s;cursor:pointer;background:#F8FAFC}
+.drop-zone:hover,.drop-zone.dragover{border-color:#3B82F6;background:#EFF6FF;color:#2563EB}
+.drop-zone-icon{font-size:32px;margin-bottom:6px}
+.drop-zone-sub{font-size:11px;margin-top:4px;color:#94A3B8}
+.files{margin-top:10px}
+.file-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#F8FAFC;border-radius:8px;margin-bottom:4px;font-size:12px}
+.file-item.ok{background:#ECFDF5;color:#065F46}
+.file-item.err{background:#FEF2F2;color:#991B1B}
+.file-item.warn{background:#FEF3C7;color:#92400E}
+.file-item.skip{background:#F1F5F9;color:#64748B;opacity:.7}
+.file-icon{font-size:14px}
+.file-name{flex:1;font-weight:600;font-family:monospace;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-info{font-size:11px;opacity:.85}
+.actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.btn{padding:10px 16px;border-radius:9px;border:none;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
+.btn-primary{background:#16A34A;color:#fff;box-shadow:0 4px 12px rgba(22,163,74,.3)}
+.btn-primary:hover{background:#15803D}
+.btn-primary:disabled{background:#CBD5E1;cursor:not-allowed;box-shadow:none}
+.btn-secondary{background:#fff;color:#0C1E35;border:1.5px solid #E2E8F0}
+.btn-secondary:hover{border-color:#0C1E35}
+.btn-link{background:transparent;color:#64748B;font-size:12px}
+.preview-wrap{overflow-x:auto;margin-top:6px;border-radius:8px;border:1px solid #E2E8F0;max-height:400px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:11px;font-family:monospace}
+th{background:#F1F5F9;color:#0F172A;font-weight:700;padding:7px 9px;text-align:left;position:sticky;top:0;white-space:nowrap;border-bottom:2px solid #CBD5E1}
+td{padding:5px 9px;border-bottom:1px solid #F1F5F9;white-space:nowrap}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+td.zero{color:#CBD5E1}
+tr:hover{background:#F8FAFC}
+.empty-state{text-align:center;padding:30px;color:#94A3B8;font-size:13px;font-style:italic}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0C1E35;color:#fff;padding:10px 18px;border-radius:9px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .25s}
+.toast.show{opacity:1}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:10px}
+.summary-card{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px 12px}
+.summary-lbl{font-size:10px;color:#64748B;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.summary-val{font-size:16px;font-weight:800;margin-top:2px;color:#0F172A;font-family:-apple-system,sans-serif}
+.hint{background:#FEF3C7;border-left:4px solid #F59E0B;padding:10px 14px;border-radius:8px;margin-bottom:10px;font-size:12px;color:#92400E}
+.debug{background:#0F172A;color:#94A3B8;padding:12px 14px;border-radius:8px;font-family:monospace;font-size:11px;max-height:200px;overflow-y:auto;white-space:pre-wrap;margin-top:8px}
+.rep-select{padding:3px 6px;border:1px solid #CBD5E1;border-radius:5px;font-size:11px;font-family:monospace;background:#fff}
+.lib-status{padding:6px 10px;border-radius:6px;font-size:11px;font-weight:600;display:inline-block;margin-left:10px}
+.lib-status.ok{background:#ECFDF5;color:#065F46}
+.lib-status.err{background:#FEF2F2;color:#991B1B}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="hdr">
+    <h1>💊 Gyn Predaje konverter <span class="lib-status" id="lib-status">...</span></h1>
+    <p>IQVIA mesačné súbory (sale-pha_mr_GYN_*) → jeden TSV pre Google Sheets tab Predaje (gyn)</p>
+  </div>
+
+  <div class="step">
+    <div class="step-title"><span class="step-num">1</span>Vlož IQVIA xlsx súbory</div>
+    <div class="drop-zone" id="drop-zone">
+      <div class="drop-zone-icon">📂</div>
+      <div>Pretiahni sem xlsx súbory (alebo celý priečinok) alebo klikni na výber</div>
+      <div class="drop-zone-sub">Spracuje len súbory <code>sale-pha_mr_GYN_&lt;REGION&gt;.xlsx</code>. Súbory KARC / Lekarne / pro-region preskočí.</div>
+      <input type="file" id="file-input" multiple accept=".xlsx,.xls" style="display:none">
+    </div>
+    <div class="files" id="files"></div>
+    <div class="debug" id="debug" style="display:none"></div>
+  </div>
+
+  <div class="step">
+    <div class="step-title"><span class="step-num">2</span>Náhľad dát <span id="preview-count" style="font-size:11px;color:#64748B;margin-left:8px;font-weight:500"></span></div>
+    <div id="preview-body">
+      <div class="empty-state">Zatiaľ žiadne dáta. Pridaj súbory vyššie.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-title"><span class="step-num">3</span>Vlož do Google Sheets</div>
+    <div class="hint">
+      <strong>Ako na to:</strong> Otvor Gyn Google Sheets → tab <code>Predaje</code> → bunka A1 → Ctrl+V (Cmd+V na Macu).
+    </div>
+    <div style="font-size:12px;color:#64748B;line-height:1.6">
+      Skopíruj celú tabuľku a <strong>prepíš</strong> existujúce dáta v tabe Predaje — aby sa neúplné mesiace prepísali úplnými keď dostaneš nové dáta.
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Library check ──
+if(typeof XLSX === 'undefined'){
+  document.getElementById('lib-status').className = 'lib-status err';
+  document.getElementById('lib-status').textContent = '✗ XLSX knižnica nenačítaná (skontroluj internet)';
+} else {
+  document.getElementById('lib-status').className = 'lib-status ok';
+  document.getElementById('lib-status').textContent = '✓ pripravené (XLSX v' + (XLSX.version || '?') + ')';
+}
+
+// ── Mapovanie REGION → reprezentant (zhodné s Pouzivatelia tabom) ──
+const REGION_MAP = {
+  BAPA: { login: 'k.basternakova',  meno: 'Katarína Bašternáková' },
+  BAPI: { login: 'b.sivakova',      meno: 'Barbora Siváková' },
+  SEPA: { login: 'sepa',            meno: 'Prázdne teritorium' },
+  SEPI: { login: 'a.almanova',      meno: 'Alica Almanová' },
+  STPA: { login: 'm.bohacik',       meno: 'Matej Boháčik' },
+  STPI: { login: 'l.petrasova',     meno: 'Ľubica Petrášová' },
+  VYPA: { login: 'm.olejnakova',    meno: 'Michaela Olejnáková' },
+  VYPI: { login: 'j.tavoda',        meno: 'Ján Ťavoda' },
+  ZAPA: { login: 'a.slezackova',    meno: 'Adriána Slezáčková' },
+  ZAPI: { login: 'k.stefanovicova', meno: 'Kornélia Štefanovičová' }
+};
+const ALL_REGIONS = Object.keys(REGION_MAP);
+
+// ── Mapovanie zdrojový stĺpec → finálny názov produktu ──
+// Viacero zdrojov → ten istý cieľ = sčíta sa (napr. PapilocareGEL07 + GEL21 = "Papilocare Hgel")
+// null = preskočiť (napr. parent "Papilocare" je už pokrytý subkomponentmi)
+const PRODUCT_MAP = {
+  // Patch línia
+  'GYNPA_Globifer':         'Globifer',
+  'GYNPA_Lenzetto':         'Lenzetto',
+  'GYNPA_Levosert':         'Levosert',
+  'GYNPA_LIDBREE':          'Lidbree',
+  'GYNPA_OVOSICARE':        'Ovosicare',
+  'GYNPI_Ryego':            'Ryeqo',
+  // Pill línia
+  'GYNPI_AZALIA':           'Azalia',
+  'GYNPI_Belara':           'Belara',
+  'GYNPI_Daylette':         'Daylette',
+  'GYNPI_Daylla':           'Daylla',
+  'GYNPI_Drovelis':         'Drovelis',
+  'GYNPI_EVRA':             'Evra',
+  'GYNPI_Maitalon':         'Maitalon',
+  'GYNPI_Mistra':           'Mistra',
+  'GYN_Escapelle':          'Escapelle',
+  'GYNPI_PapilocareCPS':    'Immunocaps',
+  'GYNPI_PapilocareGEL07':  'Papilocare Hgel',
+  'GYNPI_PapilocareGEL21':  'Papilocare Hgel',
+  // Skip — parent rollup, už pokrytý subpoložkami
+  'GYNPI_Papilocare':       null
+};
+
+let fileResults = []; // { file, rows, region, status, error? }
+
+// ── Helpers ──
+function toast(msg, dur){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), dur||2200);
+}
+function log(msg){
+  const d = document.getElementById('debug');
+  d.style.display = 'block';
+  d.textContent += msg + '\n';
+  d.scrollTop = d.scrollHeight;
+}
+function clearLog(){
+  const d = document.getElementById('debug');
+  d.textContent = '';
+  d.style.display = 'none';
+}
+
+function classifyFile(name){
+  const upper = name.toUpperCase();
+  if(/LEKARNE/i.test(name)) return { type:'skip', reason:'Lekáreň súbor (ignorujeme)' };
+  if(/KARC/i.test(name))    return { type:'skip', reason:'KARC súbor — Kogavant ignorujeme' };
+  if(/pro-region/i.test(name)) return { type:'skip', reason:'Per-product / okresný rozpad — pre Predaje netreba' };
+  const m = name.match(/sale-pha_mr_GYN_([A-Z]{4})\b/i);
+  if(m){
+    const region = m[1].toUpperCase();
+    if(REGION_MAP[region]) return { type:'mr', region };
+    return { type:'unknown', reason:'Region "' + region + '" nie je v REGION_MAP' };
+  }
+  return { type:'unknown', reason:'Neznámy formát názvu' };
+}
+
+function parseFile(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const wb = XLSX.read(data, { type:'array', cellDates:true });
+        let sheetName = wb.SheetNames.includes('data') ? 'data' : null;
+        if(!sheetName){
+          for(const name of wb.SheetNames){
+            const test = XLSX.utils.sheet_to_json(wb.Sheets[name], { header:1, raw:true });
+            outer: for(const row of test){
+              for(const cell of row){
+                if(cell && String(cell).trim().toUpperCase() === 'MONTH. EUR'){
+                  sheetName = name;
+                  break outer;
+                }
+              }
+            }
+            if(sheetName) break;
+          }
+          if(!sheetName) sheetName = wb.SheetNames[0];
+        }
+        const sheet = wb.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header:1, raw:true });
+        resolve({ rows, sheetName, allSheets: wb.SheetNames });
+      } catch(err){ reject(err); }
+    };
+    reader.onerror = () => reject(new Error('FileReader error'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function extractEurSection(rows){
+  function findCellIdx(row, text){
+    if(!row) return -1;
+    const upper = text.toUpperCase();
+    for(let i=0; i<row.length; i++){
+      if(row[i] && String(row[i]).trim().toUpperCase() === upper) return i;
+    }
+    return -1;
+  }
+  let headerRow = -1, dateColIdx = -1, dataStart = -1;
+  for(let i=0; i<rows.length; i++){
+    if(findCellIdx(rows[i], 'MONTH. EUR') !== -1){
+      for(let j=i+1; j<Math.min(i+4, rows.length); j++){
+        const dIdx = findCellIdx(rows[j], 'DATE');
+        if(dIdx !== -1){
+          headerRow = j;
+          dateColIdx = dIdx;
+          dataStart = j + 1;
+          break;
+        }
+      }
+      break;
+    }
+  }
+  if(dataStart === -1) return { header:null, data:[], dateColIdx:-1 };
+  const header = rows[headerRow];
+  const data = [];
+  for(let i=dataStart; i<rows.length; i++){
+    const dateVal = rows[i][dateColIdx];
+    if(!dateVal) break;
+    data.push(rows[i]);
+  }
+  return { header, data, dateColIdx };
+}
+
+function toMonthStr(val){
+  if(val instanceof Date) return val.getFullYear() + '-' + String(val.getMonth()+1).padStart(2,'0');
+  if(typeof val === 'string'){
+    const d = new Date(val);
+    if(!isNaN(d)) return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+  }
+  return String(val);
+}
+
+async function processFile(file){
+  const cls = classifyFile(file.name);
+
+  if(cls.type === 'skip')    return { ok:false, file, status:'skip',    reason: cls.reason };
+  if(cls.type === 'unknown') return { ok:false, file, status:'unknown', reason: cls.reason };
+
+  try {
+    const { rows, sheetName, allSheets } = await parseFile(file);
+    log('Súbor: ' + file.name);
+    log('  hárky: [' + (allSheets || []).join(', ') + '] → použitý: "' + sheetName + '"');
+
+    const { header, data, dateColIdx } = extractEurSection(rows);
+    if(!header){
+      log('  ⚠ nenašla sa sekcia MONTH. EUR');
+      return { ok:false, file, status:'err', error:'Nenašla sa sekcia MONTH. EUR' };
+    }
+    log('  sekcia MONTH. EUR: ' + data.length + ' mesiacov, region: ' + cls.region);
+
+    // Mapuj zdrojové stĺpce na cieľové názvy produktov
+    // colTargets[colIdx] = "Globifer" | null (skip) | undefined (unmapped, ignore)
+    const colTargets = [];
+    const unmapped = [];
+    header.forEach((h, i) => {
+      if(!h) return;
+      const key = String(h).trim();
+      if(key === 'DATE') return;
+      if(PRODUCT_MAP.hasOwnProperty(key)){
+        colTargets[i] = PRODUCT_MAP[key]; // string or null
+      } else {
+        colTargets[i] = undefined;
+        unmapped.push(key);
+      }
+    });
+    if(unmapped.length){
+      log('  ⚠ neznáme stĺpce (ignorované): ' + unmapped.join(', '));
+    }
+
+    const monthRows = [];
+    for(const r of data){
+      const monthStr = toMonthStr(r[dateColIdx]);
+      const [year, month] = monthStr.split('-');
+      if(!year || !month || isNaN(parseInt(year))) continue;
+
+      const row = { rok: parseInt(year), mesiac: parseInt(month), products: {} };
+      for(let i=0; i<r.length; i++){
+        const target = colTargets[i];
+        if(!target) continue; // null or undefined
+        const v = parseFloat(r[i]);
+        if(isNaN(v)) continue;
+        row.products[target] = (row.products[target] || 0) + v;
+      }
+      // round
+      for(const k of Object.keys(row.products)){
+        row.products[k] = Math.round(row.products[k] * 100) / 100;
+      }
+      monthRows.push(row);
+    }
+    log('  → ' + monthRows.length + ' riadkov mesačných predajov');
+
+    return { ok:true, file, status:'ok', region: cls.region, rows: monthRows };
+  } catch(err){
+    log('  ✗ CHYBA: ' + err.message);
+    return { ok:false, file, status:'err', error: err.message };
+  }
+}
+
+async function handleFiles(files){
+  if(fileResults.length === 0){
+    clearLog();
+    log('Spracovávam ' + files.length + ' súborov...');
+  } else {
+    log('Pridávam ďalších ' + files.length + ' súborov...');
+  }
+  for(const file of files){
+    const existingIdx = fileResults.findIndex(r => r.file && r.file.name === file.name);
+    const result = await processFile(file);
+    if(existingIdx !== -1){
+      fileResults[existingIdx] = result;
+      log('  (prepísaný existujúci záznam)');
+    } else {
+      fileResults.push(result);
+    }
+  }
+  renderFileList();
+  renderPreview();
+}
+
+function removeFile(idx){
+  fileResults.splice(idx, 1);
+  renderFileList();
+  renderPreview();
+}
+function resetAll(){
+  fileResults = [];
+  clearLog();
+  renderFileList();
+  renderPreview();
+}
+
+function renderFileList(){
+  const container = document.getElementById('files');
+  container.innerHTML = '';
+  if(fileResults.length === 0) return;
+
+  const okCount = fileResults.filter(r => r.status === 'ok').length;
+  const skipCount = fileResults.filter(r => r.status === 'skip').length;
+  const header = document.createElement('div');
+  header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin:6px 0;font-size:11px;color:#64748B';
+  header.innerHTML = '<span><strong>' + fileResults.length + '</strong> súborov · ' +
+                     '<strong style="color:#16A34A">' + okCount + '</strong> spracovaných · ' +
+                     '<strong style="color:#94A3B8">' + skipCount + '</strong> preskočených</span>' +
+                     '<button onclick="resetAll()" style="background:transparent;border:1px solid #E2E8F0;color:#DC2626;font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:inherit">✕ Vyčistiť všetko</button>';
+  container.appendChild(header);
+
+  fileResults.forEach((r, idx) => {
+    const item = document.createElement('div');
+    let cls = 'file-item ';
+    let icon, info;
+    if(r.status === 'ok'){
+      cls += 'ok'; icon = '✓';
+      const rep = REGION_MAP[r.region];
+      info = r.region + ' · ' + rep.login + ' · ' + r.rows.length + ' mesiacov';
+    } else if(r.status === 'skip'){
+      cls += 'skip'; icon = '−'; info = r.reason;
+    } else if(r.status === 'unknown'){
+      cls += 'warn'; icon = '?'; info = r.reason;
+    } else {
+      cls += 'err'; icon = '✗'; info = r.error || 'chyba';
+    }
+    item.className = cls;
+    const removeBtn = '<button onclick="removeFile(' + idx + ')" style="background:transparent;border:none;color:inherit;opacity:.5;cursor:pointer;font-size:16px;padding:0 4px;font-family:inherit" title="Odstrániť">✕</button>';
+    item.innerHTML = '<span class="file-icon">' + icon + '</span>' +
+                     '<span class="file-name">' + r.file.name + '</span>' +
+                     '<span class="file-info">' + info + '</span>' + removeBtn;
+    container.appendChild(item);
+  });
+}
+
+function getAllProducts(){
+  const set = new Set();
+  for(const r of fileResults){
+    if(r.status !== 'ok') continue;
+    for(const row of r.rows){
+      for(const p of Object.keys(row.products)) set.add(p);
+    }
+  }
+  return [...set].sort();
+}
+
+function getAllRows(){
+  const products = getAllProducts();
+  const out = [];
+  for(const r of fileResults){
+    if(r.status !== 'ok') continue;
+    const rep = REGION_MAP[r.region];
+    for(const row of r.rows){
+      const flat = { login: rep.login, meno: rep.meno, rok: row.rok, mesiac: row.mesiac };
+      for(const p of products) flat[p] = row.products[p] || 0;
+      out.push(flat);
+    }
+  }
+  // sort: login, year, month
+  out.sort((a,b) => {
+    if(a.login !== b.login) return a.login.localeCompare(b.login);
+    if(a.rok !== b.rok) return a.rok - b.rok;
+    return a.mesiac - b.mesiac;
+  });
+  return out;
+}
+
+function getColumns(){
+  return ['login','meno','rok','mesiac', ...getAllProducts()];
+}
+
+function renderPreview(){
+  const rows = getAllRows();
+  const body = document.getElementById('preview-body');
+  const counter = document.getElementById('preview-count');
+  if(rows.length === 0){
+    counter.textContent = '';
+    body.innerHTML = '<div class="empty-state">Zatiaľ žiadne validné dáta. ' +
+      (fileResults.length > 0 ? 'Pridaj viac súborov alebo skontroluj log.' : 'Pridaj súbory vyššie.') + '</div>';
+    return;
+  }
+  const reps = [...new Set(rows.map(r => r.login))];
+  const months = [...new Set(rows.map(r => r.rok + '-' + String(r.mesiac).padStart(2,'0')))].sort();
+  const products = getAllProducts();
+  let totalEur = 0;
+  for(const r of rows) for(const p of products) totalEur += (r[p] || 0);
+
+  counter.textContent = '· ' + rows.length + ' riadkov, ' + reps.length + ' repov, ' + products.length + ' produktov';
+
+  body.innerHTML =
+    '<div class="summary">' +
+      '<div class="summary-card"><div class="summary-lbl">Reprezentantov</div><div class="summary-val">' + reps.length + '</div></div>' +
+      '<div class="summary-card"><div class="summary-lbl">Produktov</div><div class="summary-val">' + products.length + '</div></div>' +
+      '<div class="summary-card"><div class="summary-lbl">Mesiacov</div><div class="summary-val">' + months.length + '</div></div>' +
+      '<div class="summary-card"><div class="summary-lbl">Riadkov</div><div class="summary-val">' + rows.length + '</div></div>' +
+      '<div class="summary-card"><div class="summary-lbl">Obdobie</div><div class="summary-val" style="font-size:12px">' + months[0] + ' → ' + months[months.length-1] + '</div></div>' +
+      '<div class="summary-card"><div class="summary-lbl">Spolu (predaje)</div><div class="summary-val">' + Math.round(totalEur).toLocaleString('sk-SK') + ' €</div></div>' +
+    '</div>' +
+    '<div class="preview-wrap"><table id="preview-table"></table></div>' +
+    '<div class="actions">' +
+      '<button class="btn btn-primary" onclick="copyToClipboard()">📋 Kopírovať TSV (vlož do Sheets)</button>' +
+      '<button class="btn btn-secondary" onclick="downloadCSV()">⬇ Stiahnuť CSV</button>' +
+      '<button class="btn btn-link" onclick="resetAll()">↻ Začať znova</button>' +
+    '</div>';
+
+  renderTable(rows);
+}
+
+function renderTable(rows){
+  const cols = getColumns();
+  const t = document.getElementById('preview-table');
+  if(!t) return;
+  let html = '<thead><tr>';
+  for(const c of cols) html += '<th>' + c + '</th>';
+  html += '</tr></thead><tbody>';
+  for(const r of rows){
+    html += '<tr>';
+    for(const c of cols){
+      const v = r[c];
+      const isNum = typeof v === 'number' && c !== 'rok' && c !== 'mesiac';
+      const isZero = isNum && v === 0;
+      const cls = isNum ? (isZero ? ' class="num zero"' : ' class="num"') : '';
+      html += '<td' + cls + '>' + (v == null ? '' : (isNum ? v.toFixed(2) : v)) + '</td>';
+    }
+    html += '</tr>';
+  }
+  html += '</tbody>';
+  t.innerHTML = html;
+}
+
+function buildCSV(separator){
+  const cols = getColumns();
+  const rows = getAllRows();
+  let out = cols.join(separator) + '\n';
+  for(const r of rows){
+    const vals = cols.map(c => {
+      const v = r[c];
+      if(v == null) return '';
+      if(typeof v === 'number' && c !== 'rok' && c !== 'mesiac') return v.toFixed(2);
+      return v;
+    });
+    out += vals.join(separator) + '\n';
+  }
+  return out;
+}
+
+function copyToClipboard(){
+  const txt = buildCSV('\t');
+  navigator.clipboard.writeText(txt).then(() => {
+    toast('✓ Skopírované — vlož do Sheets (Ctrl+V)');
+  }).catch(err => {
+    toast('✗ Chyba: ' + err.message);
+  });
+}
+
+function downloadCSV(){
+  const txt = buildCSV(',');
+  const blob = new Blob(['﻿' + txt], { type:'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const today = new Date().toISOString().slice(0,10);
+  a.download = 'gyn_predaje_' + today + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('✓ CSV stiahnuté');
+}
+
+// ── Drag & drop ──
+const dz = document.getElementById('drop-zone');
+const fi = document.getElementById('file-input');
+dz.addEventListener('click', () => fi.click());
+dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('dragover'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+dz.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dz.classList.remove('dragover');
+  // recursively walk dropped folders
+  const items = e.dataTransfer.items;
+  if(items && items.length && items[0].webkitGetAsEntry){
+    const all = [];
+    let pending = 0;
+    function walkEntry(entry){
+      pending++;
+      if(entry.isFile){
+        entry.file(f => { all.push(f); pending--; if(pending===0) handleFiles(all); });
+      } else if(entry.isDirectory){
+        const reader = entry.createReader();
+        reader.readEntries(entries => {
+          entries.forEach(walkEntry);
+          pending--;
+          if(pending===0) handleFiles(all);
+        });
+      } else { pending--; }
+    }
+    let any = false;
+    for(const it of items){
+      const ent = it.webkitGetAsEntry();
+      if(ent){ any = true; walkEntry(ent); }
+    }
+    if(!any && e.dataTransfer.files.length > 0) handleFiles(e.dataTransfer.files);
+  } else if(e.dataTransfer.files.length > 0){
+    handleFiles(e.dataTransfer.files);
+  }
+});
+fi.addEventListener('change', (e) => {
+  if(e.target.files.length > 0) handleFiles(e.target.files);
+});
+</script>
+</body>
+</html>
