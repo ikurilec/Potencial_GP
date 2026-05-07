@@ -49,8 +49,10 @@ function doGet(e) {
       var rows = sheet.getDataRange().getValues();
       for (var i = 1; i < rows.length; i++) {
         if (String(rows[i][0] || '').trim().toLowerCase() === rep) {
-          // col G (index 6) = posledny_login
-          sheet.getRange(i + 1, 7).setValue(new Date());
+          // col G (index 6) = posledny_login (dátum + čas)
+          var cell = sheet.getRange(i + 1, 7);
+          cell.setValue(new Date());
+          cell.setNumberFormat('dd.MM.yyyy HH:mm:ss');
           return jsonResp({ok: true});
         }
       }
