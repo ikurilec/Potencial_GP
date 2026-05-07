@@ -89,7 +89,7 @@ function doGet(e) {
       var qMonths = {1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12]}[qA] || [];
 
       // PLAN — záložka "Plan"
-      // Stĺpce: login | meno | rok | Q | Produkt1 | Produkt2 | ...
+      // Stĺpce: login | meno | region | rok | Q | Produkt1 | Produkt2 | ...
       var planSheet  = ss.getSheetByName('Plan');
       var planByRep  = {};
       var planProds  = [];
@@ -97,17 +97,17 @@ function doGet(e) {
         var planData = planSheet.getDataRange().getValues();
         if (planData.length >= 2) {
           var planHdr = planData[0].map(function(h){ return String(h || '').trim(); });
-          for (var j = 4; j < planHdr.length; j++) {
+          for (var j = 5; j < planHdr.length; j++) {
             if (planHdr[j]) planProds.push(planHdr[j]);
           }
           for (var i = 1; i < planData.length; i++) {
             var pr = planData[i];
             var repKey = String(pr[0] || '').trim().toLowerCase();
             if (!repKey) continue;
-            if (parseInt(pr[2]) !== rokA) continue;
-            if (parseInt(pr[3]) !== qA)   continue;
+            if (parseInt(pr[3]) !== rokA) continue;
+            if (parseInt(pr[4]) !== qA)   continue;
             if (!planByRep[repKey]) planByRep[repKey] = {};
-            for (var k = 4; k < planHdr.length; k++) {
+            for (var k = 5; k < planHdr.length; k++) {
               var prodKey = normalizeProd(planHdr[k]);
               if (!prodKey) continue;
               planByRep[repKey][prodKey] = parseNum(pr[k]);
