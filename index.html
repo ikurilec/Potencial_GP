@@ -1135,6 +1135,31 @@
   .gyn-rep-pl-pct.g{color:#059669}.gyn-rep-pl-pct.o{color:#D97706}.gyn-rep-pl-pct.r{color:#DC2626}.gyn-rep-pl-pct.n{color:#94A3B8}
   .gyn-section-lbl{font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.5px;padding:12px 0 6px}
   #gyn-view .pl-section-lbl{text-align:center}
+  /* Gyn — výraznejšie šípky na produktových kartách (klikateľné) */
+  #gyn-view .pl-sum-prod-chev{color:#1D4ED8;font-size:20px;font-weight:700;margin-left:4px;line-height:1}
+  #gyn-view .pl-sum-prod-c{border-color:#93C5FD;transition:transform .12s,box-shadow .15s,border-color .15s,background .15s}
+  #gyn-view .pl-sum-prod-c:hover{background:#EFF6FF;border-color:#3B82F6;box-shadow:0 2px 8px rgba(59,130,246,.15)}
+  #gyn-view .pl-sum-prod-c:active{transform:scale(0.98);background:#DBEAFE;border-color:#3B82F6}
+  /* Gyn — výraznejšie šípky pri rep cardoch v Plnení (klikateľné na detail) */
+  #gyn-view .pl-rep-chev{color:#1D4ED8;font-size:22px;font-weight:700;margin-left:6px;flex-shrink:0;line-height:1;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#EFF6FF;padding-left:2px;padding-bottom:1px;transition:background .15s}
+  #gyn-view .pl-rep-card:hover .pl-rep-chev{background:#DBEAFE}
+  /* Gyn — milestone popisky pod barom: passed = active (oba tmavé), len budúce sú šedé */
+  #gyn-view .mgr-plnenie-detail .ms-labels span.passed{color:#0C1E35;font-weight:700}
+  /* Predikcia per rep — nenápadne na pravej strane karty, na úrovni meta (region) */
+  #gyn-view .gyn-rep-right{display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:2px;flex-shrink:0;align-self:stretch}
+  #gyn-view .gyn-rep-pred{font-size:9.5px;color:#94A3B8;font-weight:500;letter-spacing:.01em;white-space:nowrap;line-height:1.2}
+  #gyn-view .gyn-rep-pred span{color:#475569;font-weight:600}
+  /* Kompaktnejší padding/gap — aby sa zmestili dlhšie priezviská bez zalomenia */
+  #gyn-view .pl-rep-card{gap:8px;padding:11px 12px}
+  #gyn-view .pl-rep-medal{width:26px}
+  #gyn-view .pl-rep-body{min-width:0;padding-right:2px}
+  #gyn-view .pl-rep-pct{margin-left:2px}
+  #gyn-view .pl-rep-chev{margin-left:4px;width:22px;height:22px;font-size:20px}
+  /* Gyn — výraznejšie šípky pri rep cardoch v product sheet (klikateľné na rep) */
+  .gyn-ps-chev{color:#1D4ED8;font-size:22px;font-weight:700;margin-left:6px;flex-shrink:0;line-height:1;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#EFF6FF;transition:background .15s;padding-left:2px;padding-bottom:1px}
+  #pl-prod-sheet .pl-ps-rep[onclick]:hover{background:#F8FAFC}
+  #pl-prod-sheet .pl-ps-rep[onclick]:hover .gyn-ps-chev{background:#DBEAFE}
+  #pl-prod-sheet .pl-ps-rep[onclick]:active{background:#F1F5F9}
   /* Gyn pharma — väčší font v tabuľke + grafe (čitateľnejšie ako Golem default) */
   .gyn-pharma-ms-tbl th{font-size:11px !important;text-transform:uppercase}
   .gyn-pharma-ms-tbl td{font-size:13px !important}
@@ -1908,7 +1933,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.17.2';
+var APP_VERSION = '2.17.3';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5350,16 +5375,16 @@ function gynPreloadAllQuarters() {
         if(!data) return;
         gynPreprocessData(data);
         GYN_APP.plCache[q] = data;
-        // Re-render len ak práve nemáme zobrazený Plnenie tab pre tento Q
-        // (tabu nezobrazujeme keď je v plLoading sekcii — gynPlnenieShow zobrazí sám keď dobehne)
+        // Re-render aktuálneho Q ak ešte nebol vyrenderovaný (loading text vidno)
         if(GYN_APP.q === q && GYN_APP.nav === 'plnenie') {
           var el = document.getElementById('gyn-content');
           var session = getSession();
-          // Render iba ak ešte nebol vyrenderovaný (loading text stále vidno)
           if(el && session && el.querySelector && !el.querySelector('.pl-sum-big')) {
             gynPlnenieRender(el, session, data);
           }
         }
+        // Update všetkých trend grafov (môžu mať nové dáta z práve dohratého Q)
+        if(typeof gynRefreshAllTrends === 'function') gynRefreshAllTrends();
       })
       .catch(function(){
         delete GYN_APP.plLoading[q];
@@ -5446,6 +5471,99 @@ function gynPlnenieRender(el, user, data) {
   if(user.role === 'gyn-rep')           gynPlnenieRenderRep(el, user, data);
   else if(GYN_APP.detailLogin)          gynPlnenieRenderRepDetail(el, data);
   else                                   gynPlnenieRenderMgr(el, user, data);
+}
+
+// Re-render všetkých aktuálne existujúcich trend grafov (po dohratí preload)
+function gynRefreshAllTrends() {
+  document.querySelectorAll('.trend[data-gyn-trend]').forEach(function(el){
+    var login = el.getAttribute('data-gyn-trend');
+    gynRenderTrendBars(el.id, login === '__sk__' ? null : login);
+  });
+}
+
+// Trend bars Q1-Q4 — analóg Golem plnenieRenderDetailTrend
+// login=null → Slovensko aggregate; inak per-rep
+function gynRenderTrendBars(elId, login) {
+  var el = document.getElementById(elId);
+  if(!el) return;
+  el.setAttribute('data-gyn-trend', login || '__sk__');
+  var curQ = plnenieCurrentQ();
+  var year = GYN_APP.year;
+  var curMon = (new Date()).getMonth() + 1;
+
+  function computeRepDone(cached, repLogin, q) {
+    var months = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[q] || [];
+    var doneM = (q < curQ) ? months : (q === curQ ? months.filter(function(m){ return m < curMon; }) : []);
+    var byMonth = (cached.predaje && cached.predaje[repLogin] && cached.predaje[repLogin].byMonth) || {};
+    var rPlan = (cached.plan && cached.plan[repLogin]) || {};
+    var done = 0;
+    doneM.forEach(function(m){
+      var md = byMonth[m] || {};
+      Object.keys(md).forEach(function(pk){
+        if(GYN_EXCLUDE_FROM_TOTALS[pk]) return;
+        if(!(parseFloat(rPlan[pk]) > 0)) return;
+        done += parseFloat(md[pk]) || 0;
+      });
+    });
+    return done;
+  }
+
+  var qData = [];
+  for(var q = 1; q <= 4; q++) {
+    var cached = GYN_APP.plCache[q];
+    var pct = null, planEUR = 0, predajeDone = 0;
+    if(cached) {
+      if(login) {
+        // Per-rep
+        var agg = gynBuildRepAgg(login, cached);
+        pct = agg.pct;
+        planEUR = agg.totalPlan;
+        predajeDone = computeRepDone(cached, login, q);
+      } else {
+        // Slovensko aggregate — sum cez všetkých repov
+        var totP = 0, totS = 0, totD = 0;
+        (GYN_STATE.repList || []).forEach(function(rep){
+          var ag = gynBuildRepAgg(rep.login, cached);
+          totP += ag.totalPlan;
+          totS += ag.totalPred;
+          totD += computeRepDone(cached, rep.login, q);
+        });
+        pct = totP > 0 ? (totS/totP*100) : null;
+        planEUR = totP;
+        predajeDone = totD;
+      }
+    }
+    var predikcia = plnenieCalcPredikciaSummary(planEUR, predajeDone, q, year);
+    qData.push({ q: q, pct: pct, predikcia: predikcia, isCurrent: q === curQ });
+  }
+
+  var maxPct = 0;
+  qData.forEach(function(d){
+    var v = (d.isCurrent && d.predikcia !== null) ? d.predikcia : d.pct;
+    if(v !== null && v > maxPct) maxPct = v;
+  });
+  if(maxPct < 10) maxPct = 100;
+
+  var barsHtml = qData.map(function(d){
+    var isPred = d.isCurrent && d.predikcia !== null;
+    var displayPct = isPred ? d.predikcia : d.pct;
+    var barH = (displayPct !== null) ? Math.max(6, Math.round(displayPct / maxPct * 90)) : 8;
+    var barCls = isPred ? 'pred' : ((d.pct === null) ? 'future' : plnenieDetailColorClass(d.pct));
+    var valStr = (displayPct !== null) ? plnenieFormatPct(displayPct) : '—';
+    var valCls = (displayPct === null) ? 'empty' : '';
+    var lblCls = d.isCurrent ? 'current' : '';
+    return '<div class="trend-col">' +
+      '<div class="trend-bar ' + barCls + '" style="height:' + barH + '%">' +
+        '<div class="trend-bar-val ' + valCls + '">' + valStr + '</div>' +
+      '</div>' +
+      '<div class="trend-lbl ' + lblCls + '">Q' + d.q + (d.isCurrent ? ' · teraz' : '') + '</div>' +
+      (isPred ? '<div class="trend-pred-lbl">predikcia</div>' : '') +
+    '</div>';
+  }).join('');
+
+  el.innerHTML =
+    '<div class="trend-title">Trend plnenia cez kvartály · ' + year + '</div>' +
+    '<div class="trend-bars">' + barsHtml + '</div>';
 }
 
 // ── Product sheet (otvorí sa po klike na produkt v manažérskom sumári) ──
@@ -5584,7 +5702,7 @@ function gynProdSheetRenderRepList(prodLabel, data) {
     var clickAttr = clickable
       ? ' onclick="gynOpenPharmaForRep(\''+prodLabel.replace(/\'/g,"\\\'")+'\',\''+(r.region||'').replace(/\'/g,"\\\'")+'\')" style="cursor:pointer"'
       : '';
-    var chevron = clickable ? '<div style="color:#CBD5E1;font-size:18px;margin-left:4px;flex-shrink:0">›</div>' : '';
+    var chevron = clickable ? '<div class="gyn-ps-chev">›</div>' : '';
 
     return '<div class="pl-ps-rep" data-username="' + r.login + '"' + clickAttr + '>' +
       medalHtml +
@@ -6195,10 +6313,14 @@ function gynPlnenieRenderRepDetail(el, data) {
     });
   }
 
+  // Trend graf cez kvartály — pre tohto repa
+  html += '<div id="gyn-detail-trend-' + login + '" class="trend" style="margin-top:14px"></div>';
+
   html += '</div>'; // .mgr-plnenie-detail
 
   el.innerHTML = html;
   animatePlanBars(el);
+  gynRenderTrendBars('gyn-detail-trend-' + login, login);
   // Animovaný count-up pre celkové %
   if(repPct !== null) {
     var totEl = el.querySelector('.total-card .total-val');
@@ -6329,10 +6451,14 @@ function gynPlnenieRenderRep(el, user, data) {
     });
   }
 
+  // Trend graf cez kvartály — pre prihláseného repa
+  html += '<div id="gyn-rep-trend-' + login + '" class="trend" style="margin-top:14px"></div>';
+
   html += '</div>'; // .mgr-plnenie-detail
 
   el.innerHTML = html;
   animatePlanBars(el);
+  gynRenderTrendBars('gyn-rep-trend-' + login, login);
   if(repPct !== null) {
     var totEl = el.querySelector('.total-card .total-val');
     if(totEl && typeof plnenieCountUp === 'function') plnenieCountUp(totEl, repPct);
@@ -6527,6 +6653,23 @@ function gynPlnenieRenderMgr(el, user, data) {
       var regionAttr = (a.rep.region || '').replace(/'/g, '&#39;').replace(/"/g, '&quot;');
       var loginAttr  = (a.rep.login  || '').replace(/'/g, '&#39;').replace(/"/g, '&quot;');
 
+      // Predikcia konca Q pre tohto repa
+      var repByMonth = (data.predaje && data.predaje[a.rep.login] && data.predaje[a.rep.login].byMonth) || {};
+      var repPlan2   = (data.plan    && data.plan[a.rep.login]) || {};
+      var repTotalDone = 0;
+      doneMonths.forEach(function(m){
+        var md = repByMonth[m] || {};
+        Object.keys(md).forEach(function(pk){
+          if(GYN_EXCLUDE_FROM_TOTALS[pk]) return;
+          if(!(parseFloat(repPlan2[pk]) > 0)) return;
+          repTotalDone += parseFloat(md[pk]) || 0;
+        });
+      });
+      var repPredikcia = plnenieCalcPredikciaSummary(a.agg.totalPlan, repTotalDone, q, year);
+      var predHtml = repPredikcia !== null
+        ? '<div class="gyn-rep-pred">predikcia konca Q' + q + ' <span>' + plnenieFormatPct(repPredikcia) + '</span></div>'
+        : '';
+
       html += '<div class="pl-rep-card pl-rep-clickable" onclick="gynOpenRepDetail(\''+loginAttr+'\',\''+menoAttr+'\',\''+regionAttr+'\')">' +
         medalHtml +
         '<div class="pl-rep-avatar" style="background:'+avatarColor+'">' + gynInitials(a.rep.meno) + '</div>' +
@@ -6534,13 +6677,21 @@ function gynPlnenieRenderMgr(el, user, data) {
           '<div class="pl-rep-name">' + gynEsc(a.rep.meno) + '</div>' +
           '<div class="pl-rep-meta">' + gynEsc(a.rep.region||'') + '</div>' +
         '</div>' +
-        '<div class="pl-rep-pct '+plnenieColorClass(a.agg.pct)+'" data-pct="'+((a.agg.pct !== null && !isNaN(a.agg.pct)) ? a.agg.pct : '')+'">' + (a.agg.pct !== null ? '0,00%' : (a.agg.totalPred > 0 ? plnenieFormatEUR(a.agg.totalPred) : '—')) + '</div>' +
+        '<div class="gyn-rep-right">' +
+          '<div class="pl-rep-pct '+plnenieColorClass(a.agg.pct)+'" data-pct="'+((a.agg.pct !== null && !isNaN(a.agg.pct)) ? a.agg.pct : '')+'">' + (a.agg.pct !== null ? '0,00%' : (a.agg.totalPred > 0 ? plnenieFormatEUR(a.agg.totalPred) : '—')) + '</div>' +
+          predHtml +
+        '</div>' +
         '<div class="pl-rep-chev">›</div>' +
       '</div>';
     });
     html += '</div>'; // pl-rep-list
   });
+
+  // Trend graf cez kvartály — Slovensko aggregate
+  html += '<div class="mgr-plnenie-detail" style="display:block;margin-top:18px"><div id="gyn-mgr-trend" class="trend"></div></div>';
   el.innerHTML = html;
+  // Render trend
+  gynRenderTrendBars('gyn-mgr-trend', null);
 
   // ── Animácie count-up ──
   // 1) Veľké celkové %
