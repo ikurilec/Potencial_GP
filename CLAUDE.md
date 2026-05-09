@@ -26,7 +26,43 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.18.1** (na `main` aj `test` vetve) — pokračovanie v2.18.0 dizajnového upgrade-u. Polish 5 frekventovaných oblastí: Trhový podiel overlay (typografia tabuľky, hover stavy, gradient subtabs, premium total card), Plnenie detail (väčšie hlavné %, hover karty produktov), História panel (sticky search, slide-in hover na záznamoch, pill chips), Submit success popup (backdrop blur, halo glow za checkmarkom), micro-interactions foundation (transition/easing/z-index tokens, globálny `:focus-visible` pre keyboard a11y).
+**2.18.2** (na `main` aj `test` vetve) — micro-polish vlna založená na trojici skill auditov (`refactoring-ui` + `design:accessibility-review` + `design:design-system`). Tabular-nums na všetkých číslach (premium dashboard look), hover lift na klikateľných kartách, hover state na inactive tabs (chýbajúce feedback), contrast opravy malých textov pre WCAG 2.1 AA, globálny `:disabled` state pre tlačidlá.
+
+### v2.18.2 — Skill-based polish (refactoring-ui + a11y + design-system audit)
+
+#### Refactoring-UI skill: typography + interactive depth
+- **Tabular-nums** (`font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1,"lnum" 1`) na **15+ tried**: `.total-val`, `.lb-count`, `.lb-count-pct`, `.lb-p-count`, `.mgr-stat-num`, `.mgr-dstat-num`, `.prod-adv-pct`, `.prod-kap-val`, `.prod-total-val`, `.gyn-prod-pct`, `.gyn-rep-pl-pct`, `.pharma-ms-card-val`, `.pharma-ms-trend-val`, `.gyn-tc-pct`, `.mrow-val`, `.mrow-plan`, `.pharma-ms-tbl td`, `.pharma-okres-legend-val`, `.pharma-ms-trend-chart-legend-item b`, `.lb-rank`. Cifry rovnako široké → tabuľky a stĺpce sa zarovnávajú, vyzerá ako finančný dashboard
+- **Card hover lift** (`.card`, `.mgr-vitem`, `.gyn-rep-row`, `.gyn-rep-pl-clickable`): pri hover karta dostane `transform:translateY(-1px)` + posilnený shadow s `rgba(37,99,235,.10)` modrým ringom. `:active` resetuje translateY na 0 (so scale .99) — natural press feedback
+- **`.card:focus-within`**: keď je input v karte focused, celá karta sa nadvihne (predtým len box-shadow change)
+
+#### Accessibility skill: WCAG 2.1 AA contrast opravy
+Všetky opravy — text size 10-13px, weight < 700, na bielom/svetlom pozadí — z `#94A3B8` (~3.3:1, fail) na `#64748B` (~4.6:1, pass):
+- `.lb-rank` (12px číslo poradia) + pridané tabular-nums
+- `.lb-region` (10px KE/BA) + `font-weight:600` (boost)
+- `.lb-empty` (13px), `.lb-loading` (14px)
+- `.empty-state-sub` (12.5px) — token zmenený z `--color-text-faint` na `--color-text-muted`
+- `.hist-empty-sub` (12px)
+- `.gyn-rep-region` (11px), `.gyn-prod-foot` (10px) + bold, `.gyn-rep-pl-meta` (10px)
+
+#### Design-system skill: chýbajúce stavy doplnené
+- **Globálny `:disabled` state** pre všetky `<button>` elementy: `opacity:.5; cursor:not-allowed; pointer-events:none` — predtým rôzne disabled stavy ad-hoc, teraz konzistentne
+- **Hover state na inactive tabs** (chýbajúce feedback): pri prejdení myšou nad neaktívnym tabom dostane subtle visual response:
+  - `.lb-tab:hover:not(.active)`, `.lb-mode-tab:hover:not(.active)` — text stmavne na `#475569`
+  - `.mgr-tb-btn:hover:not(.active)`, `.panel-nav-btn:hover:not(.active)`, `.gyn-nav-btn:hover:not(.active)`, `.pharma-ms-subtab:hover:not(.active)` — `background:#F1F5F9` + `color:#0F172A`
+  - `.gyn-q-btn:hover:not(.active)` — `background:#CBD5E1`
+  - `.panel-nav-btn:hover:not(.active)` — `background:#E2E8F0` (od F1F5F9 lebo default je už F1F5F9)
+
+#### Štatistika
+- **36 insertions / 16 deletions** v `index.html`
+- **CSS braces balanced** (1279:1279) — žiadny syntax error
+- **Žiadna zmena JS logiky** — len CSS
+- **Apps Script `kód.gs` nemenený** — netreba redeploy
+- **WN modal nezmenený** — toto je micro-polish vlna, nie nová feature, používateľ nepotrebuje nový oznam
+
+#### Cieľ podľa Ivana
+"chcem aby aplikácia ľudí ktorí ju používajú bavila a bola príjemná na používanie a prostredie bolo príjemné" — táto vlna je presne o tom: **citeľnejšie reagovanie** (hover lift, hover na tabs), **profesionálnejší vzhľad** (tabular-nums), **lepšia čitateľnosť** (kontrast). Reprezentant by mal cítiť že **appka reaguje**, **vyzerá premium** a **dobre sa číta** aj v aute pri slnku.
+
+---
 
 ### v2.18.1 — Polish frekventovaných oblastí (Trhový podiel, Plnenie, História, Success popup)
 
