@@ -89,6 +89,16 @@
   /* Globálny focus-visible pre keyboard accessibility */
   button:focus-visible,a:focus-visible,[role="button"]:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px;border-radius:6px}
   input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none}
+  /* Globálne disabled state pre všetky tlačidlá — nepretržitý systém */
+  button:disabled,button[disabled]{opacity:.5;cursor:not-allowed;pointer-events:none}
+  /* Tabular-nums pre konzistentnú šírku čísel naprieč všetkými key value-ami */
+  .total-val,.lb-count,.lb-count-pct,.lb-p-count,.mgr-stat-num,.mgr-dstat-num,
+  .prod-adv-pct,.prod-kap-val,.prod-total-val,.gyn-prod-pct,.gyn-rep-pl-pct,
+  .pharma-ms-card-val,.pharma-ms-trend-val,.gyn-tc-pct,.mrow-val,.mrow-plan,
+  .pharma-ms-tbl td,.pharma-okres-legend-val,.pharma-ms-trend-chart-legend-item b{
+    font-variant-numeric:tabular-nums;
+    font-feature-settings:"tnum" 1,"lnum" 1
+  }
   html,body{background:var(--color-bg);min-height:100%;font-family:var(--font-body);color:var(--color-text)}
   body{padding:24px 16px 48px}
   .app{max-width:660px;margin:0 auto;visibility:hidden}
@@ -114,8 +124,8 @@
   .rec-yes .rec-icon,.rec-yes .rec-label{color:#064E3B}.rec-yes .rec-sub{color:#047857}
   .rec-no{background:linear-gradient(135deg,#FFF5F5,#FEE2E2);border:1.5px solid #FCA5A5;box-shadow:0 6px 28px rgba(239,68,68,.16)}
   .rec-no .rec-icon,.rec-no .rec-label{color:#7F1D1D}.rec-no .rec-sub{color:#991B1B}
-  .card{background:#fff;border-radius:14px;margin-bottom:12px;box-shadow:0 4px 16px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.04),0 0 0 1px rgba(15,23,42,.04);overflow:hidden;transition:box-shadow var(--t-base),transform var(--t-base)}
-  .card:focus-within{box-shadow:0 8px 24px rgba(37,99,235,.10),0 2px 6px rgba(15,23,42,.06),0 0 0 1px rgba(37,99,235,.15)}
+  .card{background:#fff;border-radius:14px;margin-bottom:12px;box-shadow:0 4px 16px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.04),0 0 0 1px rgba(15,23,42,.04);overflow:hidden;transition:box-shadow var(--t-base),transform var(--t-base),border-color var(--t-base)}
+  .card:focus-within{box-shadow:0 10px 28px rgba(37,99,235,.12),0 2px 6px rgba(15,23,42,.06),0 0 0 1px rgba(37,99,235,.20);transform:translateY(-1px)}
   .card-accent{height:3px;background:linear-gradient(90deg,var(--color-navy),var(--color-navy-2))}
   .card-inner{padding:12px 16px 14px}
   .prod-name{font-size:15px;font-weight:600;color:#1A2A3A;margin-bottom:1px}
@@ -242,6 +252,7 @@
   /* Mode toggle — Návštevy / Plnenie */
   .lb-mode-tabs{display:flex;background:#fff;border-bottom:2px solid #F1F5F9}
   .lb-mode-tab{flex:1;padding:12px 4px;border:none;background:none;font-size:12px;font-weight:700;color:#94A3B8;font-family:inherit;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .2s ease;-webkit-tap-highlight-color:transparent;white-space:nowrap;position:relative}
+  .lb-mode-tab:hover:not(.active){color:#475569}
   .lb-mode-tab.active{color:#0C1E35}
   .lb-mode-tab.active::after{content:'';position:absolute;left:14%;right:14%;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:linear-gradient(90deg,#1E40AF,#2563EB,#3B82F6);box-shadow:0 -2px 8px rgba(37,99,235,.30);animation:tabIndicatorIn .25s cubic-bezier(.16,1,.3,1)}
   @keyframes tabIndicatorIn{from{transform:scaleX(.4);opacity:0}to{transform:scaleX(1);opacity:1}}
@@ -260,10 +271,11 @@
   .lb-approve-q-btn.saving{opacity:.5;pointer-events:none}
   .lb-tabs{display:flex;gap:0;background:#F8FAFC;border-bottom:1px solid #E2E8F0}
   .lb-tab{flex:1;padding:13px 4px;border:none;background:none;font-size:12px;font-weight:600;color:#94A3B8;font-family:inherit;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s ease;position:relative}
+  .lb-tab:hover:not(.active){color:#475569}
   .lb-tab.active{color:#2563EB;font-weight:700}
   .lb-tab.active::after{content:'';position:absolute;left:14%;right:14%;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:linear-gradient(90deg,#1E40AF,#2563EB,#3B82F6);box-shadow:0 -2px 8px rgba(37,99,235,.30);animation:tabIndicatorIn .25s cubic-bezier(.16,1,.3,1)}
   .lb-body{padding:0 0 8px;background:#fff;}
-  .lb-loading{text-align:center;padding:32px 20px;color:#94A3B8;font-size:14px}
+  .lb-loading{text-align:center;padding:32px 20px;color:#64748B;font-size:14px}
   .lb-podium{display:flex;align-items:flex-end;justify-content:center;gap:8px;padding:24px 16px 10px;background:radial-gradient(ellipse at 50% 80%,#FFF8E7 0%,#F8FAFC 35%,#fff 70%);position:relative}
   .lb-p-item{display:flex;flex-direction:column;align-items:center;flex:1}
   .lb-p-avatar{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;margin-bottom:6px;position:relative;font-family:var(--font-display);z-index:1}
@@ -287,14 +299,14 @@
   .lb-row{display:flex;align-items:center;padding:10px 4px;border-bottom:0.5px solid #F8FAFC;gap:10px}
   .lb-row:last-child{border-bottom:none}
   .lb-row.me{background:#EFF6FF;border-radius:10px;border-bottom:none;margin:3px -4px;padding:10px 8px}
-  .lb-rank{width:22px;font-size:12px;font-weight:700;color:#94A3B8;text-align:center;flex-shrink:0}
+  .lb-rank{width:22px;font-size:12px;font-weight:700;color:#64748B;text-align:center;flex-shrink:0;font-variant-numeric:tabular-nums}
   .lb-avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;font-family:var(--font-display)}
   .lb-info{flex:1;min-width:0}
   .lb-name{font-size:13px;font-weight:600;color:#0F172A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .lb-region{font-size:10px;color:#94A3B8}
+  .lb-region{font-size:10px;color:#64748B;font-weight:600}
   .lb-count{font-size:15px;font-weight:700;color:#0F172A;font-family:var(--font-display);flex-shrink:0}
   .lb-me-tag{font-size:8px;background:#2563EB;color:#fff;padding:1px 5px;border-radius:20px;margin-left:5px;font-weight:700}
-  .lb-empty{text-align:center;padding:32px 20px;color:#94A3B8;font-size:13px}
+  .lb-empty{text-align:center;padding:32px 20px;color:#64748B;font-size:13px}
   body.manager-mode .note-btn-edit,
   body.manager-mode .note-btn-delete,
   body.manager-mode #detail-note-wrap button{display:none !important}
@@ -306,6 +318,7 @@
   .mgr-stat-lbl{font-size:10px;color:#64748B;margin-top:4px;text-transform:uppercase;letter-spacing:.05em;font-weight:600}
   .mgr-toolbar{background:#fff;border-radius:10px;padding:5px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.05);display:flex;gap:3px}
   .mgr-tb-btn{flex:1;padding:13px 4px;border-radius:8px;border:none;background:transparent;color:#64748B;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s ease;-webkit-tap-highlight-color:transparent}
+  .mgr-tb-btn:hover:not(.active){background:#F1F5F9;color:#0F172A}
   .mgr-tb-btn.active{background:linear-gradient(135deg,#0C1E35 0%,#13294B 100%);color:#fff;box-shadow:0 4px 12px rgba(12,30,53,.25),inset 0 1px 0 rgba(255,255,255,.10);font-weight:700}
   .mgr-list{display:flex;flex-direction:column;gap:8px}
   .mgr-card{background:#fff;border-radius:12px;padding:14px 14px 12px;box-shadow:0 2px 10px rgba(0,0,0,.06);border:1px solid rgba(0,0,0,.05);cursor:pointer;transition:transform .15s,box-shadow .2s;display:flex;align-items:flex-start;gap:12px;-webkit-tap-highlight-color:transparent}
@@ -357,8 +370,9 @@
   .mgr-vsearch-ico{color:#94A3B8;font-size:15px}
   .mgr-vsearch input{flex:1;border:none;padding:11px 14px 11px 8px;border-radius:10px;font-size:14px;font-family:inherit;outline:none;color:#1A2A3A;background:transparent}
   .mgr-vlist{display:flex;flex-direction:column;gap:8px}
-  .mgr-vitem{background:#fff;border-radius:10px;padding:11px 12px 11px 0;box-shadow:0 1px 4px rgba(0,0,0,.05);border:1px solid rgba(0,0,0,.04);display:flex;gap:10px;align-items:stretch;overflow:hidden;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .15s}
-  .mgr-vitem:active{transform:scale(.99)}
+  .mgr-vitem{background:#fff;border-radius:10px;padding:11px 12px 11px 0;box-shadow:0 2px 8px rgba(15,23,42,.05),0 0 0 1px rgba(15,23,42,.04);display:flex;gap:10px;align-items:stretch;overflow:hidden;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform var(--t-fast),box-shadow var(--t-base)}
+  .mgr-vitem:hover{box-shadow:0 6px 16px rgba(15,23,42,.08),0 0 0 1px rgba(37,99,235,.10);transform:translateY(-1px)}
+  .mgr-vitem:active{transform:scale(.99) translateY(0)}
   .mgr-vseg{width:4px;flex-shrink:0;border-radius:0 2px 2px 0}
   .mgr-vseg.top{background:linear-gradient(180deg,#94A3B8 0%,#64748B 50%,#475569 100%)}
   .mgr-vseg.udrzat{background:linear-gradient(180deg,#FCD34D 0%,#F59E0B 55%,#B45309 100%)}
@@ -459,6 +473,7 @@
   /* Zdielaný panel-nav pre História / Rebríček / Plnenie */
   .panel-nav{display:grid;grid-template-columns:repeat(3,1fr) 32px;gap:4px;background:#fff;border-radius:12px;padding:4px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
   .panel-nav-btn{border:none;background:#F1F5F9;padding:13px 4px;font-size:11.5px;font-weight:600;color:#64748B;cursor:pointer;border-radius:10px;transition:all .2s ease;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:4px;-webkit-tap-highlight-color:transparent;white-space:nowrap}
+  .panel-nav-btn:hover:not(.active){background:#E2E8F0;color:#0F172A}
   .panel-nav-btn.active{background:linear-gradient(135deg,#0C1E35 0%,#13294B 100%);color:#fff;box-shadow:0 4px 12px rgba(12,30,53,.25),inset 0 1px 0 rgba(255,255,255,.10);font-weight:700}
   .panel-nav-btn:active{opacity:.75}
   .panel-nav-close{border:none;background:#E2E8F0;color:#475569;font-size:16px;font-weight:700;cursor:pointer;border-radius:8px;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;transition:background .15s}
@@ -473,11 +488,11 @@
   .hist-empty{text-align:center;padding:48px 24px;color:#94A3B8;font-size:13px;line-height:1.6}
   .hist-empty-icon{font-size:44px;margin-bottom:12px;display:block;opacity:.6}
   .hist-empty-title{font-size:15px;font-weight:700;color:#64748B;margin-bottom:6px}
-  .hist-empty-sub{font-size:12px;color:#94A3B8}
+  .hist-empty-sub{font-size:12px;color:#64748B}
   .empty-state{text-align:center;padding:52px 24px;display:flex;flex-direction:column;align-items:center;animation:emptyFadeIn .5s cubic-bezier(.16,1,.3,1) both}
   .empty-state svg{width:96px;height:96px;margin-bottom:16px;animation:emptyIconIn .7s cubic-bezier(.34,1.7,.64,1) .12s both;filter:drop-shadow(0 4px 12px rgba(15,23,42,.08))}
   .empty-state-title{font-size:15.5px;font-weight:700;color:var(--color-text-strong);margin-bottom:6px;letter-spacing:-.01em;animation:emptyTextIn .5s cubic-bezier(.16,1,.3,1) .25s both}
-  .empty-state-sub{font-size:12.5px;color:var(--color-text-faint);line-height:1.6;max-width:240px;animation:emptyTextIn .5s cubic-bezier(.16,1,.3,1) .32s both}
+  .empty-state-sub{font-size:12.5px;color:var(--color-text-muted);line-height:1.6;max-width:240px;animation:emptyTextIn .5s cubic-bezier(.16,1,.3,1) .32s both}
   @keyframes emptyFadeIn{from{opacity:0}to{opacity:1}}
   @keyframes emptyIconIn{0%{opacity:0;transform:scale(.5) translateY(12px)}60%{transform:scale(1.06) translateY(-2px)}100%{opacity:1;transform:scale(1) translateY(0)}}
   @keyframes emptyTextIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
@@ -1023,6 +1038,7 @@
   .pharma-ms-mesiac{display:none}
   .pharma-ms-subtabs{display:flex;gap:6px;margin-bottom:14px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(15,23,42,.06),0 0 0 1px rgba(15,23,42,.04)}
   .pharma-ms-subtab{flex:1;padding:13px 4px;border:none;background:transparent;font-size:13px;font-weight:700;color:#64748B;cursor:pointer;border-radius:8px;font-family:inherit;transition:all .2s ease;-webkit-tap-highlight-color:transparent}
+  .pharma-ms-subtab:hover:not(.active){background:#F1F5F9;color:#0F172A}
   .pharma-ms-subtab.active{background:linear-gradient(135deg,#0C1E35 0%,#13294B 100%);color:#fff;box-shadow:0 4px 12px rgba(12,30,53,.25),inset 0 1px 0 rgba(255,255,255,.10)}
   /* Karta — teritoriálny + SK MS */
   .pharma-ms-card{background:linear-gradient(135deg,#0C1E35 0%,#13294B 55%,#0C1E35 100%);border-radius:14px;padding:16px 18px;margin-bottom:14px;color:#fff;position:relative;overflow:hidden;box-shadow:0 12px 32px rgba(12,30,53,.30),0 4px 12px rgba(37,99,235,.15),inset 0 1px 0 rgba(255,255,255,.08)}
@@ -1210,11 +1226,12 @@
   .gyn-team-section{margin-bottom:16px}
   .gyn-team-label{font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;display:flex;align-items:center;gap:6px}
   .gyn-team-label::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--color-primary);box-shadow:0 0 0 2px rgba(37,99,235,.15);flex-shrink:0}
-  .gyn-rep-row{background:#fff;border-radius:10px;padding:12px 14px;margin-bottom:6px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(15,23,42,.05),0 0 0 1px rgba(15,23,42,.04);transition:box-shadow var(--t-base),transform var(--t-fast)}
-  .gyn-rep-row:active{transform:scale(.99)}
+  .gyn-rep-row{background:#fff;border-radius:10px;padding:12px 14px;margin-bottom:6px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(15,23,42,.05),0 0 0 1px rgba(15,23,42,.04);transition:box-shadow var(--t-base),transform var(--t-fast);cursor:pointer}
+  .gyn-rep-row:hover{box-shadow:0 6px 16px rgba(15,23,42,.08),0 0 0 1px rgba(37,99,235,.10);transform:translateY(-1px)}
+  .gyn-rep-row:active{transform:scale(.99) translateY(0)}
   .gyn-rep-avatar{width:34px;height:34px;border-radius:50%;background:#0C1E35;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
   .gyn-rep-name{font-size:13px;font-weight:600;color:#0F172A;flex:1}
-  .gyn-rep-region{font-size:11px;color:#94A3B8;font-weight:600}
+  .gyn-rep-region{font-size:11px;color:#64748B;font-weight:600}
   .gyn-coming{background:#fff;border-radius:14px;padding:32px 16px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.07)}
   .gyn-coming p{font-size:14px;color:#64748B;margin:8px 0 0}
   .gyn-mgr-hdr{background:linear-gradient(135deg,#0C1E35 0%,#13294B 55%,#0C1E35 100%);border-radius:18px;padding:10px 20px 10px;margin:0 0 10px;box-shadow:0 12px 32px rgba(12,30,53,.35),0 4px 12px rgba(37,99,235,.18),inset 0 1px 0 rgba(255,255,255,.08);position:relative;overflow:hidden;min-height:60px}
@@ -1226,10 +1243,12 @@
   /* GYN NAV TABS */
   .gyn-nav{display:flex;gap:6px;margin:0 0 10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06);position:sticky;top:0;z-index:100}
   .gyn-nav-btn{flex:1;padding:13px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;background:transparent;color:#64748B;touch-action:manipulation;transition:all .2s ease;-webkit-tap-highlight-color:transparent}
+  .gyn-nav-btn:hover:not(.active){background:#F1F5F9;color:#0F172A}
   .gyn-nav-btn.active{background:linear-gradient(135deg,#0C1E35 0%,#13294B 100%);color:#fff;box-shadow:0 4px 12px rgba(12,30,53,.25),inset 0 1px 0 rgba(255,255,255,.10)}
   /* GYN Q TABS */
   .gyn-q-row{display:flex;gap:6px;padding:12px 12px 0;overflow-x:auto}
   .gyn-q-btn{padding:7px 18px;border:none;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:#E2E8F0;color:#64748B;white-space:nowrap;flex-shrink:0;position:relative;touch-action:manipulation;transition:all .2s ease}
+  .gyn-q-btn:hover:not(.active){background:#CBD5E1;color:#0F172A}
   .gyn-q-btn.active{background:linear-gradient(135deg,#0C1E35 0%,#13294B 100%);color:#fff;box-shadow:0 4px 12px rgba(12,30,53,.25),inset 0 1px 0 rgba(255,255,255,.10)}
   .gyn-q-btn .qcur{position:absolute;top:2px;right:4px;width:6px;height:6px;border-radius:50%;background:#10B981;display:none}
   .gyn-q-btn.cur .qcur{display:block}
@@ -1251,18 +1270,19 @@
   .gyn-prod-fill.g{background:linear-gradient(90deg,#34D399,#059669);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 0 6px rgba(16,185,129,.30)}
   .gyn-prod-fill.o{background:linear-gradient(90deg,#FBBF24,#D97706);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 0 6px rgba(245,158,11,.25)}
   .gyn-prod-fill.r{background:linear-gradient(90deg,#F87171,#DC2626);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 0 6px rgba(220,38,38,.25)}
-  .gyn-prod-foot{display:flex;justify-content:space-between;font-size:10px;color:#94A3B8}
+  .gyn-prod-foot{display:flex;justify-content:space-between;font-size:10px;color:#64748B;font-weight:600}
   .gyn-prod-pct{font-size:12px;font-weight:700;color:#0C1E35}
   .gyn-prod-pct.g{color:#059669}.gyn-prod-pct.o{color:#D97706}.gyn-prod-pct.r{color:#DC2626}
   /* GYN REP ROWS (manager plnenie) */
   .gyn-rep-pl{background:#fff;border-radius:10px;padding:12px 14px;margin:0 0 6px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(15,23,42,.05),0 0 0 1px rgba(15,23,42,.04)}
-  .gyn-rep-pl-clickable{cursor:pointer;transition:transform .12s,box-shadow .12s}
+  .gyn-rep-pl-clickable{cursor:pointer;transition:transform var(--t-fast),box-shadow var(--t-base)}
+  .gyn-rep-pl-clickable:hover{box-shadow:0 6px 16px rgba(15,23,42,.08),0 0 0 1px rgba(37,99,235,.10);transform:translateY(-1px)}
   .gyn-rep-pl-clickable:active{transform:scale(0.99);box-shadow:0 0 0 1px #CBD5E1 inset}
   .gyn-rep-pl-clickable:hover{box-shadow:0 2px 8px rgba(15,23,42,.08)}
   .gyn-rep-pl-av{width:36px;height:36px;border-radius:50%;background:#0C1E35;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
   .gyn-rep-pl-info{flex:1;min-width:0}
   .gyn-rep-pl-name{font-size:13px;font-weight:600;color:#0F172A}
-  .gyn-rep-pl-meta{font-size:10px;color:#94A3B8;font-weight:600}
+  .gyn-rep-pl-meta{font-size:10px;color:#64748B;font-weight:600}
   .gyn-rep-pl-pct{font-size:15px;font-weight:800}
   .gyn-rep-pl-pct.g{color:#059669}.gyn-rep-pl-pct.o{color:#D97706}.gyn-rep-pl-pct.r{color:#DC2626}.gyn-rep-pl-pct.n{color:#94A3B8}
   .gyn-section-lbl{font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.06em;padding:12px 0 6px;display:flex;align-items:center;gap:6px}
@@ -2067,7 +2087,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.18.1';
+var APP_VERSION = '2.18.2';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
