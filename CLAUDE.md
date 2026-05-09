@@ -26,7 +26,118 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.13.59** (na `main` aj `test` vetve) — obsahuje všetko z predchádzajúcich verzií plus reporty, oprava % plnenia, Aflamil/Krém pravidlo plánu, predikcia per produkt a funkčný fallback trhového podielu na predchádzajúci Q.
+**2.18.0** (na `main` aj `test` vetve) — premium vizuálny upgrade naprieč celou appkou (GP aj gyn linka). Design tokens (CSS custom properties), nové gradienty, hĺbka kariet, animované progress bary so shimmerom, vylepšený rebríček podium, login hero s animovanými glow blobs, modernizované manažérske medaile a tabs s gradient indicator-mi.
+
+### v2.18.0 — Premium dizajnový upgrade (GP + gyn linka)
+
+#### Foundation — Design tokens
+- **`:root` CSS custom properties** v hornej časti `<style>` bloku (riadky 16–73): `--font-display`, `--font-body`, brand farby (`--color-navy`, `--color-primary`, semantic colors), surface farby, text farby, borders, radii (8/10/12/14/18/24px scale), spacing (4px base: `--space-1` až `--space-8`), shadows (`--shadow-sm/md/lg/xl`), motion (`--t-fast/base/slow`)
+- **43× nahradený Outfit font stack** doslovne na `var(--font-display)` cez celý CSS — žiadne ďalšie duplicity
+- `html,body` používa `var(--color-bg)`, `var(--font-body)`, `var(--color-text)`
+- Tokens sú scaffolding pre budúce zmeny — appka môže postupne migrovať ďalšie hardcoded hodnoty
+
+#### Hlavný header (`.hdr`)
+- Gradient pozadie `135deg, #0C1E35 → #13294B → #0C1E35` (jemný shimmer) namiesto flat navy
+- **Dva radial blobs**: `::before` modrý halo vpravo hore (`rgba(59,130,246,.18)`), `::after` svetlomodrý vľavo dole (`rgba(91,141,184,.10)`)
+- **Premium shadow**: `0 12px 32px rgba(12,30,53,.35), 0 4px 12px rgba(37,99,235,.18), inset 0 1px 0 rgba(255,255,255,.08)`
+- Title má `text-shadow:0 1px 2px rgba(0,0,0,.25)`
+- Subtitle kontrastnejšia (`#7AABCC` namiesto `#5B8DB8`), `letter-spacing:.04em`, `font-weight:500`
+
+#### CTA tlačidlá (modré: `.wn-btn`, `.satori-btn`, `.send-bar`, `.login-btn`)
+- **3-stop vertikálny gradient** `180deg, #3B82F6 0% → #2563EB 50% → #1E40AF 100%` namiesto generického 2-stop `135deg`
+- **Inset highlight** `inset 0 1px 0 rgba(255,255,255,.18)` — biela poltón na vrchu
+- **Outer glow** s farebným tintom: `0 6px 18px rgba(37,99,235,.30)`
+- Active state: `transform:scale(.985)` + zoslabený shadow
+- Login btn má vlastný gradient `#1D4ED8 → #1E40AF → #0C1E35` (zachováva navy character)
+
+#### Submit tlačidlo "Potvrdiť"
+- **Vertikálny zelený gradient** `180deg, #22C55E → #16A34A → #15803D` namiesto flat `#16A34A`
+- **Silnejší pulzujúci glow**: `submitGlow` keyframe sa zvýšil z 28px na 32px shadow + `0 0 0 8px rgba(22,163,74,.10)` ring (predtým 6px)
+- Inset highlight: `inset 0 1px 0 rgba(255,255,255,.20)`
+- Hover: `translateY(-1px)` + tmavší gradient `#16A34A → #15803D → #166534`
+- Active: `scale(.985)` + zoslabený shadow
+
+#### Karty (`.card`, `.info-card`)
+- **3 vrstvy shadow** namiesto 2: `0 4px 16px rgba(15,23,42,.06), 0 1px 3px rgba(15,23,42,.04), 0 0 0 1px rgba(15,23,42,.04)` (border ako shadow ring)
+- **`focus-within` glow**: keď je input v karte focused, celá karta dostane modrý glow (delight detail)
+- `.card-accent` má default `linear-gradient(90deg, var(--color-navy), var(--color-navy-2))` (predtým prázdny)
+- `.info-accent` (top stripe) má **animovaný shine** (6s ease-in-out) prebiehajúci cez bar — `infoAccentShine` keyframe
+- **`.info-card` má `overflow:visible`** (kvôli autocomplete dropdownu) — shine je obmedzený `overflow:hidden` na `.info-accent` samotnom
+
+#### Login screen
+- **Hero pozadie**: `radial-gradient(ellipse at 50% 25%, #1A3A5C 0%, #13294B 50%, #0C1E35 100%)` namiesto flat
+- **Dva animované glow blobs** (`::before` modrý 340px, `::after` svetlomodrý 380px) — pomalý 8s/10s breathe pulse animácie
+- `loginGlow1`/`loginGlow2` keyframy s `transform: translate + scale`, oba rešpektujú `prefers-reduced-motion`
+- **Posilnený focus state**: `border-color:var(--color-primary)` + `box-shadow:0 0 0 4px rgba(37,99,235,.15), 0 1px 3px rgba(37,99,235,.10)` (predtým slabý 0.08 alpha)
+- **WCAG kontrast opravený**: `.login-divider-text`, `.login-footer-text`, `.login-version`, `.login-footer-logo` — z `#CBD5E1` (~1.7:1, fail) na `#94A3B8`/`#64748B` (~3-4:1)
+
+#### Form inputs (`select`, `input[type=number]`)
+- **Silnejší focus**: `border-color:var(--color-primary)` + `box-shadow:0 0 0 4px rgba(37,99,235,.14), inset 0 1px 2px rgba(37,99,235,.04)` + `background:#fff`
+- **Hover state** (predtým len border-color): pridaný `box-shadow:inset 0 1px 3px rgba(15,23,42,.04), 0 1px 3px rgba(15,23,42,.05)` + tmavší border `#94A3B8`
+- **`.input-err` trieda** s shake animáciou (`inputShake` keyframe, 0.35s) — pripravené pre JS validáciu, rešpektuje `prefers-reduced-motion`
+
+#### Rebríček podium
+- **Pulzujúce zlaté halo** na 1. mieste (`goldHalo` keyframe, 2.4s) — striedanie shadow ring 6px/9px s glow 24px/32px
+- **Animovaná korunka** (`crownFloat`, 3s) — float up/down + rotate -3deg
+- **3-stop metallic gradients** na blokoch: 1. `#FBBF24 → #F59E0B → #D97706`, 2. `#CBD5E1 → #94A3B8 → #64748B`, 3. `#D97706 → #B45309 → #92400E`
+- **Shimmer overlay** na blokoch (`::after` linear-gradient white 20% top → transparent)
+- **Väčší 1. miesto avatar**: 64px → 68px, font 20px → 21px
+- 2./3. miesto avatary majú nový `box-shadow:0 4px 12px rgba(15,23,42,.15)`
+- Podium pozadie: `radial-gradient(ellipse at 50% 80%, #FFF8E7 0%, #F8FAFC 35%, #fff 70%)` — jemný teplý glow
+
+#### Manažérske medaile (`.mgr-vseg.*`)
+- Modernizovaná Tailwind paleta (sviežejšie farby ladiace s appkou)
+- **3-stop metallic gradient** pre lepší shimmer feel: top (Platinum) `#94A3B8 → #64748B → #475569`, udrzat (Gold) `#FCD34D → #F59E0B → #B45309`, frekvencia (Bronze) `#D97706 → #B45309 → #7C2D12`
+- Pridaný `border-radius:0 2px 2px 0` na pravej strane segmentu
+
+#### Manažérske chips (`.mgr-chip`)
+- **Pill shape** (radius 20px namiesto 9px)
+- **Farebná bodka prefix** (`::before` 5px circle s `currentColor`, opacity .7)
+- `letter-spacing:.04em` + `text-transform:uppercase`
+- `box-shadow:0 1px 2px rgba(15,23,42,.05)` — subtle depth
+
+#### Progress bary
+- **`.progress-track`** (login): `box-shadow:inset 0 1px 2px rgba(15,23,42,.08)` (track má teraz hĺbku)
+- **`.progress-fill`**: pridaný **shimmer effect** (`progressShine` keyframe, 2.4s) — biela poltón prejde cez fill
+- **`.bar-fill.g/o/r`** (Plnenie): inset highlight + farebný glow shadow podľa stavu (zelený/oranžový/červený)
+- Transition zmenený z `width .8s ease` na `width .9s cubic-bezier(.16,1,.3,1)` (smoother)
+
+#### Section labels (`.flbl`, `.prod-type`, gyn variants)
+- **Modrá bodka prefix** (`::before` 4px circle s halo `0 0 0 2px rgba(37,99,235,.15)`)
+- `letter-spacing` posilnené z `.03em` na `.06em`
+- `font-weight:600 → 700` na `.flbl`
+- `.prod-type` doplnené `text-transform:uppercase` + `font-weight:600` + `letter-spacing:.05em`
+
+#### Tabs
+- **`.lb-tab`, `.lb-mode-tab`**: aktívny tab dostal **gradient underline indicator** (3px height, `linear-gradient(90deg, #1E40AF, #2563EB, #3B82F6)`) + `box-shadow:0 -2px 8px rgba(37,99,235,.30)` glow + `tabIndicatorIn` animácia (.25s scaleX from .4)
+- **`.mgr-tb-btn`, `.panel-nav-btn`**: aktívny dostal **gradient pill** `135deg, #0C1E35 → #13294B` + `box-shadow:0 4px 12px rgba(12,30,53,.25), inset 0 1px 0 rgba(255,255,255,.10)` + `font-weight:700`
+
+#### Empty states
+- **Fade-in animácia** (`emptyFadeIn`, 500ms cubic-bezier)
+- **Icon scale-in** so spring overshoot (`emptyIconIn`, 700ms `cubic-bezier(.34,1.7,.64,1)`) — štart 0.5, prejde cez 1.06, do 1.0
+- **Drop-shadow** pod SVG: `filter:drop-shadow(0 4px 12px rgba(15,23,42,.08))`
+- **Title + sub waterfall reveal**: title delay 250ms, sub delay 320ms (`emptyTextIn` keyframe)
+- SVG väčšie (88px → 96px)
+- Všetko rešpektuje `prefers-reduced-motion`
+
+#### Gyn linka — všetky zmeny aplikované zrkadlovo
+- **`.gyn-mgr-hdr`, `.gyn-hdr`, `.gyn-tc`** — gradient pozadie + `::before`/`::after` radial blobs + premium shadow + text-shadow na title
+- **`.gyn-card`, `.gyn-rep-row`, `.gyn-rep-pl`, `.gyn-prod`** — 3 layered shadows + ring border, transitions
+- **`.gyn-nav-btn`, `.gyn-q-btn`** — aktívny stav gradient pill + box-shadow + inset highlight (rovnako ako GP `.mgr-tb-btn`)
+- **`.gyn-prod-track/fill`** — inset shadow track + glow podľa stavu (g/o/r), height z 8px na 9px, radius 4px → 5px, smoother transition
+- **`.gyn-card-title`, `.gyn-team-label`, `.gyn-section-lbl`** — modrá bodka prefix + halo, posilnené `letter-spacing:.06em`
+- **`.gyn-empty`** — fade-in + icon bounce (42px) + waterfall text reveal + drop-shadow
+
+#### Štatistika zmeny
+- **265 insertions / 167 deletions** v `index.html`
+- **CSS braces balanced** (1241:1241) — žiadny syntax error
+- **Žiadna zmena JS logiky** — len CSS
+- **Apps Script `kód.gs` nemenený** — netreba redeploy
+
+#### Bug fix počas session
+- **Autocomplete dropdown orezanie**: pri pridaní `infoAccentShine` animácie som zmenil `.info-card` z `overflow:visible` na `overflow:hidden`, čo orezalo dropdown "Okres pracoviska lekára". Opravené: `.info-card` má opäť `overflow:visible`, `.info-accent` má svoj vlastný `overflow:hidden` (shine animácia ostáva v rámci 4px stripe lebo `.info-accent` má `border-radius:14px 14px 0 0`).
+
+---
 
 ### v2.13.59 — Trhový podiel Q2 fallback — finálna oprava (3 bugy)
 
