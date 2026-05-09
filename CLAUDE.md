@@ -26,7 +26,40 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.18.2** (na `main` aj `test` vetve) — micro-polish vlna založená na trojici skill auditov (`refactoring-ui` + `design:accessibility-review` + `design:design-system`). Tabular-nums na všetkých číslach (premium dashboard look), hover lift na klikateľných kartách, hover state na inactive tabs (chýbajúce feedback), contrast opravy malých textov pre WCAG 2.1 AA, globálny `:disabled` state pre tlačidlá.
+**2.18.3** (na `main` aj `test` vetve) — mobile-design polish vlna založená na `mobile-design` skill audite + Playwright `webapp-testing` smoke test verifikácia. Safe-area insets pre iPhone X+ (home indicator), globálne touch-action + tap-highlight cleanup, body overscroll-behavior contain (žiadne rubber-band ťahanie pri overlayoch), 44×44px touch target floor pre login eye toggle a pharma close button, väčšie/lepšie contrast gyn header logout. Smoke test potvrdil 0 JavaScript errorov v REP aj ADMIN móde naprieč mobile + desktop viewportami.
+
+### v2.18.3 — Mobile design polish + Playwright smoke test verifikácia
+
+#### Mobile-design skill audit
+- **Safe-area insets** pre iPhone X+ zariadenia (home indicator nezakryje obsah):
+  - `body{padding-bottom:calc(48px + env(safe-area-inset-bottom))}` + max(16px, inset-left/right) pre landscape
+  - `.submit-wrap{padding-bottom:env(safe-area-inset-bottom)}` — sticky Potvrdiť tlačidlo nezakryté home indikátorom
+- **Globálny tap highlight cleanup**: `button,a,input,select,textarea,[role="button"]{...;-webkit-tap-highlight-color:transparent}` — žiadny ošklivý sivý highlight pri tap-e (nahradené vlastnými `:active` states naprieč appkou)
+- **Overscroll behavior**: `body{overscroll-behavior-y:contain}` — pri pull-down v overlayoch sa hlavná stránka neťahá za sebou (rubber-band cancel)
+- **Touch target floor 44×44px** pre tri konkrétne tlačidlá ktoré boli pod minimum:
+  - `.login-eye` (eye toggle pri hesle): z 18px ikony bez box-u na 44×44px tlačidlo s hover/active background
+  - `.pharma-okres-close` (zatvárací krížik v district chart overlay): z 32×32px na 44×44px + hover/active states
+  - `.gyn-hdr-logout` (logout v gyn header): padding 6px 10px → 10px 14px + min-height 36px + bold font + lepší kontrast (`color:#94A3B8 → #fff`) + hover state
+
+#### Webapp-testing skill (Playwright smoke test)
+- Nainštalovaný Playwright + Chromium
+- Vytvorený `smoke_test.py` (následne odstránený, neagentárny artifact) ktorý:
+  - Naviguje cez 3 viewporty: mobile rep (390×844), mobile admin (390×844), desktop (1280×800)
+  - Sleduje `pageerror` + `console error` events
+  - Robí screenshot kľúčových obrazoviek (login, main, leaderboard, plnenie, admin)
+- **Výsledok:** 0 JavaScript errorov naprieč všetkými 3 módmi, vizuálne rendering kompletný (login screen, Satori onboarding overlay, admin mód)
+- Smoke test slúžil ako **regression check** že CSS zmeny v2.18.0–v2.18.2 nepoškodili JS logiku
+
+#### Štatistika
+- **14 insertions / 7 deletions** v `index.html` (najmenšia vlna, fokus na mobile-only fixes)
+- **CSS braces balanced** (1285:1285)
+- **Žiadna zmena JS logiky ani Apps Scriptu**
+- **WN modal nezmenený** (subtle mobile-only polish, bez user-facing oznámenia)
+
+#### Cieľ
+Reprezentant používa appku **jednou rukou v aute**, často na **iPhone s home indicator** + Android s gesture navigation. Mobile-specific issues (safe area, tap highlight, overscroll) sú často "neviditeľné" kým sa nestretne s daným zariadením. Táto vlna ich systematicky pokrýva pre lepší pocit nativitnej appky.
+
+---
 
 ### v2.18.2 — Skill-based polish (refactoring-ui + a11y + design-system audit)
 
