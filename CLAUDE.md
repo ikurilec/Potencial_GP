@@ -26,7 +26,68 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.18.0** (na `main` aj `test` vetve) — premium vizuálny upgrade naprieč celou appkou (GP aj gyn linka). Design tokens (CSS custom properties), nové gradienty, hĺbka kariet, animované progress bary so shimmerom, vylepšený rebríček podium, login hero s animovanými glow blobs, modernizované manažérske medaile a tabs s gradient indicator-mi.
+**2.18.1** (na `main` aj `test` vetve) — pokračovanie v2.18.0 dizajnového upgrade-u. Polish 5 frekventovaných oblastí: Trhový podiel overlay (typografia tabuľky, hover stavy, gradient subtabs, premium total card), Plnenie detail (väčšie hlavné %, hover karty produktov), História panel (sticky search, slide-in hover na záznamoch, pill chips), Submit success popup (backdrop blur, halo glow za checkmarkom), micro-interactions foundation (transition/easing/z-index tokens, globálny `:focus-visible` pre keyboard a11y).
+
+### v2.18.1 — Polish frekventovaných oblastí (Trhový podiel, Plnenie, História, Success popup)
+
+#### Trhový podiel overlay (`.pharma-ms-*`)
+- **Total card** (`.pharma-ms-card`): premium 3-stop gradient `135deg, #0C1E35 → #13294B → #0C1E35` + 2 radial blobs (`::before` modrý vpravo hore, `::after` svetlomodrý vľavo dole) + premium shadow `0 12px 32px rgba(12,30,53,.30), 0 4px 12px rgba(37,99,235,.15), inset 0 1px 0 rgba(255,255,255,.08)`. `.pharma-ms-card > *` má `position:relative; z-index:1` aby blobs boli pod obsahom
+- **Sub-tabs** (`.pharma-ms-subtabs/subtab`): kontainer dostal ring border (`0 0 0 1px rgba(15,23,42,.04)`), aktívny subtab gradient pill `135deg, #0C1E35 → #13294B` + box-shadow s inset highlight (rovnaký pattern ako `mgr-tb-btn.active`)
+- **Trend chart** (`.pharma-ms-trend-chart`): 3-layered shadow + ring border. Title má modrú bodku prefix s halo (`::before` 4px circle + `0 0 0 2px rgba(37,99,235,.15)`)
+- **Section title** (`.pharma-ms-section-title`): bodka prefix + `letter-spacing:.06em`
+- **District karty** (`.pharma-ms-district`): 3-layered shadow + transition + **hover state** (`box-shadow:0 8px 20px rgba(15,23,42,.08), 0 0 0 1px rgba(37,99,235,.10)`) — modrý glow ring pri prejdení
+- **District header** (`.pharma-ms-district-hdr`): gradient `135deg, #0C1E35 → #13294B` namiesto flat navy + `inset 0 -1px 0 rgba(255,255,255,.06)` separator
+- **Tabuľka** (`.pharma-ms-tbl`): th `letter-spacing` z `.04em` na `.06em`, td font-family teraz `var(--font-display)` (Outfit), `font-weight:600`, **hover state** `tr:hover td{background:#F8FAFC}` so smooth transition
+- **Náš produkt riadok** (`tr.ours`): subtle gradient pozadie `linear-gradient(90deg, #EFF6FF 0%, #fff 100%)` namiesto plain text color, hover prehlbené na `#DBEAFE → #EFF6FF`. Font-weight 800 (predtým 700)
+- **District chart tlačidlo** (`.pharma-okres-chart-btn`): premium gradient `180deg, #3B82F6 → #2563EB → #1E40AF` + inset highlight + farebný outer shadow (predtým plain solid `#2563EB`). Active stav scale(.96) + zoslabený shadow
+- **`prod-ms-link`** ("📊 Trhový podiel" tlačidlo na produkte): subtle gradient pozadie `180deg, #EFF6FF 0%, #DBEAFE 100%` + box-shadow + **hover translateY(-1px)** s deeper shadow
+
+#### Plnenie detail (`.mgr-plnenie-detail`, `.rep-pl-inner`)
+- **Total card** (`.total-card`) cez `replace_all`: gradient + premium shadow + `padding:18px 18px 16px` (predtým `16px 18px`) + `position:relative; overflow:hidden` (pripravené pre blobs ak ich neskôr pridáme)
+- **Total val** cez `replace_all`: `font-size:38px` (predtým 34px) + `letter-spacing:-.02em` + `text-shadow:0 2px 8px rgba(0,0,0,.25)` — typografia executive dashboardu
+- **Prod-item-adv** cez `replace_all`: 3-layered shadow + `transition:box-shadow var(--t-base), transform var(--t-fast)` + **hover state** `box-shadow:0 8px 20px rgba(15,23,42,.08), 0 0 0 1px rgba(37,99,235,.10)` — karty reagujú na prejdenie myšou
+
+#### História panel (`.hist-*`)
+- **Search wrap** (`.hist-search-wrap`): `position:sticky; top:0; z-index:5` + box-shadow pri scrollovaní — search ostane viditeľný
+- **Search input**: height z 38px na 40px, radius 9 → 10, posilnený focus state (4px modrý ring + inset shadow)
+- **Search ikona**: zmení farbu na `var(--color-primary)` pri focus inputu (`focus-within` selector)
+- **Date group** (`.hist-date-group`): `position:sticky; top:60px; z-index:4` (pod search barom) + modrá bodka prefix + `letter-spacing:.06em` + `padding:8px 16px 5px`
+- **Hist item**: nový **slide-in hover** — pri prejdení sa item posunie o 4px doprava (`padding-left:24px`) a zľava sa objaví 3px farebný indikátor `linear-gradient(180deg, #3B82F6, #1E40AF)`. Border-bottom z 2px na 1px (jemnejší). `:active` má scale(.998)
+- **Hist item-name**: `font-weight:600 → 700` + `letter-spacing:-.005em`
+- **Hist item-rec** (recommendation chip): pill (radius 12 → 20) + farebná bodka prefix (`::before` 5px circle s `currentColor`) + `letter-spacing:.03em` + `text-transform:uppercase` + box-shadow
+
+#### Submit success popup (`.send-popup`, `.send-box`)
+- **Popup backdrop**: `backdrop-filter:blur(4px)` + tmavšie pozadie `rgba(15,23,42,.55)` (predtým plain `rgba(0,0,0,.45)`)
+- **Send-box**: radius 16 → 18, padding 28px 24px → 32px 28px 26px, premium 3-layered shadow `0 24px 64px rgba(15,23,42,.30), 0 8px 24px rgba(15,23,42,.15), 0 0 0 1px rgba(15,23,42,.04)`, max-width 300 → 320px. Animation easing zmenený na `cubic-bezier(.16,1,.3,1)` (smoother)
+- **Send-box title**: font-size 16 → 17, weight 700 → 800, **font-family teraz `var(--font-display)`** (Outfit), `letter-spacing:-.01em`
+- **Send-spinner**: 52 → 56px + `box-shadow:0 4px 16px rgba(245,158,11,.20)` (oranžový glow pri loading)
+- **Send-check-wrap**: pridaný **animovaný halo glow** za checkmarkom (`::before` 88×88px radial gradient `rgba(16,185,129,.18)`, animácia `successHalo` 1.4s — scale .5 → 1.6, fade out)
+- **Send-check-svg**: 64 → 68px + `filter:drop-shadow(0 4px 12px rgba(16,185,129,.30))` (zelený glow pod checkmarkom)
+- Reduced-motion rešpektované
+
+#### Foundation — Micro-interactions tokens
+- **Pridané transition tokens**: `--t-fastest:.1s ease`, `--t-slowest:.4s ease` (k existujúcim `--t-fast`, `--t-base`, `--t-slow`)
+- **Pridané easing tokens**: `--ease-spring:cubic-bezier(.34,1.56,.64,1)`, `--ease-out-expo:cubic-bezier(.16,1,.3,1)` — pre konzistentné spring/ease-out animácie
+- **Z-index scale tokens**: `--z-base:1`, `--z-sticky:100`, `--z-dropdown:1000`, `--z-overlay:2000`, `--z-modal:3000`, `--z-popup:4000`, `--z-toast:9000`, `--z-top:9999` — pre konzistentnú hierarchiu overlayov v budúcnosti
+- **Globálny `:focus-visible` outline**: `button:focus-visible, a:focus-visible, [role="button"]:focus-visible` dostali `outline:2px solid var(--color-primary); outline-offset:2px; border-radius:6px` — keyboard accessibility win pre Tab navigáciu
+- **Inputs/selects/textareas** majú `outline:none` na `:focus-visible` (používajú vlastný box-shadow ring)
+
+#### Štatistika
+- **78 insertions / 42 deletions** v `index.html` (kompaktnejšia ako prvá vlna v2.18.0)
+- **CSS braces balanced** (1267:1267) — žiadny syntax error
+- **Žiadna zmena JS logiky** — len CSS
+- **Apps Script `kód.gs` nemenený** — netreba redeploy
+
+#### Odložené (na samostatnú session)
+- **CSS deduplikácia GP ↔ gyn linka** — zlúčenie duplicitných definícií (napr. `.mgr-plnenie-detail` + `.rep-pl-inner` scope-y majú totožné CSS pre `.total-card`, `.bar-fill`, `.prod-item-adv`, `.month-rows`, `.mrow-*`). Refactor by zníšil CSS o stovky riadkov ale vyžaduje vlastný checklist (riziko rozbitia dvojich scope-ov). Foundation tokens (`--t-*`, `--ease-*`, `--z-*`) sú pripravené pre tento refactor
+
+#### What's New modal (zachovaný `WN_KEY = 'potencial_vl_wn_v2_18'`)
+- **Pravidlo:** keď používateľ ešte nevidel v2.18.0 modal, dostane kombinovaný obsah v2.18.0 + v2.18.1 v jednom modal
+- **Pridané položky pre rep**: 📊 Krajší Trhový podiel, 📋 História záznamov (sticky search, hover indikátor)
+- **Pridané položky pre mgr**: 📊 Trhový podiel — premium look, 🎯 Plnenie detail — väčšia hierarchia
+- WN_KEY zachovaný úmyselne — používatelia ktorí už videli v2.18.0 modal v krátkom okne medzi releasmi nedostanú nový modal (per pokyn)
+
+---
 
 ### v2.18.0 — Premium dizajnový upgrade (GP + gyn linka)
 
