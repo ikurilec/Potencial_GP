@@ -836,18 +836,25 @@
   .pl-sum-pred{font-size:11.5px;color:#94A3B8;margin-top:10px;padding-top:10px;border-top:1px solid #F1F5F9;text-align:center}
   .pl-sum-pred span{font-weight:700;margin-left:4px}
   .pl-no-plan-notice{font-size:11.5px;color:#94A3B8;margin-top:10px;padding-top:10px;border-top:1px solid #F1F5F9;text-align:center;font-style:italic}
-  .pl-sum-prods{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;padding-top:10px;border-top:0.5px solid #E2E8F0}
+  .pl-sum-prods{display:grid;grid-template-columns:1fr;gap:7px;padding-top:10px;border-top:0.5px solid #E2E8F0}
   .pl-sum-prods:empty{display:none}
-  .pl-sum-prod{display:flex;align-items:center;justify-content:space-between;gap:4px;font-size:12px;font-weight:500;color:#334155;min-width:0}
-  .pl-sum-prod-name{min-width:0;flex:1;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .pl-sum-prod strong{font-weight:700}
+  .pl-sum-prod{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;color:#0F172A;min-width:0}
+  .pl-sum-prod-name{min-width:0;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:14.5px;font-weight:700;color:#0F172A;letter-spacing:-.005em}
+  .pl-sum-prod strong{font-weight:800;font-size:22px;font-family:var(--font-display);letter-spacing:-.01em;line-height:1}
   .pl-sum-prod strong.pl-g{color:#059669}
   .pl-sum-prod strong.pl-o{color:#D97706}
   .pl-sum-prod strong.pl-r{color:#DC2626}
   .pl-sum-prod strong.pl-none{color:#94A3B8}
-  .pl-sum-prod-c{cursor:pointer;border:1px solid #BFDBFE;border-radius:10px;padding:7px 10px;transition:background .15s,border-color .15s}
-  .pl-sum-prod-c:active{background:#EFF6FF;border-color:#93C5FD}
-  .pl-sum-prod-chev{color:#CBD5E1;font-size:12px;margin-left:1px;flex-shrink:0;font-weight:400}
+  /* Default karta: modrý gradient + solid border */
+  .pl-sum-prod-c{cursor:pointer;border:1.5px solid #BFDBFE;border-radius:10px;padding:11px 14px;background:linear-gradient(180deg,#F5F9FF 0%,#fff 70%);transition:background .15s,border-color .15s,box-shadow .15s,transform .12s;min-width:0;overflow:hidden}
+  .pl-sum-prod-c:hover{background:linear-gradient(180deg,#EFF6FF 0%,#F8FAFC 80%);border-color:#3B82F6;box-shadow:0 4px 12px rgba(59,130,246,.15)}
+  .pl-sum-prod-c:active{transform:scale(.99);background:linear-gradient(180deg,#DBEAFE 0%,#EFF6FF 70%);border-color:#2563EB}
+  /* Family karta: dashed border + výraznejšie pozadie */
+  .pl-sum-prod-c--family{border:2px dashed #3B82F6;background:linear-gradient(180deg,#EAF2FF 0%,#F8FAFF 80%);box-shadow:0 2px 10px rgba(37,99,235,.12)}
+  .pl-sum-prod-c--family:hover{background:linear-gradient(180deg,#DBEAFE 0%,#EFF6FF 80%);border-color:#2563EB;box-shadow:0 4px 14px rgba(37,99,235,.22)}
+  .pl-sum-prod-c--family .pl-sum-prod-name{color:#0C1E35;font-weight:800;font-size:15.5px;letter-spacing:-.01em}
+  .pl-sum-prod-chev{color:#1D4ED8;font-size:22px;font-weight:700;line-height:1;flex-shrink:0;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#EFF6FF;transition:background .15s;padding-left:2px;padding-bottom:1px}
+  .pl-sum-prod-c:hover .pl-sum-prod-chev{background:#DBEAFE}
   /* ── PRODUCT DRILL-DOWN BOTTOM SHEET ── */
   #pl-prod-sheet-bd{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000}
   #pl-prod-sheet-bd.show{display:block}
@@ -906,9 +913,11 @@
   .pl-loading{padding:30px 14px;text-align:center;color:#64748B;font-size:13px}
   .pl-loading .mgr-spinner{margin:0 auto 10px}
   .pl-error{padding:30px 14px;text-align:center;color:#DC2626;font-size:13px}
-  .pl-rep-card.pl-rep-clickable{cursor:pointer;transition:background .15s}
-  .pl-rep-card.pl-rep-clickable:active{background:#F8FAFC}
-  .pl-rep-chev{color:#CBD5E1;font-size:17px;margin-left:4px;flex-shrink:0}
+  .pl-rep-card.pl-rep-clickable{cursor:pointer;transition:background var(--t-fast),transform var(--t-fast),box-shadow var(--t-base)}
+  .pl-rep-card.pl-rep-clickable:hover{background:#F8FAFC;box-shadow:0 4px 14px rgba(15,23,42,.08),0 0 0 1px rgba(37,99,235,.10)}
+  .pl-rep-card.pl-rep-clickable:hover .pl-rep-chev{background:#DBEAFE}
+  .pl-rep-card.pl-rep-clickable:active{background:#F1F5F9;transform:scale(.99)}
+  .pl-rep-chev{color:#1D4ED8;font-size:22px;font-weight:700;margin-left:6px;flex-shrink:0;line-height:1;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#EFF6FF;padding-left:2px;padding-bottom:1px;transition:background var(--t-fast)}
   /* ── Admin notifikačné tlačidlá pod West/East kartami ── */
   .pl-notif-btns{display:flex;flex-direction:column;gap:7px;margin-top:18px;margin-bottom:12px}
   .pl-notif-btn{display:flex;align-items:center;gap:9px;background:#fff;border:1.5px solid #E2E8F0;border-radius:12px;padding:11px 14px;font-family:inherit;font-size:13px;font-weight:600;color:#334155;text-align:left;cursor:default}
@@ -2094,7 +2103,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.18.3';
+var APP_VERSION = '2.18.4';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6731,20 +6740,18 @@ function gynPlnenieRenderMgr(el, user, data) {
       list.forEach(function(p){
         var pc = plnenieColorClass(p.pct);
         var predHtml = (p.predikcia !== null && p.predikcia !== undefined)
-          ? '<span style="font-size:9px;color:#94A3B8;font-weight:500;white-space:nowrap">predikcia ' + plnenieFormatPct(p.predikcia) + '</span>'
+          ? '<span style="font-size:11.5px;color:#64748B;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;min-width:0">predikcia <strong style="color:#334155;font-weight:700;font-size:11.5px">' + plnenieFormatPct(p.predikcia) + '</strong></span>'
           : '';
         var pctAttr  = (p.pct !== null && !isNaN(p.pct)) ? p.pct : '';
         var initVal  = (p.pct !== null && !isNaN(p.pct)) ? '0,00%' : gynFmtPctOrEur(p.pct, p.predaj);
         var safeName = (p.name || '').replace(/\'/g,"&#39;").replace(/"/g,"&quot;");
-        out += '<div class="pl-sum-prod pl-sum-prod-c" style="flex-direction:column;align-items:stretch;gap:2px;cursor:pointer" onclick="gynOpenProdSheet(\''+safeName+'\')">' +
-          '<div style="display:flex;align-items:center;justify-content:space-between;gap:4px">' +
+        out += '<div class="pl-sum-prod pl-sum-prod-c" style="cursor:pointer" onclick="gynOpenProdSheet(\''+safeName+'\')">' +
+          '<div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px">' +
             '<span class="pl-sum-prod-name">' + gynEsc(p.name) + '</span>' +
-            '<div style="display:flex;align-items:center;gap:2px;flex-shrink:0">' +
-              '<strong class="'+pc+'" data-pct="'+pctAttr+'">' + initVal + '</strong>' +
-              '<span class="pl-sum-prod-chev">›</span>' +
-            '</div>' +
+            predHtml +
           '</div>' +
-          predHtml +
+          '<strong class="'+pc+'" data-pct="'+pctAttr+'" style="flex-shrink:0">' + initVal + '</strong>' +
+          '<span class="pl-sum-prod-chev" style="flex-shrink:0">›</span>' +
           '</div>';
       });
       out += '</div>';
@@ -7926,6 +7933,12 @@ var WN_CONTENT_REP = {
       bg: '#FFF7ED',
       title: 'História záznamov',
       desc: 'Vyhľadávač sa drží navrchu pri scrollovaní. Záznamy v histórii reagujú na ťuknutie farebným indikátorom zľava.'
+    },
+    {
+      icon: '👨‍👩‍👧',
+      bg: '#EFF6FF',
+      title: 'Aflamil family v Plnení',
+      desc: 'Nová karta hore v Plnenie sumáre — ukazuje kombinovanú výkonnosť všetkých Aflamil produktov (tablety + sáčky + krém). Klikni a uvidíš detail po reprezentantoch.'
     }
   ]
 };
@@ -7964,6 +7977,12 @@ var WN_CONTENT_MGR = {
       bg: '#F5F3FF',
       title: 'Plnenie detail — väčšia hierarchia',
       desc: 'Hlavné % je teraz 38px (z 34px) s text-shadow. Total karta má nové gradienty a depth. Per-produkt karty reagujú na hover.'
+    },
+    {
+      icon: '👨‍👩‍👧',
+      bg: '#EFF6FF',
+      title: 'Aflamil family + 1-stĺpcový sumár',
+      desc: 'Plnenie sumár má novú prvú kartu "Aflamil family" (kombinácia tbl + sáčky + krém s čiarkovaným borderom). Karty teraz cez celú šírku — názov, % aj predikcia sú celé viditeľné. Klik na family kartu otvorí 3 subtaby (Tablety/Sáčky/Krém).'
     }
   ]
 };
@@ -9499,6 +9518,24 @@ function plnenieBuildAggregates(resp, q) {
     return b.pct - a.pct;
   });
 
+  // Aflamil Family: synthetic kombinácia Aflamil tbl/sáčky + Aflamil krém
+  // (zobrazená ako prvá karta, agregované plánu+predaje pre celú "Aflamil rodinu")
+  var aflKr  = productsToShow.find(function(p){ return p.key === 'aflamil_kr'; });
+  var aflTbl = productsToShow.find(function(p){ return p.key === 'aflamil_tablety_sacky'; });
+  if (aflKr && aflTbl) {
+    var famPlan = aflKr.planEUR + aflTbl.planEUR;
+    var famSales = aflKr.predajeEUR + aflTbl.predajeEUR;
+    var famDone = aflKr.predajeEURDone + aflTbl.predajeEURDone;
+    productsToShow.unshift({
+      key: 'aflamil_family',
+      label: 'Aflamil family',
+      planEUR: famPlan,
+      predajeEUR: famSales,
+      predajeEURDone: famDone,
+      pct: famPlan > 0 ? (famSales / famPlan * 100) : null
+    });
+  }
+
   // Rep list zoradený zostupne podľa pct, reps s null na konci
   var repList = activeReps.map(function(rep){
     return {
@@ -9597,17 +9634,16 @@ function plnenieRenderSummary() {
         var safeLbl = p.label.replace(/'/g, "\\'");
         var predPct = plnenieCalcPredikciaSummary(p.planEUR, p.predajeEURDone, PL_STATE.q, PL_STATE.year);
         var predHtml = predPct !== null
-          ? '<span style="font-size:9px;color:#94A3B8;font-weight:500;white-space:nowrap">predikcia ' + plnenieFormatPct(predPct) + '</span>'
+          ? '<span style="font-size:11.5px;color:#64748B;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;min-width:0">predikcia <strong style="color:#334155;font-weight:700;font-size:11.5px">' + plnenieFormatPct(predPct) + '</strong></span>'
           : '';
-        return '<div class="pl-sum-prod pl-sum-prod-c" style="flex-direction:column;align-items:stretch;gap:2px" onclick="openProdSheet(\'' + safeKey + '\',\'' + safeLbl + '\')">' +
-               '<div style="display:flex;align-items:center;justify-content:space-between;gap:4px">' +
-                 '<span class="pl-sum-prod-name" style="-webkit-line-clamp:unset;overflow:visible">' + mgrEscape(p.label) + '</span>' +
-                 '<div style="display:flex;align-items:center;gap:2px;flex-shrink:0">' +
-                   '<strong class="' + plnenieColorClass(p.pct) + '" data-pct="' + (isNaN(p.pct) ? '' : p.pct) + '">0,00%</strong>' +
-                   '<span class="pl-sum-prod-chev">›</span>' +
-                 '</div>' +
+        var famClass = (p.key === 'aflamil_family') ? ' pl-sum-prod-c--family' : '';
+        return '<div class="pl-sum-prod pl-sum-prod-c' + famClass + '" onclick="openProdSheet(\'' + safeKey + '\',\'' + safeLbl + '\')">' +
+               '<div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px">' +
+                 '<span class="pl-sum-prod-name">' + mgrEscape(p.label) + '</span>' +
+                 predHtml +
                '</div>' +
-               predHtml +
+               '<strong class="' + plnenieColorClass(p.pct) + '" data-pct="' + (isNaN(p.pct) ? '' : p.pct) + '" style="flex-shrink:0">0,00%</strong>' +
+               '<span class="pl-sum-prod-chev" style="flex-shrink:0">›</span>' +
                '</div>';
       }).join('');
       Array.from(prods.querySelectorAll('strong[data-pct]')).forEach(function(el, i) {
@@ -9723,11 +9759,17 @@ function prodSheetRenderRepList() {
 
   // Zoradenie: pri subtabe podľa € daného subtypu, inak podľa % plnenia
   var repData = [];
+  // Aflamil family: per-subtab určujeme z ktorého produktu brať plán+predaje
+  // (AFLcrm → aflamil_kr, AFLtbl/AFLsach → aflamil_tablety_sacky)
+  var planKey = prodKey;
+  if (prodKey === 'aflamil_family') {
+    planKey = (pharmaCode === 'AFLcrm') ? 'aflamil_kr' : 'aflamil_tablety_sacky';
+  }
   activeReps.forEach(function(rep) {
     var rPlan  = plan[rep] || {};
     var rSales = (predaje[rep] && predaje[rep].total) || {};
-    var pPlan  = parseFloat(rPlan[prodKey]);  if (isNaN(pPlan))  pPlan  = 0;
-    var pSales = parseFloat(rSales[prodKey]); if (isNaN(pSales)) pSales = 0;
+    var pPlan  = parseFloat(rPlan[planKey]);  if (isNaN(pPlan))  pPlan  = 0;
+    var pSales = parseFloat(rSales[planKey]); if (isNaN(pSales)) pSales = 0;
     if (pPlan > 0) {
       var subSales = predajeSubKey ? (parseFloat(rSales[predajeSubKey]) || 0) : null;
       repData.push({ username: rep, planEUR: pPlan, predajeEUR: pSales, pct: pSales / pPlan * 100, subSales: subSales });
@@ -11128,6 +11170,7 @@ function repPlnenieRenderTrend(username) {
 var PHARMA_CODES = {
   'aflamil_kr':            ['AFLcrm'],
   'aflamil_tablety_sacky': ['AFLtbl', 'AFLsach'],
+  'aflamil_family':        ['AFLtbl', 'AFLsach', 'AFLcrm'],
   'cavinton':              ['CAV'],
   'cavinton forte':        ['CAV'],
   'junod':                 ['JUN'],
