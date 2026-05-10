@@ -26,7 +26,71 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.19.4** (na `main` aj `test` vetve) — **rollback carousel peeks** kvôli state corruption (state-swap snapshot mal side-effecty na render funkciách). Vrátený plain drag swipe (gesture follows finger, rubber band, snap-back/forward) bez peek panelov — funguje stabilne. Bug ktorý spôsoboval skok na Q3 hneď po prihlásení (state mismatch po snapshote) je odstránený.
+**2.19.5** (na `main` aj `test` vetve) — **plný DOM carousel peek** (stabilná verzia) + **future Q taby disabled** + **Q taby reagujú pri swipe**. Pri swipe vidno reálny plný obsah ďalšieho Q (sumár, regióny, produkty, zoznam reps) ako sa približuje. Q3/Q4 (future) sú vyšedené a swipe na ne má rubber band. Pri swipe progress > 20% sa active class na Q tab-e predznamená na cieľový Q.
+
+### v2.19.5 — Plný DOM carousel peek (stabilný) + future Q block + tab animation pri swipe
+
+#### Fix #1 — Plný DOM peek bez state corruption
+**Problém v v2.19.3:** state-swap snapshot count rozbil `PL_STATE.q`, hneď po prihlásení skok na Q3.
+**Príčina:** `plnenieEnsureCachedQDom` prerenderoval Q+1 do hlavného DOM-u, ale po `cloneNode` sa state restore + DOM re-render len niekedy stihol pred ďalším touch event-om.
+
+**Oprava:**
+- **`try/finally` guard** v `plnenieEnsureCachedQDom` a `repPlnenieEnsureCachedQDom` — state restore + DOM re-render **VŽDY** sa zavolá, aj pri exception
+- **Pre-cache na pozadí** v `plnenieRenderAll` po prvotnom render-e (timer-y 700ms a 1300ms aby UI nelagovalo):
+  - 700ms: cache `PL_STATE.q - 1` (predošlý Q)
+  - 1300ms: cache `PL_STATE.q + 1` (nasledujúci Q ak ≤ current)
+- **Safety net v `onDragStart`** — ak race podmienka spôsobí že cache ešte nie je naplnená, urobí sa synchronne v tom moment
+- Suppress count-up animation počas snapshotu (override `plnenieCountUp` + `plnenieCountUpEUR` cez window. + restore cez `finally`)
+
+#### Fix #2 — Future Q3/Q4 zablokované
+**Cieľ:** v máji 2026 je Q2 aktuálny — Q3/Q4 nemajú plán a nie sú ukončené. Užívateľ by sa nemal dostať na ne.
+
+**Implementácia:**
+- **`plnenieUpdateQTabs` + `repPlnenieUpdateQTabs`** — future Q taby (`q > plnenieCurrentQ()`) dostanú `disabled = true` + `opacity:.4` + `cursor:not-allowed`
+- **`plnenieSwitchQ` + `repPlnenieSwitchQ`** — guard `if (q > plnenieCurrentQ()) return;` (klik aj programatický switch)
+- **`canNext` v drag switcheri**: `PL_STATE.q < plnenieCurrentQ()` namiesto `PL_STATE.q < 4` — rubber band efekt na Q2 → Q3 swipe (nedá sa)
+
+#### Fix #3 — Q taby reagujú animáciou pri swipe
+**Cieľ:** keď ťahám medzi Q1 a Q2, taby hore by sa mali predznamenenie meniť (vidno kam ide).
+
+**Implementácia:**
+- Nová **`onMove(dx, w)` callback** v `attachDragSwitcher` — fire-uje pri každom touchmove počas drag-u
+- V `plnenieInitQSwipe.onMove` — ak `Math.abs(dx/w) > 0.20`, predznamená sa `active` class na cieľový Q tab (Q-1 ak dx > 0, Q+1 ak dx < 0). Boundary check: nie pod Q1 alebo nad current Q.
+- V `onDragEnd` → `plnenieUpdateQTabs()` re-aplikuje correct state (po snap-back)
+- Pri snap-forward → `plnenieSwitchQ()` urobí real switch + tabs sa updatujú
+
+#### Carousel flow (finálne)
+```
+1. Otvor Plnenie → render Q2
+2. 200ms → cache_DOM[2] = clone(pl-q-content)
+3. 700ms → state swap Q1 → render → clone → cache_DOM[1] → state restore Q2 → render
+4. 1300ms → state swap Q3 (ak ≤ current) → ... (v máji preskočené)
+
+5. User drag Q2 → vpravo:
+   - onDragStart: peekPrev.appendChild(cache_DOM[1].clone) — vidí plný Q1
+   - onMove dx = +60px (15%): tabs ostanú Q2 active
+   - onMove dx = +120px (30%): tabs predznamenia na Q1 active
+   - Release pri 30%: snap-forward animácia + plnenieSwitchQ(1)
+6. User drag Q2 → vľavo (na Q3):
+   - canNext: PL_STATE.q < plnenieCurrentQ() = false → rubber band 0.3× stiffness
+   - peekNext zostane prázdny (nextQ > maxQ)
+```
+
+#### Štatistika
+- **Verzia 2.19.4 → 2.19.5** (PATCH — bug fix + UX improvement)
+- **363 insertions / 4 deletions** v `index.html`
+- 0 JavaScript errors v Playwright smoke teste
+- WN modal nezmenený (gestá ohlásené v WN_v2_19)
+
+#### Lessons learned applied
+Predchádzajúce zlyhanie state-swap snapshotu (v2.19.3) bolo opravené **3 systematickými zmenami**:
+1. **`try/finally`** garantuje state restore aj pri exception
+2. **Pre-cache na pozadí** s timer-mi — žiadne synchronous render-y počas drag-u (okrem safety net)
+3. **`onDragStart` fire iba pri direction lock na 'h'** (z v2.19.4) — žiadny snapshot pri tap-e
+
+Toto kombinácia robí carousel stabilný aj pre real-world DOM s globálnymi ID-čkami a render side-effectmi.
+
+---
 
 ### v2.19.4 — Rollback carousel peeks (state corruption fix)
 
