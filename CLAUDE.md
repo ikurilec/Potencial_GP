@@ -26,7 +26,33 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.19.3** (na `main` aj `test` vetve) — **plné DOM snapshot** carousel peeks. Pri ťahaní prstom vidno **identický plný obsah** ďalšieho Q (sumár, % plnenia, regióny West/East, produktové karty s predikciami, zoznam reprezentantov, trend graf) — nie len malú peek kartu. Skutočný iOS Photos / Android Gallery look kde **vidíš celú obrazovku ďalšieho Q-u** ako sa približuje.
+**2.19.4** (na `main` aj `test` vetve) — **rollback carousel peeks** kvôli state corruption (state-swap snapshot mal side-effecty na render funkciách). Vrátený plain drag swipe (gesture follows finger, rubber band, snap-back/forward) bez peek panelov — funguje stabilne. Bug ktorý spôsoboval skok na Q3 hneď po prihlásení (state mismatch po snapshote) je odstránený.
+
+### v2.19.4 — Rollback carousel peeks (state corruption fix)
+
+#### Problém v v2.19.3
+- `snapshotPlnenieDom` robil **state swap** + render → clone → restore. Po snapshotovaní DOM-u bol DOM-content **na targetQ**, ale `PL_STATE.q` bol restore-ovaný na origQ.
+- Render funkcie majú vedľajšie efekty (`plnenieRenderRegions` atd. modifikujú DOM elementy, ID-čka, počítadlá animácií). Po restore neprerenderovalo ihneď DOM na origQ → mismatch
+- `onDragStart` callback fire-oval pri každom touchstart-e (dokonca pred direction lock) → snapshot bežal aj pri obyčajnom tap-e
+- Príznak: hneď po prihlásení sa Plnenie zobrazilo na Q3 namiesto current Q (Q2)
+
+#### Oprava — rollback na simple drag (v2.19.0/v2.19.1 pattern)
+- Odstránené `snapshotPlnenieDom` + `snapshotRepPlnenieDom` (úplne)
+- Odstránené `onDragStart`/`onDragEnd` callbacky v Plnenie + Rep Plnenie + Trhový podiel sheet attachDragSwitcher volaniach
+- `buildCarouselPeeks` helper ostáva (môže sa hodiť pre iné komponenty), ale nie je volaný
+- Plain drag swipe ostáva: content sa pohybuje s prstom (rubber band na boundaries), pri release nad threshold-om snap-forward + switch, inak snap-back
+- 35 insertions / 181 deletions — celá snapshot logika odstránená
+
+#### Štatistika
+- **Verzia 2.19.3 → 2.19.4** (PATCH — bug fix)
+- 35 insertions / 181 deletions v `index.html`
+- WN modal nezmenený
+- Carousel peek panels mŕtvy CSS ostáva (nemá negative dopad), ale nie je použitý nikde
+
+#### Lessons learned
+Full DOM snapshot cez state-swap je **veľmi krehký** v JS appkách bez framework state management (React/Vue). Render funkcie majú implicit dependencies na global state ktoré nie sú vždy zjavné. Pre future implementácie peek/preview features bez frameworku → lepšie použiť **lightweight peek karty** (čistý template) než pokusy o full DOM clone.
+
+---
 
 ### v2.19.3 — Full DOM snapshot peek-y (plný náhľad ďalšieho Q)
 
