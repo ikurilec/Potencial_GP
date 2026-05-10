@@ -26,7 +26,75 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.18.5** (na `main` aj `test` vetve) — design-critique skill audit polish + bug fixes pre Trhový podiel sheet. Typografická hierarchia hlavnej obrazovky (info-title 16px Outfit 800), 4-produktový mini-scoreboard v detail záznamu lekára, skelPharma skeleton pre Trhový podiel overlay, manažérska typografia konzistencia (mgr-stat-num 22px, mgr-dstat-num 20px, mgr-dname/dhdr-name weight 800). Trhový podiel sheet: proaktívny fetch oboch kvartálov (Q + Q-1), polling kým fetchy dobiehajú, wave dots loading animácia namiesto statického "—", filter prijíma aj 0% MS hodnoty.
+**2.19.0** (na `main` aj `test` vetve) — **mobilné gestá** naprieč celou appkou. Swipe medzi Q tabmi v Plnení, swipe medzi subtabmi v Trhový podiel sheete, swipe-back z ľavej hrany v overlayoch (iOS pattern), swipe-down na zatvorenie modal-ov, long-press na záznamy v Histórii (admin → upraviť/zmazať), haptic feedback na všetky kľúčové akcie (Android). Príchod natívneho mobile feel-u.
+
+### v2.19.0 — Mobilné gestá: swipe + long-press + haptic feedback
+
+#### Globálne gesture helpery
+Pridané 3 reusable utility funkcie:
+
+- **`attachSwipe(el, opts)`** — generic swipe detector
+  - Options: `onSwipeLeft/Right/Up/Down`, `threshold` (default 50px), `maxOffAxis` (60px), `edgeOnly` (start <24px od ľavej hrany), `onlyHorizontal`/`onlyVertical`
+  - Vracia `detach()` cleanup function
+  - Rozlišuje skutočný swipe vs. accidental scroll (timing < 800ms, threshold + maxOffAxis filter)
+  - Auto-haptic `selection` po každom úspešnom swipe
+- **`attachEdgeSwipeBack(el, closeFn)`** — wrapper pre iOS-like back gesture (od ľavej hrany doprava)
+- **`attachLongPress(el, callback, ms)`** — long-press detector (default 500ms, cancel pri pohybe >10px), auto-haptic `light` keď trigger
+
+Reuse existujúcej `haptic()` funkcie (definovaná pri rep utilities) — žiadna duplicitná logika.
+
+#### #1 Swipe medzi Q tabmi v Plnení
+- **Manažér view** (`pl-q-content`): swipe doľava → next Q, doprava → prev Q (Q1↔Q4, no wrap)
+- **Rep view** (`rep-pl-q-content`): rovnaká logika
+- Detail reprezentanta v manažér mode má vlastný flow — swipe v sumáre nezasahuje keď je detail otvorený
+- Funkcie `plnenieInitQSwipe()` + `repPlnenieInitQSwipe()` s `_*SwipeAttached` flag aby sa attach nestal viackrát
+
+#### #2 Swipe medzi subtab-mi v Trhový podiel sheet
+- `pl-ps-body` (telo sheet-u) → swipe doľava/doprava medzi Tablety / Sáčky / Krém
+- Funguje pre Aflamil family (3 subtaby) aj pre `aflamil_tablety_sacky` (2 subtaby)
+- Pre produkty s 1 pharma kódom (Suprax, Vidonorm, etc.) — swipe je no-op (žiadne ďalšie subtaby)
+
+#### #3 Swipe-back z ľavej hrany v plnoobrazovkových overlayoch
+- **iOS pattern**: prst od ľavej hrany (do 24px) doprava → zatvorí overlay
+- Aplikované na: `hist-overlay`, `lb-overlay`, `rep-plnenie-overlay`, `pharma-ms-overlay`, `pharma-okres-overlay`, `detail-overlay`, `edit-overlay`
+- Setup v `initEdgeSwipeBack()` — volaný raz pri DOMContentLoaded
+
+#### #4 Swipe-down na zatvorenie modal-ov
+- Bonus — pre tých čo preferujú "shoo away" pattern: vertikálny swipe nadol (threshold 80px)
+- Aplikované na: `wn-overlay`, `milestone-overlay`, `detail-overlay`
+- `prodSheetInitSwipe()` (existujúca) má vlastný swipe-down flow s percentage-based opacity
+
+#### #5 Swipe-left v Histórii — quick action hint
+- Swipe-left na riadku v Histórii: subtle vizuálny hint (translateX -12px na 200ms a späť)
+- Pre admin-a otvorí detail záznamu po 300ms (kde je tlačidlo Upraviť/Zmazať)
+- Pre bežných reps len visual feedback (žiadne dáta nemažú)
+
+#### #6 Haptic feedback na key actions
+Použitá existujúca `haptic(type)` funkcia (4 patterny: success / error / selection / light):
+- **`haptic('selection')`** — swipe transitions, Q switches, subtab switches, prod sheet open
+- **`haptic('success')`** — submit záznamu (existujúce)
+- **`haptic('error')`** — duplikát, validácia (existujúce)
+- **`haptic('light')`** — long-press, button press (existujúce + rozšírené)
+- iOS Safari **nepodporuje** Vibration API → no-op (silent fail)
+- Rešpektuje `prefers-reduced-motion` v swipe detektore
+
+#### #7 Long-press v Histórii — context menu
+- 500ms long-press na zázname → otvorí detail záznamu
+- Admin v detail-e vidí tlačidlo "Upraviť záznam" (existujúce)
+- Cancel-luje sa pri pohybe (>10px) alebo zdvihnutí prsta predtým ako uplynie 500ms
+- Auto-haptic `light` na trigger
+
+#### Štatistika
+- **Verzia 2.18.5 → 2.19.0** (MINOR — nové user-facing features)
+- **252 insertions / ~30 deletions** v `index.html`
+- **CSS balanced**, JS hoisting funguje správne (helper fn definované hore, volané neskôr)
+- 0 JavaScript errors v Playwright smoke teste
+- WN modal nový kľúč `WN_KEY = 'potencial_vl_wn_v2_19'` — všetci uvideli novú "Posúvaj prstom" oznámku (4 položky pre rep, 5 pre mgr) s instrukciami čo nové gestá robia
+
+#### Cieľ
+Reprezentanti aj manažéri (na mobilných zariadeniach hlavne) získali **natívny mobile feel** — appka reaguje na intuitívne gesturá ktoré používajú v iOS Mail, Photos, Messages, Android Chrome. Šetrí "tap targety" na malé ← Späť tlačidlá, prepínanie Q je rýchlejšie, modal-y sa zatvárajú prirodzene. **Funguje ako natívna appka, nie web stránka.**
+
+---
 
 ### v2.18.5 — design-critique audit polish + Trhový podiel sheet bug fixes
 
