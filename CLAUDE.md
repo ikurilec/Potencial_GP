@@ -26,7 +26,84 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.18.4** (na `main` aj `test` vetve) — Plnenie sumár polish + Aflamil family. Konzistentný 1-stĺpcový layout produktových kariet (názov, % aj predikcia kompletne viditeľné), všetky karty modrý gradient + 1.5px solid border, Aflamil family ako prvá karta s čiarkovaným borderom (kombinácia tbl + sáčky + krém), 3-subtab sheet pri klike (Tablety/Sáčky/Krém), zväčšené fonty (% 22px Outfit, predikcia 11.5px), modré chevy v kruhoch konzistentne v Golem aj gyn linke.
+**2.18.5** (na `main` aj `test` vetve) — design-critique skill audit polish + bug fixes pre Trhový podiel sheet. Typografická hierarchia hlavnej obrazovky (info-title 16px Outfit 800), 4-produktový mini-scoreboard v detail záznamu lekára, skelPharma skeleton pre Trhový podiel overlay, manažérska typografia konzistencia (mgr-stat-num 22px, mgr-dstat-num 20px, mgr-dname/dhdr-name weight 800). Trhový podiel sheet: proaktívny fetch oboch kvartálov (Q + Q-1), polling kým fetchy dobiehajú, wave dots loading animácia namiesto statického "—", filter prijíma aj 0% MS hodnoty.
+
+### v2.18.5 — design-critique audit polish + Trhový podiel sheet bug fixes
+
+#### Design-critique skill audit — top 7 vylepšení
+Skill `design:design-critique` identifikoval 7 oblastí. Implementované 5 (4 a 5 vynechané — onboarding tour už existuje, empty state CTAs preskočené per pokyn).
+
+#### #1 Hlavná obrazovka — typografická hierarchia rep formulára
+- `.info-accent` (top stripe) výška 4 → 5px (silnejší accent)
+- `.info-title` font-size 14 → **16px**, weight 600 → **800**, color `#1A2A3A` → `#0C1E35`, font-family `var(--font-display)` (Outfit), `letter-spacing:-.01em` — premium hero feel pre "Identifikácia návštevy"
+
+#### #2 Detail záznamu lekára — 4-produktový mini-scoreboard
+Nový blok (`.detail-prod-score`) v hero `detail-result` pod ABC chip + kapitácia. 4 mini kartičky:
+- Aflamil (modrá bodka), Suprax (fialová), Vidonorm (zelená), Cavinton (žltá)
+- Každá: uppercase label 9px + farebná bodka + **18px Outfit weight 800 number** (tabular-nums)
+- Hodnota 0 alebo `—` má `opacity:.45` (dim — nezadávané)
+- Renderuje sa iba ak rep zadal aspoň jednu hodnotu (`hasScore`)
+- Reprezentant uvidí okamžite čo zaznamenal pri otvorení starého záznamu — bez scroll-u
+
+#### #3 Loading skeletons konzistencia — pharma overlay
+- Nový helper `skelPharma()`: tmavá total card skeleton (s blank gradient bars vnútri) + 2 district card skeletons s 4 row placeholders každá
+- Nahradený text `'<div class="pharma-ms-loading">Načítavam dáta…</div>'` cez `replace_all` na 4 miestach v kóde za `skelPharma()` call
+- Pridané CSS `.pharma-ms-loading .skel-pharma-card`, `.skel-pharma-row`
+
+#### #6 Manažérska typografia konzistencia
+- `.mgr-stat-num` 20 → **22px**, weight 700 → **800**, color `#1A2A3A` → `#0C1E35`, `letter-spacing:-.01em`
+- `.mgr-dstat-num` 18 → 20px, weight 800
+- `.mgr-name` 14 → 14.5px, color `#0F172A`, `letter-spacing:-.005em`
+- `.mgr-dname` weight 700 → 800, `letter-spacing:-.01em`
+- `.mgr-plnenie-detail .dhdr-name` 15 → 16px, weight 800, `letter-spacing:-.01em`
+- Konzistentný "executive dashboard" feel naprieč všetkými admin/AM views
+
+#### #4 Onboarding tour — už existuje (skip)
+Tutorial overlay (`tutorial-overlay` + `initTutorial()`) je v kóde od v2.5.x. 4 kroky pri prvom logine. Bod auditu nepotreboval implementáciu.
+
+#### #5 Empty state actionable CTAs — preskočené
+Per pokyn — empty states ostávajú s informatívnym popisom bez akčného tlačidla.
+
+#### #7 Last-updated indikátor — pridaný a odstránený
+Pôvodne pridaný subtle text "aktualizované pred X min" v `pl-sum-lbl`, neskôr odstránený per pokyn (príliš veľa info v hlavičke). Helper `plnenieAgoFromTs` aj `PL_STATE.lastFetchAt` removed úplne.
+
+#### Bug fix: WN modal scroll keď je položiek viac
+- `.wn-box` dostal `max-height:calc(100vh - 40px)` + `display:flex; flex-direction:column`
+- `.wn-hdr` má `flex-shrink:0` (header zostane statický)
+- `.wn-body` má `flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain`
+- Pri 5+ položkách sa scroluje vo vnútri body, tlačidlo "Pokračovať" je vždy dosiahnuteľné
+
+#### Bug fix: Trhový podiel sheet — fallback na predchádzajúci Q
+**Problém:** Sheet pre konkrétny produkt zobrazoval "Terit. MS: —" pri reprezentantoch, lebo pre Q2 ešte nie sú IQVIA dáta. Pharma overlay má fallback na Q-1, sheet nie.
+
+**Oprava** v 3 miestach:
+1. `prodSheetRenderRepList` → `getTeritMs` skúša `[kvartal, pharmaKvartalPrev(kvartal)]` (loop)
+2. `prodSheetUpdateMsCells` → rovnaký fallback v `getTeritMs`
+3. `loadPharmaData` → ok:false aj !hasData branchy spúšťajú rekurzívny re-fetch na prev Q **aj keď je otvorený product sheet** (predtým len pharma overlay)
+
+#### Bug fix: getTeritMs prijíma aj 0% hodnoty
+**Problém:** Ak má rep skutočne 0% market share v danej oblasti, filter `v > 0` vyhodil aj 0 → vrátil null → "—". Reprezentant nevedel rozlíšiť "0% MS" vs "žiadne dáta".
+
+**Oprava:** Filter `v > 0` → `v >= 0` (akceptuje validnú nulu). 0,00% sa zobrazí ako informácia, "—" len ak naozaj neexistujú dáta.
+
+#### Bug fix: Trhový podiel sheet — proaktívny fetch + polling + loading state
+1. **Proaktívny fetch oboch Q** v `openProdSheet`: pri otvorení paralelne fetchne **Q + Q-1** pre všetky needed pharma codes × oblasti. Predtým sa Q-1 fetchol len rekurzívne až po zlyhaní Q.
+2. **Polling** kým sheet otvorený: `setInterval(prodSheetUpdateMsCells, 800)` — každé fetchy ktoré dobehnú sa okamžite premietnu do DOM. Auto-stop po 16s alebo pri zatvorení sheetu (`PL_PROD_SHEET_STATE.msPollTimer` cleared v `closeProdSheet`).
+3. **Loading state s wave dots animáciou** namiesto plain "—": kým fetch beží alebo nikdy neprebehol, MS bunka zobrazí 3 modré wave bodky (`.ms-dots`). Až po dokončení fetchov bez dát sa zobrazí statické "—".
+
+#### Wave dots animácia (`.ms-dots`)
+- 3 × 4×4px bodky s `border-radius:50%`
+- `msDotWave` keyframe 1.2s ease-in-out infinite — opacity `.30 → 1`, scale `.85 → 1.0`, `translateY(0 → -3px)`, color `#94A3B8 → #2563EB`
+- Stagger `0.15s` medzi bodkami — wave efekt zľava doprava
+- Reduced-motion rešpektované
+
+#### Štatistika
+- **193 insertions / 57 deletions** v `index.html`
+- **CSS braces balanced**
+- Žiadna zmena Apps Scriptu
+- WN modal nezmenený (subtle polish + bug fixes, žiadne nové features)
+
+---
 
 ### v2.18.4 — Plnenie sumár redesign + Aflamil family
 
