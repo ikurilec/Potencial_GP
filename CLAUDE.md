@@ -26,7 +26,63 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.18.3** (na `main` aj `test` vetve) — mobile-design polish vlna založená na `mobile-design` skill audite + Playwright `webapp-testing` smoke test verifikácia. Safe-area insets pre iPhone X+ (home indicator), globálne touch-action + tap-highlight cleanup, body overscroll-behavior contain (žiadne rubber-band ťahanie pri overlayoch), 44×44px touch target floor pre login eye toggle a pharma close button, väčšie/lepšie contrast gyn header logout. Smoke test potvrdil 0 JavaScript errorov v REP aj ADMIN móde naprieč mobile + desktop viewportami.
+**2.18.4** (na `main` aj `test` vetve) — Plnenie sumár polish + Aflamil family. Konzistentný 1-stĺpcový layout produktových kariet (názov, % aj predikcia kompletne viditeľné), všetky karty modrý gradient + 1.5px solid border, Aflamil family ako prvá karta s čiarkovaným borderom (kombinácia tbl + sáčky + krém), 3-subtab sheet pri klike (Tablety/Sáčky/Krém), zväčšené fonty (% 22px Outfit, predikcia 11.5px), modré chevy v kruhoch konzistentne v Golem aj gyn linke.
+
+### v2.18.4 — Plnenie sumár redesign + Aflamil family
+
+#### Aflamil family — synthetic agregátna karta
+- **`PHARMA_CODES['aflamil_family'] = ['AFLtbl', 'AFLsach', 'AFLcrm']`** — pre 3-subtab sheet
+- **`plnenieBuildAggregates`** pridáva synthetic `aflamil_family` produkt na vrch `productsToShow` keď existujú aj `aflamil_kr` aj `aflamil_tablety_sacky` (planEUR + predajeEUR + predajeEURDone agregované)
+- **`openProdSheet`** zachováva `aflamil_family` ako prodKey (predtým sme redirektovali na `aflamil_tablety_sacky`)
+- **`prodSheetRenderRepList`** mapuje aktívny pharma code na správny `planKey`: AFLcrm → `aflamil_kr`, AFLtbl/AFLsach → `aflamil_tablety_sacky`
+- **Sheet header** zobrazuje "Aflamil family" + 3 subtaby (Tablety/Sáčky/Krém)
+
+#### Vizuálne odlíšenie family karty
+- **Border**: `2px dashed #3B82F6` (čiarkovaný namiesto solid)
+- **Pozadie**: `linear-gradient(180deg, #EAF2FF 0%, #F8FAFF 80%)` — sviežejší modrý než default
+- **Box-shadow**: `0 2px 10px rgba(37,99,235,.12)` (modrý glow)
+- **Name**: 15.5px font-weight:800, `letter-spacing:-.01em`
+- Hover: gradient prejde na `#DBEAFE → #EFF6FF` + tmavšia border `#2563EB`
+
+#### Plnenie sumár — 1-stĺpcový layout
+- **`grid-template-columns: 1fr 1fr → 1fr`** — každá karta má celú šírku
+- **Padding karty 7px 10px → 11px 14px** — viac dýchania
+- **Markup zmenený z `flex-direction:column` na `flex-direction:row align-items:center`** — name + predikcia v ľavom stĺpci, % a chev vertikálne stredované cez celú výšku napravo
+
+#### Typografia v produktových kartách
+- **Name**: 12px → 14.5px, font-weight 700, color `#0F172A`, `letter-spacing:-.005em`
+- **% číslo**: 12px → **22px Outfit** font-weight:800, `letter-spacing:-.01em`, tabular-nums (premium dashboard look)
+- **Predikcia**: 9.5px → 11.5px, color `#64748B` + číslo `#334155` bold
+- **Chevron**: 20px → 22px (modrý kruh 26×26px)
+
+#### Default karty štýl (nie family)
+- **Border**: `1.5px solid #BFDBFE` (predtým 1px)
+- **Pozadie**: `linear-gradient(180deg, #F5F9FF 0%, #fff 70%)` — všetky karty modré
+- Hover: gradient prejde na `#EFF6FF → #F8FAFC` + `#3B82F6` border
+- Active: scale(.99) + tmavší modrý gradient
+
+#### Aplikované v Golem aj gyn linke
+- Markup zmenený v oboch render funkciách (`plnenieRenderSummary` pre golem aj gyn variant)
+- Štýly v default scope (pôsobia na obidva)
+
+#### Štatistika
+- **80+ insertions / 30+ deletions** v `index.html`
+- **CSS braces balanced**
+- Žiadna zmena Apps Scriptu
+
+#### Bug fixy v priebehu vlny
+- **`pl-sum-prod-name` inline override** `style="-webkit-line-clamp:unset;overflow:visible"` v Golem markup-e (predtým preteklo cez % a chev) — odstránený
+- **`min-width:0` na `.pl-sum-prod-c`** + `overflow:hidden` — grid items sa nedostanú za svoju gridovú šírku
+- **Predikcia má `text-overflow:ellipsis` + `flex:1 1 auto`** — dlhý text predikcie sa skráti namiesto prelievania
+- Keď nie je predikcia, použije sa empty `<span style="flex:1 1 auto">` placeholder pre zachovanie layoutu
+
+#### What's New modal aktualizácia
+- Zachovaný `WN_KEY = 'potencial_vl_wn_v2_18'` (per pravidlo subtle changes)
+- **Pridané položky**:
+  - Pre rep: 👨‍👩‍👧 "Aflamil family v Plnení" — nová karta hore + detail po reprezentantoch
+  - Pre mgr: 👨‍👩‍👧 "Aflamil family + 1-stĺpcový sumár" — popisuje aj zmenu layoutu
+
+---
 
 ### v2.18.3 — Mobile design polish + Playwright smoke test verifikácia
 
