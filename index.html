@@ -2113,7 +2113,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.18.5';
+var APP_VERSION = '2.19.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -2308,6 +2308,119 @@ function gynScriptUrl(params) {
 // ═══════════════════════════════════════════════════════════
 var IS_DEV = (new URLSearchParams(window.location.search)).get('dev') === '1';
 var DEV_ROLE = (new URLSearchParams(window.location.search)).get('role') || 'admin';
+
+// ═══════════════════════════════════════════════════════════════════════════
+//   MOBILE GESTURE HELPERS — swipe detector + long-press
+//   (haptic feedback funkcia haptic() je definovaná nižšie, pri rep utilities)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Generic swipe detector. Volaj attachSwipe(element, options).
+// options: {
+//   onSwipeLeft, onSwipeRight, onSwipeUp, onSwipeDown,  — callbacky (každý optional)
+//   threshold: 50,        — minimálna vzdialenosť (px) pre swipe
+//   maxOffAxis: 60,       — max offset perpendiculárne (filtruje neúmyselné swipey)
+//   edgeOnly: false,      — keď true, swipeRight platí len keď štart je pri ľavej hrane (<24px)
+//   onlyHorizontal: false — keď true, ignoruj vertikálne swipy
+//   onlyVertical: false   — keď true, ignoruj horizontálne swipy
+// }
+// Vracia funkciu detach() na cleanup.
+function attachSwipe(el, opts) {
+  if (!el) return function(){};
+  opts = opts || {};
+  var threshold = opts.threshold || 50;
+  var maxOffAxis = opts.maxOffAxis || 60;
+  var startX = 0, startY = 0, startT = 0, isTouching = false, blocked = false;
+
+  function onStart(e) {
+    if (!e.touches || e.touches.length !== 1) return;
+    var t = e.touches[0];
+    startX = t.clientX; startY = t.clientY;
+    startT = Date.now();
+    isTouching = true;
+    blocked = false;
+    if (opts.edgeOnly && startX > 24) blocked = true;
+  }
+  function onMove(e) {
+    // Žiadny preventDefault — necháme native scroll fungovať
+  }
+  function onEnd(e) {
+    if (!isTouching || blocked) { isTouching = false; return; }
+    isTouching = false;
+    var t = (e.changedTouches && e.changedTouches[0]);
+    if (!t) return;
+    var dx = t.clientX - startX;
+    var dy = t.clientY - startY;
+    var dt = Date.now() - startT;
+    if (dt > 800) return; // príliš pomalé — pravdepodobne scroll, nie swipe
+    var absX = Math.abs(dx), absY = Math.abs(dy);
+    if (absX >= threshold && absY < maxOffAxis && !opts.onlyVertical) {
+      if (dx > 0 && opts.onSwipeRight) { opts.onSwipeRight(); if (typeof haptic === 'function') haptic('selection'); }
+      else if (dx < 0 && opts.onSwipeLeft) { opts.onSwipeLeft(); if (typeof haptic === 'function') haptic('selection'); }
+    } else if (absY >= threshold && absX < maxOffAxis && !opts.onlyHorizontal) {
+      if (dy > 0 && opts.onSwipeDown) { opts.onSwipeDown(); if (typeof haptic === 'function') haptic('selection'); }
+      else if (dy < 0 && opts.onSwipeUp) { opts.onSwipeUp(); if (typeof haptic === 'function') haptic('selection'); }
+    }
+  }
+  el.addEventListener('touchstart', onStart, { passive: true });
+  el.addEventListener('touchmove', onMove, { passive: true });
+  el.addEventListener('touchend', onEnd, { passive: true });
+  el.addEventListener('touchcancel', function(){ isTouching = false; }, { passive: true });
+  return function detach() {
+    el.removeEventListener('touchstart', onStart);
+    el.removeEventListener('touchmove', onMove);
+    el.removeEventListener('touchend', onEnd);
+  };
+}
+
+// Long-press detector. Volaj attachLongPress(element, callback, ms = 500).
+// Cancel-luje sa pri pohybe (>10px) alebo touchend predtým ako uplynie čas.
+// Pripoj edge-swipe-back na overlay element (od ľavej hrany sprava-doľava → close).
+// Volaj raz pri loade; callback = funkcia ktorá zatvára overlay.
+function attachEdgeSwipeBack(el, closeFn) {
+  if (!el || typeof closeFn !== 'function') return function(){};
+  return attachSwipe(el, {
+    onlyHorizontal: true,
+    edgeOnly: true, // štart musí byť do 24px od ľavej hrany
+    onSwipeRight: function() { closeFn(); }
+  });
+}
+
+function attachLongPress(el, callback, ms) {
+  if (!el || typeof callback !== 'function') return function(){};
+  ms = ms || 500;
+  var timer = null, startX = 0, startY = 0, fired = false;
+  function clear() { if (timer) { clearTimeout(timer); timer = null; } }
+  function onStart(e) {
+    if (!e.touches || e.touches.length !== 1) return;
+    var t = e.touches[0];
+    startX = t.clientX; startY = t.clientY;
+    fired = false;
+    clear();
+    timer = setTimeout(function() {
+      timer = null;
+      fired = true;
+      if (typeof haptic === 'function') haptic('light');
+      callback(e);
+    }, ms);
+  }
+  function onMove(e) {
+    if (!timer || !e.touches || e.touches.length !== 1) return;
+    var t = e.touches[0];
+    if (Math.abs(t.clientX - startX) > 10 || Math.abs(t.clientY - startY) > 10) clear();
+  }
+  function onEnd() { clear(); }
+  el.addEventListener('touchstart', onStart, { passive: true });
+  el.addEventListener('touchmove', onMove, { passive: true });
+  el.addEventListener('touchend', onEnd, { passive: true });
+  el.addEventListener('touchcancel', onEnd, { passive: true });
+  return function detach() {
+    clear();
+    el.removeEventListener('touchstart', onStart);
+    el.removeEventListener('touchmove', onMove);
+    el.removeEventListener('touchend', onEnd);
+    el.removeEventListener('touchcancel', onEnd);
+  };
+}
 
 // Mock Plnenie dáta — Q1 2026 (použité pre všetky Q v DEV móde)
 var MOCK_PLNENIE = (function() {
@@ -3999,7 +4112,7 @@ function buildHistItemHtml(item) {
   }
   var idx = _histDetailItems.length;
   _histDetailItems.push(item);
-  return '<div class="hist-item" onclick="openDetail(' + idx + ')" style="cursor:pointer">' +
+  return '<div class="hist-item" data-idx="' + idx + '" onclick="openDetail(' + idx + ')" style="cursor:pointer">' +
     '<div style="display:flex;justify-content:space-between;align-items:center">' +
       '<div class="hist-item-name">' + mgrEscape(item.lekar || '—') + '</div>' +
       '<span style="font-size:11px;color:#94A3B8">›</span>' +
@@ -4038,6 +4151,45 @@ function renderHistItems(items) {
     });
   });
   body.innerHTML = html;
+  // Pripoj swipe-left + long-press na každý hist-item (admin → context menu, ostatní → otvor detail)
+  attachHistItemGestures();
+}
+
+// Pripojí swipe-left a long-press na všetky hist-item elementy.
+// Admin: long-press → context menu (Upraviť/Zmazať). Bežný rep: swipe-left → mini hint.
+function attachHistItemGestures() {
+  var body = document.getElementById('hist-body');
+  if (!body) return;
+  var session = getSession();
+  var isAdmin = session && session.role === 'admin';
+  Array.from(body.querySelectorAll('.hist-item')).forEach(function(row) {
+    if (row._gestureBound) return;
+    row._gestureBound = true;
+    var idx = parseInt(row.getAttribute('data-idx'), 10);
+    if (isNaN(idx)) return;
+    // Long-press → otvori detail (admin uvidí Upraviť tlačidlo v detail-e)
+    attachLongPress(row, function(e) {
+      e.preventDefault && e.preventDefault();
+      if (typeof openDetail === 'function') openDetail(idx);
+    }, 500);
+    // Swipe-left → small visual hint (jemne posunie kartu doľava + naspäť)
+    attachSwipe(row, {
+      onlyHorizontal: true,
+      threshold: 60,
+      onSwipeLeft: function() {
+        row.style.transition = 'transform .25s ease';
+        row.style.transform = 'translateX(-12px)';
+        setTimeout(function() {
+          row.style.transform = '';
+          setTimeout(function(){ row.style.transition = ''; }, 250);
+        }, 200);
+        // Admin: otvor detail (v detail-e bude tlačidlo Upraviť/Zmazať)
+        if (isAdmin && typeof openDetail === 'function') {
+          setTimeout(function(){ openDetail(idx); }, 300);
+        }
+      }
+    });
+  });
 }
 
 function filterHistory() {
@@ -7824,7 +7976,33 @@ document.addEventListener('DOMContentLoaded', function(){
   initProgress();
   initProgressSticky();
   initAndroidBack();
+  initEdgeSwipeBack();
 });
+
+// Pripoj edge-swipe-back gesture na všetky kľúčové full-screen overlaye.
+// Swipe sprava od ľavej hrany (do 24px) → zatvorí daný overlay.
+// Mirroruje iOS native back gesture pattern.
+function initEdgeSwipeBack() {
+  function bind(id, fn) {
+    var el = document.getElementById(id);
+    if (el) attachEdgeSwipeBack(el, fn);
+  }
+  bind('hist-overlay', function(){ if (typeof closeAllPanels === 'function') closeAllPanels(); });
+  bind('lb-overlay', function(){ if (typeof closeAllPanels === 'function') closeAllPanels(); });
+  bind('rep-plnenie-overlay', function(){ if (typeof closeAllPanels === 'function') closeAllPanels(); });
+  bind('pharma-ms-overlay', function(){ if (typeof closePharmaMs === 'function') closePharmaMs(); });
+  bind('pharma-okres-overlay', function(){ if (typeof closePharmaOkresChart === 'function') closePharmaOkresChart(); });
+  bind('detail-overlay', function(){ if (typeof closeDetail === 'function') closeDetail(); });
+  bind('edit-overlay', function(){ if (typeof closeEditOverlay === 'function') closeEditOverlay(); });
+  // Swipe-down zatvára modal-y (WN, milestone, detail záznamu — bonus pre tým ktorí preferujú down gesture)
+  function bindDown(id, fn) {
+    var el = document.getElementById(id);
+    if (el) attachSwipe(el, { onlyVertical: true, threshold: 80, onSwipeDown: fn });
+  }
+  bindDown('wn-overlay', function(){ if (typeof wnClose === 'function') wnClose(); });
+  bindDown('milestone-overlay', function(){ if (typeof closeMilestone === 'function') closeMilestone(); });
+  bindDown('detail-overlay', function(){ if (typeof closeDetail === 'function') closeDetail(); });
+}
 
 // ── ANDROID BACK BUTTON — História API pre PWA standalone mód ──
 // Na Androide tlačidlo Späť vyvolá popstate. Zachytíme ho a zatvoríme
@@ -7933,92 +8111,74 @@ function initScrollHint(box){
 // WHAT'S NEW — Oznam o aktualizácii
 // ══════════════════════════════════════════════════════════
 
-var WN_KEY = 'potencial_vl_wn_v2_18'; // zmenit pri kazdom novom oznameni
+var WN_KEY = 'potencial_vl_wn_v2_19'; // zmenit pri kazdom novom oznameni
 
 var WN_CONTENT_REP = {
-  icon: '✨',
-  title: 'Nový dizajn appky',
+  icon: '👆',
+  title: 'Posúvaj prstom',
   sub: 'Gedeon Richter Slovakia · 2026',
   items: [
     {
-      icon: '🎨',
+      icon: '↔️',
       bg: '#EFF6FF',
-      title: 'Hlbší a krajší vzhľad',
-      desc: 'Header, karty aj tlačidlá majú nové gradienty, jemné odlesky a väčšiu hĺbku. Appka pôsobí premium.'
+      title: 'Swipe medzi kvartálmi',
+      desc: 'V Plnení môžeš prejsť prstom doľava/doprava medzi Q1, Q2, Q3, Q4 — taby ostávajú ako skratky.'
     },
     {
-      icon: '🏆',
-      bg: '#FFF7ED',
-      title: 'Vylepšený rebríček',
-      desc: 'Prvé miesto má pulzujúce zlaté halo a animovanú korunku. Stupne víťazov vyrastajú so spring efektom.'
-    },
-    {
-      icon: '⚡',
+      icon: '◀️',
       bg: '#F0FDF4',
-      title: 'Animované progress bary',
-      desc: 'Plnenie plánu má teraz shimmer efekt prebiehajúci cez bar — vidíš že hodnoty sú živé.'
+      title: 'Swipe-back zo zľava',
+      desc: 'V plnoobrazovkových paneloch (História, Rebríček, Plnenie, Trhový podiel) potiahni od ľavej hrany doprava — zatvorí sa.'
     },
     {
-      icon: '📊',
-      bg: '#EFF6FF',
-      title: 'Krajší Trhový podiel',
-      desc: 'Tabuľka okresov má lepšiu typografiu, hover stav na riadkoch a tvoj produkt je výraznejšie zvýraznený. Karty okresov majú jemný hover glow.'
-    },
-    {
-      icon: '📋',
+      icon: '⬇️',
       bg: '#FFF7ED',
-      title: 'História záznamov',
-      desc: 'Vyhľadávač sa drží navrchu pri scrollovaní. Záznamy v histórii reagujú na ťuknutie farebným indikátorom zľava.'
+      title: 'Swipe-down na zatvorenie',
+      desc: 'Detail záznamu, milestone alebo "Čo je nové" zatvoríš aj potiahnutím nadol.'
     },
     {
-      icon: '👨‍👩‍👧',
-      bg: '#EFF6FF',
-      title: 'Aflamil family v Plnení',
-      desc: 'Nová karta hore v Plnenie sumáre — ukazuje kombinovanú výkonnosť všetkých Aflamil produktov (tablety + sáčky + krém). Klikni a uvidíš detail po reprezentantoch.'
+      icon: '📳',
+      bg: '#F5F3FF',
+      title: 'Vibrácie pri akciách (Android)',
+      desc: 'Telefón ti pri kľúčových akciách jemne zavibruje — submit, swipe, prepnutie kvartálu. Funguje na Androide.'
     }
   ]
 };
 
 var WN_CONTENT_MGR = {
-  icon: '✨',
-  title: 'Nový dizajn appky',
+  icon: '👆',
+  title: 'Posúvaj prstom',
   sub: 'Gedeon Richter Slovakia · 2026',
   items: [
     {
-      icon: '🎨',
+      icon: '↔️',
       bg: '#EFF6FF',
-      title: 'Premium vizuálny upgrade',
-      desc: 'Headery, karty, tabs — všetko má nové gradienty a tiene. Manažérske medaile (Platinum/Gold/Silver/Bronze) majú modernizovanú paletu.'
+      title: 'Swipe medzi kvartálmi',
+      desc: 'V Plnení môžeš prejsť prstom doľava/doprava medzi Q1–Q4. V Trhový podiel sheete swipe medzi subtabmi (Tablety/Sáčky/Krém).'
     },
     {
-      icon: '📊',
+      icon: '◀️',
       bg: '#F0FDF4',
-      title: 'Progress bary so shimmerom',
-      desc: 'Plnenie plánu — bary majú nový gradient, hĺbku a animovaný shine. Každá farba (zelená/oranžová/červená) má vlastný glow.'
+      title: 'Swipe-back zo zľava',
+      desc: 'V plnoobrazovkových paneloch (Plnenie, Trhový podiel, História, Rebríček, detail reprezentanta) potiahni od ľavej hrany doprava — zatvorí sa.'
     },
     {
-      icon: '💊',
+      icon: '⬇️',
       bg: '#FFF7ED',
-      title: 'Zladený dizajn aj v gyn linke',
-      desc: 'Všetky vylepšenia sa vzťahujú aj na gynekologickú líniu — konzistentný look naprieč oboma produktmi.'
+      title: 'Swipe-down na zatvorenie',
+      desc: 'Modal-y (Čo je nové, milestone, detail záznamu) zatvoríš aj potiahnutím nadol.'
     },
     {
-      icon: '📊',
-      bg: '#EFF6FF',
-      title: 'Trhový podiel — premium look',
-      desc: 'Total karta s glow blobs, tabuľka okresov v Outfit fonte s hover stavom, district karty majú modrý glow ring pri prejdení.'
-    },
-    {
-      icon: '🎯',
+      icon: '👆',
       bg: '#F5F3FF',
-      title: 'Plnenie detail — väčšia hierarchia',
-      desc: 'Hlavné % je teraz 38px (z 34px) s text-shadow. Total karta má nové gradienty a depth. Per-produkt karty reagujú na hover.'
+      title: 'Long-press v Histórii',
+      desc: 'Pri zázname v Histórii podrž prst — otvorí sa detail. Admin môže následne upraviť alebo zmazať záznam.'
     },
     {
-      icon: '👨‍👩‍👧',
-      bg: '#EFF6FF',
-      title: 'Aflamil family + 1-stĺpcový sumár',
-      desc: 'Plnenie sumár má novú prvú kartu "Aflamil family" (kombinácia tbl + sáčky + krém s čiarkovaným borderom). Karty teraz cez celú šírku — názov, % aj predikcia sú celé viditeľné. Klik na family kartu otvorí 3 subtaby (Tablety/Sáčky/Krém).'
+      icon: '📳',
+      bg: '#FEF3C7',
+      title: 'Vibrácie pri akciách (Android)',
+      desc: 'Pri kľúčových akciách (submit, swipe, prepnutie Q, výber subtab-u) telefón jemne zavibruje. iOS Safari podporu Vibration API nemá.'
     }
   ]
 };
@@ -9335,6 +9495,7 @@ function _animPlQ(elId, dir) {
 
 function plnenieSwitchQ(q) {
   if (q === PL_STATE.q) return;
+  if (typeof haptic === 'function') haptic('selection');
   var dir = q > PL_STATE.q ? 'r' : 'l';
   PL_STATE.q = q;
   plnenieUpdateQTabs();
@@ -9805,6 +9966,7 @@ function openProdSheet(prodKey, prodLabel) {
   void sheet.offsetWidth;
   sheet.classList.add('show');
   prodSheetInitSwipe();
+  prodSheetInitSubtabSwipe();
 
   // Polling — kým sheet otvorený a aspoň jeden rep má MS bunku "—",
   // skús refresh. To zabezpečí že keď fetch dobehne, hodnota okamžite naskočí.
@@ -10059,6 +10221,31 @@ function closeProdSheet() {
   if (bd)    bd.classList.remove('show');
 }
 
+// Swipe medzi subtab-mi (Tablety/Sáčky/Krém) v product sheete
+var _prodSheetSubtabSwipeAttached = false;
+function prodSheetInitSubtabSwipe() {
+  if (_prodSheetSubtabSwipeAttached) return;
+  var bodyEl = document.getElementById('pl-ps-body');
+  if (!bodyEl) return;
+  attachSwipe(bodyEl, {
+    onlyHorizontal: true,
+    onSwipeLeft: function() {
+      // swipe doľava → next subtab
+      var codes = PHARMA_CODES[PL_PROD_SHEET_STATE.prodKey] || [];
+      if (codes.length < 2) return;
+      var idx = codes.indexOf(PL_PROD_SHEET_STATE.activePharmaCode);
+      if (idx >= 0 && idx < codes.length - 1) prodSheetSwitchPharmaCode(codes[idx + 1]);
+    },
+    onSwipeRight: function() {
+      var codes = PHARMA_CODES[PL_PROD_SHEET_STATE.prodKey] || [];
+      if (codes.length < 2) return;
+      var idx = codes.indexOf(PL_PROD_SHEET_STATE.activePharmaCode);
+      if (idx > 0) prodSheetSwitchPharmaCode(codes[idx - 1]);
+    }
+  });
+  _prodSheetSubtabSwipeAttached = true;
+}
+
 // Volá sa automaticky keď loadPharmaData dokončí fetch — updatne MS bunky bez re-renderu
 function prodSheetUpdateMsCells() {
   if (!PL_PROD_SHEET_STATE.open || !PL_PROD_SHEET_STATE.prodKey) return;
@@ -10143,6 +10330,7 @@ function prodSheetUpdateMsCells() {
 function prodSheetSwitchPharmaCode(code) {
   if (!PL_PROD_SHEET_STATE.open) return;
   if (PL_PROD_SHEET_STATE.activePharmaCode === code) return;
+  if (typeof haptic === 'function') haptic('selection');
   PL_PROD_SHEET_STATE.activePharmaCode = code;
   PL_PROD_SHEET_STATE.predajeSubKey = PHARMA_PREDAJE_KEY[code] || null;
 
@@ -10278,6 +10466,7 @@ function plnenieRenderRepList() {
 
 function plnenieRenderAll() {
   plnenieUpdateQTabs();
+  plnenieInitQSwipe();
   if (!PL_STATE.aggregates) {
     plnenieRenderSummaryEmpty();
     var listEl = document.getElementById('pl-rep-list');
@@ -10290,6 +10479,48 @@ function plnenieRenderAll() {
   plnenieRenderRegions();
   plnenieRenderRepList();
   if (PL_STATE.detailRep) plnenieRenderDetail();
+}
+
+// Pripoj swipe handlery na Plnenie sumár (manažér view) — swipe medzi Q1↔Q4
+var _plnenieSwipeAttached = false;
+function plnenieInitQSwipe() {
+  if (_plnenieSwipeAttached) return;
+  var el = document.getElementById('pl-q-content');
+  if (!el) return;
+  attachSwipe(el, {
+    onlyHorizontal: true,
+    onSwipeLeft: function() {
+      if (PL_STATE.detailRep) return; // detail view má vlastný swipe
+      var next = PL_STATE.q + 1;
+      if (next <= 4) plnenieSwitchQ(next);
+    },
+    onSwipeRight: function() {
+      if (PL_STATE.detailRep) return;
+      var prev = PL_STATE.q - 1;
+      if (prev >= 1) plnenieSwitchQ(prev);
+    }
+  });
+  _plnenieSwipeAttached = true;
+}
+
+// Rep Plnenie overlay — swipe medzi Q1↔Q4
+var _repPlnenieSwipeAttached = false;
+function repPlnenieInitQSwipe() {
+  if (_repPlnenieSwipeAttached) return;
+  var el = document.getElementById('rep-pl-q-content');
+  if (!el) return;
+  attachSwipe(el, {
+    onlyHorizontal: true,
+    onSwipeLeft: function() {
+      var next = REP_PL_STATE.q + 1;
+      if (next <= 4) repPlnenieSwitchQ(next);
+    },
+    onSwipeRight: function() {
+      var prev = REP_PL_STATE.q - 1;
+      if (prev >= 1) repPlnenieSwitchQ(prev);
+    }
+  });
+  _repPlnenieSwipeAttached = true;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -10888,6 +11119,7 @@ function repPlnenieLoad() {
 
 function repPlnenieSwitchQ(q) {
   if (q === REP_PL_STATE.q) return;
+  if (typeof haptic === 'function') haptic('selection');
   var dir = q > REP_PL_STATE.q ? 'r' : 'l';
   REP_PL_STATE.q = q;
   repPlnenieUpdateQTabs();
@@ -11097,6 +11329,7 @@ function repPlnenieRenderLoading() {
 function repPlnenieRender() {
   var session = getSession();
   if (!session || !session.username) return;
+  repPlnenieInitQSwipe();
   var username = session.username;
   var totalCardEl = document.getElementById('rep-pl-total-card');
   var prodsEl = document.getElementById('rep-pl-prods');
