@@ -2124,7 +2124,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.19.4';
+var APP_VERSION = '2.19.5';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -2447,6 +2447,11 @@ function attachDragSwitcher(el, options) {
     }
     currentDx = dx;
     target.style.transform = 'translate3d(' + dx + 'px,0,0)';
+    // onMove callback — pre Q tabs predznamenenie cieľového Q-u
+    if (typeof options.onMove === 'function') {
+      var w = target.offsetWidth || el.offsetWidth || window.innerWidth;
+      try { options.onMove(dx, w); } catch(err){}
+    }
   }
   function onEnd() {
     if (!dragging) {
@@ -9670,6 +9675,8 @@ function _animPlQ(elId, dir) {
 
 function plnenieSwitchQ(q) {
   if (q === PL_STATE.q) return;
+  // Guard: future Q nie je dostupný (plán nie je zadaný / Q nie je ukončený)
+  if (q > plnenieCurrentQ()) return;
   if (typeof haptic === 'function') haptic('selection');
   var dir = q > PL_STATE.q ? 'r' : 'l';
   PL_STATE.q = q;
@@ -9708,6 +9715,16 @@ function plnenieUpdateQTabs() {
     btn.classList.toggle('active', q === PL_STATE.q);
     btn.classList.toggle('current', q === curQ);
     btn.classList.toggle('future', q > curQ);
+    // Disable future Q taby — plán ešte nie je zadaný / Q nie je ukončený
+    if (q > curQ) {
+      btn.disabled = true;
+      btn.style.opacity = '.4';
+      btn.style.cursor = 'not-allowed';
+    } else {
+      btn.disabled = false;
+      btn.style.opacity = '';
+      btn.style.cursor = '';
+    }
   });
 }
 
@@ -10649,32 +10666,352 @@ function plnenieRenderAll() {
   plnenieRenderRegions();
   plnenieRenderRepList();
   if (PL_STATE.detailRep) plnenieRenderDetail();
+  // Po dokončení render-u cache-uj DOM (s drobným delay, animácie už dobehli)
+  setTimeout(plnenieCacheCurrentDom, 200);
+  // Pre-cache adjacent Q-y na pozadí (rozdelene aby UI nelagovalo)
+  setTimeout(function(){
+    if (PL_STATE.detailRep || !_plnenieSwipeAttached) return;
+    var prevQ = PL_STATE.q - 1;
+    if (prevQ >= 1) plnenieEnsureCachedQDom(prevQ);
+  }, 700);
+  setTimeout(function(){
+    if (PL_STATE.detailRep || !_plnenieSwipeAttached) return;
+    var nextQ = PL_STATE.q + 1, maxQ = plnenieCurrentQ();
+    if (nextQ <= maxQ) plnenieEnsureCachedQDom(nextQ);
+  }, 1300);
 }
 
-// Manažér Plnenie sumár — drag medzi Q1↔Q4 (simple, bez carousel peeks)
+// DOM cache pre Plnenie sumár — po každom render-e Q-u si uložíme clone DOM-u.
+// Ten potom použijeme pri drag swipe ako peek panel — bez state swap, bez render-u.
+window.PL_DOM_CACHE = window.PL_DOM_CACHE || {};
+window.REP_PL_DOM_CACHE = window.REP_PL_DOM_CACHE || {};
+
+function plnenieCacheCurrentDom() {
+  var el = document.getElementById('pl-q-content');
+  if (!el || !PL_STATE.q) return;
+  if (PL_STATE.detailRep) return;
+  var clone = el.cloneNode(true);
+  if (clone.id) clone.removeAttribute('id');
+  Array.prototype.forEach.call(clone.querySelectorAll('[id]'), function(n){ n.removeAttribute('id'); });
+  window.PL_DOM_CACHE[PL_STATE.q] = clone;
+}
+
+// Pre-cache adjacent Q DOM cez state swap + render. Bezpečné: try/finally
+// zabezpečuje state restore + DOM re-render aj pri chybe.
+function plnenieEnsureCachedQDom(targetQ) {
+  if (window.PL_DOM_CACHE[targetQ]) return;
+  if (!PL_STATE.qCache[targetQ]) return;
+  if (PL_STATE.detailRep) return;
+  var el = document.getElementById('pl-q-content');
+  if (!el) return;
+
+  var origQ = PL_STATE.q;
+  var origData = PL_STATE.data;
+  var origAgg = PL_STATE.aggregates;
+  var origCountUp = window.plnenieCountUp;
+  var origCountUpEUR = window.plnenieCountUpEUR;
+
+  try {
+    // Suppress animations during snapshot
+    window.plnenieCountUp = function(el, t){ if (el) el.textContent = plnenieFormatPct(t); };
+    window.plnenieCountUpEUR = function(el, t){ if (el) el.textContent = plnenieFormatEUR(t); };
+
+    PL_STATE.q = targetQ;
+    PL_STATE.data = PL_STATE.qCache[targetQ].data;
+    PL_STATE.aggregates = PL_STATE.qCache[targetQ].aggregates;
+
+    plnenieRenderSummary();
+    plnenieRenderRegions();
+    plnenieRenderRepList();
+
+    var clone = el.cloneNode(true);
+    if (clone.id) clone.removeAttribute('id');
+    Array.prototype.forEach.call(clone.querySelectorAll('[id]'), function(n){ n.removeAttribute('id'); });
+    window.PL_DOM_CACHE[targetQ] = clone;
+  } catch(err) {
+    if (window.console && console.warn) console.warn('plnenieEnsureCachedQDom failed:', err);
+  } finally {
+    // VŽDY restore state + re-render DOM (aj pri error)
+    window.plnenieCountUp = origCountUp;
+    window.plnenieCountUpEUR = origCountUpEUR;
+    PL_STATE.q = origQ;
+    PL_STATE.data = origData;
+    PL_STATE.aggregates = origAgg;
+    try {
+      plnenieRenderSummary();
+      plnenieRenderRegions();
+      plnenieRenderRepList();
+    } catch(e) {}
+  }
+}
+
+function repPlnenieEnsureCachedQDom(targetQ) {
+  if (window.REP_PL_DOM_CACHE[targetQ]) return;
+  if (!REP_PL_STATE.qCache[targetQ]) return;
+  var el = document.getElementById('rep-pl-q-content');
+  if (!el) return;
+
+  var origQ = REP_PL_STATE.q;
+  var origData = REP_PL_STATE.data;
+  var origAgg = REP_PL_STATE.aggregates;
+  var origCountUp = window.plnenieCountUp;
+  var origCountUpEUR = window.plnenieCountUpEUR;
+
+  try {
+    window.plnenieCountUp = function(el, t){ if (el) el.textContent = plnenieFormatPct(t); };
+    window.plnenieCountUpEUR = function(el, t){ if (el) el.textContent = plnenieFormatEUR(t); };
+
+    REP_PL_STATE.q = targetQ;
+    REP_PL_STATE.data = REP_PL_STATE.qCache[targetQ].data;
+    REP_PL_STATE.aggregates = REP_PL_STATE.qCache[targetQ].aggregates;
+
+    repPlnenieRender();
+
+    var clone = el.cloneNode(true);
+    if (clone.id) clone.removeAttribute('id');
+    Array.prototype.forEach.call(clone.querySelectorAll('[id]'), function(n){ n.removeAttribute('id'); });
+    window.REP_PL_DOM_CACHE[targetQ] = clone;
+  } catch(err) {
+    if (window.console && console.warn) console.warn('repPlnenieEnsureCachedQDom failed:', err);
+  } finally {
+    window.plnenieCountUp = origCountUp;
+    window.plnenieCountUpEUR = origCountUpEUR;
+    REP_PL_STATE.q = origQ;
+    REP_PL_STATE.data = origData;
+    REP_PL_STATE.aggregates = origAgg;
+    try { repPlnenieRender(); } catch(e) {}
+  }
+}
+
+function repPlnenieCacheCurrentDom() {
+  var el = document.getElementById('rep-pl-q-content');
+  if (!el || !REP_PL_STATE.q) return;
+  var clone = el.cloneNode(true);
+  if (clone.id) clone.removeAttribute('id');
+  Array.prototype.forEach.call(clone.querySelectorAll('[id]'), function(n){ n.removeAttribute('id'); });
+  window.REP_PL_DOM_CACHE[REP_PL_STATE.q] = clone;
+}
+
+// Pure-template render (žiadne state swap, žiadne render funkcie).
+// Číta priamo z PL_STATE.qCache[q].aggregates a vyrenderuje light HTML.
+function buildPlnenieQPeekHtml(q) {
+  var cached = PL_STATE.qCache[q];
+  if (!cached || !cached.aggregates) return '';
+  var agg = cached.aggregates;
+  var sk  = agg.sk || {};
+  var qLbl = plnenieQLabel(q, PL_STATE.year);
+  var skLabel = plnenieSumLabel();
+  var pctCls  = plnenieColorClass(sk.pct);
+  var pctText = (sk.pct !== null && sk.pct !== undefined && !isNaN(sk.pct)) ? plnenieFormatPct(sk.pct) : '—';
+  var eurStrong = sk.predajeEUR > 0 ? plnenieFormatEUR(sk.predajeEUR) : '—';
+  var planStr = sk.planEUR > 0 ? ('z plánu ' + plnenieFormatEUR(sk.planEUR)) : '—';
+
+  // Predikcia
+  var predEUR = (sk.planEUR > 0)
+    ? plnenieCalcPredikciaSummary(sk.planEUR, sk.predajeEURDone || 0, q, PL_STATE.year)
+    : null;
+  var predHtml = (predEUR !== null)
+    ? '<div class="pl-sum-pred" style="margin-top:14px;font-size:11px;color:#94A3B8;text-align:center;border-top:1px solid #F1F5F9;padding-top:10px">predikcia konca kvartálu <span style="color:#0F172A;font-weight:700;margin-left:4px">' + plnenieFormatPct(predEUR) + '</span></div>'
+    : '';
+
+  // Regions (West / East) — len pre admin/boss, nie pre amwest/ameast
+  var regionsHtml = '';
+  if (!plnenieIsAmRole() && agg.regions) {
+    var regs = [
+      { key: 'west', label: 'West' },
+      { key: 'east', label: 'East' }
+    ];
+    regionsHtml = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">';
+    regs.forEach(function(r){
+      var rd = agg.regions[r.key] || {};
+      var rPctCls = plnenieColorClass(rd.pct);
+      var rPctText = (rd.pct !== null && rd.pct !== undefined && !isNaN(rd.pct)) ? plnenieFormatPct(rd.pct) : '—';
+      var rPredEUR = (rd.planEUR > 0)
+        ? plnenieCalcPredikciaSummary(rd.planEUR, rd.predajeEURDone || 0, q, PL_STATE.year) : null;
+      var rPredText = rPredEUR !== null ? plnenieFormatPct(rPredEUR) : '—';
+      regionsHtml +=
+        '<div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:12px 14px;text-align:center">' +
+          '<div style="font-size:11px;font-weight:700;color:#94A3B8;letter-spacing:.07em;text-transform:uppercase">' + r.label + '</div>' +
+          '<div style="font-size:24px;font-weight:800;font-family:var(--font-display);margin-top:4px" class="' + rPctCls + '">' + rPctText + '</div>' +
+          '<div style="font-size:10px;color:#94A3B8;margin-top:4px">predikcia ' + rPredText + '</div>' +
+        '</div>';
+    });
+    regionsHtml += '</div>';
+  }
+
+  return '<div style="width:100%">' +
+    '<div class="pl-sum-big" style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;box-shadow:0 2px 10px rgba(0,0,0,.06)">' +
+      '<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;gap:10px">' +
+        '<div>' +
+          '<div style="font-size:11px;font-weight:700;color:#94A3B8;letter-spacing:.07em;text-transform:uppercase">' + skLabel + ' · ' + qLbl + '</div>' +
+          '<div class="pl-sum-big-val ' + pctCls + '" style="font-size:30px;font-weight:800;line-height:1">' + pctText + '</div>' +
+        '</div>' +
+        '<div style="text-align:right">' +
+          '<div style="font-size:13px;color:#64748B;font-weight:500"><strong style="color:#0F172A;font-weight:700;font-size:20px;font-family:var(--font-display);line-height:1">' + eurStrong + '</strong></div>' +
+          '<div style="font-size:11.5px;color:#94A3B8;margin-top:2px">' + planStr + '</div>' +
+        '</div>' +
+      '</div>' +
+      regionsHtml +
+      predHtml +
+    '</div>' +
+  '</div>';
+}
+
+// Rep Plnenie peek — pre prihláseného repa
+function buildRepPlnenieQPeekHtml(q) {
+  var cached = REP_PL_STATE.qCache[q];
+  if (!cached || !cached.aggregates) return '';
+  var session = getSession();
+  var username = session && session.username;
+  var rep = (cached.aggregates.reps || []).find(function(r){ return r.username === username; });
+  if (!rep) return '';
+  var qLbl = plnenieQLabel(q, REP_PL_STATE.year);
+  var pctCls = plnenieColorClass(rep.pct);
+  var pctText = (rep.pct !== null && rep.pct !== undefined && !isNaN(rep.pct)) ? plnenieFormatPct(rep.pct) : '—';
+  var eurStr = rep.predajeEUR > 0 ? plnenieFormatEUR(rep.predajeEUR) : '—';
+  var planStr = rep.planEUR > 0 ? plnenieFormatEUR(rep.planEUR) : '—';
+  return '<div style="width:100%;padding:0">' +
+    '<div style="background:linear-gradient(135deg,#0C1E35 0%,#13294B 55%,#0C1E35 100%);border-radius:14px;padding:18px 18px 16px;color:#fff;text-align:center;box-shadow:0 12px 32px rgba(12,30,53,.30)">' +
+      '<div style="font-size:10px;font-weight:700;color:#7AABCC;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Môj plán · ' + qLbl + '</div>' +
+      '<div class="' + pctCls + '" style="font-size:38px;font-weight:800;font-family:var(--font-display);line-height:1;letter-spacing:-.02em">' + pctText + '</div>' +
+      '<div style="font-size:12px;color:#CBD5E1;margin-top:8px">' + eurStr + ' z plánu <strong style="color:#fff;font-weight:700">' + planStr + '</strong></div>' +
+    '</div>' +
+  '</div>';
+}
+
+// Helper — vloží do peek panel-u plný DOM clone z cache (ak existuje), inak light template fallback
+function fillPlnenieQPeek(peekEl, targetQ) {
+  peekEl.innerHTML = '';
+  var cached = window.PL_DOM_CACHE && window.PL_DOM_CACHE[targetQ];
+  if (cached) {
+    var dom = cached.cloneNode(true);
+    dom.style.width = '100%';
+    dom.style.pointerEvents = 'none';
+    peekEl.appendChild(dom);
+  } else {
+    // Fallback — light template ak DOM ešte nebol cached pre tento Q
+    peekEl.innerHTML = buildPlnenieQPeekHtml(targetQ);
+  }
+}
+
+function fillRepPlnenieQPeek(peekEl, targetQ) {
+  peekEl.innerHTML = '';
+  var cached = window.REP_PL_DOM_CACHE && window.REP_PL_DOM_CACHE[targetQ];
+  if (cached) {
+    var dom = cached.cloneNode(true);
+    dom.style.width = '100%';
+    dom.style.pointerEvents = 'none';
+    peekEl.appendChild(dom);
+  } else {
+    peekEl.innerHTML = buildRepPlnenieQPeekHtml(targetQ);
+  }
+}
+
+// Manažér Plnenie sumár — drag medzi Q1↔current (žiadne future Q)
 var _plnenieSwipeAttached = false;
 function plnenieInitQSwipe() {
   if (_plnenieSwipeAttached) return;
   var el = document.getElementById('pl-q-content');
   if (!el) return;
+  var carousel = buildCarouselPeeks(el);
+  if (!carousel) return;
+  carousel.peekPrev.style.alignItems = 'flex-start';
+  carousel.peekPrev.style.padding = '0';
+  carousel.peekPrev.style.overflow = 'hidden';
+  carousel.peekNext.style.alignItems = 'flex-start';
+  carousel.peekNext.style.padding = '0';
+  carousel.peekNext.style.overflow = 'hidden';
   attachDragSwitcher(el, {
+    transformTarget: carousel.wrap,
+    onDragStart: function() {
+      if (PL_STATE.detailRep) return;
+      var prevQ = PL_STATE.q - 1, nextQ = PL_STATE.q + 1;
+      var maxQ = plnenieCurrentQ();
+      // Safety net: ak adjacent Q ešte nebol cached (race s pre-cache timer-om), urob to teraz
+      if (prevQ >= 1 && !window.PL_DOM_CACHE[prevQ]) plnenieEnsureCachedQDom(prevQ);
+      if (nextQ <= maxQ && !window.PL_DOM_CACHE[nextQ]) plnenieEnsureCachedQDom(nextQ);
+      carousel.peekPrev.innerHTML = '';
+      if (prevQ >= 1) fillPlnenieQPeek(carousel.peekPrev, prevQ);
+      carousel.peekNext.innerHTML = '';
+      if (nextQ <= maxQ) fillPlnenieQPeek(carousel.peekNext, nextQ);
+      carousel.peekPrev.classList.add('show');
+      carousel.peekNext.classList.add('show');
+    },
+    onMove: function(dx, w) {
+      // Predznamenenie cieľového Q tab-u podľa drag percentage
+      if (PL_STATE.detailRep) return;
+      var ratio = w > 0 ? dx / w : 0;
+      var targetQ = PL_STATE.q;
+      if (Math.abs(ratio) > 0.20) {
+        targetQ = ratio < 0 ? (PL_STATE.q + 1) : (PL_STATE.q - 1);
+        if (targetQ < 1 || targetQ > plnenieCurrentQ()) targetQ = PL_STATE.q;
+      }
+      Array.prototype.forEach.call(document.querySelectorAll('.pl-q-tab'), function(b){
+        var bq = parseInt(b.getAttribute('data-q'));
+        b.classList.toggle('active', bq === targetQ);
+      });
+    },
+    onDragEnd: function() {
+      carousel.peekPrev.classList.remove('show');
+      carousel.peekNext.classList.remove('show');
+      // Vráť active na current Q (po snap-back); pri snap-forward sa plnenieSwitchQ postará
+      plnenieUpdateQTabs();
+    },
     canPrev: function(){ return !PL_STATE.detailRep && PL_STATE.q > 1; },
-    canNext: function(){ return !PL_STATE.detailRep && PL_STATE.q < 4; },
+    canNext: function(){ return !PL_STATE.detailRep && PL_STATE.q < plnenieCurrentQ(); },
     onPrev:  function(){ plnenieSwitchQ(PL_STATE.q - 1); },
     onNext:  function(){ plnenieSwitchQ(PL_STATE.q + 1); }
   });
   _plnenieSwipeAttached = true;
 }
 
-// Rep Plnenie overlay — drag medzi Q1↔Q4
+// Rep Plnenie overlay — drag medzi Q1↔current
 var _repPlnenieSwipeAttached = false;
 function repPlnenieInitQSwipe() {
   if (_repPlnenieSwipeAttached) return;
   var el = document.getElementById('rep-pl-q-content');
   if (!el) return;
+  var carousel = buildCarouselPeeks(el);
+  if (!carousel) return;
+  carousel.peekPrev.style.alignItems = 'flex-start';
+  carousel.peekPrev.style.padding = '0';
+  carousel.peekPrev.style.overflow = 'hidden';
+  carousel.peekNext.style.alignItems = 'flex-start';
+  carousel.peekNext.style.padding = '0';
+  carousel.peekNext.style.overflow = 'hidden';
   attachDragSwitcher(el, {
+    transformTarget: carousel.wrap,
+    onDragStart: function() {
+      var prevQ = REP_PL_STATE.q - 1, nextQ = REP_PL_STATE.q + 1;
+      var maxQ = plnenieCurrentQ();
+      if (prevQ >= 1 && !window.REP_PL_DOM_CACHE[prevQ]) repPlnenieEnsureCachedQDom(prevQ);
+      if (nextQ <= maxQ && !window.REP_PL_DOM_CACHE[nextQ]) repPlnenieEnsureCachedQDom(nextQ);
+      carousel.peekPrev.innerHTML = '';
+      if (prevQ >= 1) fillRepPlnenieQPeek(carousel.peekPrev, prevQ);
+      carousel.peekNext.innerHTML = '';
+      if (nextQ <= maxQ) fillRepPlnenieQPeek(carousel.peekNext, nextQ);
+      carousel.peekPrev.classList.add('show');
+      carousel.peekNext.classList.add('show');
+    },
+    onMove: function(dx, w) {
+      var ratio = w > 0 ? dx / w : 0;
+      var targetQ = REP_PL_STATE.q;
+      if (Math.abs(ratio) > 0.20) {
+        targetQ = ratio < 0 ? (REP_PL_STATE.q + 1) : (REP_PL_STATE.q - 1);
+        if (targetQ < 1 || targetQ > plnenieCurrentQ()) targetQ = REP_PL_STATE.q;
+      }
+      Array.prototype.forEach.call(document.querySelectorAll('#rep-pl-q-tabs .pl-q-tab'), function(b){
+        var bq = parseInt(b.getAttribute('data-q'));
+        b.classList.toggle('active', bq === targetQ);
+      });
+    },
+    onDragEnd: function() {
+      carousel.peekPrev.classList.remove('show');
+      carousel.peekNext.classList.remove('show');
+      repPlnenieUpdateQTabs();
+    },
     canPrev: function(){ return REP_PL_STATE.q > 1; },
-    canNext: function(){ return REP_PL_STATE.q < 4; },
+    canNext: function(){ return REP_PL_STATE.q < plnenieCurrentQ(); },
     onPrev:  function(){ repPlnenieSwitchQ(REP_PL_STATE.q - 1); },
     onNext:  function(){ repPlnenieSwitchQ(REP_PL_STATE.q + 1); }
   });
@@ -11277,6 +11614,7 @@ function repPlnenieLoad() {
 
 function repPlnenieSwitchQ(q) {
   if (q === REP_PL_STATE.q) return;
+  if (q > plnenieCurrentQ()) return;
   if (typeof haptic === 'function') haptic('selection');
   var dir = q > REP_PL_STATE.q ? 'r' : 'l';
   REP_PL_STATE.q = q;
@@ -11324,6 +11662,15 @@ function repPlnenieUpdateQTabs() {
     tab.classList.toggle('active', q === REP_PL_STATE.q);
     tab.classList.toggle('current', q === curQ);
     tab.classList.toggle('future', q > curQ);
+    if (q > curQ) {
+      tab.disabled = true;
+      tab.style.opacity = '.4';
+      tab.style.cursor = 'not-allowed';
+    } else {
+      tab.disabled = false;
+      tab.style.opacity = '';
+      tab.style.cursor = '';
+    }
   });
 }
 
@@ -11488,6 +11835,18 @@ function repPlnenieRender() {
   var session = getSession();
   if (!session || !session.username) return;
   repPlnenieInitQSwipe();
+  // Cache DOM + pre-cache adjacent Q-y na pozadí
+  setTimeout(repPlnenieCacheCurrentDom, 200);
+  setTimeout(function(){
+    if (!_repPlnenieSwipeAttached) return;
+    var prevQ = REP_PL_STATE.q - 1;
+    if (prevQ >= 1) repPlnenieEnsureCachedQDom(prevQ);
+  }, 700);
+  setTimeout(function(){
+    if (!_repPlnenieSwipeAttached) return;
+    var nextQ = REP_PL_STATE.q + 1, maxQ = plnenieCurrentQ();
+    if (nextQ <= maxQ) repPlnenieEnsureCachedQDom(nextQ);
+  }, 1300);
   var username = session.username;
   var totalCardEl = document.getElementById('rep-pl-total-card');
   var prodsEl = document.getElementById('rep-pl-prods');
