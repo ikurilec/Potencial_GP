@@ -26,7 +26,51 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.19.0** (na `main` aj `test` vetve) — **mobilné gestá** naprieč celou appkou. Swipe medzi Q tabmi v Plnení, swipe medzi subtabmi v Trhový podiel sheete, swipe-back z ľavej hrany v overlayoch (iOS pattern), swipe-down na zatvorenie modal-ov, long-press na záznamy v Histórii (admin → upraviť/zmazať), haptic feedback na všetky kľúčové akcie (Android). Príchod natívneho mobile feel-u.
+**2.19.1** (na `main` aj `test` vetve) — drag-driven gesture animácia pre Q tabs + subtab swipe. Content sa pohybuje **s prstom v reálnom čase** (translate3d follows finger), rubber-band efekt na boundaries (Q1 doprava, Q4 doľava), threshold 25% šírky pre snap-out alebo snap-back. Po prejdení threshold-u content "doletí" do strany a switch nastane plynule cez existujúce `_animPlQ` slide-in.
+
+### v2.19.1 — Drag-driven swipe animácia (gesture follows finger)
+
+#### Nový helper `attachDragSwitcher(el, options)`
+- **`canPrev`/`canNext`** callbacky určujú boundaries (rubber-band 0.3× stiffness keď nie je možný switch)
+- **Direction lock** — po 8px horizontálneho pohybu lock na `'h'` axis. Vertikálny pohyb >8px lock na `'v'` (dragging cancel, native scroll funguje)
+- **Threshold 25% šírky** elementu pre trigger switch
+- **`translate3d(x, 0, 0)`** pre GPU-accelerated render
+- **`will-change: transform`** počas dragu, vyčistené po ukončení
+- **Snap behavior:**
+  - Pred threshold → snap back (`transform = ''` s `.26s cubic-bezier(.22,.9,.34,1)` easing)
+  - Za threshold → animuj von do 60% šírky, potom callback `onPrev/onNext` (ktorý spraví switch + následný `_animPlQ` slide-in nového obsahu)
+- Touchcancel cleanup, žiadne memory leaky
+
+#### Aplikované na 3 miesta
+1. **`pl-q-content`** (manažér Plnenie sumár)
+2. **`rep-pl-q-content`** (rep Plnenie overlay)
+3. **`pl-ps-body`** (Trhový podiel sheet — subtaby Tablety/Sáčky/Krém)
+
+#### Predtým vs teraz
+**Predtým (v2.19.0):**
+- Swipe = "skok" — prst sa pohne, content statický, po release → switch + slide-in
+- Pôsobí ako "klik s gestom"
+
+**Teraz (v2.19.1):**
+- Drag = content **fyzicky sleduje prst** — môžeš ho ťahať pomaly, vidieť kam sa pohne
+- Rubber band ti ukáže že na boundary nemôžeš ďalej (Q4 doľava nepôjde)
+- Snap back ak nedotiahneš → "vrátenie" späť s easing
+- Snap forward ak prejdeš threshold → "doletí" do strany + switch
+- Pôsobí ako natívny iOS Photos / Android Gallery swipe
+
+#### Štatistika
+- **Verzia 2.19.0 → 2.19.1** (PATCH — refinement existujúcich gest)
+- **120 insertions / 40 deletions** v `index.html`
+- 0 JavaScript errors v Playwright smoke teste
+- WN modal nezmenený — gestá sú už ohlásené v WN_v2_19
+
+#### Performance
+- Touch event-y `passive: true` — žiadne preventDefault, browser scroll fungujú
+- `translate3d(x, 0, 0)` namiesto `translateX(x)` — promote layer na compositor (GPU)
+- `will-change: transform` len počas dragu (nie permanentne)
+- Žiadny layout recompute, žiadny paint per touchmove — len composite step
+
+---
 
 ### v2.19.0 — Mobilné gestá: swipe + long-press + haptic feedback
 

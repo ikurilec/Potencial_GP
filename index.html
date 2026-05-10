@@ -2113,7 +2113,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.19.0';
+var APP_VERSION = '2.19.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -2374,6 +2374,102 @@ function attachSwipe(el, opts) {
 
 // Long-press detector. Volaj attachLongPress(element, callback, ms = 500).
 // Cancel-luje sa pri pohybe (>10px) alebo touchend predtým ako uplynie čas.
+// Drag-driven switcher — content sa pod prstom skutočne pohybuje.
+// Po release: ak prejdený threshold (25% šírky) → animuj von + zavolaj
+// onNext/onPrev (ktorý spraví switch + následný slide-in cez _animPlQ).
+// Inak snap back. Boundaries (canPrev/canNext) majú rubber-band efekt (0.3× stiffness).
+//
+// options: {
+//   canPrev: () => bool,   — či sa dá prejsť doprava (Q-1)
+//   canNext: () => bool,   — či sa dá prejsť doľava (Q+1)
+//   onPrev:  () => void,   — switch executed po out anim
+//   onNext:  () => void,
+//   threshold: 0.25        — fraction of width to trigger switch
+// }
+function attachDragSwitcher(el, options) {
+  if (!el || !options) return function(){};
+  var startX = 0, startY = 0, currentX = 0, currentDx = 0;
+  var dragging = false, locked = false, axis = null; // axis: 'h' or 'v'
+  var threshold = options.threshold || 0.25;
+
+  function onStart(e) {
+    if (!e.touches || e.touches.length !== 1) return;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    currentX = startX;
+    currentDx = 0;
+    dragging = true;
+    locked = false;
+    axis = null;
+    el.style.transition = 'none';
+    el.style.willChange = 'transform';
+  }
+  function onMove(e) {
+    if (!dragging || !e.touches || e.touches.length !== 1) return;
+    var dx = e.touches[0].clientX - startX;
+    var dy = e.touches[0].clientY - startY;
+    if (!locked) {
+      if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) {
+        locked = true; axis = 'h';
+      } else if (Math.abs(dy) > 8) {
+        locked = true; axis = 'v';
+        dragging = false; // vertical → necháme native scroll
+        el.style.transform = '';
+        el.style.transition = '';
+        return;
+      } else return;
+    }
+    if (axis !== 'h') return;
+    // Rubber band on boundary
+    if ((dx > 0 && !options.canPrev()) || (dx < 0 && !options.canNext())) {
+      dx = dx * 0.3;
+    }
+    currentDx = dx;
+    el.style.transform = 'translate3d(' + dx + 'px,0,0)';
+  }
+  function onEnd() {
+    if (!dragging) { el.style.willChange = ''; return; }
+    dragging = false;
+    if (axis !== 'h') { el.style.transition = ''; el.style.willChange = ''; return; }
+    var w = el.offsetWidth || window.innerWidth;
+    var trig = w * threshold;
+    el.style.transition = 'transform .26s cubic-bezier(.22,.9,.34,1)';
+
+    if (currentDx <= -trig && options.canNext()) {
+      // Animuj content úplne von doľava, potom callback (switch + slide-in)
+      el.style.transform = 'translate3d(' + (-w * 0.6) + 'px,0,0)';
+      setTimeout(function() {
+        el.style.transition = 'none';
+        el.style.transform = '';
+        el.style.willChange = '';
+        try { options.onNext(); } catch(e){}
+      }, 220);
+    } else if (currentDx >= trig && options.canPrev()) {
+      el.style.transform = 'translate3d(' + (w * 0.6) + 'px,0,0)';
+      setTimeout(function() {
+        el.style.transition = 'none';
+        el.style.transform = '';
+        el.style.willChange = '';
+        try { options.onPrev(); } catch(e){}
+      }, 220);
+    } else {
+      // Snap back
+      el.style.transform = '';
+      setTimeout(function(){ el.style.transition = ''; el.style.willChange = ''; }, 280);
+    }
+  }
+  el.addEventListener('touchstart', onStart, { passive: true });
+  el.addEventListener('touchmove', onMove, { passive: true });
+  el.addEventListener('touchend', onEnd, { passive: true });
+  el.addEventListener('touchcancel', onEnd, { passive: true });
+  return function detach() {
+    el.removeEventListener('touchstart', onStart);
+    el.removeEventListener('touchmove', onMove);
+    el.removeEventListener('touchend', onEnd);
+    el.removeEventListener('touchcancel', onEnd);
+  };
+}
+
 // Pripoj edge-swipe-back na overlay element (od ľavej hrany sprava-doľava → close).
 // Volaj raz pri loade; callback = funkcia ktorá zatvára overlay.
 function attachEdgeSwipeBack(el, closeFn) {
@@ -10221,27 +10317,22 @@ function closeProdSheet() {
   if (bd)    bd.classList.remove('show');
 }
 
-// Swipe medzi subtab-mi (Tablety/Sáčky/Krém) v product sheete
+// Drag-driven switcher medzi subtab-mi (Tablety/Sáčky/Krém) v product sheete
 var _prodSheetSubtabSwipeAttached = false;
 function prodSheetInitSubtabSwipe() {
   if (_prodSheetSubtabSwipeAttached) return;
   var bodyEl = document.getElementById('pl-ps-body');
   if (!bodyEl) return;
-  attachSwipe(bodyEl, {
-    onlyHorizontal: true,
-    onSwipeLeft: function() {
-      // swipe doľava → next subtab
-      var codes = PHARMA_CODES[PL_PROD_SHEET_STATE.prodKey] || [];
-      if (codes.length < 2) return;
-      var idx = codes.indexOf(PL_PROD_SHEET_STATE.activePharmaCode);
-      if (idx >= 0 && idx < codes.length - 1) prodSheetSwitchPharmaCode(codes[idx + 1]);
-    },
-    onSwipeRight: function() {
-      var codes = PHARMA_CODES[PL_PROD_SHEET_STATE.prodKey] || [];
-      if (codes.length < 2) return;
-      var idx = codes.indexOf(PL_PROD_SHEET_STATE.activePharmaCode);
-      if (idx > 0) prodSheetSwitchPharmaCode(codes[idx - 1]);
-    }
+  function curIdx(){
+    var codes = PHARMA_CODES[PL_PROD_SHEET_STATE.prodKey] || [];
+    return codes.indexOf(PL_PROD_SHEET_STATE.activePharmaCode);
+  }
+  function codes(){ return PHARMA_CODES[PL_PROD_SHEET_STATE.prodKey] || []; }
+  attachDragSwitcher(bodyEl, {
+    canPrev: function(){ return codes().length >= 2 && curIdx() > 0; },
+    canNext: function(){ var c = codes(); return c.length >= 2 && curIdx() < c.length - 1; },
+    onPrev:  function(){ var c = codes(), i = curIdx(); if (i > 0) prodSheetSwitchPharmaCode(c[i - 1]); },
+    onNext:  function(){ var c = codes(), i = curIdx(); if (i >= 0 && i < c.length - 1) prodSheetSwitchPharmaCode(c[i + 1]); }
   });
   _prodSheetSubtabSwipeAttached = true;
 }
@@ -10481,44 +10572,33 @@ function plnenieRenderAll() {
   if (PL_STATE.detailRep) plnenieRenderDetail();
 }
 
-// Pripoj swipe handlery na Plnenie sumár (manažér view) — swipe medzi Q1↔Q4
+// Pripoj drag-driven switcher na Plnenie sumár (manažér view) — Q1↔Q4
+// Content sa pohybuje s prstom v reálnom čase, threshold 25% šírky.
 var _plnenieSwipeAttached = false;
 function plnenieInitQSwipe() {
   if (_plnenieSwipeAttached) return;
   var el = document.getElementById('pl-q-content');
   if (!el) return;
-  attachSwipe(el, {
-    onlyHorizontal: true,
-    onSwipeLeft: function() {
-      if (PL_STATE.detailRep) return; // detail view má vlastný swipe
-      var next = PL_STATE.q + 1;
-      if (next <= 4) plnenieSwitchQ(next);
-    },
-    onSwipeRight: function() {
-      if (PL_STATE.detailRep) return;
-      var prev = PL_STATE.q - 1;
-      if (prev >= 1) plnenieSwitchQ(prev);
-    }
+  attachDragSwitcher(el, {
+    canPrev: function(){ return !PL_STATE.detailRep && PL_STATE.q > 1; },
+    canNext: function(){ return !PL_STATE.detailRep && PL_STATE.q < 4; },
+    onPrev:  function(){ plnenieSwitchQ(PL_STATE.q - 1); },
+    onNext:  function(){ plnenieSwitchQ(PL_STATE.q + 1); }
   });
   _plnenieSwipeAttached = true;
 }
 
-// Rep Plnenie overlay — swipe medzi Q1↔Q4
+// Rep Plnenie overlay — drag medzi Q1↔Q4
 var _repPlnenieSwipeAttached = false;
 function repPlnenieInitQSwipe() {
   if (_repPlnenieSwipeAttached) return;
   var el = document.getElementById('rep-pl-q-content');
   if (!el) return;
-  attachSwipe(el, {
-    onlyHorizontal: true,
-    onSwipeLeft: function() {
-      var next = REP_PL_STATE.q + 1;
-      if (next <= 4) repPlnenieSwitchQ(next);
-    },
-    onSwipeRight: function() {
-      var prev = REP_PL_STATE.q - 1;
-      if (prev >= 1) repPlnenieSwitchQ(prev);
-    }
+  attachDragSwitcher(el, {
+    canPrev: function(){ return REP_PL_STATE.q > 1; },
+    canNext: function(){ return REP_PL_STATE.q < 4; },
+    onPrev:  function(){ repPlnenieSwitchQ(REP_PL_STATE.q - 1); },
+    onNext:  function(){ repPlnenieSwitchQ(REP_PL_STATE.q + 1); }
   });
   _repPlnenieSwipeAttached = true;
 }
