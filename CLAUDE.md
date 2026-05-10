@@ -26,7 +26,54 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.19.2** (na `main` aj `test` vetve) — carousel peek panels pri swipe gestách. Pri ťahaní prstom vidno **prichádzajúci Q (alebo subtab) z opačnej strany** — peek karta s Q-label, % plnenia (zelená/oranžová/červená farba) a EUR sumár. Skutočný natívny iOS Photos / Android Gallery look-and-feel.
+**2.19.3** (na `main` aj `test` vetve) — **plné DOM snapshot** carousel peeks. Pri ťahaní prstom vidno **identický plný obsah** ďalšieho Q (sumár, % plnenia, regióny West/East, produktové karty s predikciami, zoznam reprezentantov, trend graf) — nie len malú peek kartu. Skutočný iOS Photos / Android Gallery look kde **vidíš celú obrazovku ďalšieho Q-u** ako sa približuje.
+
+### v2.19.3 — Full DOM snapshot peek-y (plný náhľad ďalšieho Q)
+
+#### Nové helpery `snapshotPlnenieDom` a `snapshotRepPlnenieDom`
+Pri `onDragStart` callbacku:
+1. **Save** current `PL_STATE.q`, `data`, `aggregates`
+2. **Suppress count-up animations** počas snapshotu (override `plnenieCountUp` aby okamžite zapísal final hodnotu, nie animoval)
+3. **Switch state** na targetQ (Q-1 alebo Q+1)
+4. **Render** cez `plnenieRenderSummary()` + `plnenieRenderRegions()` + `plnenieRenderRepList()` — DOM v `pl-q-content` sa naplní obsahom targetQ
+5. **`cloneNode(true)`** výsledný DOM
+6. **Strip ID-čka** (`removeAttribute('id')` na všetkých descendants) — aby nedošlo k duplikátom v dokumente (`getElementById` would return wrong element)
+7. **Restore** original state + render → DOM v `pl-q-content` je opäť na current Q
+8. Vráti clone
+
+#### Plnenie sumár carousel flow
+- Pri prvom render-e Plnenie modulu sa spustí `plnenieInitQSwipe()` ktorý wrap-uje `pl-q-content` do `carousel-wrap` s 2 peek panel-mi (`peekPrev` vľavo, `peekNext` vpravo)
+- Pri **drag start** sa snapshot Q-1 a Q+1 do peek panel-ov (10 KB+ DOM cez `cloneNode(true)`)
+- Drag move posúva celý `wrap` cez `transform: translate3d` — **content + peeks sa pohybujú spolu**
+- Pri release nad threshold-om → snap-forward (full width translate) → callback `plnenieSwitchQ(newQ)` → real switch + render
+- Pri release pod threshold-om → snap-back, peeks fade-out, clone-y odstránené z DOM-u
+
+#### Rep Plnenie snapshot
+Identický pattern, ale snapshot funkcia volá `repPlnenieRender()` a swap-uje `REP_PL_STATE` namiesto `PL_STATE`.
+
+#### Bezpečnostné mechanizmy
+- **`canPrev`/`canNext`** kontrolujú `qCache[targetQ]` — peek nie je zobrazený ak dáta v cache nie sú (nezavolá sa snapshot)
+- **State restore** je v `try/finally` semantike — aj pri chybe v render funkcii sa state vráti
+- **Count-up suppression** — ďalšie volanie render-u neaktivuje animácie ktoré by inde pokazili counter
+- **ID strip** — `removeAttribute('id')` na všetky elementy v clone subtree, vrátane root-u
+
+#### Performance
+- Snapshot trvá ~30–80ms na render (1× pre Q-1 + 1× pre Q+1) + ~10ms cloneNode
+- Spustí sa **iba pri drag start** (raz na drag, nie na move)
+- Po `onDragEnd` sa clone-y vyhadzujú z DOM-u (200ms delay aby fade-out animácia skončila)
+
+#### Štatistika
+- **Verzia 2.19.2 → 2.19.3** (PATCH — refinement gesture animácie)
+- **123 insertions / 69 deletions** v `index.html`
+- 0 JavaScript errors v Playwright smoke teste; snapshot vracia 10141-byte DOM string + state správne restored
+- WN modal nezmenený
+
+#### Predtým vs teraz
+**v2.19.2:** peek bola **malá kartička** s % číslom a EUR sumár — minimálny náhľad.
+
+**v2.19.3:** peek je **kompletný náhľad obrazovky Q-u** — sumár Slovensko/West/East, predikcia, všetky 8 produktov s % a EUR, zoznam všetkých reprezentantov s ich plneniami. Plne identický s tým čo uvidíš po skutočnom switch-i. Pri ťahaní prstom **plynule vidíš ako sa Q1 obrazovka približuje sprava** — nie placeholder, ale skutočný dataset.
+
+---
 
 ### v2.19.2 — Carousel peek panels (vidno ďalší Q ako sa približuje)
 
