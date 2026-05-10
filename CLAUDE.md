@@ -26,7 +26,70 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.19.1** (na `main` aj `test` vetve) — drag-driven gesture animácia pre Q tabs + subtab swipe. Content sa pohybuje **s prstom v reálnom čase** (translate3d follows finger), rubber-band efekt na boundaries (Q1 doprava, Q4 doľava), threshold 25% šírky pre snap-out alebo snap-back. Po prejdení threshold-u content "doletí" do strany a switch nastane plynule cez existujúce `_animPlQ` slide-in.
+**2.19.2** (na `main` aj `test` vetve) — carousel peek panels pri swipe gestách. Pri ťahaní prstom vidno **prichádzajúci Q (alebo subtab) z opačnej strany** — peek karta s Q-label, % plnenia (zelená/oranžová/červená farba) a EUR sumár. Skutočný natívny iOS Photos / Android Gallery look-and-feel.
+
+### v2.19.2 — Carousel peek panels (vidno ďalší Q ako sa približuje)
+
+#### Nový helper `buildCarouselPeeks(el)`
+- Wraps target element do `carousel-wrap` + pridáva 2 sibling **peek panely** (peekPrev vľavo, peekNext vpravo)
+- Peeks majú `position:absolute` + `right:100%` (prev) alebo `left:100%` (next) — **nalepené** na strany current content-u
+- Pri `transform` na `wrap` sa pohybujú spolu s content-om (ako carousel)
+- Parent `pl-q-content`-u dostane `overflow-x:hidden` aby peeks nepretiekli mimo Plnenia
+- Idempotent — pri opätovnom volaní vracia existujúce ctx
+
+#### `attachDragSwitcher` rozšírenie
+- Nová option `transformTarget` — element ktorý dostane `transform` (default: el)
+- Pri carousel mode sa transformuje `wrap`, nie `el` → peeks sa pohybujú spolu
+- Nové options `onDragStart` + `onDragEnd` callbacky (pre pre-fill + hide peek content)
+- Snap-forward animácia teraz ide na **full width** (`-w`/`+w` namiesto `0.6w`) — peek karta plynule "nahradí" current viewport
+- Easing zmenený z `.26s` na `.28s` cubic-bezier(.22, .9, .34, 1)
+
+#### Plnenie sumár (manažér view) — peek content
+Peek panel obsahuje:
+- **Label**: napr. "Slovensko · Q1 2026"
+- **% plnenia** v Outfit 34px, farebne (zelená ≥100%, oranžová 95-99%, červená <95%, sivá keď žiadne dáta)
+- **EUR sumár**: "12 345 € / 50 000 €" (predaje / plán)
+- Render z `PL_STATE.qCache[Q]` — okamžite k dispozícii lebo dáta sa preloadujú pri vstupe do Plnenia
+
+Ak Q-1 alebo Q+1 dáta v cache nie sú: zobrazí "‹ Q1 2026 ›" + "posuň ďalej" placeholder.
+
+#### Rep Plnenie overlay — peek content
+Rovnaký pattern ale pre **vlastné dáta reprezentanta**:
+- Label: "Môj plán · Q3 2026"
+- % plnenia + EUR sumár jeho personal performance v danom Q
+
+Render z `REP_PL_STATE.qCache[Q].aggregates.reps` filter cez `session.username`.
+
+#### Trhový podiel sheet — subtab peeks
+Peek pre Tablety/Sáčky/Krém:
+- Label vyrendrený z `PHARMA_SUBTAB_LABELS` mapy
+- Static placeholder ("posuň pre prepnutie") — subtab dáta sa renderujú až po reálnom switch-i
+
+#### CSS pre peek panely (`.carousel-peek*`)
+- `.carousel-peek` — opacity:0 default, `.show` → opacity:1 (15ms fade in pri drag start)
+- `.carousel-peek-card` — biela karta s modrým borderom + soft shadow (rovnaký dizajn ako Plnenie summary)
+- `.carousel-peek-lbl` — modrý uppercase 11px label so šípkou na boku
+- `.carousel-peek-pct` — 34px Outfit weight 800 % číslo s farbou podľa stavu (`pl-g/o/r/none`)
+- `.carousel-peek-eur` — 11px sivý sumár predajov / plánu
+
+#### Štatistika
+- **Verzia 2.19.1 → 2.19.2** (PATCH — refinement gesture animácie)
+- **195 insertions / 25 deletions** v `index.html`
+- 0 JavaScript errors v Playwright smoke teste
+- WN modal nezmenený (gestá ohlásené v WN_v2_19, peek je vizuálne vylepšenie)
+
+#### Predtým vs teraz
+**v2.19.1:** content sa pohybuje s prstom, ale **vidíš len jeden frame**. Pri ťahaní vyzerá akoby content miznul na prázdnom pozadí. Po snap-forward sa stratil + nový sa zjavil cez slide-in (gap).
+
+**v2.19.2:** **vidíš ďalší Q** ako sa približuje z opačnej strany — peek karta zobrazuje Q-label, % plnenia, EUR. Pôsobí ako natívny **iOS Photos / Android Gallery** carousel kde **vidno čo prichádza ešte počas pohybu**.
+
+#### Performance
+- Peeks sú render-ované len pri `onDragStart` callbacku (nie permanentne v DOM-e počas idle)
+- Po `onDragEnd` sa cez `.show` class fade-out + obsah ostane (re-use pri ďalšom dragu)
+- `position:absolute` siblings — žiadny reflow main content-u
+- Transform na wrapper-i, GPU compositor sa stará o všetky 3 layery
+
+---
 
 ### v2.19.1 — Drag-driven swipe animácia (gesture follows finger)
 
