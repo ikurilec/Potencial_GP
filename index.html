@@ -93,6 +93,17 @@
   input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none}
   /* Globálne disabled state pre všetky tlačidlá — nepretržitý systém */
   button:disabled,button[disabled]{opacity:.5;cursor:not-allowed;pointer-events:none}
+  /* Carousel peek panels — vidno ďalší Q ako sa približuje pri swipe */
+  .carousel-peek{opacity:0;transition:opacity .15s ease}
+  .carousel-peek.show{opacity:1}
+  .carousel-peek-card{background:linear-gradient(180deg,#F8FAFC 0%,#fff 80%);border:1.5px solid #BFDBFE;border-radius:14px;padding:24px 20px;width:100%;max-width:420px;text-align:center;box-shadow:0 10px 30px rgba(15,23,42,.10),0 0 0 1px rgba(37,99,235,.06)}
+  .carousel-peek-lbl{font-size:11px;font-weight:700;color:#2563EB;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px}
+  .carousel-peek-lbl .arrow{font-size:18px;line-height:1;color:#3B82F6}
+  .carousel-peek-q{font-size:28px;font-weight:800;color:#0C1E35;font-family:var(--font-display);letter-spacing:-.02em;line-height:1.1}
+  .carousel-peek-pct{font-size:34px;font-weight:800;font-family:var(--font-display);letter-spacing:-.02em;margin-top:10px;line-height:1;font-variant-numeric:tabular-nums}
+  .carousel-peek-pct.pl-g{color:#059669}.carousel-peek-pct.pl-o{color:#D97706}.carousel-peek-pct.pl-r{color:#DC2626}.carousel-peek-pct.pl-none{color:#94A3B8}
+  .carousel-peek-eur{font-size:11px;color:#64748B;margin-top:6px;font-weight:500}
+  .carousel-peek-hint{font-size:10px;color:#94A3B8;font-weight:500;margin-top:10px;letter-spacing:.04em;text-transform:uppercase}
   /* Loading wave dots (Trhový podiel — kým fetch beží) */
   .ms-dots{display:inline-flex;gap:2px;vertical-align:baseline;line-height:1}
   .ms-dots span{display:inline-block;width:4px;height:4px;border-radius:50%;background:#94A3B8;animation:msDotWave 1.2s ease-in-out infinite;will-change:transform,opacity}
@@ -2113,7 +2124,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.19.1';
+var APP_VERSION = '2.19.2';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -2391,6 +2402,9 @@ function attachDragSwitcher(el, options) {
   var startX = 0, startY = 0, currentX = 0, currentDx = 0;
   var dragging = false, locked = false, axis = null; // axis: 'h' or 'v'
   var threshold = options.threshold || 0.25;
+  // Element ktorý sa transform-uje — default = el. Ak je carousel s peeks,
+  // treba transformovať wrapper aby sa peeks pohybovali tiež.
+  var target = options.transformTarget || el;
 
   function onStart(e) {
     if (!e.touches || e.touches.length !== 1) return;
@@ -2401,8 +2415,9 @@ function attachDragSwitcher(el, options) {
     dragging = true;
     locked = false;
     axis = null;
-    el.style.transition = 'none';
-    el.style.willChange = 'transform';
+    target.style.transition = 'none';
+    target.style.willChange = 'transform';
+    if (typeof options.onDragStart === 'function') { try { options.onDragStart(); } catch(e){} }
   }
   function onMove(e) {
     if (!dragging || !e.touches || e.touches.length !== 1) return;
@@ -2414,8 +2429,8 @@ function attachDragSwitcher(el, options) {
       } else if (Math.abs(dy) > 8) {
         locked = true; axis = 'v';
         dragging = false; // vertical → necháme native scroll
-        el.style.transform = '';
-        el.style.transition = '';
+        target.style.transform = '';
+        target.style.transition = '';
         return;
       } else return;
     }
@@ -2425,37 +2440,42 @@ function attachDragSwitcher(el, options) {
       dx = dx * 0.3;
     }
     currentDx = dx;
-    el.style.transform = 'translate3d(' + dx + 'px,0,0)';
+    target.style.transform = 'translate3d(' + dx + 'px,0,0)';
   }
   function onEnd() {
-    if (!dragging) { el.style.willChange = ''; return; }
+    if (!dragging) { target.style.willChange = ''; return; }
     dragging = false;
-    if (axis !== 'h') { el.style.transition = ''; el.style.willChange = ''; return; }
+    if (axis !== 'h') { target.style.transition = ''; target.style.willChange = ''; return; }
     var w = el.offsetWidth || window.innerWidth;
     var trig = w * threshold;
-    el.style.transition = 'transform .26s cubic-bezier(.22,.9,.34,1)';
+    target.style.transition = 'transform .28s cubic-bezier(.22,.9,.34,1)';
 
     if (currentDx <= -trig && options.canNext()) {
-      // Animuj content úplne von doľava, potom callback (switch + slide-in)
-      el.style.transform = 'translate3d(' + (-w * 0.6) + 'px,0,0)';
+      // Animuj content úplne von doľava (full width — peek panel "naskočí" do view)
+      target.style.transform = 'translate3d(' + (-w) + 'px,0,0)';
       setTimeout(function() {
-        el.style.transition = 'none';
-        el.style.transform = '';
-        el.style.willChange = '';
+        target.style.transition = 'none';
+        target.style.transform = '';
+        target.style.willChange = '';
+        if (typeof options.onDragEnd === 'function') { try { options.onDragEnd(); } catch(e){} }
         try { options.onNext(); } catch(e){}
-      }, 220);
+      }, 260);
     } else if (currentDx >= trig && options.canPrev()) {
-      el.style.transform = 'translate3d(' + (w * 0.6) + 'px,0,0)';
+      target.style.transform = 'translate3d(' + w + 'px,0,0)';
       setTimeout(function() {
-        el.style.transition = 'none';
-        el.style.transform = '';
-        el.style.willChange = '';
+        target.style.transition = 'none';
+        target.style.transform = '';
+        target.style.willChange = '';
+        if (typeof options.onDragEnd === 'function') { try { options.onDragEnd(); } catch(e){} }
         try { options.onPrev(); } catch(e){}
-      }, 220);
+      }, 260);
     } else {
       // Snap back
-      el.style.transform = '';
-      setTimeout(function(){ el.style.transition = ''; el.style.willChange = ''; }, 280);
+      target.style.transform = '';
+      setTimeout(function(){
+        target.style.transition = ''; target.style.willChange = '';
+        if (typeof options.onDragEnd === 'function') { try { options.onDragEnd(); } catch(e){} }
+      }, 300);
     }
   }
   el.addEventListener('touchstart', onStart, { passive: true });
@@ -2468,6 +2488,44 @@ function attachDragSwitcher(el, options) {
     el.removeEventListener('touchend', onEnd);
     el.removeEventListener('touchcancel', onEnd);
   };
+}
+
+// Vytvorí carousel wrapper okolo elementu s 2 peek panel-mi (naľavo a napravo).
+// Peek panel-y sú position:absolute siblings — pri transform na wrapperi sa pohybujú spolu.
+// Vracia { wrap, peekPrev, peekNext } pre updaty.
+function buildCarouselPeeks(el) {
+  if (el._carouselWrap) return el._carouselWrap; // už existuje
+  var parent = el.parentNode;
+  if (!parent) return null;
+  var wrap = document.createElement('div');
+  wrap.className = 'carousel-wrap';
+  wrap.style.cssText = 'position:relative;overflow:visible;width:100%';
+  parent.insertBefore(wrap, el);
+  wrap.appendChild(el);
+  el.style.position = 'relative';
+  el.style.zIndex = '2';
+
+  var peekPrev = document.createElement('div');
+  peekPrev.className = 'carousel-peek carousel-peek-prev';
+  peekPrev.style.cssText = 'position:absolute;top:0;right:100%;width:100%;height:100%;pointer-events:none;z-index:1;display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box';
+
+  var peekNext = document.createElement('div');
+  peekNext.className = 'carousel-peek carousel-peek-next';
+  peekNext.style.cssText = 'position:absolute;top:0;left:100%;width:100%;height:100%;pointer-events:none;z-index:1;display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box';
+
+  wrap.appendChild(peekPrev);
+  wrap.appendChild(peekNext);
+
+  // Žiadne overflow-hidden na rodičovi appky — len na priamom rodičovi (`pl-q-content` parent).
+  // Preto len sentries: aplikujeme overflow-hidden na priame parent wrapper, nie na document.
+  // Wrap sám nemá overflow-hidden (peek-y musia presahovať wrap), ale jeho parent áno.
+  if (parent && getComputedStyle(parent).overflowX === 'visible') {
+    parent.style.overflowX = 'hidden';
+  }
+
+  var ctx = { wrap: wrap, peekPrev: peekPrev, peekNext: peekNext };
+  el._carouselWrap = ctx;
+  return ctx;
 }
 
 // Pripoj edge-swipe-back na overlay element (od ľavej hrany sprava-doľava → close).
@@ -10317,18 +10375,42 @@ function closeProdSheet() {
   if (bd)    bd.classList.remove('show');
 }
 
-// Drag-driven switcher medzi subtab-mi (Tablety/Sáčky/Krém) v product sheete
+// Drag-driven switcher medzi subtab-mi (Tablety/Sáčky/Krém) v product sheete + carousel peeks
 var _prodSheetSubtabSwipeAttached = false;
+var PHARMA_SUBTAB_LABELS = { AFLtbl: 'Tablety', AFLsach: 'Sáčky', AFLcrm: 'Krém', CAV: 'Cavinton', JUN: 'Junod', KOGGOL: 'Kogavant', SUP: 'Suprax', TEL: 'Telexer', VID: 'Vidonorm' };
+function renderProdSheetSubtabPeek(code) {
+  if (!code) return '';
+  var label = PHARMA_SUBTAB_LABELS[code] || code;
+  return '<div class="carousel-peek-card">' +
+    '<div class="carousel-peek-lbl"><span class="arrow">‹</span> ' + label + ' <span class="arrow">›</span></div>' +
+    '<div class="carousel-peek-q">' + label + '</div>' +
+    '<div class="carousel-peek-hint">posuň pre prepnutie</div>' +
+  '</div>';
+}
 function prodSheetInitSubtabSwipe() {
   if (_prodSheetSubtabSwipeAttached) return;
   var bodyEl = document.getElementById('pl-ps-body');
   if (!bodyEl) return;
+  var carousel = buildCarouselPeeks(bodyEl);
+  if (!carousel) return;
   function curIdx(){
     var codes = PHARMA_CODES[PL_PROD_SHEET_STATE.prodKey] || [];
     return codes.indexOf(PL_PROD_SHEET_STATE.activePharmaCode);
   }
   function codes(){ return PHARMA_CODES[PL_PROD_SHEET_STATE.prodKey] || []; }
   attachDragSwitcher(bodyEl, {
+    transformTarget: carousel.wrap,
+    onDragStart: function() {
+      var c = codes(), i = curIdx();
+      carousel.peekPrev.innerHTML = (i > 0) ? renderProdSheetSubtabPeek(c[i - 1]) : '';
+      carousel.peekNext.innerHTML = (i >= 0 && i < c.length - 1) ? renderProdSheetSubtabPeek(c[i + 1]) : '';
+      carousel.peekPrev.classList.add('show');
+      carousel.peekNext.classList.add('show');
+    },
+    onDragEnd: function() {
+      carousel.peekPrev.classList.remove('show');
+      carousel.peekNext.classList.remove('show');
+    },
     canPrev: function(){ return codes().length >= 2 && curIdx() > 0; },
     canNext: function(){ var c = codes(); return c.length >= 2 && curIdx() < c.length - 1; },
     onPrev:  function(){ var c = codes(), i = curIdx(); if (i > 0) prodSheetSwitchPharmaCode(c[i - 1]); },
@@ -10572,14 +10654,55 @@ function plnenieRenderAll() {
   if (PL_STATE.detailRep) plnenieRenderDetail();
 }
 
-// Pripoj drag-driven switcher na Plnenie sumár (manažér view) — Q1↔Q4
-// Content sa pohybuje s prstom v reálnom čase, threshold 25% šírky.
+// Vyrender peek panel content pre Q (manažér view, agreguje Slovensko/West/East)
+function renderPlnenieQPeek(q) {
+  if (!q || q < 1 || q > 4) return '';
+  var year = PL_STATE.year;
+  var qLbl = plnenieQLabel(q, year);
+  var cached = PL_STATE.qCache[q];
+  if (!cached || !cached.aggregates || !cached.aggregates.sk) {
+    return '<div class="carousel-peek-card">' +
+      '<div class="carousel-peek-lbl"><span class="arrow">‹</span> ' + qLbl + ' <span class="arrow">›</span></div>' +
+      '<div class="carousel-peek-q">' + qLbl + '</div>' +
+      '<div class="carousel-peek-hint">posuň ďalej</div>' +
+    '</div>';
+  }
+  var sk = cached.aggregates.sk;
+  var pctCls = plnenieColorClass(sk.pct);
+  var pctText = sk.pct !== null ? plnenieFormatPct(sk.pct) : '—';
+  var eurText = sk.predajeEUR > 0
+    ? plnenieFormatEUR(sk.predajeEUR) + ' / ' + plnenieFormatEUR(sk.planEUR)
+    : '— / ' + plnenieFormatEUR(sk.planEUR);
+  return '<div class="carousel-peek-card">' +
+    '<div class="carousel-peek-lbl">' + plnenieSumLabel() + ' · ' + qLbl + '</div>' +
+    '<div class="carousel-peek-pct ' + pctCls + '">' + pctText + '</div>' +
+    '<div class="carousel-peek-eur">' + eurText + '</div>' +
+  '</div>';
+}
+
+// Manažér Plnenie sumár — drag medzi Q1↔Q4 s carousel peeks
 var _plnenieSwipeAttached = false;
 function plnenieInitQSwipe() {
   if (_plnenieSwipeAttached) return;
   var el = document.getElementById('pl-q-content');
   if (!el) return;
+  var carousel = buildCarouselPeeks(el);
+  if (!carousel) return;
   attachDragSwitcher(el, {
+    transformTarget: carousel.wrap,
+    onDragStart: function() {
+      // Pred drag-om naplň peek panely (preview Q-1 a Q+1)
+      var prevQ = PL_STATE.q - 1, nextQ = PL_STATE.q + 1;
+      carousel.peekPrev.innerHTML = (prevQ >= 1) ? renderPlnenieQPeek(prevQ) : '';
+      carousel.peekNext.innerHTML = (nextQ <= 4) ? renderPlnenieQPeek(nextQ) : '';
+      carousel.peekPrev.classList.add('show');
+      carousel.peekNext.classList.add('show');
+    },
+    onDragEnd: function() {
+      // Hide peeks po release (s krátkym fade)
+      carousel.peekPrev.classList.remove('show');
+      carousel.peekNext.classList.remove('show');
+    },
     canPrev: function(){ return !PL_STATE.detailRep && PL_STATE.q > 1; },
     canNext: function(){ return !PL_STATE.detailRep && PL_STATE.q < 4; },
     onPrev:  function(){ plnenieSwitchQ(PL_STATE.q - 1); },
@@ -10588,13 +10711,60 @@ function plnenieInitQSwipe() {
   _plnenieSwipeAttached = true;
 }
 
-// Rep Plnenie overlay — drag medzi Q1↔Q4
+// Vyrender peek pre rep view (jeho vlastné agregáty)
+function renderRepPlnenieQPeek(q) {
+  if (!q || q < 1 || q > 4) return '';
+  var qLbl = plnenieQLabel(q, REP_PL_STATE.year);
+  var cached = REP_PL_STATE.qCache[q];
+  if (!cached || !cached.aggregates) {
+    return '<div class="carousel-peek-card">' +
+      '<div class="carousel-peek-lbl"><span class="arrow">‹</span> ' + qLbl + ' <span class="arrow">›</span></div>' +
+      '<div class="carousel-peek-q">' + qLbl + '</div>' +
+      '<div class="carousel-peek-hint">posuň ďalej</div>' +
+    '</div>';
+  }
+  var session = getSession();
+  var username = session && session.username;
+  var rep = (cached.aggregates.reps || []).find(function(r){ return r.username === username; });
+  if (!rep) {
+    return '<div class="carousel-peek-card">' +
+      '<div class="carousel-peek-lbl">' + qLbl + '</div>' +
+      '<div class="carousel-peek-q">' + qLbl + '</div>' +
+    '</div>';
+  }
+  var pctCls = plnenieColorClass(rep.pct);
+  var pctText = rep.pct !== null ? plnenieFormatPct(rep.pct) : '—';
+  var eurText = rep.predajeEUR > 0
+    ? plnenieFormatEUR(rep.predajeEUR) + ' / ' + plnenieFormatEUR(rep.planEUR)
+    : '— / ' + plnenieFormatEUR(rep.planEUR);
+  return '<div class="carousel-peek-card">' +
+    '<div class="carousel-peek-lbl">Môj plán · ' + qLbl + '</div>' +
+    '<div class="carousel-peek-pct ' + pctCls + '">' + pctText + '</div>' +
+    '<div class="carousel-peek-eur">' + eurText + '</div>' +
+  '</div>';
+}
+
+// Rep Plnenie overlay — drag medzi Q1↔Q4 s carousel peeks
 var _repPlnenieSwipeAttached = false;
 function repPlnenieInitQSwipe() {
   if (_repPlnenieSwipeAttached) return;
   var el = document.getElementById('rep-pl-q-content');
   if (!el) return;
+  var carousel = buildCarouselPeeks(el);
+  if (!carousel) return;
   attachDragSwitcher(el, {
+    transformTarget: carousel.wrap,
+    onDragStart: function() {
+      var prevQ = REP_PL_STATE.q - 1, nextQ = REP_PL_STATE.q + 1;
+      carousel.peekPrev.innerHTML = (prevQ >= 1) ? renderRepPlnenieQPeek(prevQ) : '';
+      carousel.peekNext.innerHTML = (nextQ <= 4) ? renderRepPlnenieQPeek(nextQ) : '';
+      carousel.peekPrev.classList.add('show');
+      carousel.peekNext.classList.add('show');
+    },
+    onDragEnd: function() {
+      carousel.peekPrev.classList.remove('show');
+      carousel.peekNext.classList.remove('show');
+    },
     canPrev: function(){ return REP_PL_STATE.q > 1; },
     canNext: function(){ return REP_PL_STATE.q < 4; },
     onPrev:  function(){ repPlnenieSwitchQ(REP_PL_STATE.q - 1); },
