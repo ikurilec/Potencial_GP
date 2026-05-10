@@ -93,6 +93,13 @@
   input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none}
   /* Globálne disabled state pre všetky tlačidlá — nepretržitý systém */
   button:disabled,button[disabled]{opacity:.5;cursor:not-allowed;pointer-events:none}
+  /* Loading wave dots (Trhový podiel — kým fetch beží) */
+  .ms-dots{display:inline-flex;gap:2px;vertical-align:baseline;line-height:1}
+  .ms-dots span{display:inline-block;width:4px;height:4px;border-radius:50%;background:#94A3B8;animation:msDotWave 1.2s ease-in-out infinite;will-change:transform,opacity}
+  .ms-dots span:nth-child(2){animation-delay:.15s}
+  .ms-dots span:nth-child(3){animation-delay:.30s}
+  @keyframes msDotWave{0%,70%,100%{opacity:.30;transform:translateY(0) scale(.85);background:#94A3B8}35%{opacity:1;transform:translateY(-3px) scale(1);background:#2563EB}}
+  @media(prefers-reduced-motion:reduce){.ms-dots span{animation:none;opacity:.5}}
   /* Tabular-nums pre konzistentnú šírku čísel naprieč všetkými key value-ami */
   .total-val,.lb-count,.lb-count-pct,.lb-p-count,.mgr-stat-num,.mgr-dstat-num,
   .prod-adv-pct,.prod-kap-val,.prod-total-val,.gyn-prod-pct,.gyn-rep-pl-pct,
@@ -214,15 +221,15 @@
   .scroll-pill-inner.hidden{opacity:0}
 
 
-  .wn-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);z-index:2000;align-items:center;justify-content:center;padding:20px}
+  .wn-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);z-index:2000;align-items:center;justify-content:center;padding:20px;box-sizing:border-box}
   .wn-overlay.show{display:flex}
-  .wn-box{background:#fff;border-radius:22px;width:100%;max-width:370px;overflow:hidden;animation:slideUp .3s cubic-bezier(.16,1,.3,1)}
-  .wn-hdr{background:linear-gradient(135deg,#0C1E35,#1A3A5C);padding:24px 22px 20px;text-align:center;position:relative}
+  .wn-box{background:#fff;border-radius:22px;width:100%;max-width:370px;overflow:hidden;animation:slideUp .3s cubic-bezier(.16,1,.3,1);max-height:calc(100vh - 40px);display:flex;flex-direction:column}
+  .wn-hdr{background:linear-gradient(135deg,#0C1E35,#1A3A5C);padding:24px 22px 20px;text-align:center;position:relative;flex-shrink:0}
   .wn-icon-wrap{width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:30px;animation:wnBounce 1s cubic-bezier(.36,.07,.19,.97) .4s both}
   @keyframes wnBounce{0%{transform:scale(1)}15%{transform:scale(1.35) rotate(-8deg)}30%{transform:scale(.9) rotate(5deg)}45%{transform:scale(1.2) rotate(-4deg)}60%{transform:scale(.95) rotate(2deg)}75%{transform:scale(1.08) rotate(-1deg)}100%{transform:scale(1) rotate(0)}}
   .wn-title{font-size:18px;font-weight:700;color:#fff;font-family:var(--font-display);margin-bottom:4px}
   .wn-sub{font-size:11px;color:#5B8DB8}
-  .wn-body{padding:18px 22px 22px}
+  .wn-body{padding:18px 22px 22px;overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1 1 auto;min-height:0;overscroll-behavior:contain}
   .wn-item{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:0.5px solid #F1F5F9}
   .wn-item:last-child{border-bottom:none}
   .wn-item-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
@@ -316,7 +323,7 @@
   .mgr-role-pill:active{background:rgba(255,255,255,.22)}
   .mgr-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:12px}
   .mgr-stat{background:#fff;border-radius:10px;padding:11px 6px;text-align:center;box-shadow:0 2px 8px rgba(10,25,50,.08);border:1px solid rgba(0,0,0,.04)}
-  .mgr-stat-num{font-size:20px;font-weight:700;color:#1A2A3A;font-family:var(--font-display);line-height:1}
+  .mgr-stat-num{font-size:22px;font-weight:800;color:#0C1E35;font-family:var(--font-display);line-height:1;letter-spacing:-.01em}
   .mgr-stat-lbl{font-size:10px;color:#64748B;margin-top:4px;text-transform:uppercase;letter-spacing:.05em;font-weight:600}
   .mgr-toolbar{background:#fff;border-radius:10px;padding:5px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.05);display:flex;gap:3px}
   .mgr-tb-btn{flex:1;padding:13px 4px;border-radius:8px;border:none;background:transparent;color:#64748B;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s ease;-webkit-tap-highlight-color:transparent}
@@ -327,7 +334,7 @@
   .mgr-card:active{transform:scale(.985);box-shadow:0 1px 4px rgba(0,0,0,.04)}
   .mgr-avatar{width:42px;height:42px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;font-family:var(--font-display);letter-spacing:.02em}
   .mgr-body{flex:1;min-width:0}
-  .mgr-name{font-size:14px;font-weight:700;color:#1A2A3A;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mgr-name{font-size:14.5px;font-weight:700;color:#0F172A;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.005em}
   .mgr-meta{font-size:11.5px;color:#64748B;display:flex;gap:5px;align-items:center;margin-bottom:6px}
   .mgr-dot{width:7px;height:7px;border-radius:50%;background:#10B981;flex-shrink:0}
   .mgr-dot.warn{background:#F59E0B}
@@ -360,11 +367,11 @@
   .mgr-back:active{transform:scale(.96)}
   .mgr-dhdr{background:linear-gradient(135deg,#0C1E35,#1A3A5C);border-radius:14px;padding:16px 18px;margin-bottom:10px;color:#fff;display:flex;align-items:center;gap:13px;box-shadow:0 8px 24px rgba(10,25,50,.25)}
   .mgr-davatar{width:52px;height:52px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px;flex-shrink:0;font-family:var(--font-display);letter-spacing:.02em;box-shadow:inset 0 0 0 2px rgba(255,255,255,.25)}
-  .mgr-dname{font-size:16px;font-weight:700;margin-bottom:2px;font-family:var(--font-display)}
+  .mgr-dname{font-size:16px;font-weight:800;margin-bottom:2px;font-family:var(--font-display);letter-spacing:-.01em}
   .mgr-dsub{font-size:11.5px;color:#7AABCC;letter-spacing:.02em}
   .mgr-dstats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
   .mgr-dstat{background:#fff;border-radius:10px;padding:10px 4px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.05)}
-  .mgr-dstat-num{font-size:18px;font-weight:700;color:#1A2A3A;font-family:var(--font-display);line-height:1}
+  .mgr-dstat-num{font-size:20px;font-weight:800;color:#0C1E35;font-family:var(--font-display);line-height:1;letter-spacing:-.01em}
   .mgr-dstat-lbl{font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-top:3px;font-weight:600}
   .mgr-segsum{background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.04);display:flex;gap:4px;flex-wrap:wrap;align-items:center}
   .mgr-segsum-lbl{font-size:10.5px;color:#64748B;font-weight:600;margin-right:4px;text-transform:uppercase;letter-spacing:.05em}
@@ -416,12 +423,12 @@
   .prod-total-lbl{font-size:10.5px;color:#7AABCC;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
   .prod-total-val{font-size:19px;font-weight:700;font-family:var(--font-display);letter-spacing:.01em}
   .info-card{background:#fff;border-radius:14px;margin-bottom:12px;box-shadow:0 4px 16px rgba(15,23,42,.07),0 1px 3px rgba(15,23,42,.04),0 0 0 1px rgba(15,23,42,.04);overflow:visible}
-  .info-accent{height:4px;background:linear-gradient(90deg,#0C1E35 0%,#1A3A5C 50%,#2563EB 100%);border-radius:14px 14px 0 0;position:relative;overflow:hidden}
+  .info-accent{height:5px;background:linear-gradient(90deg,#0C1E35 0%,#1A3A5C 50%,#2563EB 100%);border-radius:14px 14px 0 0;position:relative;overflow:hidden}
   .info-accent::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.35) 50%,transparent 100%);transform:translateX(-100%);animation:infoAccentShine 6s ease-in-out infinite}
   @keyframes infoAccentShine{0%,100%{transform:translateX(-100%)}50%,75%{transform:translateX(200%)}}
   @media(prefers-reduced-motion:reduce){.info-accent::after{animation:none;display:none}}
   .info-inner{padding:18px 20px 20px}
-  .info-title{font-size:14px;font-weight:600;color:#1A2A3A;margin-bottom:14px}
+  .info-title{font-size:16px;font-weight:800;color:#0C1E35;margin-bottom:14px;font-family:var(--font-display);letter-spacing:-.01em}
   .info-grid-3{display:flex;flex-direction:column;gap:12px}
   @media(max-width:520px){.info-grid-3{grid-template-columns:1fr}}
   @media(max-width:480px){.app{padding:8px}.hdr{padding:10px 14px}.gyn-inner{padding:8px}.gyn-mgr-hdr{padding:10px 14px}}
@@ -947,7 +954,7 @@
   /* Header */
   .mgr-plnenie-detail .dhdr{background:#fff;border-radius:14px;padding:16px 18px 14px;margin-bottom:10px;display:flex;gap:12px;align-items:center;box-shadow:0 2px 10px rgba(0,0,0,.06)}
   .mgr-plnenie-detail .dhdr-avatar{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;flex-shrink:0;font-family:var(--font-display)}
-  .mgr-plnenie-detail .dhdr-name{font-size:15px;font-weight:700;color:#0F172A;font-family:var(--font-display)}
+  .mgr-plnenie-detail .dhdr-name{font-size:16px;font-weight:800;color:#0F172A;font-family:var(--font-display);letter-spacing:-.01em}
   .mgr-plnenie-detail .dhdr-sub{font-size:11px;color:#64748B;margin-top:2px}
   /* Sub-taby: Predaje / Návštevy */
   .mgr-plnenie-detail .pl-sub-tabs{display:flex;gap:6px;margin-bottom:12px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
@@ -1139,7 +1146,10 @@
   .pharma-ms-tbl tr.ours td{color:#2563EB;font-weight:800;background:linear-gradient(90deg,#EFF6FF 0%,#fff 100%);border-top-color:transparent}
   .pharma-ms-tbl tr.ours td:first-child{color:#0C1E35}
   .pharma-ms-tbl tr.ours:hover td{background:linear-gradient(90deg,#DBEAFE 0%,#EFF6FF 100%)}
-  .pharma-ms-loading{text-align:center;padding:48px 20px;color:#64748B;font-size:14px}
+  .pharma-ms-loading{padding:16px 4px;color:#64748B;font-size:14px}
+  .pharma-ms-loading .skel-pharma-card{background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:8px;box-shadow:0 4px 12px rgba(15,23,42,.05),0 0 0 1px rgba(15,23,42,.04)}
+  .pharma-ms-loading .skel-pharma-row{display:flex;align-items:center;gap:10px;padding:6px 0}
+  .pharma-ms-loading .skel-pharma-row + .skel-pharma-row{border-top:0.5px solid #F1F5F9}
   .prod-ms-link{display:block;width:100%;text-align:center;margin-top:12px;padding:12px 14px;background:linear-gradient(180deg,#EFF6FF 0%,#DBEAFE 100%);border-radius:10px;border:1.5px solid #3B82F6;font-size:13px;font-weight:700;color:#1D4ED8;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;letter-spacing:.02em;transition:transform var(--t-fast),box-shadow var(--t-fast);box-shadow:0 2px 6px rgba(37,99,235,.10)}
   .prod-ms-link:hover{box-shadow:0 4px 12px rgba(37,99,235,.20);transform:translateY(-1px)}
   .prod-ms-link:active{background:linear-gradient(180deg,#DBEAFE 0%,#BFDBFE 100%);border-color:#2563EB;transform:scale(.99)}
@@ -2103,7 +2113,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.18.4';
+var APP_VERSION = '2.18.5';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -4232,6 +4242,32 @@ function openDetail(idx) {
     sub.insertAdjacentElement('afterend', abcBadge);
   }
 
+  // 4-produktový mini-scoreboard (rýchly prehľad zadaných hodnôt)
+  var scoreEl = cr.querySelector('.detail-prod-score');
+  if(scoreEl) scoreEl.remove();
+  var scoreProds = [
+    { lbl:'Aflamil',  val: item.aflamil_n,  c:'#60A5FA' },
+    { lbl:'Suprax',   val: item.suprax_n,   c:'#C084FC' },
+    { lbl:'Vidonorm', val: item.vidonorm_n, c:'#34D399' },
+    { lbl:'Cavinton', val: item.cavinton_n, c:'#FCD34D' }
+  ];
+  var hasScore = scoreProds.some(function(p){ return p.val != null && p.val !== ''; });
+  if(hasScore) {
+    var scoreBox = document.createElement('div');
+    scoreBox.className = 'detail-prod-score';
+    scoreBox.style.cssText = 'display:flex;gap:6px;margin-top:12px;justify-content:center;flex-wrap:wrap';
+    scoreBox.innerHTML = scoreProds.map(function(p){
+      var v = (p.val != null && p.val !== '') ? p.val : '—';
+      var dim = (v === '—' || v === 0 || v === '0') ? 'opacity:.45' : '';
+      return '<div style="display:flex;flex-direction:column;align-items:center;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:6px 10px 7px;min-width:58px;'+dim+'">' +
+        '<span style="font-size:9px;font-weight:700;color:#64748B;letter-spacing:.04em;text-transform:uppercase;display:flex;align-items:center;gap:3px"><span style="width:5px;height:5px;border-radius:50%;background:'+p.c+'"></span>'+p.lbl+'</span>' +
+        '<span style="font-size:18px;font-weight:800;color:#0F172A;font-family:var(--font-display);line-height:1.05;letter-spacing:-.01em;font-variant-numeric:tabular-nums;margin-top:1px">'+v+'</span>' +
+      '</div>';
+    }).join('');
+    var insertAfter = cr.querySelector('.detail-abc-badge') || sub;
+    insertAfter.insertAdjacentElement('afterend', scoreBox);
+  }
+
   // clear old scenario-msg
   var prev = cr.querySelector('.scenario-msg');
   if(prev) prev.remove();
@@ -5931,7 +5967,7 @@ function gynOpenPharma(productName, oblast) {
 
   if(titleEl)   titleEl.textContent = 'Trhový podiel · Q' + GYN_APP.q + ' ' + GYN_APP.year + ' · ' + produkt;
   if(subtabsEl) subtabsEl.style.display = 'none';
-  if(bodyEl)    bodyEl.innerHTML = '<div class="pharma-ms-loading">Načítavam dáta…</div>';
+  if(bodyEl)    bodyEl.innerHTML = skelPharma();
 
   overlay.classList.remove('panel-anim-r','pl-detail-exit-r');
   overlay.classList.add('show');
@@ -8981,6 +9017,26 @@ function skelMgrList(){
   var row='<div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:55%"></div><div class="skel skel-line" style="width:38%"></div></div></div>';
   return '<div class="skel-wrap">'+row+row+row+row+row+'</div>';
 }
+// Pharma overlay skeleton (Trhový podiel) — total card + per-okres rows
+function skelPharma(){
+  var totalCard = '<div class="skel-pharma-card" style="background:#0C1E35;border-radius:14px;padding:18px 20px;margin-bottom:14px">' +
+    '<div class="skel" style="width:40%;height:10px;background:rgba(255,255,255,.10);margin:0 auto 14px;border-radius:5px"></div>' +
+    '<div style="display:flex;gap:0;justify-content:center;align-items:flex-end">' +
+      '<div style="flex:1;text-align:center"><div class="skel" style="width:50%;height:9px;background:rgba(255,255,255,.10);margin:0 auto 8px;border-radius:5px"></div><div class="skel" style="width:80%;height:30px;background:rgba(255,255,255,.12);margin:0 auto;border-radius:6px"></div></div>' +
+      '<div style="flex:1;text-align:center;border-left:1px solid rgba(255,255,255,.10)"><div class="skel" style="width:50%;height:9px;background:rgba(255,255,255,.10);margin:0 auto 8px;border-radius:5px"></div><div class="skel" style="width:80%;height:30px;background:rgba(255,255,255,.12);margin:0 auto;border-radius:6px"></div></div>' +
+    '</div>' +
+  '</div>';
+  var district = function(){
+    return '<div class="skel-pharma-card" style="padding:0 0 12px">' +
+      '<div style="background:#0C1E35;padding:10px 14px;margin-bottom:8px"><div class="skel" style="width:40%;height:10px;background:rgba(255,255,255,.12);border-radius:5px"></div></div>' +
+      '<div style="padding:4px 14px"><div class="skel-pharma-row"><div class="skel" style="flex:1;height:11px;border-radius:5px"></div><div class="skel" style="width:50px;height:11px;border-radius:5px"></div></div>' +
+      '<div class="skel-pharma-row"><div class="skel" style="flex:1;height:11px;border-radius:5px"></div><div class="skel" style="width:50px;height:11px;border-radius:5px"></div></div>' +
+      '<div class="skel-pharma-row"><div class="skel" style="flex:1;height:11px;border-radius:5px"></div><div class="skel" style="width:50px;height:11px;border-radius:5px"></div></div>' +
+      '<div class="skel-pharma-row"><div class="skel" style="flex:1;height:11px;border-radius:5px"></div><div class="skel" style="width:50px;height:11px;border-radius:5px"></div></div></div>' +
+    '</div>';
+  };
+  return '<div class="pharma-ms-loading">'+totalCard+district()+district()+'</div>';
+}
 
 function lbGetBody(){
   var isMgr = document.body.classList.contains('manager-mode');
@@ -9722,11 +9778,19 @@ function openProdSheet(prodKey, prodLabel) {
       var o = (USERS_LOCAL[rep] && USERS_LOCAL[rep].region) || '';
       if (o) neededOblasts[o] = true;
     });
+    var prevKv = pharmaKvartalPrev(kvartal);
     pharmaCodes.forEach(function(c) {
       Object.keys(neededOblasts).forEach(function(o) {
+        // Pokrytie aktuálneho Q
         var ck = c + '_' + o + '_' + kvartal;
         if (!PHARMA_STATE.cache[ck] && !PHARMA_STATE.loading[ck]) {
           loadPharmaData(c, o, kvartal);
+        }
+        // Pokrytie predchádzajúceho Q (proaktívny fallback — ak Q2 je prázdne,
+        // chceme mať Q1 cache rovno ready, nie čakať na recursívny re-fetch)
+        var pck = c + '_' + o + '_' + prevKv;
+        if (!PHARMA_STATE.cache[pck] && !PHARMA_STATE.loading[pck]) {
+          loadPharmaData(c, o, prevKv);
         }
       });
     });
@@ -9741,6 +9805,25 @@ function openProdSheet(prodKey, prodLabel) {
   void sheet.offsetWidth;
   sheet.classList.add('show');
   prodSheetInitSwipe();
+
+  // Polling — kým sheet otvorený a aspoň jeden rep má MS bunku "—",
+  // skús refresh. To zabezpečí že keď fetch dobehne, hodnota okamžite naskočí.
+  if (PL_PROD_SHEET_STATE.msPollTimer) clearInterval(PL_PROD_SHEET_STATE.msPollTimer);
+  var msPollAttempts = 0;
+  PL_PROD_SHEET_STATE.msPollTimer = setInterval(function() {
+    if (!PL_PROD_SHEET_STATE.open) {
+      clearInterval(PL_PROD_SHEET_STATE.msPollTimer);
+      PL_PROD_SHEET_STATE.msPollTimer = null;
+      return;
+    }
+    msPollAttempts++;
+    prodSheetUpdateMsCells();
+    // Po 20 attempts (16s) zastav — buď sa naloadovalo, alebo dáta naozaj nie sú
+    if (msPollAttempts >= 20) {
+      clearInterval(PL_PROD_SHEET_STATE.msPollTimer);
+      PL_PROD_SHEET_STATE.msPollTimer = null;
+    }
+  }, 800);
 }
 
 // Vykreslí zoznam reprezentantov v product sheet.
@@ -9781,17 +9864,23 @@ function prodSheetRenderRepList() {
   // Helper: terit MS z cache
   function getTeritMs(oblast) {
     if (!pharmaCode || !oblast) return null;
-    var d = PHARMA_STATE.cache[pharmaCode + '_' + oblast + '_' + kvartal];
-    if (!d || !d.summary) return null;
-    var months = pharmaQuarterMonths(kvartal);
-    var vals = [];
-    d.summary.forEach(function(s) {
-      if (months.indexOf(s.mesiac) !== -1) {
-        var v = parseFloat(s.terit_ms);
-        if (!isNaN(v) && v > 0) vals.push(v);
-      }
-    });
-    return vals.length ? vals.reduce(function(a,b){return a+b;},0)/vals.length : null;
+    // Skús aktuálny Q, ak null fallback na predchádzajúci Q (Q2 IQVIA dáta často chýbajú)
+    var qList = [kvartal, pharmaKvartalPrev(kvartal)];
+    for (var qi = 0; qi < qList.length; qi++) {
+      var qk = qList[qi];
+      var d = PHARMA_STATE.cache[pharmaCode + '_' + oblast + '_' + qk];
+      if (!d || !d.summary) continue;
+      var months = pharmaQuarterMonths(qk);
+      var vals = [];
+      d.summary.forEach(function(s) {
+        if (months.indexOf(s.mesiac) !== -1) {
+          var v = parseFloat(s.terit_ms);
+          if (!isNaN(v) && v >= 0) vals.push(v);
+        }
+      });
+      if (vals.length) return vals.reduce(function(a,b){return a+b;},0)/vals.length;
+    }
+    return null;
   }
 
   // SK MS — aktualizuj header (len ak ešte nie je)
@@ -9835,8 +9924,20 @@ function prodSheetRenderRepList() {
     };
     var oblast  = (USERS_LOCAL[r.username] && USERS_LOCAL[r.username].region) || '';
     var teritMs = getTeritMs(oblast);
-    var msHtml  = pharmaCode
-      ? '<div class="pl-ps-ms">Terit. MS: ' + (teritMs !== null ? '<strong>' + teritMs.toFixed(2) + '%</strong>' : '—') + '</div>'
+    var msFetching = (function() {
+      if (teritMs !== null || !oblast) return false;
+      // Skontroluj či fetch beží alebo je naplánovaný (cache neexistuje a loading je true,
+      // alebo cache existuje ale fetch pre prev Q ešte nebol)
+      var ck1 = pharmaCode + '_' + oblast + '_' + kvartal;
+      var ck2 = pharmaCode + '_' + oblast + '_' + pharmaKvartalPrev(kvartal);
+      return PHARMA_STATE.loading[ck1] || PHARMA_STATE.loading[ck2] ||
+        (!PHARMA_STATE.cache[ck1] && !PHARMA_STATE.cache[ck2]);
+    })();
+    var msValue = teritMs !== null
+      ? '<strong>' + teritMs.toFixed(2) + '%</strong>'
+      : (msFetching ? '<span class="ms-dots"><span></span><span></span><span></span></span>' : '—');
+    var msHtml = pharmaCode
+      ? '<div class="pl-ps-ms">Terit. MS: ' + msValue + '</div>'
       : '';
 
     rank++;
@@ -9948,6 +10049,10 @@ function prodSheetInitSwipe() {
 function closeProdSheet() {
   PL_PROD_SHEET_STATE.open = false;
   PL_PROD_SHEET_STATE.prodKey = null;
+  if (PL_PROD_SHEET_STATE.msPollTimer) {
+    clearInterval(PL_PROD_SHEET_STATE.msPollTimer);
+    PL_PROD_SHEET_STATE.msPollTimer = null;
+  }
   var sheet = document.getElementById('pl-prod-sheet');
   var bd    = document.getElementById('pl-prod-sheet-bd');
   if (sheet) { sheet.style.transform = ''; sheet.classList.remove('show'); }
@@ -9965,16 +10070,23 @@ function prodSheetUpdateMsCells() {
 
   function getTeritMs(oblast) {
     if (!oblast) return null;
-    var d = PHARMA_STATE.cache[pharmaCode + '_' + oblast + '_' + kvartal];
-    if (!d || !d.summary) return null;
-    var vals = [];
-    d.summary.forEach(function(s) {
-      if (months.indexOf(s.mesiac) !== -1) {
-        var v = parseFloat(s.terit_ms);
-        if (!isNaN(v) && v > 0) vals.push(v);
-      }
-    });
-    return vals.length ? vals.reduce(function(a,b){return a+b;},0)/vals.length : null;
+    // Skús aktuálny Q, ak null fallback na predchádzajúci Q
+    var qList = [kvartal, pharmaKvartalPrev(kvartal)];
+    for (var qi = 0; qi < qList.length; qi++) {
+      var qk = qList[qi];
+      var d = PHARMA_STATE.cache[pharmaCode + '_' + oblast + '_' + qk];
+      if (!d || !d.summary) continue;
+      var qMonths = pharmaQuarterMonths(qk);
+      var vals = [];
+      d.summary.forEach(function(s) {
+        if (qMonths.indexOf(s.mesiac) !== -1) {
+          var v = parseFloat(s.terit_ms);
+          if (!isNaN(v) && v >= 0) vals.push(v);
+        }
+      });
+      if (vals.length) return vals.reduce(function(a,b){return a+b;},0)/vals.length;
+    }
+    return null;
   }
 
   // Updatni MS bunku každého rep riadku
@@ -9984,9 +10096,23 @@ function prodSheetUpdateMsCells() {
     var username = row.getAttribute('data-username');
     var oblast   = (USERS_LOCAL[username] && USERS_LOCAL[username].region) || '';
     var teritMs  = getTeritMs(oblast);
-    if (teritMs === null) return; // ešte neprislo, nemeň
     var msEl = row.querySelector('.pl-ps-ms');
-    if (msEl) msEl.innerHTML = 'Terit. MS: <strong>' + teritMs.toFixed(2) + '%</strong>';
+    if (!msEl) return;
+    if (teritMs !== null) {
+      msEl.innerHTML = 'Terit. MS: <strong>' + teritMs.toFixed(2) + '%</strong>';
+    } else if (oblast) {
+      // Ešte stále chýba — ak fetch dokončil a dáta naozaj nie sú, zobraz "—"
+      var ck1 = pharmaCode + '_' + oblast + '_' + kvartal;
+      var ck2 = pharmaCode + '_' + oblast + '_' + pharmaKvartalPrev(kvartal);
+      var stillFetching = PHARMA_STATE.loading[ck1] || PHARMA_STATE.loading[ck2];
+      var triedBoth = (PHARMA_STATE.cache[ck1] !== undefined || !PHARMA_STATE.loading[ck1]) &&
+                      (PHARMA_STATE.cache[ck2] !== undefined || !PHARMA_STATE.loading[ck2]);
+      if (!stillFetching && triedBoth) {
+        msEl.innerHTML = 'Terit. MS: —';
+      } else {
+        msEl.innerHTML = 'Terit. MS: <span class="ms-dots"><span></span><span></span><span></span></span>';
+      }
+    }
   });
 
   // Updatni SK MS v headeri ak ešte nie je
@@ -11272,7 +11398,7 @@ function openPharmaMs(prodKey, label) {
   if (titleEl)  titleEl.textContent = 'Trhový podiel · Q' + q + ' ' + year + ' · ' + label;
   if (mesiacEl) mesiacEl.textContent = '';
   var firstCacheKey = codes[0] + '_' + oblast + '_' + kvartal;
-  if (bodyEl && !PHARMA_STATE.cache[firstCacheKey]) bodyEl.innerHTML = '<div class="pharma-ms-loading">Načítavam dáta…</div>';
+  if (bodyEl && !PHARMA_STATE.cache[firstCacheKey]) bodyEl.innerHTML = skelPharma();
 
   if (codes.length > 1) {
     subtabsEl.style.display = 'flex';
@@ -11335,15 +11461,20 @@ function loadPharmaData(code, oblast, kvartal) {
         var hasData = hasRealSumm || hasRealOkr;
         if (!hasData) {
           // Dáta pre tento Q ešte nie sú (IQVIA nenahrané) — skús predchádzajúci Q
-          if (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal) {
+          var sheetOpen = (PL_PROD_SHEET_STATE && PL_PROD_SHEET_STATE.open &&
+            (PHARMA_CODES[PL_PROD_SHEET_STATE.prodKey] || []).indexOf(code) !== -1);
+          var pharmaOpen = (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal);
+          if (pharmaOpen || sheetOpen) {
             var prevKv = pharmaKvartalPrev(kvartal);
-            var prevQNum = parseInt(prevKv.slice(2), 10);
-            var prevYear = 2000 + parseInt(prevKv.slice(0, 2), 10);
-            PHARMA_STATE.kvartal = prevKv;
-            var titleEl = document.getElementById('pharma-ms-title');
-            if (titleEl) {
-              var parts = titleEl.textContent.split(' · ');
-              if (parts.length >= 2) { parts[1] = 'Q' + prevQNum + ' ' + prevYear; titleEl.textContent = parts.join(' · '); }
+            if (pharmaOpen) {
+              var prevQNum = parseInt(prevKv.slice(2), 10);
+              var prevYear = 2000 + parseInt(prevKv.slice(0, 2), 10);
+              PHARMA_STATE.kvartal = prevKv;
+              var titleEl = document.getElementById('pharma-ms-title');
+              if (titleEl) {
+                var parts = titleEl.textContent.split(' · ');
+                if (parts.length >= 2) { parts[1] = 'Q' + prevQNum + ' ' + prevYear; titleEl.textContent = parts.join(' · '); }
+              }
             }
             loadPharmaData(code, oblast, prevKv);
           }
@@ -11359,15 +11490,20 @@ function loadPharmaData(code, oblast, kvartal) {
         if (typeof prodSheetUpdateMsCells === 'function') prodSheetUpdateMsCells();
       } else {
         // ok:false — skús tiež predchádzajúci Q (môže ísť o chýbajúce Q2 dáta)
-        if (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal) {
+        var sheetIsOpenForCode = (PL_PROD_SHEET_STATE && PL_PROD_SHEET_STATE.open &&
+          (PHARMA_CODES[PL_PROD_SHEET_STATE.prodKey] || []).indexOf(code) !== -1);
+        var pharmaOverlayOpenForCode = (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal);
+        if (pharmaOverlayOpenForCode || sheetIsOpenForCode) {
           var prevKvF = pharmaKvartalPrev(kvartal);
-          var prevQNumF = parseInt(prevKvF.slice(2), 10);
-          var prevYearF = 2000 + parseInt(prevKvF.slice(0, 2), 10);
-          PHARMA_STATE.kvartal = prevKvF;
-          var titleElF = document.getElementById('pharma-ms-title');
-          if (titleElF) {
-            var partsF = titleElF.textContent.split(' · ');
-            if (partsF.length >= 2) { partsF[1] = 'Q' + prevQNumF + ' ' + prevYearF; titleElF.textContent = partsF.join(' · '); }
+          if (pharmaOverlayOpenForCode) {
+            var prevQNumF = parseInt(prevKvF.slice(2), 10);
+            var prevYearF = 2000 + parseInt(prevKvF.slice(0, 2), 10);
+            PHARMA_STATE.kvartal = prevKvF;
+            var titleElF = document.getElementById('pharma-ms-title');
+            if (titleElF) {
+              var partsF = titleElF.textContent.split(' · ');
+              if (partsF.length >= 2) { partsF[1] = 'Q' + prevQNumF + ' ' + prevYearF; titleElF.textContent = partsF.join(' · '); }
+            }
           }
           loadPharmaData(code, oblast, prevKvF);
         }
@@ -12057,7 +12193,7 @@ function pharmaSwitchTab(code) {
   var cacheKey = code + '_' + PHARMA_STATE.oblast + '_' + PHARMA_STATE.kvartal;
   if (!PHARMA_STATE.cache[cacheKey]) {
     var bodyEl = document.getElementById('pharma-ms-body');
-    if (bodyEl) bodyEl.innerHTML = '<div class="pharma-ms-loading">Načítavam dáta…</div>';
+    if (bodyEl) bodyEl.innerHTML = skelPharma();
   }
   loadPharmaData(code, PHARMA_STATE.oblast, PHARMA_STATE.kvartal);
   _animPlQ('pharma-ms-body', dir);
@@ -12070,7 +12206,7 @@ function pharmaRender(code) {
   var cacheKey = code + '_' + PHARMA_STATE.oblast + '_' + PHARMA_STATE.kvartal;
   var d = PHARMA_STATE.cache[cacheKey];
   if (!d) {
-    bodyEl.innerHTML = '<div class="pharma-ms-loading">Načítavam dáta…</div>';
+    bodyEl.innerHTML = skelPharma();
     loadPharmaData(code, PHARMA_STATE.oblast, PHARMA_STATE.kvartal);
     return;
   }
