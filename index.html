@@ -2124,7 +2124,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.19.2';
+var APP_VERSION = '2.19.3';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10654,33 +10654,81 @@ function plnenieRenderAll() {
   if (PL_STATE.detailRep) plnenieRenderDetail();
 }
 
-// Vyrender peek panel content pre Q (manažér view, agreguje Slovensko/West/East)
-function renderPlnenieQPeek(q) {
-  if (!q || q < 1 || q > 4) return '';
-  var year = PL_STATE.year;
-  var qLbl = plnenieQLabel(q, year);
-  var cached = PL_STATE.qCache[q];
-  if (!cached || !cached.aggregates || !cached.aggregates.sk) {
-    return '<div class="carousel-peek-card">' +
-      '<div class="carousel-peek-lbl"><span class="arrow">‹</span> ' + qLbl + ' <span class="arrow">›</span></div>' +
-      '<div class="carousel-peek-q">' + qLbl + '</div>' +
-      '<div class="carousel-peek-hint">posuň ďalej</div>' +
-    '</div>';
-  }
-  var sk = cached.aggregates.sk;
-  var pctCls = plnenieColorClass(sk.pct);
-  var pctText = sk.pct !== null ? plnenieFormatPct(sk.pct) : '—';
-  var eurText = sk.predajeEUR > 0
-    ? plnenieFormatEUR(sk.predajeEUR) + ' / ' + plnenieFormatEUR(sk.planEUR)
-    : '— / ' + plnenieFormatEUR(sk.planEUR);
-  return '<div class="carousel-peek-card">' +
-    '<div class="carousel-peek-lbl">' + plnenieSumLabel() + ' · ' + qLbl + '</div>' +
-    '<div class="carousel-peek-pct ' + pctCls + '">' + pctText + '</div>' +
-    '<div class="carousel-peek-eur">' + eurText + '</div>' +
-  '</div>';
+// Snapshot plného DOM-u Plnenie sumáru pre iný Q.
+// Postup: dočasne swap-ne PL_STATE na targetQ, zavolá render funkcie,
+// urobí cloneNode(true) z DOM-u, vráti všetko späť. Strip-ne IDs aby sa
+// neduplikovali v dokumente.
+function snapshotPlnenieDom(sourceEl, targetQ) {
+  if (!sourceEl || targetQ < 1 || targetQ > 4) return null;
+  if (!PL_STATE.qCache[targetQ]) return null;
+
+  var origQ = PL_STATE.q;
+  var origData = PL_STATE.data;
+  var origAgg = PL_STATE.aggregates;
+  // Suppress count-up animations behem snapshotu (ďalšie volanie obnoví state)
+  var origCountUp = typeof plnenieCountUp === 'function' ? plnenieCountUp : null;
+  var origCountUpEUR = typeof plnenieCountUpEUR === 'function' ? plnenieCountUpEUR : null;
+  if (origCountUp) window.plnenieCountUp = function(el, t){ if (el) el.textContent = plnenieFormatPct(t); };
+  if (origCountUpEUR) window.plnenieCountUpEUR = function(el, t){ if (el) el.textContent = plnenieFormatEUR(t); };
+
+  PL_STATE.q = targetQ;
+  PL_STATE.data = PL_STATE.qCache[targetQ].data;
+  PL_STATE.aggregates = PL_STATE.qCache[targetQ].aggregates;
+
+  try {
+    plnenieRenderSummary();
+    plnenieRenderRegions();
+    plnenieRenderRepList();
+  } catch(e) {}
+
+  var clone = sourceEl.cloneNode(true);
+  // Strip ID-čka v cloned subtree aby neducplikujúci sa v dokumente
+  if (clone.id) clone.removeAttribute('id');
+  Array.prototype.forEach.call(clone.querySelectorAll('[id]'), function(n){ n.removeAttribute('id'); });
+
+  // Restore
+  if (origCountUp) window.plnenieCountUp = origCountUp;
+  if (origCountUpEUR) window.plnenieCountUpEUR = origCountUpEUR;
+  PL_STATE.q = origQ;
+  PL_STATE.data = origData;
+  PL_STATE.aggregates = origAgg;
+
+  return clone;
 }
 
-// Manažér Plnenie sumár — drag medzi Q1↔Q4 s carousel peeks
+// Snapshot pre Rep Plnenie overlay (REP_PL_STATE)
+function snapshotRepPlnenieDom(sourceEl, targetQ) {
+  if (!sourceEl || targetQ < 1 || targetQ > 4) return null;
+  if (!REP_PL_STATE.qCache[targetQ]) return null;
+
+  var origQ = REP_PL_STATE.q;
+  var origData = REP_PL_STATE.data;
+  var origAgg = REP_PL_STATE.aggregates;
+  var origCountUp = typeof plnenieCountUp === 'function' ? plnenieCountUp : null;
+  var origCountUpEUR = typeof plnenieCountUpEUR === 'function' ? plnenieCountUpEUR : null;
+  if (origCountUp) window.plnenieCountUp = function(el, t){ if (el) el.textContent = plnenieFormatPct(t); };
+  if (origCountUpEUR) window.plnenieCountUpEUR = function(el, t){ if (el) el.textContent = plnenieFormatEUR(t); };
+
+  REP_PL_STATE.q = targetQ;
+  REP_PL_STATE.data = REP_PL_STATE.qCache[targetQ].data;
+  REP_PL_STATE.aggregates = REP_PL_STATE.qCache[targetQ].aggregates;
+
+  try { repPlnenieRender(); } catch(e) {}
+
+  var clone = sourceEl.cloneNode(true);
+  if (clone.id) clone.removeAttribute('id');
+  Array.prototype.forEach.call(clone.querySelectorAll('[id]'), function(n){ n.removeAttribute('id'); });
+
+  if (origCountUp) window.plnenieCountUp = origCountUp;
+  if (origCountUpEUR) window.plnenieCountUpEUR = origCountUpEUR;
+  REP_PL_STATE.q = origQ;
+  REP_PL_STATE.data = origData;
+  REP_PL_STATE.aggregates = origAgg;
+
+  return clone;
+}
+
+// Manažér Plnenie sumár — drag medzi Q1↔Q4 s carousel peeks (full DOM snapshot)
 var _plnenieSwipeAttached = false;
 function plnenieInitQSwipe() {
   if (_plnenieSwipeAttached) return;
@@ -10688,63 +10736,51 @@ function plnenieInitQSwipe() {
   if (!el) return;
   var carousel = buildCarouselPeeks(el);
   if (!carousel) return;
+  // Peek panel obsahuje plný DOM clone — zaberá rovnakú výšku/štýl ako current
+  carousel.peekPrev.style.alignItems = 'flex-start';
+  carousel.peekPrev.style.padding = '0';
+  carousel.peekNext.style.alignItems = 'flex-start';
+  carousel.peekNext.style.padding = '0';
   attachDragSwitcher(el, {
     transformTarget: carousel.wrap,
     onDragStart: function() {
-      // Pred drag-om naplň peek panely (preview Q-1 a Q+1)
+      if (PL_STATE.detailRep) return;
       var prevQ = PL_STATE.q - 1, nextQ = PL_STATE.q + 1;
-      carousel.peekPrev.innerHTML = (prevQ >= 1) ? renderPlnenieQPeek(prevQ) : '';
-      carousel.peekNext.innerHTML = (nextQ <= 4) ? renderPlnenieQPeek(nextQ) : '';
+      // Snapshot Q-1 → peekPrev
+      carousel.peekPrev.innerHTML = '';
+      var prevSnap = snapshotPlnenieDom(el, prevQ);
+      if (prevSnap) {
+        prevSnap.style.width = '100%';
+        carousel.peekPrev.appendChild(prevSnap);
+      }
+      // Snapshot Q+1 → peekNext
+      carousel.peekNext.innerHTML = '';
+      var nextSnap = snapshotPlnenieDom(el, nextQ);
+      if (nextSnap) {
+        nextSnap.style.width = '100%';
+        carousel.peekNext.appendChild(nextSnap);
+      }
       carousel.peekPrev.classList.add('show');
       carousel.peekNext.classList.add('show');
     },
     onDragEnd: function() {
-      // Hide peeks po release (s krátkym fade)
       carousel.peekPrev.classList.remove('show');
       carousel.peekNext.classList.remove('show');
+      // Po fade-out zmaž clone-y aby neostávali v DOM-e
+      setTimeout(function() {
+        if (!carousel.peekPrev.classList.contains('show')) carousel.peekPrev.innerHTML = '';
+        if (!carousel.peekNext.classList.contains('show')) carousel.peekNext.innerHTML = '';
+      }, 200);
     },
-    canPrev: function(){ return !PL_STATE.detailRep && PL_STATE.q > 1; },
-    canNext: function(){ return !PL_STATE.detailRep && PL_STATE.q < 4; },
+    canPrev: function(){ return !PL_STATE.detailRep && PL_STATE.q > 1 && !!PL_STATE.qCache[PL_STATE.q - 1]; },
+    canNext: function(){ return !PL_STATE.detailRep && PL_STATE.q < 4 && !!PL_STATE.qCache[PL_STATE.q + 1]; },
     onPrev:  function(){ plnenieSwitchQ(PL_STATE.q - 1); },
     onNext:  function(){ plnenieSwitchQ(PL_STATE.q + 1); }
   });
   _plnenieSwipeAttached = true;
 }
 
-// Vyrender peek pre rep view (jeho vlastné agregáty)
-function renderRepPlnenieQPeek(q) {
-  if (!q || q < 1 || q > 4) return '';
-  var qLbl = plnenieQLabel(q, REP_PL_STATE.year);
-  var cached = REP_PL_STATE.qCache[q];
-  if (!cached || !cached.aggregates) {
-    return '<div class="carousel-peek-card">' +
-      '<div class="carousel-peek-lbl"><span class="arrow">‹</span> ' + qLbl + ' <span class="arrow">›</span></div>' +
-      '<div class="carousel-peek-q">' + qLbl + '</div>' +
-      '<div class="carousel-peek-hint">posuň ďalej</div>' +
-    '</div>';
-  }
-  var session = getSession();
-  var username = session && session.username;
-  var rep = (cached.aggregates.reps || []).find(function(r){ return r.username === username; });
-  if (!rep) {
-    return '<div class="carousel-peek-card">' +
-      '<div class="carousel-peek-lbl">' + qLbl + '</div>' +
-      '<div class="carousel-peek-q">' + qLbl + '</div>' +
-    '</div>';
-  }
-  var pctCls = plnenieColorClass(rep.pct);
-  var pctText = rep.pct !== null ? plnenieFormatPct(rep.pct) : '—';
-  var eurText = rep.predajeEUR > 0
-    ? plnenieFormatEUR(rep.predajeEUR) + ' / ' + plnenieFormatEUR(rep.planEUR)
-    : '— / ' + plnenieFormatEUR(rep.planEUR);
-  return '<div class="carousel-peek-card">' +
-    '<div class="carousel-peek-lbl">Môj plán · ' + qLbl + '</div>' +
-    '<div class="carousel-peek-pct ' + pctCls + '">' + pctText + '</div>' +
-    '<div class="carousel-peek-eur">' + eurText + '</div>' +
-  '</div>';
-}
-
-// Rep Plnenie overlay — drag medzi Q1↔Q4 s carousel peeks
+// Rep Plnenie overlay — drag medzi Q1↔Q4 s full DOM peek snapshots
 var _repPlnenieSwipeAttached = false;
 function repPlnenieInitQSwipe() {
   if (_repPlnenieSwipeAttached) return;
@@ -10752,21 +10788,39 @@ function repPlnenieInitQSwipe() {
   if (!el) return;
   var carousel = buildCarouselPeeks(el);
   if (!carousel) return;
+  carousel.peekPrev.style.alignItems = 'flex-start';
+  carousel.peekPrev.style.padding = '0';
+  carousel.peekNext.style.alignItems = 'flex-start';
+  carousel.peekNext.style.padding = '0';
   attachDragSwitcher(el, {
     transformTarget: carousel.wrap,
     onDragStart: function() {
       var prevQ = REP_PL_STATE.q - 1, nextQ = REP_PL_STATE.q + 1;
-      carousel.peekPrev.innerHTML = (prevQ >= 1) ? renderRepPlnenieQPeek(prevQ) : '';
-      carousel.peekNext.innerHTML = (nextQ <= 4) ? renderRepPlnenieQPeek(nextQ) : '';
+      carousel.peekPrev.innerHTML = '';
+      var prevSnap = snapshotRepPlnenieDom(el, prevQ);
+      if (prevSnap) {
+        prevSnap.style.width = '100%';
+        carousel.peekPrev.appendChild(prevSnap);
+      }
+      carousel.peekNext.innerHTML = '';
+      var nextSnap = snapshotRepPlnenieDom(el, nextQ);
+      if (nextSnap) {
+        nextSnap.style.width = '100%';
+        carousel.peekNext.appendChild(nextSnap);
+      }
       carousel.peekPrev.classList.add('show');
       carousel.peekNext.classList.add('show');
     },
     onDragEnd: function() {
       carousel.peekPrev.classList.remove('show');
       carousel.peekNext.classList.remove('show');
+      setTimeout(function() {
+        if (!carousel.peekPrev.classList.contains('show')) carousel.peekPrev.innerHTML = '';
+        if (!carousel.peekNext.classList.contains('show')) carousel.peekNext.innerHTML = '';
+      }, 200);
     },
-    canPrev: function(){ return REP_PL_STATE.q > 1; },
-    canNext: function(){ return REP_PL_STATE.q < 4; },
+    canPrev: function(){ return REP_PL_STATE.q > 1 && !!REP_PL_STATE.qCache[REP_PL_STATE.q - 1]; },
+    canNext: function(){ return REP_PL_STATE.q < 4 && !!REP_PL_STATE.qCache[REP_PL_STATE.q + 1]; },
     onPrev:  function(){ repPlnenieSwitchQ(REP_PL_STATE.q - 1); },
     onNext:  function(){ repPlnenieSwitchQ(REP_PL_STATE.q + 1); }
   });
