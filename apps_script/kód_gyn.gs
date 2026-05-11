@@ -23,17 +23,27 @@ function doGet(e) {
       var sheet = ss.getSheetByName('Pouzivatelia');
       if (!sheet) return jsonResp({ok: false});
       var rows = sheet.getDataRange().getValues();
+      // Header-based detekcia pre pohlavie + avatar (rovnaký pattern ako Golem)
+      var loginHeader = rows[0] || [];
+      var loginPohlavieIdx = -1, loginAvatarIdx = -1;
+      for (var lhi = 0; lhi < loginHeader.length; lhi++) {
+        var lh = String(loginHeader[lhi] || '').trim().toLowerCase();
+        if (lh === 'pohlavie' || lh === 'gender') loginPohlavieIdx = lhi;
+        if (lh === 'avatar') loginAvatarIdx = lhi;
+      }
       for (var i = 1; i < rows.length; i++) {
         var rowLogin = String(rows[i][0] || '').trim().toLowerCase();
         var rowHeslo = String(rows[i][1] || '');
         if (rowLogin === username && rowHeslo === password) {
           return jsonResp({
-            ok:     true,
-            line:   'gyn',
-            name:   String(rows[i][2] || '').trim(),
-            role:   String(rows[i][3] || '').trim().toLowerCase(),
-            linia:  String(rows[i][4] || '').trim().toLowerCase(),
-            region: String(rows[i][5] || '').trim().toUpperCase()
+            ok:       true,
+            line:     'gyn',
+            name:     String(rows[i][2] || '').trim(),
+            role:     String(rows[i][3] || '').trim().toLowerCase(),
+            linia:    String(rows[i][4] || '').trim().toLowerCase(),
+            region:   String(rows[i][5] || '').trim().toUpperCase(),
+            pohlavie: loginPohlavieIdx >= 0 ? String(rows[i][loginPohlavieIdx] || '').trim() : '',
+            avatar:   loginAvatarIdx   >= 0 ? String(rows[i][loginAvatarIdx]   || '').trim() : ''
           });
         }
       }
@@ -65,6 +75,14 @@ function doGet(e) {
       var sheet = ss.getSheetByName('Pouzivatelia');
       if (!sheet) return jsonResp({ok: false, error: 'Sheet Pouzivatelia nenajdeny'});
       var rows = sheet.getDataRange().getValues();
+      // Najdi stĺpce pohlavie + avatar v hlavičke (case-insensitive)
+      var header = rows[0] || [];
+      var pohlavieIdx = -1, avatarIdx = -1;
+      for (var hi = 0; hi < header.length; hi++) {
+        var h = String(header[hi] || '').trim().toLowerCase();
+        if (h === 'pohlavie' || h === 'gender') pohlavieIdx = hi;
+        if (h === 'avatar') avatarIdx = hi;
+      }
       var reps = [];
       for (var i = 1; i < rows.length; i++) {
         var login  = String(rows[i][0] || '').trim();
@@ -72,12 +90,43 @@ function doGet(e) {
         var rola   = String(rows[i][3] || '').trim().toLowerCase();
         var linia  = String(rows[i][4] || '').trim().toLowerCase();
         var region = String(rows[i][5] || '').trim().toUpperCase();
+        var pohlavie = (pohlavieIdx >= 0) ? String(rows[i][pohlavieIdx] || '').trim() : '';
+        var avatar   = (avatarIdx   >= 0) ? String(rows[i][avatarIdx]   || '').trim() : '';
         if (!login || !meno) continue;
         if (rola === 'gyn-rep') {
-          reps.push({login: login, meno: meno, rola: rola, linia: linia, region: region});
+          reps.push({login: login, meno: meno, rola: rola, linia: linia, region: region, pohlavie: pohlavie, avatar: avatar});
         }
       }
       return jsonResp({ok: true, reps: reps});
+    }
+
+    // ── ULOŽENIE AVATAR CONFIGU ──
+    // URL: ?action=setAvatar&username=b.sivakova&config=<JSON>&token=...
+    if (action === 'setAvatar') {
+      if (!requireToken(e)) return jsonResp({ok: false, error: 'Unauthorized'});
+      var avUser = (e.parameter.username || '').trim().toLowerCase();
+      var avConfig = e.parameter.config || '';
+      if (!avUser) return jsonResp({ok: false, error: 'missing username'});
+      if (avConfig.length > 2000) return jsonResp({ok: false, error: 'config too long'});
+      if (avConfig) {
+        try { JSON.parse(avConfig); } catch (err) { return jsonResp({ok: false, error: 'invalid JSON: ' + err}); }
+      }
+      var avSheet = ss.getSheetByName('Pouzivatelia');
+      if (!avSheet) return jsonResp({ok: false, error: 'Sheet Pouzivatelia nenajdeny'});
+      var avRows = avSheet.getDataRange().getValues();
+      var avHeader = avRows[0] || [];
+      var avIdx = -1;
+      for (var ahi = 0; ahi < avHeader.length; ahi++) {
+        if (String(avHeader[ahi] || '').trim().toLowerCase() === 'avatar') { avIdx = ahi; break; }
+      }
+      if (avIdx < 0) return jsonResp({ok: false, error: 'avatar column not found in Pouzivatelia header'});
+      for (var ari = 1; ari < avRows.length; ari++) {
+        if (String(avRows[ari][0] || '').trim().toLowerCase() === avUser) {
+          avSheet.getRange(ari + 1, avIdx + 1).setValue(avConfig);
+          return jsonResp({ok: true});
+        }
+      }
+      return jsonResp({ok: false, error: 'user not found: ' + avUser});
     }
 
     // ── PLNENIE PRE VŠETKÝCH REPOV ──
