@@ -234,13 +234,95 @@
 
   .wn-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);z-index:2000;align-items:center;justify-content:center;padding:20px;box-sizing:border-box}
   .wn-overlay.show{display:flex}
+
+  /* ═══ AVATAR CUSTOMIZER MODAL ═══ */
+  .av-overlay{display:none;position:fixed;inset:0;z-index:5000;background:rgba(12,30,53,.65);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:stretch;justify-content:center;padding:0;box-sizing:border-box;animation:avFadeIn .2s ease both}
+  .av-overlay.show{display:flex}
+  @keyframes avFadeIn{from{opacity:0}to{opacity:1}}
+  .av-box{background:#F8FAFC;border-radius:0;width:100%;max-width:480px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.4);animation:avSlideUp .32s cubic-bezier(.16,1,.3,1) both}
+  @keyframes avSlideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+  @media(min-width:520px){.av-box{border-radius:20px;margin:auto;max-height:calc(100vh - 40px)}.av-overlay{padding:20px;align-items:center}}
+  .av-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#fff;border-bottom:1px solid #E2E8F0;flex-shrink:0}
+  .av-hdr-title{font-size:16px;font-weight:800;color:#0C1E35;font-family:var(--font-display);letter-spacing:-.01em}
+  .av-hdr-btn{background:#F1F5F9;border:none;color:#475569;font-size:16px;width:36px;height:36px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;-webkit-tap-highlight-color:transparent;transition:background var(--t-fast)}
+  .av-hdr-btn:active{background:#E2E8F0}
+  .av-hdr-save{background:linear-gradient(180deg,#22C55E,#16A34A);color:#fff;font-weight:700;font-size:14px;padding:0 18px;width:auto;box-shadow:0 4px 12px rgba(22,163,74,.3),inset 0 1px 0 rgba(255,255,255,.2)}
+  .av-hdr-save:active{background:linear-gradient(180deg,#16A34A,#15803D);transform:scale(.97)}
+  .av-preview-wrap{padding:14px 16px 16px;display:flex;flex-direction:column;align-items:center;gap:10px;background:linear-gradient(180deg,#fff,#F1F5F9);flex-shrink:0}
+  .av-style-picker{display:flex;gap:4px;background:#F1F5F9;padding:4px;border-radius:24px;box-shadow:inset 0 1px 2px rgba(15,23,42,.06)}
+  .av-style-btn{background:transparent;border:none;color:#64748B;font-size:12.5px;font-weight:700;font-family:inherit;padding:8px 16px;border-radius:20px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background var(--t-fast),color var(--t-fast);letter-spacing:.01em}
+  .av-style-btn.active{background:#0C1E35;color:#fff;box-shadow:0 2px 6px rgba(12,30,53,.25)}
+  .av-style-btn:not(.active):hover{color:#0F172A}
+  .av-style-btn:active{transform:scale(.96)}
+  .av-gender-picker{display:flex;gap:6px;background:#F1F5F9;padding:4px;border-radius:24px;box-shadow:inset 0 1px 2px rgba(15,23,42,.06)}
+  .av-gender-btn{background:transparent;border:none;color:#64748B;font-size:13px;font-weight:700;font-family:inherit;padding:8px 18px;border-radius:20px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background var(--t-fast),color var(--t-fast);letter-spacing:.01em;display:inline-flex;align-items:center;gap:5px}
+  .av-gender-btn.active{background:#2563EB;color:#fff;box-shadow:0 2px 8px rgba(37,99,235,.30)}
+  .av-gender-btn:not(.active):hover{color:#0F172A}
+  .av-gender-btn:active{transform:scale(.96)}
+  .av-preview{width:140px;height:140px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(15,23,42,.12),inset 0 0 0 4px #fff,0 0 0 5px #E2E8F0;background:#E2E8F0;transition:transform var(--t-fast)}
+  .av-preview img{width:100%;height:100%;display:block}
+  .av-preview.bump{animation:avBump .3s ease}
+  @keyframes avBump{0%{transform:scale(1)}50%{transform:scale(1.06)}100%{transform:scale(1)}}
+  .av-random{display:inline-flex;align-items:center;gap:8px;background:#0C1E35;color:#fff;border:none;padding:9px 18px;border-radius:24px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 4px 12px rgba(12,30,53,.25);transition:transform var(--t-fast);-webkit-tap-highlight-color:transparent}
+  .av-random:active{transform:scale(.96)}
+  .av-tabs{display:flex;gap:4px;padding:8px 16px 0;background:#F8FAFC;border-bottom:1px solid #E2E8F0;flex-shrink:0;overflow-x:auto;scrollbar-width:none}
+  .av-tabs::-webkit-scrollbar{display:none}
+  .av-tab{background:transparent;border:none;color:#64748B;font-size:13px;font-weight:600;font-family:inherit;padding:10px 14px;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;flex-shrink:0;-webkit-tap-highlight-color:transparent;transition:color var(--t-fast),border-color var(--t-fast)}
+  .av-tab.active{color:#0C1E35;border-bottom-color:#2563EB}
+  .av-tab:hover:not(.active){color:#0F172A}
+  .av-body{flex:1 1 auto;min-height:0;overflow-y:auto;padding:18px 16px 24px;overscroll-behavior:contain}
+  .av-section{margin-bottom:20px}
+  .av-section:last-child{margin-bottom:0}
+  .av-section-lbl{font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+  .av-section-lbl::before{content:'';width:4px;height:4px;border-radius:50%;background:#2563EB;box-shadow:0 0 0 2px rgba(37,99,235,.15)}
+  .av-thumbs{display:flex;gap:8px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+  .av-thumbs::-webkit-scrollbar{height:4px}
+  .av-thumbs::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:2px}
+  .av-thumb{flex:0 0 auto;width:56px;height:56px;border-radius:50%;overflow:hidden;border:2.5px solid transparent;cursor:pointer;background:#E2E8F0;transition:border-color var(--t-fast),transform var(--t-fast);-webkit-tap-highlight-color:transparent;position:relative}
+  .av-thumb img{width:100%;height:100%;display:block}
+  .av-thumb.active{border-color:#2563EB;transform:scale(1.05);box-shadow:0 4px 12px rgba(37,99,235,.3)}
+  .av-thumb:active{transform:scale(.95)}
+  .av-thumb.av-thumb-none{background:#F1F5F9;display:flex;align-items:center;justify-content:center;font-size:18px;color:#94A3B8;font-weight:300}
+  .av-swatches{display:flex;flex-wrap:wrap;gap:8px}
+  .av-swatch{width:38px;height:38px;border-radius:50%;cursor:pointer;border:3px solid transparent;background-clip:padding-box;-webkit-tap-highlight-color:transparent;transition:transform var(--t-fast),border-color var(--t-fast);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+  .av-swatch.active{border-color:#0C1E35;transform:scale(1.1)}
+  .av-swatch:active{transform:scale(.92)}
+  .av-toggle-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;margin-bottom:8px}
+  .av-toggle-lbl{font-size:14px;font-weight:600;color:#0F172A}
+  .av-toggle{position:relative;width:44px;height:26px;background:#CBD5E1;border-radius:13px;cursor:pointer;transition:background var(--t-fast);flex-shrink:0;border:none;-webkit-tap-highlight-color:transparent}
+  .av-toggle::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;background:#fff;border-radius:50%;transition:transform var(--t-fast);box-shadow:0 2px 4px rgba(0,0,0,.2)}
+  .av-toggle.on{background:#2563EB}
+  .av-toggle.on::after{transform:translateX(18px)}
+  .av-toggle:active::after{width:22px}
+  .av-reset{display:inline-flex;align-items:center;gap:5px;margin:0 auto;background:transparent;border:none;color:#94A3B8;font-size:11.5px;font-weight:500;cursor:pointer;padding:6px 12px;-webkit-tap-highlight-color:transparent;font-family:inherit;border-radius:14px;transition:color var(--t-fast),background var(--t-fast)}
+  .av-reset:hover{color:#64748B;background:rgba(148,163,184,.08)}
+  .av-reset:active{color:#475569;background:rgba(148,163,184,.15);transform:scale(.97)}
+
+  /* ═══ AVATAR CONFIRM MODAL (vlastný, nahradzuje browser confirm) ═══ */
+  .av-confirm-overlay{display:none;position:fixed;inset:0;z-index:6000;background:rgba(12,30,53,.55);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:20px;box-sizing:border-box;animation:avFadeIn .18s ease both}
+  .av-confirm-overlay.show{display:flex}
+  .av-confirm-box{background:#fff;border-radius:18px;padding:28px 24px 22px;max-width:340px;width:100%;text-align:center;box-shadow:0 24px 64px rgba(15,23,42,.30),0 8px 24px rgba(15,23,42,.15);animation:avSlideUp .26s cubic-bezier(.16,1,.3,1) both}
+  .av-confirm-icon{width:56px;height:56px;border-radius:50%;background:linear-gradient(180deg,#FEE2E2,#FECACA);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 14px;box-shadow:0 4px 12px rgba(239,68,68,.20),inset 0 1px 0 rgba(255,255,255,.40)}
+  .av-confirm-title{font-size:17px;font-weight:800;color:#0C1E35;font-family:var(--font-display);letter-spacing:-.01em;margin-bottom:6px}
+  .av-confirm-sub{font-size:13px;color:#64748B;line-height:1.5;margin-bottom:20px}
+  .av-confirm-btns{display:flex;gap:10px}
+  .av-confirm-btn{flex:1;border:none;padding:11px 16px;border-radius:11px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform var(--t-fast),box-shadow var(--t-fast),background var(--t-fast)}
+  .av-confirm-cancel{background:#F1F5F9;color:#475569}
+  .av-confirm-cancel:hover{background:#E2E8F0}
+  .av-confirm-cancel:active{background:#CBD5E1;transform:scale(.97)}
+  .av-confirm-ok{background:linear-gradient(180deg,#EF4444,#DC2626);color:#fff;box-shadow:0 4px 12px rgba(239,68,68,.30),inset 0 1px 0 rgba(255,255,255,.18)}
+  .av-confirm-ok:hover{background:linear-gradient(180deg,#DC2626,#B91C1C)}
+  .av-confirm-ok:active{transform:scale(.97);box-shadow:0 2px 6px rgba(239,68,68,.25)}
   .wn-box{background:#fff;border-radius:22px;width:100%;max-width:370px;overflow:hidden;animation:slideUp .3s cubic-bezier(.16,1,.3,1);max-height:calc(100vh - 40px);display:flex;flex-direction:column}
   .wn-hdr{background:linear-gradient(135deg,#0C1E35,#1A3A5C);padding:24px 22px 20px;text-align:center;position:relative;flex-shrink:0}
   .wn-icon-wrap{width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:30px;animation:wnBounce 1s cubic-bezier(.36,.07,.19,.97) .4s both}
   @keyframes wnBounce{0%{transform:scale(1)}15%{transform:scale(1.35) rotate(-8deg)}30%{transform:scale(.9) rotate(5deg)}45%{transform:scale(1.2) rotate(-4deg)}60%{transform:scale(.95) rotate(2deg)}75%{transform:scale(1.08) rotate(-1deg)}100%{transform:scale(1) rotate(0)}}
   .wn-title{font-size:18px;font-weight:700;color:#fff;font-family:var(--font-display);margin-bottom:4px}
   .wn-sub{font-size:11px;color:#5B8DB8}
-  .wn-body{padding:18px 22px 22px;overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1 1 auto;min-height:0;overscroll-behavior:contain}
+  .wn-body{padding:18px 22px 22px;overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1 1 auto;min-height:0;overscroll-behavior:contain;transition:opacity .18s ease,transform .18s ease}
+  .wn-progress{font-size:10px;font-weight:700;color:#94A3B8;text-align:center;text-transform:uppercase;letter-spacing:.10em;margin-bottom:14px;padding:4px 12px;background:#F1F5F9;border-radius:12px;display:inline-block;margin-left:50%;transform:translateX(-50%)}
+  /* Krátky fade transition pri prepnutí na ďalší WN modal */
+  .wn-box.wn-fading .wn-body{opacity:0;transform:translateX(-12px)}
   .wn-item{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:0.5px solid #F1F5F9}
   .wn-item:last-child{border-bottom:none}
   .wn-item-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
@@ -298,6 +380,19 @@
   .lb-loading{text-align:center;padding:32px 20px;color:#64748B;font-size:14px}
   .lb-podium{display:flex;align-items:flex-end;justify-content:center;gap:8px;padding:24px 16px 10px;background:radial-gradient(ellipse at 50% 80%,#FFF8E7 0%,#F8FAFC 35%,#fff 70%);position:relative}
   .lb-p-item{display:flex;flex-direction:column;align-items:center;flex:1}
+  /* ═══ AVATAR SYSTÉM ═══ */
+  .avatar-img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block}
+  .avatar-fallback{width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:700;color:#fff;letter-spacing:.02em}
+  /* Keď je v containeri <img>, padding musí byť 0 a overflow hidden */
+  .lb-p-avatar.has-avatar,.lb-avatar.has-avatar,.mgr-avatar.has-avatar,.mgr-davatar.has-avatar,
+  .dhdr-avatar.has-avatar,.pl-ps-avatar.has-avatar,.pl-rep-avatar.has-avatar,
+  .gyn-rep-avatar.has-avatar,.hdr-avatar.has-avatar{overflow:hidden;padding:0;background:transparent !important}
+  /* Header avatar button */
+  .hdr-avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;font-family:var(--font-display);cursor:pointer;border:2px solid rgba(255,255,255,.2);box-shadow:0 2px 8px rgba(0,0,0,.15);transition:transform var(--t-fast),border-color var(--t-fast);background:linear-gradient(135deg,#1E40AF,#3B82F6);overflow:hidden;flex-shrink:0;-webkit-tap-highlight-color:transparent}
+  .hdr-avatar:active{transform:scale(.94)}
+  .hdr-avatar:hover{border-color:rgba(255,255,255,.4)}
+  .hdr-avatar-edit{position:absolute;bottom:-2px;right:-2px;width:14px;height:14px;border-radius:50%;background:#2563EB;color:#fff;display:flex;align-items:center;justify-content:center;font-size:8px;border:2px solid #0C1E35;pointer-events:none}
+  .hdr-avatar-wrap{position:relative;margin-right:8px}
   .lb-p-avatar{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;margin-bottom:6px;position:relative;font-family:var(--font-display);z-index:1}
   .lb-p-crown{position:absolute;top:-26px;left:50%;transform:translateX(-50%);font-size:30px;line-height:1;filter:drop-shadow(0 2px 6px rgba(217,119,6,.45));animation:crownFloat 3s ease-in-out infinite}
   @keyframes crownFloat{0%,100%{transform:translateX(-50%) translateY(0) rotate(0deg)}50%{transform:translateX(-50%) translateY(-3px) rotate(-3deg)}}
@@ -1386,7 +1481,11 @@
         <div class="hdr-dot"><div class="dot" style="background:#C084FC"></div>Suprax</div>
         <div class="hdr-dot"><div class="dot" style="background:#FCD34D"></div>Cavinton Forte</div>
   </div>
-  <div style="display:flex;align-items:center">
+  <div style="display:flex;align-items:center;gap:8px">
+  <div class="hdr-avatar-wrap" id="hdr-avatar-wrap" onclick="avatarOpenCustomizer()" title="Zmeniť avatar">
+    <div class="hdr-avatar" id="hdr-avatar" data-username="">?</div>
+    <div class="hdr-avatar-edit">✎</div>
+  </div>
   <button class="logout-btn" onclick="doLogout()">⎋ Odhlásiť</button>
   <!-- hdr-badge-wrap zachovaný (skrytý) kvôli JS kompatibilite -->
   <div id="hdr-badge-wrap" style="display:none"><div class="hdr-badge" id="hdr-badge"></div></div>
@@ -2124,7 +2223,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.19.5';
+var APP_VERSION = '2.20.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5330,6 +5429,7 @@ function clearSession() {
 }
 
 // ── Región reprezentantov — defaults, prepísané zo Sheets cez loadRepList() ──
+// Defaulty pred načítaním zo Sheets (region, bez genderu — ten príde dynamicky z `Pouzivatelia.pohlavie`).
 var USERS_LOCAL = {
   'j.bohovic':    { region: 'BAMA' },
   'v.hatinova':   { region: 'BASE' },
@@ -5345,8 +5445,24 @@ var USERS_LOCAL = {
   'a.makis':      { region: 'KE'   }
 };
 
-function loginSuccess(username, name, role, region) {
+function loginSuccess(username, name, role, region, extra) {
   var user = { username: username, name: name, role: role, region: region || '' };
+  // Extra dáta z login response (pohlavie + avatar)
+  if (extra && typeof extra === 'object') {
+    // Pohlavie — normalizácia M/Z/zena/muz/...
+    var rawG = String(extra.pohlavie || extra.gender || '').trim().toLowerCase();
+    if (rawG === 'm' || rawG === 'muz' || rawG === 'muž' || rawG === 'male') user.gender = 'male';
+    else if (rawG === 'z' || rawG === 'f' || rawG === 'zena' || rawG === 'žena' || rawG === 'female') user.gender = 'female';
+    // Avatar JSON string → parse
+    if (extra.avatar) {
+      try {
+        var parsed = JSON.parse(extra.avatar);
+        if (parsed && parsed.style && (typeof AVATAR_SCHEMAS === 'undefined' || AVATAR_SCHEMAS[parsed.style])) {
+          user.avatar = parsed;
+        }
+      } catch(e){}
+    }
+  }
   setSession(user);
   haptic('success');
   var _appEl = document.querySelector('.app');
@@ -5448,7 +5564,7 @@ function doLogin() {
     var gpData  = results[0];
     var gynData = results[1];
     if(gpData.ok) {
-      loginSuccess(username, gpData.name, gpData.role, gpData.region);
+      loginSuccess(username, gpData.name, gpData.role, gpData.region, gpData);
     } else if(gynData.ok) {
       gynLoginSuccess(username, gynData);
     } else {
@@ -5506,6 +5622,26 @@ function updateHdrForUser(user) {
   // Nastav region do skrytého poľa
   var regEl = document.getElementById('reprezentant');
   if(regEl && user.region) regEl.value = user.region;
+  // Aktualizuj header avatar
+  updateHdrAvatar(user);
+}
+
+function updateHdrAvatar(user) {
+  var av = document.getElementById('hdr-avatar');
+  if (!av) return;
+  if (!user) {
+    try { var s = getSession(); user = s || null; } catch(e) {}
+  }
+  if (!user || !user.username) return;
+  av.setAttribute('data-username', user.username);
+  var name = user.name || user.username;
+  // Default color: namiesto plain gradient použi farbu z hash (konzistentné s rebríčkom)
+  var color = 'linear-gradient(135deg,#1E40AF,#3B82F6)';
+  try {
+    var palette = (typeof LB_COLOR_PALETTE !== 'undefined') ? LB_COLOR_PALETTE : null;
+    if (palette) color = palette[strHash(user.username) % palette.length];
+  } catch(e) {}
+  avatarFillElement(av, { username: user.username, name: name, color: color, size: 38 });
 }
 
 // Throttle — zabráni desiatkam zbytočných writes do storage pri rýchlom
@@ -5786,6 +5922,18 @@ function gynBuildRepAgg(username, data) {
 function gynLoginSuccess(username, data) {
   var user = { username: username, name: data.name, role: data.role,
                linia: data.linia||'', region: data.region||'', line: 'gyn' };
+  // Pohlavie + avatar zo Sheets (rovnaký pattern ako loginSuccess pre Golem)
+  var rawG = String(data.pohlavie || data.gender || '').trim().toLowerCase();
+  if (rawG === 'm' || rawG === 'muz' || rawG === 'muž' || rawG === 'male') user.gender = 'male';
+  else if (rawG === 'z' || rawG === 'f' || rawG === 'zena' || rawG === 'žena' || rawG === 'female') user.gender = 'female';
+  if (data.avatar) {
+    try {
+      var parsed = JSON.parse(data.avatar);
+      if (parsed && parsed.style && (typeof AVATAR_SCHEMAS === 'undefined' || AVATAR_SCHEMAS[parsed.style])) {
+        user.avatar = parsed;
+      }
+    } catch(e){}
+  }
   setSession(user);
   haptic('success');
   var appEl = document.querySelector('.app');
@@ -5805,7 +5953,13 @@ function gynEnter(user) {
   gynRenderShell(user);
   gynRenderContent(user);
   setTimeout(function(){ gynLoadRepList(user); }, 600);
-  setTimeout(function(){ satoriShow(); }, 800);
+  // Satori → WN → milestone cascade (rovnaký pattern ako Golem login)
+  var isGynManager = user.role !== 'gyn-rep';
+  setTimeout(function(){
+    if (satoriShouldShow()) satoriShow();
+    else if (wnShouldShow()) wnShow(isGynManager);
+    else checkMilestone();
+  }, 800);
   // Preload na pozadí — všetky Q plnenie + pharma dáta (aby switching Q bol instant)
   setTimeout(function(){ gynPreloadAllQuarters(); }, 1500);
   setTimeout(function(){ gynPreloadAllPharma(); }, 2500);
@@ -5845,7 +5999,13 @@ function gynRenderShell(user) {
             '<div class="gyn-mgr-hdr-title">' + hdrTitle + '</div>' +
             '<div class="gyn-mgr-hdr-sub">' + hdrSub + '</div>' +
           '</div>' +
-          '<button class="logout-btn" onclick="gynExit()">&#9099; Odhlásiť</button>' +
+          '<div style="display:flex;align-items:center;gap:8px">' +
+            '<div class="hdr-avatar-wrap" id="gyn-hdr-avatar-wrap" onclick="avatarOpenCustomizer()" title="Zmeniť avatar">' +
+              '<div class="hdr-avatar" id="gyn-hdr-avatar" data-username="' + gynEsc(user.username||'') + '">?</div>' +
+              '<div class="hdr-avatar-edit">✎</div>' +
+            '</div>' +
+            '<button class="logout-btn" onclick="gynExit()">&#9099; Odhlásiť</button>' +
+          '</div>' +
         '</div>' +
       '</div>' +
       '<nav class="gyn-nav" id="gyn-nav">' +
@@ -5855,6 +6015,16 @@ function gynRenderShell(user) {
       '</nav>' +
       '<div id="gyn-content"></div>' +
     '</div>';
+  // Naplň gyn header avatar (fallback iniciály) — rovnaký pattern ako Golem
+  var ghav = document.getElementById('gyn-hdr-avatar');
+  if (ghav && user.username) {
+    var palette = (typeof LB_COLOR_PALETTE !== 'undefined') ? LB_COLOR_PALETTE : null;
+    var ghColor = palette && typeof strHash === 'function'
+      ? palette[strHash(user.username) % palette.length]
+      : 'linear-gradient(135deg,#1E40AF,#3B82F6)';
+    ghav.style.background = ghColor;
+    avatarFillElement(ghav, { username: user.username, name: user.name || user.username, color: ghColor, size: 38 });
+  }
 }
 
 // ── Navigácia medzi tabmi ──
@@ -7790,8 +7960,9 @@ function mgrRenderList(){
     });
     if(!segs) segs = '<span style="font-size:11px;color:#94A3B8;font-style:italic">Žiadne záznamy zatiaľ</span>';
 
+    var avMgr = lbAvatarContent(u, name, 42);
     return '<div class="mgr-card" onclick="mgrOpenRep(\''+u.replace(/\'/g,"\\'")+'\')">' +
-      '<div class="mgr-avatar" style="background:'+mgrAvatarColor(name)+'">'+mgrInitials(name)+'</div>' +
+      '<div class="mgr-avatar' + (avMgr.hasAvatar ? ' has-avatar' : '') + '" data-username="'+u+'" style="background:'+mgrAvatarColor(name)+'">'+avMgr.html+'</div>' +
       '<div class="mgr-body">' +
         '<div class="mgr-name">'+nameEsc+'</div>' +
         '<div class="mgr-meta"><span class="mgr-dot '+act+'"></span>'+lastTxt+lastLoginTxt+'</div>' +
@@ -7855,8 +8026,11 @@ function mgrOpenRep(username){
   document.getElementById('mgr-dsub').textContent = region + ' · ' + visits.length + ' záznamov · @' + username;
 
   var av = document.getElementById('mgr-davatar');
-  av.textContent = mgrInitials(name);
-  av.style.background = mgrAvatarColor(name);
+  if (av) {
+    av.setAttribute('data-username', username);
+    av.style.background = mgrAvatarColor(name);
+    avatarFillElement(av, { username: username, name: name, color: mgrAvatarColor(name), size: 52 });
+  }
 
   var WEEK = 7*24*60*60*1000, MONTH = 30*24*60*60*1000;
   document.getElementById('mgr-ds-total').textContent = visits.length;
@@ -8291,125 +8465,161 @@ function initScrollHint(box){
 // WHAT'S NEW — Oznam o aktualizácii
 // ══════════════════════════════════════════════════════════
 
-var WN_KEY = 'potencial_vl_wn_v2_19'; // zmenit pri kazdom novom oznameni
+// ═══════════════════════════════════════════════════════════════════════
+// "Čo je nové" (WN) — fronta postupných modalov
+// ═══════════════════════════════════════════════════════════════════════
+// Každá verzia má unikátny `key`. Po videni sa kľúč uloží do localStorage.
+// Pri otvorení appky sa zoberú VŠETKY nevidiet modaly a postupne preklikneš
+// od najstaršej po najnovšiu. Kto má najnovší kľúč už uložený → nevidí nič.
+//
+// PRIDANIE NOVEJ VERZIE: vlož nový objekt NA KONIEC poľa WN_HISTORY.
+// NIKDY nemeniť `key` existujúcich verzií (rep by ich uvidel znova).
 
-var WN_CONTENT_REP = {
-  icon: '👆',
-  title: 'Posúvaj prstom',
-  sub: 'Gedeon Richter Slovakia · 2026',
-  items: [
-    {
-      icon: '↔️',
-      bg: '#EFF6FF',
-      title: 'Swipe medzi kvartálmi',
-      desc: 'V Plnení môžeš prejsť prstom doľava/doprava medzi Q1, Q2, Q3, Q4 — taby ostávajú ako skratky.'
+var WN_HISTORY = [
+  // ── v2.19 — mobilné gestá ──
+  {
+    key: 'potencial_vl_wn_v2_19',
+    rep: {
+      icon: '👆', title: 'Posúvaj prstom', sub: 'v2.19 · Gedeon Richter Slovakia',
+      items: [
+        { icon: '↔️', bg: '#EFF6FF', title: 'Swipe medzi kvartálmi', desc: 'V Plnení môžeš prejsť prstom doľava/doprava medzi Q1, Q2, Q3, Q4 — taby ostávajú ako skratky.' },
+        { icon: '◀️', bg: '#F0FDF4', title: 'Swipe-back zo zľava', desc: 'V plnoobrazovkových paneloch (História, Rebríček, Plnenie, Trhový podiel) potiahni od ľavej hrany doprava — zatvorí sa.' },
+        { icon: '⬇️', bg: '#FFF7ED', title: 'Swipe-down na zatvorenie', desc: 'Detail záznamu, milestone alebo "Čo je nové" zatvoríš aj potiahnutím nadol.' },
+        { icon: '📳', bg: '#F5F3FF', title: 'Vibrácie pri akciách (Android)', desc: 'Telefón ti pri kľúčových akciách jemne zavibruje — submit, swipe, prepnutie kvartálu. Funguje na Androide.' }
+      ]
     },
-    {
-      icon: '◀️',
-      bg: '#F0FDF4',
-      title: 'Swipe-back zo zľava',
-      desc: 'V plnoobrazovkových paneloch (História, Rebríček, Plnenie, Trhový podiel) potiahni od ľavej hrany doprava — zatvorí sa.'
-    },
-    {
-      icon: '⬇️',
-      bg: '#FFF7ED',
-      title: 'Swipe-down na zatvorenie',
-      desc: 'Detail záznamu, milestone alebo "Čo je nové" zatvoríš aj potiahnutím nadol.'
-    },
-    {
-      icon: '📳',
-      bg: '#F5F3FF',
-      title: 'Vibrácie pri akciách (Android)',
-      desc: 'Telefón ti pri kľúčových akciách jemne zavibruje — submit, swipe, prepnutie kvartálu. Funguje na Androide.'
+    mgr: {
+      icon: '👆', title: 'Posúvaj prstom', sub: 'v2.19 · Gedeon Richter Slovakia',
+      items: [
+        { icon: '↔️', bg: '#EFF6FF', title: 'Swipe medzi kvartálmi', desc: 'V Plnení môžeš prejsť prstom doľava/doprava medzi Q1–Q4. V Trhový podiel sheete swipe medzi subtabmi (Tablety/Sáčky/Krém).' },
+        { icon: '◀️', bg: '#F0FDF4', title: 'Swipe-back zo zľava', desc: 'V plnoobrazovkových paneloch (Plnenie, Trhový podiel, História, Rebríček, detail reprezentanta) potiahni od ľavej hrany doprava — zatvorí sa.' },
+        { icon: '⬇️', bg: '#FFF7ED', title: 'Swipe-down na zatvorenie', desc: 'Modal-y (Čo je nové, milestone, detail záznamu) zatvoríš aj potiahnutím nadol.' },
+        { icon: '👆', bg: '#F5F3FF', title: 'Long-press v Histórii', desc: 'Pri zázname v Histórii podrž prst — otvorí sa detail. Admin môže následne upraviť alebo zmazať záznam.' },
+        { icon: '📳', bg: '#FEF3C7', title: 'Vibrácie pri akciách (Android)', desc: 'Pri kľúčových akciách (submit, swipe, prepnutie Q, výber subtab-u) telefón jemne zavibruje. iOS Safari podporu Vibration API nemá.' }
+      ]
     }
-  ]
-};
+  },
+  // ── v2.20 — vlastný avatar (Adventurer + pohlavie zo Sheets) ──
+  {
+    key: 'potencial_vl_wn_v2_20',
+    rep: {
+      icon: '🎨', title: 'Tvoj vlastný avatar', sub: 'v2.20 · Gedeon Richter Slovakia',
+      items: [
+        { icon: '🎨', bg: '#EFF6FF', title: 'Vyber si vzhľad', desc: 'Vpravo hore pri Odhlásiť ťukni na ikonu — otvorí sa designér kde si vyberieš vlasy, oči, ústa, pleť aj doplnky.' },
+        { icon: '👤', bg: '#F0FDF4', title: 'Muž / Žena', desc: 'Appka pozná tvoje pohlavie a predvyplní správne vlasy. Kedykoľvek vieš prepnúť.' },
+        { icon: '🎲', bg: '#FFF7ED', title: 'Náhodne', desc: 'Ak si nevieš vybrať, ťukni 🎲 — vygeneruje sa náhodný vzhľad so zachovaným pohlavím.' },
+        { icon: '💾', bg: '#F5F3FF', title: 'Synchronizácia', desc: 'Avatar je uložený centrálne — vidíš ho rovnaký na všetkých zariadeniach.' }
+      ]
+    },
+    mgr: {
+      icon: '🎨', title: 'Avatary v aplikácii', sub: 'v2.20 · Gedeon Richter Slovakia',
+      items: [
+        { icon: '🎨', bg: '#EFF6FF', title: 'Vlastný avatar', desc: 'Vpravo hore pri Odhlásiť ťukni na ikonu — otvor designér pre svoj avatar.' },
+        { icon: '👥', bg: '#F0FDF4', title: 'Avatary reprezentantov', desc: 'V rebríčku, Plnení aj zozname reprezentantov uvidíš ich avatary. Kto si nenastavil → iniciály ako predtým.' },
+        { icon: '🎲', bg: '#FFF7ED', title: 'Náhodne', desc: 'Náhodne tlačidlo (🎲) ti vygeneruje vzhľad so zachovaným pohlavím.' },
+        { icon: '💾', bg: '#F5F3FF', title: 'Synchronizácia', desc: 'Avatary sú uložené v Google Sheets — synchronizované cez zariadenia.' }
+      ]
+    }
+  }
+];
 
-var WN_CONTENT_MGR = {
-  icon: '👆',
-  title: 'Posúvaj prstom',
-  sub: 'Gedeon Richter Slovakia · 2026',
-  items: [
-    {
-      icon: '↔️',
-      bg: '#EFF6FF',
-      title: 'Swipe medzi kvartálmi',
-      desc: 'V Plnení môžeš prejsť prstom doľava/doprava medzi Q1–Q4. V Trhový podiel sheete swipe medzi subtabmi (Tablety/Sáčky/Krém).'
-    },
-    {
-      icon: '◀️',
-      bg: '#F0FDF4',
-      title: 'Swipe-back zo zľava',
-      desc: 'V plnoobrazovkových paneloch (Plnenie, Trhový podiel, História, Rebríček, detail reprezentanta) potiahni od ľavej hrany doprava — zatvorí sa.'
-    },
-    {
-      icon: '⬇️',
-      bg: '#FFF7ED',
-      title: 'Swipe-down na zatvorenie',
-      desc: 'Modal-y (Čo je nové, milestone, detail záznamu) zatvoríš aj potiahnutím nadol.'
-    },
-    {
-      icon: '👆',
-      bg: '#F5F3FF',
-      title: 'Long-press v Histórii',
-      desc: 'Pri zázname v Histórii podrž prst — otvorí sa detail. Admin môže následne upraviť alebo zmazať záznam.'
-    },
-    {
-      icon: '📳',
-      bg: '#FEF3C7',
-      title: 'Vibrácie pri akciách (Android)',
-      desc: 'Pri kľúčových akciách (submit, swipe, prepnutie Q, výber subtab-u) telefón jemne zavibruje. iOS Safari podporu Vibration API nemá.'
-    }
-  ]
-};
+// Tracking aktuálne zobrazovaného WN itemu pre wnClose flow
+var WN_IS_MGR = false;
+
+function wnGetUnseen(){
+  return WN_HISTORY.filter(function(it){
+    try { return !localStorage.getItem(it.key); } catch(e){ return true; }
+  });
+}
+
 function wnShouldShow(){
-  if (window.location.hostname === 'localhost') return true;
-  try { return !localStorage.getItem(WN_KEY); } catch(e){ return false; }
+  if (window.location.hostname === 'localhost') return WN_HISTORY.length > 0;
+  return wnGetUnseen().length > 0;
 }
 
-function wnMarkSeen(){
-  try { localStorage.setItem(WN_KEY, '1'); } catch(e){}
+function wnMarkSeen(key){
+  if (!key) return;
+  try { localStorage.setItem(key, '1'); } catch(e){}
 }
 
-function wnShow(isManager){
-  if(!wnShouldShow()) return;
-  var data = isManager ? WN_CONTENT_MGR : WN_CONTENT_REP;
-
+function wnRenderItem(item, isManager){
+  var data = isManager ? item.mgr : item.rep;
+  if (!data) data = item.rep; // fallback
   var iconEl = document.getElementById('wn-icon');
   var titleEl = document.getElementById('wn-title');
   var subEl = document.getElementById('wn-sub');
   var bodyEl = document.getElementById('wn-body');
-  var overlay = document.getElementById('wn-overlay');
-  if(!overlay || !bodyEl) return;
+  if (!bodyEl) return;
+  if (iconEl)  iconEl.textContent  = data.icon;
+  if (titleEl) titleEl.textContent = data.title;
+  if (subEl)   subEl.textContent   = data.sub;
 
-  if(iconEl){ iconEl.textContent = data.icon; }
-  if(titleEl){ titleEl.textContent = data.title; }
-  if(subEl){ subEl.textContent = data.sub; }
+  // Compute progress (X z N) — počíta sa medzi NEVIDIET items na začiatku
+  // (potrebné si zapamätať pôvodný count, lebo wnGetUnseen() sa mení po každom markSeen)
+  if (typeof WN_QUEUE_TOTAL === 'undefined' || WN_QUEUE_TOTAL === null) WN_QUEUE_TOTAL = wnGetUnseen().length;
+  var remaining = wnGetUnseen().length;
+  var currentIdx = WN_QUEUE_TOTAL - remaining; // 0-based
+  var hasMore = remaining > 1;
+  var progress = WN_QUEUE_TOTAL > 1 ? '<div class="wn-progress">' + (currentIdx + 1) + ' z ' + WN_QUEUE_TOTAL + '</div>' : '';
 
-  var html = '';
-  data.items.forEach(function(item){
+  var html = progress;
+  data.items.forEach(function(it){
     html +=
       '<div class="wn-item">' +
-        '<div class="wn-item-icon" style="background:' + item.bg + '">' + item.icon + '</div>' +
+        '<div class="wn-item-icon" style="background:' + it.bg + '">' + it.icon + '</div>' +
         '<div>' +
-          '<div class="wn-item-title">' + item.title + '</div>' +
-          '<div class="wn-item-desc">' + item.desc + '</div>' +
+          '<div class="wn-item-title">' + it.title + '</div>' +
+          '<div class="wn-item-desc">' + it.desc + '</div>' +
         '</div>' +
       '</div>';
   });
-  html += '<button class="wn-btn" onclick="wnClose()">Rozumiem, ďakujem! ✓</button>';
+  var btnLabel = hasMore ? 'Ďalej →' : 'Rozumiem, ďakujem! ✓';
+  html += '<button class="wn-btn" onclick="wnClose()">' + btnLabel + '</button>';
   bodyEl.innerHTML = html;
+}
 
+var WN_QUEUE_TOTAL = null;
+
+function wnShow(isManager){
+  var unseen = wnGetUnseen();
+  if (!unseen.length) return;
+  WN_IS_MGR = !!isManager;
+  WN_QUEUE_TOTAL = unseen.length; // zapamätaj total pre progress indikátor
+  var overlay = document.getElementById('wn-overlay');
+  if (!overlay) return;
+  wnRenderItem(unseen[0], isManager);
   overlay.classList.add('show');
-  wnMarkSeen();
 }
 
 function wnClose(){
   var overlay = document.getElementById('wn-overlay');
-  if(!overlay) return;
-  var wasShowing = overlay.classList.contains('show');
+  if (!overlay) return;
+  // GUARD: ak modal nie je otvorený, nič nerobíme (žiadne označovanie ako videné).
+  // Toto je dôležité — satoriShow() volá wnClose() preventívne, aj keď WN nie je otvorený.
+  if (!overlay.classList.contains('show')) return;
+  // Označ aktuálne zobrazený (= prvý nevidet) ako videný
+  var unseen = wnGetUnseen();
+  if (unseen.length > 0) {
+    wnMarkSeen(unseen[0].key);
+  }
+  // Skontroluj či ostal ďalší nevidet
+  var stillUnseen = wnGetUnseen();
+  if (stillUnseen.length > 0) {
+    // Re-render s ďalším — krátky fade pre vizuálnu kontinuitu
+    var bodyEl = document.getElementById('wn-body');
+    var box    = document.querySelector('#wn-overlay .wn-box');
+    if (box) box.classList.add('wn-fading');
+    setTimeout(function(){
+      wnRenderItem(stillUnseen[0], WN_IS_MGR);
+      if (box) box.classList.remove('wn-fading');
+    }, 180);
+    if (typeof haptic === 'function') haptic('selection');
+    return;
+  }
+  // Nič ďalšie — zatvor modal
+  WN_QUEUE_TOTAL = null;
   overlay.classList.remove('show');
-  if(wasShowing) setTimeout(checkMilestone, 400);
+  setTimeout(checkMilestone, 400);
 }
 
 // ── Satori rebrand overlay ──
@@ -8435,9 +8645,16 @@ function satoriClose() {
   var overlay = document.getElementById('satori-overlay');
   if (overlay) overlay.classList.remove('show');
   setTimeout(function() {
+    // WN modal funguje pre obidva linky (Golem + Gyn).
+    // Pre gyn — isManager podľa role (gyn-rep = false, ostatné = true)
     var gynView = document.getElementById('gyn-view');
-    if (gynView && gynView.classList.contains('show')) return; // gyn — WN nechceme
-    var isManager = document.body.classList.contains('manager-mode');
+    var sess = (typeof getSession === 'function') ? getSession() : null;
+    var isManager;
+    if (gynView && gynView.classList.contains('show')) {
+      isManager = sess && sess.role && sess.role !== 'gyn-rep';
+    } else {
+      isManager = document.body.classList.contains('manager-mode');
+    }
     if (wnShouldShow()) { wnShow(isManager); }
     else { checkMilestone(); }
   }, 350);
@@ -8466,6 +8683,702 @@ function strHash(s) {
   return Math.abs(h);
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// AVATAR SYSTÉM — DiceBear (Avataaars + Adventurer) + customizer
+// ═══════════════════════════════════════════════════════════════════════
+
+var AVATAR_STYLES = ['adventurer'];
+var AVATAR_STYLE_LABELS = { 'adventurer': 'Adventurer' };
+var AVATAR_STYLE_DEFAULT = 'adventurer';
+
+// ── Adventurer catalogs ──
+var ADVENTURER_HAIR_FEMALE = (function(){ var a=[]; for(var i=1;i<=26;i++) a.push('long'+(i<10?'0':'')+i); return a; })();
+var ADVENTURER_HAIR_MALE   = (function(){ var a=[]; for(var i=1;i<=19;i++) a.push('short'+(i<10?'0':'')+i); return a; })();
+var ADVENTURER_HAIR = ADVENTURER_HAIR_FEMALE.concat(ADVENTURER_HAIR_MALE);
+var ADVENTURER_HAIR_COLOR = [
+  '0e0e0e','1c1310','3d2817','4a3120','5a3923','6a4e35','7d5832',
+  '8a623d','a55728','b58143','c08552','d4351c','ff543d',
+  'b85820','c25e25','cb6820','d97e3f','e8a05c',
+  'c89461','cb9560','d4a76a','ddb47f','e5c574','ecd594','e5d7a3','f0deaa',
+  'f7e8c6','ebe3d3','9b9b9b',
+  'f7c2c0','f59797','85c2c6','3eac2c'
+];
+var ADVENTURER_EYES = (function(){ var a=[]; for(var i=1;i<=26;i++) a.push('variant' + (i<10?'0':'') + i); return a; })();
+var ADVENTURER_EYEBROWS = (function(){ var a=[]; for(var i=1;i<=15;i++) a.push('variant' + (i<10?'0':'') + i); return a; })();
+var ADVENTURER_MOUTH = (function(){ var a=[]; for(var i=1;i<=30;i++) a.push('variant' + (i<10?'0':'') + i); return a; })();
+var ADVENTURER_SKIN_COLOR = ['ecad80','f2d3b1','9e5622','763900'];
+var ADVENTURER_FEATURES = ['birthmark','blush','freckles','mustache'];
+var ADVENTURER_GLASSES = ['variant01','variant02','variant03','variant04','variant05'];
+var ADVENTURER_EARRINGS = ['variant01','variant02','variant03','variant04','variant05','variant06'];
+
+// ── Schémy pre customizer (čo zobraziť v ktorom tabe) ──
+// Pozadie je vždy biele — pozadie tab vynechaný
+var AVATAR_SCHEMAS = {
+  adventurer: {
+    endpoint: 'adventurer',
+    tabs: [
+      { id: 'hair', label: 'Vlasy', sections: [
+        { type: 'thumbs',       key: 'hair',      values: ADVENTURER_HAIR,       label: 'Štýl vlasov', filterByGender: true },
+        { type: 'swatches-hex', key: 'hairColor', values: ADVENTURER_HAIR_COLOR, label: 'Farba vlasov' }
+      ]},
+      { id: 'face', label: 'Tvár', sections: [
+        { type: 'thumbs', key: 'eyes',     values: ADVENTURER_EYES,     label: 'Oči' },
+        { type: 'thumbs', key: 'eyebrows', values: ADVENTURER_EYEBROWS, label: 'Obočie' },
+        { type: 'thumbs', key: 'mouth',    values: ADVENTURER_MOUTH,    label: 'Ústa' }
+      ]},
+      { id: 'skin', label: 'Pleť', sections: [
+        { type: 'swatches-hex', key: 'skinColor', values: ADVENTURER_SKIN_COLOR, label: 'Farba pleti' }
+      ]},
+      { id: 'extras', label: 'Doplnky', sections: [
+        { type: 'toggle-thumbs', key: 'glasses',  probKey: 'glassesProbability',  values: ADVENTURER_GLASSES,  label: '👓 Okuliare' },
+        { type: 'toggle-thumbs', key: 'earrings', probKey: 'earringsProbability', values: ADVENTURER_EARRINGS, label: '💎 Náušnice' },
+        { type: 'toggle-thumbs', key: 'features', probKey: 'featuresProbability', values: ADVENTURER_FEATURES, label: '✨ Detaily (pehy, fúzy...)', genderExclude: { female: ['mustache'] } }
+      ]}
+    ]
+  }
+};
+
+// Pomocná funkcia — vráti filtered values pre danú sekciu (gender filter)
+function avatarSectionValues(sec, gender) {
+  var vals = sec.values;
+  if (sec.filterByGender) {
+    vals = (gender === 'male') ? ADVENTURER_HAIR_MALE.slice() : ADVENTURER_HAIR_FEMALE.slice();
+  }
+  if (sec.genderExclude && sec.genderExclude[gender]) {
+    var excl = sec.genderExclude[gender];
+    vals = vals.filter(function(v){ return excl.indexOf(v) < 0; });
+  }
+  return vals;
+}
+
+function avatarGetSchema(style) {
+  return AVATAR_SCHEMAS[style] || AVATAR_SCHEMAS[AVATAR_STYLE_DEFAULT];
+}
+
+// Vráti všetky allowed kľúče pre URL (style param sa do URL neposiela)
+function avatarAllowedKeys(style) {
+  var sc = avatarGetSchema(style);
+  var keys = {};
+  sc.tabs.forEach(function(t){
+    t.sections.forEach(function(s){
+      keys[s.key] = true;
+      if (s.probKey) keys[s.probKey] = true;
+    });
+  });
+  return keys;
+}
+
+// Vygeneruje URL pre DiceBear avatar z config objektu
+// Pozadie je VŽDY biele (force backgroundColor=ffffff)
+function avatarUrl(config, size) {
+  if (!config) return null;
+  var style = config.style || AVATAR_STYLE_DEFAULT;
+  var schema = avatarGetSchema(style);
+  var allowed = avatarAllowedKeys(style);
+  var params = new URLSearchParams();
+  Object.keys(config).forEach(function(k){
+    if (k === 'style') return;
+    if (!allowed[k]) return;
+    var v = config[k];
+    if (v === undefined || v === null || v === '') return;
+    params.set(k, v);
+  });
+  // Vždy biele pozadie
+  params.set('backgroundColor', 'ffffff');
+  if (size) params.set('size', String(size));
+  return 'https://api.dicebear.com/7.x/' + schema.endpoint + '/svg?' + params.toString();
+}
+
+// Lokálne uloženie avatar configu (zatiaľ bez Apps Scriptu, neskôr presunieme na backend)
+// Kľúč: 'avatar_cfg_' + username → JSON string
+// Lookup avatar config — najprv z in-memory (LB_REP_INFO/USERS_LOCAL, naplnené zo Sheets),
+// potom z session (ak ide o prihláseného usera), potom z localStorage (offline cache).
+function avatarGetConfig(username) {
+  if (!username) return null;
+  // 1. In-memory zo Sheets (rep list)
+  try {
+    if (typeof USERS_LOCAL !== 'undefined' && USERS_LOCAL[username] && USERS_LOCAL[username].avatar) {
+      return USERS_LOCAL[username].avatar;
+    }
+    if (typeof LB_REP_INFO !== 'undefined' && LB_REP_INFO[username] && LB_REP_INFO[username].avatar) {
+      return LB_REP_INFO[username].avatar;
+    }
+    // 2. Session — ak je to prihlásený user a má avatar zo Sheets
+    var s = (typeof getSession === 'function') ? getSession() : null;
+    if (s && s.username === username && s.avatar && typeof s.avatar === 'object' && s.avatar.style) {
+      return s.avatar;
+    }
+  } catch(e){}
+  // 3. Offline cache (localStorage)
+  try {
+    var raw = localStorage.getItem('avatar_cfg_' + username);
+    if (!raw) return null;
+    var parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    if (!parsed.style || !AVATAR_SCHEMAS[parsed.style]) {
+      try { localStorage.removeItem('avatar_cfg_' + username); } catch(e){}
+      return null;
+    }
+    return parsed;
+  } catch(e) { return null; }
+}
+// Vráti gender ('male'/'female') pre user-a — najprv zo session, potom z USERS_LOCAL / LB_REP_INFO
+function avatarGetUserGender(username) {
+  if (!username) return null;
+  try {
+    var s = (typeof getSession === 'function') ? getSession() : null;
+    if (s && s.username === username && (s.gender === 'male' || s.gender === 'female')) return s.gender;
+    if (typeof USERS_LOCAL !== 'undefined' && USERS_LOCAL[username] && USERS_LOCAL[username].gender) return USERS_LOCAL[username].gender;
+    if (typeof LB_REP_INFO !== 'undefined' && LB_REP_INFO[username] && LB_REP_INFO[username].gender) return LB_REP_INFO[username].gender;
+  } catch(e){}
+  return null;
+}
+
+// Uloží avatar config:
+//  1) optimisticky do in-memory (USERS_LOCAL / LB_REP_INFO / session)
+//  2) do localStorage (offline cache)
+//  3) cez fetch na backend (?action=setAvatar) — golem alebo gyn podľa session.line
+// Po backend úspechu/zlyhaní — broadcast event aby sa re-renderovali avatary.
+function avatarSetConfig(username, config) {
+  if (!username) return;
+  var configStr = config ? JSON.stringify(config) : '';
+  // 1. In-memory update (synchronne)
+  try {
+    if (typeof USERS_LOCAL !== 'undefined' && USERS_LOCAL[username]) USERS_LOCAL[username].avatar = config || null;
+    if (typeof LB_REP_INFO !== 'undefined' && LB_REP_INFO[username]) LB_REP_INFO[username].avatar = config || null;
+    var s = (typeof getSession === 'function') ? getSession() : null;
+    if (s && s.username === username) {
+      s.avatar = config || null;
+      try { setSession(s); } catch(e){}
+    }
+  } catch(e){}
+  // 2. localStorage cache
+  try {
+    if (!config) localStorage.removeItem('avatar_cfg_' + username);
+    else localStorage.setItem('avatar_cfg_' + username, configStr);
+  } catch(e){}
+  // 3. Backend write — golem alebo gyn URL podľa session.line
+  if (typeof IS_DEV !== 'undefined' && IS_DEV) {
+    // V DEV móde nepostujeme nikam, ale broadcast urobíme
+    try { window.dispatchEvent(new CustomEvent('avatar-changed', { detail: { username: username }})); } catch(e){}
+    return;
+  }
+  try {
+    var sess = (typeof getSession === 'function') ? getSession() : null;
+    var isGyn = sess && sess.line === 'gyn';
+    var baseUrl = isGyn ? (typeof GYN_SCRIPT_URL !== 'undefined' ? GYN_SCRIPT_URL : '') : (typeof SCRIPT_URL !== 'undefined' ? SCRIPT_URL : '');
+    var token = isGyn ? (typeof GYN_API_TOKEN !== 'undefined' ? GYN_API_TOKEN : '') : (typeof API_TOKEN !== 'undefined' ? API_TOKEN : '');
+    if (!baseUrl || !token) {
+      // Fallback iba lokálne — broadcast aj tak
+      try { window.dispatchEvent(new CustomEvent('avatar-changed', { detail: { username: username }})); } catch(e){}
+      return;
+    }
+    var url = baseUrl + '?action=setAvatar&username=' + encodeURIComponent(username) +
+              '&config=' + encodeURIComponent(configStr) + '&token=' + encodeURIComponent(token);
+    fetch(url, { cache: 'no-store' })
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        if (data && data.ok === false && window.console) console.warn('setAvatar backend error:', data.error);
+      })
+      .catch(function(err){
+        if (window.console) console.warn('setAvatar fetch failed (data ostávajú v cache):', err);
+      });
+  } catch(e){}
+  // Broadcast pre re-render avatarov všade (custom event)
+  try { window.dispatchEvent(new CustomEvent('avatar-changed', { detail: { username: username }})); } catch(e){}
+}
+
+// Wrapper ktorý vracia HTML pre avatar — buď <img> s DiceBear URL (ak má config),
+// alebo fallback iniciály v color circle. Použiteľné všade kde sa renderuje avatar.
+// Parameter `opts`: { username, name, color (CSS background), size (px), cls (extra class) }
+function avatarHtml(opts) {
+  var username = opts.username || '';
+  var name = opts.name || username || '?';
+  var size = opts.size || 40;
+  var color = opts.color || '#0C1E35';
+  var cls = opts.cls || '';
+  var config = avatarGetConfig(username);
+  if (config) {
+    var url = avatarUrl(config, size * 2); // 2× pre retina
+    var bg = (config.backgroundColor) ? '#' + config.backgroundColor : 'transparent';
+    return '<img src="' + url + '" alt="" class="avatar-img ' + cls + '" data-username="' + username + '" style="background:' + bg + '">';
+  }
+  // Fallback iniciály — používame jednu z initials funkcií podľa kontextu
+  var initials;
+  if (typeof lbInitials === 'function') initials = lbInitials(name);
+  else if (typeof mgrInitials === 'function') initials = mgrInitials(name);
+  else initials = String(name).slice(0,2).toUpperCase();
+  return '<span class="avatar-fallback ' + cls + '" data-username="' + username + '" style="background:' + color + '">' + initials + '</span>';
+}
+
+// Vyplní existujúci element (DOM avatar circle) s avatarom — pre dynamický re-render
+// Element musí mať `data-username` attr alebo je explicit
+function avatarFillElement(el, opts) {
+  if (!el) return;
+  opts = opts || {};
+  var username = opts.username || el.getAttribute('data-username') || '';
+  if (!username) return;
+  var size = opts.size || el.offsetWidth || 40;
+  var name = opts.name || '';
+  var color = opts.color || el.style.background || '#0C1E35';
+  var config = avatarGetConfig(username);
+  if (config) {
+    var url = avatarUrl(config, size * 2);
+    var bg = (config.backgroundColor) ? '#' + config.backgroundColor : 'transparent';
+    el.innerHTML = '<img src="' + url + '" alt="" class="avatar-img" style="background:' + bg + '">';
+    el.classList.add('has-avatar');
+  } else {
+    var initials = (typeof lbInitials === 'function') ? lbInitials(name) : String(name).slice(0,2).toUpperCase();
+    el.textContent = initials;
+    el.style.background = color;
+    el.classList.remove('has-avatar');
+  }
+}
+
+// Náhodne vygeneruje validný config pre daný štýl (pre 🎲 Náhodne + nový užívateľ)
+function avatarRandomConfig(style, base) {
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+  style = style || (base && base.style) || AVATAR_STYLE_DEFAULT;
+  var schema = avatarGetSchema(style);
+  var cfg = base ? Object.assign({}, base) : {};
+  cfg.style = style;
+  // Pohlavie: zachovaj ak base má, inak random
+  cfg.gender = (base && base.gender) || (Math.random() < 0.5 ? 'female' : 'male');
+  schema.tabs.forEach(function(t){
+    t.sections.forEach(function(s){
+      var values = avatarSectionValues(s, cfg.gender);
+      if (!values || !values.length) return;
+      if (s.type === 'toggle-thumbs') {
+        // 20-40% šanca zapnúť
+        var threshold = (s.key === 'facialHair' || s.key === 'features') ? 0.15 : 0.30;
+        if (Math.random() < threshold) {
+          cfg[s.key] = pick(values);
+          cfg[s.probKey] = 100;
+        } else {
+          delete cfg[s.key];
+          cfg[s.probKey] = 0;
+        }
+      } else if (s.type === 'swatches-hex-none') {
+        // 70% šanca mať pozadie
+        if (Math.random() < 0.70) cfg[s.key] = pick(values);
+        else delete cfg[s.key];
+      } else {
+        cfg[s.key] = pick(values);
+      }
+    });
+  });
+  return cfg;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// AVATAR CUSTOMIZER — modal logika
+// ═══════════════════════════════════════════════════════════════════════
+
+var AV_STATE = {
+  open: false,
+  username: null,
+  workingConfig: null,   // current edited config (kým neuloží)
+  originalConfig: null,  // pôvodný config (pre cancel)
+  activeTab: 'hair'
+};
+
+function avatarOpenCustomizer(username) {
+  username = username || (typeof getSession === 'function' && getSession() ? getSession().username : null);
+  if (!username) return;
+  var existing = avatarGetConfig(username);
+  // Migrácia: ak existuje config s neznámym/odstráneným style, resetni na default
+  if (existing && (!existing.style || !AVATAR_SCHEMAS[existing.style])) {
+    // Starý config (napr. z lorelei alebo avataaars) — vygeneruj nový pre default style
+    existing = avatarRandomConfig(AVATAR_STYLE_DEFAULT);
+  }
+  AV_STATE.username = username;
+  AV_STATE.originalConfig = existing ? JSON.parse(JSON.stringify(existing)) : null;
+  // Default gender pre nového usera — z Sheets (Pouzivatelia.pohlavie), fallback random
+  var sheetGender = avatarGetUserGender(username);
+  AV_STATE.workingConfig = existing
+    ? JSON.parse(JSON.stringify(existing))
+    : avatarRandomConfig(AVATAR_STYLE_DEFAULT, sheetGender ? { gender: sheetGender } : null);
+  // Migrácia: ak existing nemá gender, najprv skús zo Sheets, inak odvodíme zo súčasných vlasov
+  if (!AV_STATE.workingConfig.gender) {
+    if (sheetGender) {
+      AV_STATE.workingConfig.gender = sheetGender;
+    } else {
+      AV_STATE.workingConfig.gender = (AV_STATE.workingConfig.hair && AV_STATE.workingConfig.hair.indexOf('short') === 0) ? 'male' : 'female';
+    }
+  }
+  AV_STATE.activeTab = 'hair';
+  AV_STATE.open = true;
+  var ov = document.getElementById('av-overlay');
+  if (ov) ov.classList.add('show');
+  document.body.style.overflow = 'hidden';
+  avatarRenderStylePicker();
+  avatarRenderGenderPicker();
+  avatarRenderTabs();
+  avatarUpdatePreview();
+  avatarRenderTabContent(AV_STATE.activeTab);
+}
+
+function avatarCloseCustomizer() {
+  AV_STATE.open = false;
+  var ov = document.getElementById('av-overlay');
+  if (ov) ov.classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+function avatarSaveCustomizer() {
+  if (!AV_STATE.username || !AV_STATE.workingConfig) {
+    avatarCloseCustomizer();
+    return;
+  }
+  avatarSetConfig(AV_STATE.username, AV_STATE.workingConfig);
+  avatarCloseCustomizer();
+}
+
+function avatarResetConfig() {
+  if (!AV_STATE.username) return;
+  // Otvor custom confirm (nie browser confirm)
+  var ov = document.getElementById('av-confirm-overlay');
+  if (ov) ov.classList.add('show');
+  if (typeof haptic === 'function') haptic('light');
+}
+
+function avatarConfirmCancel() {
+  var ov = document.getElementById('av-confirm-overlay');
+  if (ov) ov.classList.remove('show');
+}
+
+function avatarConfirmOk() {
+  var ov = document.getElementById('av-confirm-overlay');
+  if (ov) ov.classList.remove('show');
+  if (!AV_STATE.username) { avatarCloseCustomizer(); return; }
+  AV_STATE.workingConfig = null;
+  avatarSetConfig(AV_STATE.username, null);
+  if (typeof haptic === 'function') haptic('success');
+  avatarCloseCustomizer();
+}
+
+function avatarUpdatePreview() {
+  var img = document.getElementById('av-preview-img');
+  if (!img || !AV_STATE.workingConfig) return;
+  var url = avatarUrl(AV_STATE.workingConfig, 280);
+  if (img.src !== url) img.src = url;
+  // Background color preview
+  var preview = document.getElementById('av-preview');
+  if (preview && AV_STATE.workingConfig.backgroundColor) {
+    preview.style.background = '#' + AV_STATE.workingConfig.backgroundColor;
+  }
+}
+
+function avatarBumpPreview() {
+  var preview = document.getElementById('av-preview');
+  if (!preview) return;
+  preview.classList.remove('bump');
+  void preview.offsetWidth; // reflow
+  preview.classList.add('bump');
+}
+
+function avatarRollRandom() {
+  var currentStyle = (AV_STATE.workingConfig && AV_STATE.workingConfig.style) || AVATAR_STYLE_DEFAULT;
+  // ZACHOVAJ aktuálny gender — random nemení Muž/Žena, len ostatné parametre
+  var currentGender = (AV_STATE.workingConfig && AV_STATE.workingConfig.gender) || 'female';
+  AV_STATE.workingConfig = avatarRandomConfig(currentStyle, { gender: currentGender });
+  avatarRenderGenderPicker(); // defense — udrží UI a state v sync
+  avatarUpdatePreview();
+  avatarBumpPreview();
+  avatarRenderTabContent(AV_STATE.activeTab);
+  if (typeof haptic === 'function') haptic('selection');
+}
+
+function avatarSwitchTab(tab, el) {
+  AV_STATE.activeTab = tab;
+  var tabs = document.querySelectorAll('#av-tabs .av-tab');
+  Array.prototype.forEach.call(tabs, function(t){
+    t.classList.toggle('active', t.getAttribute('data-tab') === tab);
+  });
+  avatarRenderTabContent(tab);
+  if (typeof haptic === 'function') haptic('selection');
+}
+
+// Prepne štýl avataru — vygeneruje nový náhodný config pre daný štýl
+function avatarSwitchStyle(style) {
+  if (!AVATAR_SCHEMAS[style]) return;
+  if (AV_STATE.workingConfig && AV_STATE.workingConfig.style === style) return;
+  AV_STATE.workingConfig = avatarRandomConfig(style);
+  AV_STATE.activeTab = 'hair';
+  avatarRenderStylePicker();
+  avatarRenderTabs();
+  avatarRenderTabContent('hair');
+  avatarUpdatePreview();
+  avatarBumpPreview();
+  if (typeof haptic === 'function') haptic('selection');
+}
+
+// Prepne pohlavie — auto-fixne vlasy ak nevyhovujú novému gender
+function avatarSwitchGender(gender) {
+  if (gender !== 'male' && gender !== 'female') return;
+  if (!AV_STATE.workingConfig) return;
+  if (AV_STATE.workingConfig.gender === gender) return;
+  AV_STATE.workingConfig.gender = gender;
+  // Auto-fix hair pre nový gender
+  var validHair = (gender === 'male') ? ADVENTURER_HAIR_MALE : ADVENTURER_HAIR_FEMALE;
+  if (validHair.indexOf(AV_STATE.workingConfig.hair) < 0) {
+    AV_STATE.workingConfig.hair = validHair[Math.floor(Math.random() * validHair.length)];
+  }
+  // Auto-fix features: ak je 'mustache' a prepneme na female, vypni
+  if (gender === 'female' && AV_STATE.workingConfig.features === 'mustache') {
+    AV_STATE.workingConfig.featuresProbability = 0;
+    delete AV_STATE.workingConfig.features;
+  }
+  avatarRenderGenderPicker();
+  avatarRenderTabContent(AV_STATE.activeTab);
+  avatarUpdatePreview();
+  avatarBumpPreview();
+  if (typeof haptic === 'function') haptic('selection');
+}
+
+function avatarRenderGenderPicker() {
+  var picker = document.getElementById('av-gender-picker');
+  if (!picker) return;
+  var current = (AV_STATE.workingConfig && AV_STATE.workingConfig.gender) || 'female';
+  picker.innerHTML =
+    '<button class="av-gender-btn' + (current === 'female' ? ' active' : '') + '" data-gender="female" onclick="avatarSwitchGender(\'female\')">👩 Žena</button>' +
+    '<button class="av-gender-btn' + (current === 'male'   ? ' active' : '') + '" data-gender="male"   onclick="avatarSwitchGender(\'male\')">👨 Muž</button>';
+}
+
+// Render style picker — viditeľný len pri 2+ štýloch
+function avatarRenderStylePicker() {
+  var picker = document.getElementById('av-style-picker');
+  if (!picker) return;
+  // Pri 1 štýle picker skryjeme
+  if (AVATAR_STYLES.length < 2) { picker.style.display = 'none'; picker.innerHTML = ''; return; }
+  picker.style.display = '';
+  var current = (AV_STATE.workingConfig && AV_STATE.workingConfig.style) || AVATAR_STYLE_DEFAULT;
+  var html = '';
+  AVATAR_STYLES.forEach(function(s){
+    var active = s === current ? ' active' : '';
+    html += '<button class="av-style-btn' + active + '" data-style="' + s + '" onclick="avatarSwitchStyle(\'' + s + '\')">' + AVATAR_STYLE_LABELS[s] + '</button>';
+  });
+  picker.innerHTML = html;
+}
+
+// Render tabs (závisí od štýlu — Avataaars má 6 tabov, Adventurer 5)
+function avatarRenderTabs() {
+  var tabsEl = document.getElementById('av-tabs');
+  if (!tabsEl) return;
+  var style = (AV_STATE.workingConfig && AV_STATE.workingConfig.style) || AVATAR_STYLE_DEFAULT;
+  var schema = avatarGetSchema(style);
+  // Ak active tab neexistuje v novom schéme, prepni na prvý
+  var hasActive = schema.tabs.some(function(t){ return t.id === AV_STATE.activeTab; });
+  if (!hasActive) AV_STATE.activeTab = schema.tabs[0].id;
+  var html = '';
+  schema.tabs.forEach(function(t){
+    var active = t.id === AV_STATE.activeTab ? ' active' : '';
+    html += '<button class="av-tab' + active + '" data-tab="' + t.id + '" onclick="avatarSwitchTab(\'' + t.id + '\',this)">' + t.label + '</button>';
+  });
+  tabsEl.innerHTML = html;
+}
+
+// Vygeneruje URL pre mini-thumb (s prepísaným config parametrom)
+function avatarThumbUrl(overrides, size) {
+  var cfg = Object.assign({}, AV_STATE.workingConfig || {}, overrides || {});
+  return avatarUrl(cfg, size || 100);
+}
+
+function avatarRenderTabContent(tab) {
+  var body = document.getElementById('av-body');
+  if (!body) return;
+  var style = (AV_STATE.workingConfig && AV_STATE.workingConfig.style) || AVATAR_STYLE_DEFAULT;
+  var schema = avatarGetSchema(style);
+  var tabDef = schema.tabs.filter(function(t){ return t.id === tab; })[0];
+  if (!tabDef) { body.innerHTML = ''; return; }
+  var html = '';
+  tabDef.sections.forEach(function(sec){
+    html += avatarRenderSection(sec);
+  });
+  body.innerHTML = html;
+  avatarBindTabEvents();
+}
+
+// Generický renderer jednej sekcie (thumbs / swatches / toggle-thumbs)
+function avatarRenderSection(sec) {
+  var cfg = AV_STATE.workingConfig || {};
+  var gender = cfg.gender || 'female';
+  var values = avatarSectionValues(sec, gender);
+  var html = '';
+  if (sec.type === 'thumbs') {
+    html += '<div class="av-section"><div class="av-section-lbl">' + sec.label + '</div><div class="av-thumbs">';
+    values.forEach(function(v){
+      var active = v === cfg[sec.key] ? ' active' : '';
+      var override = {}; override[sec.key] = v;
+      html += '<div class="av-thumb' + active + '" data-set="' + sec.key + '" data-val="' + v + '"><img src="' + avatarThumbUrl(override, 100) + '" alt="" loading="lazy" decoding="async"></div>';
+    });
+    html += '</div></div>';
+  } else if (sec.type === 'swatches-hex') {
+    html += '<div class="av-section"><div class="av-section-lbl">' + sec.label + '</div><div class="av-swatches">';
+    values.forEach(function(c){
+      var active = c === cfg[sec.key] ? ' active' : '';
+      html += '<div class="av-swatch' + active + '" data-set="' + sec.key + '" data-val="' + c + '" style="background:#' + c + '"></div>';
+    });
+    html += '</div></div>';
+  } else if (sec.type === 'swatches-named') {
+    html += '<div class="av-section"><div class="av-section-lbl">' + sec.label + '</div><div class="av-swatches">';
+    values.forEach(function(name){
+      var active = name === cfg[sec.key] ? ' active' : '';
+      var hex = (sec.hexMap && sec.hexMap[name]) || '#94A3B8';
+      html += '<div class="av-swatch' + active + '" data-set="' + sec.key + '" data-val="' + name + '" style="background:' + hex + '" title="' + name + '"></div>';
+    });
+    html += '</div></div>';
+  } else if (sec.type === 'swatches-hex-none') {
+    html += '<div class="av-section"><div class="av-section-lbl">' + sec.label + '</div><div class="av-swatches">';
+    var noneActive = !cfg[sec.key] ? ' active' : '';
+    html += '<div class="av-swatch av-thumb-none' + noneActive + '" data-set="' + sec.key + '" data-val="" style="background:#fff;display:flex;align-items:center;justify-content:center;color:#94A3B8;font-size:18px">∅</div>';
+    values.forEach(function(c){
+      var active = c === cfg[sec.key] ? ' active' : '';
+      html += '<div class="av-swatch' + active + '" data-set="' + sec.key + '" data-val="' + c + '" style="background:#' + c + '"></div>';
+    });
+    html += '</div></div>';
+  } else if (sec.type === 'toggle-thumbs') {
+    var isOn = (cfg[sec.probKey] == 100) && cfg[sec.key];
+    html += '<div class="av-section">';
+    html += '<div class="av-toggle-row"><div class="av-toggle-lbl">' + sec.label + '</div><button class="av-toggle' + (isOn ? ' on' : '') + '" data-toggle="' + sec.key + '" data-prob-key="' + sec.probKey + '" data-default-val="' + (values[0] || '') + '"></button></div>';
+    if (isOn) {
+      html += '<div class="av-thumbs">';
+      values.forEach(function(v){
+        var active = v === cfg[sec.key] ? ' active' : '';
+        var override = {}; override[sec.key] = v; override[sec.probKey] = 100;
+        html += '<div class="av-thumb' + active + '" data-set="' + sec.key + '" data-val="' + v + '"><img src="' + avatarThumbUrl(override, 100) + '" alt="" loading="lazy" decoding="async"></div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+  return html;
+}
+
+function avatarBindTabEvents() {
+  // Thumb / swatch click → update working config
+  var sels = document.querySelectorAll('#av-body [data-set]');
+  Array.prototype.forEach.call(sels, function(el){
+    el.addEventListener('click', function(){
+      var key = el.getAttribute('data-set');
+      var val = el.getAttribute('data-val');
+      if (!AV_STATE.workingConfig) AV_STATE.workingConfig = {};
+      if (val === '' || val === null) {
+        delete AV_STATE.workingConfig[key];
+      } else {
+        AV_STATE.workingConfig[key] = val;
+      }
+      // Sibling thumbs/swatches → odstráň active, daj na current
+      var siblings = el.parentNode.querySelectorAll('[data-set="' + key + '"]');
+      Array.prototype.forEach.call(siblings, function(s){ s.classList.remove('active'); });
+      el.classList.add('active');
+      avatarUpdatePreview();
+      avatarBumpPreview();
+      if (typeof haptic === 'function') haptic('selection');
+    });
+  });
+  // Toggle (okuliare / náušnice / fúzy / features)
+  var toggles = document.querySelectorAll('#av-body [data-toggle]');
+  Array.prototype.forEach.call(toggles, function(tg){
+    tg.addEventListener('click', function(){
+      var key = tg.getAttribute('data-toggle');
+      var probKey = tg.getAttribute('data-prob-key');
+      var defaultVal = tg.getAttribute('data-default-val');
+      var cfg = AV_STATE.workingConfig || {};
+      var isOn = (cfg[probKey] == 100) && cfg[key];
+      if (isOn) {
+        cfg[probKey] = 0;
+        delete cfg[key];
+      } else {
+        cfg[probKey] = 100;
+        cfg[key] = defaultVal;
+      }
+      AV_STATE.workingConfig = cfg;
+      avatarUpdatePreview();
+      avatarBumpPreview();
+      avatarRenderTabContent(AV_STATE.activeTab);
+      if (typeof haptic === 'function') haptic('selection');
+    });
+  });
+}
+
+// Edge-swipe back na zatvorenie avatar modalu (rovnaký vzor ako iné overlaye)
+// + swipe down na zatvorenie
+if (typeof attachEdgeSwipeBack === 'function') {
+  document.addEventListener('DOMContentLoaded', function(){
+    var ov = document.getElementById('av-overlay');
+    if (ov) attachEdgeSwipeBack(ov, avatarCloseCustomizer);
+    if (ov && typeof attachSwipe === 'function') {
+      attachSwipe(ov, { onSwipeDown: avatarCloseCustomizer, threshold: 80, onlyVertical: true });
+    }
+  });
+}
+
+// ── DEV mock (iba v IS_DEV) — simuluje dáta zo Sheets (gender + avatar konfig) ──
+// V produkcii prídu tieto cez getRepList → buildRepData → USERS_LOCAL/LB_REP_INFO.
+(function() {
+  if (typeof IS_DEV === 'undefined' || !IS_DEV) return;
+  var demos = {
+    'j.bohovic':    { gender:'female', avatar:{ style:'adventurer', gender:'female', hair:'long15',  hairColor:'a55728', eyes:'variant03', eyebrows:'variant02', mouth:'variant05', skinColor:'ecad80', glassesProbability:0, earringsProbability:0, featuresProbability:0 }},
+    'v.hatinova':   { gender:'female', avatar:{ style:'adventurer', gender:'female', hair:'long08',  hairColor:'b58143', eyes:'variant02', eyebrows:'variant04', mouth:'variant12', skinColor:'f2d3b1', glassesProbability:0, earringsProbability:0, featuresProbability:0 }},
+    'v.hromadkova': { gender:'female' },
+    'z.lescis':     { gender:'female', avatar:{ style:'adventurer', gender:'female', hair:'long12',  hairColor:'e5d7a3', eyes:'variant07', eyebrows:'variant05', mouth:'variant03', skinColor:'f2d3b1', glasses:'variant02', glassesProbability:100, earringsProbability:0, featuresProbability:0 }},
+    'j.krkoska':    { gender:'male',   avatar:{ style:'adventurer', gender:'male',   hair:'short09', hairColor:'0e0e0e', eyes:'variant05', eyebrows:'variant04', mouth:'variant08', skinColor:'ecad80', glassesProbability:0, earringsProbability:0, featuresProbability:0 }},
+    'i.kozakova':   { gender:'female', avatar:{ style:'adventurer', gender:'female', hair:'long05',  hairColor:'cb6820', eyes:'variant10', eyebrows:'variant06', mouth:'variant15', skinColor:'f2d3b1', glassesProbability:0, earringsProbability:0, featuresProbability:0 }},
+    'k.czidor':     { gender:'female' },
+    'o.rad':        { gender:'female' },
+    'l.macakova':   { gender:'female' },
+    'z.lapsan':     { gender:'female' },
+    'm.sabol':      { gender:'male'   },
+    'a.makis':      { gender:'male',   avatar:{ style:'adventurer', gender:'male',   hair:'short05', hairColor:'2c1b18', eyes:'variant07', eyebrows:'variant03', mouth:'variant02', skinColor:'ecad80', glasses:'variant02', glassesProbability:100, earringsProbability:0, featuresProbability:0 }}
+  };
+  Object.keys(demos).forEach(function(u){
+    var d = demos[u];
+    if (typeof USERS_LOCAL !== 'undefined' && USERS_LOCAL[u]) {
+      USERS_LOCAL[u].gender = d.gender || null;
+      USERS_LOCAL[u].avatar = d.avatar || null;
+    }
+    if (typeof LB_REP_INFO !== 'undefined' && LB_REP_INFO[u]) {
+      LB_REP_INFO[u].gender = d.gender || null;
+      LB_REP_INFO[u].avatar = d.avatar || null;
+    }
+  });
+})();
+
+// Re-render všetkých avatarov keď sa zmení config (volá sa po save)
+window.addEventListener('avatar-changed', function(ev) {
+  var u = (ev && ev.detail && ev.detail.username) || '';
+  if (!u) return;
+  // Lookup meno + farbu z existujúcich dátových zdrojov (potrebné pre fallback iniciály)
+  var name = u, color = null;
+  try {
+    if (typeof LB_REP_INFO !== 'undefined' && LB_REP_INFO[u]) {
+      name = LB_REP_INFO[u].name || u;
+      color = LB_REP_INFO[u].color || null;
+    } else if (typeof MGR_REP_NAMES !== 'undefined' && MGR_REP_NAMES[u]) {
+      name = MGR_REP_NAMES[u];
+    }
+    var s = (typeof getSession === 'function') ? getSession() : null;
+    if (s && s.username === u && s.name) name = s.name;
+    // Default farba ak žiadna — palette podľa hash
+    if (!color && typeof LB_COLOR_PALETTE !== 'undefined' && typeof strHash === 'function') {
+      color = LB_COLOR_PALETTE[strHash(u) % LB_COLOR_PALETTE.length];
+    }
+  } catch(e){}
+  // Nájdi všetky elementy s data-username=u a prerendruj
+  var nodes = document.querySelectorAll('[data-username="' + u + '"]');
+  Array.prototype.forEach.call(nodes, function(el){
+    // Iba ak je to avatar container (má width — circle)
+    if (el.classList.contains('lb-p-avatar') || el.classList.contains('lb-avatar') ||
+        el.classList.contains('mgr-avatar') || el.classList.contains('mgr-davatar') ||
+        el.classList.contains('dhdr-avatar') || el.classList.contains('pl-ps-avatar') ||
+        el.classList.contains('pl-rep-avatar') || el.classList.contains('gyn-rep-avatar') ||
+        el.classList.contains('hdr-avatar')) {
+      avatarFillElement(el, { username: u, name: name, color: color });
+    }
+  });
+});
+
 // Farebná paleta pre auto-pridelenie farieb v rebríčku
 var LB_COLOR_PALETTE = [
   'linear-gradient(135deg,#1E40AF,#3B82F6)',
@@ -8483,6 +9396,7 @@ var LB_COLOR_PALETTE = [
 ];
 
 // Defaults, prepísané zo Sheets cez loadRepList()
+// Defaulty pred načítaním zo Sheets (bez gender/avatar — tie prídu dynamicky cez getRepList).
 var LB_REP_INFO = {
   'j.bohovic':    { name: 'Jaroslava Bohovičová', region: 'BAMA', color: 'linear-gradient(135deg,#1E40AF,#3B82F6)' },
   'v.hatinova':   { name: 'Viktória Hatinová',    region: 'BASE', color: 'linear-gradient(135deg,#0E7490,#22D3EE)' },
@@ -8518,9 +9432,28 @@ function buildRepData(reps) {
 
   all.forEach(function(r, idx){
     var color = LB_COLOR_PALETTE[strHash(r.login) % LB_COLOR_PALETTE.length];
+    // Pohlavie zo Sheets (stĺpec "pohlavie") — striktné mapovanie:
+    //   "M"/"m"/"muz"/"muž"/"male" → 'male'
+    //   "Z"/"z"/"zena"/"žena"/"female"/"F"/"f" → 'female'
+    //   prázdne/neznáme → null (customizer pri otvorení vygeneruje náhodne)
+    var rawGender = String(r.pohlavie || r.gender || '').trim().toLowerCase();
+    var gender = null;
+    if (rawGender === 'm' || rawGender === 'muz' || rawGender === 'muž' || rawGender === 'male') gender = 'male';
+    else if (rawGender === 'z' || rawGender === 'f' || rawGender === 'zena' || rawGender === 'žena' || rawGender === 'female') gender = 'female';
+    // Avatar config zo Sheets (stĺpec "avatar" — JSON string)
+    var avatarConfig = null;
+    var avatarRaw = String(r.avatar || '').trim();
+    if (avatarRaw) {
+      try {
+        var parsed = JSON.parse(avatarRaw);
+        if (parsed && typeof parsed === 'object' && parsed.style && AVATAR_SCHEMAS[parsed.style]) {
+          avatarConfig = parsed;
+        }
+      } catch(e) { /* invalid JSON — ignoruj, ostanú iniciály */ }
+    }
     MGR_REP_NAMES[r.login] = r.meno;
-    LB_REP_INFO[r.login]   = { name: r.meno, region: r.region, color: color };
-    USERS_LOCAL[r.login]   = { region: r.region };
+    LB_REP_INFO[r.login]   = { name: r.meno, region: r.region, color: color, gender: gender, avatar: avatarConfig };
+    USERS_LOCAL[r.login]   = { region: r.region, gender: gender, avatar: avatarConfig };
   });
 
   MGR_ROLE_CFG.bum.reps    = MGR_ALL;
@@ -9157,12 +10090,13 @@ function lbRenderPlnenie(body) {
     var lastName = rep.name.split(' ').pop();
     var avatarMB = medal ? 'margin-bottom:20px' : '';
     var cls = pctCls(rep.pct);
+    var av = lbAvatarContent(rep.username, rep.name, isFirst ? 68 : 46);
     podiumHtml +=
       '<div class="lb-p-item ' + podiumClasses[pi] + '">' +
-        '<div class="lb-p-avatar" style="background:' + rep.color + ';' + avatarMB + '">' +
+        '<div class="lb-p-avatar' + (av.hasAvatar ? ' has-avatar' : '') + '" data-username="' + rep.username + '" style="background:' + rep.color + ';' + avatarMB + '">' +
           (isFirst ? '<span class="lb-p-crown">\uD83D\uDC51</span>' : '') +
           (medal   ? '<span class="lb-p-medal">' + medal + '</span>' : '') +
-          lbInitials(rep.name) +
+          av.html +
           '<div class="lb-rank-badge" style="background:' + rankBg[rn-1] + ';color:#fff">' + rn + '</div>' +
         '</div>' +
         '<div class="lb-p-name">' + lastName + '</div>' +
@@ -9179,10 +10113,11 @@ function lbRenderPlnenie(body) {
     if(rank <= 3) return;
     var isMe = rep.username === myUsername;
     var cls = pctCls(rep.pct);
+    var av2 = lbAvatarContent(rep.username, rep.name, 34);
     listHtml +=
       '<div class="lb-row' + (isMe ? ' me' : '') + '">' +
         '<div class="lb-rank">' + rank + '</div>' +
-        '<div class="lb-avatar" style="background:' + rep.color + '">' + lbInitials(rep.name) + '</div>' +
+        '<div class="lb-avatar' + (av2.hasAvatar ? ' has-avatar' : '') + '" data-username="' + rep.username + '" style="background:' + rep.color + '">' + av2.html + '</div>' +
         '<div class="lb-info">' +
           '<div class="lb-name">' + rep.name + (isMe ? '<span class="lb-me-tag">TY</span>' : '') + '</div>' +
           '<div class="lb-region">' + rep.region + '</div>' +
@@ -9327,6 +10262,17 @@ function lbInitials(name){
   return String(name).slice(0,2).toUpperCase();
 }
 
+// Helper: vráti obsah avatar circle — buď <img> s DiceBear URL (ak má config),
+// alebo iniciály. Plus vráti správnu triedu (has-avatar) pre wrapping div.
+function lbAvatarContent(username, name, size) {
+  var config = avatarGetConfig(username);
+  if (config) {
+    var url = avatarUrl(config, (size || 60) * 2);
+    return { html: '<img src="' + url + '" alt="" class="avatar-img">', hasAvatar: true };
+  }
+  return { html: lbInitials(name), hasAvatar: false };
+}
+
 function lbPeriodLabel(){
   var now = new Date();
   var months = ['Janu\u00e1r','Febru\u00e1r','Marec','Apr\u00edl','M\u00e1j','J\u00fan','J\u00fal','August','September','Okt\u00f3ber','November','December'];
@@ -9436,12 +10382,13 @@ function lbRender(){
     var medal = isFirst ? '' : (rn === 2 ? '\uD83E\uDD48' : '\uD83E\uDD49');
     var lastName = rep.name.split(' ').pop();
     var avatarMarginBottom = medal ? 'margin-bottom:20px' : '';
+    var av3 = lbAvatarContent(rep.username, rep.name, isFirst ? 68 : 46);
     podiumHtml +=
       '<div class="lb-p-item ' + podiumClasses[pi] + '">' +
-        '<div class="lb-p-avatar" style="background:' + rep.color + ';' + avatarMarginBottom + '">' +
+        '<div class="lb-p-avatar' + (av3.hasAvatar ? ' has-avatar' : '') + '" data-username="' + rep.username + '" style="background:' + rep.color + ';' + avatarMarginBottom + '">' +
           (isFirst ? '<span class="lb-p-crown">\uD83D\uDC51</span>' : '') +
           (medal ? '<span class="lb-p-medal">' + medal + '</span>' : '') +
-          lbInitials(rep.name) +
+          av3.html +
           '<div class="lb-rank-badge" style="background:' + rankBg[rn-1] + ';color:#fff">' + rn + '</div>' +
         '</div>' +
         '<div class="lb-p-name">' + lastName + '</div>' +
@@ -9457,10 +10404,11 @@ function lbRender(){
     var rank = idx + 1;
     if(rank <= 3) return;
     var isMe = rep.username === myUsername;
+    var av4 = lbAvatarContent(rep.username, rep.name, 34);
     listHtml +=
       '<div class="lb-row' + (isMe ? ' me' : '') + '">' +
         '<div class="lb-rank">' + rank + '</div>' +
-        '<div class="lb-avatar" style="background:' + rep.color + '">' + lbInitials(rep.name) + '</div>' +
+        '<div class="lb-avatar' + (av4.hasAvatar ? ' has-avatar' : '') + '" data-username="' + rep.username + '" style="background:' + rep.color + '">' + av4.html + '</div>' +
         '<div class="lb-info">' +
           '<div class="lb-name">' + rep.name + (isMe ? '<span class="lb-me-tag">TY</span>' : '') + '</div>' +
           '<div class="lb-region">' + rep.region + '</div>' +
@@ -10313,9 +11261,10 @@ function prodSheetRenderRepList() {
         : '— / ' + plnenieFormatEUR(r.planEUR);
     }
 
+    var avPs = lbAvatarContent(r.username, info.name, 34);
     return '<div class="pl-ps-rep" data-username="' + mgrEscape(r.username) + '">' +
       medalHtml +
-      '<div class="pl-ps-avatar" style="background:' + info.color + '">' + mgrEscape(mgrInitials(info.name)) + '</div>' +
+      '<div class="pl-ps-avatar' + (avPs.hasAvatar ? ' has-avatar' : '') + '" data-username="' + mgrEscape(r.username) + '" style="background:' + info.color + '">' + avPs.html + '</div>' +
       '<div class="pl-ps-info">' +
         '<div class="pl-ps-name">' + mgrEscape(info.name) + '</div>' +
         msHtml +
@@ -10633,9 +11582,10 @@ function plnenieRenderRepList() {
     var extraClass = clickable ? ' pl-rep-clickable' : '';
     var chevronHtml = clickable ? '<div class="pl-rep-chev">›</div>' : '';
 
+    var avPl = lbAvatarContent(r.username, info.name, 38);
     return '<div class="pl-rep-card' + extraClass + '"' + clickAttr + '>' +
       medalHtml +
-      '<div class="pl-rep-avatar" style="background:' + info.color + '">' + mgrEscape(initials) + '</div>' +
+      '<div class="pl-rep-avatar' + (avPl.hasAvatar ? ' has-avatar' : '') + '" data-username="' + r.username + '" style="background:' + info.color + '">' + avPl.html + '</div>' +
       '<div class="pl-rep-body">' +
         '<div class="pl-rep-name">' + mgrEscape(info.name) + '</div>' +
         '<div class="pl-rep-meta">' + mgrEscape(meta) + '</div>' +
@@ -11298,7 +12248,11 @@ function plnenieRenderDetail() {
 
   // Header
   var avatarEl = document.getElementById('pl-detail-avatar');
-  if (avatarEl) { avatarEl.textContent = mgrInitials(info.name); avatarEl.style.background = info.color; }
+  if (avatarEl) {
+    avatarEl.setAttribute('data-username', username);
+    avatarEl.style.background = info.color;
+    avatarFillElement(avatarEl, { username: username, name: info.name, color: info.color, size: 48 });
+  }
   var nameEl = document.getElementById('pl-detail-name');
   if (nameEl) nameEl.textContent = info.name;
   var subEl = document.getElementById('pl-detail-sub');
@@ -15114,6 +16068,49 @@ function downloadAllReportsPdf() {
       <div class="wn-sub" id="wn-sub">Aktualizácia</div>
     </div>
     <div class="wn-body" id="wn-body"></div>
+  </div>
+</div>
+
+<!-- ═══ AVATAR CONFIRM (custom — nahradzuje browser confirm) ═══ -->
+<div class="av-confirm-overlay" id="av-confirm-overlay" onclick="if(event.target===this)avatarConfirmCancel()">
+  <div class="av-confirm-box">
+    <div class="av-confirm-icon">🗑</div>
+    <div class="av-confirm-title">Odstrániť avatar?</div>
+    <div class="av-confirm-sub">Tvoj avatar sa odstráni a v aplikácii sa znova zobrazia iniciály.</div>
+    <div class="av-confirm-btns">
+      <button type="button" class="av-confirm-btn av-confirm-cancel" onclick="avatarConfirmCancel()">Zrušiť</button>
+      <button type="button" class="av-confirm-btn av-confirm-ok" onclick="avatarConfirmOk()">Odstrániť</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ AVATAR CUSTOMIZER MODAL ═══ -->
+<div class="av-overlay" id="av-overlay" onclick="if(event.target===this)avatarCloseCustomizer()">
+  <div class="av-box">
+    <div class="av-hdr">
+      <button class="av-hdr-btn" onclick="avatarCloseCustomizer()" aria-label="Zavrieť">✕</button>
+      <div class="av-hdr-title">Tvoj avatar</div>
+      <button class="av-hdr-btn av-hdr-save" onclick="avatarSaveCustomizer()">Uložiť</button>
+    </div>
+    <div class="av-preview-wrap">
+      <div class="av-style-picker" id="av-style-picker">
+        <!-- Buttons render dynamicky cez avatarRenderStylePicker() (skryté pri 1 štýle) -->
+      </div>
+      <div class="av-gender-picker" id="av-gender-picker">
+        <!-- Buttons render dynamicky cez avatarRenderGenderPicker() -->
+      </div>
+      <div class="av-preview" id="av-preview">
+        <img id="av-preview-img" alt="">
+      </div>
+      <button type="button" class="av-random" onclick="avatarRollRandom()">🎲 Náhodne</button>
+      <button type="button" class="av-reset" onclick="avatarResetConfig()">🗑 Odstrániť avatar (vráti iniciály)</button>
+    </div>
+    <div class="av-tabs" id="av-tabs">
+      <!-- Tabs render dynamicky cez avatarRenderTabs() -->
+    </div>
+    <div class="av-body" id="av-body">
+      <!-- Sekcie sa vygenerujú dynamicky podľa aktívneho tabu -->
+    </div>
   </div>
 </div>
 
