@@ -2223,7 +2223,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.20.3';
+var APP_VERSION = '2.20.4';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6588,35 +6588,63 @@ function gynPharmaToggleLine(key) {
   if(btn) btn.classList.add('visible');
 }
 
+// Pomocná: vráti kvartal kód O 1 NAZAD (napr. '2601' → '2504')
+function gynPharmaKvartalPrev(kvartal) {
+  if(!kvartal) return null;
+  var yy = parseInt(kvartal.slice(0, 2), 10);
+  var qq = parseInt(kvartal.slice(2), 10);
+  qq--;
+  if(qq < 1) { qq = 4; yy--; }
+  return (yy < 10 ? '0'+yy : ''+yy) + '0' + qq;
+}
+
 function gynPharmaLoad() {
   var key = GYN_PHARMA_STATE.produkt + '|' + GYN_PHARMA_STATE.oblast + '|' + GYN_PHARMA_STATE.kvartal;
   if(GYN_PHARMA_STATE.cache[key]) { gynPharmaRender(GYN_PHARMA_STATE.cache[key]); return; }
   if(GYN_PHARMA_STATE.loading[key]) return;
   GYN_PHARMA_STATE.loading[key] = true;
-  fetch(gynScriptUrl(
+
+  var kvartalPrev = gynPharmaKvartalPrev(GYN_PHARMA_STATE.kvartal);
+
+  // Paralelný fetch: aktuálny Q + predchádzajúci Q (pre konkurentov v 6-mes trend grafe)
+  var fetchCurrent = fetch(gynScriptUrl(
     'action=getPharmaData' +
     '&oblast='  + encodeURIComponent(GYN_PHARMA_STATE.oblast) +
     '&produkt=' + encodeURIComponent(GYN_PHARMA_STATE.produkt) +
     '&kvartal=' + encodeURIComponent(GYN_PHARMA_STATE.kvartal)
-  ), { cache:'no-store' })
-    .then(function(r){ return r.json(); })
-    .then(function(resp){
-      delete GYN_PHARMA_STATE.loading[key];
-      var bodyEl = document.getElementById('pharma-ms-body');
-      if(!resp || !resp.ok) {
-        if(bodyEl) bodyEl.innerHTML = '<div class="pharma-ms-loading">Chyba načítavania.</div>';
-        return;
-      }
-      GYN_PHARMA_STATE.cache[key] = resp;
-      if(GYN_PHARMA_STATE.open && GYN_PHARMA_STATE.produkt + '|' + GYN_PHARMA_STATE.oblast + '|' + GYN_PHARMA_STATE.kvartal === key) {
-        gynPharmaRender(resp);
-      }
-    })
-    .catch(function(){
-      delete GYN_PHARMA_STATE.loading[key];
-      var bodyEl = document.getElementById('pharma-ms-body');
-      if(bodyEl) bodyEl.innerHTML = '<div class="pharma-ms-loading">Chyba siete.</div>';
-    });
+  ), { cache:'no-store' }).then(function(r){ return r.json(); });
+
+  var fetchPrev = kvartalPrev ? fetch(gynScriptUrl(
+    'action=getPharmaData' +
+    '&oblast='  + encodeURIComponent(GYN_PHARMA_STATE.oblast) +
+    '&produkt=' + encodeURIComponent(GYN_PHARMA_STATE.produkt) +
+    '&kvartal=' + encodeURIComponent(kvartalPrev)
+  ), { cache:'no-store' }).then(function(r){ return r.json(); }).catch(function(){ return null; })
+                          : Promise.resolve(null);
+
+  Promise.all([fetchCurrent, fetchPrev]).then(function(results){
+    var resp = results[0];
+    var respPrev = results[1];
+    delete GYN_PHARMA_STATE.loading[key];
+    var bodyEl = document.getElementById('pharma-ms-body');
+    if(!resp || !resp.ok) {
+      if(bodyEl) bodyEl.innerHTML = '<div class="pharma-ms-loading">Chyba načítavania.</div>';
+      return;
+    }
+    // Spoj okresy z aktuálneho + predošlého Q (predošlé okresy získajú nový flag _prevQ pre render)
+    if (respPrev && respPrev.ok && Array.isArray(respPrev.okresy)) {
+      resp.okresy_prev = respPrev.okresy; // pre kompozíciu trend grafu (6 mesiacov)
+      resp.kvartal_prev = kvartalPrev;
+    }
+    GYN_PHARMA_STATE.cache[key] = resp;
+    if(GYN_PHARMA_STATE.open && GYN_PHARMA_STATE.produkt + '|' + GYN_PHARMA_STATE.oblast + '|' + GYN_PHARMA_STATE.kvartal === key) {
+      gynPharmaRender(resp);
+    }
+  }).catch(function(){
+    delete GYN_PHARMA_STATE.loading[key];
+    var bodyEl = document.getElementById('pharma-ms-body');
+    if(bodyEl) bodyEl.innerHTML = '<div class="pharma-ms-loading">Chyba siete.</div>';
+  });
 }
 
 // Helpers
@@ -6692,11 +6720,23 @@ function gynPharmaRender(resp) {
     html += '<div class="pharma-ms-card"><div class="pharma-ms-card-val none">Žiadne dáta pre Q'+q+'</div></div>';
   }
 
-  // ── Vypočítaj top konkurentov z okresy (priemer MS% cez okresy v Q1) ──
-  // Štruktúra: { compName: { 2601: msAvg, 2602:..., 2603:... } }
-  var qYymms_chart = qYymms; // [2601, 2602, 2603] napr.
+  // ── Vypočítaj top konkurentov z okresov (priemer MS% za 6 mesiacov: aktuálny Q + predošlý Q) ──
+  // Štruktúra: { compName: { 2510: msAvg, 2511:..., 2512:..., 2601:..., 2602:..., 2603:... } }
+  var qYymms_chart = qYymms; // [2601, 2602, 2603] aktuálny Q
+  var qYymmsPrev = []; // [2510, 2511, 2512] predošlý Q
+  if (resp.kvartal_prev) {
+    var ypy = parseInt(resp.kvartal_prev.slice(0, 2), 10) + 2000;
+    var ypq = parseInt(resp.kvartal_prev.slice(2), 10);
+    var startM = (ypq - 1) * 3 + 1;
+    qYymmsPrev = [
+      (ypy - 2000) * 100 + startM,
+      (ypy - 2000) * 100 + startM + 1,
+      (ypy - 2000) * 100 + startM + 2
+    ];
+  }
   var compMsByMonth = {}; // { name: { yymm: avgMs } }
   var compTotalMs = {};   // pre top 3 ranking
+  // Aggreguj okresy z AKTUÁLNEHO Q
   okresy.forEach(function(o){
     [o.k1, o.k2, o.k3].forEach(function(k){
       if(!k || !k.name) return;
@@ -6711,6 +6751,24 @@ function gynPharmaRender(resp) {
       compTotalMs[k.name] = (compTotalMs[k.name] || 0) + (parseFloat(k.m1)||0) + (parseFloat(k.m2)||0) + (parseFloat(k.m3)||0);
     });
   });
+  // Aggreguj okresy z PREDOŠLÉHO Q (rovnaký pattern, len iné yymm hodnoty)
+  if (resp.okresy_prev && qYymmsPrev.length === 3) {
+    resp.okresy_prev.forEach(function(o){
+      [o.k1, o.k2, o.k3].forEach(function(k){
+        if(!k || !k.name) return;
+        if(!compMsByMonth[k.name]) compMsByMonth[k.name] = { sum: {}, cnt: {} };
+        [{m:'m1',y:qYymmsPrev[0]}, {m:'m2',y:qYymmsPrev[1]}, {m:'m3',y:qYymmsPrev[2]}].forEach(function(mm){
+          var v = parseFloat(k[mm.m]);
+          if(!isNaN(v) && v >= 0) {
+            compMsByMonth[k.name].sum[mm.y] = (compMsByMonth[k.name].sum[mm.y] || 0) + v;
+            compMsByMonth[k.name].cnt[mm.y] = (compMsByMonth[k.name].cnt[mm.y] || 0) + 1;
+          }
+        });
+        // Pre top 3 ranking — započítaj aj predošlý Q
+        compTotalMs[k.name] = (compTotalMs[k.name] || 0) + (parseFloat(k.m1)||0) + (parseFloat(k.m2)||0) + (parseFloat(k.m3)||0);
+      });
+    });
+  }
   // Top 3 konkurenti podľa total MS
   var topComps = Object.keys(compTotalMs).sort(function(a,b){ return compTotalMs[b] - compTotalMs[a]; }).slice(0, 3);
   // Priemer MS pre každého top konkurenta + mesiac (v %)
