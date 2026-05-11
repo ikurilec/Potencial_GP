@@ -379,7 +379,7 @@
   .lb-body{padding:0 0 8px;background:#fff;}
   .lb-loading{text-align:center;padding:32px 20px;color:#64748B;font-size:14px}
   .lb-podium{display:flex;align-items:flex-end;justify-content:center;gap:8px;padding:24px 16px 10px;background:radial-gradient(ellipse at 50% 80%,#FFF8E7 0%,#F8FAFC 35%,#fff 70%);position:relative}
-  .lb-p-item{display:flex;flex-direction:column;align-items:center;flex:1}
+  .lb-p-item{display:flex;flex-direction:column;align-items:center;flex:1;position:relative}
   /* ═══ AVATAR SYSTÉM ═══ */
   .avatar-img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block}
   .avatar-fallback{width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:700;color:#fff;letter-spacing:.02em}
@@ -2223,7 +2223,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.20.6';
+var APP_VERSION = '2.20.7';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10198,8 +10198,8 @@ function lbRenderPlnenie(body) {
     var av = lbAvatarContent(rep.username, rep.name, isFirst ? 68 : 46);
     podiumHtml +=
       '<div class="lb-p-item ' + podiumClasses[pi] + '">' +
+        (isFirst ? '<span class="lb-p-crown">\uD83D\uDC51</span>' : '') +
         '<div class="lb-p-avatar' + (av.hasAvatar ? ' has-avatar' : '') + '" data-username="' + rep.username + '" style="background:' + rep.color + ';' + avatarMB + '">' +
-          (isFirst ? '<span class="lb-p-crown">\uD83D\uDC51</span>' : '') +
           (medal   ? '<span class="lb-p-medal">' + medal + '</span>' : '') +
           av.html +
           '<div class="lb-rank-badge" style="background:' + rankBg[rn-1] + ';color:#fff">' + rn + '</div>' +
@@ -10270,6 +10270,8 @@ function lbLoadData(force){
   if(LB_STATE.loading) return;
   if(LB_STATE.data && !force) return;
   LB_STATE.loading = true;
+  // Zachovaj posledné dobré dáta počas loading-u (aby nezmizli zo zobrazenia v prípade fail-u)
+  var lastGoodData = LB_STATE.data;
   LB_STATE.data = null;
   var isMgrOpen = document.body.classList.contains('manager-mode') && document.body.classList.contains('mgr-subtab-leaderboard');
   var isRepOpen = (function(){ var ov = document.getElementById('lb-overlay'); return ov && ov.classList.contains('show'); })();
@@ -10278,40 +10280,86 @@ function lbLoadData(force){
     if(body) body.innerHTML = skelLb();
   }
 
-  function onDone(results){
+  function onDone(results, source){
     LB_STATE.data = results;
     LB_STATE.loading = false;
+    if (window.console) {
+      var nonEmpty = Object.keys(results).filter(function(u){ return Array.isArray(results[u]) && results[u].length > 0; });
+      console.log('[lb-load] zdroj=' + source + ', reps s návštevami=' + nonEmpty.length + '/' + LB_ALL_REPS.length);
+    }
     var mgrOpen = document.body.classList.contains('manager-mode') && document.body.classList.contains('mgr-subtab-leaderboard');
     var repOpen = (function(){ var ov = document.getElementById('lb-overlay'); return ov && ov.classList.contains('show'); })();
     if(mgrOpen || repOpen) lbRender();
     lbUpdateNavBtn();
   }
 
-  fetch(scriptUrl('action=getAllHistory'), { cache: 'no-store' })
+  // Heuristika — či je response "podozrivo prázdny" (málo repov s dátami).
+  // Ak v predošlých dátach mali traja+ repi návštevy, ale teraz nikto → asi neúplný response.
+  function looksIncomplete(results) {
+    var nonEmpty = LB_ALL_REPS.filter(function(u){ return Array.isArray(results[u]) && results[u].length > 0; }).length;
+    if (nonEmpty === 0) return true; // VŠETKY prázdne je veľmi podozrivé
+    // Ak sme mali staré dáta a teraz drasticky menej repov má dáta — podozrivé
+    if (lastGoodData) {
+      var prevNonEmpty = LB_ALL_REPS.filter(function(u){ return Array.isArray(lastGoodData[u]) && lastGoodData[u].length > 0; }).length;
+      if (prevNonEmpty >= 3 && nonEmpty < Math.floor(prevNonEmpty / 2)) return true;
+    }
+    return false;
+  }
+
+  // Spustí fallback — 12 individuálnych requestov s retry
+  function fallbackIndividual() {
+    var results = {};
+    var remaining = LB_ALL_REPS.length;
+    LB_ALL_REPS.forEach(function(username){
+      function tryFetch(attempt) {
+        fetch(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username) + '&_t=' + Date.now()), { cache: 'no-store' })
+          .then(function(r){ return r.ok ? r.json() : []; })
+          .then(function(rows){
+            if (Array.isArray(rows)) {
+              results[username] = rows;
+              remaining--;
+              if(remaining <= 0) onDone(results, 'individual');
+            } else if (attempt < 1) {
+              setTimeout(function(){ tryFetch(attempt + 1); }, 400);
+            } else {
+              results[username] = [];
+              remaining--;
+              if(remaining <= 0) onDone(results, 'individual');
+            }
+          })
+          .catch(function(){
+            if (attempt < 1) {
+              setTimeout(function(){ tryFetch(attempt + 1); }, 400);
+            } else {
+              results[username] = [];
+              remaining--;
+              if(remaining <= 0) onDone(results, 'individual');
+            }
+          });
+      }
+      tryFetch(0);
+    });
+  }
+
+  // Cache buster — vždy fetchni čerstvé
+  fetch(scriptUrl('action=getAllHistory&_t=' + Date.now()), { cache: 'no-store' })
     .then(function(r){ return r.ok ? r.json() : null; })
     .then(function(allHist){
       if(allHist && allHist.ok !== false && typeof allHist === 'object' && !Array.isArray(allHist)){
         var results = {};
         LB_ALL_REPS.forEach(function(u){ results[u] = Array.isArray(allHist[u]) ? allHist[u] : []; });
-        onDone(results);
+        if (looksIncomplete(results)) {
+          if (window.console) console.warn('[lb-load] getAllHistory vyzerá neúplne, padám na individuálne fetche');
+          fallbackIndividual();
+        } else {
+          onDone(results, 'getAllHistory');
+        }
       } else {
         throw new Error('fallback');
       }
     })
     .catch(function(){
-      // Fallback — 12 individuálnych requestov
-      var results = {};
-      var remaining = LB_ALL_REPS.length;
-      LB_ALL_REPS.forEach(function(username){
-        fetch(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username)), { cache: 'no-store' })
-          .then(function(r){ return r.ok ? r.json() : []; })
-          .then(function(rows){ results[username] = Array.isArray(rows) ? rows : []; })
-          .catch(function(){ results[username] = []; })
-          .finally(function(){
-            remaining--;
-            if(remaining <= 0) onDone(results);
-          });
-      });
+      fallbackIndividual();
     });
 }
 
@@ -10490,8 +10538,8 @@ function lbRender(){
     var av3 = lbAvatarContent(rep.username, rep.name, isFirst ? 68 : 46);
     podiumHtml +=
       '<div class="lb-p-item ' + podiumClasses[pi] + '">' +
+        (isFirst ? '<span class="lb-p-crown">\uD83D\uDC51</span>' : '') +
         '<div class="lb-p-avatar' + (av3.hasAvatar ? ' has-avatar' : '') + '" data-username="' + rep.username + '" style="background:' + rep.color + ';' + avatarMarginBottom + '">' +
-          (isFirst ? '<span class="lb-p-crown">\uD83D\uDC51</span>' : '') +
           (medal ? '<span class="lb-p-medal">' + medal + '</span>' : '') +
           av3.html +
           '<div class="lb-rank-badge" style="background:' + rankBg[rn-1] + ';color:#fff">' + rn + '</div>' +
