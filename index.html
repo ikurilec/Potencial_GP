@@ -2223,7 +2223,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.20.4';
+var APP_VERSION = '2.20.5';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6631,9 +6631,20 @@ function gynPharmaLoad() {
       if(bodyEl) bodyEl.innerHTML = '<div class="pharma-ms-loading">Chyba načítavania.</div>';
       return;
     }
-    // Spoj okresy z aktuálneho + predošlého Q (predošlé okresy získajú nový flag _prevQ pre render)
+    // DIAGNOSTIKA — vypíš do konzoly počet okresov pre oba Q (na ladenie)
+    if (window.console) {
+      console.log('[gyn-pharma] aktuálny Q (' + GYN_PHARMA_STATE.kvartal + '):',
+                  'okresy=' + ((resp.okresy||[]).length),
+                  'summary=' + ((resp.summary||[]).length));
+      console.log('[gyn-pharma] predošlý Q (' + kvartalPrev + '):',
+                  respPrev && respPrev.ok ? 'okresy=' + ((respPrev.okresy||[]).length) : 'CHYBA / žiadne dáta');
+      if (respPrev && respPrev.ok && respPrev.okresy && respPrev.okresy.length === 0) {
+        console.warn('[gyn-pharma] Q' + kvartalPrev + ' okresy je PRÁZDNE — uistite sa že v PharmaData_Okresy sú riadky s kvartal=' + kvartalPrev);
+      }
+    }
+    // Spoj okresy z aktuálneho + predošlého Q
     if (respPrev && respPrev.ok && Array.isArray(respPrev.okresy)) {
-      resp.okresy_prev = respPrev.okresy; // pre kompozíciu trend grafu (6 mesiacov)
+      resp.okresy_prev = respPrev.okresy;
       resp.kvartal_prev = kvartalPrev;
     }
     GYN_PHARMA_STATE.cache[key] = resp;
@@ -6843,7 +6854,7 @@ function gynPharmaRender(resp) {
     // SK MS čiara (svetlomodrá prerušovaná)
     svg += '<polyline class="gpharma-line" data-line-key="sk" points="'+skPts+'" fill="none" stroke="#93C5FD" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5,4" opacity="0.85"/>';
 
-    // Konkurenti — pri 1 bode render ako kruh, pri 2+ ako polyline
+    // Konkurenti — pri 1 bode render ako kruh, pri 2+ ako čistá polyline (žiadne bodky)
     compLines.forEach(function(c, ci){
       var color = compColors[ci%compColors.length];
       var ptArr = trendRows.map(function(s, i){
@@ -6857,10 +6868,7 @@ function gynPharmaRender(resp) {
       } else if (ptArr.length >= 2) {
         var pts = ptArr.map(function(p){ return p[0].toFixed(1)+','+p[1].toFixed(1); }).join(' ');
         svg += '<polyline class="gpharma-line" data-line-key="k'+ci+'" points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity="0.78"/>';
-        // + body na koncoch
-        ptArr.forEach(function(p){
-          svg += '<circle data-line-key="k'+ci+'" cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="3.5" fill="'+color+'" opacity="0.78"/>';
-        });
+        // Žiadne body na koncoch — užívateľ chce čisté čiary pre konkurentov (iba náš produkt má bodky)
       }
     });
 
