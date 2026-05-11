@@ -26,7 +26,30 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.20.3** (na `main` aj `test` vetve) — **bug fix gyn chart**: gyn Trhový podiel chart nezobrazoval konkurentov keď mali dáta iba pre 1 mesiac (Mar 2026). SVG `polyline` element potrebuje 2+ body — pri 1 bode bola čiara neviditeľná. Teraz pri 1 bode rendruje kruh, pri 2+ bodoch polyline + kruhy na koncoch.
+**2.20.4** (na `main` aj `test` vetve) — **gyn chart načítava predošlý Q okresy**: trend graf v gyn Trhový podiel pre 6-mesačný timeline (Okt - Mar) teraz fetchuje OKRESY pre aktuálny aj predošlý kvartál paralelne — konkurenti viditeľní cez všetkých 6 mesiacov, nie iba aktuálny Q.
+
+### v2.20.4 — Gyn chart paralelný fetch okresov pre 6-mesačný trend
+
+#### Problém
+- Trend graf v gyn Trhový podiel zobrazuje 6 mesiacov (`summary.slice(-6)`)
+- Náš produkt (Ryeqo) + Slovensko MS (zo `summary` v jednom fetchu) — full 6 mesiacov ✅
+- Konkurenti (ZOLADEX, RESELIGO, VISANNE) z `okresy` — iba pre aktuálny Q ❌
+- Vizuálne: konkurenčné čiary len Jan-Mar, prázdne Okt-Dec
+
+#### Oprava
+- **`gynPharmaLoad`** robí **paralelný fetch**: aktuálny Q + predošlý Q (`gynPharmaKvartalPrev`)
+- Predošlý Q response uložený ako `resp.okresy_prev` + `resp.kvartal_prev`
+- **`gynPharmaRender`** aggreguje konkurentov **z oboch quartalov** — mapuje m1/m2/m3 na správne yymm pre každý Q
+- Top 3 konkurenti vyberané z **kombinovaného total MS** (aktuálny + predošlý Q)
+
+#### Dôsledok
+- Trend graf teraz zobrazuje konkurenčné čiary **cez celý 6-mesačný timeline**
+- Vyžaduje že `PharmaData_Okresy` má dáta pre **oba kvartály** (aktuálny + predošlý)
+- Pre Q1 2026 → fetchne Q1 + Q4 2025
+
+---
+
+### v2.20.3 — Bug fix: gyn chart nezobrazoval konkurentov s 1 dátovým bodom
 
 ### v2.20.3 — Bug fix: gyn chart nezobrazoval konkurentov s 1 dátovým bodom
 
