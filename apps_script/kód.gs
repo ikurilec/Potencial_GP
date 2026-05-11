@@ -736,19 +736,29 @@ function doGet(e) {
         };
       }
 
-      // 3. RepList (Pouzivatelia sheet)
+      // 3. RepList (Pouzivatelia sheet) — vrátane pohlavie + avatar (header-based)
       var repList = [];
       var pouzSheet2 = ss.getSheetByName('Pouzivatelia');
       if(pouzSheet2) {
         var pouzRows2 = pouzSheet2.getDataRange().getValues();
+        // Najdi indexy stĺpcov pohlavie + avatar v hlavičke (case-insensitive)
+        var pouzHdr2 = pouzRows2[0] || [];
+        var pohlavieIdx2 = -1, avatarIdx2 = -1;
+        for(var phi = 0; phi < pouzHdr2.length; phi++) {
+          var phh = String(pouzHdr2[phi] || '').trim().toLowerCase();
+          if(phh === 'pohlavie' || phh === 'gender') pohlavieIdx2 = phi;
+          if(phh === 'avatar') avatarIdx2 = phi;
+        }
         for(var i = 1; i < pouzRows2.length; i++) {
           var login2  = String(pouzRows2[i][0] || '').trim();
           var meno2   = String(pouzRows2[i][2] || '').trim();
           var rola2   = String(pouzRows2[i][3] || '').trim().toLowerCase();
           var region2 = String(pouzRows2[i][4] || '').trim();
+          var pohlavie2 = (pohlavieIdx2 >= 0) ? String(pouzRows2[i][pohlavieIdx2] || '').trim() : '';
+          var avatar2   = (avatarIdx2   >= 0) ? String(pouzRows2[i][avatarIdx2]   || '').trim() : '';
           if(!login2 || !meno2) continue;
           if(rola2 === 'rep west' || rola2 === 'rep east') {
-            repList.push({ login: login2, meno: meno2, rola: rola2, region: region2 });
+            repList.push({ login: login2, meno: meno2, rola: rola2, region: region2, pohlavie: pohlavie2, avatar: avatar2 });
           }
         }
       }

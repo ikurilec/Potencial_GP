@@ -26,9 +26,30 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.20.0** (na `main` aj `test` vetve) — **vlastný avatar (DiceBear Adventurer) + Muž/Žena podľa Sheets + sekvenčný WN modal**. Reprezentanti si môžu cez header avatar otvoriť customizer s 4 tabmi (Vlasy, Tvár, Pleť, Doplnky), prepnúť pohlavie ktoré automaticky filtruje vlasy + skrýva mustache pre ženy. Avatar je sync-ovaný cez Google Sheets (`Pouzivatelia.avatar` JSON). Pohlavie sa číta zo Sheets stĺpca `pohlavie`. **WN modal** prerobený na **frontu nevidiet** — ak rep zameškal viacero verzií, postupne si ich preklikne od najstaršej.
+**2.20.1** (na `main` aj `test` vetve) — **bug fix**: `getInitData` v Apps Script nezahŕňal `pohlavie` + `avatar` v repList → admin/iný rep nevidel avatary kolegov uložené po jeho prihlásení.
 
-### v2.20.0 — Vlastný avatar + Muž/Žena (zo Sheets) + sekvenčný WN modal
+### v2.20.1 — Bug fix: getInitData repList chýbal pohlavie + avatar
+
+#### Problém
+- v2.20.0 pridal `pohlavie` + `avatar` do `getRepList` endpointu
+- Login flow ale používa `getInitData` (kombinuje history + repList + milestoneStats do 1 fetch-u pre rýchlejší load)
+- `getInitData` repList čítal **iba** login/meno/rola/region — bez pohlavia a avatara
+- **Symptom:** Admin/manažér/iný rep sa prihlási → nevidí avatary kolegov ktoré sa uložili po nejakom čase
+
+#### Oprava
+- `kód.gs` `getInitData` repList rozšírený o header-based detekciu `pohlavie` + `avatar`
+- Identický pattern ako `getRepList` (case-insensitive lookup hlavičiek)
+- Po redeploy → admin pri prihlásení dostane všetky avatary kolegov
+
+#### Nasadenie
+- **VYŽADUJE redeploy `kód.gs` v Apps Script** (Golem) — nová verzia
+- Gyn nemá `getInitData`, žiadna zmena tam nepotrebná
+
+---
+
+### v2.20.0 — Vlastný avatar (DiceBear Adventurer) + Muž/Žena (zo Sheets) + sekvenčný WN modal
+
+Reprezentanti si môžu cez header avatar otvoriť customizer s 4 tabmi (Vlasy, Tvár, Pleť, Doplnky), prepnúť pohlavie ktoré automaticky filtruje vlasy + skrýva mustache pre ženy. Avatar je sync-ovaný cez Google Sheets (`Pouzivatelia.avatar` JSON). Pohlavie sa číta zo Sheets stĺpca `pohlavie`. **WN modal** prerobený na **frontu nevidiet** — ak rep zameškal viacero verzií, postupne si ich preklikne od najstaršej.
 
 #### Sheets — nové stĺpce v `Pouzivatelia`
 - **Golem** (G+H): `pohlavie` (`M`/`Z`/`m`/`z`/`muz`/`muž`/`zena`/`žena`/`male`/`female`/`F`) + `avatar` (JSON string, prázdny pri inicializácii)
