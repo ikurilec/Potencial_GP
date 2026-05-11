@@ -2223,7 +2223,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.20.7';
+var APP_VERSION = '2.20.8';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9038,6 +9038,73 @@ function avatarFillElement(el, opts) {
     el.style.background = color;
     el.classList.remove('has-avatar');
   }
+}
+
+// ─── Avatar image error handling (Android Chrome flaky network) ───
+// Ak DiceBear <img> zlyhá (timeout, 503, CORS, transient network glitch),
+// fallback na farebné iniciály + auto-retry po 4 sekundách.
+function avatarImgErr(img) {
+  if (!img || !img.parentNode) return;
+  if (img.dataset && img.dataset.errOnce === '1') return; // už spracované
+  try { img.dataset.errOnce = '1'; } catch(e){}
+
+  var parent = img.parentNode;
+  var username = (parent && parent.getAttribute && parent.getAttribute('data-username')) ||
+                 (img.getAttribute && img.getAttribute('data-username')) || '';
+  var name = '';
+  try {
+    if (username) {
+      if (typeof LB_REP_INFO !== 'undefined' && LB_REP_INFO[username]) name = LB_REP_INFO[username].name || '';
+      if (!name && typeof USERS_LOCAL !== 'undefined' && USERS_LOCAL[username]) {
+        name = USERS_LOCAL[username].name || USERS_LOCAL[username].meno || '';
+      }
+      if (!name && typeof MGR_REP_NAMES !== 'undefined' && MGR_REP_NAMES[username]) name = MGR_REP_NAMES[username];
+      if (!name) {
+        var s = (typeof getSession === 'function') ? getSession() : null;
+        if (s && s.username === username) name = s.name || s.meno || '';
+      }
+    }
+  } catch(e){}
+  if (!name) name = username;
+
+  var initials = '';
+  try {
+    if (typeof lbInitials === 'function') initials = lbInitials(name);
+    else if (typeof mgrInitials === 'function') initials = mgrInitials(name);
+    else initials = String(name).slice(0,2).toUpperCase();
+  } catch(e){ initials = String(name || '').slice(0,2).toUpperCase(); }
+
+  try { img.remove(); } catch(e){}
+  try {
+    parent.textContent = initials;
+    parent.classList.remove('has-avatar');
+  } catch(e){}
+
+  // Retry — môže to byť transient výpadok siete. Po 4s skúsime znova.
+  setTimeout(function(){
+    try {
+      if (!parent || !parent.isConnected) return;
+      // Skontroluj že stále nie je vyplnený (medzitým mohol byť re-rendered)
+      if (parent.querySelector && parent.querySelector('img.avatar-img')) return;
+      if (typeof avatarFillElement === 'function') {
+        avatarFillElement(parent, { username: username, name: name });
+      }
+    } catch(e){}
+  }, 4000);
+}
+
+// Globálny delegated listener — error eventy z <img> sa nebublujú,
+// preto capture phase. Funguje pre VŠETKY .avatar-img bez ohľadu na kde sú emitované.
+if (typeof window !== 'undefined' && !window._avatarErrListenerAttached) {
+  document.addEventListener('error', function(e){
+    try {
+      var t = e.target;
+      if (t && t.tagName === 'IMG' && t.classList && t.classList.contains('avatar-img')) {
+        avatarImgErr(t);
+      }
+    } catch(err){}
+  }, true);
+  window._avatarErrListenerAttached = true;
 }
 
 // Náhodne vygeneruje validný config pre daný štýl (pre 🎲 Náhodne + nový užívateľ)
