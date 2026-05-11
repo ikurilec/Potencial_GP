@@ -326,8 +326,48 @@ function findFieldName(fields, candidates) {
   return null;
 }
 
+// Konvertuje rows z `data` sheet (objekty s named keys) na "pivot-cache-like" format
+// pre prechod cez aggregatePivotRows.
+// Skúša viacero spôsobov detekcie hlavičky (môže byť v prvom riadku alebo neskôr).
+function dataSheetToFieldsAndRows(ws) {
+  if (!ws) return { fields: [], rows: [] };
+  // 1) Default — sheet_to_json s defaults (predpokladá header v 1. riadku)
+  var rows = XLSX.utils.sheet_to_json(ws, { defval: null });
+  if (rows.length > 0) {
+    var sample = rows[0];
+    var fields = Object.keys(sample).map(function(k){ return { name: k, items: [] }; });
+    return { fields: fields, rows: rows };
+  }
+  // 2) Fallback — raw čítanie, nájdi prvý riadok ktorý vyzerá ako hlavička
+  var rawRows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+  if (!rawRows || rawRows.length === 0) return { fields: [], rows: [] };
+  // Nájdi prvý riadok s 3+ neprázdnymi string bunkami (heuristika pre header)
+  var hdrIdx = -1;
+  for (var i = 0; i < Math.min(rawRows.length, 30); i++) {
+    var r = rawRows[i];
+    if (!r) continue;
+    var strCount = 0;
+    for (var j = 0; j < r.length; j++) {
+      if (typeof r[j] === 'string' && r[j].trim().length > 0) strCount++;
+    }
+    if (strCount >= 3) { hdrIdx = i; break; }
+  }
+  if (hdrIdx < 0) return { fields: [], rows: [] };
+  var header = rawRows[hdrIdx].map(function(h, i){ return String(h || ('col' + i)).trim(); });
+  var dataRows = [];
+  for (var k = hdrIdx + 1; k < rawRows.length; k++) {
+    var rr = rawRows[k];
+    if (!rr) continue;
+    var obj = {};
+    for (var c = 0; c < header.length; c++) obj[header[c]] = rr[c] !== undefined ? rr[c] : null;
+    dataRows.push(obj);
+  }
+  var fields2 = header.map(function(name){ return { name: name, items: [] }; });
+  return { fields: fields2, rows: dataRows };
+}
+
 // ── NOVÉ: Aggregácia raw pivot rows → per-month okresy data ──
-// rows: pole raw records z pivot cache
+// rows: pole raw records z pivot cache alebo data sheetu
 // productMap: { 'RYEQO': true, 'LEVOSERT': true } — naše produkty
 // Returns: { okres: { yymm: { ourBox, totalBox, comp: { name: box } } } }
 function aggregatePivotRows(rows, fields, productMap) {
@@ -335,15 +375,17 @@ function aggregatePivotRows(rows, fields, productMap) {
   var monthField  = findFieldName(fields, ['Month', 'MESIAC', 'Mesiac']);
   var yearField   = findFieldName(fields, ['Year', 'ROK', 'Rok']);
   var productField= findFieldName(fields, ['Product', 'PRODUCT', 'Produkt']);
-  var boxField    = findFieldName(fields, ['Box', 'BOX', 'Boxes']);
+  // Box count je v IQVIA súboroch často 'Unit1' (počet balení) — alebo 'Box', 'Units', 'Unit', 'Boxes'
+  var boxField    = findFieldName(fields, ['Unit1', 'Box', 'BOX', 'Boxes', 'Units', 'Unit']);
   // Alt: niektoré IQVIA súbory majú "Data" s rows "Box" / "MS Box %"
   var dataField   = findFieldName(fields, ['Data', 'DATA']);
-  var valueField  = findFieldName(fields, ['Value', 'Values']);
+  var valueField  = findFieldName(fields, ['Value', 'Values', 'Value1']);
 
   if (!okresField || !productField) {
     log('  ⚠ pivot cache neobsahuje Okres/Product polia (sú tam: ' + fields.map(function(f){return f.name;}).join(', ') + ')');
     return null;
   }
+  log('  → mapping: okres="' + okresField + '", month="' + monthField + '", year="' + yearField + '", product="' + productField + '", box="' + boxField + '"');
 
   // Year + Month → YYMM
   function rowYymm(row) {
@@ -813,7 +855,126 @@ async function processFile(file){
       }
     }
 
-    // ── PARSE Box sheet → Okresy rows + terit_ms pre snapshot mesiac (FALLBACK) ──
+    // ── NOVÉ: `data` sheet fallback (ESC súbory nemajú Box ani pivot cache) ──
+    var dataSheetUsed = false;
+    if (!pivotCacheUsed && wb.Sheets['data']) {
+      log('  → skúšam `data` sheet ako fallback');
+      var dataPack = dataSheetToFieldsAndRows(wb.Sheets['data']);
+      // Diagnostika — vždy ukáž čo sa našlo
+      var diagRaw = XLSX.utils.sheet_to_json(wb.Sheets['data'], { header: 1, raw: true, defval: null });
+      log('    data sheet: rows v JSON=' + (dataPack ? dataPack.rows.length : 0)
+          + ', raw rows=' + (diagRaw ? diagRaw.length : 0)
+          + ', fields: ' + (dataPack && dataPack.fields.length ? dataPack.fields.map(function(f){return f.name;}).join(', ') : '(žiadne)'));
+      if (diagRaw && diagRaw.length > 0 && (!dataPack || dataPack.rows.length === 0)) {
+        log('      prvé 3 raw rows:');
+        for (var dri = 0; dri < Math.min(3, diagRaw.length); dri++) {
+          log('        [' + dri + '] ' + JSON.stringify(diagRaw[dri]).slice(0, 250));
+        }
+      }
+      if (dataPack && dataPack.rows.length > 0) {
+        var productMap2 = {};
+        prod.columns.forEach(function(c){ productMap2[c.toUpperCase()] = true; });
+        log('    data sheet: ' + dataPack.rows.length + ' rows, fields: ' + dataPack.fields.map(function(f){ return f.name; }).join(', '));
+        var agg2 = aggregatePivotRows(dataPack.rows, dataPack.fields, productMap2);
+        if (agg2 && Object.keys(agg2).length > 0) {
+          // Same Q-aware generation as for pivot cache
+          var okresList2 = Object.keys(agg2);
+          var allYymms2 = {};
+          okresList2.forEach(function(okr){
+            Object.keys(agg2[okr]).forEach(function(yy){ allYymms2[parseInt(yy,10)] = true; });
+          });
+          var yymmList2 = Object.keys(allYymms2).map(function(y){ return parseInt(y, 10); }).sort();
+          log('    ✓ data sheet: ' + okresList2.length + ' okresov, mesiace: ' + yymmList2.join(', '));
+
+          var teritMsByYymm2 = {};
+          yymmList2.forEach(function(yy){
+            var ourSum = 0, totalSum = 0;
+            okresList2.forEach(function(okr){
+              var pd = agg2[okr][yy] || {};
+              Object.keys(pd).forEach(function(p){
+                var box = pd[p];
+                totalSum += box;
+                if (productMap2[p]) ourSum += box;
+              });
+            });
+            if (totalSum > 0) teritMsByYymm2[yy] = ourSum / totalSum;
+          });
+          summaryRows.forEach(function(s){
+            if (teritMsByYymm2[s.mesiac] !== undefined) s.terit_ms = teritMsByYymm2[s.mesiac].toFixed(4);
+          });
+
+          function yymmToQuartalCode2(yy){
+            var year = Math.floor(yy / 100);
+            var m = yy % 100;
+            var q = Math.ceil(m / 3);
+            return (year < 10 ? '0'+year : ''+year) + '0' + q;
+          }
+          function quartalToYymms2(quartalCode){
+            var year = parseInt(quartalCode.slice(0, 2), 10);
+            var q = parseInt(quartalCode.slice(2), 10);
+            var startMonth = (q - 1) * 3 + 1;
+            return [year * 100 + startMonth, year * 100 + startMonth + 1, year * 100 + startMonth + 2];
+          }
+          var quartals2 = {};
+          yymmList2.forEach(function(yy){ quartals2[yymmToQuartalCode2(yy)] = true; });
+
+          Object.keys(quartals2).forEach(function(qCode){
+            var qYymms = quartalToYymms2(qCode);
+            var compSumGlobal = {};
+            okresList2.forEach(function(okr){
+              qYymms.forEach(function(yy){
+                var pd = agg2[okr][yy] || {};
+                Object.keys(pd).forEach(function(p){
+                  if (productMap2[p]) return;
+                  compSumGlobal[p] = (compSumGlobal[p] || 0) + (pd[p] || 0);
+                });
+              });
+            });
+            var topComps = Object.keys(compSumGlobal).sort(function(a,b){ return compSumGlobal[b] - compSumGlobal[a]; }).slice(0, 3);
+
+            okresList2.forEach(function(okr){
+              function msFor(product, yy) {
+                var pd = agg2[okr][yy] || {};
+                var ourBox = pd[product] || 0;
+                var total = 0; Object.keys(pd).forEach(function(pp){ total += pd[pp]; });
+                return total > 0 ? (ourBox / total * 100) : 0;
+              }
+              function msForOurs(yy) {
+                var pd = agg2[okr][yy] || {};
+                var ourBox = 0;
+                prod.columns.forEach(function(c){ ourBox += pd[c.toUpperCase()] || 0; });
+                var total = 0; Object.keys(pd).forEach(function(pp){ total += pd[pp]; });
+                return total > 0 ? (ourBox / total * 100) : 0;
+              }
+              var hasAnyData = qYymms.some(function(yy){
+                return agg2[okr][yy] && Object.keys(agg2[okr][yy]).length > 0;
+              });
+              if (!hasAnyData) return;
+              var addRegions = [cls.region];
+              if(DUPLICATE_TO_PATCH.indexOf(prod.name) !== -1) addRegions.push(PILL_TO_PATCH_REGION[cls.region]);
+              addRegions.forEach(function(reg){
+                okresyRows.push({
+                  produkt: prod.name, oblast: reg, okres: okr, kvartal: qCode,
+                  nas_m1: msForOurs(qYymms[0]).toFixed(2),
+                  nas_m2: msForOurs(qYymms[1]).toFixed(2),
+                  nas_m3: msForOurs(qYymms[2]).toFixed(2),
+                  k1_nazov: topComps[0] || '', k1_m1: topComps[0] ? msFor(topComps[0], qYymms[0]).toFixed(2) : '', k1_m2: topComps[0] ? msFor(topComps[0], qYymms[1]).toFixed(2) : '', k1_m3: topComps[0] ? msFor(topComps[0], qYymms[2]).toFixed(2) : '',
+                  k2_nazov: topComps[1] || '', k2_m1: topComps[1] ? msFor(topComps[1], qYymms[0]).toFixed(2) : '', k2_m2: topComps[1] ? msFor(topComps[1], qYymms[1]).toFixed(2) : '', k2_m3: topComps[1] ? msFor(topComps[1], qYymms[2]).toFixed(2) : '',
+                  k3_nazov: topComps[2] || '', k3_m1: topComps[2] ? msFor(topComps[2], qYymms[0]).toFixed(2) : '', k3_m2: topComps[2] ? msFor(topComps[2], qYymms[1]).toFixed(2) : '', k3_m3: topComps[2] ? msFor(topComps[2], qYymms[2]).toFixed(2) : ''
+                });
+              });
+            });
+          });
+          log('    ✓ vygenerovaných ' + okresyRows.length + ' okresy riadkov z data sheet (kvartály: ' + Object.keys(quartals2).join(', ') + ')');
+          dataSheetUsed = true;
+          pivotCacheUsed = true; // bráni Box fallback
+        } else {
+          log('    ⚠ data sheet neobsahoval useful data');
+        }
+      }
+    }
+
+    // ── PARSE Box sheet → Okresy rows + terit_ms pre snapshot mesiac (POSLEDNÝ FALLBACK) ──
     // Niektoré produkty (napr. ESC) nemajú Box sheet → terit_ms = sk_ms pre všetky mesiace (fallback)
     var hasBox = !!wb.Sheets['Box'];
     if(!hasBox && !pivotCacheUsed) {
