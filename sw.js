@@ -4,7 +4,7 @@
 // ║  cache-first pre ostatné assety (rýchly štart, offline ready).║
 // ╚══════════════════════════════════════════════════════════════╝
 
-var CACHE_NAME = 'potencial-vl-v5';
+var CACHE_NAME = 'potencial-vl-v6-avatars';
 
 self.addEventListener('install', function(event){
   // Okamžitá aktivácia — nechceme čakať na zavretie všetkých kariet
@@ -47,6 +47,27 @@ self.addEventListener('fetch', function(event){
   if(url.hostname.indexOf('script.google.com') !== -1 ||
      url.hostname.indexOf('googleusercontent.com') !== -1){
     return; // pass-through, browser handle
+  }
+
+  // DiceBear avatar API — cache-first (SVG je immutable per URL parametre)
+  if(url.hostname.indexOf('api.dicebear.com') !== -1){
+    event.respondWith(
+      caches.match(req).then(function(cached){
+        if(cached) return cached;
+        return fetch(req).then(function(resp){
+          if(resp && (resp.ok || resp.type === 'opaque')){
+            var cloned = resp.clone();
+            caches.open(CACHE_NAME).then(function(cache){
+              cache.put(req, cloned);
+            }).catch(function(){});
+          }
+          return resp;
+        }).catch(function(){
+          return new Response('', { status: 503 });
+        });
+      })
+    );
+    return;
   }
 
   // version.json — VŽDY network, nikdy cache

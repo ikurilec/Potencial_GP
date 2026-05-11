@@ -23,9 +23,24 @@ function doGet(e) {
       var sheet = ss.getSheetByName('Pouzivatelia');
       if(!sheet) return jsonResponse({ok: false});
       var rows = sheet.getDataRange().getValues();
+      // Header-based detekcia pre pohlavie a avatar
+      var loginHeader = rows[0] || [];
+      var loginPohlavieIdx = -1, loginAvatarIdx = -1;
+      for(var lhi = 0; lhi < loginHeader.length; lhi++) {
+        var lh = String(loginHeader[lhi] || '').trim().toLowerCase();
+        if(lh === 'pohlavie' || lh === 'gender') loginPohlavieIdx = lhi;
+        if(lh === 'avatar') loginAvatarIdx = lhi;
+      }
       for(var i = 1; i < rows.length; i++) {
         if((rows[i][0]||'').trim().toLowerCase() === username && (rows[i][1]||'') === password) {
-          return jsonResponse({ok: true, name: rows[i][2]||'', role: rows[i][3]||'rep', region: rows[i][4]||''});
+          return jsonResponse({
+            ok: true,
+            name: rows[i][2]||'',
+            role: rows[i][3]||'rep',
+            region: rows[i][4]||'',
+            pohlavie: loginPohlavieIdx >= 0 ? String(rows[i][loginPohlavieIdx]||'').trim() : '',
+            avatar:   loginAvatarIdx   >= 0 ? String(rows[i][loginAvatarIdx]  ||'').trim() : ''
+          });
         }
       }
       return jsonResponse({ok: false});
@@ -239,18 +254,62 @@ function doGet(e) {
       var sheet = ss.getSheetByName('Pouzivatelia');
       if(!sheet) return jsonResponse({ok: false, error: 'Sheet Pouzivatelia nenajdeny'});
       var rows = sheet.getDataRange().getValues();
+      // Najdi indexy stĺpcov pohlavie + avatar v hlavičke (case-insensitive)
+      var header = rows[0] || [];
+      var pohlavieIdx = -1, avatarIdx = -1;
+      for(var hi = 0; hi < header.length; hi++) {
+        var h = String(header[hi] || '').trim().toLowerCase();
+        if(h === 'pohlavie' || h === 'gender') pohlavieIdx = hi;
+        if(h === 'avatar') avatarIdx = hi;
+      }
       var reps = [];
       for(var i = 1; i < rows.length; i++) {
         var login  = String(rows[i][0] || '').trim();
         var meno   = String(rows[i][2] || '').trim();
         var rola   = String(rows[i][3] || '').trim().toLowerCase();
         var region = String(rows[i][4] || '').trim();
+        var pohlavie = (pohlavieIdx >= 0) ? String(rows[i][pohlavieIdx] || '').trim() : '';
+        var avatar   = (avatarIdx   >= 0) ? String(rows[i][avatarIdx]   || '').trim() : '';
         if(!login || !meno) continue;
         if(rola === 'rep west' || rola === 'rep east') {
-          reps.push({ login: login, meno: meno, rola: rola, region: region });
+          reps.push({ login: login, meno: meno, rola: rola, region: region, pohlavie: pohlavie, avatar: avatar });
         }
       }
       return jsonResponse({ok: true, reps: reps});
+    }
+
+    // ── ULOŽENIE AVATAR CONFIGU ──
+    // URL: ?action=setAvatar&username=j.bohovic&config=<JSON>&token=...
+    // Zapíše JSON string do stĺpca "avatar" v tabe Pouzivatelia.
+    // config musí byť validný JSON (alebo prázdny string pre reset).
+    if(action === 'setAvatar') {
+      if(!requireToken(e)) return jsonResponse({ok: false, error: 'Unauthorized'});
+      var avUser = (e.parameter.username || '').trim().toLowerCase();
+      var avConfig = e.parameter.config || '';
+      if(!avUser) return jsonResponse({ok: false, error: 'missing username'});
+      // Validácia max 2000 znakov a validný JSON ak nie je prázdny
+      if(avConfig.length > 2000) return jsonResponse({ok: false, error: 'config too long'});
+      if(avConfig) {
+        try { JSON.parse(avConfig); } catch(err) { return jsonResponse({ok: false, error: 'invalid JSON: ' + err}); }
+      }
+      var avSheet = ss.getSheetByName('Pouzivatelia');
+      if(!avSheet) return jsonResponse({ok: false, error: 'Sheet Pouzivatelia nenajdeny'});
+      var avRows = avSheet.getDataRange().getValues();
+      // Nájdi avatar stĺpec
+      var avHeader = avRows[0] || [];
+      var avIdx = -1;
+      for(var ahi = 0; ahi < avHeader.length; ahi++) {
+        if(String(avHeader[ahi] || '').trim().toLowerCase() === 'avatar') { avIdx = ahi; break; }
+      }
+      if(avIdx < 0) return jsonResponse({ok: false, error: 'avatar column not found in Pouzivatelia header'});
+      // Nájdi riadok podľa loginu
+      for(var ari = 1; ari < avRows.length; ari++) {
+        if(String(avRows[ari][0] || '').trim().toLowerCase() === avUser) {
+          avSheet.getRange(ari + 1, avIdx + 1).setValue(avConfig);
+          return jsonResponse({ok: true});
+        }
+      }
+      return jsonResponse({ok: false, error: 'user not found: ' + avUser});
     }
 
     // ═══════════════════════════════════════════════════════════════════
