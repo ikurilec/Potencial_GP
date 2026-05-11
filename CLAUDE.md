@@ -26,7 +26,32 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.20.4** (na `main` aj `test` vetve) — **gyn chart načítava predošlý Q okresy**: trend graf v gyn Trhový podiel pre 6-mesačný timeline (Okt - Mar) teraz fetchuje OKRESY pre aktuálny aj predošlý kvartál paralelne — konkurenti viditeľní cez všetkých 6 mesiacov, nie iba aktuálny Q.
+**2.20.8** (na `main` aj `test` vetve) — **avatar fallback + auto-retry pri Android flaky network**: keď DiceBear `<img>` zlyhá (timeout, 503, transient CORS), globálny delegated error listener prepne na farebné iniciály a po 4 sekundách skúsi obrázok znova nahrať. Žiadne ďalšie zmeny call-sites — listener funguje pre VŠETKY `.avatar-img` (rebríček, plnenie, manažér, gyn, header). Rieši reportovaný issue na Androide: niekedy sa avatar v rebríčku nezobrazí napriek tomu, že v hlavičke je viditeľný.
+
+### v2.20.8 — Avatar fallback + auto-retry (Android flaky network fix)
+
+#### Problém
+- Android Chrome má občas slabú/nestabilnú sieť (mobile data switching, prerušenia)
+- DiceBear API request môže zlyhať (timeout, 503, transient CORS error)
+- `<img class="avatar-img">` predtým nemal `onerror` handler → broken image silently → kruh ostal s farebným pozadím bez obsahu
+- Symptóm: reprezentant vidí svoj avatar v hlavičke (cached/loaded skôr), ale v rebríčku má prázdny kruh — nezobrazia sa ani iniciály
+
+#### Oprava
+- **Nová funkcia `avatarImgErr(img)`** — keď zlyhá `<img class="avatar-img">`:
+  1. Vyhľadá meno z `LB_REP_INFO` / `USERS_LOCAL` / `MGR_REP_NAMES` / `session` (cez `data-username` atribút)
+  2. Vypočíta iniciály (`lbInitials` / `mgrInitials` fallback)
+  3. Odstráni broken img, nastaví iniciály do parent elementu, odstráni `has-avatar` class
+  4. Po 4 sekundách skúsi avatar znova vykresliť cez `avatarFillElement` — ak bol výpadok transient, používateľ dostane svoj avatar
+  5. `data-err-once` guard zabráni nekonečnému loopu retry-error
+- **Globálny delegated listener na document** (capture phase, lebo `error` event sa nebubluje z `<img>`)
+- **Zero call-site changes** — funguje automaticky pre VŠETKY emitácie `<img class="avatar-img">` (rebríček podium + zoznam, manažér zoznam + detail, plnenie sheet + zoznam, gyn render funkcie, header avatar)
+
+#### Štatistika
+- **Verzia 2.20.7 → 2.20.8** (PATCH — bug fix)
+- ~60 insertions v `index.html`
+- 0 backend zmien (žiadny Apps Script redeploy)
+
+---
 
 ### v2.20.4 — Gyn chart paralelný fetch okresov pre 6-mesačný trend
 
