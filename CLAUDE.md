@@ -26,7 +26,30 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.20.2** (na `main` aj `test` vetve) — **bug fix gyn linka**: gyn render používal `gynInitials` priamo namiesto `avatarGetConfig` → gyn manažéri/reps nevideli avatary kolegov vôbec. `gynLoadRepList` teraz ukladá avatar config do `USERS_LOCAL` aby `avatarGetConfig` fungoval.
+**2.20.3** (na `main` aj `test` vetve) — **bug fix gyn chart**: gyn Trhový podiel chart nezobrazoval konkurentov keď mali dáta iba pre 1 mesiac (Mar 2026). SVG `polyline` element potrebuje 2+ body — pri 1 bode bola čiara neviditeľná. Teraz pri 1 bode rendruje kruh, pri 2+ bodoch polyline + kruhy na koncoch.
+
+### v2.20.3 — Bug fix: gyn chart nezobrazoval konkurentov s 1 dátovým bodom
+
+#### Problém
+- Trhový podiel chart pre Q1 2026 ukázal Ryeqo (náš produkt) ako spike pri Mar (36.19%)
+- Konkurenti (ZOLADEX, RESELIGO, VISANNE) sú v legende s % hodnotami, ale **na grafe ich nebolo vidno**
+- Príčina: konkurenčné dáta sú z `okresy` (Q1 2026), kde má hodnoty iba Mar (Jan/Feb empty)
+- Priemer pre konkurenta cez okresy → 1 dátový bod
+- SVG `<polyline>` potrebuje **2+ body** aby bola viditeľná → invisible single-point line
+
+#### Oprava
+- Konkurenti s 1 bodom renderovaní ako `<circle>` (r=5)
+- Konkurenti s 2+ bodmi renderovaní ako `<polyline>` + `<circle>` na koncoch
+- Vďaka tomu sú viditeľní vždy keď majú dáta (1 alebo viac mesiacov)
+
+#### Poznámka — dátový stav
+- Okresy len pre aktuálny Q (Q1 2026) → konkurenti max 3 body (Jan, Feb, Mar)
+- Pre rozšírenie chartu o predchádzajúce Q (Oct-Dec 2025) by sa muselo dotahovať okresy aj z Q4 2025
+- TODO budúca verzia: paralelný fetch okresy z `kvartal` aj `kvartal - 1` pre 6-mesačný timeline
+
+---
+
+### v2.20.2 — Bug fix: gyn linka nezobrazovala avatary
 
 ### v2.20.2 — Bug fix: gyn linka nezobrazovala avatary
 
