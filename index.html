@@ -2223,7 +2223,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.20.5';
+var APP_VERSION = '2.20.6';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6783,9 +6783,11 @@ function gynPharmaRender(resp) {
   // Top 3 konkurenti podľa total MS
   var topComps = Object.keys(compTotalMs).sort(function(a,b){ return compTotalMs[b] - compTotalMs[a]; }).slice(0, 3);
   // Priemer MS pre každého top konkurenta + mesiac (v %)
+  // Spoj všetky mesiace cez aktuálny Q + predošlý Q (pre 6-mes timeline)
+  var allChartYymms = qYymms_chart.concat(qYymmsPrev);
   var compLines = topComps.map(function(name){
     var byYymm = {};
-    qYymms_chart.forEach(function(y){
+    allChartYymms.forEach(function(y){
       var d = compMsByMonth[name];
       if(d && d.cnt[y] > 0) byYymm[y] = d.sum[y] / d.cnt[y]; // priemer v %
     });
