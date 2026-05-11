@@ -26,7 +26,31 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.20.1** (na `main` aj `test` vetve) — **bug fix**: `getInitData` v Apps Script nezahŕňal `pohlavie` + `avatar` v repList → admin/iný rep nevidel avatary kolegov uložené po jeho prihlásení.
+**2.20.2** (na `main` aj `test` vetve) — **bug fix gyn linka**: gyn render používal `gynInitials` priamo namiesto `avatarGetConfig` → gyn manažéri/reps nevideli avatary kolegov vôbec. `gynLoadRepList` teraz ukladá avatar config do `USERS_LOCAL` aby `avatarGetConfig` fungoval.
+
+### v2.20.2 — Bug fix: gyn linka nezobrazovala avatary
+
+#### Problém
+- v2.20.1 opravil GP linku, ale gyn render funkcie boli stále staré
+- 3 miesta v gyn použili `gynInitials(name)` priamo namiesto `avatarGetConfig`:
+  - `gynProdSheetRenderRepList` (zoznam reps v Trhový podiel)
+  - `gynRenderRepDetail` (detail reprezentanta — header)
+  - `gynPlnenieRender` (Plnenie zoznam reprezentantov)
+- Aj keď gyn rep si avatar uložil, ostatní (manažéri, reps) ho nevideli
+- **Plus:** `gynLoadRepList` nepopulvalo `USERS_LOCAL` → `avatarGetConfig` nemal kde hľadať
+
+#### Oprava
+- **`gynLoadRepList`** rozšírené — pre každého rep parsuje pohlavie + avatar JSON a uloží do `USERS_LOCAL[login]`
+- **Nový helper `gynAvatarContent(login, name)`** — vracia `{html, hasAvatar}`, použité na 3 render miestach
+- **3 render miesta aktualizované** — pridaný `has-avatar` class + `data-username` atribút pre re-render pri `avatar-changed` event-e
+
+#### Nasadenie
+- **NEPOTREBUJE redeploy Apps Script** — gyn `kód_gyn.gs` neobsahuje `getInitData`, `getRepList` už vracal pohlavie + avatar správne
+- Iba frontend zmena → GitHub Pages publikuje automaticky
+
+---
+
+### v2.20.1 — Bug fix: getInitData repList chýbal pohlavie + avatar
 
 ### v2.20.1 — Bug fix: getInitData repList chýbal pohlavie + avatar
 

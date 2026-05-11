@@ -2223,7 +2223,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.20.1';
+var APP_VERSION = '2.20.2';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5976,9 +5976,35 @@ function gynLoadRepList(user) {
     .then(function(data){
       if(data.ok && data.reps) {
         GYN_STATE.repList = data.reps;
+        // Naplň USERS_LOCAL — aby avatarGetConfig našiel avatary gyn reprezentantov vo všetkých render miestach
+        data.reps.forEach(function(r) {
+          var rawG = String(r.pohlavie || r.gender || '').trim().toLowerCase();
+          var g = null;
+          if (rawG === 'm' || rawG === 'muz' || rawG === 'muž' || rawG === 'male') g = 'male';
+          else if (rawG === 'z' || rawG === 'f' || rawG === 'zena' || rawG === 'žena' || rawG === 'female') g = 'female';
+          var av = null;
+          var avRaw = String(r.avatar || '').trim();
+          if (avRaw) {
+            try {
+              var parsed = JSON.parse(avRaw);
+              if (parsed && parsed.style && AVATAR_SCHEMAS[parsed.style]) av = parsed;
+            } catch(e){}
+          }
+          USERS_LOCAL[r.login] = { region: r.region, gender: g, avatar: av };
+        });
         if(GYN_APP.nav === 'plnenie') gynRenderContent(user);
       }
     }).catch(function(){});
+}
+
+// Helper: vráti HTML pre gyn avatar circle — buď <img> s DiceBear URL alebo iniciály
+function gynAvatarContent(login, name) {
+  var config = avatarGetConfig(login);
+  if (config) {
+    var url = avatarUrl(config, 80);
+    return { html: '<img src="' + url + '" alt="" class="avatar-img">', hasAvatar: true };
+  }
+  return { html: gynInitials(name), hasAvatar: false };
 }
 
 // ── Shell (header + nav) — renderuje sa raz, obsah sa vymieňa ──
@@ -6412,9 +6438,10 @@ function gynProdSheetRenderRepList(prodLabel, data) {
       : '';
     var chevron = clickable ? '<div class="gyn-ps-chev">›</div>' : '';
 
+    var avGps = gynAvatarContent(r.login, r.meno);
     return '<div class="pl-ps-rep" data-username="' + r.login + '"' + clickAttr + '>' +
       medalHtml +
-      '<div class="pl-ps-avatar" style="background:' + avatarColor + '">' + gynInitials(r.meno) + '</div>' +
+      '<div class="pl-ps-avatar' + (avGps.hasAvatar ? ' has-avatar' : '') + '" data-username="' + r.login + '" style="background:' + avatarColor + '">' + avGps.html + '</div>' +
       '<div class="pl-ps-info">' +
         '<div class="pl-ps-name">' + gynEsc(r.meno) + '</div>' +
         teritHtml +
@@ -6914,11 +6941,12 @@ function gynPlnenieRenderRepDetail(el, data) {
   for(var i=0; i<login.length; i++) hash = (Math.imul(31, hash) + login.charCodeAt(i)) | 0;
   var avatarColor = avatarColors[Math.abs(hash) % avatarColors.length];
 
+  var avGd = gynAvatarContent(login, meno);
   var html =
     '<div class="mgr-plnenie-detail" style="display:block">' +
       '<button type="button" class="mgr-back" onclick="gynCloseRepDetail()" style="margin-bottom:10px">← Späť</button>' +
       '<div class="dhdr">' +
-        '<div class="dhdr-avatar" style="background:'+avatarColor+'">' + gynInitials(meno) + '</div>' +
+        '<div class="dhdr-avatar' + (avGd.hasAvatar ? ' has-avatar' : '') + '" data-username="' + login + '" style="background:'+avatarColor+'">' + avGd.html + '</div>' +
         '<div style="flex:1;min-width:0">' +
           '<div class="dhdr-name">' + gynEsc(meno) + '</div>' +
           '<div class="dhdr-sub">' + gynEsc(region) + ' · @' + gynEsc(login) + '</div>' +
@@ -7376,9 +7404,10 @@ function gynPlnenieRenderMgr(el, user, data) {
         ? '<div class="gyn-rep-pred">predikcia konca Q' + q + ' <span>' + plnenieFormatPct(repPredikcia) + '</span></div>'
         : '';
 
+      var avGpr = gynAvatarContent(a.rep.login || loginAttr, a.rep.meno);
       html += '<div class="pl-rep-card pl-rep-clickable" onclick="gynOpenRepDetail(\''+loginAttr+'\',\''+menoAttr+'\',\''+regionAttr+'\')">' +
         medalHtml +
-        '<div class="pl-rep-avatar" style="background:'+avatarColor+'">' + gynInitials(a.rep.meno) + '</div>' +
+        '<div class="pl-rep-avatar' + (avGpr.hasAvatar ? ' has-avatar' : '') + '" data-username="' + (a.rep.login || loginAttr) + '" style="background:'+avatarColor+'">' + avGpr.html + '</div>' +
         '<div class="pl-rep-body">' +
           '<div class="pl-rep-name">' + gynEsc(a.rep.meno) + '</div>' +
           '<div class="pl-rep-meta">' + gynEsc(a.rep.region||'') + '</div>' +
