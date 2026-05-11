@@ -26,7 +26,88 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.19.5** (na `main` aj `test` vetve) — **plný DOM carousel peek** (stabilná verzia) + **future Q taby disabled** + **Q taby reagujú pri swipe**. Pri swipe vidno reálny plný obsah ďalšieho Q (sumár, regióny, produkty, zoznam reps) ako sa približuje. Q3/Q4 (future) sú vyšedené a swipe na ne má rubber band. Pri swipe progress > 20% sa active class na Q tab-e predznamená na cieľový Q.
+**2.20.0** (na `main` aj `test` vetve) — **vlastný avatar (DiceBear Adventurer) + Muž/Žena podľa Sheets + sekvenčný WN modal**. Reprezentanti si môžu cez header avatar otvoriť customizer s 4 tabmi (Vlasy, Tvár, Pleť, Doplnky), prepnúť pohlavie ktoré automaticky filtruje vlasy + skrýva mustache pre ženy. Avatar je sync-ovaný cez Google Sheets (`Pouzivatelia.avatar` JSON). Pohlavie sa číta zo Sheets stĺpca `pohlavie`. **WN modal** prerobený na **frontu nevidiet** — ak rep zameškal viacero verzií, postupne si ich preklikne od najstaršej.
+
+### v2.20.0 — Vlastný avatar + Muž/Žena (zo Sheets) + sekvenčný WN modal
+
+#### Sheets — nové stĺpce v `Pouzivatelia`
+- **Golem** (G+H): `pohlavie` (`M`/`Z`/`m`/`z`/`muz`/`muž`/`zena`/`žena`/`male`/`female`/`F`) + `avatar` (JSON string, prázdny pri inicializácii)
+- **Gyn** (H+I): rovnaké
+- Header-based detekcia (case-insensitive) — záleží na **názve hlavičky**, nie na pozícii stĺpca
+
+#### Apps Script (`kód.gs` + `kód_gyn.gs`)
+- **`login` endpoint** rozšírený: vracia aj `pohlavie` + `avatar` z riadku prihláseného usera
+- **`getRepList`** vracia `pohlavie` + `avatar` polia pre každého repa
+- **Nový endpoint `setAvatar`**: parametre `username` + `config` (JSON) + `token`. Validuje JSON (max 2000 znakov), nájde riadok podľa loginu, zapíše do `avatar` stĺpca. Vráti `{ok:true}` alebo `{ok:false, error}`.
+
+#### Avatar customizer (UI)
+- **DiceBear Adventurer** štýl (cartoon-y, prijateľné pre prof. kontext)
+- **Header avatar** klikateľný (38px kruh s ceruzkou) — otvorí customizer modal
+- **4 taby:** Vlasy / Tvár / Pleť / Doplnky
+- **🎲 Náhodne** tlačidlo — re-roll všetkých parametrov, **zachová aktuálne pohlavie**
+- **🗑 Odstrániť avatar** — custom confirm modal v štýle appky (nie browser default), červený CTA + ghost Zrušiť
+- **Pozadie vždy biele** (`backgroundColor=ffffff` force-injected v `avatarUrl()`)
+
+#### Pohlavie picker (`👩 Žena | 👨 Muž`)
+- Segmented control nad preview (modrý active stav)
+- Default pri prvom otvorení: zo Sheets `pohlavie` → fallback zo session → fallback random
+- **Prepnutie Žena ↔ Muž:** auto-fix vlasov (`long*` ↔ `short*`), auto-vypnutie mustache pri Muž → Žena
+- **Mustache skrytá pre Ženu** v Doplnky tabe (`genderExclude: { female: ['mustache'] }`)
+- **Random tlačidlo zachováva pohlavie** — fix bug-u (predtým 50/50 random gender pri každom roll-i)
+
+#### Customizer parametre (Adventurer)
+- **Vlasy:** 45 štýlov (26 `long*` + 19 `short*`) + **33 hex farieb** vrátane ryšavej škály (`b85820`, `c25e25`, `cb6820`, `d97e3f`, `e8a05c`)
+- **Tvár:** 26 očí + 15 obočí + 30 úst
+- **Pleť:** 4 hex odtiene
+- **Doplnky:** Okuliare (5) + Náušnice (6) + Detaily (birthmark/blush/freckles/mustache)
+
+#### Render avatara na 9 miestach
+1. Header (klikateľný)
+2-3. Rebríček podium + zoznam
+4-5. Manažér zoznam + detail
+6-7. Plnenie zoznam + detail
+8. Plnenie sheet (Trhový podiel) — zoznam reprezentantov
+9. Gyn equivalents
+
+**Fallback iniciály**: ak rep nemá nastavený avatar, zobrazí sa pôvodný farebný kruh.
+
+#### Storage flow
+- **`USERS_LOCAL[u].avatar` + `LB_REP_INFO[u].avatar`** — in-memory kopia zo Sheets (cez `buildRepData`)
+- **`session.avatar`** — pre prihláseného usera z login response
+- **`localStorage['avatar_cfg_<username>']`** — offline cache
+- **`avatarGetConfig`** priorita: USERS_LOCAL → LB_REP_INFO → session → localStorage
+- **`avatarSetConfig`** — sync in-memory + localStorage + async POST na backend (golem/gyn podľa `session.line`)
+
+#### Session enrichment
+- `loginSuccess(username, name, role, region, extra)` — pridaný `extra` parameter pre pohlavie + avatar
+- Normalizácia: `M/m/muz/muž/male` → `male`, `Z/z/F/f/zena/žena/female` → `female`
+- Avatar JSON string z login response sa parsuje a validuje (style musí existovať v `AVATAR_SCHEMAS`)
+
+#### WN modal — nový sekvenčný systém
+- **`WN_HISTORY`** array — chronologický zoznam všetkých verzií
+- Pri otvorení appky sa zobrazí PRVÝ nevidet → klik "Ďalej →" → označí ako videný + re-render s ďalším
+- **Posledný** v sekvencii má tlačidlo "Rozumiem, ďakujem! ✓"
+- **Progress indikátor "1 z N"** len keď je v queue 2+ items
+- **Fade transition** medzi modalmi
+- **Bug fix:** `wnClose()` guard — nesmie označovať seen ak modal nie je otvorený (predtým `satoriShow()` volal preventívne)
+
+#### Custom confirm modal pre Odstrániť avatar
+- Nahradzuje native `confirm()` — modal v štýle appky
+- Z-index 6000 (nad customizerom 5000)
+- Backdrop blur + 🗑 ikona v červenom gradient kruhu + ghost/červený CTA
+
+#### Service Worker (`sw.js`)
+- Cache version bump: `potencial-vl-v5` → `potencial-vl-v6-avatars`
+- **DiceBear cache-first** — explicit handler pre `api.dicebear.com` (SVG immutable per parameter set)
+
+#### Štatistika
+- **Verzia 2.19.5 → 2.20.0** (MINOR — nová feature)
+- **~1200 insertions / ~150 deletions** v `index.html`
+- **~80 insertions** v oboch Apps Scriptoch
+- 0 JS errors v Playwright smoke testoch
+- Apps Script redeploy required (oba: Golem + Gyn) — **HOTOVO**
+
+---
 
 ### v2.19.5 — Plný DOM carousel peek (stabilný) + future Q block + tab animation pri swipe
 
