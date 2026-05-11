@@ -2223,7 +2223,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.20.8';
+var APP_VERSION = '2.20.9';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9640,6 +9640,36 @@ function buildRepData(reps) {
     mgrRenderReps();
     preloadAllPharmaData();
   }
+
+  // Re-fill všetkých avatar containerov ktoré sú už v DOM
+  // (Plnenie, manažér zoznam, atď. mohli byť renderované PRED tým ako prišli avatar dáta zo Sheets)
+  try { avatarRefreshAllInDom(); } catch(e){}
+}
+
+// Iteruje všetky avatar circles v DOM s data-username atribútom a re-fillne ich
+// aktuálnym configom z USERS_LOCAL / LB_REP_INFO. Volá sa po buildRepData (keď
+// prídu dáta zo Sheets), aby sa zobrazili avatary v už vyrenderovaných paneloch.
+function avatarRefreshAllInDom() {
+  if (typeof avatarFillElement !== 'function') return;
+  var classes = ['lb-p-avatar','lb-avatar','mgr-avatar','mgr-davatar','dhdr-avatar',
+                 'pl-ps-avatar','pl-rep-avatar','gyn-rep-avatar','hdr-avatar'];
+  classes.forEach(function(cls){
+    var nodes = document.querySelectorAll('.' + cls + '[data-username]');
+    Array.prototype.forEach.call(nodes, function(el){
+      try {
+        var u = el.getAttribute('data-username');
+        if (!u) return;
+        var name = u, color = null;
+        if (typeof LB_REP_INFO !== 'undefined' && LB_REP_INFO[u]) {
+          name = LB_REP_INFO[u].name || u;
+          color = LB_REP_INFO[u].color || null;
+        } else if (typeof MGR_REP_NAMES !== 'undefined' && MGR_REP_NAMES[u]) {
+          name = MGR_REP_NAMES[u];
+        }
+        avatarFillElement(el, { username: u, name: name, color: color });
+      } catch(e){}
+    });
+  });
 }
 
 function loadRepList() {

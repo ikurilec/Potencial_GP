@@ -26,7 +26,31 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.20.8** (na `main` aj `test` vetve) — **avatar fallback + auto-retry pri Android flaky network**: keď DiceBear `<img>` zlyhá (timeout, 503, transient CORS), globálny delegated error listener prepne na farebné iniciály a po 4 sekundách skúsi obrázok znova nahrať. Žiadne ďalšie zmeny call-sites — listener funguje pre VŠETKY `.avatar-img` (rebríček, plnenie, manažér, gyn, header). Rieši reportovaný issue na Androide: niekedy sa avatar v rebríčku nezobrazí napriek tomu, že v hlavičke je viditeľný.
+**2.20.9** (na `main` aj `test` vetve) — **post-fetch avatar re-fill**: pri prihlásení admina sa Plnenie zoznam renderoval PRED tým ako `getInitData` doručil avatar config do `USERS_LOCAL`. Avatary sa preto nezobrazili v už vyrenderovaných paneloch (Plnenie zoznam reps, manažér zoznam) — fungovali iba v Rebríčku ktorý sa renderuje na klik (po prijatí dát). Fix: `avatarRefreshAllInDom()` helper sa zavolá na konci `buildRepData()` — iteruje všetky `[class*=avatar][data-username]` containery v DOM a refilluje ich aktuálnym configom.
+
+### v2.20.9 — Post-fetch avatar re-fill (Plnenie zoznam reps na Androide)
+
+#### Problém
+- Admin sa prihlási na Android telefóne
+- **Plnenie obrazovka** (default tab) → reprezentanti v zozname **nemajú avatary** (len farebné iniciály)
+- **Rebríček** (po kliknutí) → avatary sú viditeľné ✅
+- **Hlavička admin avatara** → viditeľný ✅
+- Príčina: Plnenie sa renderuje synchronne v `mgrEnter()` PRED tým ako `loadInitData()` doručí `repList` s `avatar` poliami do `USERS_LOCAL`. Rebríček sa renderuje až na klik — vtedy už USERS_LOCAL obsahuje avatar config
+
+#### Oprava
+- **Nová funkcia `avatarRefreshAllInDom()`** — iteruje všetky avatar containery (`.lb-p-avatar`, `.lb-avatar`, `.mgr-avatar`, `.mgr-davatar`, `.dhdr-avatar`, `.pl-ps-avatar`, `.pl-rep-avatar`, `.gyn-rep-avatar`, `.hdr-avatar`) s `data-username` v DOM a refilluje ich cez `avatarFillElement` aktuálnym configom z `LB_REP_INFO` / `USERS_LOCAL`
+- **Volaná na konci `buildRepData()`** — keď prídu dáta zo Sheets (cez `getInitData` alebo fallback `getRepList`), avatary sa okamžite premietnu do už vyrenderovaných paneloch bez potreby re-renderovať celé view-y
+
+#### Štatistika
+- **Verzia 2.20.8 → 2.20.9** (PATCH — bug fix)
+- ~30 insertions v `index.html`
+- 0 backend zmien (žiadny Apps Script redeploy)
+
+---
+
+### v2.20.8 — Avatar fallback + auto-retry (Android flaky network fix)
+
+**2.20.8** — **avatar fallback + auto-retry pri Android flaky network**: keď DiceBear `<img>` zlyhá (timeout, 503, transient CORS), globálny delegated error listener prepne na farebné iniciály a po 4 sekundách skúsi obrázok znova nahrať. Žiadne ďalšie zmeny call-sites — listener funguje pre VŠETKY `.avatar-img` (rebríček, plnenie, manažér, gyn, header). Rieši reportovaný issue na Androide: niekedy sa avatar v rebríčku nezobrazí napriek tomu, že v hlavičke je viditeľný.
 
 ### v2.20.8 — Avatar fallback + auto-retry (Android flaky network fix)
 
