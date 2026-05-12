@@ -388,11 +388,24 @@
   .dhdr-avatar.has-avatar,.pl-ps-avatar.has-avatar,.pl-rep-avatar.has-avatar,
   .gyn-rep-avatar.has-avatar,.hdr-avatar.has-avatar{overflow:hidden;padding:0;background:transparent !important}
   /* Header avatar button */
-  .hdr-avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;font-family:var(--font-display);cursor:pointer;border:2px solid rgba(255,255,255,.2);box-shadow:0 2px 8px rgba(0,0,0,.15);transition:transform var(--t-fast),border-color var(--t-fast);background:linear-gradient(135deg,#1E40AF,#3B82F6);overflow:hidden;flex-shrink:0;-webkit-tap-highlight-color:transparent}
+  .hdr-avatar{width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;color:#fff;font-family:var(--font-display);cursor:pointer;border:3px solid rgba(255,255,255,.28);box-shadow:0 5px 16px rgba(0,0,0,.28);transition:transform var(--t-fast),border-color var(--t-fast);background:linear-gradient(135deg,#1E40AF,#3B82F6);overflow:hidden;flex-shrink:0;-webkit-tap-highlight-color:transparent}
   .hdr-avatar:active{transform:scale(.94)}
   .hdr-avatar:hover{border-color:rgba(255,255,255,.4)}
-  .hdr-avatar-edit{position:absolute;bottom:-2px;right:-2px;width:14px;height:14px;border-radius:50%;background:#2563EB;color:#fff;display:flex;align-items:center;justify-content:center;font-size:8px;border:2px solid #0C1E35;pointer-events:none}
-  .hdr-avatar-wrap{position:relative;margin-right:8px}
+  .hdr-avatar-edit{position:absolute;bottom:-3px;right:-3px;width:22px;height:22px;border-radius:50%;background:#fff;color:#1E40AF;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;border:2.5px solid #0C1E35;box-shadow:0 2px 8px rgba(37,99,235,.45),0 0 0 1px rgba(255,255,255,.6) inset;pointer-events:none;z-index:3;line-height:1}
+  .hdr-avatar-wrap{position:relative;margin-right:8px;cursor:pointer}
+  /* Pulzujúce halo + bouncing edit ceruzka pre užívateľov bez nastaveného avatara */
+  .hdr-avatar-wrap.avatar-unset .hdr-avatar-edit{animation:hdrEditBounce 1.8s ease-in-out infinite}
+  .hdr-avatar-wrap.avatar-unset .hdr-avatar{animation:hdrAvatarHalo 2.2s ease-in-out infinite}
+  @keyframes hdrEditBounce{0%,100%{transform:scale(1);box-shadow:0 2px 8px rgba(37,99,235,.45),0 0 0 1px rgba(255,255,255,.6) inset}50%{transform:scale(1.18);box-shadow:0 4px 14px rgba(37,99,235,.70),0 0 0 1px rgba(255,255,255,.8) inset,0 0 0 4px rgba(251,191,36,.35)}}
+  @keyframes hdrAvatarHalo{0%,100%{box-shadow:0 2px 8px rgba(0,0,0,.15),0 0 0 0 rgba(251,191,36,.55)}50%{box-shadow:0 2px 8px rgba(0,0,0,.15),0 0 0 8px rgba(251,191,36,0)}}
+  @media (prefers-reduced-motion: reduce){
+    .hdr-avatar-wrap.avatar-unset .hdr-avatar-edit,
+    .hdr-avatar-wrap.avatar-unset .hdr-avatar{animation:none}
+  }
+  /* One-time onboarding tooltip pre nových užívateľov */
+  .hdr-avatar-tip{position:fixed;transform:translateY(-4px) scale(.96);transform-origin:var(--arrow-x,50%) 0;background:linear-gradient(135deg,#FBBF24 0%,#F59E0B 100%);color:#1F2937;padding:10px 16px;border-radius:14px;font-size:13px;font-weight:700;letter-spacing:-.005em;box-shadow:0 12px 32px rgba(245,158,11,.45),0 0 0 2px #fff;z-index:5000;opacity:0;transition:opacity .28s ease,transform .35s cubic-bezier(.34,1.56,.64,1);pointer-events:none;max-width:240px;text-align:center;line-height:1.35}
+  .hdr-avatar-tip.show{opacity:1;transform:translateY(0) scale(1)}
+  .hdr-avatar-tip::before{content:'';position:absolute;top:-5px;left:var(--arrow-x,50%);transform:translateX(-50%) rotate(45deg);width:12px;height:12px;background:#FBBF24;border-radius:2px;box-shadow:-2px -2px 0 #fff}
   .lb-p-avatar{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;margin-bottom:6px;position:relative;font-family:var(--font-display);z-index:1}
   .lb-p-crown{position:absolute;top:-26px;left:50%;transform:translateX(-50%);font-size:30px;line-height:1;filter:drop-shadow(0 2px 6px rgba(217,119,6,.45));animation:crownFloat 3s ease-in-out infinite}
   @keyframes crownFloat{0%,100%{transform:translateX(-50%) translateY(0) rotate(0deg)}50%{transform:translateX(-50%) translateY(-3px) rotate(-3deg)}}
@@ -863,8 +876,13 @@
   .session-expired-sub{font-size:13px;color:#64748B;margin-bottom:22px;line-height:1.5}
   .session-expired-btns{display:grid;grid-template-columns:1fr;gap:10px}
   .session-expired-confirm{padding:12px;border-radius:12px;border:none;background:#2563EB;color:#fff;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer}
-  .logout-btn{display:flex;align-items:center;gap:5px;padding:5px 10px;min-height:44px;border-radius:20px;border:1px solid rgba(239,68,68,.4);background:rgba(239,68,68,.15);color:rgba(255,180,180,.9);font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .2s}
-  .logout-btn:hover{background:rgba(239,68,68,.25)}
+  /* Logout wrap — kruhové tlačidlo + malý label pod ním aby bolo jasné že odhlasuje */
+  .logout-wrap{display:inline-flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0}
+  .logout-btn{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0;border:2px solid rgba(254,202,202,.85);background:linear-gradient(135deg,#DC2626 0%,#B91C1C 100%);color:#fff;cursor:pointer;transition:background var(--t-base),transform var(--t-fast),border-color var(--t-base),box-shadow var(--t-base);-webkit-tap-highlight-color:transparent;flex-shrink:0;box-shadow:0 4px 12px rgba(220,38,38,.40),inset 0 1px 0 rgba(255,255,255,.18)}
+  .logout-btn:hover{background:linear-gradient(135deg,#EF4444 0%,#DC2626 100%);border-color:#fff;box-shadow:0 6px 16px rgba(220,38,38,.55),inset 0 1px 0 rgba(255,255,255,.22)}
+  .logout-btn:active{transform:scale(.94)}
+  .logout-btn svg{display:block}
+  .logout-btn-lbl{font-size:9.5px;font-weight:700;color:#FCA5A5;font-family:var(--font-display);letter-spacing:.06em;text-transform:uppercase;line-height:1;user-select:none;pointer-events:none}
   .note-wrap{background:#FFFBEB;border-radius:10px;padding:10px 12px;margin:10px 0 4px;border:1px solid #FDE68A}
   .note-label{font-size:10px;font-weight:600;color:#92400E;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px}
   .note-text{font-size:12px;color:#78350F;line-height:1.5;white-space:pre-wrap}
@@ -1481,12 +1499,15 @@
         <div class="hdr-dot"><div class="dot" style="background:#C084FC"></div>Suprax</div>
         <div class="hdr-dot"><div class="dot" style="background:#FCD34D"></div>Cavinton Forte</div>
   </div>
-  <div style="display:flex;align-items:center;gap:8px">
+  <div style="display:flex;align-items:center;gap:10px">
+  <div class="logout-wrap">
+    <button class="logout-btn" onclick="doLogout()" aria-label="Odhlásiť"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
+    <span class="logout-btn-lbl">Odhlásiť</span>
+  </div>
   <div class="hdr-avatar-wrap" id="hdr-avatar-wrap" onclick="avatarOpenCustomizer()" title="Zmeniť avatar">
     <div class="hdr-avatar" id="hdr-avatar" data-username="">?</div>
     <div class="hdr-avatar-edit">✎</div>
   </div>
-  <button class="logout-btn" onclick="doLogout()">⎋ Odhlásiť</button>
   <!-- hdr-badge-wrap zachovaný (skrytý) kvôli JS kompatibilite -->
   <div id="hdr-badge-wrap" style="display:none"><div class="hdr-badge" id="hdr-badge"></div></div>
   </div>
@@ -2223,7 +2244,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.20.9';
+var APP_VERSION = '2.20.10';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -3714,8 +3735,10 @@ function startFireworks() {
 var _milestoneStopFn = null;
 
 function checkMilestone() {
+  // Flag: milestone možno otvorí — avatar tip počká kým sa rozhodne
+  window._milestonePending = true;
   if (window.location.hostname !== 'localhost') {
-    try { if(localStorage.getItem('milestone_200_shown')) return; } catch(e) {}
+    try { if(localStorage.getItem('milestone_200_shown')) { window._milestonePending = false; return; } } catch(e) {}
   }
   var promise;
   if(typeof IS_DEV !== 'undefined' && IS_DEV) {
@@ -3731,6 +3754,9 @@ function checkMilestone() {
   promise.then(function(stats) {
     if(stats && typeof stats.total === 'number' && stats.total >= 200) {
       setTimeout(function(){ showMilestone(stats); }, 500);
+      // _milestonePending zostane true kým closeMilestone neuvolní
+    } else {
+      window._milestonePending = false;
     }
   });
 }
@@ -3759,6 +3785,8 @@ function closeMilestone() {
   if(overlay) overlay.classList.remove('show');
   document.body.style.overflow = '';
   if(_milestoneStopFn){ _milestoneStopFn(); _milestoneStopFn = null; }
+  // Milestone zatvorený — uvolni flag aby avatar tip mohol pokračovať
+  window._milestonePending = false;
 }
 
 
@@ -5498,6 +5526,8 @@ function loginSuccess(username, name, role, region, extra) {
       checkNotifications();
       startNotifPolling();
     }
+    // One-time onboarding tip pre avatar — 4s delay aby WN/satori modal stihli skončiť
+    setTimeout(function(){ try { hdrAvatarShowTipIfNeeded(); } catch(e){} }, 1500);
     return;
   }
   if(localStorage.getItem(TUTORIAL_KEY)){
@@ -5530,6 +5560,8 @@ function loginSuccess(username, name, role, region, extra) {
   // Agresívny dedup po prihlásení — eliminácia prípadných duplicitov
   setTimeout(function(){ try { mgrDedupUnique(); } catch(e){} }, 100);
   setTimeout(function(){ try { mgrDedupUnique(); } catch(e){} }, 600);
+  // One-time onboarding tip pre avatar — 4s delay aby WN/satori modal stihli skončiť
+  setTimeout(function(){ try { hdrAvatarShowTipIfNeeded(); } catch(e){} }, 4000);
   window.scrollTo({top: 0, behavior: 'instant'});
 }
 
@@ -5641,7 +5673,9 @@ function updateHdrAvatar(user) {
     var palette = (typeof LB_COLOR_PALETTE !== 'undefined') ? LB_COLOR_PALETTE : null;
     if (palette) color = palette[strHash(user.username) % palette.length];
   } catch(e) {}
-  avatarFillElement(av, { username: user.username, name: name, color: color, size: 38 });
+  avatarFillElement(av, { username: user.username, name: name, color: color, size: 60 });
+  // Update discoverability hint (pulse halo + bouncing pencil keď avatar nie je nastavený)
+  try { hdrAvatarUpdateHint(); } catch(e){}
 }
 
 // Throttle — zabráni desiatkam zbytočných writes do storage pri rýchlom
@@ -5726,6 +5760,8 @@ function initLogin() {
         REP_PL_STATE.q    = REP_PL_STATE.q    || plnenieCurrentQ();
         preloadAllPharmaData();
       }, 2500);
+      // One-time onboarding tip pre avatar — 4s delay aby modal-y stihli skončiť
+      setTimeout(function(){ try { hdrAvatarShowTipIfNeeded(); } catch(e){} }, 1500);
       return;
     }
     setTimeout(function(){ updateHdrForUser(session); }, 300);
@@ -5748,6 +5784,8 @@ function initLogin() {
       REP_PL_STATE.q    = REP_PL_STATE.q    || plnenieCurrentQ();
       preloadAllPharmaData();
     }, 1500);
+    // One-time onboarding tip pre avatar — 4s delay
+    setTimeout(function(){ try { hdrAvatarShowTipIfNeeded(); } catch(e){} }, 1500);
   } else {
     // Zobraziť login
     document.getElementById('login-screen').classList.add('show');
@@ -5963,6 +6001,10 @@ function gynEnter(user) {
   // Preload na pozadí — všetky Q plnenie + pharma dáta (aby switching Q bol instant)
   setTimeout(function(){ gynPreloadAllQuarters(); }, 1500);
   setTimeout(function(){ gynPreloadAllPharma(); }, 2500);
+  // Update avatar hint hneď + one-time onboarding tip skoro
+  // (ak je otvorený WN/satori modal, hdrAvatarShowTipIfNeeded počká kým sa zatvorí)
+  setTimeout(function(){ try { hdrAvatarUpdateHint(); } catch(e){} }, 600);
+  setTimeout(function(){ try { hdrAvatarShowTipIfNeeded(); } catch(e){} }, 1500);
 }
 
 function gynExit() {
@@ -6025,12 +6067,15 @@ function gynRenderShell(user) {
             '<div class="gyn-mgr-hdr-title">' + hdrTitle + '</div>' +
             '<div class="gyn-mgr-hdr-sub">' + hdrSub + '</div>' +
           '</div>' +
-          '<div style="display:flex;align-items:center;gap:8px">' +
+          '<div style="display:flex;align-items:center;gap:10px">' +
+            '<div class="logout-wrap">' +
+              '<button class="logout-btn" onclick="gynExit()" aria-label="Odhlásiť"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>' +
+              '<span class="logout-btn-lbl">Odhlásiť</span>' +
+            '</div>' +
             '<div class="hdr-avatar-wrap" id="gyn-hdr-avatar-wrap" onclick="avatarOpenCustomizer()" title="Zmeniť avatar">' +
               '<div class="hdr-avatar" id="gyn-hdr-avatar" data-username="' + gynEsc(user.username||'') + '">?</div>' +
               '<div class="hdr-avatar-edit">✎</div>' +
             '</div>' +
-            '<button class="logout-btn" onclick="gynExit()">&#9099; Odhlásiť</button>' +
           '</div>' +
         '</div>' +
       '</div>' +
@@ -6049,8 +6094,10 @@ function gynRenderShell(user) {
       ? palette[strHash(user.username) % palette.length]
       : 'linear-gradient(135deg,#1E40AF,#3B82F6)';
     ghav.style.background = ghColor;
-    avatarFillElement(ghav, { username: user.username, name: user.name || user.username, color: ghColor, size: 38 });
+    avatarFillElement(ghav, { username: user.username, name: user.name || user.username, color: ghColor, size: 60 });
   }
+  // Update header hint (pulse halo + bouncing pencil) hneď po vyrenderovaní headera
+  try { hdrAvatarUpdateHint(); } catch(e){}
 }
 
 // ── Navigácia medzi tabmi ──
@@ -8724,7 +8771,12 @@ function wnClose(){
   // Nič ďalšie — zatvor modal
   WN_QUEUE_TOTAL = null;
   overlay.classList.remove('show');
-  setTimeout(checkMilestone, 400);
+  setTimeout(function(){
+    try { checkMilestone(); } catch(e){}
+    // Po zatvorení posledného WN modalu — zobrazí onboarding tip pre avatar
+    // (ak je milestone modal otvorený, hdrAvatarShowTipIfNeeded počká kým sa zatvorí)
+    setTimeout(function(){ try { hdrAvatarShowTipIfNeeded(); } catch(e){} }, 250);
+  }, 400);
 }
 
 // ── Satori rebrand overlay ──
@@ -9157,6 +9209,8 @@ var AV_STATE = {
 function avatarOpenCustomizer(username) {
   username = username || (typeof getSession === 'function' && getSession() ? getSession().username : null);
   if (!username) return;
+  // Zatvor onboarding tooltip ak je otvorený + zruš avatar-unset hint
+  try { hdrAvatarDismissTip(); } catch(e){}
   var existing = avatarGetConfig(username);
   // Migrácia: ak existuje config s neznámym/odstráneným style, resetni na default
   if (existing && (!existing.style || !AVATAR_SCHEMAS[existing.style])) {
@@ -9549,6 +9603,8 @@ window.addEventListener('avatar-changed', function(ev) {
       avatarFillElement(el, { username: u, name: name, color: color });
     }
   });
+  // Update header hint (pulse halo + bouncing pencil) — vypne sa po nastavení avatara
+  try { hdrAvatarUpdateHint(); } catch(e){}
 });
 
 // Farebná paleta pre auto-pridelenie farieb v rebríčku
@@ -9644,6 +9700,174 @@ function buildRepData(reps) {
   // Re-fill všetkých avatar containerov ktoré sú už v DOM
   // (Plnenie, manažér zoznam, atď. mohli byť renderované PRED tým ako prišli avatar dáta zo Sheets)
   try { avatarRefreshAllInDom(); } catch(e){}
+  // Update header hint — ak má prihlásený user už custom avatar zo Sheets, vypneme pulse
+  try { hdrAvatarUpdateHint(); } catch(e){}
+}
+
+// ─── Header avatar discoverability — pulse halo + one-time tooltip ───
+// Pridá/odstráni .avatar-unset class na header wrapper(y) podľa toho či má
+// prihlásený užívateľ nastavený custom avatar. Pulzujúce halo + bouncing
+// ceruzka upozornia že je tam clickable feature.
+function hdrAvatarUpdateHint() {
+  try {
+    var s = (typeof getSession === 'function') ? getSession() : null;
+    var username = s && s.username ? s.username : '';
+    var hasAvatar = false;
+    if (username) {
+      var cfg = avatarGetConfig(username);
+      hasAvatar = !!(cfg && cfg.style);
+    }
+    ['hdr-avatar-wrap', 'gyn-hdr-avatar-wrap'].forEach(function(id){
+      var wrap = document.getElementById(id);
+      if (!wrap) return;
+      if (hasAvatar) wrap.classList.remove('avatar-unset');
+      else wrap.classList.add('avatar-unset');
+    });
+  } catch(e){}
+}
+
+// One-time onboarding tooltip — žltý chip ktorý sa raz zobrazí po prihlásení
+// (iba ak user ešte nemá nastavený avatar). Auto-dismiss po 6s alebo prvom tap-e.
+// Smart-wait: ak je otvorený nejaký modal, počká kým sa zatvorí.
+// Stability check: po zatvorení modalu počká 900ms (3× 300ms) aby pokryl gap
+// medzi satori-close a wn-open (login cascade) — ak by sa medzi tým otvoril ďalší
+// modal, counter sa resetuje.
+function hdrAvatarShowTipIfNeeded(_stableTicks) {
+  try {
+    var s = (typeof getSession === 'function') ? getSession() : null;
+    if (!s || !s.username) return;
+    // Kľúč obsahuje aj line — Golem (gp) a gyn majú vlastný stav (môžu sa zhodovať
+    // usernames v oboch linkach pri admin/manažérovi)
+    var line = (s.line === 'gyn') ? 'gyn' : 'gp';
+    var key = 'hdr_avatar_tip_seen_' + line + '_' + s.username;
+    if (localStorage.getItem(key) === '1') return;
+
+    // Skontroluj či nie je otvorený nejaký blokujúci modal
+    var blockingIds = ['wn-overlay','satori-overlay','milestone-overlay','av-overlay',
+                       'av-confirm-overlay','logout-overlay','send-popup','confirm-overlay',
+                       'detail-overlay','edit-overlay','restore-overlay','hist-overlay',
+                       'lb-overlay','rep-plnenie-overlay','pharma-ms-overlay','pharma-okres-overlay',
+                       'tutorial-overlay','session-expired-overlay','rpt-progress-overlay','thankyou'];
+    var isBlocked = false;
+    for (var bi = 0; bi < blockingIds.length; bi++) {
+      var bel = document.getElementById(blockingIds[bi]);
+      if (bel && bel.classList.contains('show')) { isBlocked = true; break; }
+    }
+
+    // Milestone možno otvorí — počkaj kým checkMilestone sa rozhodne (a prípadne ho zatvorí user)
+    if (window._milestonePending === true) { isBlocked = true; }
+
+    if (isBlocked) {
+      // Modal je otvorený alebo milestone čaká — resetni stability counter, počkaj
+      window._hdrTipRetryCount = (window._hdrTipRetryCount || 0) + 1;
+      if (window._hdrTipRetryCount > 100) { window._hdrTipRetryCount = 0; return; } // 30s max
+      setTimeout(function(){ hdrAvatarShowTipIfNeeded(0); }, 300);
+      return;
+    }
+
+    // Žiadny modal — ale potrebujeme stability (3 po sebe idúce ticky = 900ms)
+    // aby sme pokryli gap medzi satori-close a wn-open
+    _stableTicks = (_stableTicks || 0) + 1;
+    if (_stableTicks < 3) {
+      window._hdrTipRetryCount = (window._hdrTipRetryCount || 0) + 1;
+      if (window._hdrTipRetryCount > 100) { window._hdrTipRetryCount = 0; return; }
+      setTimeout(function(){ hdrAvatarShowTipIfNeeded(_stableTicks); }, 300);
+      return;
+    }
+    window._hdrTipRetryCount = 0;
+
+    // Vyber VIDITEĽNÝ wrap — v gyn móde je Golem hdr-avatar-wrap skrytý a vrátil by zlé súradnice
+    var hdrGp  = document.getElementById('hdr-avatar-wrap');
+    var hdrGyn = document.getElementById('gyn-hdr-avatar-wrap');
+    function isVis(el) { return el && el.offsetWidth > 0 && el.offsetHeight > 0; }
+    var wrap = isVis(hdrGyn) ? hdrGyn : (isVis(hdrGp) ? hdrGp : null);
+    if (!wrap || !wrap.classList.contains('avatar-unset')) return;
+    // Nesmie už existovať iný tip
+    if (document.querySelector('.hdr-avatar-tip')) return;
+
+    var tip = document.createElement('div');
+    tip.className = 'hdr-avatar-tip';
+    tip.innerHTML = '✎ Ťukni si na svoj avatar — môžeš si ho upraviť';
+    // Append najprv (skrytý), aby sme zmerali šírku
+    tip.style.left = '-9999px';
+    tip.style.top = '-9999px';
+    document.body.appendChild(tip);
+
+    // Funkcia ktorá vypočíta a aktualizuje pozíciu tipu na základe aktuálnej pozície avatara
+    // (volá sa pri prvom zobrazení + pri každom scrolle/resize, aby tip "sledoval" avatara)
+    var tipW = tip.offsetWidth || 220;
+    function updateTipPos() {
+      if (!tip || !tip.parentNode) return;
+      var r = wrap.getBoundingClientRect();
+      // Ak avatar je úplne mimo viewport (scrollnutý preč) — schovaj tip
+      if (r.bottom < 8 || r.top > window.innerHeight - 30) {
+        tip.style.visibility = 'hidden';
+        return;
+      }
+      tip.style.visibility = '';
+      var avCX = r.left + r.width / 2;
+      var idealLeft = avCX - tipW / 2;
+      var maxLeft = window.innerWidth - tipW - 8;
+      var minLeft = 8;
+      var actualLeft = Math.max(minLeft, Math.min(idealLeft, maxLeft));
+      var arrowX = avCX - actualLeft;
+      arrowX = Math.max(18, Math.min(arrowX, tipW - 18));
+      tip.style.left = actualLeft + 'px';
+      tip.style.top = (r.bottom + 12) + 'px';
+      tip.style.setProperty('--arrow-x', arrowX + 'px');
+    }
+    updateTipPos();
+
+    // Scroll + resize listeners — udržujú tip prilepený pri avatarovi (rAF throttling)
+    var scrollRaf = null;
+    function onScrollOrResize() {
+      if (scrollRaf) return;
+      scrollRaf = requestAnimationFrame(function(){
+        scrollRaf = null;
+        updateTipPos();
+      });
+    }
+    window.addEventListener('scroll', onScrollOrResize, true); // true = capture, pre nested scrollery
+    window.addEventListener('resize', onScrollOrResize);
+
+    // Fade-in
+    setTimeout(function(){ tip.classList.add('show'); }, 50);
+
+    // Auto-dismiss
+    var dismissed = false;
+    var dismiss = function() {
+      if (dismissed) return;
+      dismissed = true;
+      try { localStorage.setItem(key, '1'); } catch(e){}
+      tip.classList.remove('show');
+      setTimeout(function(){ try { tip.remove(); } catch(e){} }, 350);
+      document.removeEventListener('click', onDocClick, true);
+      document.removeEventListener('touchstart', onDocClick, true);
+      window.removeEventListener('scroll', onScrollOrResize, true);
+      window.removeEventListener('resize', onScrollOrResize);
+      if (scrollRaf) { cancelAnimationFrame(scrollRaf); scrollRaf = null; }
+    };
+    var onDocClick = function() { dismiss(); };
+    // Dismiss na akýkoľvek tap (delay aby sa nedismissol hneď pri otvorení)
+    setTimeout(function(){
+      document.addEventListener('click', onDocClick, true);
+      document.addEventListener('touchstart', onDocClick, true);
+    }, 500);
+    setTimeout(dismiss, 6000);
+
+    // Expose dismiss aby ho mohol avatarOpenCustomizer zavolať
+    window._hdrAvatarTipDismiss = dismiss;
+  } catch(e){}
+}
+
+// Volaná z avatarOpenCustomizer — zavrie tip ihneď ak je otvorený
+function hdrAvatarDismissTip() {
+  try {
+    if (typeof window._hdrAvatarTipDismiss === 'function') {
+      window._hdrAvatarTipDismiss();
+      window._hdrAvatarTipDismiss = null;
+    }
+  } catch(e){}
 }
 
 // Iteruje všetky avatar circles v DOM s data-username atribútom a re-fillne ich
