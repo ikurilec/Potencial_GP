@@ -26,7 +26,93 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.20.9** (na `main` aj `test` vetve) — **post-fetch avatar re-fill**: pri prihlásení admina sa Plnenie zoznam renderoval PRED tým ako `getInitData` doručil avatar config do `USERS_LOCAL`. Avatary sa preto nezobrazili v už vyrenderovaných paneloch (Plnenie zoznam reps, manažér zoznam) — fungovali iba v Rebríčku ktorý sa renderuje na klik (po prijatí dát). Fix: `avatarRefreshAllInDom()` helper sa zavolá na konci `buildRepData()` — iteruje všetky `[class*=avatar][data-username]` containery v DOM a refilluje ich aktuálnym configom.
+**2.20.10** (na `main` aj `test` vetve) — **header redesign: výrazný avatar + výrazný logout + onboarding hint**: 5 zmien pre lepšiu discoverabilitu header avatara aj logout tlačidla — (1) **swap pozícií**: avatar je teraz na pravej hrane (predtým medzi nadpisom a Odhlásiť), Odhlásiť tlačidlo je naľavo od neho; (2) **zväčšený avatar**: 38 → 60px (58% bigger, oveľa viac viditeľný); (3) **väčšia kontrastná ceruzka**: 14 → 22px s bielym pozadím a modrou ceruzkou; (4) **pulzujúce žlté halo + bouncing ceruzka** keď avatar nie je nastavený + **one-time žltý onboarding tooltip** ktorý sa zobrazí 4s po prihlásení; (5) **Odhlásiť tlačidlo redesignované**: pill s SVG door-exit ikonou + textom "Odhlásiť" v sýtej červenej (gradient `#DC2626 → #B91C1C`, biely text, red glow shadow, inset highlight). Ikona aj text aby bolo jednoznačné že tlačidlo odhlasuje.
+
+### v2.20.10 — Avatar discoverability — swap + bigger avatar + pulse halo + onboarding tooltip
+
+#### Problém (feedback od Ivana)
+- Edit badge (modrá bodka s ceruzkou ✎) v rohu header avatara bol **14×14px**, tmavomodrý na navy background
+- Avatar samotný 38×38px medzi nadpisom a Odhlásiť tlačidlom — vizuálne medzi obsahom
+- "to co je v kruzku a ta malá ceruzka je to nevýrazne a malo kto zisti ze sa tam da kliknut a nastavovať"
+- "bolo by mozne toho avatara vymenit s tlacitkom odhlasiť ich pozicie a tým padom by avatar mohol byt vacsi kruh"
+- Reprezentanti/manažéri nevedeli že header avatar je clickable → never customized
+
+#### Feedback od Ivana (logout button) — 3 iterácie
+- Iter 1: "to tlačítko na odhlasiť by mohlo byť tiež tak aby viac intuitivne vedeli ze týmto tlacitkom sa odhlasia teraz je take nevýrazné a vacsinou tlacitka na odhlasit su v kruzku ne elipse"
+- Iter 2 (po icon-only kruh): "neviem či to tlačítko bude evokovať že sa majú odhlásiť"
+- Iter 3 (po pill s textom): "to je priliš veľké take ako to bolo gulate to bolo fajn len treba porozmyšľať ako by sa tam do toho napisalo ze odhlásiŤ aby to vedeli ze tymto sa odhlasia"
+- Finálne: **kruh 44px s icon-only + malý uppercase label "ODHLÁSIŤ" pod tlačidlom**
+
+#### Oprava — 5 vrstiev
+-1. **Logout tlačidlo — kruh s ikonou + malý label pod ním**:
+   - Pôvodne: pill `border-radius:20px`, padding 5px 10px, text "⎋ Odhlásiť" v slabšej červenej — nevýrazné
+   - Iter 1 (icon-only 48px kruh): ambiguózne bez textu
+   - Iter 2 (pill 48px height s ikonou + textom v ňom): príliš široké, vizuálne dominantné
+   - **Finálne**: `.logout-wrap` flex column container so 2 deťmi:
+     - **`.logout-btn`** — 44×44px kruh (`border-radius:50%`), sýta červená gradient `#DC2626 → #B91C1C`, biely SVG door-exit icon 20×20, biely 2px border (.85 opacity), box-shadow `0 4px 12px rgba(220,38,38,.40)` + inset white highlight
+     - **`.logout-btn-lbl`** — `<span>Odhlásiť</span>` pod tlačidlom, 9.5px font-weight 700, uppercase, letter-spacing .06em, color `#FCA5A5` (svetlo-červený text na navy header), font Outfit display
+   - Gap 3px medzi tlačidlom a labelom
+   - Total výška ~57px (~44 + 3 + 10) — porovnateľná s 52px avatarom
+   - `aria-label="Odhlásiť"` pre screen readery
+   - Hover: brighter gradient + biely border (1.0 opacity) + zosilnený glow
+   - Active: scale(.94)
+0. **Swap pozícií + zväčšený avatar**:
+   - HTML poradie zmenené: `[Logout button] [Avatar wrap]` namiesto `[Avatar wrap] [Logout button]`
+   - Avatar je teraz na pravej hrane headera (najvýraznejšia pozícia)
+   - Avatar size: 38 → **60px** (58% bigger), font-size 13 → 19px
+   - Border 2 → 3px (proporcionálne), shadow zosilnený (`0 2px 8px` → `0 5px 16px`)
+   - Gap medzi logout a avatar: 8 → 10px
+1. **Väčší kontrastný edit badge**:
+   - 14×14 → **22×22px**, font-size 8 → 13px (bold)
+   - Tmavomodré pozadie → **biele pozadie + modrá ceruzka** (#1E40AF)
+   - Pridaný white-inset shadow + outer shadow → "vznáša" sa nad avatarom
+2. **Pulse hint pre užívateľov bez avatara** — class `.avatar-unset` na `.hdr-avatar-wrap`:
+   - **Bouncing ceruzka** (`hdrEditBounce` 1.8s ease-in-out) — pulzuje scale .85 ↔ 1.18, s žltým ringom v peaku
+   - **Žlté halo** okolo celého avatara (`hdrAvatarHalo` 2.2s) — pulzujúci box-shadow ring s opacity .55 → 0
+   - Rešpektuje `prefers-reduced-motion`
+   - Auto-stop po nastavení avatara (`hdrAvatarUpdateHint` removed `.avatar-unset` class)
+3. **One-time žltý onboarding tooltip** (mnoho iterácií ladenia):
+   - Floating chip pod avatarom: "✎ Ťukni si na svoj avatar — môžeš si ho upraviť"
+   - Žltý gradient (#FBBF24 → #F59E0B), biely okraj, šípka smerom hore na avatar
+   - Spring-in animation (cubic-bezier(.34,1.56,.64,1))
+   - **Smart wait — 3 vrstvy ochrany pred predčasným zobrazením**:
+     1. **Blocker check** — iteruje 20 ID-čok overlayov (`wn-overlay`, `satori-overlay`, `milestone-overlay`, `tutorial-overlay`, `av-overlay`, `av-confirm-overlay`, `logout-overlay`, `send-popup`, `confirm-overlay`, `detail-overlay`, `edit-overlay`, `restore-overlay`, `hist-overlay`, `lb-overlay`, `rep-plnenie-overlay`, `pharma-ms-overlay`, `pharma-okres-overlay`, `session-expired-overlay`, `rpt-progress-overlay`, `thankyou`) a kontroluje `.show` class na nich
+     2. **`_milestonePending` flag** — nastavený v `checkMilestone()` keď začne fetchovať stats, uvolnený v `closeMilestone()` alebo keď stats < 200; pokrýva 500-1400ms gap medzi `checkMilestone()` start a `showMilestone()` open
+     3. **Stability check** — po prejdení blocker checkom potrebuje 3 po sebe idúce tickety (900ms) bez modalov; pokrýva gap medzi `satori-close` (350ms) a `wn-show`/`milestone-show`
+   - **Trigger v 3 bodoch**:
+     1. Z `wnClose()` — keď zatvorí posledný WN modal (immediate trigger 250ms po close + smart-wait)
+     2. Z `gynEnter` / `loginSuccess` / `initLogin` — 1500ms fallback timeout (pre prípady kedy user nemá žiadne WN)
+     3. Smart wait všetko skoordinuje — ak pri triggeri (1500ms) ešte modal nezatvoril, počká
+   - **Dynamická pozícia** — tooltip sa najprv pridá skrytý aby sa zmerala šírka, potom centruje pod avatarom; ak by pretiekol viewport, posúva sa doľava ale **šípka ostane mieriť na avatara** cez CSS variable `--arrow-x`
+   - **Scroll-anchored** — pri scrollovaní `requestAnimationFrame` recalculates `getBoundingClientRect()` na avatare a updatuje tooltip pozíciu → tooltip "sleduje" avatara nahor/nadol. Auto-hide ak avatar úplne mimo viewport. Cleanup pri dismissi
+   - **Výber viditeľného wrapu** — `isVis(el)` cez `offsetWidth/Height > 0`, v gyn móde preferuje `gyn-hdr-avatar-wrap`, v Golem `hdr-avatar-wrap`
+   - Auto-dismiss po 6s alebo prvom tap-e kdekoľvek
+   - Persistovaný v localStorage `hdr_avatar_tip_seen_<gp|gyn>_<username>` — **line-specific** kľúč aby tip vyskočil zvlášť v Golem a zvlášť v gyn pre rovnaký username (admin/manažér môže byť v oboch linkach)
+   - Iba pre užívateľov ktorí ešte nemajú custom avatar (kontrola cez `.avatar-unset` class)
+
+#### Implementácia
+- **CSS** (~22 riadkov v `<style>`): `.hdr-avatar-edit` rozšírený, nové keyframes `hdrEditBounce` + `hdrAvatarHalo`, trieda `.hdr-avatar-tip` + `::before` šípka
+- **JS** (~80 riadkov):
+  - `hdrAvatarUpdateHint()` — pridá/odstráni `.avatar-unset` na obidva headery (gp + gyn)
+  - `hdrAvatarShowTipIfNeeded()` — vytvorí tooltip, pozícia, dismiss logika, localStorage flag
+  - `hdrAvatarDismissTip()` — zavrie tooltip ihneď (volá ho `avatarOpenCustomizer`)
+- **Volania**:
+  - `updateHdrAvatar()` → po Golem header rendere
+  - `gynRenderShell()` → po gyn header rendere
+  - `buildRepData()` → po prijatí dát zo Sheets
+  - `avatar-changed` event → po zmene avatara
+  - `loginSuccess` + `initLogin` + `gynEnter` → 4s delay pre tooltip
+
+#### Štatistika
+- **Verzia 2.20.9 → 2.20.10** (PATCH — UX vylepšenie)
+- ~100 insertions v `index.html`
+- 0 backend zmien (žiadny Apps Script redeploy)
+
+---
+
+### v2.20.9 — Post-fetch avatar re-fill (Plnenie zoznam reps na Androide)
+
+**2.20.9** — **post-fetch avatar re-fill**: pri prihlásení admina sa Plnenie zoznam renderoval PRED tým ako `getInitData` doručil avatar config do `USERS_LOCAL`. Avatary sa preto nezobrazili v už vyrenderovaných paneloch (Plnenie zoznam reps, manažér zoznam) — fungovali iba v Rebríčku ktorý sa renderuje na klik (po prijatí dát). Fix: `avatarRefreshAllInDom()` helper sa zavolá na konci `buildRepData()` — iteruje všetky `[class*=avatar][data-username]` containery v DOM a refilluje ich aktuálnym configom.
 
 ### v2.20.9 — Post-fetch avatar re-fill (Plnenie zoznam reps na Androide)
 
