@@ -50,7 +50,7 @@ vm.runInContext(script + '\nthis.__testApi = { extractCorrectionRowsFromWorkbook
 const rows = [
   ['2.Q', 'Plan', 1, 2, 3, 'Spolu', 'Plnenie'],
   ['GLOBIFER', 'Plan', 1, 2, 3, 'Spolu', 'Plnenie'],
-  ['BAPA', 56627, 18109, null, null, 18109, 0.3198],
+  ['BAPA', 56627, null, null, 18109, 18109, 0.3198],
   ['SEPA', 44897, 13957, null, null, 13957, 0.3109],
   ['Total', 237114, 75705, 0, 0, 75705, 0.3193],
   [],
@@ -64,8 +64,8 @@ const rows = [
 ];
 
 const result = sandbox.__testApi.extractCorrectionRowsFromWorkbook({
-  SheetNames: ['Plnenie 2.Q.2026'],
-  Sheets: { 'Plnenie 2.Q.2026': { rows } },
+  SheetNames: ['Plnenie 1.Q'],
+  Sheets: { 'Plnenie 1.Q': { rows } },
 });
 
 const actual = result.map(r => ({
@@ -76,10 +76,12 @@ const actual = result.map(r => ({
   hodnota: r.hodnota,
 }));
 const expected = [
-  { login: 'a.slezackova', rok: 2026, mesiac: 4, produkt: 'Levosert', hodnota: 3740 },
-  { login: 'b.sivakova', rok: 2026, mesiac: 4, produkt: 'Papilocare Hgel', hodnota: 1000 },
-  { login: 'k.basternakova', rok: 2026, mesiac: 4, produkt: 'Globifer', hodnota: 18109 },
-  { login: 'sepa', rok: 2026, mesiac: 4, produkt: 'Globifer', hodnota: 13957 },
+  { login: 'a.slezackova', rok: 2026, mesiac: 1, produkt: 'Levosert', hodnota: 3740 },
+  { login: 'b.sivakova', rok: 2026, mesiac: 1, produkt: 'Papilocare Hgel', hodnota: 1000 },
+  { login: 'k.basternakova', rok: 2026, mesiac: 1, produkt: 'Globifer', hodnota: 0 },
+  { login: 'k.basternakova', rok: 2026, mesiac: 2, produkt: 'Globifer', hodnota: 0 },
+  { login: 'k.basternakova', rok: 2026, mesiac: 3, produkt: 'Globifer', hodnota: 18109 },
+  { login: 'sepa', rok: 2026, mesiac: 1, produkt: 'Globifer', hodnota: 13957 },
 ];
 assert.strictEqual(JSON.stringify(actual), JSON.stringify(expected));
 
