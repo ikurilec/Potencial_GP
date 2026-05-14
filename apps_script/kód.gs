@@ -169,6 +169,15 @@ function doGet(e) {
       var roleIdx = headers.indexOf('rola');
       if(roleIdx === -1) roleIdx = headers.indexOf('role');
       var lastIdx = headers.indexOf('posledny_login');
+      var pohlavieIdx = -1;
+      for(var hi = 0; hi < headers.length; hi++){
+        var hh = headers[hi];
+        if(hh === 'pohlavie' || hh === 'gender'){ pohlavieIdx = hi; break; }
+      }
+      var avatarIdx = -1;
+      for(var ai = 0; ai < headers.length; ai++){
+        if(headers[ai] === 'avatar'){ avatarIdx = ai; break; }
+      }
       var result = [];
       var repRoles = ['rep west', 'rep east', 'rep'];
       for(var i = 1; i < rows.length; i++){
@@ -181,7 +190,9 @@ function doGet(e) {
           username: u,
           name: String(rows[i][nameIdx]||'').trim(),
           role: String(rows[i][roleIdx]||'').trim(),
-          posledny_login: v instanceof Date ? v.toISOString() : (v ? String(v) : '')
+          posledny_login: v instanceof Date ? v.toISOString() : (v ? String(v) : ''),
+          pohlavie: pohlavieIdx !== -1 ? String(rows[i][pohlavieIdx]||'').trim() : '',
+          avatar: avatarIdx !== -1 ? String(rows[i][avatarIdx]||'').trim() : ''
         });
       }
       return jsonResponse(result);
