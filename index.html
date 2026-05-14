@@ -2244,7 +2244,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.20.11';
+var APP_VERSION = '2.20.12';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7796,6 +7796,27 @@ function mgrLoadReps(repList){
   Promise.all([loginPromise, managersPromise, allHistPromise]).then(function(meta){
     MGR_STATE.lastLogins = meta[0] || {};
     MGR_STATE.managers = meta[1] || [];
+    // Sync avatar configov manažérov do localStorage — aby avatarGetConfig() ich vedel nájsť
+    // (USERS_LOCAL obsahuje len reps; manažéri sú v separátnom MGR_STATE.managers poli)
+    (function(){
+      var mgrs = MGR_STATE.managers;
+      if(!mgrs || !mgrs.length) return;
+      mgrs.forEach(function(mgr){
+        if(!mgr.username) return;
+        try {
+          var raw = String(mgr.avatar || '').trim();
+          if(raw){
+            var p = JSON.parse(raw);
+            if(p && p.style && typeof AVATAR_SCHEMAS !== 'undefined' && AVATAR_SCHEMAS[p.style]){
+              localStorage.setItem('avatar_cfg_' + mgr.username, JSON.stringify(p));
+              return;
+            }
+          }
+          // Prázdny/neplatný avatar v Sheets — vymazať prípadnú starú cache
+          localStorage.removeItem('avatar_cfg_' + mgr.username);
+        } catch(e){}
+      });
+    })();
     var allHist = meta[2];
 
     if(allHist && typeof allHist === 'object' && !Array.isArray(allHist)){
@@ -8151,7 +8172,7 @@ function mgrRenderList(){
         }
         var border = i > 0 ? 'border-top:0.5px solid #F8FAFC;' : '';
         mgrHtml += '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;' + border + '">' +
-          '<div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#0C1E35,#1A3A5C);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;font-family:\'Outfit\',sans-serif">' + mgrInitials(mgr.name || mgr.username) + '</div>' +
+          '<div class="mgr-avatar" data-username="' + (mgr.username||'').replace(/"/g,'&quot;') + '" style="background:' + mgrAvatarColor(mgr.name || mgr.username) + '">' + mgrInitials(mgr.name || mgr.username) + '</div>' +
           '<div style="flex:1;min-width:0">' +
             '<div style="font-size:13.5px;font-weight:700;color:#0F172A;font-family:\'Outfit\',sans-serif">' + mgrEscape(mgr.name || mgr.username) + '</div>' +
             '<div style="font-size:11px;color:#64748B;margin-top:2px">' + mgrEscape(mgr.role) + (lastLogin ? ' · 📱 ' + lastLogin : ' · Ešte sa neprihlásil') + '</div>' +
@@ -8160,6 +8181,8 @@ function mgrRenderList(){
       });
       mgrHtml += '</div>';
       mgrSection.innerHTML = mgrHtml;
+      // Vyplniť DiceBear avatary manažérov (localStorage cache populovaná vyššie)
+      try { avatarRefreshAllInDom(); } catch(e){}
     }
   } else if(mgrSection){
     mgrSection.innerHTML = '';
