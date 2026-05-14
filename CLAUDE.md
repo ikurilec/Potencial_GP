@@ -49,6 +49,8 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 - Regiony/oblasti sa mapuju spat na login repa, aby fungoval aj detail reprezentanta.
 - `apps_script/kód_gyn.gs` endpoint `getPlnenieAll` po nacitani tabu `Predaje` nacita aj `Predaje_korekcie`.
 - Ak existuje korekcia pre rovnaky `login + rok + mesiac + produkt`, prepise iba tuto jednu hodnotu v `predajeByRep`; ostatne produkty a mesiace ostavaju z povodneho tabu `Predaje`.
+- Duplicitne korekcne riadky su osetrene defensivne: prva korekcia pre `login + rok + mesiac + produkt` vyhrava, neskorsie duplicity sa ignoruju. Toto chrani pripad, ked novy 70-riadkovy export bol vlozeny nad starsi 210-riadkovy chybny export a stare riadky ostali nizsie v tabe.
+- Q1 Globifer/Ovosicare/H-Gel/Immuno maju v pracovnom subore niektore mesiace prazdne, ale ich vyznam je 0, nie "nechaj povodne Predaje". Parser preto pri korekcnom riadku exportuje prazdne mesiace pred poslednym vyplnenym mesiacom ako `0`; prazdne buduce mesiace po poslednom vyplnenom mesiaci preskakuje.
 
 #### Nasadenie
 - V Gyn Google Sheets vytvorit tab `Predaje_korekcie` s hlavickou z konvertera.

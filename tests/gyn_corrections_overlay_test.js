@@ -28,6 +28,7 @@ const predajeByRep = {
 sandbox.__testApi.applyPredajeCorrections(predajeByRep, [
   ['login','meno','rok','mesiac','produkt','hodnota','zdroj'],
   ['k.basternakova','Katarina',2026,4,'Globifer',18109,'test'],
+  ['k.basternakova','Katarina',2026,4,'Globifer',49636.62,'stale duplicate from old export'],
   ['k.basternakova','Katarina',2026,5,'Globifer',0,'test'],
   ['k.basternakova','Katarina',2025,4,'Globifer',999,'wrong year'],
   ['k.basternakova','Katarina',2026,4,'Unknown',777,'unknown product still normalized'],

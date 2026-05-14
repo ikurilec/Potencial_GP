@@ -385,6 +385,7 @@ function applyPredajeCorrections(predajeByRep, rows, rok, qMonths) {
   var iHodnota = hdr.indexOf('hodnota');
   if (iLogin < 0 || iRok < 0 || iMesiac < 0 || iProdukt < 0 || iHodnota < 0) return;
 
+  var seen = {};
   for (var i = 1; i < rows.length; i++) {
     var row = rows[i];
     var repKey = String(row[iLogin] || '').trim().toLowerCase();
@@ -394,6 +395,9 @@ function applyPredajeCorrections(predajeByRep, rows, rok, qMonths) {
     if (qMonths.indexOf(mes) === -1) continue;
     var prodKey = normalizeProd(row[iProdukt]);
     if (!prodKey) continue;
+    var corrKey = repKey + '|' + rok + '|' + mes + '|' + prodKey;
+    if (seen[corrKey]) continue;
+    seen[corrKey] = true;
 
     var val = parseNum(row[iHodnota]);
     if (!predajeByRep[repKey]) predajeByRep[repKey] = { total: {}, byMonth: {} };
