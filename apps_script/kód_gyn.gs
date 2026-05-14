@@ -197,6 +197,14 @@ function doGet(e) {
         }
       }
 
+      // KOREKCIE PREDAJOV — záložka "Predaje_korekcie"
+      // Stĺpce: login | meno | rok | mesiac | produkt | hodnota | zdroj
+      // Korekcia prepíše iba konkrétnu hodnotu login × rok × mesiac × produkt.
+      var korekcieSheet = ss.getSheetByName('Predaje_korekcie');
+      if (korekcieSheet) {
+        applyPredajeCorrections(predajeByRep, korekcieSheet.getDataRange().getValues(), rokA, qMonths);
+      }
+
       return jsonResp({
         ok:              true,
         rok:             rokA,
@@ -365,6 +373,36 @@ function jsonResp(obj) {
 function normalizeProd(name) {
   if (!name) return '';
   return String(name).trim().toLowerCase();
+}
+
+function applyPredajeCorrections(predajeByRep, rows, rok, qMonths) {
+  if (!rows || rows.length < 2) return;
+  var hdr = rows[0].map(function(h){ return String(h || '').trim().toLowerCase(); });
+  var iLogin = hdr.indexOf('login');
+  var iRok = hdr.indexOf('rok');
+  var iMesiac = hdr.indexOf('mesiac');
+  var iProdukt = hdr.indexOf('produkt');
+  var iHodnota = hdr.indexOf('hodnota');
+  if (iLogin < 0 || iRok < 0 || iMesiac < 0 || iProdukt < 0 || iHodnota < 0) return;
+
+  for (var i = 1; i < rows.length; i++) {
+    var row = rows[i];
+    var repKey = String(row[iLogin] || '').trim().toLowerCase();
+    if (!repKey) continue;
+    if (parseInt(row[iRok]) !== rok) continue;
+    var mes = parseInt(row[iMesiac]);
+    if (qMonths.indexOf(mes) === -1) continue;
+    var prodKey = normalizeProd(row[iProdukt]);
+    if (!prodKey) continue;
+
+    var val = parseNum(row[iHodnota]);
+    if (!predajeByRep[repKey]) predajeByRep[repKey] = { total: {}, byMonth: {} };
+    if (!predajeByRep[repKey].byMonth[mes]) predajeByRep[repKey].byMonth[mes] = {};
+
+    var oldVal = parseNum(predajeByRep[repKey].byMonth[mes][prodKey]);
+    predajeByRep[repKey].byMonth[mes][prodKey] = val;
+    predajeByRep[repKey].total[prodKey] = parseNum(predajeByRep[repKey].total[prodKey]) - oldVal + val;
+  }
 }
 
 function parseNum(v) {

@@ -26,6 +26,42 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### Tooling/backend update — Gyn predaje korekcie cez `Predaje_korekcie`
+
+#### Problem
+- IQVIA gyn predaje prichadzaju najprv ako klasicke mesacne predaje, ktore sa importuju cez `gyn_predaje_konverter.html` do tabu `Predaje`.
+- Pri produktoch Globifer, Levosert, Ovosicare, H - Gel, Immuno/Immunocaps a Escapelle prichadzaju nasledne prepocitane hodnoty.
+- Ivan potrebuje opravit iba tieto produkty a iba dotknute mesiace, bez zasahu do ostatnych produktov v Google Sheets.
+- Detail reprezentanta musi sediet rovnako ako manazersky sumarny pohlad.
+
+#### Oprava
+- `gyn_predaje_konverter.html` ma novu sekciu **Korekcie prepocitanych gyn produktov**.
+- Vstup: `Plnenie_gyn_2026.xlsx`, pracovne harky `Plnenie 1.Q` a `Plnenie 2.Q.2026`.
+- Export: TSV/CSV pre novy Google Sheets tab `Predaje_korekcie`.
+- Format korekcii: `login | meno | rok | mesiac | produkt | hodnota | zdroj`.
+- Parser mapuje pracovne bloky na app produkty:
+  - `GLOBIFER` -> `Globifer`
+  - `LEVOSERT` -> `Levosert`
+  - `OVOSICARE` -> `Ovosicare`
+  - `H - GEL` -> `Papilocare Hgel`
+  - `IMMUNO` -> `Immunocaps`
+  - `ESCAPELLE` -> `Escapelle`
+- Regiony/oblasti sa mapuju spat na login repa, aby fungoval aj detail reprezentanta.
+- `apps_script/kód_gyn.gs` endpoint `getPlnenieAll` po nacitani tabu `Predaje` nacita aj `Predaje_korekcie`.
+- Ak existuje korekcia pre rovnaky `login + rok + mesiac + produkt`, prepise iba tuto jednu hodnotu v `predajeByRep`; ostatne produkty a mesiace ostavaju z povodneho tabu `Predaje`.
+
+#### Nasadenie
+- V Gyn Google Sheets vytvorit tab `Predaje_korekcie` s hlavickou z konvertera.
+- Po vlozeni korekcii treba redeploynut Gyn Apps Script (`apps_script/kód_gyn.gs`).
+- Hlavna PWA verzia sa tymto nemenila, kedze `index.html`, `sw.js` a `version.json` neboli upravene.
+
+#### Overenie
+- `node tests/gyn_corrections_parser_test.js` -> pass
+- `node tests/gyn_corrections_overlay_test.js` -> pass
+- Na dodanom `Plnenie_gyn_2026.xlsx` vzniklo 70 korekcnych riadkov pre Q1/Q2 pracovne zalozky.
+
+---
+
 **2.20.11** (na `main` aj `test` vetve) — **fix gyn chart: konkurenti aj cez predošlý Q (cache hit obchádzal okresy_prev fetch)**: trend graf v gyn Trhový podiel zobrazoval konkurentov len pre aktuálny Q napriek tomu, že v2.20.4 mal robiť paralelný fetch oboch quartalov. Príčina: `gynPreloadAllPharma()` na pozadí fetchol len aktuálny Q a uložil do cache bez `okresy_prev` poľa. Pri otvorení chartu `gynPharmaLoad` videl cache hit a vrátil staré dáta bez prev Q. Fix: cache hit sa teraz akceptuje iba ak `cached.okresy_prev !== undefined` (alebo nie je prev Q). Inak sa doplní prev Q fetch + merge. Optimalizácia: ak je current Q v cache, nesťahuje sa znova.
 
 ### v2.20.11 — Fix gyn chart konkurenti — cache hit obchádzal prev Q fetch

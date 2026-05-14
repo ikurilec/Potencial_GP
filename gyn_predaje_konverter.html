@@ -94,6 +94,23 @@ tr:hover{background:#F8FAFC}
     </div>
   </div>
 
+  <div class="step">
+    <div class="step-title"><span class="step-num">4</span>Korekcie prepocitanych gyn produktov <span id="corr-count" style="font-size:11px;color:#64748B;margin-left:8px;font-weight:500"></span></div>
+    <div class="hint">
+      <strong>Kedy pouzit:</strong> ked pride prepocet pre Globifer, Levosert, Ovosicare, H - Gel, Immuno alebo Escapelle.
+      Vystup vloz do samostatneho tabu <code>Predaje_korekcie</code>.
+    </div>
+    <div class="drop-zone" id="corr-drop-zone">
+      <div class="drop-zone-icon">&#128221;</div>
+      <div>Pretiahni sem <code>Plnenie_gyn_2026.xlsx</code> alebo klikni na vyber</div>
+      <div class="drop-zone-sub">Spracuju sa harky <code>Plnenie 1.Q</code> a <code>Plnenie 2.Q.2026</code>; korekcie su po reprezentantoch/oblastiach.</div>
+      <input type="file" id="corr-file-input" accept=".xlsx,.xls" style="display:none">
+    </div>
+    <div id="corr-body">
+      <div class="empty-state">Zatial ziadne korekcie. Pridaj subor Plnenie_gyn_2026.xlsx.</div>
+    </div>
+  </div>
+
 </div>
 
 <div class="toast" id="toast"></div>
@@ -151,7 +168,24 @@ const PRODUCT_MAP = {
   'GYNPI_Papilocare':       null
 };
 
+const CORRECTION_PRODUCT_MAP = {
+  'GLOBIFER': 'Globifer',
+  'LEVOSERT': 'Levosert',
+  'OVOSICARE': 'Ovosicare',
+  'H-GEL': 'Papilocare Hgel',
+  'H GEL': 'Papilocare Hgel',
+  'IMMUNO': 'Immunocaps',
+  'IMMUNOCAPS': 'Immunocaps',
+  'ESCAPELLE': 'Escapelle'
+};
+const CORRECTION_REGION_ALIAS = { BA:'BAPI', SE:'SEPI', ST:'STPI', VY:'VYPI', ZA:'ZAPI' };
+const CORRECTION_SHEETS = {
+  'Plnenie 1.Q': { months:[1,2,3] },
+  'Plnenie 2.Q.2026': { months:[4,5,6] }
+};
+
 let fileResults = []; // { file, rows, region, status, error? }
+let correctionRows = [];
 
 // ── Helpers ──
 function toast(msg, dur){
@@ -362,6 +396,99 @@ function resetAll(){
   renderPreview();
 }
 
+function correctionKey(label){
+  return String(label || '')
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .toUpperCase();
+}
+
+function correctionProduct(label){
+  const key = correctionKey(label).replace(/\s*-\s*/g, '-');
+  return CORRECTION_PRODUCT_MAP[key] || CORRECTION_PRODUCT_MAP[key.replace(/-/g, ' ')] || null;
+}
+
+function correctionRegion(label){
+  const raw = correctionKey(label);
+  if(!raw || raw === 'TOTAL') return null;
+  if(REGION_MAP[raw]) return raw;
+  const first = raw.split(/[\s-]+/)[0];
+  const aliased = CORRECTION_REGION_ALIAS[first] || first;
+  return REGION_MAP[aliased] ? aliased : null;
+}
+
+function correctionSheetConfig(sheetName){
+  return CORRECTION_SHEETS[sheetName] || null;
+}
+
+function correctionNum(v){
+  if(v == null || v === '') return null;
+  if(typeof v === 'number') return isNaN(v) ? null : v;
+  const n = parseFloat(String(v).replace(/\s/g, '').replace(',', '.'));
+  return isNaN(n) ? null : n;
+}
+
+function extractCorrectionRowsFromWorkbook(wb){
+  const out = [];
+  for(const sheetName of wb.SheetNames || []){
+    const cfg = correctionSheetConfig(sheetName);
+    if(!cfg) continue;
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header:1, raw:true });
+    let currentProduct = null;
+    for(const row of rows){
+      const label = row && row[0];
+      if(label == null || label === '') continue;
+      const prod = correctionProduct(label);
+      if(correctionKey(row[1]) === 'PLAN'){ currentProduct = prod || null; continue; }
+      if(!currentProduct) continue;
+      const region = correctionRegion(label);
+      if(!region) continue;
+      const rep = REGION_MAP[region];
+      for(let idx=0; idx<cfg.months.length; idx++){
+        const val = correctionNum(row[2 + idx]);
+        if(val == null) continue;
+        out.push({
+          login: rep.login,
+          meno: rep.meno,
+          rok: 2026,
+          mesiac: cfg.months[idx],
+          produkt: currentProduct,
+          hodnota: Math.round(val * 100) / 100,
+          zdroj: sheetName + ' / ' + String(label).trim()
+        });
+      }
+    }
+  }
+  out.sort((a,b) => {
+    if(a.login !== b.login) return a.login.localeCompare(b.login);
+    if(a.rok !== b.rok) return a.rok - b.rok;
+    if(a.mesiac !== b.mesiac) return a.mesiac - b.mesiac;
+    return a.produkt.localeCompare(b.produkt);
+  });
+  return out;
+}
+
+function handleCorrectionFile(file){
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type:'array', cellDates:true });
+      correctionRows = extractCorrectionRowsFromWorkbook(wb);
+      renderCorrectionPreview();
+      toast('Korekcie nacitane: ' + correctionRows.length + ' riadkov');
+    } catch(err) {
+      correctionRows = [];
+      renderCorrectionPreview();
+      toast('Chyba korekcii: ' + err.message, 3500);
+    }
+  };
+  reader.onerror = () => toast('Chyba citania suboru', 3000);
+  reader.readAsArrayBuffer(file);
+}
+
 function renderFileList(){
   const container = document.getElementById('files');
   container.innerHTML = '';
@@ -512,12 +639,85 @@ function buildCSV(separator){
   return out;
 }
 
+function correctionColumns(){
+  return ['login','meno','rok','mesiac','produkt','hodnota','zdroj'];
+}
+
+function buildCorrectionCSV(separator){
+  const cols = correctionColumns();
+  let out = cols.join(separator) + '\n';
+  for(const r of correctionRows){
+    out += cols.map(c => {
+      const v = r[c];
+      if(v == null) return '';
+      if(typeof v === 'number' && c === 'hodnota') return v.toFixed(2);
+      return v;
+    }).join(separator) + '\n';
+  }
+  return out;
+}
+
+function renderCorrectionPreview(){
+  const body = document.getElementById('corr-body');
+  const counter = document.getElementById('corr-count');
+  if(!body) return;
+  if(!correctionRows.length){
+    if(counter) counter.textContent = '';
+    body.innerHTML = '<div class="empty-state">Zatial ziadne korekcie. Pridaj subor Plnenie_gyn_2026.xlsx.</div>';
+    return;
+  }
+  const reps = [...new Set(correctionRows.map(r => r.login))];
+  const months = [...new Set(correctionRows.map(r => r.rok + '-' + String(r.mesiac).padStart(2,'0')))].sort();
+  const products = [...new Set(correctionRows.map(r => r.produkt))].sort();
+  if(counter) counter.textContent = '· ' + correctionRows.length + ' korekcii, ' + reps.length + ' repov';
+  body.innerHTML =
+    '<div class="summary">' +
+      '<div class="summary-card"><div class="summary-lbl">Repov</div><div class="summary-val">' + reps.length + '</div></div>' +
+      '<div class="summary-card"><div class="summary-lbl">Produktov</div><div class="summary-val">' + products.length + '</div></div>' +
+      '<div class="summary-card"><div class="summary-lbl">Mesiacov</div><div class="summary-val">' + months.length + '</div></div>' +
+      '<div class="summary-card"><div class="summary-lbl">Obdobie</div><div class="summary-val" style="font-size:12px">' + months[0] + ' -> ' + months[months.length-1] + '</div></div>' +
+    '</div>' +
+    '<div class="preview-wrap"><table id="corr-table"></table></div>' +
+    '<div class="actions">' +
+      '<button class="btn btn-primary" onclick="copyCorrectionToClipboard()">Kopirovat korekcie TSV</button>' +
+      '<button class="btn btn-secondary" onclick="downloadCorrectionCSV()">Stiahnut korekcie CSV</button>' +
+    '</div>';
+  renderCorrectionTable();
+}
+
+function renderCorrectionTable(){
+  const t = document.getElementById('corr-table');
+  if(!t) return;
+  const cols = correctionColumns();
+  let html = '<thead><tr>' + cols.map(c => '<th>' + c + '</th>').join('') + '</tr></thead><tbody>';
+  for(const r of correctionRows){
+    html += '<tr>';
+    for(const c of cols){
+      const v = r[c];
+      const isNum = typeof v === 'number';
+      html += '<td' + (isNum ? ' class="num"' : '') + '>' + (v == null ? '' : (isNum && c === 'hodnota' ? v.toFixed(2) : v)) + '</td>';
+    }
+    html += '</tr>';
+  }
+  html += '</tbody>';
+  t.innerHTML = html;
+}
+
 function copyToClipboard(){
   const txt = buildCSV('\t');
   navigator.clipboard.writeText(txt).then(() => {
     toast('✓ Skopírované — vlož do Sheets (Ctrl+V)');
   }).catch(err => {
     toast('✗ Chyba: ' + err.message);
+  });
+}
+
+function copyCorrectionToClipboard(){
+  const txt = buildCorrectionCSV('\t');
+  navigator.clipboard.writeText(txt).then(() => {
+    toast('Korekcie skopirovane - vloz do Predaje_korekcie');
+  }).catch(err => {
+    toast('Chyba: ' + err.message);
   });
 }
 
@@ -532,6 +732,19 @@ function downloadCSV(){
   a.click();
   URL.revokeObjectURL(url);
   toast('✓ CSV stiahnuté');
+}
+
+function downloadCorrectionCSV(){
+  const txt = buildCorrectionCSV(',');
+  const blob = new Blob(['\ufeff' + txt], { type:'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const today = new Date().toISOString().slice(0,10);
+  a.download = 'gyn_predaje_korekcie_' + today + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Korekcie CSV stiahnute');
 }
 
 // ── Drag & drop ──
@@ -574,6 +787,24 @@ dz.addEventListener('drop', (e) => {
 fi.addEventListener('change', (e) => {
   if(e.target.files.length > 0) handleFiles(e.target.files);
 });
+
+const corrDz = document.getElementById('corr-drop-zone');
+const corrFi = document.getElementById('corr-file-input');
+if(corrDz && corrFi){
+  corrDz.addEventListener('click', () => corrFi.click());
+  corrDz.addEventListener('dragover', (e) => { e.preventDefault(); corrDz.classList.add('dragover'); });
+  corrDz.addEventListener('dragleave', () => corrDz.classList.remove('dragover'));
+  corrDz.addEventListener('drop', (e) => {
+    e.preventDefault();
+    corrDz.classList.remove('dragover');
+    const file = e.dataTransfer.files && e.dataTransfer.files[0];
+    if(file) handleCorrectionFile(file);
+  });
+  corrFi.addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if(file) handleCorrectionFile(file);
+  });
+}
 </script>
 </body>
 </html>
