@@ -30,8 +30,8 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 #### Problem
 - IQVIA gyn predaje prichadzaju najprv ako klasicke mesacne predaje, ktore sa importuju cez `gyn_predaje_konverter.html` do tabu `Predaje`.
-- Pri produktoch Globifer, Levosert, Ovosicare, H - Gel, Immuno/Immunocaps a Escapelle prichadzaju nasledne prepocitane hodnoty.
-- Ivan potrebuje opravit iba tieto produkty a iba dotknute mesiace, bez zasahu do ostatnych produktov v Google Sheets.
+- Pri vybranych produktoch prichadzaju nasledne prepocitane hodnoty; kedze sa rozdiely mozu objavit aj pri dalsich produktoch, korekcny export berie vsetky podporovane produktove bloky z pracovneho suboru.
+- Ivan potrebuje opravit iba dotknute produkty a iba dotknute mesiace, bez zasahu do ostatnych hodnot v Google Sheets.
 - Detail reprezentanta musi sediet rovnako ako manazersky sumarny pohlad.
 
 #### Oprava
@@ -41,11 +41,21 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 - Format korekcii: `login | meno | rok | mesiac | produkt | hodnota | zdroj`.
 - Parser mapuje pracovne bloky na app produkty:
   - `GLOBIFER` -> `Globifer`
+  - `LIDBREE` -> `Lidbree`
   - `LEVOSERT` -> `Levosert`
   - `OVOSICARE` -> `Ovosicare`
+  - `RYEQO` -> `Ryeqo`
+  - `DROVELIS` -> `Drovelis`
+  - `EVRA` -> `Evra`
+  - `BELARA` -> `Belara`
+  - `DAYLETTE` -> `Daylette`
+  - `DAYLLA` -> `Daylla`
+  - `MAITALON` -> `Maitalon`
+  - `MISTRA` -> `Mistra`
   - `H - GEL` -> `Papilocare Hgel`
   - `IMMUNO` -> `Immunocaps`
   - `ESCAPELLE` -> `Escapelle`
+  - `AZALIA` (aj ked je v XLSX s diakritikou) -> `Azalia`
 - Regiony/oblasti sa mapuju spat na login repa, aby fungoval aj detail reprezentanta.
 - `apps_script/kód_gyn.gs` endpoint `getPlnenieAll` po nacitani tabu `Predaje` nacita aj `Predaje_korekcie`.
 - Ak existuje korekcia pre rovnaky `login + rok + mesiac + produkt`, prepise iba tuto jednu hodnotu v `predajeByRep`; ostatne produkty a mesiace ostavaju z povodneho tabu `Predaje`.
@@ -60,7 +70,7 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 #### Overenie
 - `node tests/gyn_corrections_parser_test.js` -> pass
 - `node tests/gyn_corrections_overlay_test.js` -> pass
-- Na dodanom `Plnenie_gyn_2026.xlsx` vzniklo 70 korekcnych riadkov pre Q1/Q2 pracovne zalozky.
+- Na dodanom `Plnenie_gyn_2026.xlsx` vzniklo 260 korekcnych riadkov pre Q1/Q2 pracovne zalozky (13 produktov x 20 rep/mesiac riadkov podla dostupnych hodnot).
 
 ---
 
