@@ -26,7 +26,43 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
-**2.20.10** (na `main` aj `test` vetve) — **header redesign: výrazný avatar + výrazný logout + onboarding hint**: 5 zmien pre lepšiu discoverabilitu header avatara aj logout tlačidla — (1) **swap pozícií**: avatar je teraz na pravej hrane (predtým medzi nadpisom a Odhlásiť), Odhlásiť tlačidlo je naľavo od neho; (2) **zväčšený avatar**: 38 → 60px (58% bigger, oveľa viac viditeľný); (3) **väčšia kontrastná ceruzka**: 14 → 22px s bielym pozadím a modrou ceruzkou; (4) **pulzujúce žlté halo + bouncing ceruzka** keď avatar nie je nastavený + **one-time žltý onboarding tooltip** ktorý sa zobrazí 4s po prihlásení; (5) **Odhlásiť tlačidlo redesignované**: pill s SVG door-exit ikonou + textom "Odhlásiť" v sýtej červenej (gradient `#DC2626 → #B91C1C`, biely text, red glow shadow, inset highlight). Ikona aj text aby bolo jednoznačné že tlačidlo odhlasuje.
+**2.20.11** (na `main` aj `test` vetve) — **fix gyn chart: konkurenti aj cez predošlý Q (cache hit obchádzal okresy_prev fetch)**: trend graf v gyn Trhový podiel zobrazoval konkurentov len pre aktuálny Q napriek tomu, že v2.20.4 mal robiť paralelný fetch oboch quartalov. Príčina: `gynPreloadAllPharma()` na pozadí fetchol len aktuálny Q a uložil do cache bez `okresy_prev` poľa. Pri otvorení chartu `gynPharmaLoad` videl cache hit a vrátil staré dáta bez prev Q. Fix: cache hit sa teraz akceptuje iba ak `cached.okresy_prev !== undefined` (alebo nie je prev Q). Inak sa doplní prev Q fetch + merge. Optimalizácia: ak je current Q v cache, nesťahuje sa znova.
+
+### v2.20.11 — Fix gyn chart konkurenti — cache hit obchádzal prev Q fetch
+
+#### Problém
+- Trend graf v gyn Trhový podiel pre Belaru zobrazoval konkurenčné čiary (MAITALON, MISTRA, DROVELIS) iba pre Jan-Mar 2026
+- Naše dáta (Belara) + Slovensko ✅ celých 6 mesiacov (Oct-Mar)
+- Konkurenti ❌ len pre aktuálny Q
+- V Sheets PharmaData_Okresy reálne EXISTUJÚ riadky pre Q4 2025 (2504) — overené cez API curl test
+
+#### Príčina
+- `gynPreloadAllPharma()` pri prihlásení robil 500+ fetchov **iba pre aktuálny Q** (každý product × region × current Q)
+- Cachoval response do `GYN_PHARMA_STATE.cache[key]` bez `okresy_prev` poľa
+- Pri otvorení chartu užívateľom: `gynPharmaLoad` videl `cache[key]` → render → bez konkurentov z prev Q
+- Logika v `gynPharmaLoad` z v2.20.4 (paralelný fetch current + prev) **nikdy nezbehla** lebo cache už mala záznam
+
+#### Oprava
+- **`gynPharmaLoad`** rozšírený o detekciu kompletnosti cache:
+  ```js
+  if (cached && (cached.okresy_prev !== undefined || !kvartalPrev)) {
+    gynPharmaRender(cached); return;
+  }
+  ```
+- Ak cache má `okresy_prev` → use cache
+- Ak cache nemá `okresy_prev` ale existuje prev Q na fetch → re-use cached current Q, fetchni iba prev Q a merge
+- Optimalizácia: `fetchCurrent` je `Promise.resolve(cached)` ak cache hit → 1 request namiesto 2
+
+#### Štatistika
+- **Verzia 2.20.10 → 2.20.11** (PATCH — bug fix)
+- ~15 insertions / 5 deletions v `index.html`
+- 0 backend zmien (žiadny Apps Script redeploy)
+
+---
+
+### v2.20.10 — Header redesign: výrazný avatar + výrazný logout + onboarding hint
+
+**2.20.10** — **header redesign: výrazný avatar + výrazný logout + onboarding hint**: 5 zmien pre lepšiu discoverabilitu header avatara aj logout tlačidla — (1) **swap pozícií**: avatar je teraz na pravej hrane (predtým medzi nadpisom a Odhlásiť), Odhlásiť tlačidlo je naľavo od neho; (2) **zväčšený avatar**: 38 → 60px (58% bigger, oveľa viac viditeľný); (3) **väčšia kontrastná ceruzka**: 14 → 22px s bielym pozadím a modrou ceruzkou; (4) **pulzujúce žlté halo + bouncing ceruzka** keď avatar nie je nastavený + **one-time žltý onboarding tooltip** ktorý sa zobrazí 4s po prihlásení; (5) **Odhlásiť tlačidlo redesignované**: pill s SVG door-exit ikonou + textom "Odhlásiť" v sýtej červenej (gradient `#DC2626 → #B91C1C`, biely text, red glow shadow, inset highlight). Ikona aj text aby bolo jednoznačné že tlačidlo odhlasuje.
 
 ### v2.20.10 — Avatar discoverability — swap + bigger avatar + pulse halo + onboarding tooltip
 
