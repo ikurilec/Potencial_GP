@@ -54,6 +54,10 @@ const rows = [
   ['SEPA', 44897, 13957, null, null, 13957, 0.3109],
   ['Total', 237114, 75705, 0, 0, 75705, 0.3193],
   [],
+  ['RYEQO', 'Plan', 1, 2, 3, 'Spolu', 'Plnenie'],
+  ['BAPA', 141102, 42820, 54510, 50919, 148250, 1.0507],
+  ['Total', 598262, 191764, 224455, 215926, 632145, 1.0566],
+  [],
   ['LEVOSERT', 'Plan', 1, 2, 3, 'Spolu', 'Plnenie'],
   ['ZAPA', 13863, 3740, null, null, 3740, 0.2698],
   ['Total', 79209, 34760, 0, 0, 34760, 0.4388],
@@ -79,8 +83,11 @@ const expected = [
   { login: 'a.slezackova', rok: 2026, mesiac: 1, produkt: 'Levosert', hodnota: 3740 },
   { login: 'b.sivakova', rok: 2026, mesiac: 1, produkt: 'Papilocare Hgel', hodnota: 1000 },
   { login: 'k.basternakova', rok: 2026, mesiac: 1, produkt: 'Globifer', hodnota: 0 },
+  { login: 'k.basternakova', rok: 2026, mesiac: 1, produkt: 'Ryeqo', hodnota: 42820 },
   { login: 'k.basternakova', rok: 2026, mesiac: 2, produkt: 'Globifer', hodnota: 0 },
+  { login: 'k.basternakova', rok: 2026, mesiac: 2, produkt: 'Ryeqo', hodnota: 54510 },
   { login: 'k.basternakova', rok: 2026, mesiac: 3, produkt: 'Globifer', hodnota: 18109 },
+  { login: 'k.basternakova', rok: 2026, mesiac: 3, produkt: 'Ryeqo', hodnota: 50919 },
   { login: 'sepa', rok: 2026, mesiac: 1, produkt: 'Globifer', hodnota: 13957 },
 ];
 assert.strictEqual(JSON.stringify(actual), JSON.stringify(expected));
