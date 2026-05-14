@@ -446,9 +446,13 @@ function extractCorrectionRowsFromWorkbook(wb){
       const region = correctionRegion(label);
       if(!region) continue;
       const rep = REGION_MAP[region];
+      let lastValueIdx = -1;
       for(let idx=0; idx<cfg.months.length; idx++){
-        const val = correctionNum(row[2 + idx]);
-        if(val == null) continue;
+        if(correctionNum(row[2 + idx]) != null) lastValueIdx = idx;
+      }
+      for(let idx=0; idx<=lastValueIdx; idx++){
+        let val = correctionNum(row[2 + idx]);
+        if(val == null) val = 0;
         out.push({
           login: rep.login,
           meno: rep.meno,
