@@ -2244,7 +2244,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.20.10';
+var APP_VERSION = '2.20.11';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6647,19 +6647,27 @@ function gynPharmaKvartalPrev(kvartal) {
 
 function gynPharmaLoad() {
   var key = GYN_PHARMA_STATE.produkt + '|' + GYN_PHARMA_STATE.oblast + '|' + GYN_PHARMA_STATE.kvartal;
-  if(GYN_PHARMA_STATE.cache[key]) { gynPharmaRender(GYN_PHARMA_STATE.cache[key]); return; }
+  var cached = GYN_PHARMA_STATE.cache[key];
+  var kvartalPrev = gynPharmaKvartalPrev(GYN_PHARMA_STATE.kvartal);
+
+  // Cache hit & kompletné (má okresy_prev alebo nepotrebujeme prev Q) → render
+  // Inak musíme doplniť prev Q dáta (preload fetchol len aktuálny Q bez okresy_prev)
+  if (cached && (cached.okresy_prev !== undefined || !kvartalPrev)) {
+    gynPharmaRender(cached);
+    return;
+  }
   if(GYN_PHARMA_STATE.loading[key]) return;
   GYN_PHARMA_STATE.loading[key] = true;
 
-  var kvartalPrev = gynPharmaKvartalPrev(GYN_PHARMA_STATE.kvartal);
-
-  // Paralelný fetch: aktuálny Q + predchádzajúci Q (pre konkurentov v 6-mes trend grafe)
-  var fetchCurrent = fetch(gynScriptUrl(
-    'action=getPharmaData' +
-    '&oblast='  + encodeURIComponent(GYN_PHARMA_STATE.oblast) +
-    '&produkt=' + encodeURIComponent(GYN_PHARMA_STATE.produkt) +
-    '&kvartal=' + encodeURIComponent(GYN_PHARMA_STATE.kvartal)
-  ), { cache:'no-store' }).then(function(r){ return r.json(); });
+  // Aktuálny Q: ak je v cache, znova nesťahuj — len doplníme prev Q
+  var fetchCurrent = cached
+    ? Promise.resolve(cached)
+    : fetch(gynScriptUrl(
+        'action=getPharmaData' +
+        '&oblast='  + encodeURIComponent(GYN_PHARMA_STATE.oblast) +
+        '&produkt=' + encodeURIComponent(GYN_PHARMA_STATE.produkt) +
+        '&kvartal=' + encodeURIComponent(GYN_PHARMA_STATE.kvartal)
+      ), { cache:'no-store' }).then(function(r){ return r.json(); });
 
   var fetchPrev = kvartalPrev ? fetch(gynScriptUrl(
     'action=getPharmaData' +
