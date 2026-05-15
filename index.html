@@ -16621,6 +16621,17 @@ function lkBuildLekarne(rows) {
       : -1;
     var isReaktivacia = !isNew && krmMonths.length > 0 && lastKrmIdx >= 2;
 
+    // Krém potenciál: berie AFL tbl. alebo sáčky, ale NIKDY nekúpila AFL krém
+    var hasEverKrm = krmMonths.length > 0;
+    var aflTblSachMonths = info.months.filter(function(m){ return m.prods['aflamil_tb'] || m.prods['aflamil_sa']; });
+    var isKrmPotential = !isNew && !hasEverKrm && aflTblSachMonths.length > 0 && !isSleeping;
+    var aflTblSachAvg = 0;
+    if (isKrmPotential) {
+      var totalAfl = 0;
+      aflTblSachMonths.forEach(function(m){ totalAfl += (m.prods['aflamil_tb']||0) + (m.prods['aflamil_sa']||0); });
+      aflTblSachAvg = Math.round(totalAfl / aflTblSachMonths.length);
+    }
+
     // Prioritná: vysoký objem Vidonorm + Telexer + Kogavant
     var priorityProds = ['vidonorm','telexer','kogavant'];
     var priorityVol = 0;
@@ -16634,8 +16645,9 @@ function lkBuildLekarne(rows) {
       months: info.months, lastM: lastM, monthsAgo: monthsAgo,
       trend: trend, buys: buys, missing: missing,
       isNew: isNew, isSleeping: isSleeping,
-      isReaktivacia: isReaktivacia, isPriority: isPriority,
-      priorityVol: priorityVol, krmMonthsAgo: lastKrmIdx,
+      isReaktivacia: isReaktivacia, isKrmPotential: isKrmPotential,
+      isPriority: isPriority, priorityVol: priorityVol,
+      krmMonthsAgo: lastKrmIdx, aflTblSachAvg: aflTblSachAvg,
       allProds: allProds
     });
   });
@@ -16711,14 +16723,14 @@ function lkRender() {
   var shown;
   if      (tab === 'sleeping')    shown = filtered.filter(function(l){ return l.isSleeping; });
   else if (tab === 'new')         shown = filtered.filter(function(l){ return l.isNew; });
-  else if (tab === 'reaktivacia') shown = filtered.filter(function(l){ return l.isReaktivacia; });
+  else if (tab === 'reaktivacia') shown = filtered.filter(function(l){ return l.isReaktivacia || l.isKrmPotential; });
   else if (tab === 'priority')    shown = filtered.filter(function(l){ return l.isPriority; });
   else shown = filtered;
 
   // Aktualizuj badge na záložkách
   var sleepingCnt    = all.filter(function(l){ return l.isSleeping; }).length;
   var newCnt         = all.filter(function(l){ return l.isNew; }).length;
-  var reaktivaciaCnt = all.filter(function(l){ return l.isReaktivacia; }).length;
+  var reaktivaciaCnt = all.filter(function(l){ return l.isReaktivacia || l.isKrmPotential; }).length;
   var priorityCnt    = all.filter(function(l){ return l.isPriority; }).length;
   var tabCounts = { sleeping: sleepingCnt, new: newCnt, reaktivacia: reaktivaciaCnt, priority: priorityCnt };
   var tabColors  = { sleeping: '#EF4444', new: '#10B981', reaktivacia: '#F59E0B', priority: '#8B5CF6' };
@@ -16744,7 +16756,12 @@ function lkRender() {
 
   // Zoradiť
   if (tab === 'sleeping')    shown = shown.slice().sort(function(a,b){ return b.monthsAgo - a.monthsAgo; });
-  if (tab === 'reaktivacia') shown = shown.slice().sort(function(a,b){ return b.krmMonthsAgo - a.krmMonthsAgo; });
+  if (tab === 'reaktivacia') shown = shown.slice().sort(function(a,b){
+    // Reaktivácie (mali krém, prestali) pred potenciálmi (nikdy nebrali)
+    if (a.isReaktivacia !== b.isReaktivacia) return a.isReaktivacia ? -1 : 1;
+    if (a.isReaktivacia) return b.krmMonthsAgo - a.krmMonthsAgo;
+    return b.aflTblSachAvg - a.aflTblSachAvg; // potenciál — väčší objem vyššie
+  });
   if (tab === 'priority')    shown = shown.slice().sort(function(a,b){ return b.priorityVol - a.priorityVol; });
   if (tab === 'new') shown = shown.slice().sort(function(a,b){
     return (b.months[0].rok*100+b.months[0].mesiac) - (a.months[0].rok*100+a.months[0].mesiac);
@@ -16757,12 +16774,15 @@ function lkRender() {
     var lastLbl = LK_MES_NAMES[l.lastM.mesiac] + ' ' + l.lastM.rok;
     var subHtml = '<b>' + lkEsc(l.okres) + '</b> · ' + lkEsc(l.mesto);
     if (l.isSleeping) subHtml += ' · <span style="color:#EF4444">Posledný nákup: ' + lastLbl + '</span>';
-    if (tab === 'reaktivacia') subHtml += ' · <span style="color:#D97706">AFL krém naposledy: ' + lastLbl + '</span>';
+    if (tab === 'reaktivacia' && l.isReaktivacia) subHtml += ' · <span style="color:#D97706">AFL krém naposledy: ' + lastLbl + '</span>';
 
     // Akčný chip
     var actionChip = '';
-    if (tab === 'reaktivacia') {
+    if (tab === 'reaktivacia' && l.isReaktivacia) {
       actionChip = '<div style="margin-top:6px"><span style="background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;border-radius:20px;font-size:10px;font-weight:700;padding:3px 9px">🔄 Reaktivácia AFL krém</span></div>';
+    } else if (tab === 'reaktivacia' && l.isKrmPotential) {
+      var avgTxt = l.aflTblSachAvg > 0 ? 'priemer ' + l.aflTblSachAvg + ' ks/mes.' : '';
+      actionChip = '<div style="margin-top:6px"><span style="background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;border-radius:20px;font-size:10px;font-weight:700;padding:3px 9px">🧴 Berie AFL tbl./sáč.' + (avgTxt ? ' — ' + avgTxt : '') + ', žiadny krém</span></div>';
     } else if (tab === 'priority') {
       var pvols = ['vidonorm','telexer','kogavant'].filter(function(p){ return l.allProds[p] && (l.allProds[p].last3||0)+(l.allProds[p].prev3||0) > 0; });
       actionChip = '<div style="margin-top:6px"><span style="background:#F3E8FF;color:#6D28D9;border:1px solid #C4B5FD;border-radius:20px;font-size:10px;font-weight:700;padding:3px 9px">⭐ Prioritná — ' + pvols.map(function(p){ return LK_PROD_DISPLAY[p]||p; }).join(', ') + '</span></div>';
@@ -16772,7 +16792,7 @@ function lkRender() {
     if (tab === 'reaktivacia') {
       // Ukáž čo berie (nie AFL krém)
       var otherBuys = l.buys.filter(function(p){ return p !== 'aflamil_kr'; });
-      if (otherBuys.length > 0) chipsHtml = '<div class="lk-prod-chips">' + otherBuys.slice(0,5).map(function(p){ return '<span class="lk-prod-chip">'+(LK_PROD_DISPLAY[p]||p)+'</span>'; }).join('') + '</div>';
+      if (otherBuys.length > 0) chipsHtml = '<div class="lk-prod-chips">' + otherBuys.slice(0,5).map(function(p){ return '<span class="lk-prod-chip">'+(LK_PROD_DISPLAY[p]||p)+'</span>'; }).join('') + (l.isKrmPotential ? '<span class="lk-prod-chip missing">+ AFL krém</span>' : '') + '</div>';
     } else if (l.buys.length > 0) {
       chipsHtml = '<div class="lk-prod-chips">' +
         l.buys.slice(0, 5).map(function(p){ return '<span class="lk-prod-chip">' + (LK_PROD_DISPLAY[p]||p) + '</span>'; }).join('') +
