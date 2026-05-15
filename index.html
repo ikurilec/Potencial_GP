@@ -13235,13 +13235,7 @@ function repPlnenieUpdateNavBtn() {
       if (cached.aggregates.reps[i].username === username) { pct = cached.aggregates.reps[i].pct; break; }
     }
   }
-  if (pct !== null) {
-    var pctStr = Math.round(pct) + '%';
-    var colorCls = pct >= 100 ? '#10B981' : (pct >= 95 ? '#F59E0B' : '#EF4444');
-    btn.innerHTML = '💊 Plnenie <span style="background:' + colorCls + ';color:#fff;border-radius:6px;font-size:10px;font-weight:800;padding:1px 5px;margin-left:2px">' + pctStr + '</span>';
-  } else {
-    btn.innerHTML = '💊 Plnenie';
-  }
+  btn.innerHTML = '💊 Plnenie';
 }
 
 function repPlnenieUpdateQTabs() {
