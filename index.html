@@ -1208,7 +1208,11 @@
   /* Lekáreň detail */
   .lk-detail{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:2600;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   .lk-detail.show{display:block}
-  .lk-detail-inner{padding:72px 14px 48px}
+  .lk-detail-inner{max-width:480px;margin:0 auto;padding:16px 16px 48px}
+  .lk-det-hdr{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .lk-det-back{display:inline-flex;align-items:center;gap:6px;background:#fff;border:none;padding:9px 14px 9px 10px;border-radius:22px;color:#2563EB;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;box-shadow:0 1px 4px rgba(0,0,0,.06);-webkit-tap-highlight-color:transparent;white-space:nowrap;flex-shrink:0}
+  .lk-det-back:active{opacity:.75}
+  .lk-det-title{font-size:15px;font-weight:800;color:#0F172A;font-family:var(--font-display);letter-spacing:-.01em;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .lk-detail-hdr{background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
   .lk-detail-name{font-size:16px;font-weight:800;color:#0F172A;font-family:var(--font-display);letter-spacing:-.01em}
   .lk-detail-sub{font-size:11px;color:#64748B;margin-top:3px}
@@ -16936,11 +16940,13 @@ function lkEscAttr(s) {
 
 <!-- ── LEKÁREŇ DETAIL ── -->
 <div class="lk-detail" id="lk-detail">
-  <div class="lk-hdr">
-    <button class="lk-back" onclick="closeLkarneDetail()">← Späť</button>
-    <div class="lk-hdr-title" id="lk-detail-title">Lekáreň</div>
+  <div class="lk-detail-inner">
+    <div class="lk-det-hdr">
+      <button class="lk-det-back" onclick="closeLkarneDetail()">← Späť</button>
+      <div class="lk-det-title" id="lk-detail-title">Lekáreň</div>
+    </div>
+    <div id="lk-detail-body"></div>
   </div>
-  <div class="lk-detail-inner" id="lk-detail-body"></div>
 </div>
 
 <!-- ── PHARMA MS OVERLAY — trhový podiel produktu ── -->
