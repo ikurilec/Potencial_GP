@@ -409,7 +409,7 @@
   .lb-p-avatar{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;margin-bottom:6px;position:relative;font-family:var(--font-display);z-index:1}
   .lb-p-crown{position:absolute;top:-26px;left:50%;transform:translateX(-50%);font-size:30px;line-height:1;filter:drop-shadow(0 2px 6px rgba(217,119,6,.45));animation:crownFloat 3s ease-in-out infinite}
   @keyframes crownFloat{0%,100%{transform:translateX(-50%) translateY(0) rotate(0deg)}50%{transform:translateX(-50%) translateY(-3px) rotate(-3deg)}}
-  .lb-p-medal{position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);font-size:30px;line-height:1;filter:drop-shadow(0 3px 6px rgba(0,0,0,.30));z-index:2;pointer-events:none}
+  .lb-p-medal{display:block;font-size:26px;line-height:1;text-align:center;margin-top:-4px;margin-bottom:2px;position:relative;z-index:2;pointer-events:none}
   .lb-p-2 .lb-p-medal{filter:drop-shadow(0 2px 4px rgba(100,116,139,.45)) drop-shadow(0 0 3px rgba(203,213,225,.35))}
   .lb-p-3 .lb-p-medal{filter:drop-shadow(0 2px 4px rgba(146,64,14,.45)) drop-shadow(0 0 3px rgba(217,119,6,.35))}
   .lb-p-name{font-size:11.5px;font-weight:700;color:#0F172A;text-align:center;max-width:80px;line-height:1.3;letter-spacing:-.005em}
@@ -2247,7 +2247,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.20.13';
+var APP_VERSION = '2.20.18';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9683,9 +9683,9 @@ function buildRepData(reps) {
   var east = reps.filter(function(r){ return r.rola === 'rep east'; });
   var all = west.concat(east);
 
-  MGR_AM_WEST = west.map(function(r){ return r.login; });
-  MGR_AM_EAST = east.map(function(r){ return r.login; });
-  MGR_ALL = all.map(function(r){ return r.login; });
+  MGR_AM_WEST = west.map(function(r){ return r.login.trim().toLowerCase(); });
+  MGR_AM_EAST = east.map(function(r){ return r.login.trim().toLowerCase(); });
+  MGR_ALL = all.map(function(r){ return r.login.trim().toLowerCase(); });
   LB_ALL_REPS = MGR_ALL.slice();
 
   MGR_REP_NAMES = {};
@@ -9693,7 +9693,8 @@ function buildRepData(reps) {
   USERS_LOCAL = {};
 
   all.forEach(function(r, idx){
-    var color = LB_COLOR_PALETTE[strHash(r.login) % LB_COLOR_PALETTE.length];
+    var u = r.login.trim().toLowerCase();
+    var color = LB_COLOR_PALETTE[strHash(u) % LB_COLOR_PALETTE.length];
     // Pohlavie zo Sheets (stĺpec "pohlavie") — striktné mapovanie:
     //   "M"/"m"/"muz"/"muž"/"male" → 'male'
     //   "Z"/"z"/"zena"/"žena"/"female"/"F"/"f" → 'female'
@@ -9713,9 +9714,9 @@ function buildRepData(reps) {
         }
       } catch(e) { /* invalid JSON — ignoruj, ostanú iniciály */ }
     }
-    MGR_REP_NAMES[r.login] = r.meno;
-    LB_REP_INFO[r.login]   = { name: r.meno, region: r.region, color: color, gender: gender, avatar: avatarConfig };
-    USERS_LOCAL[r.login]   = { region: r.region, gender: gender, avatar: avatarConfig };
+    MGR_REP_NAMES[u] = r.meno;
+    LB_REP_INFO[u]   = { name: r.meno, region: r.region, color: color, gender: gender, avatar: avatarConfig };
+    USERS_LOCAL[u]   = { region: r.region, gender: gender, avatar: avatarConfig };
   });
 
   MGR_ROLE_CFG.bum.reps    = MGR_ALL;
@@ -10548,17 +10549,15 @@ function lbRenderPlnenie(body) {
     var isFirst = rn === 1;
     var medal = isFirst ? '' : (rn === 2 ? '\uD83E\uDD48' : '\uD83E\uDD49');
     var lastName = rep.name.split(' ').pop();
-    var avatarMB = medal ? 'margin-bottom:24px' : '';
     var cls = pctCls(rep.pct);
     var av = lbAvatarContent(rep.username, rep.name, isFirst ? 68 : 46);
     podiumHtml +=
       '<div class="lb-p-item ' + podiumClasses[pi] + '">' +
         (isFirst ? '<span class="lb-p-crown">\uD83D\uDC51</span>' : '') +
-        '<div class="lb-p-avatar' + (av.hasAvatar ? ' has-avatar' : '') + '" data-username="' + rep.username + '" style="background:' + rep.color + ';' + avatarMB + '">' +
-          (medal   ? '<span class="lb-p-medal">' + medal + '</span>' : '') +
+        '<div class="lb-p-avatar' + (av.hasAvatar ? ' has-avatar' : '') + '" data-username="' + rep.username + '" style="background:' + rep.color + '">' +
           av.html +
-          '<div class="lb-rank-badge" style="background:' + rankBg[rn-1] + ';color:#fff">' + rn + '</div>' +
         '</div>' +
+        (medal ? '<span class="lb-p-medal">' + medal + '</span>' : '') +
         '<div class="lb-p-name">' + lastName + '</div>' +
         '<div class="lb-p-count lb-count-pct ' + cls + '">' + pctLbl(rep.pct) + '</div>' +
         '<div class="lb-p-block"></div>' +
@@ -10701,8 +10700,21 @@ function lbLoadData(force){
     .then(function(r){ return r.ok ? r.json() : null; })
     .then(function(allHist){
       if(allHist && allHist.ok !== false && typeof allHist === 'object' && !Array.isArray(allHist)){
+        // Normalizuj kľúče z getAllHistory na lowercase
+        var normHist = {};
+        Object.keys(allHist).forEach(function(k){
+          var lk = k.toLowerCase();
+          if(!normHist[lk]) normHist[lk] = allHist[k];
+        });
         var results = {};
-        LB_ALL_REPS.forEach(function(u){ results[u] = Array.isArray(allHist[u]) ? allHist[u] : []; });
+        // Vlož všetky dáta z normHist
+        Object.keys(normHist).forEach(function(lk){ results[lk] = normHist[lk]; });
+        // Zabezpeč že každý rep z LB_ALL_REPS má záznam
+        LB_ALL_REPS.forEach(function(u){
+          var lk = u.toLowerCase();
+          if(!results[lk]) results[lk] = [];
+          results[u] = results[lk];
+        });
         if (looksIncomplete(results)) {
           if (window.console) console.warn('[lb-load] getAllHistory vyzerá neúplne, padám na individuálne fetche');
           fallbackIndividual();
@@ -10865,8 +10877,9 @@ function lbRender(){
   var repsToShow = LB_ALL_REPS.length > 0 ? LB_ALL_REPS : Object.keys(LB_STATE.data || {});
   var ranking = repsToShow.map(function(username){
     var info = LB_REP_INFO[username] || { name: username, region: '', color: 'linear-gradient(135deg,#374151,#6B7280)' };
+    var uData = LB_STATE.data[username] || LB_STATE.data[username.toLowerCase()];
     return { username: username, name: info.name, region: info.region, color: info.color,
-             count: lbCountVisits(LB_STATE.data[username], LB_STATE.period) };
+             count: lbCountVisits(uData, LB_STATE.period) };
   }).sort(function(a,b){ return b.count - a.count || a.name.localeCompare(b.name); });
 
   if(!ranking.some(function(r){ return r.count > 0; })){
@@ -10889,16 +10902,14 @@ function lbRender(){
     var isFirst = rn === 1;
     var medal = isFirst ? '' : (rn === 2 ? '\uD83E\uDD48' : '\uD83E\uDD49');
     var lastName = rep.name.split(' ').pop();
-    var avatarMarginBottom = medal ? 'margin-bottom:24px' : '';
     var av3 = lbAvatarContent(rep.username, rep.name, isFirst ? 68 : 46);
     podiumHtml +=
       '<div class="lb-p-item ' + podiumClasses[pi] + '">' +
         (isFirst ? '<span class="lb-p-crown">\uD83D\uDC51</span>' : '') +
-        '<div class="lb-p-avatar' + (av3.hasAvatar ? ' has-avatar' : '') + '" data-username="' + rep.username + '" style="background:' + rep.color + ';' + avatarMarginBottom + '">' +
-          (medal ? '<span class="lb-p-medal">' + medal + '</span>' : '') +
+        '<div class="lb-p-avatar' + (av3.hasAvatar ? ' has-avatar' : '') + '" data-username="' + rep.username + '" style="background:' + rep.color + '">' +
           av3.html +
-          '<div class="lb-rank-badge" style="background:' + rankBg[rn-1] + ';color:#fff">' + rn + '</div>' +
         '</div>' +
+        (medal ? '<span class="lb-p-medal">' + medal + '</span>' : '') +
         '<div class="lb-p-name">' + lastName + '</div>' +
         '<div class="lb-p-count">' + rep.count + ' n\u00e1\u0161tev</div>' +
         '<div class="lb-p-block"></div>' +
@@ -10980,7 +10991,8 @@ function lbUpdateNavBtn() {
   if (!myUsername || !LB_STATE.data) { btn.innerHTML = '🏆 Rebríček'; return; }
   var repsToShow = LB_ALL_REPS.length > 0 ? LB_ALL_REPS : Object.keys(LB_STATE.data);
   var ranking = repsToShow.map(function(u) {
-    return { username: u, count: lbCountVisits(LB_STATE.data[u], 'month') };
+    var uData = LB_STATE.data[u] || LB_STATE.data[u.toLowerCase()];
+    return { username: u, count: lbCountVisits(uData, 'month') };
   }).sort(function(a, b) { return b.count - a.count; });
   var rank = -1;
   for (var i = 0; i < ranking.length; i++) {
