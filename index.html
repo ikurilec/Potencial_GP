@@ -1183,7 +1183,7 @@
   .lk-search:focus{border-color:#2563EB;box-shadow:0 0 0 4px rgba(37,99,235,.12)}
   .lk-search-ico{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#94A3B8;font-size:16px;pointer-events:none}
   .lk-tabs{display:flex;gap:6px;margin-bottom:12px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
-  .lk-tab{flex:1;padding:10px 4px;border:none;background:transparent;font-size:11px;font-weight:700;color:#64748B;cursor:pointer;border-radius:8px;font-family:inherit;transition:all .15s;-webkit-tap-highlight-color:transparent;white-space:nowrap}
+  .lk-tab{flex:1;padding:8px 2px;border:none;background:transparent;font-size:10px;font-weight:700;color:#64748B;cursor:pointer;border-radius:8px;font-family:inherit;transition:all .15s;-webkit-tap-highlight-color:transparent;white-space:nowrap}
   .lk-tab.active{background:#0C1E35;color:#fff}
   .lk-tab-badge{background:#EF4444;color:#fff;border-radius:8px;font-size:9px;font-weight:800;padding:1px 5px;margin-left:3px;display:inline-block}
   .lk-empty{text-align:center;padding:40px 20px;color:#94A3B8;font-size:14px}
@@ -16609,18 +16609,33 @@ function lkBuildLekarne(rows) {
 
     // Klasifikácia
     var isNew = false, isSleeping = false;
-    // Nová: začala kupovať v posledných 3 mesiacoch, pred tým nič
     var firstM = info.months[0];
     var firstDiff = (now.rok * 12 + now.mesiac) - (firstM.rok * 12 + firstM.mesiac);
     if (firstDiff <= 3 && info.months.length <= 3) isNew = true;
-    // Spiaca: posledný nákup pred 2+ mesiacmi, ale má históriu
     if (!isNew && monthsAgo >= 2) isSleeping = true;
+
+    // Reaktivácia AFL krém: kupovala AFL krém v minulosti, ale posledné 2+ mesiace nie
+    var krmMonths = info.months.filter(function(m){ return m.prods['aflamil_kr']; });
+    var lastKrmIdx = krmMonths.length > 0
+      ? (now.rok * 12 + now.mesiac) - (krmMonths[krmMonths.length-1].rok * 12 + krmMonths[krmMonths.length-1].mesiac)
+      : -1;
+    var isReaktivacia = !isNew && krmMonths.length > 0 && lastKrmIdx >= 2;
+
+    // Prioritná: vysoký objem Vidonorm + Telexer + Kogavant
+    var priorityProds = ['vidonorm','telexer','kogavant'];
+    var priorityVol = 0;
+    info.months.forEach(function(m) {
+      priorityProds.forEach(function(p){ priorityVol += (m.prods[p] || 0); });
+    });
+    var isPriority = priorityVol > 0;
 
     lekarne.push({
       key: key, okres: info.okres, mesto: info.mesto, lekaren: info.lekaren,
       months: info.months, lastM: lastM, monthsAgo: monthsAgo,
       trend: trend, buys: buys, missing: missing,
       isNew: isNew, isSleeping: isSleeping,
+      isReaktivacia: isReaktivacia, isPriority: isPriority,
+      priorityVol: priorityVol, krmMonthsAgo: lastKrmIdx,
       allProds: allProds
     });
   });
@@ -16694,38 +16709,44 @@ function lkRender() {
 
   // Filter podľa tabu
   var shown;
-  if (tab === 'sleeping') shown = filtered.filter(function(l){ return l.isSleeping; });
-  else if (tab === 'new')  shown = filtered.filter(function(l){ return l.isNew; });
-  else if (tab === 'gap')  shown = filtered.filter(function(l){ return !l.isNew && l.missing.length > 0; });
+  if      (tab === 'sleeping')    shown = filtered.filter(function(l){ return l.isSleeping; });
+  else if (tab === 'new')         shown = filtered.filter(function(l){ return l.isNew; });
+  else if (tab === 'reaktivacia') shown = filtered.filter(function(l){ return l.isReaktivacia; });
+  else if (tab === 'priority')    shown = filtered.filter(function(l){ return l.isPriority; });
   else shown = filtered;
 
   // Aktualizuj badge na záložkách
-  var sleeping = all.filter(function(l){ return l.isSleeping; }).length;
-  var newCnt   = all.filter(function(l){ return l.isNew; }).length;
+  var sleepingCnt    = all.filter(function(l){ return l.isSleeping; }).length;
+  var newCnt         = all.filter(function(l){ return l.isNew; }).length;
+  var reaktivaciaCnt = all.filter(function(l){ return l.isReaktivacia; }).length;
+  var priorityCnt    = all.filter(function(l){ return l.isPriority; }).length;
+  var tabCounts = { sleeping: sleepingCnt, new: newCnt, reaktivacia: reaktivaciaCnt, priority: priorityCnt };
+  var tabColors  = { sleeping: '#EF4444', new: '#10B981', reaktivacia: '#F59E0B', priority: '#8B5CF6' };
   document.querySelectorAll('.lk-tab').forEach(function(b) {
     var t = b.getAttribute('data-lk-tab');
     var badge = b.querySelector('.lk-tab-badge');
-    if (t === 'sleeping' && sleeping > 0) {
+    var cnt = tabCounts[t] || 0;
+    if (cnt > 0) {
       if (!badge) { badge = document.createElement('span'); badge.className='lk-tab-badge'; b.appendChild(badge); }
-      badge.textContent = sleeping;
-    } else if (t === 'new' && newCnt > 0) {
-      if (!badge) { badge = document.createElement('span'); badge.className='lk-tab-badge'; badge.style.background='#10B981'; b.appendChild(badge); }
-      badge.textContent = newCnt;
+      badge.style.background = tabColors[t] || '#64748B';
+      badge.textContent = cnt;
     } else if (badge) { badge.remove(); }
   });
 
   if (shown.length === 0) {
-    var emptyMsg = tab === 'sleeping' ? 'Žiadne spiace lekárne 👍' :
-                   tab === 'new'      ? 'Žiadne nové lekárne' :
-                   tab === 'gap'      ? 'Žiadne príležitosti' : 'Žiadne lekárne';
+    var emptyMsg = tab === 'sleeping'    ? 'Žiadne spiace lekárne 👍' :
+                   tab === 'new'         ? 'Žiadne nové lekárne' :
+                   tab === 'reaktivacia' ? 'Žiadne lekárne na reaktiváciu AFL krém' :
+                   tab === 'priority'    ? 'Žiadne prioritné lekárne' : 'Žiadne lekárne';
     list.innerHTML = '<div class="lk-empty">' + emptyMsg + '</div>';
     return;
   }
 
-  // Zoradiť spiace podľa monthsAgo desc
-  if (tab === 'sleeping') shown = shown.slice().sort(function(a,b){ return b.monthsAgo - a.monthsAgo; });
+  // Zoradiť
+  if (tab === 'sleeping')    shown = shown.slice().sort(function(a,b){ return b.monthsAgo - a.monthsAgo; });
+  if (tab === 'reaktivacia') shown = shown.slice().sort(function(a,b){ return b.krmMonthsAgo - a.krmMonthsAgo; });
+  if (tab === 'priority')    shown = shown.slice().sort(function(a,b){ return b.priorityVol - a.priorityVol; });
   if (tab === 'new') shown = shown.slice().sort(function(a,b){
-    var ai = a.rok*100+a.mesiac, bi = b.rok*100+b.mesiac;
     return (b.months[0].rok*100+b.months[0].mesiac) - (a.months[0].rok*100+a.months[0].mesiac);
   });
 
@@ -16736,11 +16757,22 @@ function lkRender() {
     var lastLbl = LK_MES_NAMES[l.lastM.mesiac] + ' ' + l.lastM.rok;
     var subHtml = '<b>' + lkEsc(l.okres) + '</b> · ' + lkEsc(l.mesto);
     if (l.isSleeping) subHtml += ' · <span style="color:#EF4444">Posledný nákup: ' + lastLbl + '</span>';
+    if (tab === 'reaktivacia') subHtml += ' · <span style="color:#D97706">AFL krém naposledy: ' + lastLbl + '</span>';
+
+    // Akčný chip
+    var actionChip = '';
+    if (tab === 'reaktivacia') {
+      actionChip = '<div style="margin-top:6px"><span style="background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;border-radius:20px;font-size:10px;font-weight:700;padding:3px 9px">🔄 Reaktivácia AFL krém</span></div>';
+    } else if (tab === 'priority') {
+      var pvols = ['vidonorm','telexer','kogavant'].filter(function(p){ return l.allProds[p] && (l.allProds[p].last3||0)+(l.allProds[p].prev3||0) > 0; });
+      actionChip = '<div style="margin-top:6px"><span style="background:#F3E8FF;color:#6D28D9;border:1px solid #C4B5FD;border-radius:20px;font-size:10px;font-weight:700;padding:3px 9px">⭐ Prioritná — ' + pvols.map(function(p){ return LK_PROD_DISPLAY[p]||p; }).join(', ') + '</span></div>';
+    }
+
     var chipsHtml = '';
-    if (tab === 'gap' && l.missing.length > 0) {
-      chipsHtml = '<div class="lk-prod-chips">' +
-        l.missing.slice(0, 4).map(function(p){ return '<span class="lk-prod-chip missing">+ ' + (LK_PROD_DISPLAY[p]||p) + '</span>'; }).join('') +
-        '</div>';
+    if (tab === 'reaktivacia') {
+      // Ukáž čo berie (nie AFL krém)
+      var otherBuys = l.buys.filter(function(p){ return p !== 'aflamil_kr'; });
+      if (otherBuys.length > 0) chipsHtml = '<div class="lk-prod-chips">' + otherBuys.slice(0,5).map(function(p){ return '<span class="lk-prod-chip">'+(LK_PROD_DISPLAY[p]||p)+'</span>'; }).join('') + '</div>';
     } else if (l.buys.length > 0) {
       chipsHtml = '<div class="lk-prod-chips">' +
         l.buys.slice(0, 5).map(function(p){ return '<span class="lk-prod-chip">' + (LK_PROD_DISPLAY[p]||p) + '</span>'; }).join('') +
@@ -16749,7 +16781,7 @@ function lkRender() {
     return '<div class="lk-item ' + cls + '" onclick="lkOpenDetail(\'' + lkEscAttr(l.key) + '\')">' +
       '<div class="lk-item-name">' + lkEsc(l.lekaren) + '</div>' +
       '<div class="lk-item-sub">' + subHtml + (trendHtml ? ' · ' + trendHtml : '') + '</div>' +
-      chipsHtml +
+      actionChip + chipsHtml +
       '</div>';
   }).join('');
 }
@@ -16969,7 +17001,8 @@ function lkEscAttr(s) {
     </div>
     <div class="lk-tabs" id="lk-tabs">
       <button class="lk-tab active" data-lk-tab="sleeping" onclick="lkSwitchTab('sleeping',this)">Spiace 🔴</button>
-      <button class="lk-tab" data-lk-tab="gap" onclick="lkSwitchTab('gap',this)">Príležitosti</button>
+      <button class="lk-tab" data-lk-tab="reaktivacia" onclick="lkSwitchTab('reaktivacia',this)">Reaktivácia 🔄</button>
+      <button class="lk-tab" data-lk-tab="priority" onclick="lkSwitchTab('priority',this)">Prioritné ⭐</button>
       <button class="lk-tab" data-lk-tab="new" onclick="lkSwitchTab('new',this)">Nové 🟢</button>
       <button class="lk-tab" data-lk-tab="all" onclick="lkSwitchTab('all',this)">Všetky</button>
     </div>
