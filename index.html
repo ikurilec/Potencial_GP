@@ -10168,6 +10168,111 @@ function closeLeaderboard(){
   document.body.style.overflow = '';
 }
 
+// Lekárne: drobný runtime polish pre sticky search + tab "Dobropis"
+// Cieľ je dorovnať sticky horný blok po renderi, bez zásahu do dátovej logiky.
+var _lkStickyPolishObserver = null;
+var _lkStickyPolishTimer = null;
+function lkPolishStickyControls() {
+  try {
+    var inputs = Array.prototype.slice.call(document.querySelectorAll('input[placeholder]'));
+    var search = null;
+    for (var i = 0; i < inputs.length; i++) {
+      var ph = (inputs[i].getAttribute('placeholder') || '').toLowerCase();
+      if (ph.indexOf('hľadaj') === -1 && ph.indexOf('hladaj') === -1) continue;
+      if (ph.indexOf('lek') === -1) continue;
+      search = inputs[i];
+      break;
+    }
+    if (!search) return false;
+
+    var root = search.closest('.lk-sticky-controls');
+    if (!root) return false;
+
+    var sharedNav = document.getElementById('shared-panel-nav');
+    var sharedNavH = sharedNav ? Math.ceil(sharedNav.getBoundingClientRect().height || 0) : 0;
+    var desiredTop = document.body.classList.contains('manager-mode')
+      ? (sharedNavH ? (sharedNavH + 12) : 84)
+      : 82;
+
+    if (root) {
+      var rs = getComputedStyle(root);
+      var rPt = parseFloat(rs.paddingTop || '0') || 0;
+      var rPb = parseFloat(rs.paddingBottom || '0') || 0;
+      root.style.position = 'sticky';
+      root.style.setProperty('top', desiredTop + 'px', 'important');
+      root.style.zIndex = '2200';
+      root.style.setProperty('padding-top', Math.max(rPt, 10) + 'px', 'important');
+      root.style.setProperty('padding-bottom', Math.max(rPb, 24) + 'px', 'important');
+      root.style.background = '#EAECF2';
+      root.style.boxShadow = '0 10px 24px rgba(15,23,42,.05)';
+      root.style.borderRadius = '0 0 18px 18px';
+      root.style.overflow = 'visible';
+      root.dataset.lkPolished = '1';
+      if (_lkStickyPolishTimer) { clearInterval(_lkStickyPolishTimer); _lkStickyPolishTimer = null; }
+    }
+
+    search.style.background = '#fff';
+    search.style.boxSizing = 'border-box';
+    search.style.position = 'relative';
+    search.style.zIndex = '1';
+
+    var tabs = Array.prototype.slice.call(document.querySelectorAll('button, .lk-tab, [role="button"]'));
+    for (var j = 0; j < tabs.length; j++) {
+      var txt = (tabs[j].textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+      if (txt.indexOf('dobropis') === 0 && tabs[j].dataset.lkDobropisFixed !== '1') {
+        tabs[j].style.paddingLeft = '14px';
+        tabs[j].style.paddingRight = '14px';
+        tabs[j].style.minWidth = '92px';
+        tabs[j].style.overflow = 'visible';
+        tabs[j].style.justifyContent = 'flex-start';
+        tabs[j].style.boxSizing = 'border-box';
+        tabs[j].dataset.lkDobropisFixed = '1';
+        break;
+      }
+    }
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+function lkStartStickyPolishObserver() {
+  if (_lkStickyPolishObserver || !document.body || typeof MutationObserver === 'undefined') return;
+  var scheduled = false;
+  var run = function() {
+    scheduled = false;
+    lkPolishStickyControls();
+  };
+  var schedule = function() {
+    if (scheduled) return;
+    scheduled = true;
+    setTimeout(run, 60);
+  };
+  _lkStickyPolishObserver = new MutationObserver(schedule);
+  _lkStickyPolishObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
+  schedule();
+  if (!_lkStickyPolishTimer) {
+    _lkStickyPolishTimer = setInterval(function() {
+      if (lkPolishStickyControls()) {
+        clearInterval(_lkStickyPolishTimer);
+        _lkStickyPolishTimer = null;
+      }
+    }, 250);
+    setTimeout(function() {
+      if (_lkStickyPolishTimer) {
+        clearInterval(_lkStickyPolishTimer);
+        _lkStickyPolishTimer = null;
+      }
+    }, 12000);
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', lkStartStickyPolishObserver);
+} else {
+  lkStartStickyPolishObserver();
+}
+
 function lbSetPeriod(period, el){
   LB_STATE.period = period;
   document.querySelectorAll('.lb-tab').forEach(function(t){ t.classList.remove('active'); });
