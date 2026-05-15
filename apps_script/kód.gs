@@ -275,7 +275,7 @@ function doGet(e) {
       }
       var reps = [];
       for(var i = 1; i < rows.length; i++) {
-        var login  = String(rows[i][0] || '').trim();
+        var login  = String(rows[i][0] || '').trim().toLowerCase();
         var meno   = String(rows[i][2] || '').trim();
         var rola   = String(rows[i][3] || '').trim().toLowerCase();
         var region = String(rows[i][4] || '').trim();
@@ -761,7 +761,7 @@ function doGet(e) {
           if(phh === 'avatar') avatarIdx2 = phi;
         }
         for(var i = 1; i < pouzRows2.length; i++) {
-          var login2  = String(pouzRows2[i][0] || '').trim();
+          var login2  = String(pouzRows2[i][0] || '').trim().toLowerCase();
           var meno2   = String(pouzRows2[i][2] || '').trim();
           var rola2   = String(pouzRows2[i][3] || '').trim().toLowerCase();
           var region2 = String(pouzRows2[i][4] || '').trim();
