@@ -1571,7 +1571,7 @@
 
 <!-- ═══ REP NAV BAR — História / Rebríček / Plnenie (viditeľné len pre reprezentantov, skryté v manažérskom móde) ═══ -->
 <div class="rep-nav" id="rep-nav">
-  <button type="button" class="rep-nav-btn" onclick="openHistory()">📋 História<span class="rep-nav-badge" id="rep-nav-hist-count" style="display:none"></span></button>
+  <button type="button" class="rep-nav-btn" onclick="openHistory()">📋 História</button>
   <button type="button" class="rep-nav-btn" id="rep-nav-lb-btn" onclick="openLeaderboard()">🏆 Rebríček</button>
   <button type="button" class="rep-nav-btn" id="rep-nav-plnenie-btn" onclick="openRepPlnenie()">💊 Plnenie</button>
   <button type="button" class="rep-nav-btn" id="rep-nav-lekarne-btn" onclick="openLekarne()">🏪 Lekárne</button>
@@ -1741,6 +1741,10 @@
 
     <!-- Sub-tab: Lekárne -->
     <div id="pl-detail-lekarne" style="display:none">
+      <div class="lk-search-wrap" style="margin:0 0 10px">
+        <span class="lk-search-ico">🔍</span>
+        <input class="lk-search" id="mgr-lk-search" type="text" placeholder="Hľadaj lekáreň…" oninput="lkMgrFilterSearch(this.value)" autocomplete="off">
+      </div>
       <div class="mgr-lk-wrap" id="pl-detail-lekarne-body">
         <div class="lk-empty">Načítavam…</div>
       </div>
@@ -16794,23 +16798,24 @@ function lkSkelHtml() {
 }
 
 // ── Manažér: lekárne pre konkrétneho repa v detaile ────────────────
-function lkMgrLoadForRep(login) {
+var LK_MGR_ALL = [];  // cache pre filter
+
+function lkMgrRenderBody(lekarne, searchQ) {
   var body = document.getElementById('pl-detail-lekarne-body');
   if (!body) return;
-  body.innerHTML = lkSkelHtml();
-  lkFetch(login, function(rows) {
-    if (!rows || rows.length === 0) {
-      body.innerHTML = '<div class="lk-empty">Žiadne dáta o lekárňach pre tohto reprezentanta.</div>';
-      return;
-    }
-    var lekarne = lkBuildLekarne(rows);
-    var now = lkCurrentYearMonth();
+  var q = (searchQ || '').toLowerCase().trim();
+  var list = q ? lekarne.filter(function(l){ return l.lekaren.toLowerCase().indexOf(q) >= 0 || l.mesto.toLowerCase().indexOf(q) >= 0; }) : lekarne;
 
-    var sleeping = lekarne.filter(function(l){ return l.isSleeping; });
-    var newOnes  = lekarne.filter(function(l){ return l.isNew; });
+  var sleeping = list.filter(function(l){ return l.isSleeping; });
+  var newOnes  = list.filter(function(l){ return l.isNew; });
+  var html = '';
 
-    var html = '';
-
+  if (q) {
+    // Keď hľadáme — len výsledky bez sekcií
+    if (list.length === 0) { body.innerHTML = '<div class="lk-empty">Žiadna lekáreň nezodpovedá hľadaniu.</div>'; return; }
+    html += '<div class="lk-section-lbl">' + list.length + ' výsledkov</div>';
+    list.forEach(function(l){ html += lkMgrItem(l); });
+  } else {
     // Summary stats
     html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">' +
       lkStatCard(lekarne.length, 'Spolu') +
@@ -16820,21 +16825,39 @@ function lkMgrLoadForRep(login) {
 
     if (sleeping.length > 0) {
       html += '<div class="lk-section-lbl">Spiace lekárne — bez nákupu 2+ mesiace</div>';
-      sleeping.slice(0,5).forEach(function(l) {
-        html += lkMgrItem(l);
-      });
+      sleeping.slice(0,5).forEach(function(l){ html += lkMgrItem(l); });
       if (sleeping.length > 5) html += '<div style="font-size:11px;color:#64748B;text-align:center;padding:6px">+' + (sleeping.length-5) + ' ďalších spiacich</div>';
     }
-
     if (newOnes.length > 0) {
       html += '<div class="lk-section-lbl">Nové lekárne</div>';
-      newOnes.forEach(function(l) { html += lkMgrItem(l); });
+      newOnes.forEach(function(l){ html += lkMgrItem(l); });
     }
-
     html += '<div class="lk-section-lbl">Všetky lekárne (' + lekarne.length + ')</div>';
-    lekarne.forEach(function(l) { html += lkMgrItem(l); });
+    lekarne.forEach(function(l){ html += lkMgrItem(l); });
+  }
 
-    body.innerHTML = html;
+  body.innerHTML = html;
+}
+
+function lkMgrFilterSearch(val) {
+  lkMgrRenderBody(LK_MGR_ALL, val);
+}
+
+function lkMgrLoadForRep(login) {
+  var body = document.getElementById('pl-detail-lekarne-body');
+  if (!body) return;
+  // Reset search
+  var searchEl = document.getElementById('mgr-lk-search');
+  if (searchEl) searchEl.value = '';
+  LK_MGR_ALL = [];
+  body.innerHTML = lkSkelHtml();
+  lkFetch(login, function(rows) {
+    if (!rows || rows.length === 0) {
+      body.innerHTML = '<div class="lk-empty">Žiadne dáta o lekárňach pre tohto reprezentanta.</div>';
+      return;
+    }
+    LK_MGR_ALL = lkBuildLekarne(rows);
+    lkMgrRenderBody(LK_MGR_ALL, '');
   });
 }
 
