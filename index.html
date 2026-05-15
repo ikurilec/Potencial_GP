@@ -5038,13 +5038,24 @@ function saveEditRecord() {
     });
 }
 
-// ── PING LOGIN — zapíše posledný prístup do Sheets ──
+// ── PING LOGIN — zapíše posledný prístup do Sheets + vráti lekárne dáta ──
 function pingLogin(username){
   if(!username) return;
   var session = getSession();
   var url = (session && session.line === 'gyn') ? GYN_SCRIPT_URL : SCRIPT_URL;
   fetch(url + '?action=pingLogin&reprezentant=' + encodeURIComponent(username), {
     cache: 'no-store'
+  }).then(function(r){ return r.json(); }).then(function(data){
+    // Uloži lekárne dáta do cache — eliminuje extra request pri otvorení
+    if (data && data.lekarne && Array.isArray(data.lekarne)) {
+      LK_STATE.cache[username] = { rows: data.lekarne, ts: Date.now() };
+      // Zruš in-flight ak existuje — dáta sú tu
+      if (_lkInFlight[username]) {
+        var cbs = _lkInFlight[username];
+        delete _lkInFlight[username];
+        cbs.forEach(function(fn){ try { fn(data.lekarne); } catch(e){} });
+      }
+    }
   }).catch(function(){});
 }
 
