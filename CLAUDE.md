@@ -26,6 +26,12 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### WIP — Lekárne: detail parity + Krém sorting
+
+- Manager/admin lekárne teraz otvárajú ten istý detail overlay ako reprezentant.
+- Krém tab radí najprv čerstvé reaktivácie, potom krémové potenciály z tbl/sáčok a lekárne s posledným nákupom 6+ mesiacov posúva naspodok.
+- Dobropis zostáva viazaný na posledné 3 mesiace a používa spoločný detail lekárne.
+
 ### Tooling/backend update — Gyn predaje korekcie cez `Predaje_korekcie`
 
 #### Problem
