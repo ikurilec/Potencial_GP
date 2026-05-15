@@ -409,7 +409,9 @@
   .lb-p-avatar{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;margin-bottom:6px;position:relative;font-family:var(--font-display);z-index:1}
   .lb-p-crown{position:absolute;top:-26px;left:50%;transform:translateX(-50%);font-size:30px;line-height:1;filter:drop-shadow(0 2px 6px rgba(217,119,6,.45));animation:crownFloat 3s ease-in-out infinite}
   @keyframes crownFloat{0%,100%{transform:translateX(-50%) translateY(0) rotate(0deg)}50%{transform:translateX(-50%) translateY(-3px) rotate(-3deg)}}
-  .lb-p-medal{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:24px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.25))}
+  .lb-p-medal{position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);font-size:30px;line-height:1;filter:drop-shadow(0 3px 6px rgba(0,0,0,.30));z-index:2;pointer-events:none}
+  .lb-p-2 .lb-p-medal{filter:drop-shadow(0 2px 4px rgba(100,116,139,.45)) drop-shadow(0 0 3px rgba(203,213,225,.35))}
+  .lb-p-3 .lb-p-medal{filter:drop-shadow(0 2px 4px rgba(146,64,14,.45)) drop-shadow(0 0 3px rgba(217,119,6,.35))}
   .lb-p-name{font-size:11.5px;font-weight:700;color:#0F172A;text-align:center;max-width:80px;line-height:1.3;letter-spacing:-.005em}
   .lb-p-count{font-size:10.5px;color:#64748B;margin-top:2px;margin-bottom:4px;font-weight:600}
   .lb-p-block{border-radius:10px 10px 0 0;width:100%;transform-origin:bottom;transform:scaleY(0);position:relative;overflow:hidden}
@@ -420,7 +422,8 @@
   .lb-p-3 .lb-p-block{height:32px;background:linear-gradient(135deg,#D97706 0%,#B45309 55%,#92400E 100%);box-shadow:0 -2px 10px rgba(180,83,9,.30),inset 0 1px 0 rgba(255,255,255,.20)}
   .lb-p-1 .lb-p-avatar{width:68px;height:68px;font-size:21px;box-shadow:0 0 0 3px #FBBF24,0 0 0 6px rgba(251,191,36,.28),0 8px 24px rgba(217,119,6,.40);animation:goldHalo 2.4s ease-in-out infinite}
   @keyframes goldHalo{0%,100%{box-shadow:0 0 0 3px #FBBF24,0 0 0 6px rgba(251,191,36,.28),0 8px 24px rgba(217,119,6,.40)}50%{box-shadow:0 0 0 3px #FBBF24,0 0 0 9px rgba(251,191,36,.18),0 10px 32px rgba(217,119,6,.55)}}
-  .lb-p-2 .lb-p-avatar,.lb-p-3 .lb-p-avatar{width:46px;height:46px;font-size:14.5px;box-shadow:0 4px 12px rgba(15,23,42,.15)}
+  .lb-p-2 .lb-p-avatar{width:46px;height:46px;font-size:14.5px;box-shadow:0 0 0 3px #CBD5E1,0 0 0 5px rgba(148,163,184,.30),0 6px 16px rgba(100,116,139,.30)}
+  .lb-p-3 .lb-p-avatar{width:46px;height:46px;font-size:14.5px;box-shadow:0 0 0 3px #D97706,0 0 0 5px rgba(217,119,6,.28),0 6px 16px rgba(146,64,14,.30)}
   @media(prefers-reduced-motion:reduce){.lb-p-crown,.lb-p-1 .lb-p-avatar{animation:none}}
   .lb-rank-badge{position:absolute;bottom:-4px;right:-4px;width:18px;height:18px;border-radius:50%;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
   .lb-list{padding:0 14px 8px}
@@ -599,8 +602,8 @@
   .hist-body-card{background:#fff;border-radius:14px;overflow:hidden}
   .hist-body{padding:4px 0}
   /* Zdielaný panel-nav pre História / Rebríček / Plnenie */
-  .panel-nav{display:grid;grid-template-columns:repeat(3,1fr) 32px;gap:4px;background:#fff;border-radius:12px;padding:4px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
-  .panel-nav-btn{border:none;background:#F1F5F9;padding:13px 4px;font-size:11.5px;font-weight:600;color:#64748B;cursor:pointer;border-radius:10px;transition:all .2s ease;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:4px;-webkit-tap-highlight-color:transparent;white-space:nowrap}
+  .panel-nav{display:grid;grid-template-columns:repeat(4,1fr) 32px;gap:3px;background:#fff;border-radius:12px;padding:4px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  .panel-nav-btn{border:none;background:#F1F5F9;padding:13px 2px;font-size:10.5px;font-weight:600;color:#64748B;cursor:pointer;border-radius:10px;transition:all .2s ease;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:3px;-webkit-tap-highlight-color:transparent;white-space:nowrap;overflow:hidden}
   .panel-nav-btn:hover:not(.active){background:#E2E8F0;color:#0F172A}
   .panel-nav-btn.active{background:linear-gradient(135deg,#0C1E35 0%,#13294B 100%);color:#fff;box-shadow:0 4px 12px rgba(12,30,53,.25),inset 0 1px 0 rgba(255,255,255,.10);font-weight:700}
   .panel-nav-btn:active{opacity:.75}
@@ -1162,14 +1165,86 @@
   .mgr-plnenie-detail .trend-ms{position:absolute;left:-5px;right:-5px;height:3px;background:#0F172A;z-index:2;pointer-events:none}
   .mgr-plnenie-detail .trend-ms-lbl{position:absolute;left:50%;transform:translateX(-50%);font-size:11px;font-weight:600;color:#94A3B8;white-space:nowrap;z-index:3;pointer-events:none;line-height:1}
   /* ═══ REP NAV BAR (História / Rebríček / Plnenie) ═══ */
-  .rep-nav{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
-  .rep-nav-btn{background:#fff;border:1px solid rgba(0,0,0,.07);border-radius:12px;padding:14px 6px;font-size:12px;font-weight:700;color:#1A2A3A;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(0,0,0,.06),0 1px 3px rgba(0,0,0,.04);display:flex;align-items:center;justify-content:center;gap:5px;transition:opacity .15s,transform .15s;-webkit-tap-highlight-color:transparent;white-space:nowrap;overflow:hidden;position:relative}
+  .rep-nav{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
+  .rep-nav-btn{background:#fff;border:1px solid rgba(0,0,0,.07);border-radius:12px;padding:14px 4px;font-size:11px;font-weight:700;color:#1A2A3A;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(0,0,0,.06),0 1px 3px rgba(0,0,0,.04);display:flex;align-items:center;justify-content:center;gap:4px;transition:opacity .15s,transform .15s;-webkit-tap-highlight-color:transparent;white-space:nowrap;overflow:hidden;position:relative}
   .rep-nav-btn:active{opacity:.82;transform:scale(.96)}
   .rep-nav-badge{background:linear-gradient(135deg,#F59E0B,#EF4444);color:#fff;border-radius:8px;font-size:9px;font-weight:800;padding:1px 5px;min-width:16px;text-align:center;flex-shrink:0}
   body.manager-mode .rep-nav{display:none !important}
   /* ═══ REP PLNENIE OVERLAY ═══ */
   .rep-plnenie-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:2000;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   .rep-plnenie-overlay.show{display:block}
+
+  /* ═══ LEKÁRNE OVERLAY (v2.21) ═══ */
+  .lekarne-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:2000;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  .lekarne-overlay.show{display:block}
+  .lk-inner{max-width:560px;margin:0 auto;padding:82px 16px 48px}
+  .lk-search-wrap{position:relative;margin-bottom:12px}
+  .lk-search-input{width:100%;padding:12px 14px 12px 38px;border:1.5px solid #E2E8F0;border-radius:12px;background:#fff;font-size:14px;font-family:inherit;color:#0F172A;outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none;box-sizing:border-box}
+  .lk-search-input:focus{border-color:#2563EB;box-shadow:0 0 0 4px rgba(37,99,235,.14)}
+  .lk-search-ico{position:absolute;top:50%;left:13px;transform:translateY(-50%);font-size:14px;color:#94A3B8;pointer-events:none}
+  .lk-filters{display:flex;gap:6px;background:#fff;border-radius:12px;padding:4px;margin-bottom:10px;box-shadow:0 2px 8px rgba(15,23,42,.06),0 0 0 1px rgba(15,23,42,.04)}
+  .lk-filter-tab{flex:1;padding:10px 4px;border:none;background:transparent;font-size:12.5px;font-weight:700;color:#64748B;cursor:pointer;border-radius:8px;font-family:inherit;transition:all .2s ease;-webkit-tap-highlight-color:transparent;min-height:40px}
+  .lk-filter-tab.active{background:linear-gradient(135deg,#0C1E35,#13294B);color:#fff;box-shadow:0 4px 12px rgba(12,30,53,.25),inset 0 1px 0 rgba(255,255,255,.10)}
+  .lk-okres-row{display:flex;gap:8px;margin-bottom:12px;align-items:center}
+  .lk-okres-select{flex:1;padding:10px 12px;border:1.5px solid #E2E8F0;border-radius:10px;background:#fff;font-size:13px;font-family:inherit;color:#0F172A;outline:none;min-height:42px}
+  .lk-sort-btn{padding:10px 12px;border:1.5px solid #E2E8F0;border-radius:10px;background:#fff;font-size:12px;font-weight:700;color:#1A2A3A;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;min-height:42px;white-space:nowrap}
+  .lk-sort-btn:active{background:#F1F5F9}
+  .lk-stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+  .lk-stat{background:#fff;border-radius:12px;padding:11px 10px;text-align:center;box-shadow:0 2px 8px rgba(15,23,42,.06),0 0 0 1px rgba(15,23,42,.04)}
+  .lk-stat-num{font-size:18px;font-weight:800;color:#0C1E35;font-family:var(--font-display);letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+  .lk-stat-lbl{font-size:10px;font-weight:600;color:#64748B;text-transform:uppercase;letter-spacing:.04em;margin-top:2px}
+  .lk-list{display:flex;flex-direction:column;gap:8px}
+  .lk-item{background:#fff;border-radius:14px;padding:13px 14px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 10px rgba(15,23,42,.06),0 0 0 1px rgba(15,23,42,.04);cursor:pointer;transition:transform .15s,box-shadow .15s;-webkit-tap-highlight-color:transparent;min-height:64px}
+  .lk-item:active{transform:scale(.99);box-shadow:0 1px 4px rgba(15,23,42,.08)}
+  .lk-item-main{flex:1;min-width:0}
+  .lk-item-name{font-size:14px;font-weight:700;color:#0F172A;letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-display)}
+  .lk-item-meta{font-size:11px;color:#64748B;margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .lk-okres-chip{display:inline-block;background:#EFF6FF;border:1px solid #BFDBFE;color:#1D4ED8;font-size:9.5px;font-weight:700;padding:1px 7px;border-radius:10px;text-transform:uppercase;letter-spacing:.04em}
+  .lk-item-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
+  .lk-item-total{font-size:18px;font-weight:800;color:#0C1E35;font-family:var(--font-display);letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1}
+  .lk-item-total-lbl{font-size:9px;font-weight:600;color:#94A3B8;text-transform:uppercase;letter-spacing:.04em}
+  .lk-item-spark{margin-top:4px}
+  .lk-empty{padding:40px 20px;text-align:center;color:#64748B}
+  .lk-empty-icon{font-size:42px;margin-bottom:10px;opacity:.55}
+  .lk-empty-title{font-size:15px;font-weight:700;color:#1A2A3A;margin-bottom:4px}
+  .lk-empty-sub{font-size:12.5px;color:#64748B;line-height:1.5;max-width:280px;margin:0 auto}
+  /* Detail view */
+  .lk-detail-back{display:inline-flex;align-items:center;gap:6px;background:#fff;border:none;padding:9px 14px 9px 10px;border-radius:22px;color:#2563EB;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 1px 4px rgba(0,0,0,.06);-webkit-tap-highlight-color:transparent;margin-bottom:14px;min-height:38px}
+  .lk-detail-back:active{opacity:.75}
+  .lk-detail-hdr{background:linear-gradient(135deg,#0C1E35 0%,#13294B 50%,#0C1E35 100%);color:#fff;border-radius:16px;padding:18px 18px 16px;margin-bottom:14px;box-shadow:0 12px 32px rgba(12,30,53,.30),0 4px 12px rgba(37,99,235,.15),inset 0 1px 0 rgba(255,255,255,.08);position:relative;overflow:hidden}
+  .lk-detail-name{font-size:18px;font-weight:800;font-family:var(--font-display);letter-spacing:-.01em;line-height:1.3}
+  .lk-detail-loc{font-size:12px;color:#94B5D4;margin-top:5px;font-weight:500}
+  .lk-detail-rep{font-size:11.5px;color:#7AABCC;margin-top:9px;padding-top:9px;border-top:1px solid rgba(255,255,255,.08)}
+  .lk-detail-total-card{background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 10px rgba(15,23,42,.06),0 0 0 1px rgba(15,23,42,.04)}
+  .lk-detail-total-num{font-size:28px;font-weight:800;color:#0C1E35;font-family:var(--font-display);letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
+  .lk-detail-total-lbl{font-size:10.5px;font-weight:600;color:#64748B;text-transform:uppercase;letter-spacing:.04em;margin-top:3px}
+  .lk-detail-total-right{text-align:right}
+  .lk-detail-total-period{font-size:11px;color:#64748B;font-weight:600}
+  .lk-detail-total-trend{font-size:13px;font-weight:800;margin-top:2px;font-variant-numeric:tabular-nums}
+  .lk-detail-total-trend.up{color:#059669}
+  .lk-detail-total-trend.down{color:#DC2626}
+  .lk-detail-total-trend.flat{color:#64748B}
+  .lk-trend-chart{background:#fff;border-radius:14px;padding:14px 12px 10px;margin-bottom:14px;box-shadow:0 2px 10px rgba(15,23,42,.06),0 0 0 1px rgba(15,23,42,.04)}
+  .lk-trend-chart-title{font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+  .lk-trend-chart-title::before{content:'';display:inline-block;width:5px;height:5px;border-radius:50%;background:#2563EB;box-shadow:0 0 0 2px rgba(37,99,235,.15)}
+  .lk-prod-section-lbl{font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.06em;margin:0 4px 8px;display:flex;align-items:center;gap:6px}
+  .lk-prod-section-lbl::before{content:'';display:inline-block;width:5px;height:5px;border-radius:50%;background:#2563EB;box-shadow:0 0 0 2px rgba(37,99,235,.15)}
+  .lk-prod-table{background:#fff;border-radius:14px;padding:6px 4px;box-shadow:0 2px 10px rgba(15,23,42,.06),0 0 0 1px rgba(15,23,42,.04)}
+  .lk-prod-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #F1F5F9}
+  .lk-prod-row:last-child{border-bottom:none}
+  .lk-prod-name{flex:1;font-size:13px;font-weight:700;color:#0F172A;min-width:0;letter-spacing:-.005em}
+  .lk-prod-bar-wrap{flex:1.4;height:8px;background:#E2E8F0;border-radius:5px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(15,23,42,.06)}
+  .lk-prod-bar-fill{height:100%;background:linear-gradient(90deg,#3B82F6,#1E40AF);border-radius:5px;transition:width .9s cubic-bezier(.16,1,.3,1)}
+  .lk-prod-count{min-width:42px;text-align:right;font-size:13px;font-weight:800;color:#0C1E35;font-variant-numeric:tabular-nums;font-family:var(--font-display)}
+  /* Manager mode inline (subtab) view — pridáme do mgr-view */
+  .mgr-lekarne-view{display:none;background:transparent;margin-top:4px}
+  body.mgr-subtab-lekarne .mgr-lekarne-view{display:block}
+  body.mgr-subtab-lekarne .mgr-list-wrap,
+  body.mgr-subtab-lekarne .mgr-detail,
+  body.mgr-subtab-lekarne .mgr-plnenie-view,
+  body.mgr-subtab-lekarne .mgr-plnenie-detail,
+  body.mgr-subtab-lekarne .mgr-leaderboard-view{display:none !important}
+  .mgr-lekarne-view .lk-inner{padding-top:8px;max-width:100%}
 
   /* ── PHARMA MS OVERLAY — trhový podiel po kliknutí na produkt ── */
   .pharma-ms-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:3000;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
@@ -1521,6 +1596,7 @@
   <button type="button" class="rep-nav-btn" onclick="openHistory()">📋 História<span class="rep-nav-badge" id="rep-nav-hist-count" style="display:none"></span></button>
   <button type="button" class="rep-nav-btn" id="rep-nav-lb-btn" onclick="openLeaderboard()">🏆 Rebríček</button>
   <button type="button" class="rep-nav-btn" id="rep-nav-plnenie-btn" onclick="openRepPlnenie()">💊 Plnenie</button>
+  <button type="button" class="rep-nav-btn" id="rep-nav-lk-btn" onclick="openLekarne()">🏪 Lekárne<span class="rep-nav-badge" id="rep-nav-lk-count" style="display:none"></span></button>
 </div>
 
 <!-- ═══ MANAGER VIEW (zobrazí sa iba keď sa prihlási BUM/admin/boss/AM West/AM East) ═══ -->
@@ -1530,6 +1606,7 @@
     <button type="button" class="mgr-subtab active" data-tab="plnenie" onclick="mgrSwitchSubtab('plnenie')">💊 Plnenie</button>
     <button type="button" class="mgr-subtab" data-tab="visits" onclick="mgrSwitchSubtab('visits')">📋 Návštevy</button>
     <button type="button" class="mgr-subtab" data-tab="leaderboard" onclick="mgrSwitchSubtab('leaderboard')">🏆 Rebríček</button>
+    <button type="button" class="mgr-subtab" data-tab="lekarne" onclick="mgrSwitchSubtab('lekarne')">🏪 Lekárne</button>
   </div>
 
   <!-- PTR indicator — zdieľaný pre Návštevy aj Plnenie -->
@@ -1695,6 +1772,24 @@
     </div>
     <div class="lb-body" id="mgr-lb-body">
       <div class="skel-wrap" style="padding:12px 12px 0"><div style="display:flex;align-items:flex-end;justify-content:center;gap:8px;margin-bottom:20px"><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div class="skel skel-avatar"></div><div class="skel" style="height:55px;width:100%;border-radius:8px 8px 0 0"></div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div class="skel skel-avatar"></div><div class="skel" style="height:80px;width:100%;border-radius:8px 8px 0 0"></div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div class="skel skel-avatar"></div><div class="skel" style="height:40px;width:100%;border-radius:8px 8px 0 0"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:60%"></div><div class="skel skel-line" style="width:35%"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:55%"></div><div class="skel skel-line" style="width:40%"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:65%"></div><div class="skel skel-line" style="width:30%"></div></div></div></div>
+    </div>
+  </div>
+
+  <!-- Lekárne view (manager inline subtab) — v2.21 -->
+  <div class="mgr-lekarne-view" id="mgr-lekarne-view">
+    <div class="lk-inner" id="mgr-lk-inner">
+      <div class="lk-search-wrap">
+        <span class="lk-search-ico">🔍</span>
+        <input type="text" class="lk-search-input" id="mgr-lk-search" placeholder="Hľadaj lekáreň, mesto alebo okres…" oninput="lkSearch(this.value)">
+      </div>
+      <div class="lk-filters" id="mgr-lk-filters"></div>
+      <div class="lk-okres-row">
+        <select class="lk-okres-select" id="mgr-lk-okres" onchange="lkSetOkres(this.value)"></select>
+        <button class="lk-sort-btn" id="mgr-lk-sort" onclick="lkCycleSort()">Počet ↓</button>
+      </div>
+      <div class="lk-stats-row" id="mgr-lk-stats"></div>
+      <div class="lk-list" id="mgr-lk-list"></div>
+      <div class="lk-detail" id="mgr-lk-detail" style="display:none"></div>
     </div>
   </div>
 
@@ -1899,6 +1994,7 @@
       <button class="panel-nav-btn" id="spn-hist" onclick="openHistory()">📋 História</button>
       <button class="panel-nav-btn" id="spn-lb" onclick="openLeaderboard()">🏆 Rebríček</button>
       <button class="panel-nav-btn" id="spn-pl" onclick="openRepPlnenie()">💊 Plnenie</button>
+      <button class="panel-nav-btn" id="spn-lk" onclick="openLekarne()">🏪 Lekárne</button>
       <button class="panel-nav-close" onclick="closeAllPanels()">✕</button>
     </div>
   </div>
@@ -2244,7 +2340,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.20.10';
+var APP_VERSION = '2.21.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -4520,7 +4616,7 @@ function filterHistory() {
 
 var _panelCurrent = null;
 var _panelStack = []; // navigačný stack — pamätá odkiaľ sme prišli (pre Android back button)
-var _PANEL_ORDER = { 'hist-overlay': 0, 'lb-overlay': 1, 'rep-plnenie-overlay': 2 };
+var _PANEL_ORDER = { 'hist-overlay': 0, 'lb-overlay': 1, 'rep-plnenie-overlay': 2, 'lekarne-overlay': 3 };
 
 function _panelShow(newId, isBack) {
   // Ak je ten istý panel už otvorený — nerob nič (ochrana pred dvojitým kliknutím)
@@ -4550,9 +4646,9 @@ function _panelShow(newId, isBack) {
     var snav = document.getElementById('shared-panel-nav');
     if (snav) {
       snav.style.display = '';
-      var _panelToBtn = {'hist-overlay':'spn-hist','lb-overlay':'spn-lb','rep-plnenie-overlay':'spn-pl'};
+      var _panelToBtn = {'hist-overlay':'spn-hist','lb-overlay':'spn-lb','rep-plnenie-overlay':'spn-pl','lekarne-overlay':'spn-lk'};
       var _activeBtnId = _panelToBtn[newId];
-      ['spn-hist','spn-lb','spn-pl'].forEach(function(id){
+      ['spn-hist','spn-lb','spn-pl','spn-lk'].forEach(function(id){
         var btn = document.getElementById(id);
         if(btn) btn.classList.toggle('active', id === _activeBtnId);
       });
@@ -4579,7 +4675,7 @@ function _panelShow(newId, isBack) {
 }
 
 function closeAllPanels() {
-  ['hist-overlay','lb-overlay','rep-plnenie-overlay','pharma-ms-overlay','pharma-okres-overlay'].forEach(function(id){
+  ['hist-overlay','lb-overlay','rep-plnenie-overlay','lekarne-overlay','pharma-ms-overlay','pharma-okres-overlay'].forEach(function(id){
     var el = document.getElementById(id);
     if(el) el.classList.remove('show');
   });
@@ -10514,7 +10610,7 @@ function lbRenderPlnenie(body) {
     var isFirst = rn === 1;
     var medal = isFirst ? '' : (rn === 2 ? '\uD83E\uDD48' : '\uD83E\uDD49');
     var lastName = rep.name.split(' ').pop();
-    var avatarMB = medal ? 'margin-bottom:20px' : '';
+    var avatarMB = medal ? 'margin-bottom:24px' : '';
     var cls = pctCls(rep.pct);
     var av = lbAvatarContent(rep.username, rep.name, isFirst ? 68 : 46);
     podiumHtml +=
@@ -10855,7 +10951,7 @@ function lbRender(){
     var isFirst = rn === 1;
     var medal = isFirst ? '' : (rn === 2 ? '\uD83E\uDD48' : '\uD83E\uDD49');
     var lastName = rep.name.split(' ').pop();
-    var avatarMarginBottom = medal ? 'margin-bottom:20px' : '';
+    var avatarMarginBottom = medal ? 'margin-bottom:24px' : '';
     var av3 = lbAvatarContent(rep.username, rep.name, isFirst ? 68 : 46);
     podiumHtml +=
       '<div class="lb-p-item ' + podiumClasses[pi] + '">' +
@@ -11035,14 +11131,15 @@ function plnenieQLabel(q, year) {
   return 'Q' + q + ' ' + year;
 }
 
-var MGR_TAB_ORDER = { plnenie: 0, visits: 1, leaderboard: 2 };
+var MGR_TAB_ORDER = { plnenie: 0, visits: 1, leaderboard: 2, lekarne: 3 };
 var _mgrPrevSubtab = null; // pamätá predchádzajúci subtab pre Android back button
 
 function mgrAnimateSubtab(tab, dir) {
   var elMap = {
     plnenie:     document.querySelector('.mgr-plnenie-view'),
     leaderboard: document.querySelector('.mgr-leaderboard-view'),
-    visits:      document.querySelector('.mgr-list-wrap')
+    visits:      document.querySelector('.mgr-list-wrap'),
+    lekarne:     document.querySelector('.mgr-lekarne-view')
   };
   var el = elMap[tab];
   if (!el) return;
@@ -11061,6 +11158,7 @@ function mgrSwitchSubtab(tab) {
   MGR_STATE.subtab = tab;
   document.body.classList.toggle('mgr-subtab-plnenie', tab === 'plnenie');
   document.body.classList.toggle('mgr-subtab-leaderboard', tab === 'leaderboard');
+  document.body.classList.toggle('mgr-subtab-lekarne', tab === 'lekarne');
   document.querySelectorAll('.mgr-subtab').forEach(function(btn){
     btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
   });
@@ -11082,6 +11180,10 @@ function mgrSwitchSubtab(tab) {
       // Dáta sú null alebo prázdne (fetch zlyhal) — vynútiť znovu načítanie
       lbLoadData(true);
     }
+  }
+  if (tab === 'lekarne') {
+    if (!LK_STATE.loaded && !LK_STATE.loading) lkLoad();
+    else lkRender();
   }
 }
 
@@ -16373,6 +16475,24 @@ function downloadAllReportsPdf() {
     <div id="rep-pl-prods"></div>
     <div class="trend" id="rep-pl-trend"></div>
     </div>
+  </div>
+</div>
+
+<!-- ── LEKÁRNE OVERLAY (rep view) — v2.21 ── -->
+<div class="lekarne-overlay" id="lekarne-overlay">
+  <div class="lk-inner">
+    <div class="lk-search-wrap">
+      <span class="lk-search-ico">🔍</span>
+      <input type="text" class="lk-search-input" id="lk-search" placeholder="Hľadaj lekáreň, mesto alebo okres…" oninput="lkSearch(this.value)">
+    </div>
+    <div class="lk-filters" id="lk-filters"></div>
+    <div class="lk-okres-row">
+      <select class="lk-okres-select" id="lk-okres" onchange="lkSetOkres(this.value)"></select>
+      <button class="lk-sort-btn" id="lk-sort" onclick="lkCycleSort()">Počet ↓</button>
+    </div>
+    <div class="lk-stats-row" id="lk-stats"></div>
+    <div class="lk-list" id="lk-list"></div>
+    <div class="lk-detail" id="lk-detail" style="display:none"></div>
   </div>
 </div>
 
