@@ -1166,7 +1166,7 @@
   .mgr-plnenie-detail .trend-ms{position:absolute;left:-5px;right:-5px;height:3px;background:#0F172A;z-index:2;pointer-events:none}
   .mgr-plnenie-detail .trend-ms-lbl{position:absolute;left:50%;transform:translateX(-50%);font-size:11px;font-weight:600;color:#94A3B8;white-space:nowrap;z-index:3;pointer-events:none;line-height:1}
   /* ═══ REP NAV BAR (História / Rebríček / Plnenie) ═══ */
-  .rep-nav{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;position:sticky;top:0;z-index:1400;background:#EAECF2;padding-top:12px;padding-bottom:4px}
+  .rep-nav{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:0;position:sticky;top:0;z-index:1400;background:#EAECF2;padding-top:12px;padding-bottom:4px}
   .rep-nav-btn{background:#fff;border:1px solid rgba(0,0,0,.07);border-radius:12px;padding:14px 6px;font-size:12px;font-weight:700;color:#1A2A3A;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(0,0,0,.06),0 1px 3px rgba(0,0,0,.04);display:flex;align-items:center;justify-content:center;gap:5px;transition:opacity .15s,transform .15s;-webkit-tap-highlight-color:transparent;white-space:nowrap;overflow:hidden;position:relative}
   .rep-nav-btn:active{opacity:.82;transform:scale(.96)}
   .rep-nav-badge{background:linear-gradient(135deg,#F59E0B,#EF4444);color:#fff;border-radius:8px;font-size:9px;font-weight:800;padding:1px 5px;min-width:16px;text-align:center;flex-shrink:0}
@@ -1181,7 +1181,7 @@
   .lk-inner{padding:82px 16px 48px}
 .lk-sticky-controls{position:sticky;z-index:2050;padding:0;background:transparent}
 body:not(.manager-mode) .lk-sticky-controls{top:82px;background:#EAECF2;padding:0 0 10px}
-body:not(.manager-mode) .lk-search-wrap{margin-bottom:8px}
+body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 .mgr-plnenie-detail .lk-sticky-controls{top:46px}
   .lk-sticky-controls::before{content:'';position:absolute;left:-16px;right:-16px;top:0;bottom:0;border-radius:0 0 18px 18px;background:linear-gradient(180deg,rgba(234,236,242,.98) 0%,rgba(234,236,242,.96) 72%,rgba(234,236,242,0) 100%);z-index:-1;pointer-events:none}
   .lk-search-wrap{position:relative;margin-bottom:0}
@@ -1752,7 +1752,6 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:8px}
     <div id="pl-detail-lekarne" style="display:none">
       <div class="lk-sticky-controls" style="margin:0 0 10px">
         <div class="lk-search-wrap" style="margin:0 0 8px">
-          <span class="lk-search-ico">🔍</span>
           <input class="lk-search" id="mgr-lk-search" type="text" placeholder="🔍 Hľadaj lekáreň…" oninput="lkMgrFilterSearch(this.value)" autocomplete="off">
         </div>
         <div class="lk-tabs" id="mgr-lk-tabs">
@@ -2345,7 +2344,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:8px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.7';
+var APP_VERSION = '2.21.9';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
