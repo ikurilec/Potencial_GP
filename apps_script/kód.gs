@@ -797,6 +797,62 @@ function doGet(e) {
       });
     }
 
+    // ── LEKÁRNE — predaje z Lekarne_Bal per reprezentant (alebo všetci pre manažéra) ──
+    // URL: ?action=getLekarne&login=j.bohovic&token=...
+    //      ?action=getLekarne&token=...  (bez login = všetci, pre manažéra)
+    if(action === 'getLekarne') {
+      if(!requireToken(e)) return jsonResponse({ok: false, error: 'Unauthorized'});
+      var lkLogin = (e.parameter.login || '').trim().toLowerCase();
+
+      var lkSheet = ss.getSheetByName('Lekarne_Bal');
+      if(!lkSheet) return jsonResponse({ok: true, rows: []});
+
+      var lkData = lkSheet.getDataRange().getValues();
+      if(lkData.length < 2) return jsonResponse({ok: true, rows: []});
+
+      var lkHdr = lkData[0].map(function(h){ return String(h||'').trim().toLowerCase(); });
+      var liLogin = lkHdr.indexOf('login');
+      var liRok   = lkHdr.indexOf('rok');
+      var liMes   = lkHdr.indexOf('mesiac');
+      var liOkr   = lkHdr.indexOf('okres');
+      var liMesto = lkHdr.indexOf('mesto');
+      var liLek   = lkHdr.indexOf('lekaren');
+      if(liLogin < 0 || liLek < 0) return jsonResponse({ok: true, rows: []});
+
+      // Produktové stĺpce — všetko za lekaren (index 8+)
+      var prodIdxs = [];
+      for(var lki = liLek + 1; lki < lkHdr.length; lki++) {
+        if(lkHdr[lki]) prodIdxs.push({ col: lki, name: lkHdr[lki] });
+      }
+
+      var rows = [];
+      for(var lki = 1; lki < lkData.length; lki++) {
+        var r = lkData[lki];
+        var rowLogin = String(r[liLogin]||'').trim().toLowerCase();
+        if(!rowLogin) continue;
+        if(lkLogin && rowLogin !== lkLogin) continue;
+
+        var prods = {};
+        var hasAny = false;
+        prodIdxs.forEach(function(p){
+          var v = parseFloat(r[p.col]) || 0;
+          if(v !== 0) { prods[p.name] = v; hasAny = true; }
+        });
+        if(!hasAny) continue;
+
+        rows.push({
+          login:   rowLogin,
+          rok:     parseInt(r[liRok])  || 0,
+          mesiac:  parseInt(r[liMes])  || 0,
+          okres:   String(r[liOkr]  ||'').trim(),
+          mesto:   String(r[liMesto]||'').trim(),
+          lekaren: String(r[liLek]  ||'').trim(),
+          prods:   prods
+        });
+      }
+      return jsonResponse({ok: true, rows: rows});
+    }
+
     // ── ÚPRAVA ZÁZNAMU (len admin) ──
     // URL: ?action=updateRecord&row=42&kapitacia=2000&kategoria=A&...
     if(action === 'updateRecord') {
