@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GOL Lekárne Konverter</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #F1F5F9;
+    color: #1E293B;
+    padding: 24px 16px 48px;
+    min-height: 100vh;
+  }
+
+  .hdr {
+    background: linear-gradient(135deg, #0C1E35 0%, #13294B 60%, #0C1E35 100%);
+    color: #fff;
+    border-radius: 14px;
+    padding: 18px 20px 16px;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 24px rgba(12,30,53,.30);
+  }
+  .hdr-title { font-size: 18px; font-weight: 800; letter-spacing: -.02em; }
+  .hdr-sub   { font-size: 12px; color: #94B4CC; margin-top: 3px; }
+
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 8px rgba(15,23,42,.06), 0 0 0 1px rgba(15,23,42,.04);
+  }
+  .card-title {
+    font-size: 11px; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; color: #64748B; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .card-title::before {
+    content: ''; width: 4px; height: 4px; border-radius: 50%;
+    background: #2563EB; box-shadow: 0 0 0 2px rgba(37,99,235,.15);
+    flex-shrink: 0;
+  }
+
+  /* Drop zone */
+  .drop-zone {
+    border: 2px dashed #BFDBFE;
+    border-radius: 10px;
+    background: #EFF6FF;
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .15s ease;
+  }
+  .drop-zone.drag-over {
+    border-color: #2563EB;
+    background: #DBEAFE;
+  }
+  .drop-zone input { display: none; }
+  .drop-icon { font-size: 32px; margin-bottom: 8px; }
+  .drop-txt  { font-size: 13px; font-weight: 600; color: #1E40AF; }
+  .drop-sub  { font-size: 11px; color: #64748B; margin-top: 4px; }
+
+  /* File list */
+  .file-list { display: flex; flex-direction: column; gap: 8px; }
+  .file-item {
+    display: flex; align-items: center; gap: 10px;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    padding: 9px 12px;
+  }
+  .file-item.ok   { border-color: #BBF7D0; background: #F0FDF4; }
+  .file-item.warn { border-color: #FEF08A; background: #FEFCE8; }
+  .file-item.err  { border-color: #FECACA; background: #FEF2F2; }
+  .fi-icon { font-size: 18px; flex-shrink: 0; }
+  .fi-name { font-size: 12px; font-weight: 600; color: #1E293B; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fi-badge {
+    font-size: 10px; font-weight: 700; letter-spacing: .04em;
+    padding: 2px 7px; border-radius: 20px; white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .fi-badge.west { background: #DBEAFE; color: #1D4ED8; }
+  .fi-badge.east { background: #D1FAE5; color: #065F46; }
+  .fi-badge.err  { background: #FEE2E2; color: #991B1B; }
+  .fi-rep { font-size: 11px; color: #475569; flex-shrink: 0; }
+
+  /* Output */
+  .output-wrap { display: flex; flex-direction: column; gap: 10px; }
+  .output-block { }
+  .output-lbl {
+    font-size: 11px; font-weight: 700; letter-spacing: .05em;
+    text-transform: uppercase; color: #475569; margin-bottom: 6px;
+  }
+  .output-area {
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    line-height: 1.4;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    height: 120px;
+    resize: vertical;
+    width: 100%;
+    color: #334155;
+    overflow: auto;
+    white-space: pre;
+  }
+  .copy-btn {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    width: 100%; padding: 10px 14px;
+    background: linear-gradient(180deg, #3B82F6 0%, #2563EB 50%, #1E40AF 100%);
+    color: #fff; border: none; border-radius: 8px;
+    font-size: 13px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 4px 12px rgba(37,99,235,.25);
+    transition: all .15s ease; margin-top: 8px;
+  }
+  .copy-btn:hover { filter: brightness(1.08); }
+  .copy-btn:active { transform: scale(.98); }
+  .copy-btn.copied {
+    background: linear-gradient(180deg, #22C55E 0%, #16A34A 100%);
+    box-shadow: 0 4px 12px rgba(22,163,74,.25);
+  }
+
+  /* Stats */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat-card {
+    background: #F8FAFC; border: 1px solid #E2E8F0;
+    border-radius: 8px; padding: 10px 12px; text-align: center;
+  }
+  .stat-num { font-size: 22px; font-weight: 800; color: #0C1E35; letter-spacing: -.01em; }
+  .stat-lbl { font-size: 10px; color: #64748B; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; margin-top: 2px; }
+
+  /* Progress */
+  #progress-wrap { display: none; }
+  .progress-bar-wrap {
+    background: #E2E8F0; border-radius: 6px; height: 8px; overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%; border-radius: 6px; background: linear-gradient(90deg, #2563EB, #3B82F6);
+    transition: width .3s ease;
+  }
+  .progress-txt { font-size: 11px; color: #64748B; text-align: center; margin-top: 6px; }
+
+  .clear-btn {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    width: 100%; padding: 9px 14px;
+    background: #F1F5F9; color: #64748B;
+    border: 1px solid #E2E8F0; border-radius: 8px;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: all .15s ease;
+  }
+  .clear-btn:hover { background: #E2E8F0; color: #334155; }
+
+  .hidden { display: none !important; }
+
+  /* region chips */
+  .region-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .region-chip {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #F8FAFC; border: 1px solid #E2E8F0;
+    border-radius: 7px; padding: 7px 10px;
+    font-size: 11px;
+  }
+  .rc-region { font-weight: 800; color: #0C1E35; }
+  .rc-name   { color: #64748B; }
+  .rc-status { font-size: 16px; }
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-title">GOL Lekárne Konverter</div>
+  <div class="hdr-sub">sale-pha_mr_GOL_* → Google Sheets (Lekarne_Bal + Lekarne_EUR)</div>
+</div>
+
+<!-- Drop zone -->
+<div class="card">
+  <div class="card-title">Krok 1 — nahrať súbory</div>
+  <div class="drop-zone" id="drop-zone">
+    <input type="file" id="file-input" accept=".xlsx,.xls" multiple>
+    <div class="drop-icon">📁</div>
+    <div class="drop-txt">Pretiahni súbory sem alebo klikni</div>
+    <div class="drop-sub">sale-pha_mr_GOL_e_KE.xlsx, sale-pha_mr_GOL_w_BAMA.xlsx, …</div>
+    <div class="drop-sub" style="margin-top:4px;color:#94A3B8">Všetkých 12 regiónov naraz: West (BAMA, BASE, TN, DS, MT, NR) + East (LV, RS, PP, PO, MI, KE)</div>
+  </div>
+</div>
+
+<!-- File list -->
+<div class="card hidden" id="files-card">
+  <div class="card-title">Detekované súbory</div>
+  <div class="file-list" id="file-list"></div>
+</div>
+
+<!-- Progress -->
+<div class="card hidden" id="progress-wrap">
+  <div class="card-title">Spracovávam…</div>
+  <div class="progress-bar-wrap">
+    <div class="progress-bar-fill" id="progress-bar" style="width:0%"></div>
+  </div>
+  <div class="progress-txt" id="progress-txt">0 / 0</div>
+</div>
+
+<!-- Stats -->
+<div class="card hidden" id="stats-card">
+  <div class="card-title">Výsledok</div>
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-num" id="stat-reps">0</div>
+      <div class="stat-lbl">Reprezentanti</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="stat-months">0</div>
+      <div class="stat-lbl">Mesiacov</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="stat-rows">0</div>
+      <div class="stat-lbl">Riadkov</div>
+    </div>
+  </div>
+</div>
+
+<!-- Output: Balenia -->
+<div class="card hidden" id="output-bal-card">
+  <div class="card-title">Krok 2 — skopíruj do Sheets: <strong>Lekarne_Bal</strong> (balenia / kusy)</div>
+  <div class="output-wrap">
+    <div class="output-block">
+      <textarea class="output-area" id="output-bal" readonly></textarea>
+      <button class="copy-btn" id="copy-bal-btn" onclick="copyOutput('bal')">📋 Kopírovať Lekarne_Bal do schránky</button>
+    </div>
+  </div>
+</div>
+
+<!-- Output: EUR -->
+<div class="card hidden" id="output-eur-card">
+  <div class="card-title">Krok 3 — skopíruj do Sheets: <strong>Lekarne_EUR</strong> (euro hodnoty)</div>
+  <div class="output-wrap">
+    <div class="output-block">
+      <textarea class="output-area" id="output-eur" readonly></textarea>
+      <button class="copy-btn" id="copy-eur-btn" onclick="copyOutput('eur')">📋 Kopírovať Lekarne_EUR do schránky</button>
+    </div>
+  </div>
+</div>
+
+<!-- Clear -->
+<div class="card hidden" id="clear-card">
+  <button class="clear-btn" onclick="clearAll()">🗑 Vymazať a začať odznova</button>
+</div>
+
+<script>
+// ─── Región → Rep mapa ──────────────────────────────────────────
+const REGION_REP = {
+  'BAMA': { login: 'j.bohovic',    meno: 'Jaroslava Bohovičová',  team: 'west' },
+  'BASE': { login: 'v.hatinova',   meno: 'Viktória Hatinová',     team: 'west' },
+  'TN':   { login: 'v.hromadkova', meno: 'Vladimíra Hromádková',  team: 'west' },
+  'DS':   { login: 'z.lescis',     meno: 'Zuzana Leščišinová',    team: 'west' },
+  'MT':   { login: 'j.krkoska',    meno: 'Juraj Krkoška',         team: 'west' },
+  'NR':   { login: 'i.kozakova',   meno: 'Ida Kozáková',          team: 'west' },
+  'LV':   { login: 'k.czidor',     meno: 'Katarína Czidor',       team: 'east' },
+  'RS':   { login: 'o.rad',        meno: 'Olexandra Rad',         team: 'east' },
+  'PP':   { login: 'l.macakova',   meno: 'Lenka Mačáková',        team: 'east' },
+  'PO':   { login: 'z.lapsan',     meno: 'Zuzana Lapšanská',      team: 'east' },
+  'MI':   { login: 'm.sabol',      meno: 'Michal Sabol',          team: 'east' },
+  'KE':   { login: 'a.makis',      meno: 'Andrej Makiš',          team: 'east' },
+};
+
+// AM West/East (na doplnenie do metadát ak treba)
+const AM_WEST_LOGINS = ['j.bohovic','v.hatinova','v.hromadkova','z.lescis','j.krkoska','i.kozakova'];
+const AM_EAST_LOGINS = ['k.czidor','o.rad','l.macakova','z.lapsan','m.sabol','a.makis'];
+
+// Output column mená (z GOL_* → lowercase)
+const PROD_COLS = [
+  'aflamil','aflamil_kr','aflamil_sa','aflamil_tb',
+  'cavinton','cavinton_fo','cavinton_ij','cavinton_tb',
+  'globifer','junod','kogavant','lonelix','ossica',
+  'suprax','suprax_dt','suprax_tb',
+  'telexer','terrosa','vidonorm'
+];
+const PROD_COL_COUNT = PROD_COLS.length;
+const TSV_HEADER = ['login','meno','region','team','rok','mesiac', ...PROD_COLS].join('\t');
+
+// ─── Stav ────────────────────────────────────────────────────────
+var pendingFiles = [];
+var results = { bal: [], eur: [] };  // pole riadkov
+
+// ─── Drag & drop ────────────────────────────────────────────────
+var dz = document.getElementById('drop-zone');
+var fi = document.getElementById('file-input');
+
+dz.addEventListener('click', function(){ fi.click(); });
+fi.addEventListener('change', function(){ handleFiles(fi.files); });
+
+dz.addEventListener('dragover', function(e){ e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', function(){ dz.classList.remove('drag-over'); });
+dz.addEventListener('drop', function(e){
+  e.preventDefault();
+  dz.classList.remove('drag-over');
+  handleFiles(e.dataTransfer.files);
+});
+
+// ─── Handle files ────────────────────────────────────────────────
+function handleFiles(files) {
+  var arr = Array.from(files);
+  if (!arr.length) return;
+  pendingFiles = pendingFiles.concat(arr);
+  renderFileList();
+  processAll();
+}
+
+function extractRegion(filename) {
+  // sale-pha_mr_GOL_e_KE.xlsx  OR  sale-pha_mr_GOL_w_BAMA.xlsx
+  // Also: 202604rptMesacnePredajeLekarne_GOL_e_PO.xls
+  var m = filename.match(/_GOL_[ew]_([A-Z]+)\./i);
+  if (m) return m[1].toUpperCase();
+  // Try alternate: _e_KE_ or _w_BAMA_
+  m = filename.match(/[_\-]([A-Z]{2,6})\.(xls[x]?)$/i);
+  if (m) {
+    var cand = m[1].toUpperCase();
+    if (REGION_REP[cand]) return cand;
+  }
+  return null;
+}
+
+function renderFileList() {
+  var card = document.getElementById('files-card');
+  var list = document.getElementById('file-list');
+  card.classList.remove('hidden');
+  list.innerHTML = '';
+
+  pendingFiles.forEach(function(f) {
+    var region = extractRegion(f.name);
+    var rep = region ? REGION_REP[region] : null;
+    var div = document.createElement('div');
+    if (rep) {
+      div.className = 'file-item ok';
+      div.innerHTML =
+        '<span class="fi-icon">✅</span>' +
+        '<span class="fi-name">' + esc(f.name) + '</span>' +
+        '<span class="fi-rep">' + esc(rep.meno) + '</span>' +
+        '<span class="fi-badge ' + rep.team + '">' + region + ' · ' + rep.team.toUpperCase() + '</span>';
+    } else {
+      div.className = 'file-item err';
+      div.innerHTML =
+        '<span class="fi-icon">⚠️</span>' +
+        '<span class="fi-name">' + esc(f.name) + '</span>' +
+        '<span class="fi-badge err">Neznámy región</span>';
+    }
+    list.appendChild(div);
+  });
+}
+
+// ─── Spracovanie ──────────────────────────────────────────────
+function processAll() {
+  var validFiles = pendingFiles.filter(function(f){ return extractRegion(f.name) && REGION_REP[extractRegion(f.name)]; });
+  if (!validFiles.length) return;
+
+  document.getElementById('progress-wrap').classList.remove('hidden');
+  results = { bal: [], eur: [] };
+
+  var done = 0;
+  function setProgress(n) {
+    done = n;
+    var pct = Math.round(done / validFiles.length * 100);
+    document.getElementById('progress-bar').style.width = pct + '%';
+    document.getElementById('progress-txt').textContent = done + ' / ' + validFiles.length + ' súborov';
+  }
+  setProgress(0);
+
+  // Spracuj sekvenčne (aby výsledky boli v poradí)
+  var idx = 0;
+  function next() {
+    if (idx >= validFiles.length) {
+      finalize();
+      return;
+    }
+    var f = validFiles[idx++];
+    readFile(f, function(rows) {
+      if (rows) {
+        results.bal = results.bal.concat(rows.bal);
+        results.eur = results.eur.concat(rows.eur);
+      }
+      setProgress(idx);
+      next();
+    });
+  }
+  next();
+}
+
+function readFile(file, cb) {
+  var region = extractRegion(file.name);
+  var rep = REGION_REP[region];
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = new Uint8Array(e.target.result);
+      var wb = XLSX.read(data, { type: 'array', cellDates: true });
+      var wsName = wb.SheetNames[0];
+      var ws = wb.Sheets[wsName];
+      var rows2d = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+
+      // Nájdi sekcie AMOUNT a EUR
+      var amountStart = -1, eurStart = -1;
+      for (var i = 0; i < rows2d.length; i++) {
+        var row = rows2d[i];
+        var cell1 = row ? String(row[1] || '') : '';
+        if (cell1.indexOf('MONTH. AMOUNT') !== -1 || cell1.indexOf('AMOUNT') !== -1) amountStart = i;
+        if (cell1.indexOf('MONTH. EUR') !== -1 || cell1.indexOf('EUR') !== -1) eurStart = i;
+      }
+
+      // Ak nie je explicitná sekcia, skús auto-detect: prvý riadok kde row[1] = dátum alebo DATE
+      if (amountStart === -1) amountStart = 0;
+
+      // Nájdi header riadok (DATE + GOL_* stĺpce)
+      var amountHdrRow = findHeaderRow(rows2d, amountStart);
+      var eurHdrRow = eurStart >= 0 ? findHeaderRow(rows2d, eurStart) : -1;
+
+      if (amountHdrRow === -1) { cb(null); return; }
+
+      var amtRows = extractDataRows(rows2d, amountHdrRow, eurStart >= 0 ? eurStart : rows2d.length);
+      var eurRows = eurHdrRow >= 0 ? extractDataRows(rows2d, eurHdrRow, rows2d.length) : [];
+
+      var bal = buildTsvRows(rep, region, amtRows);
+      var eur = buildTsvRows(rep, region, eurRows.length ? eurRows : amtRows);
+
+      cb({ bal: bal, eur: eur });
+    } catch(ex) {
+      console.error('Chyba pri čítaní ' + file.name, ex);
+      cb(null);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function findHeaderRow(rows, startIdx) {
+  for (var i = startIdx; i < Math.min(startIdx + 10, rows.length); i++) {
+    var row = rows[i];
+    if (!row) continue;
+    for (var c = 0; c < row.length; c++) {
+      var v = String(row[c] || '');
+      if (v === 'DATE' || v.toUpperCase().indexOf('GOL_AFLAMIL') !== -1) return i;
+    }
+  }
+  return -1;
+}
+
+function extractDataRows(rows, hdrIdx, endIdx) {
+  var hdr = rows[hdrIdx];
+  // Nájdi col index pre DATE a produkty
+  var dateCol = -1;
+  var prodColMap = []; // [{col, prodName}]
+
+  for (var c = 0; c < hdr.length; c++) {
+    var h = String(hdr[c] || '').trim();
+    if (h === 'DATE') { dateCol = c; continue; }
+    var prodName = mapProdCol(h);
+    if (prodName) prodColMap.push({ col: c, name: prodName });
+  }
+  if (dateCol === -1) return [];
+
+  var out = [];
+  for (var r = hdrIdx + 1; r < endIdx; r++) {
+    var row = rows[r];
+    if (!row) continue;
+    var dateVal = row[dateCol];
+    if (!dateVal) continue;
+
+    var parsed = parseDate(dateVal);
+    if (!parsed) continue;
+
+    var entry = { rok: parsed.rok, mesiac: parsed.mesiac, vals: {} };
+    // Init all products to 0
+    PROD_COLS.forEach(function(p){ entry.vals[p] = 0; });
+    prodColMap.forEach(function(pm){
+      var v = row[pm.col];
+      entry.vals[pm.name] = (v === null || v === undefined || v === '') ? 0 : (parseFloat(v) || 0);
+    });
+    out.push(entry);
+  }
+  return out;
+}
+
+function mapProdCol(h) {
+  // GOL_Aflamil → aflamil, GOL_AflamilKR → aflamil_kr, ...
+  var clean = h.replace(/^GOL_/i, '').toLowerCase();
+  var map = {
+    'aflamil':     'aflamil',
+    'aflamilkr':   'aflamil_kr',
+    'aflamilsa':   'aflamil_sa',
+    'aflamilsach': 'aflamil_sa',
+    'aflamilsáčky':'aflamil_sa',
+    'aflamilsacky':'aflamil_sa',
+    'aflamilsa':   'aflamil_sa',
+    'aflamilsach': 'aflamil_sa',
+    'aflamilsach_20x100mg':'aflamil_sa',
+    'aflamiltb':   'aflamil_tb',
+    'cavinton':    'cavinton',
+    'cavintonfo':  'cavinton_fo',
+    'cavintonforte':'cavinton_fo',
+    'cavintonij':  'cavinton_ij',
+    'cavintoninj': 'cavinton_ij',
+    'cavintontb':  'cavinton_tb',
+    'cavintontbl': 'cavinton_tb',
+    'globifer':    'globifer',
+    'junod':       'junod',
+    'kogavant':    'kogavant',
+    'lonelix':     'lonelix',
+    'ossica':      'ossica',
+    'suprax':      'suprax',
+    'supraxdt':    'suprax_dt',
+    'supraxdsp':   'suprax_dt',
+    'supraxtb':    'suprax_tb',
+    'supraxtbl':   'suprax_tb',
+    'telexer':     'telexer',
+    'terrosa':     'terrosa',
+    'vidonorm':    'vidonorm',
+  };
+  return map[clean] || null;
+}
+
+function parseDate(val) {
+  if (!val) return null;
+  if (val instanceof Date) {
+    return { rok: val.getFullYear(), mesiac: val.getMonth() + 1 };
+  }
+  if (typeof val === 'string') {
+    // 2025-01-01 00:00:00 alebo 2025-01-01
+    var m = val.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return { rok: parseInt(m[1]), mesiac: parseInt(m[2]) };
+    // 01.01.2025
+    m = val.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+    if (m) return { rok: parseInt(m[3]), mesiac: parseInt(m[2]) };
+  }
+  if (typeof val === 'number') {
+    // Excel serial date
+    var d = XLSX.SSF.parse_date_code(val);
+    if (d) return { rok: d.y, mesiac: d.m };
+  }
+  return null;
+}
+
+function buildTsvRows(rep, region, dataRows) {
+  var rows = [];
+  var team = rep.team;
+  dataRows.forEach(function(entry){
+    var cols = [
+      rep.login, rep.meno, region, team,
+      entry.rok, entry.mesiac
+    ];
+    PROD_COLS.forEach(function(p){
+      var v = entry.vals[p] || 0;
+      // Zaokrúhli na 2 des. miesta
+      cols.push(Math.round(v * 100) / 100);
+    });
+    rows.push(cols.join('\t'));
+  });
+  return rows;
+}
+
+// ─── Finalizácia ─────────────────────────────────────────────────
+function finalize() {
+  // Zoraď podľa rok, mesiac, login
+  function sortRows(rows) {
+    return rows.slice().sort(function(a, b){
+      var pa = a.split('\t'), pb = b.split('\t');
+      // rok(4), mesiac(5)
+      var ya = parseInt(pa[4]), yb = parseInt(pb[4]);
+      if (ya !== yb) return ya - yb;
+      var ma = parseInt(pa[5]), mb = parseInt(pb[5]);
+      if (ma !== mb) return ma - mb;
+      return (pa[0] || '').localeCompare(pb[0] || '');
+    });
+  }
+
+  var balRows = sortRows(results.bal);
+  var eurRows = sortRows(results.eur);
+
+  var balTsv = TSV_HEADER + '\n' + balRows.join('\n');
+  var eurTsv = TSV_HEADER + '\n' + eurRows.join('\n');
+
+  document.getElementById('output-bal').value = balTsv;
+  document.getElementById('output-eur').value = eurTsv;
+
+  // Stats
+  var uniqueReps = new Set(results.bal.map(function(r){ return r.split('\t')[0]; }));
+  var uniqueMonths = new Set(results.bal.map(function(r){
+    var p = r.split('\t'); return p[4] + '-' + p[5];
+  }));
+
+  document.getElementById('stat-reps').textContent   = uniqueReps.size;
+  document.getElementById('stat-months').textContent = uniqueMonths.size;
+  document.getElementById('stat-rows').textContent   = balRows.length;
+
+  document.getElementById('stats-card').classList.remove('hidden');
+  document.getElementById('output-bal-card').classList.remove('hidden');
+  document.getElementById('output-eur-card').classList.remove('hidden');
+  document.getElementById('clear-card').classList.remove('hidden');
+  document.getElementById('progress-wrap').classList.add('hidden');
+}
+
+// ─── Copy ────────────────────────────────────────────────────────
+function copyOutput(typ) {
+  var el = document.getElementById('output-' + typ);
+  var btn = document.getElementById('copy-' + typ + '-btn');
+  navigator.clipboard.writeText(el.value).then(function(){
+    btn.classList.add('copied');
+    btn.textContent = '✅ Skopírované!';
+    setTimeout(function(){
+      btn.classList.remove('copied');
+      btn.textContent = '📋 Kopírovať Lekarne_' + typ.toUpperCase() + ' do schránky';
+    }, 2500);
+  }).catch(function(){
+    el.select();
+    document.execCommand('copy');
+    btn.classList.add('copied');
+    btn.textContent = '✅ Skopírované!';
+    setTimeout(function(){
+      btn.classList.remove('copied');
+      btn.textContent = '📋 Kopírovať Lekarne_' + typ.toUpperCase() + ' do schránky';
+    }, 2500);
+  });
+}
+
+// ─── Clear ──────────────────────────────────────────────────────
+function clearAll() {
+  pendingFiles = [];
+  results = { bal: [], eur: [] };
+  document.getElementById('file-list').innerHTML = '';
+  document.getElementById('output-bal').value = '';
+  document.getElementById('output-eur').value = '';
+  document.getElementById('files-card').classList.add('hidden');
+  document.getElementById('progress-wrap').classList.add('hidden');
+  document.getElementById('stats-card').classList.add('hidden');
+  document.getElementById('output-bal-card').classList.add('hidden');
+  document.getElementById('output-eur-card').classList.add('hidden');
+  document.getElementById('clear-card').classList.add('hidden');
+  document.getElementById('file-input').value = '';
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>

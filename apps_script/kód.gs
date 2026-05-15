@@ -278,6 +278,51 @@ function doGet(e) {
       return jsonResponse({ok: true, reps: reps});
     }
 
+    // ── LEKÁRNE — mesačné balenia per lekáreň × reprezentant ──
+    // URL: ?action=getLekarne[&login=j.bohovic]&token=...
+    // Číta tab "Lekarne_Bal", header-based parsing. Ak je zadaný login, filtruje.
+    if(action === 'getLekarne') {
+      if(!requireToken(e)) return jsonResponse({ok: false, error: 'Unauthorized'});
+      var lkSheet = ss.getSheetByName('Lekarne_Bal');
+      if(!lkSheet) return jsonResponse({ok: true, rows: []});
+      var lkRows = lkSheet.getDataRange().getValues();
+      if(lkRows.length < 2) return jsonResponse({ok: true, rows: []});
+      var lkHdr = lkRows[0].map(function(h){ return String(h||'').trim().toLowerCase(); });
+      var loginFilter = String(e.parameter.login || '').trim().toLowerCase();
+      var loginIdx = lkHdr.indexOf('login');
+      // Stĺpce ktoré sú produktové (počty balení) — všetko okrem meta polí
+      var metaCols = ['login','meno','region','team','rok','mesiac','okres','mesto','lekaren'];
+      var outRows = [];
+      for(var li = 1; li < lkRows.length; li++) {
+        var lr = lkRows[li];
+        var rowLogin = loginIdx >= 0 ? String(lr[loginIdx] || '').trim().toLowerCase() : '';
+        if(loginFilter && rowLogin !== loginFilter) continue;
+        if(!rowLogin) continue;
+        var obj = {};
+        for(var ci = 0; ci < lkHdr.length; ci++) {
+          var key = lkHdr[ci];
+          if(!key) continue;
+          var v = lr[ci];
+          if(metaCols.indexOf(key) !== -1) {
+            // meta polia ako string/number
+            if(key === 'rok' || key === 'mesiac') {
+              var nn = parseInt(v); obj[key] = isNaN(nn) ? 0 : nn;
+            } else {
+              obj[key] = String(v == null ? '' : v).trim();
+            }
+          } else {
+            // produktový stĺpec — číslo balení
+            var pv = parseFloat(v);
+            obj[key] = isNaN(pv) ? 0 : pv;
+          }
+        }
+        // Vynechaj prázdne riadky (bez lekárne)
+        if(!obj.lekaren) continue;
+        outRows.push(obj);
+      }
+      return jsonResponse({ok: true, rows: outRows});
+    }
+
     // ── ULOŽENIE AVATAR CONFIGU ──
     // URL: ?action=setAvatar&username=j.bohovic&config=<JSON>&token=...
     // Zapíše JSON string do stĺpca "avatar" v tabe Pouzivatelia.
