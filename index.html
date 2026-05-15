@@ -602,7 +602,7 @@
   .hist-body-card{background:#fff;border-radius:14px;overflow:hidden}
   .hist-body{padding:4px 0}
   /* Zdielaný panel-nav pre História / Rebríček / Plnenie */
-  .panel-nav{display:grid;grid-template-columns:repeat(3,1fr) 32px;gap:4px;background:#fff;border-radius:12px;padding:4px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  .panel-nav{display:grid;grid-template-columns:repeat(4,1fr) 32px;gap:4px;background:#fff;border-radius:12px;padding:4px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
   .panel-nav-btn{border:none;background:#F1F5F9;padding:13px 4px;font-size:11.5px;font-weight:600;color:#64748B;cursor:pointer;border-radius:10px;transition:all .2s ease;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:4px;-webkit-tap-highlight-color:transparent;white-space:nowrap}
   .panel-nav-btn:hover:not(.active){background:#E2E8F0;color:#0F172A}
   .panel-nav-btn.active{background:linear-gradient(135deg,#0C1E35 0%,#13294B 100%);color:#fff;box-shadow:0 4px 12px rgba(12,30,53,.25),inset 0 1px 0 rgba(255,255,255,.10);font-weight:700}
@@ -1175,13 +1175,9 @@
   .rep-plnenie-overlay.show{display:block}
 
   /* ═══ LEKÁRNE OVERLAY (rep + manažér detail) ═══ */
-  .lk-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:2500;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  .lk-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:2000;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   .lk-overlay.show{display:block}
-  .lk-inner{padding:72px 14px 48px}
-  .lk-hdr{position:fixed;top:0;left:0;right:0;z-index:10;background:linear-gradient(135deg,#0C1E35 0%,#13294B 100%);padding:14px 16px 10px;display:flex;align-items:center;gap:10px;box-shadow:0 4px 16px rgba(12,30,53,.25)}
-  .lk-back{background:rgba(255,255,255,.12);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;padding:7px 12px;cursor:pointer;font-family:inherit;flex-shrink:0;-webkit-tap-highlight-color:transparent}
-  .lk-back:active{background:rgba(255,255,255,.2)}
-  .lk-hdr-title{font-size:15px;font-weight:800;color:#fff;font-family:var(--font-display);letter-spacing:-.01em;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lk-inner{padding:82px 16px 48px}
   .lk-search-wrap{position:relative;margin-bottom:12px}
   .lk-search{width:100%;border:1.5px solid #BFDBFE;border-radius:10px;background:#fff;padding:10px 14px 10px 38px;font-size:14px;color:#0F172A;font-family:inherit;outline:none;transition:border-color .15s,box-shadow .15s}
   .lk-search:focus{border-color:#2563EB;box-shadow:0 0 0 4px rgba(37,99,235,.12)}
@@ -1970,6 +1966,7 @@
       <button class="panel-nav-btn" id="spn-hist" onclick="openHistory()">📋 História</button>
       <button class="panel-nav-btn" id="spn-lb" onclick="openLeaderboard()">🏆 Rebríček</button>
       <button class="panel-nav-btn" id="spn-pl" onclick="openRepPlnenie()">💊 Plnenie</button>
+      <button class="panel-nav-btn" id="spn-lk" onclick="openLekarne()">🏪 Lekárne</button>
       <button class="panel-nav-close" onclick="closeAllPanels()">✕</button>
     </div>
   </div>
@@ -4597,7 +4594,7 @@ function filterHistory() {
 
 var _panelCurrent = null;
 var _panelStack = []; // navigačný stack — pamätá odkiaľ sme prišli (pre Android back button)
-var _PANEL_ORDER = { 'hist-overlay': 0, 'lb-overlay': 1, 'rep-plnenie-overlay': 2 };
+var _PANEL_ORDER = { 'hist-overlay': 0, 'lb-overlay': 1, 'rep-plnenie-overlay': 2, 'lk-overlay': 3 };
 
 function _panelShow(newId, isBack) {
   // Ak je ten istý panel už otvorený — nerob nič (ochrana pred dvojitým kliknutím)
@@ -4627,9 +4624,9 @@ function _panelShow(newId, isBack) {
     var snav = document.getElementById('shared-panel-nav');
     if (snav) {
       snav.style.display = '';
-      var _panelToBtn = {'hist-overlay':'spn-hist','lb-overlay':'spn-lb','rep-plnenie-overlay':'spn-pl'};
+      var _panelToBtn = {'hist-overlay':'spn-hist','lb-overlay':'spn-lb','rep-plnenie-overlay':'spn-pl','lk-overlay':'spn-lk'};
       var _activeBtnId = _panelToBtn[newId];
-      ['spn-hist','spn-lb','spn-pl'].forEach(function(id){
+      ['spn-hist','spn-lb','spn-pl','spn-lk'].forEach(function(id){
         var btn = document.getElementById(id);
         if(btn) btn.classList.toggle('active', id === _activeBtnId);
       });
@@ -16603,12 +16600,9 @@ function openLekarne() {
   LK_STATE.open = true;
   LK_STATE.activeTab = 'sleeping';
   LK_STATE.searchQ = '';
-  var overlay = document.getElementById('lk-overlay');
-  if (overlay) overlay.classList.add('show');
+  _panelShow('lk-overlay');
   var searchEl = document.getElementById('lk-search');
   if (searchEl) searchEl.value = '';
-  var titleEl = document.getElementById('lk-hdr-title');
-  if (titleEl) titleEl.textContent = '🏪 Moje lekárne';
   lkSwitchTab('sleeping', null);
   document.getElementById('lk-list').innerHTML = lkSkelHtml();
   var login = (getSession() || {}).username || '';
@@ -16616,18 +16610,11 @@ function openLekarne() {
     LK_STATE._rows = lkBuildLekarne(rows);
     lkRender();
   });
-  // Edge swipe back
-  var ov = document.getElementById('lk-overlay');
-  if (ov && !ov._lkSwipe) {
-    ov._lkSwipe = true;
-    attachEdgeSwipeBack(ov, closeLekarne);
-  }
 }
 
 function closeLekarne() {
   LK_STATE.open = false;
-  var overlay = document.getElementById('lk-overlay');
-  if (overlay) overlay.classList.remove('show');
+  closeAllPanels();
 }
 
 function closeLkarneDetail() {
@@ -16932,10 +16919,6 @@ function lkEscAttr(s) {
 
 <!-- ── LEKÁRNE OVERLAY (rep view) ── -->
 <div class="lk-overlay" id="lk-overlay">
-  <div class="lk-hdr">
-    <button class="lk-back" onclick="closeLekarne()">← Späť</button>
-    <div class="lk-hdr-title" id="lk-hdr-title">🏪 Moje lekárne</div>
-  </div>
   <div class="lk-inner">
     <div class="lk-search-wrap">
       <span class="lk-search-ico">🔍</span>
