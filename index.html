@@ -2247,7 +2247,7 @@
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.20.17';
+var APP_VERSION = '2.20.18';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10700,8 +10700,21 @@ function lbLoadData(force){
     .then(function(r){ return r.ok ? r.json() : null; })
     .then(function(allHist){
       if(allHist && allHist.ok !== false && typeof allHist === 'object' && !Array.isArray(allHist)){
+        // Normalizuj kľúče z getAllHistory na lowercase
+        var normHist = {};
+        Object.keys(allHist).forEach(function(k){
+          var lk = k.toLowerCase();
+          if(!normHist[lk]) normHist[lk] = allHist[k];
+        });
         var results = {};
-        LB_ALL_REPS.forEach(function(u){ results[u] = Array.isArray(allHist[u]) ? allHist[u] : []; });
+        // Vlož všetky dáta z normHist
+        Object.keys(normHist).forEach(function(lk){ results[lk] = normHist[lk]; });
+        // Zabezpeč že každý rep z LB_ALL_REPS má záznam
+        LB_ALL_REPS.forEach(function(u){
+          var lk = u.toLowerCase();
+          if(!results[lk]) results[lk] = [];
+          results[u] = results[lk];
+        });
         if (looksIncomplete(results)) {
           if (window.console) console.warn('[lb-load] getAllHistory vyzerá neúplne, padám na individuálne fetche');
           fallbackIndividual();
@@ -10864,8 +10877,9 @@ function lbRender(){
   var repsToShow = LB_ALL_REPS.length > 0 ? LB_ALL_REPS : Object.keys(LB_STATE.data || {});
   var ranking = repsToShow.map(function(username){
     var info = LB_REP_INFO[username] || { name: username, region: '', color: 'linear-gradient(135deg,#374151,#6B7280)' };
+    var uData = LB_STATE.data[username] || LB_STATE.data[username.toLowerCase()];
     return { username: username, name: info.name, region: info.region, color: info.color,
-             count: lbCountVisits(LB_STATE.data[username], LB_STATE.period) };
+             count: lbCountVisits(uData, LB_STATE.period) };
   }).sort(function(a,b){ return b.count - a.count || a.name.localeCompare(b.name); });
 
   if(!ranking.some(function(r){ return r.count > 0; })){
@@ -10977,7 +10991,8 @@ function lbUpdateNavBtn() {
   if (!myUsername || !LB_STATE.data) { btn.innerHTML = '🏆 Rebríček'; return; }
   var repsToShow = LB_ALL_REPS.length > 0 ? LB_ALL_REPS : Object.keys(LB_STATE.data);
   var ranking = repsToShow.map(function(u) {
-    return { username: u, count: lbCountVisits(LB_STATE.data[u], 'month') };
+    var uData = LB_STATE.data[u] || LB_STATE.data[u.toLowerCase()];
+    return { username: u, count: lbCountVisits(uData, 'month') };
   }).sort(function(a, b) { return b.count - a.count; });
   var rank = -1;
   for (var i = 0; i < ranking.length; i++) {
