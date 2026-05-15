@@ -2953,7 +2953,10 @@ function devModeInit() {
   document.body.appendChild(banner);
 
   // Nastav fake session
-  var fakeUser = { username:'admin', name:'Ivan (DEV)', role: DEV_ROLE === 'amwest' ? 'am west' : DEV_ROLE === 'ameast' ? 'am east' : 'admin', region:'' };
+  var fakeUser = { username: DEV_ROLE === 'rep' ? 'j.bohovic' : 'admin',
+                   name: DEV_ROLE === 'rep' ? 'Jaroslava Bohovičová (DEV)' : 'Ivan (DEV)',
+                   role: DEV_ROLE === 'amwest' ? 'am west' : DEV_ROLE === 'ameast' ? 'am east' : DEV_ROLE === 'rep' ? 'rep west' : 'admin',
+                   region: DEV_ROLE === 'rep' ? 'BAMA' : '' };
   try {
     fakeUser.loginTime = Date.now();
     sessionStorage.setItem('potencial_gp_session', JSON.stringify(fakeUser));
@@ -2968,6 +2971,9 @@ function devModeInit() {
   if (mgrRole) {
     mgrEnter(mgrRole);
     setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(true);}else{checkMilestone();} }, 400);
+  } else {
+    // Rep mód
+    loginSuccess(fakeUser.username, fakeUser.name, fakeUser.role, fakeUser.region);
   }
 }
 
@@ -16514,7 +16520,7 @@ function lkFetch(login, cb) {
   var cacheKey = login || '__all__';
   var cached = LK_STATE.cache[cacheKey];
   if (cached && (Date.now() - cached.ts < 5 * 60 * 1000)) { cb(cached.rows); return; }
-  var url = scriptUrl({ action: 'getLekarne', login: login || '' });
+  var url = scriptUrl('action=getLekarne&login=' + encodeURIComponent(login || ''));
   fetch(url).then(function(r){ return r.json(); }).then(function(data) {
     if (data.ok) {
       LK_STATE.cache[cacheKey] = { rows: data.rows || [], ts: Date.now() };
