@@ -5598,8 +5598,8 @@ function loginSuccess(username, name, role, region, extra) {
       REP_PL_STATE.year = REP_PL_STATE.year || (new Date()).getFullYear();
       REP_PL_STATE.q    = REP_PL_STATE.q    || plnenieCurrentQ();
       preloadAllPharmaData();
-      lkPreload();
     }, 2500);
+    setTimeout(lkPreload, 300);
     // Notifikácie pre manažérov (nie admin)
     if (user.role !== 'admin') {
       checkNotifications();
@@ -5635,8 +5635,8 @@ function loginSuccess(username, name, role, region, extra) {
     REP_PL_STATE.year = REP_PL_STATE.year || (new Date()).getFullYear();
     REP_PL_STATE.q    = REP_PL_STATE.q    || plnenieCurrentQ();
     preloadAllPharmaData();
-    lkPreload();
   }, 1500);
+  setTimeout(lkPreload, 300);
   // Agresívny dedup po prihlásení — eliminácia prípadných duplicitov
   setTimeout(function(){ try { mgrDedupUnique(); } catch(e){} }, 100);
   setTimeout(function(){ try { mgrDedupUnique(); } catch(e){} }, 600);
@@ -16516,28 +16516,38 @@ function lkCurrentYearMonth() {
   return { rok: d.getFullYear(), mesiac: d.getMonth() + 1 };
 }
 
-// Preload na pozadí po prihlásení (rep)
-function lkPreload() {
-  var session = getSession();
-  if (!session || !session.username) return;
-  var login = session.username;
-  var cacheKey = login;
-  if (LK_STATE.cache[cacheKey] && (Date.now() - LK_STATE.cache[cacheKey].ts < 5 * 60 * 1000)) return;
-  lkFetch(login, function() {}); // len naplní cache, výsledok ignorujeme
-}
+// In-flight callbacks — ak fetch beží, nový cb sa len zaradí do fronty
+var _lkInFlight = {}; // cacheKey → [cb, cb, ...]
 
 // Fetch dát pre login (rep alebo manažér pre konkrétneho repa)
 function lkFetch(login, cb) {
   var cacheKey = login || '__all__';
+  // Cache hit
   var cached = LK_STATE.cache[cacheKey];
   if (cached && (Date.now() - cached.ts < 5 * 60 * 1000)) { cb(cached.rows); return; }
+  // Fetch práve beží — pridaj callback do fronty
+  if (_lkInFlight[cacheKey]) { _lkInFlight[cacheKey].push(cb); return; }
+  // Spusti nový fetch
+  _lkInFlight[cacheKey] = [cb];
   var url = scriptUrl('action=getLekarne&login=' + encodeURIComponent(login || ''));
   fetch(url).then(function(r){ return r.json(); }).then(function(data) {
-    if (data.ok) {
-      LK_STATE.cache[cacheKey] = { rows: data.rows || [], ts: Date.now() };
-      cb(data.rows || []);
-    } else { cb([]); }
-  }).catch(function(){ cb([]); });
+    var rows = (data.ok && data.rows) ? data.rows : [];
+    LK_STATE.cache[cacheKey] = { rows: rows, ts: Date.now() };
+    var cbs = _lkInFlight[cacheKey] || [];
+    delete _lkInFlight[cacheKey];
+    cbs.forEach(function(fn){ try { fn(rows); } catch(e){} });
+  }).catch(function() {
+    var cbs = _lkInFlight[cacheKey] || [];
+    delete _lkInFlight[cacheKey];
+    cbs.forEach(function(fn){ try { fn([]); } catch(e){} });
+  });
+}
+
+// Preload ihneď po prihlásení
+function lkPreload() {
+  var session = getSession();
+  if (!session || !session.username) return;
+  lkFetch(session.username, function(){}); // naplní cache, výsledok ignorujeme
 }
 
 // Vypočíta lekárne briefy pre rep view
