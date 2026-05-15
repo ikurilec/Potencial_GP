@@ -112,8 +112,8 @@ function doGet(e) {
       var result = [];
       for(var i = 1; i < rows.length; i++) {
         var row = rows[i];
-        var rep = String(row[repIdx]||'').trim();
-        if(rep !== reprezentant) continue;
+        var rep = String(row[repIdx]||'').trim().toLowerCase();
+        if(rep !== (reprezentant||'').toLowerCase()) continue;
 
         var obj = { row: i + 1 };
         var numericCols = ['kapitacia','aflamil_n','aflamil_eur','suprax_n','suprax_eur',
