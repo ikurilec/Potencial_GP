@@ -5598,6 +5598,7 @@ function loginSuccess(username, name, role, region, extra) {
       REP_PL_STATE.year = REP_PL_STATE.year || (new Date()).getFullYear();
       REP_PL_STATE.q    = REP_PL_STATE.q    || plnenieCurrentQ();
       preloadAllPharmaData();
+      lkPreload();
     }, 2500);
     // Notifikácie pre manažérov (nie admin)
     if (user.role !== 'admin') {
@@ -5634,6 +5635,7 @@ function loginSuccess(username, name, role, region, extra) {
     REP_PL_STATE.year = REP_PL_STATE.year || (new Date()).getFullYear();
     REP_PL_STATE.q    = REP_PL_STATE.q    || plnenieCurrentQ();
     preloadAllPharmaData();
+    lkPreload();
   }, 1500);
   // Agresívny dedup po prihlásení — eliminácia prípadných duplicitov
   setTimeout(function(){ try { mgrDedupUnique(); } catch(e){} }, 100);
@@ -16514,6 +16516,16 @@ function lkCurrentYearMonth() {
   return { rok: d.getFullYear(), mesiac: d.getMonth() + 1 };
 }
 
+// Preload na pozadí po prihlásení (rep)
+function lkPreload() {
+  var session = getSession();
+  if (!session || !session.username) return;
+  var login = session.username;
+  var cacheKey = login;
+  if (LK_STATE.cache[cacheKey] && (Date.now() - LK_STATE.cache[cacheKey].ts < 5 * 60 * 1000)) return;
+  lkFetch(login, function() {}); // len naplní cache, výsledok ignorujeme
+}
+
 // Fetch dát pre login (rep alebo manažér pre konkrétneho repa)
 function lkFetch(login, cb) {
   var cacheKey = login || '__all__';
@@ -16608,12 +16620,18 @@ function openLekarne() {
   var searchEl = document.getElementById('lk-search');
   if (searchEl) searchEl.value = '';
   lkSwitchTab('sleeping', null);
-  document.getElementById('lk-list').innerHTML = lkSkelHtml();
   var login = (getSession() || {}).username || '';
-  lkFetch(login, function(rows) {
-    LK_STATE._rows = lkBuildLekarne(rows);
+  var cached = LK_STATE.cache[login];
+  if (cached && (Date.now() - cached.ts < 5 * 60 * 1000)) {
+    LK_STATE._rows = lkBuildLekarne(cached.rows);
     lkRender();
-  });
+  } else {
+    document.getElementById('lk-list').innerHTML = lkSkelHtml();
+    lkFetch(login, function(rows) {
+      LK_STATE._rows = lkBuildLekarne(rows);
+      lkRender();
+    });
+  }
 }
 
 function closeLekarne() {
