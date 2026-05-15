@@ -10700,6 +10700,7 @@ function lbLoadData(force){
     .then(function(r){ return r.ok ? r.json() : null; })
     .then(function(allHist){
       if(allHist && allHist.ok !== false && typeof allHist === 'object' && !Array.isArray(allHist)){
+        if(window.console) console.log('[lb-debug] getAllHistory keys:', Object.keys(allHist), '| LB_ALL_REPS:', LB_ALL_REPS);
         // Normalizuj kľúče z getAllHistory na lowercase
         var normHist = {};
         Object.keys(allHist).forEach(function(k){
