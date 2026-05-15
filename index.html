@@ -1179,11 +1179,11 @@
   .lk-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:2000;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   .lk-overlay.show{display:block}
   .lk-inner{padding:82px 16px 48px}
-.lk-sticky-controls{position:sticky;z-index:2050;padding:0 0 12px;background:transparent}
+.lk-sticky-controls{position:sticky;z-index:2050;padding:0;background:transparent}
 body:not(.manager-mode) .lk-sticky-controls{top:82px}
 .mgr-plnenie-detail .lk-sticky-controls{top:46px}
-  .lk-sticky-controls::before{content:'';position:absolute;left:-16px;right:-16px;top:0;bottom:-12px;border-radius:0 0 18px 18px;background:linear-gradient(180deg,rgba(234,236,242,.98) 0%,rgba(234,236,242,.96) 72%,rgba(234,236,242,0) 100%);z-index:-1;pointer-events:none}
-  .lk-search-wrap{position:relative;margin-bottom:12px}
+  .lk-sticky-controls::before{content:'';position:absolute;left:-16px;right:-16px;top:0;bottom:0;border-radius:0 0 18px 18px;background:linear-gradient(180deg,rgba(234,236,242,.98) 0%,rgba(234,236,242,.96) 72%,rgba(234,236,242,0) 100%);z-index:-1;pointer-events:none}
+  .lk-search-wrap{position:relative;margin-bottom:0}
   .lk-search{width:100%;border:1.5px solid #BFDBFE;border-radius:10px;background:#fff;padding:10px 14px 10px 38px;font-size:14px;color:#0F172A;font-family:inherit;outline:none;transition:border-color .15s,box-shadow .15s}
   .lk-search:focus{border-color:#2563EB;box-shadow:0 0 0 4px rgba(37,99,235,.12)}
   .lk-search-ico{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#94A3B8;font-size:16px;pointer-events:none}
@@ -1750,9 +1750,9 @@ body:not(.manager-mode) .lk-sticky-controls{top:82px}
     <!-- Sub-tab: Lekárne -->
     <div id="pl-detail-lekarne" style="display:none">
       <div class="lk-sticky-controls" style="margin:0 0 10px">
-        <div class="lk-search-wrap" style="margin:0 0 10px">
+        <div class="lk-search-wrap" style="margin:0 0 8px">
           <span class="lk-search-ico">🔍</span>
-          <input class="lk-search" id="mgr-lk-search" type="text" placeholder="Hľadaj lekáreň…" oninput="lkMgrFilterSearch(this.value)" autocomplete="off">
+          <input class="lk-search" id="mgr-lk-search" type="text" placeholder="🔍 Hľadaj lekáreň…" oninput="lkMgrFilterSearch(this.value)" autocomplete="off">
         </div>
         <div class="lk-tabs" id="mgr-lk-tabs">
           <button class="lk-tab active" data-lk-tab="reaktivacia" onclick="lkMgrSwitchTab('reaktivacia',this)">
@@ -2344,7 +2344,7 @@ body:not(.manager-mode) .lk-sticky-controls{top:82px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.3';
+var APP_VERSION = '2.21.4';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
