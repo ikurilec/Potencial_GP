@@ -9737,6 +9737,13 @@ function buildRepData(reps) {
   try { avatarRefreshAllInDom(); } catch(e){}
   // Update header hint — ak má prihlásený user už custom avatar zo Sheets, vypneme pulse
   try { hdrAvatarUpdateHint(); } catch(e){}
+  // Race condition fix: ak rebríček má dáta ale bol renderovaný so starými LB_ALL_REPS,
+  // re-renderuj teraz keď máme správne Sheets logins
+  try {
+    if (typeof LB_STATE !== 'undefined' && LB_STATE.data && !LB_STATE.loading) {
+      lbRender();
+    }
+  } catch(e){}
 }
 
 // ─── Header avatar discoverability — pulse halo + one-time tooltip ───
@@ -10875,10 +10882,31 @@ function lbRender(){
   var session = getSession();
   var myUsername = session ? session.username : '';
 
-  var repsToShow = LB_ALL_REPS.length > 0 ? LB_ALL_REPS : Object.keys(LB_STATE.data || {});
+  // Robustný lookup: mapuj allHist kľúče (lowercase) na LB_ALL_REPS kľúče
+  // Toto rieši race condition kde buildRepData dobehne neskôr ako getAllHistory
+  var dataByLower = {}; // lowercase → data array (z LB_STATE.data)
+  Object.keys(LB_STATE.data || {}).forEach(function(k){
+    dataByLower[k.toLowerCase()] = LB_STATE.data[k];
+  });
+
+  // repsToShow = LB_ALL_REPS + allHist kľúče s dátami ktoré nie sú v LB_ALL_REPS
+  var seenLower = {};
+  var repsToShow = [];
+  (LB_ALL_REPS.length > 0 ? LB_ALL_REPS : Object.keys(LB_STATE.data || {})).forEach(function(u){
+    var lk = u.toLowerCase();
+    if(!seenLower[lk]){ seenLower[lk] = true; repsToShow.push(u); }
+  });
+  Object.keys(dataByLower).forEach(function(lk){
+    if(!seenLower[lk] && Array.isArray(dataByLower[lk]) && dataByLower[lk].length > 0){
+      // Extra kľúč z allHist — zahrni iba ak ho poznáme v LB_REP_INFO
+      if(LB_REP_INFO[lk]){ seenLower[lk] = true; repsToShow.push(lk); }
+    }
+  });
+
   var ranking = repsToShow.map(function(username){
-    var info = LB_REP_INFO[username] || { name: username, region: '', color: 'linear-gradient(135deg,#374151,#6B7280)' };
-    var uData = LB_STATE.data[username] || LB_STATE.data[username.toLowerCase()];
+    var lk = username.toLowerCase();
+    var info = LB_REP_INFO[username] || LB_REP_INFO[lk] || { name: username, region: '', color: 'linear-gradient(135deg,#374151,#6B7280)' };
+    var uData = dataByLower[lk] || [];
     return { username: username, name: info.name, region: info.region, color: info.color,
              count: lbCountVisits(uData, LB_STATE.period) };
   }).sort(function(a,b){ return b.count - a.count || a.name.localeCompare(b.name); });
@@ -10990,10 +11018,11 @@ function lbUpdateNavBtn() {
   var session = getSession();
   var myUsername = session ? session.username : null;
   if (!myUsername || !LB_STATE.data) { btn.innerHTML = '🏆 Rebríček'; return; }
+  var dataByLowerNav = {};
+  Object.keys(LB_STATE.data).forEach(function(k){ dataByLowerNav[k.toLowerCase()] = LB_STATE.data[k]; });
   var repsToShow = LB_ALL_REPS.length > 0 ? LB_ALL_REPS : Object.keys(LB_STATE.data);
   var ranking = repsToShow.map(function(u) {
-    var uData = LB_STATE.data[u] || LB_STATE.data[u.toLowerCase()];
-    return { username: u, count: lbCountVisits(uData, 'month') };
+    return { username: u, count: lbCountVisits(dataByLowerNav[u.toLowerCase()], 'month') };
   }).sort(function(a, b) { return b.count - a.count; });
   var rank = -1;
   for (var i = 0; i < ranking.length; i++) {
