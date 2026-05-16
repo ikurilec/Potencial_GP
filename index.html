@@ -2368,7 +2368,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.24';
+var APP_VERSION = '2.21.25';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -16888,8 +16888,18 @@ function lkCreamContactMonthKey(now) {
   return String(d.rok) + '-' + String(d.mesiac).padStart(2, '0');
 }
 
+function lkSessionUsername() {
+  try {
+    if (typeof getSession === 'function') {
+      var s = getSession();
+      if (s && s.username) return String(s.username).trim().toLowerCase();
+    }
+  } catch(e) {}
+  return '';
+}
+
 function lkCreamContactedKey(login, key, now) {
-  var user = lkCacheKey(login || (typeof session !== 'undefined' && session && session.username) || '__self__');
+  var user = lkCacheKey(login || lkSessionUsername() || '__self__');
   return 'lekarne_cream_contacted_' + lkCreamContactMonthKey(now) + '_' + user + '_' + String(key || '');
 }
 
@@ -16925,7 +16935,7 @@ function lkMarkCreamContacted(key, ev) {
   try { localStorage.setItem(lkCreamContactedKey(null, key), '1'); } catch(e) {}
   lkSetCreamContactedInRows(key);
   try {
-    fetch(scriptUrl('action=setLekarenKremContact&key=' + encodeURIComponent(key) + '&username=' + encodeURIComponent((typeof session !== 'undefined' && session && session.username) || '') + '&month=' + encodeURIComponent(lkCreamContactMonthKey()) + '&token=' + encodeURIComponent(API_TOKEN) + '&_t=' + Date.now()), { cache: 'no-store' })
+    fetch(scriptUrl('action=setLekarenKremContact&key=' + encodeURIComponent(key) + '&username=' + encodeURIComponent(lkSessionUsername()) + '&month=' + encodeURIComponent(lkCreamContactMonthKey()) + '&_t=' + Date.now()), { cache: 'no-store' })
       .then(function(r){ return r.json(); })
       .then(function(data){ if (data && data.ok === false && window.console) console.warn('setLekarenKremContact backend error:', data.error); })
       .catch(function(err){ if (window.console) console.warn('setLekarenKremContact failed:', err); });
