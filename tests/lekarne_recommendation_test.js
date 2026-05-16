@@ -28,6 +28,7 @@ const sandbox = {
     telexer: 'Telexer',
     kogavant: 'Kogavant',
   },
+  LK_MES_NAMES: { 3: 'Mar', 4: 'Apr', 5: 'Máj' },
 };
 vm.createContext(sandbox);
 vm.runInContext(
@@ -36,6 +37,8 @@ vm.runInContext(
   extractFunction('lkPriorityLabel') + '\n' +
   extractFunction('lkCacheKey') + '\n' +
   extractFunction('lkCurrentYearMonth') + '\n' +
+  extractFunction('lkCreamLast3') + '\n' +
+  extractFunction('lkCreamLast3Text') + '\n' +
   extractFunction('lkCreamContactMonthKey') + '\n' +
   extractFunction('lkCreamContactedKey') + '\n' +
   extractFunction('lkIsCreamContacted') + '\n' +
@@ -113,5 +116,20 @@ const sortedCream = [
 ].sort(sandbox.lkReaktivaciaSort).map(x => x.key);
 
 assert.deepStrictEqual(sortedCream, ['fresh', 'done']);
+
+const creamLast3 = sandbox.lkCreamLast3({
+  months: [
+    { rok: 2026, mesiac: 3, prods: { aflamil_kr: 2 } },
+    { rok: 2026, mesiac: 4, prods: { aflamil_kr: 5 } },
+    { rok: 2026, mesiac: 5, prods: { aflamil_tb: 3 } },
+  ],
+}, { rok: 2026, mesiac: 5 });
+
+assert.deepStrictEqual(JSON.parse(JSON.stringify(creamLast3)), [
+  { rok: 2026, mesiac: 3, qty: 2 },
+  { rok: 2026, mesiac: 4, qty: 5 },
+  { rok: 2026, mesiac: 5, qty: 0 },
+]);
+assert.strictEqual(sandbox.lkCreamLast3Text(creamLast3), 'Mar: 2 bal. · Apr: 5 bal. · Máj: 0 bal.');
 
 console.log('lekarne recommendation test passed');

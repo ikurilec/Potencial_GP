@@ -1234,6 +1234,9 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .lk-contact-btn{margin-top:7px;border:0;border-radius:999px;background:linear-gradient(135deg,#10B981,#059669);color:#fff;font-size:11px;font-weight:800;font-family:inherit;padding:7px 10px;box-shadow:0 4px 10px rgba(16,185,129,.22);cursor:pointer;-webkit-tap-highlight-color:transparent}
   .lk-contact-btn:active{transform:scale(.97);opacity:.88}
   .lk-contact-btn.done{background:#E2E8F0;color:#64748B;box-shadow:none}
+  .lk-contact-status{margin-top:7px;display:inline-flex;align-items:center;gap:5px;border-radius:999px;font-size:10.5px;font-weight:800;padding:5px 9px;background:#FEF3C7;color:#92400E;border:1px solid #FCD34D}
+  .lk-contact-status.done{background:#DCFCE7;color:#166534;border-color:#BBF7D0}
+  .lk-cream-summary{margin-top:5px;font-size:10.5px;color:#92400E;font-weight:700;line-height:1.25}
   /* Lekáreň detail */
   .lk-detail{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:2600;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   .lk-detail.show{display:block}
@@ -2365,7 +2368,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.23';
+var APP_VERSION = '2.21.24';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -16789,6 +16792,33 @@ function lkOpportunityProducts(info, now, portfolio) {
   }).filter(Boolean);
 }
 
+function lkCreamLast3(info, now) {
+  var current = now || lkCurrentYearMonth();
+  var months = (info && info.months) ? info.months : [];
+  var byIdx = {};
+  months.forEach(function(m) {
+    var idx = (m.rok * 12) + m.mesiac;
+    byIdx[idx] = m;
+  });
+  var out = [];
+  var currentAbs = (current.rok * 12) + current.mesiac;
+  for (var i = 2; i >= 0; i--) {
+    var abs = currentAbs - i;
+    var rok = Math.floor((abs - 1) / 12);
+    var mesiac = ((abs - 1) % 12) + 1;
+    var m = byIdx[abs];
+    var qty = m ? (parseFloat(m.prods && m.prods.aflamil_kr || 0) || 0) : 0;
+    out.push({ rok: rok, mesiac: mesiac, qty: qty });
+  }
+  return out;
+}
+
+function lkCreamLast3Text(items) {
+  return (items || []).map(function(x) {
+    return (LK_MES_NAMES[x.mesiac] || x.mesiac) + ': ' + Math.round(x.qty || 0) + ' bal.';
+  }).join(' · ');
+}
+
 // In-flight callbacks — ak fetch beží, nový cb sa len zaradí do fronty
 var _lkInFlight = {}; // cacheKey → [cb, cb, ...]
 
@@ -16865,7 +16895,25 @@ function lkCreamContactedKey(login, key, now) {
 
 function lkIsCreamContacted(login, key, now) {
   if (!key) return false;
+  var rows = [];
+  if (typeof LK_STATE !== 'undefined' && Array.isArray(LK_STATE && LK_STATE._rows)) rows = rows.concat(LK_STATE._rows);
+  if (typeof LK_MGR_ALL !== 'undefined' && Array.isArray(LK_MGR_ALL)) rows = rows.concat(LK_MGR_ALL);
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i] && rows[i].key === key && rows[i].creamContacted) return true;
+  }
   try { return localStorage.getItem(lkCreamContactedKey(login, key, now)) === '1'; } catch(e) { return false; }
+}
+
+function lkSetCreamContactedInRows(key) {
+  [typeof LK_STATE !== 'undefined' ? LK_STATE._rows : null, typeof LK_MGR_ALL !== 'undefined' ? LK_MGR_ALL : null].forEach(function(arr) {
+    if (!Array.isArray(arr)) return;
+    arr.forEach(function(l) {
+      if (l && l.key === key) {
+        l.creamContacted = true;
+        l.creamContactedAt = new Date().toISOString();
+      }
+    });
+  });
 }
 
 function lkMarkCreamContacted(key, ev) {
@@ -16875,17 +16923,32 @@ function lkMarkCreamContacted(key, ev) {
   }
   if (!key) return;
   try { localStorage.setItem(lkCreamContactedKey(null, key), '1'); } catch(e) {}
+  lkSetCreamContactedInRows(key);
+  try {
+    fetch(scriptUrl('action=setLekarenKremContact&key=' + encodeURIComponent(key) + '&username=' + encodeURIComponent((typeof session !== 'undefined' && session && session.username) || '') + '&month=' + encodeURIComponent(lkCreamContactMonthKey()) + '&token=' + encodeURIComponent(API_TOKEN) + '&_t=' + Date.now()), { cache: 'no-store' })
+      .then(function(r){ return r.json(); })
+      .then(function(data){ if (data && data.ok === false && window.console) console.warn('setLekarenKremContact backend error:', data.error); })
+      .catch(function(err){ if (window.console) console.warn('setLekarenKremContact failed:', err); });
+  } catch(e) {}
   if (LK_STATE && LK_STATE.open && LK_STATE.activeTab === 'reaktivacia') lkRender();
   if (document.body && document.body.classList.contains('mgr-plnenie-detail-open') && LK_MGR_STATE && LK_MGR_STATE.activeTab === 'reaktivacia') {
     lkMgrRenderBody(LK_MGR_ALL, LK_MGR_STATE.searchQ);
   }
 }
 
-function lkCreamContactButtonHtml(l, tab) {
+function lkCreamContactButtonHtml(l, tab, mode) {
   if (tab !== 'reaktivacia' || !l || (!l.isReaktivacia && !l.isKrmPotential)) return '';
   var done = lkIsCreamContacted(null, l.key);
+  if (mode === 'manager') {
+    return '<div class="lk-contact-status ' + (done ? 'done' : '') + '">' + (done ? 'Reprezentant už oslovil túto lekáreň' : 'Reprezentant ešte neoslovil túto lekáreň') + '</div>';
+  }
   if (done) return '<button type="button" class="lk-contact-btn done" onclick="event.stopPropagation()" disabled>Oslovená lekáreň</button>';
   return '<button type="button" class="lk-contact-btn" onclick="lkMarkCreamContacted(\'' + lkEscAttr(l.key) + '\', event)">Oslovená lekáreň</button>';
+}
+
+function lkCreamSummaryHtml(l, tab) {
+  if (tab !== 'reaktivacia' || !l || !Array.isArray(l.krmLast3)) return '';
+  return '<div class="lk-cream-summary">AFL krém posledné 3 mesiace: ' + lkEsc(lkCreamLast3Text(l.krmLast3)) + '</div>';
 }
 
 function lkRecommendationHtml(rec) {
@@ -16902,7 +16965,7 @@ function lkCacheKey(login) {
 }
 
 function lkLocalKey(login) {
-  return 'lekarne_cache_v4_' + lkCacheKey(login);
+  return 'lekarne_cache_v5_' + lkCacheKey(login);
 }
 
 function lkRowsHash(rows) {
@@ -16979,7 +17042,7 @@ function lkFetch(login, cb) {
   if (_lkInFlight[cacheKey]) { _lkInFlight[cacheKey].push(cb); return; }
   // Spusti nový fetch
   _lkInFlight[cacheKey] = [cb];
-  var url = scriptUrl('action=getLekarne&login=' + encodeURIComponent(cacheKey === '__all__' ? '' : cacheKey) + '&_t=' + Date.now());
+  var url = scriptUrl('action=getLekarne&login=' + encodeURIComponent(cacheKey === '__all__' ? '' : cacheKey) + '&creamMonth=' + encodeURIComponent(lkCreamContactMonthKey()) + '&_t=' + Date.now());
   fetch(url, { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(data) {
     var rows = (data.ok && data.rows) ? data.rows : [];
     var changed = lkSetCache(cacheKey, rows, cacheKey !== '__all__');
@@ -17017,7 +17080,7 @@ function lkFetchAll(cb) {
   if (LK_STATE.allLoading) { if (cb) LK_STATE.allCallbacks.push(cb); return; }
   LK_STATE.allLoading = true;
   if (cb) LK_STATE.allCallbacks.push(cb);
-  fetch(scriptUrl('action=getLekarneAll&_t=' + Date.now()), { cache: 'no-store' })
+  fetch(scriptUrl('action=getLekarneAll&creamMonth=' + encodeURIComponent(lkCreamContactMonthKey()) + '&_t=' + Date.now()), { cache: 'no-store' })
     .then(function(r){ return r.json(); })
     .then(function(data) {
       var ok = !!(data && data.ok && Array.isArray(data.rows));
@@ -17040,7 +17103,11 @@ function lkBuildLekarne(rows) {
   var byLek = {};
   rows.forEach(function(r) {
     var key = r.okres + '|||' + r.mesto + '|||' + r.lekaren;
-    if (!byLek[key]) byLek[key] = { okres: r.okres, mesto: r.mesto, lekaren: r.lekaren, months: [] };
+    if (!byLek[key]) byLek[key] = { login: r.login, okres: r.okres, mesto: r.mesto, lekaren: r.lekaren, months: [], creamContacted: false, creamContactedAt: '' };
+    if (r.creamContacted) {
+      byLek[key].creamContacted = true;
+      byLek[key].creamContactedAt = r.creamContactedAt || byLek[key].creamContactedAt || '';
+    }
     byLek[key].months.push({ rok: r.rok, mesiac: r.mesiac, prods: r.prods });
   });
 
@@ -17080,6 +17147,7 @@ function lkBuildLekarne(rows) {
     var buys = GOL_PRODS.filter(function(p){ return buysSet[p]; });
     var missing = GOL_PRODS.filter(function(p){ return !buysSet[p]; });
     var opportunities = lkOpportunityProducts(info, now, GOL_PRODS);
+    var krmLast3 = lkCreamLast3(info, now);
 
     // Klasifikácia
     var isNew = false, isSleeping = false;
@@ -17112,13 +17180,14 @@ function lkBuildLekarne(rows) {
     var isPriority = dobropisMeta.count > 0;
 
     lekarne.push({
-      key: key, okres: info.okres, mesto: info.mesto, lekaren: info.lekaren,
+      key: key, login: info.login, okres: info.okres, mesto: info.mesto, lekaren: info.lekaren,
       months: info.months, lastM: lastM, monthsAgo: monthsAgo,
       trend: trend, buys: buys, missing: missing, opportunities: opportunities,
+      creamContacted: !!info.creamContacted, creamContactedAt: info.creamContactedAt || '',
       isNew: isNew, isSleeping: isSleeping,
       isReaktivacia: isReaktivacia, isKrmPotential: isKrmPotential,
       isPriority: isPriority, priorityVol: dobropisMeta.total, priorityCount: dobropisMeta.count, priorityMeta: dobropisMeta,
-      krmMonthsAgo: lastKrmIdx, lastKrmM: lastKrmM, aflTblSachAvg: aflTblSachAvg,
+      krmMonthsAgo: lastKrmIdx, lastKrmM: lastKrmM, krmLast3: krmLast3, aflTblSachAvg: aflTblSachAvg,
       allProds: allProds
     });
   });
@@ -17266,12 +17335,13 @@ function lkRender() {
         l.buys.slice(0, 5).map(function(p){ return '<span class="lk-prod-chip">' + (LK_PROD_DISPLAY[p]||p) + '</span>'; }).join('') +
         '</div>';
     }
-    var contactBtn = lkCreamContactButtonHtml(l, tab);
+    var creamSummary = lkCreamSummaryHtml(l, tab);
+    var contactBtn = lkCreamContactButtonHtml(l, tab, 'rep');
     var recHtml = lkRecommendationHtml(lkRecommendation(l, tab));
     return '<div class="lk-item ' + cls + '" onclick="lkOpenDetail(\'' + lkEscAttr(l.key) + '\')">' +
       '<div class="lk-item-name">' + lkEsc(l.lekaren) + '</div>' +
       '<div class="lk-item-sub">' + subHtml + (trendHtml ? ' · ' + trendHtml : '') + '</div>' +
-      actionChip + chipsHtml + contactBtn + recHtml +
+      actionChip + creamSummary + chipsHtml + contactBtn + recHtml +
       '</div>';
   }).join('');
 }
@@ -17326,6 +17396,8 @@ function lkOpenDetail(key) {
   var trendColor = l.trend === 'up' ? '#10B981' : l.trend === 'dn' ? '#EF4444' : '#94A3B8';
   var detailFromMgr = document.body && document.body.classList.contains('mgr-plnenie-detail-open');
   var detailTab = detailFromMgr && LK_MGR_STATE && LK_MGR_STATE.activeTab ? LK_MGR_STATE.activeTab : ((LK_STATE && LK_STATE.activeTab) ? LK_STATE.activeTab : 'all');
+  var creamSummary = lkCreamSummaryHtml(l, detailTab);
+  var contactInfo = detailFromMgr ? lkCreamContactButtonHtml(l, detailTab, 'manager') : lkCreamContactButtonHtml(l, detailTab, 'rep');
   var recHtml = lkRecommendationHtml(lkRecommendation(l, detailTab));
 
   body.innerHTML =
@@ -17334,6 +17406,8 @@ function lkOpenDetail(key) {
       '<div class="lk-detail-sub">' + lkEsc(l.okres) + ' · ' + lkEsc(l.mesto) + '</div>' +
       '<div style="margin-top:6px;font-size:12px;font-weight:700;color:' + trendColor + '">' + trendTxt + '</div>' +
     '</div>' +
+    creamSummary +
+    contactInfo +
     recHtml +
     missingHtml +
     '<div class="lk-section-lbl">História nákupov</div>' +
@@ -17651,12 +17725,13 @@ function lkMgrItem(l, tab) {
       '</div>';
   }
 
-  var contactBtn = lkCreamContactButtonHtml(l, tab);
+  var creamSummary = lkCreamSummaryHtml(l, tab);
+  var contactBtn = lkCreamContactButtonHtml(l, tab, 'manager');
   var recHtml = lkRecommendationHtml(lkRecommendation(l, tab));
   return '<div class="lk-item ' + cls + '" data-lk-key="' + lkEscAttr(l.key) + '" style="cursor:pointer">' +
     '<div class="lk-item-name">' + lkEsc(l.lekaren) + '</div>' +
     '<div class="lk-item-sub">' + subHtml + (trendHtml ? ' · ' + trendHtml : '') + '</div>' +
-    actionChip + chipsHtml + contactBtn + recHtml +
+    actionChip + creamSummary + chipsHtml + contactBtn + recHtml +
     '</div>';
 }
 

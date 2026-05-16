@@ -26,6 +26,14 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.24 — Lekárne: Krém oslovenie zo Sheets + 3-mesačný odber krému
+
+- Krém tab zobrazuje pri každej lekárni súhrn **AFL krém posledné 3 mesiace** po jednotlivých mesiacoch, aby rep videl kedy a koľko krému lekáreň brala.
+- Tlačidlo **Oslovená lekáreň** ostáva iba reprezentantom. Po kliknutí sa stav zapíše do backendu aj lokálne a karta sa v aktuálnom mesiaci posunie naspodok Krém tabu.
+- Manažér/admin pri detaile reprezentanta nevidí tlačidlo, iba stav **Reprezentant už oslovil túto lekáreň** alebo **Reprezentant ešte neoslovil túto lekáreň** podľa zápisu daného reprezentanta.
+- Backend `apps_script/kód.gs` má nový endpoint `setLekarenKremContact` a automaticky vytvára/číta sheet `Lekarne_Krem_Oslovene` (`month`, `login`, `key`, `okres`, `mesto`, `lekaren`, `contacted_at`).
+- Cache lekární posunutá na `lekarne_cache_v5_*`, aby sa načítali aj nové stavy oslovenia. Verzia bumpnutá na `2.21.24`.
+
 ### v2.21.23 — Lekárne: oslovený Krém + dobropis wording
 
 - Krém tab má pri každej odporúčanej lekárni zelené tlačidlo **Oslovená lekáreň**.
