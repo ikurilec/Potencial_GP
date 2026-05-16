@@ -26,6 +26,14 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.23 — Lekárne: oslovený Krém + dobropis wording
+
+- Krém tab má pri každej odporúčanej lekárni zelené tlačidlo **Oslovená lekáreň**.
+- Po stlačení sa lekáreň uloží ako oslovená pre aktuálny mesiac a v Krém tabu sa presunie naspodok; ďalší mesiac sa stav automaticky resetuje cez mesačný `localStorage` kľúč.
+- Dobropis text **Všetky 3** je zmenený na prirodzenejší výraz **všetky tri produkty** v kartách aj detaile.
+- Odporúčané vety pre Dobropis sú upravené prakticky: pri všetkých troch produktoch sa rieši konkurencia a dobropis, pri chýbajúcich produktoch možnosti dobropisu cez konkurenciu.
+- Verzia bumpnutá na `2.21.23`, aby prebehol update aplikácie cez `version.json`.
+
 ### v2.21.22 — Lekárne: priorita, dôvod a odporúčaný argument
 
 - Karty lekární v režime reprezentanta aj manažéra zobrazujú krátky odporúčací blok: priorita, dôvod odporúčania a praktická veta/krok pre rozhovor v lekárni.
