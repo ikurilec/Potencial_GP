@@ -2351,7 +2351,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.17';
+var APP_VERSION = '2.21.18';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8653,6 +8653,16 @@ function initEdgeSwipeBack() {
   bind('hist-overlay', function(){ if (typeof closeAllPanels === 'function') closeAllPanels(); });
   bind('lb-overlay', function(){ if (typeof closeAllPanels === 'function') closeAllPanels(); });
   bind('rep-plnenie-overlay', function(){ if (typeof closeAllPanels === 'function') closeAllPanels(); });
+  bind('lk-overlay', function(){ if (typeof closeLekarne === 'function') closeLekarne(); });
+  var lkDetail = document.getElementById('lk-detail');
+  if (lkDetail) {
+    attachSwipe(lkDetail, {
+      onlyHorizontal: true,
+      threshold: 55,
+      maxOffAxis: 70,
+      onSwipeRight: function(){ if (typeof closeLkarneDetail === 'function') closeLkarneDetail(); }
+    });
+  }
   bind('pharma-ms-overlay', function(){ if (typeof closePharmaMs === 'function') closePharmaMs(); });
   bind('pharma-okres-overlay', function(){ if (typeof closePharmaOkresChart === 'function') closePharmaOkresChart(); });
   bind('detail-overlay', function(){ if (typeof closeDetail === 'function') closeDetail(); });
