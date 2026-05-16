@@ -1224,6 +1224,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   /* Lekáreň detail */
   .lk-detail{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:2600;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   .lk-detail.show{display:block}
+  .lk-detail{touch-action:pan-y}
   .lk-detail-inner{max-width:480px;margin:0 auto;padding:16px 16px 48px}
   .lk-det-hdr{display:flex;align-items:center;gap:10px;margin-bottom:14px}
   .lk-det-back{display:inline-flex;align-items:center;gap:6px;background:#fff;border:none;padding:9px 14px 9px 10px;border-radius:22px;color:#2563EB;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;box-shadow:0 1px 4px rgba(0,0,0,.06);-webkit-tap-highlight-color:transparent;white-space:nowrap;flex-shrink:0}
@@ -2351,7 +2352,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.18';
+var APP_VERSION = '2.21.19';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -2790,6 +2791,51 @@ function attachEdgeSwipeBack(el, closeFn) {
     edgeOnly: true, // štart musí byť do 24px od ľavej hrany
     onSwipeRight: function() { closeFn(); }
   });
+}
+
+function attachLekarneDetailEdgeBack(el, closeFn) {
+  if (!el || typeof closeFn !== 'function') return function(){};
+  var startX = 0, startY = 0, startT = 0, tracking = false, locked = false;
+  function onStart(e) {
+    if (!e.touches || e.touches.length !== 1) return;
+    var t = e.touches[0];
+    startX = t.clientX;
+    startY = t.clientY;
+    startT = Date.now();
+    tracking = startX <= 38;
+    locked = false;
+  }
+  function onMove(e) {
+    if (!tracking || !e.touches || e.touches.length !== 1) return;
+    var t = e.touches[0];
+    var dx = t.clientX - startX;
+    var dy = t.clientY - startY;
+    if (!locked && dx > 12 && Math.abs(dx) > Math.abs(dy) * 1.25) locked = true;
+    if (locked && e.cancelable) e.preventDefault();
+  }
+  function onEnd(e) {
+    if (!tracking) return;
+    tracking = false;
+    var t = e.changedTouches && e.changedTouches[0];
+    if (!t) return;
+    var dx = t.clientX - startX;
+    var dy = t.clientY - startY;
+    if (Date.now() - startT <= 900 && dx >= 46 && Math.abs(dy) < 90) closeFn();
+  }
+  function onCancel() {
+    tracking = false;
+    locked = false;
+  }
+  el.addEventListener('touchstart', onStart, { passive: true });
+  el.addEventListener('touchmove', onMove, { passive: false });
+  el.addEventListener('touchend', onEnd, { passive: true });
+  el.addEventListener('touchcancel', onCancel, { passive: true });
+  return function detach() {
+    el.removeEventListener('touchstart', onStart);
+    el.removeEventListener('touchmove', onMove);
+    el.removeEventListener('touchend', onEnd);
+    el.removeEventListener('touchcancel', onCancel);
+  };
 }
 
 function attachLongPress(el, callback, ms) {
@@ -8656,6 +8702,7 @@ function initEdgeSwipeBack() {
   bind('lk-overlay', function(){ if (typeof closeLekarne === 'function') closeLekarne(); });
   var lkDetail = document.getElementById('lk-detail');
   if (lkDetail) {
+    attachLekarneDetailEdgeBack(lkDetail, function(){ if (typeof closeLkarneDetail === 'function') closeLkarneDetail(); });
     attachSwipe(lkDetail, {
       onlyHorizontal: true,
       threshold: 55,
