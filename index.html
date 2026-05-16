@@ -2344,7 +2344,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.10';
+var APP_VERSION = '2.21.11';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11110,8 +11110,14 @@ function lbRender(){
   });
 }
 
+var PL_SUPPRESS_COUNT_ANIM = false;
+
 function plnenieCountUp(el, targetPct) {
   if (!el || targetPct === null || isNaN(targetPct)) return;
+  if (PL_SUPPRESS_COUNT_ANIM) {
+    el.textContent = targetPct.toFixed(2).replace('.', ',') + '%';
+    return;
+  }
   var duration = 900, start = null;
   function step(ts) {
     if (!start) start = ts;
@@ -11126,6 +11132,10 @@ function plnenieCountUp(el, targetPct) {
 }
 function plnenieCountUpEUR(el, targetVal) {
   if (!el || targetVal === null || targetVal === undefined || isNaN(targetVal)) return;
+  if (PL_SUPPRESS_COUNT_ANIM) {
+    el.textContent = Math.round(targetVal).toLocaleString('sk-SK').replace(/ /g, ' ') + ' €';
+    return;
+  }
   var duration = 900, start = null;
   function step(ts) {
     if (!start) start = ts;
@@ -12337,9 +12347,11 @@ function plnenieEnsureCachedQDom(targetQ) {
   var origAgg = PL_STATE.aggregates;
   var origCountUp = window.plnenieCountUp;
   var origCountUpEUR = window.plnenieCountUpEUR;
+  var origSuppressCountAnim = PL_SUPPRESS_COUNT_ANIM;
 
   try {
     // Suppress animations during snapshot
+    PL_SUPPRESS_COUNT_ANIM = true;
     window.plnenieCountUp = function(el, t){ if (el) el.textContent = plnenieFormatPct(t); };
     window.plnenieCountUpEUR = function(el, t){ if (el) el.textContent = plnenieFormatEUR(t); };
 
@@ -12369,6 +12381,7 @@ function plnenieEnsureCachedQDom(targetQ) {
       plnenieRenderRegions();
       plnenieRenderRepList();
     } catch(e) {}
+    PL_SUPPRESS_COUNT_ANIM = origSuppressCountAnim;
   }
 }
 
@@ -12383,8 +12396,10 @@ function repPlnenieEnsureCachedQDom(targetQ) {
   var origAgg = REP_PL_STATE.aggregates;
   var origCountUp = window.plnenieCountUp;
   var origCountUpEUR = window.plnenieCountUpEUR;
+  var origSuppressCountAnim = PL_SUPPRESS_COUNT_ANIM;
 
   try {
+    PL_SUPPRESS_COUNT_ANIM = true;
     window.plnenieCountUp = function(el, t){ if (el) el.textContent = plnenieFormatPct(t); };
     window.plnenieCountUpEUR = function(el, t){ if (el) el.textContent = plnenieFormatEUR(t); };
 
@@ -12407,6 +12422,7 @@ function repPlnenieEnsureCachedQDom(targetQ) {
     REP_PL_STATE.data = origData;
     REP_PL_STATE.aggregates = origAgg;
     try { repPlnenieRender(); } catch(e) {}
+    PL_SUPPRESS_COUNT_ANIM = origSuppressCountAnim;
   }
 }
 
