@@ -1231,6 +1231,9 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .lk-rec-line{font-size:10.5px;font-weight:650;color:#334155;line-height:1.28}
   .lk-rec-action{font-size:10.5px;color:#475569;line-height:1.28;margin-top:3px}
   .lk-rec-action b{color:#0F172A}
+  .lk-contact-btn{margin-top:7px;border:0;border-radius:999px;background:linear-gradient(135deg,#10B981,#059669);color:#fff;font-size:11px;font-weight:800;font-family:inherit;padding:7px 10px;box-shadow:0 4px 10px rgba(16,185,129,.22);cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .lk-contact-btn:active{transform:scale(.97);opacity:.88}
+  .lk-contact-btn.done{background:#E2E8F0;color:#64748B;box-shadow:none}
   /* Lekáreň detail */
   .lk-detail{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:2600;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   .lk-detail.show{display:block}
@@ -2362,7 +2365,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.22';
+var APP_VERSION = '2.21.23';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -16729,7 +16732,7 @@ function lkDobropisSort(a, b) {
 
 function lkDobropisLabel(meta) {
   if (!meta || meta.count <= 0) return '';
-  if (meta.count === 3) return 'Všetky 3';
+  if (meta.count === 3) return 'všetky tri produkty';
   var missingNames = meta.missing.map(function(p) { return LK_PROD_DISPLAY[p] || p; }).join(', ');
   return meta.count === 2 ? 'Chýba ' + missingNames : 'Chýbajú ' + missingNames;
 }
@@ -16752,6 +16755,9 @@ function lkIsChainHiddenInTab(l, tab) {
 }
 
 function lkReaktivaciaSort(a, b) {
+  var aDone = lkIsCreamContacted(null, a && a.key);
+  var bDone = lkIsCreamContacted(null, b && b.key);
+  if (aDone !== bDone) return aDone ? 1 : -1;
   var aOld = (a.monthsAgo || 0) >= 6;
   var bOld = (b.monthsAgo || 0) >= 6;
   if (aOld !== bOld) return aOld ? 1 : -1;
@@ -16823,8 +16829,8 @@ function lkRecommendation(l, tab) {
     priority = meta.count >= 3 ? 'high' : (meta.count === 2 ? 'medium' : 'low');
     reason = 'V posledných 3 mesiacoch berú ' + lkDobropisLabel(meta) + '.';
     action = meta.count >= 3
-      ? 'Riešiť dobropis ako hotovú príležitosť, berú všetky dobropisové produkty.'
-      : 'Riešiť dobropis a doplniť chýbajúce produkty podľa kombinácie.';
+      ? 'Zistiť ako sú na tom konkurenčné produkty, v prípade že je tam odber, tak skúsiť dobropis.'
+      : 'Zisti možnosti dobropisu aj pre chýbajúce produkty, možno majú práve konkurenciu.';
   } else if (tab === 'sleeping') {
     var ago = parseInt(l.monthsAgo, 10) || 0;
     priority = ago >= 4 ? 'high' : 'medium';
@@ -16845,6 +16851,41 @@ function lkRecommendation(l, tab) {
   }
 
   return { priority: priority, label: lkPriorityLabel(priority), reason: reason, action: action };
+}
+
+function lkCreamContactMonthKey(now) {
+  var d = now || lkCurrentYearMonth();
+  return String(d.rok) + '-' + String(d.mesiac).padStart(2, '0');
+}
+
+function lkCreamContactedKey(login, key, now) {
+  var user = lkCacheKey(login || (typeof session !== 'undefined' && session && session.username) || '__self__');
+  return 'lekarne_cream_contacted_' + lkCreamContactMonthKey(now) + '_' + user + '_' + String(key || '');
+}
+
+function lkIsCreamContacted(login, key, now) {
+  if (!key) return false;
+  try { return localStorage.getItem(lkCreamContactedKey(login, key, now)) === '1'; } catch(e) { return false; }
+}
+
+function lkMarkCreamContacted(key, ev) {
+  if (ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+  }
+  if (!key) return;
+  try { localStorage.setItem(lkCreamContactedKey(null, key), '1'); } catch(e) {}
+  if (LK_STATE && LK_STATE.open && LK_STATE.activeTab === 'reaktivacia') lkRender();
+  if (document.body && document.body.classList.contains('mgr-plnenie-detail-open') && LK_MGR_STATE && LK_MGR_STATE.activeTab === 'reaktivacia') {
+    lkMgrRenderBody(LK_MGR_ALL, LK_MGR_STATE.searchQ);
+  }
+}
+
+function lkCreamContactButtonHtml(l, tab) {
+  if (tab !== 'reaktivacia' || !l || (!l.isReaktivacia && !l.isKrmPotential)) return '';
+  var done = lkIsCreamContacted(null, l.key);
+  if (done) return '<button type="button" class="lk-contact-btn done" onclick="event.stopPropagation()" disabled>Oslovená lekáreň</button>';
+  return '<button type="button" class="lk-contact-btn" onclick="lkMarkCreamContacted(\'' + lkEscAttr(l.key) + '\', event)">Oslovená lekáreň</button>';
 }
 
 function lkRecommendationHtml(rec) {
@@ -17225,11 +17266,12 @@ function lkRender() {
         l.buys.slice(0, 5).map(function(p){ return '<span class="lk-prod-chip">' + (LK_PROD_DISPLAY[p]||p) + '</span>'; }).join('') +
         '</div>';
     }
+    var contactBtn = lkCreamContactButtonHtml(l, tab);
     var recHtml = lkRecommendationHtml(lkRecommendation(l, tab));
     return '<div class="lk-item ' + cls + '" onclick="lkOpenDetail(\'' + lkEscAttr(l.key) + '\')">' +
       '<div class="lk-item-name">' + lkEsc(l.lekaren) + '</div>' +
       '<div class="lk-item-sub">' + subHtml + (trendHtml ? ' · ' + trendHtml : '') + '</div>' +
-      actionChip + chipsHtml + recHtml +
+      actionChip + chipsHtml + contactBtn + recHtml +
       '</div>';
   }).join('');
 }
@@ -17609,11 +17651,12 @@ function lkMgrItem(l, tab) {
       '</div>';
   }
 
+  var contactBtn = lkCreamContactButtonHtml(l, tab);
   var recHtml = lkRecommendationHtml(lkRecommendation(l, tab));
   return '<div class="lk-item ' + cls + '" data-lk-key="' + lkEscAttr(l.key) + '" style="cursor:pointer">' +
     '<div class="lk-item-name">' + lkEsc(l.lekaren) + '</div>' +
     '<div class="lk-item-sub">' + subHtml + (trendHtml ? ' · ' + trendHtml : '') + '</div>' +
-    actionChip + chipsHtml + recHtml +
+    actionChip + chipsHtml + contactBtn + recHtml +
     '</div>';
 }
 
