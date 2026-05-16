@@ -26,6 +26,11 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.20 — Lekárne: history back poradie pre detail lekárne
+
+- `_handleAndroidBack()` kontroluje `lk-detail` pred `mgr-plnenie-detail-open`.
+- Rieši iPhone edge-back v manažérskom detaile: keď je otvorená konkrétna lekáreň, systémové späť gesto zavrie najprv detail lekárne a nevráti používateľa až na prvú obrazovku/detail reprezentantov.
+
 ### v2.21.19 — Lekárne: iOS edge swipe fix v detaile
 
 - Detail lekárne má špeciálny edge-swipe handler pre iPhone: ak gesto začne úplne zľava a ide doprava, handler zamkne horizontálny pohyb a zavrie detail.
