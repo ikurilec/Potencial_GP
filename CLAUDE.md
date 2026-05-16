@@ -26,6 +26,12 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.13 — Lekárne: loading stav pri manažérskom detaile
+
+- Pri manažér/admin detaile reprezentanta už počas hromadného načítania lekární nesvieti prázdny výsledok typu "Žiadne lekárne na Krém".
+- Kým sa dokončí `getLekarneAll` alebo fallback `getLekarne`, detail zobrazí stav **Načítavam lekárne… Prosím počkajte pár sekúnd.**
+- Cache kľúč lekární je posunutý na `lekarne_cache_v4_*`, aby sa ignorovala prípadná stará prázdna cache z predošlého medzistavu.
+
 ### v2.21.12 — Lekárne: rýchlejší load + persistent cache
 
 - Frontend Lekárne už po prihlásení nepreloaduje každého reprezentanta samostatným requestom. Manažér/admin používa hromadný endpoint `getLekarneAll`, ktorý vie naplniť cache pre všetkých repov naraz.
