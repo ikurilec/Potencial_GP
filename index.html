@@ -1221,6 +1221,16 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .lk-prod-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
   .lk-prod-chip{font-size:10px;font-weight:700;padding:2px 7px;border-radius:12px;background:#EFF6FF;color:#1E40AF;border:1px solid #BFDBFE}
   .lk-prod-chip.missing{background:#FEF2F2;color:#991B1B;border-color:#FECACA}
+  .lk-rec{margin-top:7px;padding:7px 8px;border-radius:10px;background:#F8FAFC;border:1px solid #E2E8F0}
+  .lk-rec-top{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+  .lk-rec-prio{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;border-radius:999px;padding:2px 6px;white-space:nowrap}
+  .lk-rec-prio.high{background:#FEE2E2;color:#B91C1C}
+  .lk-rec-prio.medium{background:#FEF3C7;color:#92400E}
+  .lk-rec-prio.low{background:#DCFCE7;color:#166534}
+  .lk-rec-title{font-size:9.5px;font-weight:800;color:#64748B;text-transform:uppercase;letter-spacing:.04em}
+  .lk-rec-line{font-size:10.5px;font-weight:650;color:#334155;line-height:1.28}
+  .lk-rec-action{font-size:10.5px;color:#475569;line-height:1.28;margin-top:3px}
+  .lk-rec-action b{color:#0F172A}
   /* Lekáreň detail */
   .lk-detail{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:2600;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   .lk-detail.show{display:block}
@@ -2352,7 +2362,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.21';
+var APP_VERSION = '2.21.22';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -16776,6 +16786,76 @@ function lkOpportunityProducts(info, now, portfolio) {
 // In-flight callbacks — ak fetch beží, nový cb sa len zaradí do fronty
 var _lkInFlight = {}; // cacheKey → [cb, cb, ...]
 
+function lkMonthsWord(n) {
+  n = Math.abs(parseInt(n, 10) || 0);
+  if (n === 1) return 'mesiac';
+  if (n >= 2 && n <= 4) return 'mesiace';
+  return 'mesiacov';
+}
+
+function lkPriorityLabel(priority) {
+  if (priority === 'high') return 'Vysoká';
+  if (priority === 'medium') return 'Stredná';
+  return 'Nízka';
+}
+
+function lkRecommendation(l, tab) {
+  l = l || {};
+  tab = tab || 'all';
+  var priority = 'low';
+  var reason = 'Aktívna lekáreň bez výrazného rizika.';
+  var action = 'Udržať odber a pri návšteve skontrolovať príležitosti v portfóliu.';
+
+  if (tab === 'reaktivacia') {
+    if (l.isReaktivacia) {
+      var krmAgo = parseInt(l.krmMonthsAgo, 10) || parseInt(l.monthsAgo, 10) || 0;
+      priority = krmAgo >= 3 && krmAgo < 6 ? 'high' : 'medium';
+      reason = 'AFL krém nekúpili ' + krmAgo + ' ' + lkMonthsWord(krmAgo) + ', pritom ho už v minulosti brali.';
+      action = 'Osloviť s rabatovou akciou na AFL krém a pripomenúť predchádzajúci odber.';
+    } else if (l.isKrmPotential) {
+      var avg = parseFloat(l.aflTblSachAvg || 0) || 0;
+      priority = avg >= 8 ? 'high' : 'medium';
+      reason = 'Berie AFL tbl./sáč., ale AFL krém ešte nekúpili.';
+      action = 'Ponúknuť AFL krém ako doplnok k tabletkám/sáčkom pri najbližšej objednávke.';
+    }
+  } else if (tab === 'priority') {
+    var meta = l.priorityMeta || { count: 0, missing: [], total: 0 };
+    priority = meta.count >= 3 ? 'high' : (meta.count === 2 ? 'medium' : 'low');
+    reason = 'V posledných 3 mesiacoch berú ' + lkDobropisLabel(meta) + '.';
+    action = meta.count >= 3
+      ? 'Riešiť dobropis ako hotovú príležitosť, berú všetky dobropisové produkty.'
+      : 'Riešiť dobropis a doplniť chýbajúce produkty podľa kombinácie.';
+  } else if (tab === 'sleeping') {
+    var ago = parseInt(l.monthsAgo, 10) || 0;
+    priority = ago >= 4 ? 'high' : 'medium';
+    reason = 'Bez nákupu ' + ago + ' ' + lkMonthsWord(ago) + '.';
+    action = 'Overiť dôvod výpadku a skúsiť obnoviť objednávku nosných produktov.';
+  } else if (tab === 'new') {
+    priority = 'medium';
+    reason = 'Nová lekáreň v dátach, prvé nákupy sú čerstvé.';
+    action = 'Upevniť vzťah a rozšíriť odber o ďalšie produkty z portfólia.';
+  } else if (Array.isArray(l.opportunities) && l.opportunities.length > 0) {
+    priority = l.opportunities.length >= 3 ? 'medium' : 'low';
+    reason = 'Má ' + l.opportunities.length + ' produktové príležitosti v portfóliu.';
+    action = 'Vybrať 1-2 najvhodnejšie produkty z príležitostí a otvoriť tému pri návšteve.';
+  } else if (l.trend === 'dn') {
+    priority = 'medium';
+    reason = 'Klesajúci trend za posledné 3 mesiace.';
+    action = 'Overiť výpadok a skúsiť obnoviť objednávku pri produktoch, ktoré brali naposledy.';
+  }
+
+  return { priority: priority, label: lkPriorityLabel(priority), reason: reason, action: action };
+}
+
+function lkRecommendationHtml(rec) {
+  if (!rec) return '';
+  return '<div class="lk-rec">' +
+    '<div class="lk-rec-top"><span class="lk-rec-prio ' + lkEscAttr(rec.priority || 'low') + '">' + lkEsc(rec.label || lkPriorityLabel(rec.priority)) + ' priorita</span><span class="lk-rec-title">Odporúčanie</span></div>' +
+    '<div class="lk-rec-line">' + lkEsc(rec.reason || '') + '</div>' +
+    '<div class="lk-rec-action"><b>Čo povedať:</b> ' + lkEsc(rec.action || '') + '</div>' +
+    '</div>';
+}
+
 function lkCacheKey(login) {
   return (login || '__all__').trim ? (login || '__all__').trim().toLowerCase() : String(login || '__all__').toLowerCase();
 }
@@ -17145,10 +17225,11 @@ function lkRender() {
         l.buys.slice(0, 5).map(function(p){ return '<span class="lk-prod-chip">' + (LK_PROD_DISPLAY[p]||p) + '</span>'; }).join('') +
         '</div>';
     }
+    var recHtml = lkRecommendationHtml(lkRecommendation(l, tab));
     return '<div class="lk-item ' + cls + '" onclick="lkOpenDetail(\'' + lkEscAttr(l.key) + '\')">' +
       '<div class="lk-item-name">' + lkEsc(l.lekaren) + '</div>' +
       '<div class="lk-item-sub">' + subHtml + (trendHtml ? ' · ' + trendHtml : '') + '</div>' +
-      actionChip + chipsHtml +
+      actionChip + chipsHtml + recHtml +
       '</div>';
   }).join('');
 }
@@ -17201,6 +17282,9 @@ function lkOpenDetail(key) {
   var trendTxt = l.trend === 'up' ? '↑ Rastúci trend (posledné 3 mesiace)' :
                  l.trend === 'dn' ? '↓ Klesajúci trend (posledné 3 mesiace)' : 'Stabilný trend';
   var trendColor = l.trend === 'up' ? '#10B981' : l.trend === 'dn' ? '#EF4444' : '#94A3B8';
+  var detailFromMgr = document.body && document.body.classList.contains('mgr-plnenie-detail-open');
+  var detailTab = detailFromMgr && LK_MGR_STATE && LK_MGR_STATE.activeTab ? LK_MGR_STATE.activeTab : ((LK_STATE && LK_STATE.activeTab) ? LK_STATE.activeTab : 'all');
+  var recHtml = lkRecommendationHtml(lkRecommendation(l, detailTab));
 
   body.innerHTML =
     '<div class="lk-detail-hdr">' +
@@ -17208,6 +17292,7 @@ function lkOpenDetail(key) {
       '<div class="lk-detail-sub">' + lkEsc(l.okres) + ' · ' + lkEsc(l.mesto) + '</div>' +
       '<div style="margin-top:6px;font-size:12px;font-weight:700;color:' + trendColor + '">' + trendTxt + '</div>' +
     '</div>' +
+    recHtml +
     missingHtml +
     '<div class="lk-section-lbl">História nákupov</div>' +
     '<div style="background:#fff;border-radius:12px;padding:8px 14px;box-shadow:0 2px 8px rgba(15,23,42,.06)">' +
@@ -17524,10 +17609,11 @@ function lkMgrItem(l, tab) {
       '</div>';
   }
 
+  var recHtml = lkRecommendationHtml(lkRecommendation(l, tab));
   return '<div class="lk-item ' + cls + '" data-lk-key="' + lkEscAttr(l.key) + '" style="cursor:pointer">' +
     '<div class="lk-item-name">' + lkEsc(l.lekaren) + '</div>' +
     '<div class="lk-item-sub">' + subHtml + (trendHtml ? ' · ' + trendHtml : '') + '</div>' +
-    actionChip + chipsHtml +
+    actionChip + chipsHtml + recHtml +
     '</div>';
 }
 
