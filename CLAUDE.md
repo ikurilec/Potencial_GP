@@ -26,6 +26,11 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.16 — Lekárne: animovaný loading stav
+
+- Stav **Načítavam lekárne** v manažér/admin detaile má pulzujúcu lupu s rotujúcim prstencom a animované bodky za textom.
+- Cieľ je jasne ukázať, že dáta sa ešte načítavajú a používateľ má chvíľu počkať.
+
 ### v2.21.15 — Lekárne: plné pozadie manager sticky filtrov
 
 - Manager/admin sticky blok Lekárne má plné sivé pozadie aj v medzerách medzi kategóriami Krém/Dobropis/Spiace/Nové/Všetky.
