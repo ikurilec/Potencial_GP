@@ -805,12 +805,22 @@ function doGet(e) {
     if(action === 'getLekarne') {
       if(!requireToken(e)) return jsonResponse({ok: false, error: 'Unauthorized'});
       var lkLogin = (e.parameter.login || '').trim().toLowerCase();
-      return jsonResponse({ok: true, rows: lkReadRows_(ss, lkLogin)});
+      return jsonResponse({ok: true, rows: lkReadRows_(ss, lkLogin, e.parameter.creamMonth || '')});
     }
 
     if(action === 'getLekarneAll') {
       if(!requireToken(e)) return jsonResponse({ok: false, error: 'Unauthorized'});
-      return jsonResponse({ok: true, rows: lkReadRows_(ss, '')});
+      return jsonResponse({ok: true, rows: lkReadRows_(ss, '', e.parameter.creamMonth || '')});
+    }
+
+    if(action === 'setLekarenKremContact') {
+      if(!requireToken(e)) return jsonResponse({ok: false, error: 'Unauthorized'});
+      var lkContactLogin = String(e.parameter.username || '').trim().toLowerCase();
+      var lkContactKey = String(e.parameter.key || '').trim();
+      var lkContactMonth = String(e.parameter.month || '').trim();
+      if(!lkContactLogin || !lkContactKey) return jsonResponse({ok: false, error: 'missing login or key'});
+      lkSetKremContact_(ss, lkContactLogin, lkContactKey, lkContactMonth);
+      return jsonResponse({ok: true});
     }
 
     // ── ÚPRAVA ZÁZNAMU (len admin) ──
@@ -954,7 +964,75 @@ function jsonResponse(data) {
 
 // ── Pomocná funkcia — načíta lekárne riadky z Lekarne_Bal pre daný login ──
 // filterLogin = '' alebo null → vráti všetky riadky (pre manažéra)
-function lkReadRows_(ss, filterLogin) {
+function lkMonthKey_(monthKey) {
+  if (monthKey && /^\d{4}-\d{2}$/.test(String(monthKey))) return String(monthKey);
+  var d = new Date();
+  return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2);
+}
+
+function lkKremContactSheet_(ss) {
+  var sheet = ss.getSheetByName('Lekarne_Krem_Oslovene');
+  var headers = ['month', 'login', 'key', 'okres', 'mesto', 'lekaren', 'contacted_at'];
+  if (!sheet) {
+    sheet = ss.insertSheet('Lekarne_Krem_Oslovene');
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    return sheet;
+  }
+  if (sheet.getLastRow() < 1 || sheet.getLastColumn() < headers.length) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  }
+  return sheet;
+}
+
+function lkReadKremContacts_(ss, monthKey) {
+  var sheet = ss.getSheetByName('Lekarne_Krem_Oslovene');
+  var out = {};
+  var mKey = lkMonthKey_(monthKey);
+  if (!sheet || sheet.getLastRow() < 2) return out;
+  var data = sheet.getDataRange().getValues();
+  var hdr = data[0].map(function(h){ return String(h||'').trim().toLowerCase(); });
+  var cMonth = hdr.indexOf('month');
+  var cLogin = hdr.indexOf('login');
+  var cKey = hdr.indexOf('key');
+  var cAt = hdr.indexOf('contacted_at');
+  if (cMonth < 0 || cLogin < 0 || cKey < 0) return out;
+  for (var i = 1; i < data.length; i++) {
+    var rowMonth = String(data[i][cMonth] || '').trim();
+    if (rowMonth !== mKey) continue;
+    var login = String(data[i][cLogin] || '').trim().toLowerCase();
+    var key = String(data[i][cKey] || '').trim();
+    if (!login || !key) continue;
+    out[login + '|||' + key] = {
+      contacted: true,
+      contactedAt: cAt >= 0 && data[i][cAt] instanceof Date ? data[i][cAt].toISOString() : String(cAt >= 0 ? data[i][cAt] || '' : '')
+    };
+  }
+  return out;
+}
+
+function lkSetKremContact_(ss, login, key, monthKey) {
+  var sheet = lkKremContactSheet_(ss);
+  var mKey = lkMonthKey_(monthKey);
+  var parts = String(key || '').split('|||');
+  var okres = parts[0] || '';
+  var mesto = parts[1] || '';
+  var lekaren = parts.slice(2).join('|||') || '';
+  var lastRow = sheet.getLastRow();
+  if (lastRow >= 2) {
+    var data = sheet.getRange(2, 1, lastRow - 1, 3).getValues();
+    for (var i = 0; i < data.length; i++) {
+      if (String(data[i][0] || '').trim() === mKey &&
+          String(data[i][1] || '').trim().toLowerCase() === login &&
+          String(data[i][2] || '').trim() === key) {
+        sheet.getRange(i + 2, 7).setValue(new Date());
+        return;
+      }
+    }
+  }
+  sheet.appendRow([mKey, login, key, okres, mesto, lekaren, new Date()]);
+}
+
+function lkReadRows_(ss, filterLogin, creamMonth) {
   var lkSheet = ss.getSheetByName('Lekarne_Bal');
   if (!lkSheet) return [];
   var lkData = lkSheet.getDataRange().getValues();
@@ -967,6 +1045,7 @@ function lkReadRows_(ss, filterLogin) {
   var liMesto = lkHdr.indexOf('mesto');
   var liLek   = lkHdr.indexOf('lekaren');
   if (liLogin < 0 || liLek < 0) return [];
+  var kremContacts = lkReadKremContacts_(ss, creamMonth);
   var prodIdxs = [];
   for (var i = liLek + 1; i < lkHdr.length; i++) {
     if (lkHdr[i]) prodIdxs.push({ col: i, name: lkHdr[i] });
@@ -984,6 +1063,8 @@ function lkReadRows_(ss, filterLogin) {
       if (v !== 0) { prods[p.name] = v; hasAny = true; }
     });
     if (!hasAny) continue;
+    var rowKey = String(r[liOkr] || '').trim() + '|||' + String(r[liMesto] || '').trim() + '|||' + String(r[liLek] || '').trim();
+    var contact = kremContacts[rowLogin + '|||' + rowKey] || null;
     rows.push({
       login:   rowLogin,
       rok:     parseInt(r[liRok])  || 0,
@@ -991,7 +1072,9 @@ function lkReadRows_(ss, filterLogin) {
       okres:   String(r[liOkr]  ||'').trim(),
       mesto:   String(r[liMesto]||'').trim(),
       lekaren: String(r[liLek]  ||'').trim(),
-      prods:   prods
+      prods:   prods,
+      creamContacted: !!(contact && contact.contacted),
+      creamContactedAt: contact ? contact.contactedAt || '' : ''
     });
   }
   return rows;
