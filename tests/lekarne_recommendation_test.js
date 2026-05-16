@@ -34,9 +34,18 @@ vm.runInContext(
   extractFunction('lkDobropisLabel') + '\n' +
   extractFunction('lkMonthsWord') + '\n' +
   extractFunction('lkPriorityLabel') + '\n' +
+  extractFunction('lkCacheKey') + '\n' +
+  extractFunction('lkCurrentYearMonth') + '\n' +
+  extractFunction('lkCreamContactMonthKey') + '\n' +
+  extractFunction('lkCreamContactedKey') + '\n' +
+  extractFunction('lkIsCreamContacted') + '\n' +
+  extractFunction('lkReaktivaciaSort') + '\n' +
   extractFunction('lkRecommendation'),
   sandbox
 );
+
+const allThreeLabel = sandbox.lkDobropisLabel({ count: 3, missing: [] });
+assert.strictEqual(allThreeLabel, 'všetky tri produkty');
 
 const staleCream = sandbox.lkRecommendation({
   isReaktivacia: true,
@@ -68,7 +77,19 @@ const dobropis = sandbox.lkRecommendation({
 
 assert.strictEqual(dobropis.priority, 'medium');
 assert.match(dobropis.reason, /Chýba Kogavant/);
-assert.match(dobropis.action, /dobropis/);
+assert.strictEqual(dobropis.action, 'Zisti možnosti dobropisu aj pre chýbajúce produkty, možno majú práve konkurenciu.');
+
+const allThreeDobropis = sandbox.lkRecommendation({
+  priorityMeta: {
+    count: 3,
+    missing: [],
+    totals: { vidonorm: 8, telexer: 5, kogavant: 6 },
+    total: 19,
+  },
+}, 'priority');
+
+assert.match(allThreeDobropis.reason, /berú všetky tri produkty/);
+assert.strictEqual(allThreeDobropis.action, 'Zistiť ako sú na tom konkurenčné produkty, v prípade že je tam odber, tak skúsiť dobropis.');
 
 const sleeping = sandbox.lkRecommendation({
   monthsAgo: 5,
@@ -76,5 +97,21 @@ const sleeping = sandbox.lkRecommendation({
 
 assert.strictEqual(sleeping.priority, 'high');
 assert.match(sleeping.reason, /Bez nákupu 5 mesiacov/);
+
+const contactedStore = {};
+sandbox.localStorage = {
+  getItem: key => contactedStore[key] || null,
+};
+contactedStore[sandbox.lkCreamContactedKey('rep-a', 'lekaren-1', { rok: 2026, mesiac: 5 })] = '1';
+assert.strictEqual(sandbox.lkIsCreamContacted('rep-a', 'lekaren-1', { rok: 2026, mesiac: 5 }), true);
+assert.strictEqual(sandbox.lkIsCreamContacted('rep-a', 'lekaren-1', { rok: 2026, mesiac: 6 }), false);
+
+contactedStore[sandbox.lkCreamContactedKey(null, 'done')] = '1';
+const sortedCream = [
+  { key: 'done', isReaktivacia: true, monthsAgo: 2, krmMonthsAgo: 2 },
+  { key: 'fresh', isReaktivacia: true, monthsAgo: 4, krmMonthsAgo: 4 },
+].sort(sandbox.lkReaktivaciaSort).map(x => x.key);
+
+assert.deepStrictEqual(sortedCream, ['fresh', 'done']);
 
 console.log('lekarne recommendation test passed');
