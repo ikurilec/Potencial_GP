@@ -2352,7 +2352,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.20';
+var APP_VERSION = '2.21.21';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8700,6 +8700,8 @@ function initEdgeSwipeBack() {
   bind('lb-overlay', function(){ if (typeof closeAllPanels === 'function') closeAllPanels(); });
   bind('rep-plnenie-overlay', function(){ if (typeof closeAllPanels === 'function') closeAllPanels(); });
   bind('lk-overlay', function(){ if (typeof closeLekarne === 'function') closeLekarne(); });
+  bind('mgr-detail', function(){ if (typeof mgrCloseRep === 'function') mgrCloseRep(); });
+  bind('mgr-plnenie-detail', function(){ if (typeof plnenieCloseDetail === 'function') plnenieCloseDetail(); });
   var lkDetail = document.getElementById('lk-detail');
   if (lkDetail) {
     attachLekarneDetailEdgeBack(lkDetail, function(){ if (typeof closeLkarneDetail === 'function') closeLkarneDetail(); });
@@ -8714,6 +8716,7 @@ function initEdgeSwipeBack() {
   bind('pharma-okres-overlay', function(){ if (typeof closePharmaOkresChart === 'function') closePharmaOkresChart(); });
   bind('detail-overlay', function(){ if (typeof closeDetail === 'function') closeDetail(); });
   bind('edit-overlay', function(){ if (typeof closeEditOverlay === 'function') closeEditOverlay(); });
+  bind('satori-overlay', function(){ if (typeof satoriClose === 'function') satoriClose(); });
   // Swipe-down zatvára modal-y (WN, milestone, detail záznamu — bonus pre tým ktorí preferujú down gesture)
   function bindDown(id, fn) {
     var el = document.getElementById(id);
@@ -8751,7 +8754,26 @@ function _handleAndroidBack() {
   // Poradie: od najvnútornejšieho overlaya po najvonkajší
   var el;
 
-  // 1. Tutorial — krok späť, na kroku 1 zatvoriť tutoriál
+  // 1. Top modal vrstvy, ktoré môžu sedieť nad hociktorou obrazovkou
+  el = document.getElementById('av-confirm-overlay');
+  if (el && el.classList.contains('show')) { avatarConfirmCancel(); return true; }
+
+  el = document.getElementById('av-overlay');
+  if (el && el.classList.contains('show')) { avatarCloseCustomizer(); return true; }
+
+  el = document.getElementById('edit-overlay');
+  if (el && el.classList.contains('show')) { closeEditOverlay(); return true; }
+
+  el = document.getElementById('detail-overlay');
+  if (el && el.classList.contains('show')) { closeDetail(); return true; }
+
+  el = document.getElementById('satori-overlay');
+  if (el && el.classList.contains('show')) { satoriClose(); return true; }
+
+  el = document.getElementById('wn-overlay');
+  if (el && el.classList.contains('show')) { wnClose(); return true; }
+
+  // 2. Tutorial — krok späť, na kroku 1 zatvoriť tutoriál
   el = document.getElementById('tutorial-overlay');
   if (el && el.classList.contains('show')) {
     if (_tutorialCurrent > 1) {
@@ -8762,40 +8784,40 @@ function _handleAndroidBack() {
     return true;
   }
 
-  // 2. District chart overlay (pharma → okres graf)
+  // 3. District chart overlay (pharma → okres graf)
   el = document.getElementById('pharma-okres-overlay');
   if (el && el.classList.contains('show')) { closePharmaOkresChart(); return true; }
 
-  // 3. Pharma trhový podiel panel
+  // 4. Pharma trhový podiel panel
   // Catchneme aj keď animácia zatvárania práve beží (pl-detail-exit-r bez show) —
   // aby ďalší stisk back nepadol do step 10 a nezavrel rep-plnenie-overlay predčasne.
   el = document.getElementById('pharma-ms-overlay');
   if (el && (el.classList.contains('show') || el.classList.contains('pl-detail-exit-r'))) { closePharmaMs(); return true; }
 
-  // 4. Milestone overlay (celebrácia 200 lekárov)
+  // 5. Milestone overlay (celebrácia 200 lekárov)
   el = document.getElementById('milestone-overlay');
   if (el && el.classList.contains('show')) { closeMilestone(); return true; }
 
-  // 5. Thankyou obrazovka (po uložení záznamu)
+  // 6. Thankyou obrazovka (po uložení záznamu)
   el = document.getElementById('thankyou');
   if (el && el.classList.contains('show')) { el.classList.remove('show'); return true; }
 
-  // 6. Odhlásenie confirm dialog
+  // 7. Odhlásenie confirm dialog
   el = document.getElementById('logout-overlay');
   if (el && el.classList.contains('show')) { closeLogoutConfirm(); return true; }
 
-  // 7. Lekáreň detail je vnútorná vrstva aj v manažérskom detaile repa.
+  // 8. Lekáreň detail je vnútorná vrstva aj v manažérskom detaile repa.
   el = document.getElementById('lk-detail');
   if (el && el.classList.contains('show')) { closeLkarneDetail(); return true; }
 
-  // 8. Manager plnenie detail (← Späť na zoznam)
+  // 9. Manager plnenie detail (← Späť na zoznam)
   if (document.body.classList.contains('mgr-plnenie-detail-open')) { plnenieCloseDetail(); return true; }
 
-  // 9. Manager rep detail (← Späť na zoznam)
+  // 10. Manager rep detail (← Späť na zoznam)
   el = document.getElementById('mgr-detail');
   if (el && el.classList.contains('show')) { mgrCloseRep(); return true; }
 
-  // 10. Manager subtab — Návštevy / Rebríček → späť na predchádzajúci tab (alebo Plnenie)
+  // 11. Manager subtab — Návštevy / Rebríček → späť na predchádzajúci tab (alebo Plnenie)
   if (document.body.classList.contains('manager-mode') && MGR_STATE.subtab && MGR_STATE.subtab !== 'plnenie') {
     var backTab = _mgrPrevSubtab || 'plnenie';
     _mgrPrevSubtab = null;
@@ -8803,11 +8825,11 @@ function _handleAndroidBack() {
     return true;
   }
 
-  // 10b. Lekárne overlay
+  // 12. Lekárne overlay
   el = document.getElementById('lk-overlay');
   if (el && el.classList.contains('show')) { closeLekarne(); return true; }
 
-  // 10. Panely — História / Rebríček / Plnenie (reprezentant)
+  // 13. Panely — História / Rebríček / Plnenie (reprezentant)
   var panels = ['hist-overlay', 'lb-overlay', 'rep-plnenie-overlay'];
   for (var i = 0; i < panels.length; i++) {
     el = document.getElementById(panels[i]);

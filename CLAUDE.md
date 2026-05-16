@@ -26,6 +26,12 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.21 — Globálne vrstvené späť gesto
+
+- Centrálny `_handleAndroidBack()` teraz najprv zatvára najvrchnejšie modálne vrstvy (`avatar confirm`, avatar editor, edit record, detail record, Satori/What's New) a až potom obrazovkové detaily.
+- Edge swipe je doplnený aj na `mgr-detail` a `mgr-plnenie-detail`, aby potiahnutie zľava doprava v manažérskej časti vracalo o jednu úroveň dozadu.
+- Cieľ: iPhone edge swipe, Android back aj app swipe-back majú konzistentne zavrieť najvnútornejšiu otvorenú vrstvu, nie preskočiť na prvú obrazovku.
+
 ### v2.21.20 — Lekárne: history back poradie pre detail lekárne
 
 - `_handleAndroidBack()` kontroluje `lk-detail` pred `mgr-plnenie-detail-open`.
