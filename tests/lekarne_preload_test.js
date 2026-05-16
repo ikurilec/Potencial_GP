@@ -19,19 +19,20 @@ function extractFunction(name) {
   throw new Error(`${name} function end not found`);
 }
 
-const calls = [];
+let fetchAllCalls = 0;
 const sandbox = {
   LK_STATE: { preloadAllStarted: false },
   LB_ALL_REPS: ['a.one', 'b.two', 'c.three'],
   setTimeout(fn) { fn(); return 1; },
-  lkFetch(login) { calls.push(login); },
+  lkFetchAll(cb) { fetchAllCalls++; if (cb) cb(true); },
 };
 vm.createContext(sandbox);
 vm.runInContext(extractFunction('lkPreloadAll'), sandbox);
 
 sandbox.lkPreloadAll();
+sandbox.lkPreloadAll();
 
-assert.deepStrictEqual(calls, ['a.one', 'b.two', 'c.three']);
+assert.strictEqual(fetchAllCalls, 1);
 assert.strictEqual(sandbox.LK_STATE.preloadAllStarted, true);
 
 console.log('lekarne preload test passed');

@@ -808,6 +808,11 @@ function doGet(e) {
       return jsonResponse({ok: true, rows: lkReadRows_(ss, lkLogin)});
     }
 
+    if(action === 'getLekarneAll') {
+      if(!requireToken(e)) return jsonResponse({ok: false, error: 'Unauthorized'});
+      return jsonResponse({ok: true, rows: lkReadRows_(ss, '')});
+    }
+
     // ── ÚPRAVA ZÁZNAMU (len admin) ──
     // URL: ?action=updateRecord&row=42&kapitacia=2000&kategoria=A&...
     if(action === 'updateRecord') {

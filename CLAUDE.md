@@ -26,6 +26,13 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.12 — Lekárne: rýchlejší load + persistent cache
+
+- Frontend Lekárne už po prihlásení nepreloaduje každého reprezentanta samostatným requestom. Manažér/admin používa hromadný endpoint `getLekarneAll`, ktorý vie naplniť cache pre všetkých repov naraz.
+- Reprezentant má lekárne uložené v `localStorage` cache. Pri otvorení Lekární sa najprv ukážu naposledy načítané dáta a na pozadí sa urobí fresh refresh.
+- Cache sa prekreslí iba vtedy, keď sa zmení hash riadkov lekární pre daného repa; bez zmeny sa UI zbytočne neprepočítava.
+- Backend pridaný endpoint `getLekarneAll` v `apps_script/kód.gs`; pre produkciu treba redeploy Google Apps Script, inak frontend použije fallback na pôvodný `getLekarne` pri konkrétnom repovi.
+
 ### WIP — Lekárne: detail parity + Krém sorting
 
 - Manager/admin lekárne teraz otvárajú ten istý detail overlay ako reprezentant.
