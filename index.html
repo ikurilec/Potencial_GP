@@ -2352,7 +2352,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.19';
+var APP_VERSION = '2.21.20';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8784,24 +8784,24 @@ function _handleAndroidBack() {
   el = document.getElementById('logout-overlay');
   if (el && el.classList.contains('show')) { closeLogoutConfirm(); return true; }
 
-  // 7. Manager plnenie detail (← Späť na zoznam)
+  // 7. Lekáreň detail je vnútorná vrstva aj v manažérskom detaile repa.
+  el = document.getElementById('lk-detail');
+  if (el && el.classList.contains('show')) { closeLkarneDetail(); return true; }
+
+  // 8. Manager plnenie detail (← Späť na zoznam)
   if (document.body.classList.contains('mgr-plnenie-detail-open')) { plnenieCloseDetail(); return true; }
 
-  // 8. Manager rep detail (← Späť na zoznam)
+  // 9. Manager rep detail (← Späť na zoznam)
   el = document.getElementById('mgr-detail');
   if (el && el.classList.contains('show')) { mgrCloseRep(); return true; }
 
-  // 9. Manager subtab — Návštevy / Rebríček → späť na predchádzajúci tab (alebo Plnenie)
+  // 10. Manager subtab — Návštevy / Rebríček → späť na predchádzajúci tab (alebo Plnenie)
   if (document.body.classList.contains('manager-mode') && MGR_STATE.subtab && MGR_STATE.subtab !== 'plnenie') {
     var backTab = _mgrPrevSubtab || 'plnenie';
     _mgrPrevSubtab = null;
     mgrSwitchSubtab(backTab);
     return true;
   }
-
-  // 10a. Lekáreň detail (vnútri lk-overlay)
-  el = document.getElementById('lk-detail');
-  if (el && el.classList.contains('show')) { closeLkarneDetail(); return true; }
 
   // 10b. Lekárne overlay
   el = document.getElementById('lk-overlay');
