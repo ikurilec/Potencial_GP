@@ -2344,7 +2344,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.9';
+var APP_VERSION = '2.21.10';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -12812,6 +12812,10 @@ function plnenieOpenDetail(username) {
   PL_STATE.detailRep = username;
   document.body.classList.add('mgr-plnenie-detail-open');
   plnenieRenderDetail();
+  var lekarneEl = document.getElementById('pl-detail-lekarne');
+  if (lekarneEl && lekarneEl.style.display !== 'none') {
+    lkMgrLoadForRep(username);
+  }
   var detailEl = document.getElementById('mgr-plnenie-detail');
   if (detailEl) {
     detailEl.classList.remove('panel-anim-r', 'pl-detail-exit-r');
@@ -17028,6 +17032,7 @@ function lkSkelHtml() {
 
 // ── Manažér: lekárne pre konkrétneho repa v detaile ────────────────
 var LK_MGR_ALL = [];  // cache pre filter
+var LK_MGR_LOGIN = null;
 
 function lkMgrRenderBody(lekarne, searchQ) {
   var body = document.getElementById('pl-detail-lekarne-body');
@@ -17228,9 +17233,11 @@ function lkMgrLoadForRep(login) {
   LK_MGR_STATE.activeTab = 'reaktivacia';
   LK_MGR_STATE.searchQ = '';
   LK_MGR_ALL = [];
+  LK_MGR_LOGIN = login || null;
   lkMgrSyncTabs();
   body.innerHTML = lkSkelHtml();
   lkFetchFresh(login, function(rows) {
+    if (LK_MGR_LOGIN !== (login || null) || PL_STATE.detailRep !== login) return;
     if (!rows || rows.length === 0) {
       body.innerHTML = '<div class="lk-empty">Žiadne dáta o lekárňach pre tohto reprezentanta.</div>';
       return;
