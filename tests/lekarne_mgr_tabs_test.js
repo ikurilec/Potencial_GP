@@ -25,6 +25,7 @@ vm.runInContext(
   extractFunction('lkChainNameFlags') + '\n' +
   extractFunction('lkIsChainHiddenInTab') + '\n' +
   extractFunction('lkDobropisSort') + '\n' +
+  extractFunction('lkReaktivaciaSort') + '\n' +
   extractFunction('lkMgrVisibleList') + '\n' +
   extractFunction('lkMgrTabCounts') + '\n' +
   extractFunction('lkMgrEmptyMsg'),
