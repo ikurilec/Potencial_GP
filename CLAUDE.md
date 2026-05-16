@@ -26,6 +26,11 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.14 — Lekárne: zjednotený spodný okraj sticky filtra
+
+- Manager/admin detail reprezentanta má pod sticky blokom Lekárne rovnakú jemnú sivú deliacu linku ako reprezentantský Lekárne overlay.
+- Ide iba o vizuálne zjednotenie sticky search + kategórie bloku pri scrollovaní.
+
 ### v2.21.13 — Lekárne: loading stav pri manažérskom detaile
 
 - Pri manažér/admin detaile reprezentanta už počas hromadného načítania lekární nesvieti prázdny výsledok typu "Žiadne lekárne na Krém".
