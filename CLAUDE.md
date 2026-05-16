@@ -26,6 +26,13 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.22 — Lekárne: priorita, dôvod a odporúčaný argument
+
+- Karty lekární v režime reprezentanta aj manažéra zobrazujú krátky odporúčací blok: priorita, dôvod odporúčania a praktická veta/krok pre rozhovor v lekárni.
+- Krém rozlišuje reaktiváciu AFL krému a potenciál z AFL tbl./sáč.; Dobropis používa kombináciu produktov za posledné 3 mesiace; Spiace/Nové/Všetky dostali vlastný praktický dôvod.
+- Rovnaký odporúčací blok je doplnený aj v detaile konkrétnej lekárne.
+- Verzia bumpnutá na `2.21.22`, aby prebehol update aplikácie cez `version.json`.
+
 ### v2.21.21 — Globálne vrstvené späť gesto
 
 - Centrálny `_handleAndroidBack()` teraz najprv zatvára najvrchnejšie modálne vrstvy (`avatar confirm`, avatar editor, edit record, detail record, Satori/What's New) a až potom obrazovkové detaily.

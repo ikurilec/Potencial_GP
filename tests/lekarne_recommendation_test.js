@@ -1,0 +1,80 @@
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
+const assert = require('assert');
+
+const htmlPath = path.join(__dirname, '..', 'index.html');
+const html = fs.readFileSync(htmlPath, 'utf8');
+
+function extractFunction(name) {
+  const start = html.indexOf(`function ${name}(`);
+  assert.notStrictEqual(start, -1, `${name} function not found`);
+  const bodyStart = html.indexOf('{', start);
+  let depth = 0;
+  for (let i = bodyStart; i < html.length; i++) {
+    if (html[i] === '{') depth++;
+    if (html[i] === '}') depth--;
+    if (depth === 0) return html.slice(start, i + 1);
+  }
+  throw new Error(`${name} function end not found`);
+}
+
+const sandbox = {
+  LK_PROD_DISPLAY: {
+    aflamil_tb: 'AFL tbl.',
+    aflamil_kr: 'AFL krem',
+    suprax: 'Suprax',
+    vidonorm: 'Vidonorm',
+    telexer: 'Telexer',
+    kogavant: 'Kogavant',
+  },
+};
+vm.createContext(sandbox);
+vm.runInContext(
+  extractFunction('lkDobropisLabel') + '\n' +
+  extractFunction('lkMonthsWord') + '\n' +
+  extractFunction('lkPriorityLabel') + '\n' +
+  extractFunction('lkRecommendation'),
+  sandbox
+);
+
+const staleCream = sandbox.lkRecommendation({
+  isReaktivacia: true,
+  krmMonthsAgo: 4,
+  monthsAgo: 4,
+}, 'reaktivacia');
+
+assert.strictEqual(staleCream.priority, 'high');
+assert.match(staleCream.reason, /AFL krém nekúpili 4 mesiace/);
+assert.match(staleCream.action, /rabatovou akciou na AFL krém/);
+
+const creamPotential = sandbox.lkRecommendation({
+  isKrmPotential: true,
+  aflTblSachAvg: 9,
+}, 'reaktivacia');
+
+assert.strictEqual(creamPotential.priority, 'high');
+assert.match(creamPotential.reason, /Berie AFL tbl\.\/sáč\./);
+assert.match(creamPotential.action, /doplnok k tabletkám\/sáčkom/);
+
+const dobropis = sandbox.lkRecommendation({
+  priorityMeta: {
+    count: 2,
+    missing: ['kogavant'],
+    totals: { vidonorm: 8, telexer: 5 },
+    total: 13,
+  },
+}, 'priority');
+
+assert.strictEqual(dobropis.priority, 'medium');
+assert.match(dobropis.reason, /Chýba Kogavant/);
+assert.match(dobropis.action, /dobropis/);
+
+const sleeping = sandbox.lkRecommendation({
+  monthsAgo: 5,
+}, 'sleeping');
+
+assert.strictEqual(sleeping.priority, 'high');
+assert.match(sleeping.reason, /Bez nákupu 5 mesiacov/);
+
+console.log('lekarne recommendation test passed');
