@@ -2344,7 +2344,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.11';
+var APP_VERSION = '2.21.12';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -16557,7 +16557,10 @@ var LK_STATE = {
   activeTab: 'sleeping',
   searchQ: '',
   open: false,
-  preloadAllStarted: false
+  preloadAllStarted: false,
+  allLoaded: false,
+  allLoading: false,
+  allCallbacks: []
 };
 
 // Názvy mesiacov
@@ -16668,53 +16671,104 @@ function lkReaktivaciaSort(a, b) {
 // In-flight callbacks — ak fetch beží, nový cb sa len zaradí do fronty
 var _lkInFlight = {}; // cacheKey → [cb, cb, ...]
 
+function lkCacheKey(login) {
+  return (login || '__all__').trim ? (login || '__all__').trim().toLowerCase() : String(login || '__all__').toLowerCase();
+}
+
+function lkLocalKey(login) {
+  return 'lekarne_cache_v3_' + lkCacheKey(login);
+}
+
+function lkRowsHash(rows) {
+  var s = JSON.stringify(rows || []);
+  var h = 0;
+  for (var i = 0; i < s.length; i++) {
+    h = ((h << 5) - h) + s.charCodeAt(i);
+    h |= 0;
+  }
+  return String(h);
+}
+
+function lkSetCache(login, rows, persist) {
+  var key = lkCacheKey(login);
+  var hash = lkRowsHash(rows);
+  var prev = LK_STATE.cache[key];
+  var changed = !prev || prev.hash !== hash;
+  LK_STATE.cache[key] = { rows: rows || [], ts: Date.now(), hash: hash };
+  if (persist && key !== '__all__') {
+    try { localStorage.setItem(lkLocalKey(key), JSON.stringify(LK_STATE.cache[key])); } catch(e) {}
+  }
+  return changed;
+}
+
+function lkGetCachedRows(login) {
+  var key = lkCacheKey(login);
+  var cached = LK_STATE.cache[key];
+  if (cached && cached.rows) return cached.rows;
+  if (key !== '__all__') {
+    try {
+      var raw = localStorage.getItem(lkLocalKey(key));
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.rows)) {
+          LK_STATE.cache[key] = parsed;
+          return parsed.rows;
+        }
+      }
+    } catch(e) {}
+  }
+  return null;
+}
+
+function lkPrimeCacheFromRows(rows, persist) {
+  var grouped = {};
+  (rows || []).forEach(function(r) {
+    var login = lkCacheKey(r && r.login);
+    if (!login || login === '__all__') return;
+    if (!grouped[login]) grouped[login] = [];
+    grouped[login].push(r);
+  });
+  if (Array.isArray(LB_ALL_REPS)) {
+    LB_ALL_REPS.forEach(function(login) {
+      var key = lkCacheKey(login);
+      if (key && key !== '__all__' && !grouped[key]) grouped[key] = [];
+    });
+  }
+  Object.keys(grouped).forEach(function(login) {
+    lkSetCache(login, grouped[login], persist);
+  });
+  LK_STATE.allLoaded = true;
+}
+
 // Fetch dát pre login (rep alebo manažér pre konkrétneho repa)
 function lkFetch(login, cb) {
-  var cacheKey = login || '__all__';
-  // Cache hit
-  var cached = LK_STATE.cache[cacheKey];
-  if (cached && (Date.now() - cached.ts < 5 * 60 * 1000)) { cb(cached.rows); return; }
+  var cacheKey = lkCacheKey(login);
+  var cachedRows = lkGetCachedRows(cacheKey);
+  var servedCached = false;
+  if (cachedRows) {
+    servedCached = true;
+    try { cb(cachedRows); } catch(e) {}
+  }
   // Fetch práve beží — pridaj callback do fronty
   if (_lkInFlight[cacheKey]) { _lkInFlight[cacheKey].push(cb); return; }
   // Spusti nový fetch
   _lkInFlight[cacheKey] = [cb];
-  var url = scriptUrl('action=getLekarne&login=' + encodeURIComponent(login || ''));
-  fetch(url).then(function(r){ return r.json(); }).then(function(data) {
+  var url = scriptUrl('action=getLekarne&login=' + encodeURIComponent(cacheKey === '__all__' ? '' : cacheKey) + '&_t=' + Date.now());
+  fetch(url, { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(data) {
     var rows = (data.ok && data.rows) ? data.rows : [];
-    if (rows && rows.length) LK_STATE.cache[cacheKey] = { rows: rows, ts: Date.now() };
+    var changed = lkSetCache(cacheKey, rows, cacheKey !== '__all__');
     var cbs = _lkInFlight[cacheKey] || [];
     delete _lkInFlight[cacheKey];
-    cbs.forEach(function(fn){ try { fn(rows); } catch(e){} });
+    if (!servedCached || changed) cbs.forEach(function(fn){ try { fn(rows); } catch(e){} });
   }).catch(function() {
     var cbs = _lkInFlight[cacheKey] || [];
     delete _lkInFlight[cacheKey];
-    cbs.forEach(function(fn){ try { fn([]); } catch(e){} });
+    if (!servedCached) cbs.forEach(function(fn){ try { fn([]); } catch(e){} });
   });
 }
 
-// Fresh fetch bez cache fallbacku
 function lkFetchFresh(login, cb) {
-  var url = scriptUrl('action=getLekarne&login=' + encodeURIComponent(login || '') + '&_t=' + Date.now());
-  fetch(url, { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(data) {
-    var rows = (data.ok && data.rows) ? data.rows : [];
-    if (rows && rows.length) {
-      LK_STATE.cache[login || '__all__'] = { rows: rows, ts: Date.now() };
-    }
-    try { cb(rows); } catch(e) {}
-  }).catch(function() {
-    try { cb([]); } catch(e) {}
-  });
-}
-
-// Fetch bez cache pre manažérsky detail lekární
-function lkFetchFresh(login, cb) {
-  var url = scriptUrl('action=getLekarne&login=' + encodeURIComponent(login || '') + '&_t=' + Date.now());
-  fetch(url, { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(data) {
-    var rows = (data.ok && data.rows) ? data.rows : [];
-    try { cb(rows); } catch(e) {}
-  }).catch(function() {
-    try { cb([]); } catch(e) {}
-  });
+  lkFetch(login, cb);
 }
 
 // Preload ihneď po prihlásení
@@ -16729,10 +16783,27 @@ function lkPreloadAll() {
   if (LK_STATE.preloadAllStarted) return;
   if (!Array.isArray(LB_ALL_REPS) || !LB_ALL_REPS.length) return;
   LK_STATE.preloadAllStarted = true;
-  LB_ALL_REPS.slice().forEach(function(login, idx) {
-    setTimeout(function() {
-      try { lkFetch(login, function(){}); } catch(e) {}
-    }, idx * 120);
+  lkFetchAll(function(){});
+}
+
+function lkFetchAll(cb) {
+  if (LK_STATE.allLoaded) { if (cb) cb(true); return; }
+  if (LK_STATE.allLoading) { if (cb) LK_STATE.allCallbacks.push(cb); return; }
+  LK_STATE.allLoading = true;
+  if (cb) LK_STATE.allCallbacks.push(cb);
+  fetch(scriptUrl('action=getLekarneAll&_t=' + Date.now()), { cache: 'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      var rows = (data && data.ok && data.rows) ? data.rows : [];
+      lkPrimeCacheFromRows(rows, true);
+      LK_STATE.allLoading = false;
+      var cbs = LK_STATE.allCallbacks.splice(0);
+      cbs.forEach(function(fn){ try { fn(rows.length > 0); } catch(e){} });
+    })
+    .catch(function() {
+      LK_STATE.allLoading = false;
+      var cbs = LK_STATE.allCallbacks.splice(0);
+      cbs.forEach(function(fn){ try { fn(false); } catch(e){} });
   });
 }
 
@@ -16841,17 +16912,19 @@ function openLekarne() {
   if (searchEl) searchEl.value = '';
   lkSwitchTab('reaktivacia', null);
   var login = (getSession() || {}).username || '';
-  var cached = LK_STATE.cache[login];
-  if (cached && cached.rows && cached.rows.length && (Date.now() - cached.ts < 5 * 60 * 1000)) {
-    LK_STATE._rows = lkBuildLekarne(cached.rows);
+  var cachedRows = lkGetCachedRows(login);
+  if (cachedRows) {
+    LK_STATE._rows = lkBuildLekarne(cachedRows);
     lkRender();
   } else {
     document.getElementById('lk-list').innerHTML = lkSkelHtml();
-    lkFetchFresh(login, function(rows) {
-      LK_STATE._rows = lkBuildLekarne(rows);
-      lkRender();
-    });
   }
+  lkFetch(login, function(rows) {
+    var currentLogin = (getSession() || {}).username || '';
+    if (!LK_STATE.open || lkCacheKey(currentLogin) !== lkCacheKey(login)) return;
+    LK_STATE._rows = lkBuildLekarne(rows);
+    lkRender();
+  });
 }
 
 function closeLekarne() {
@@ -17251,10 +17324,25 @@ function lkMgrLoadForRep(login) {
   LK_MGR_ALL = [];
   LK_MGR_LOGIN = login || null;
   lkMgrSyncTabs();
-  body.innerHTML = lkSkelHtml();
-  lkFetchFresh(login, function(rows) {
+  var cachedRows = lkGetCachedRows(login);
+  if (cachedRows) {
+    LK_MGR_ALL = lkBuildLekarne(cachedRows);
+    lkMgrRenderBody(LK_MGR_ALL, '');
+  } else {
+    body.innerHTML = lkSkelHtml();
+  }
+  lkFetchAll(function(ok) {
     if (LK_MGR_LOGIN !== (login || null) || PL_STATE.detailRep !== login) return;
-    if (!rows || rows.length === 0) {
+    var rows = lkGetCachedRows(login);
+    if (!rows) {
+      lkFetch(login, function(fallbackRows) {
+        if (LK_MGR_LOGIN !== (login || null) || PL_STATE.detailRep !== login) return;
+        LK_MGR_ALL = lkBuildLekarne(fallbackRows || []);
+        lkMgrRenderBody(LK_MGR_ALL, '');
+      });
+      return;
+    }
+    if (rows.length === 0) {
       body.innerHTML = '<div class="lk-empty">Žiadne dáta o lekárňach pre tohto reprezentanta.</div>';
       return;
     }
