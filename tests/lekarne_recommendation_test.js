@@ -29,6 +29,7 @@ const sandbox = {
     kogavant: 'Kogavant',
   },
   LK_MES_NAMES: { 3: 'Mar', 4: 'Apr', 5: 'Máj' },
+  getSession: () => ({ username: 'rep-a' }),
 };
 vm.createContext(sandbox);
 vm.runInContext(
@@ -39,6 +40,7 @@ vm.runInContext(
   extractFunction('lkCurrentYearMonth') + '\n' +
   extractFunction('lkCreamLast3') + '\n' +
   extractFunction('lkCreamLast3Text') + '\n' +
+  extractFunction('lkSessionUsername') + '\n' +
   extractFunction('lkCreamContactMonthKey') + '\n' +
   extractFunction('lkCreamContactedKey') + '\n' +
   extractFunction('lkIsCreamContacted') + '\n' +
@@ -105,8 +107,10 @@ const contactedStore = {};
 sandbox.localStorage = {
   getItem: key => contactedStore[key] || null,
 };
+assert.strictEqual(sandbox.lkSessionUsername(), 'rep-a');
 contactedStore[sandbox.lkCreamContactedKey('rep-a', 'lekaren-1', { rok: 2026, mesiac: 5 })] = '1';
 assert.strictEqual(sandbox.lkIsCreamContacted('rep-a', 'lekaren-1', { rok: 2026, mesiac: 5 }), true);
+assert.strictEqual(sandbox.lkIsCreamContacted(null, 'lekaren-1', { rok: 2026, mesiac: 5 }), true);
 assert.strictEqual(sandbox.lkIsCreamContacted('rep-a', 'lekaren-1', { rok: 2026, mesiac: 6 }), false);
 
 contactedStore[sandbox.lkCreamContactedKey(null, 'done')] = '1';
