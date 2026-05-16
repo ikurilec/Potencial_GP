@@ -26,6 +26,13 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.26 — Lekárne: výraznejšie tlačidlo oslovenia krému
+
+- Tlačidlo pri Krém odporúčaniach je prerobené z malého pill štítku na výrazné zelené full-width CTA.
+- Text zmenený na **Označiť ako oslovenú**, doplnená fajka a malý indikátor **ťukni**, aby reprezentantom bolo jasné, že ide o klikateľnú akciu.
+- Stav po kliknutí ostáva **Oslovená lekáreň**, ale vizuálne je utlmený ako dokončená akcia.
+- Verzia bumpnutá na `2.21.26`.
+
 ### v2.21.25 — Lekárne: fix zápisu oslovenia krému do Sheets
 
 - Opravený zápis tlačidla **Oslovená lekáreň**: frontend už nečíta neexistujúcu globálnu premennú `session`, ale berie prihláseného reprezentanta cez `getSession()`.
