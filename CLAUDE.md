@@ -26,6 +26,13 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.17 — Lekárne: príležitosti podľa 3+ mesiacov bez nákupu
+
+- Detail lekárne v sekcii **Príležitosti — ešte nekupujú** už nezobrazuje iba produkty, ktoré lekáreň nikdy nekúpila.
+- Pre každý produkt z portfólia (`AFL tbl.`, `AFL krém`, `Suprax`, `Vidonorm`, `CAV Forte`, `Globifer`, `Kogavant`) sa hľadá posledný nákup.
+- Ak produkt nebol kúpený nikdy, zobrazí sa text „ešte nenakúpili vôbec“.
+- Ak bol posledný nákup 3+ mesiace dozadu, zobrazí sa mesiac posledného nákupu a počet balení, napr. „Suprax — nekúpili od Jan 2026 · naposledy 4 bal.“
+
 ### v2.21.16 — Lekárne: animovaný loading stav
 
 - Stav **Načítavam lekárne** v manažér/admin detaile má pulzujúcu lupu s rotujúcim prstencom a animované bodky za textom.
