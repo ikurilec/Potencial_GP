@@ -26,6 +26,12 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.18 — Lekárne: swipe späť z detailu lekárne
+
+- Detail lekárne (`lk-detail`) má vlastný horizontálny swipe doprava, ktorý zavrie detail a vráti používateľa späť na zoznam lekární.
+- Zoznam lekární (`lk-overlay`) je pridaný do edge-swipe-back overlayov, takže potiahnutie z ľavej hrany zatvorí aj celý Lekárne overlay.
+- Rieši iPhone UX: po otvorení lekárne sa dá prstom vrátiť späť na zoznam bez nutnosti trafiť tlačidlo „Späť“.
+
 ### v2.21.17 — Lekárne: príležitosti podľa 3+ mesiacov bez nákupu
 
 - Detail lekárne v sekcii **Príležitosti — ešte nekupujú** už nezobrazuje iba produkty, ktoré lekáreň nikdy nekúpila.
