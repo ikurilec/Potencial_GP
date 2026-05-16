@@ -2351,7 +2351,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.16';
+var APP_VERSION = '2.21.17';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -16675,6 +16675,25 @@ function lkReaktivaciaSort(a, b) {
   return (b.aflTblSachAvg || 0) - (a.aflTblSachAvg || 0);
 }
 
+function lkOpportunityProducts(info, now, portfolio) {
+  var currentIdx = now.rok * 12 + now.mesiac;
+  return (portfolio || []).map(function(p) {
+    var last = null;
+    var months = (info && info.months) ? info.months : [];
+    for (var i = months.length - 1; i >= 0; i--) {
+      var qty = parseFloat(months[i].prods && months[i].prods[p] || 0) || 0;
+      if (qty > 0) {
+        last = { rok: months[i].rok, mesiac: months[i].mesiac, qty: qty };
+        break;
+      }
+    }
+    if (!last) return { product: p, type: 'never', monthsAgo: 999, qty: 0, last: null };
+    var monthsAgo = currentIdx - (last.rok * 12 + last.mesiac);
+    if (monthsAgo >= 3) return { product: p, type: 'stale', monthsAgo: monthsAgo, qty: last.qty, last: last };
+    return null;
+  }).filter(Boolean);
+}
+
 // In-flight callbacks — ak fetch beží, nový cb sa len zaradí do fronty
 var _lkInFlight = {}; // cacheKey → [cb, cb, ...]
 
@@ -16860,6 +16879,7 @@ function lkBuildLekarne(rows) {
     info.months.forEach(function(m) { Object.keys(m.prods).forEach(function(p){ buysSet[p] = true; }); });
     var buys = GOL_PRODS.filter(function(p){ return buysSet[p]; });
     var missing = GOL_PRODS.filter(function(p){ return !buysSet[p]; });
+    var opportunities = lkOpportunityProducts(info, now, GOL_PRODS);
 
     // Klasifikácia
     var isNew = false, isSleeping = false;
@@ -16894,7 +16914,7 @@ function lkBuildLekarne(rows) {
     lekarne.push({
       key: key, okres: info.okres, mesto: info.mesto, lekaren: info.lekaren,
       months: info.months, lastM: lastM, monthsAgo: monthsAgo,
-      trend: trend, buys: buys, missing: missing,
+      trend: trend, buys: buys, missing: missing, opportunities: opportunities,
       isNew: isNew, isSleeping: isSleeping,
       isReaktivacia: isReaktivacia, isKrmPotential: isKrmPotential,
       isPriority: isPriority, priorityVol: dobropisMeta.total, priorityCount: dobropisMeta.count, priorityMeta: dobropisMeta,
@@ -17084,12 +17104,18 @@ function lkOpenDetail(key) {
       '<div class="lk-month-prods">' + prodChips + '</div></div>';
   });
 
-  // Missing produkty
+  // Príležitosti: produkty nikdy nekúpené alebo bez nákupu 3+ mesiace
   var missingHtml = '';
-  if (l.missing.length > 0) {
+  var opportunities = Array.isArray(l.opportunities) ? l.opportunities : [];
+  if (opportunities.length > 0) {
     missingHtml = '<div class="lk-section-lbl">Príležitosti — ešte nekupujú</div>' +
       '<div class="lk-prod-chips" style="margin-bottom:12px">' +
-      l.missing.map(function(p){ return '<span class="lk-prod-chip missing">+ ' + (LK_PROD_DISPLAY[p]||p) + '</span>'; }).join('') +
+      opportunities.map(function(o){
+        var name = LK_PROD_DISPLAY[o.product] || o.product;
+        if (o.type === 'never') return '<span class="lk-prod-chip missing">+ ' + name + ' — ešte nenakúpili vôbec</span>';
+        var lbl = LK_MES_NAMES[o.last.mesiac] + ' ' + o.last.rok;
+        return '<span class="lk-prod-chip missing">+ ' + name + ' — nekúpili od ' + lbl + ' · naposledy ' + Math.round(o.qty) + ' bal.</span>';
+      }).join('') +
       '</div>';
   }
 
