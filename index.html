@@ -1196,6 +1196,12 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .lk-tab.active{background:linear-gradient(135deg,#0C1E35 0%,#13294B 100%);color:#fff;box-shadow:0 4px 12px rgba(12,30,53,.25),inset 0 1px 0 rgba(255,255,255,.10)}
   .lk-tab-badge{font-size:11px;font-weight:800;line-height:1;color:inherit;opacity:.85}
   .lk-empty{text-align:center;padding:40px 20px;color:#94A3B8;font-size:14px}
+  .lk-loading-icon{width:40px;height:40px;margin:0 auto 10px;border-radius:50%;display:grid;place-items:center;background:#fff;box-shadow:0 6px 18px rgba(15,23,42,.10);position:relative;animation:lkLoadPulse 1.45s ease-in-out infinite}
+  .lk-loading-icon::before{content:'';position:absolute;inset:-5px;border-radius:50%;border:2px solid rgba(37,99,235,.22);border-top-color:#2563EB;animation:lkLoadSpin .9s linear infinite}
+  .lk-loading-dots::after{content:'';display:inline-block;width:1.2em;text-align:left;animation:lkLoadDots 1.2s steps(4,end) infinite}
+  @keyframes lkLoadSpin{to{transform:rotate(360deg)}}
+  @keyframes lkLoadPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.06);opacity:.88}}
+  @keyframes lkLoadDots{0%{content:''}25%{content:'.'}50%{content:'..'}75%,100%{content:'...'}}
   #lk-list{padding-top:10px}
   .lk-section-lbl{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#64748B;margin:14px 0 6px;padding-left:2px;display:flex;align-items:center;gap:6px}
   .lk-section-lbl::before{content:'';width:4px;height:4px;border-radius:50%;background:#2563EB;box-shadow:0 0 0 2px rgba(37,99,235,.15);flex-shrink:0}
@@ -2345,7 +2351,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.15';
+var APP_VERSION = '2.21.16';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -17266,8 +17272,8 @@ function lkMgrEmptyMsg(tab) {
 
 function lkMgrLoadingHtml() {
   return '<div class="lk-empty" style="padding-top:46px">' +
-    '<div style="font-size:24px;margin-bottom:8px">🔎</div>' +
-    '<div style="font-weight:800;color:#0C1E35;font-family:var(--font-display);margin-bottom:4px">Načítavam lekárne…</div>' +
+    '<div class="lk-loading-icon"><span style="font-size:20px">🔎</span></div>' +
+    '<div style="font-weight:800;color:#0C1E35;font-family:var(--font-display);margin-bottom:4px">Načítavam lekárne<span class="lk-loading-dots"></span></div>' +
     '<div style="font-size:13px;color:#64748B">Prosím počkajte pár sekúnd.</div>' +
   '</div>';
 }
