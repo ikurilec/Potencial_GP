@@ -26,6 +26,12 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.30 — Plnenie: prirodzenejšie texty v akčnom súhrne
+
+- Manažérsky text v akčnom súhrne už nepíše napr. **plánu Michal**, ale prirodzenejšie **celkového plánu Michala**.
+- Reprezentantovi ostáva osobný text **tvojho celkového plánu**.
+- Pridaný malý helper na skloňovanie najčastejších mien reprezentantov v genitíve. Verzia bumpnutá na `2.21.30`.
+
 ### v2.21.29 — Plnenie: akčný súhrn a vyhodnotenie kvartálu
 
 - Do Plnenia reprezentanta aj manažérskeho detailu reprezentanta pribudol modrý panel s odporúčaniami.
