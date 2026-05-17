@@ -26,6 +26,13 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.27 — Plnenie: chýbajúce eurá prepočítané na balenia
+
+- Produktové karty v Plnení zobrazujú pod riadkom predaj/plán aj praktický prepočet: **do splnenia plánu chýba X € ≈ Y bal.**.
+- Produkty s jasnou CIP cenou používajú fixné ceny dodané Ivanom: krém, Suprax 400 mg, Cavinton Forte 90 tbl., Kogavant 90 mg 56 tbl., Vidonorm 4/5 mg 90 tbl., Telexer 150 mg 180 tbl. a Junod.
+- **Aflamil tbl. a sáčky** sa rozrátavajú podľa mixu minulého kvartálu; tablety sa počítajú ako 30 ks balenia a sáčky ako samostatné balenia.
+- Prepočet sa zobrazuje reprezentantom aj manažérom/adminom v detaile Plnenia. Verzia bumpnutá na `2.21.27`.
+
 ### v2.21.26 — Lekárne: výraznejšie tlačidlo oslovenia krému
 
 - Tlačidlo pri Krém odporúčaniach je prerobené z malého pill štítku na výrazné zelené full-width CTA.
