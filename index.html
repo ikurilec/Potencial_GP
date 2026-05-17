@@ -1133,7 +1133,11 @@
   .mgr-plnenie-detail .prod-money{font-size:11.5px;color:#64748B;margin-top:2px;margin-bottom:4px;text-align:center}
   .mgr-plnenie-detail .prod-money strong{color:#0F172A;font-weight:700}
   .mgr-plnenie-detail .prod-money.muted{color:#94A3B8;font-style:italic}
-  .mgr-plnenie-detail .prod-pack-hint{font-size:10.5px;color:#475569;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:9px;padding:6px 8px;margin:4px 0 7px;text-align:center;line-height:1.35;font-weight:650}
+  .mgr-plnenie-detail .prod-pack-hint{color:#475569;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:9px;padding:7px 8px;margin:4px 0 7px;text-align:center;line-height:1.25}
+  .mgr-plnenie-detail .prod-pack-title{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.045em;color:#64748B;margin-bottom:2px}
+  .mgr-plnenie-detail .prod-pack-main{font-size:11.5px;font-weight:800;color:#0F172A}
+  .mgr-plnenie-detail .prod-pack-main strong{color:#2563EB}
+  .mgr-plnenie-detail .prod-pack-detail{font-size:10px;font-weight:650;color:#64748B;margin-top:3px}
   .mgr-plnenie-detail .prod-pred{font-size:11px;color:#94A3B8;margin-bottom:8px;text-align:center}
   .mgr-plnenie-detail .prod-pred span{font-weight:700;margin-left:4px}
   /* Mesačné riadky */
@@ -1408,7 +1412,11 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .rep-pl-inner .prod-money{font-size:11.5px;color:#64748B;margin-top:2px;margin-bottom:4px;text-align:center}
   .rep-pl-inner .prod-money strong{color:#0F172A;font-weight:700}
   .rep-pl-inner .prod-money.muted{color:#94A3B8;font-style:italic}
-  .rep-pl-inner .prod-pack-hint{font-size:10.5px;color:#475569;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:9px;padding:6px 8px;margin:4px 0 7px;text-align:center;line-height:1.35;font-weight:650}
+  .rep-pl-inner .prod-pack-hint{color:#475569;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:9px;padding:7px 8px;margin:4px 0 7px;text-align:center;line-height:1.25}
+  .rep-pl-inner .prod-pack-title{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.045em;color:#64748B;margin-bottom:2px}
+  .rep-pl-inner .prod-pack-main{font-size:11.5px;font-weight:800;color:#0F172A}
+  .rep-pl-inner .prod-pack-main strong{color:#2563EB}
+  .rep-pl-inner .prod-pack-detail{font-size:10px;font-weight:650;color:#64748B;margin-top:3px}
   .rep-pl-inner .prod-pred{font-size:11px;color:#94A3B8;margin-bottom:8px;text-align:center}
   .rep-pl-inner .prod-pred span{font-weight:700;margin-left:4px}
   .rep-pl-inner .month-rows{display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:0.5px solid #F1F5F9}
@@ -2374,7 +2382,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.27';
+var APP_VERSION = '2.21.28';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11304,13 +11312,13 @@ var PL_PRODUCT_LABELS = {
 };
 
 var PL_PACK_PRICES = {
-  aflamil_kr: { price: 5.35, label: 'bal. krému' },
-  suprax:     { price: 12.82, label: 'bal. Suprax 400 mg' },
-  cavinton:   { price: 10.85, label: 'bal. Cavinton Forte 90 tbl.' },
-  kogavant:   { price: 19.88, label: 'bal. Kogavant 90 mg 56 tbl.' },
-  vidonorm:   { price: 8.80, label: 'bal. Vidonorm 4/5 mg 90 tbl.' },
-  telexer:    { price: 72.12, label: 'bal. Telexer 150 mg 180 tbl.' },
-  junod:      { price: 90.38, label: 'bal. Junod' }
+  aflamil_kr: { price: 5.35, label: 'krému' },
+  suprax:     { price: 12.82, label: 'Suprax 400 mg' },
+  cavinton:   { price: 10.85, label: 'Cavinton Forte 90 tbl.' },
+  kogavant:   { price: 19.88, label: 'Kogavant 90 mg 56 tbl.' },
+  vidonorm:   { price: 8.80, label: 'Vidonorm 4/5 mg 90 tbl.' },
+  telexer:    { price: 72.12, label: 'Telexer 150 mg 180 tbl.' },
+  junod:      { price: 90.38, label: 'Junod' }
 };
 
 var PL_STATE = {
@@ -11400,31 +11408,52 @@ function plnenieAflamilMixFromContext(ctx) {
 }
 
 function plneniePackHint(key, plan, predaje, ctx) {
+  var data = plneniePackHintData(key, plan, predaje, ctx);
+  if (!data) return '';
+  if (data.done) return data.main;
+  return data.title + ': ' + data.main + (data.detail ? ' (' + data.detail + ')' : '');
+}
+
+function plneniePackHintData(key, plan, predaje, ctx) {
   key = plnenieNormalizeKey(key);
   plan = parseFloat(plan) || 0;
   predaje = parseFloat(predaje) || 0;
-  if (plan <= 0) return '';
+  if (plan <= 0) return null;
   var missing = Math.max(0, plan - predaje);
-  if (missing <= 0) return 'plán je splnený';
+  if (missing <= 0) return { done: true, main: 'plán je splnený' };
 
   if (key === 'aflamil_tablety_sacky') {
     var mix = plnenieAflamilMixFromContext(ctx);
     var tbPacks = plneniePackCount(missing * mix.tb, 3.19);
     var saPacks = plneniePackCount(missing * mix.sa, 4.10);
+    var totalPacks = tbPacks + saPacks;
     var parts = [];
-    if (tbPacks > 0) parts.push(tbPacks.toLocaleString('sk-SK').replace(/\u00A0/g, ' ') + ' bal. Aflamil tbl. 30 ks');
-    if (saPacks > 0) parts.push(saPacks.toLocaleString('sk-SK').replace(/\u00A0/g, ' ') + ' bal. sáčkov');
-    return 'do splnenia plánu chýba ' + plnenieFormatEUR(missing) + ' ≈ ' + parts.join(' + ') + ' podľa mixu minulého Q';
+    if (tbPacks > 0) parts.push(tbPacks.toLocaleString('sk-SK').replace(/\u00A0/g, ' ') + ' tbl. 30 ks');
+    if (saPacks > 0) parts.push(saPacks.toLocaleString('sk-SK').replace(/\u00A0/g, ' ') + ' sáčkov');
+    return {
+      title: 'Do splnenia plánu chýba',
+      main: plnenieFormatEUR(missing) + ' ≈ ' + totalPacks.toLocaleString('sk-SK').replace(/\u00A0/g, ' ') + ' balení spolu',
+      detail: parts.join(' + ') + ' podľa mixu minulého Q'
+    };
   }
 
   var cfg = PL_PACK_PRICES[key];
-  if (!cfg) return '';
-  return 'do splnenia plánu chýba ' + plnenieFormatEUR(missing) + ' ≈ ' + plneniePackCount(missing, cfg.price).toLocaleString('sk-SK').replace(/\u00A0/g, ' ') + ' ' + cfg.label;
+  if (!cfg) return null;
+  return {
+    title: 'Do splnenia plánu chýba',
+    main: plnenieFormatEUR(missing) + ' ≈ ' + plneniePackCount(missing, cfg.price).toLocaleString('sk-SK').replace(/\u00A0/g, ' ') + ' balení ' + cfg.label
+  };
 }
 
 function plneniePackHintHtml(key, plan, predaje, ctx) {
-  var txt = plneniePackHint(key, plan, predaje, ctx);
-  return txt ? '<div class="prod-pack-hint">' + mgrEscape(txt) + '</div>' : '';
+  var data = plneniePackHintData(key, plan, predaje, ctx);
+  if (!data) return '';
+  if (data.done) return '<div class="prod-pack-hint"><div class="prod-pack-main">' + mgrEscape(data.main) + '</div></div>';
+  return '<div class="prod-pack-hint">' +
+    '<div class="prod-pack-title">' + mgrEscape(data.title) + '</div>' +
+    '<div class="prod-pack-main"><strong>' + mgrEscape(data.main.split(' ≈ ')[0]) + '</strong> ≈ ' + mgrEscape(data.main.split(' ≈ ')[1] || '') + '</div>' +
+    (data.detail ? '<div class="prod-pack-detail">' + mgrEscape(data.detail) + '</div>' : '') +
+  '</div>';
 }
 
 function plnenieQLabel(q, year) {

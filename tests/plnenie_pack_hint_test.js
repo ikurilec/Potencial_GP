@@ -22,24 +22,25 @@ function extractFunction(name) {
 const sandbox = {};
 vm.createContext(sandbox);
 vm.runInContext(
-  'var PL_PACK_PRICES = { aflamil_kr:{price:5.35,label:"bal. krému"}, suprax:{price:12.82,label:"bal. Suprax 400 mg"}, cavinton:{price:10.85,label:"bal. Cavinton Forte 90 tbl."}, kogavant:{price:19.88,label:"bal. Kogavant 90 mg 56 tbl."}, vidonorm:{price:8.80,label:"bal. Vidonorm 4/5 mg 90 tbl."}, telexer:{price:72.12,label:"bal. Telexer 150 mg 180 tbl."}, junod:{price:90.38,label:"bal. Junod"} };' +
+  'var PL_PACK_PRICES = { aflamil_kr:{price:5.35,label:"krému"}, suprax:{price:12.82,label:"Suprax 400 mg"}, cavinton:{price:10.85,label:"Cavinton Forte 90 tbl."}, kogavant:{price:19.88,label:"Kogavant 90 mg 56 tbl."}, vidonorm:{price:8.80,label:"Vidonorm 4/5 mg 90 tbl."}, telexer:{price:72.12,label:"Telexer 150 mg 180 tbl."}, junod:{price:90.38,label:"Junod"} };' +
   extractFunction('plnenieNormalizeKey') + '\n' +
   extractFunction('plnenieFormatEUR') + '\n' +
   extractFunction('plneniePackCount') + '\n' +
   extractFunction('plnenieAflamilMixFromTotals') + '\n' +
   extractFunction('plnenieAflamilMixFromContext') + '\n' +
+  extractFunction('plneniePackHintData') + '\n' +
   extractFunction('plneniePackHint'),
   sandbox
 );
 
 assert.strictEqual(
   sandbox.plneniePackHint('aflamil_kr', 7728, 3445),
-  'do splnenia plánu chýba 4 283 € ≈ 801 bal. krému'
+  'Do splnenia plánu chýba: 4 283 € ≈ 801 balení krému'
 );
 
 assert.strictEqual(
   sandbox.plneniePackHint('kogavant', 2900, 0),
-  'do splnenia plánu chýba 2 900 € ≈ 146 bal. Kogavant 90 mg 56 tbl.'
+  'Do splnenia plánu chýba: 2 900 € ≈ 146 balení Kogavant 90 mg 56 tbl.'
 );
 
 assert.strictEqual(
@@ -54,7 +55,7 @@ assert.deepStrictEqual(
 
 assert.strictEqual(
   sandbox.plneniePackHint('aflamil_tablety_sacky', 1000, 0, { mixTotals: { aflamiltb: 60, aflamilsa: 40 } }),
-  'do splnenia plánu chýba 1 000 € ≈ 189 bal. Aflamil tbl. 30 ks + 98 bal. sáčkov podľa mixu minulého Q'
+  'Do splnenia plánu chýba: 1 000 € ≈ 287 balení spolu (189 tbl. 30 ks + 98 sáčkov podľa mixu minulého Q)'
 );
 
 console.log('plnenie pack hint test passed');
