@@ -26,6 +26,15 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.29 — Plnenie: akčný súhrn a vyhodnotenie kvartálu
+
+- Do Plnenia reprezentanta aj manažérskeho detailu reprezentanta pribudol modrý panel s odporúčaniami.
+- Aktuálny kvartál zobrazuje **Akčný súhrn** / **Na čo sa zamerať s reprezentantom**; ukončený kvartál sa prepne na **Vyhodnotenie kvartálu**.
+- Riziká sa nerátajú len podľa % produktu, ale aj podľa váhy produktu v celkovom pláne a € gapu, aby malé produkty neprebíjali strategicky dôležité produkty.
+- Očakávané tempo sa ráta podľa pracovných dní a podľa posledného mesiaca, za ktorý sú reálne nahraté predaje. Ak sú dáta iba za apríl, panel hodnotí `Q2 2026 · Apr`; po pridaní mája automaticky `Apr + Máj`.
+- Porovnanie s minulým kvartálom používa predaj za pracovný deň v rovnakom dátovom období, napr. Apr vs Jan alebo Apr+Máj vs Jan+Feb.
+- Texty sú prispôsobené kontextu: reprezentant vidí „tvojho celkového plánu“, manažér vidí konkrétne meno reprezentanta. Verzia bumpnutá na `2.21.29`.
+
 ### v2.21.28 — Plnenie: čitateľnejší prepočet na balenia
 
 - Text prepočtu z chýbajúcich eur na balenia je prerobený z dlhej vety na kompaktný dvojriadkový blok.
