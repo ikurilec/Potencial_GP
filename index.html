@@ -2410,7 +2410,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.29';
+var APP_VERSION = '2.21.30';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -13150,6 +13150,35 @@ function plneniePrevQuarterRef(state, q) {
   return { q: q - 1, data: cached.data };
 }
 
+function plnenieRepPlanLabel(managerMode, repName) {
+  if (!managerMode) return 'tvojho celkového plánu';
+  var first = String(repName || '').trim().split(/\s+/)[0] || 'repa';
+  var lower = first.toLowerCase();
+  var irregular = {
+    'andrej': 'Andreja',
+    'michal': 'Michala',
+    'ivan': 'Ivana',
+    'martin': 'Martina',
+    'peter': 'Petra',
+    'viktória': 'Viktórie',
+    'viktoria': 'Viktórie',
+    'jaroslava': 'Jaroslavy',
+    'vladimíra': 'Vladimíry',
+    'vladimira': 'Vladimíry',
+    'zuzana': 'Zuzany',
+    'jana': 'Jany',
+    'katarína': 'Kataríny',
+    'katarina': 'Kataríny',
+    'olívia': 'Olívie',
+    'olivia': 'Olívie',
+    'lucia': 'Lucie',
+    'lenka': 'Lenky'
+  };
+  if (irregular[lower]) return 'celkového plánu ' + irregular[lower];
+  if (/[aá]$/i.test(first)) return 'celkového plánu ' + first.replace(/[aá]$/i, function(ch){ return ch === 'A' || ch === 'Á' ? 'Y' : 'y'; });
+  return 'celkového plánu ' + first + 'a';
+}
+
 function plnenieRepActionSummaryHtml(opts) {
   opts = opts || {};
   var state = opts.state || null;
@@ -13162,6 +13191,7 @@ function plnenieRepActionSummaryHtml(opts) {
   var planProducts = opts.planProducts || [];
   var managerMode = !!opts.managerMode;
   var repName = opts.repName || '';
+  var planLabel = plnenieRepPlanLabel(managerMode, repName);
   var isClosedQ = q < plnenieCurrentQ();
   var title = isClosedQ ? 'Vyhodnotenie kvartálu' : (managerMode ? 'Na čo sa zamerať s reprezentantom' : 'Akčný súhrn');
   var products = planProducts.map(function(p){ return plnenieNormalizeKey(p); })
@@ -13207,7 +13237,7 @@ function plnenieRepActionSummaryHtml(opts) {
         cls: 'trend-up',
         ico: '✓',
         text: '<strong>' + mgrEscape(bestDone.label) + '</strong> splnil plán na ' + plnenieFormatPct(bestDone.pct) + '.',
-        sub: 'Produkt tvoril ' + bestDone.weight.toFixed(0).replace('.', ',') + ' % ' + (managerMode ? ('plánu ' + (repName ? repName.split(' ')[0] : 'repa')) : 'tvojho celkového plánu') + '.'
+        sub: 'Produkt tvoril ' + bestDone.weight.toFixed(0).replace('.', ',') + ' % ' + planLabel + '.'
       });
     }
   }
@@ -13218,7 +13248,7 @@ function plnenieRepActionSummaryHtml(opts) {
       cls: 'risk',
       ico: '!',
       text: '<strong>' + mgrEscape(worst.label) + '</strong> je pod tempom: ' + plnenieFormatPct(worst.pct) + ', očakávané je cca ' + plnenieFormatPct(expectedPct) + '.',
-      sub: 'Tvorí ' + worst.weight.toFixed(0).replace('.', ',') + ' % ' + (managerMode ? ('plánu ' + (repName ? repName.split(' ')[0] : 'repa')) : 'tvojho celkového plánu') + '; do konca Q chýba ' + plnenieFormatEUR(worst.gap) + '.'
+      sub: 'Tvorí ' + worst.weight.toFixed(0).replace('.', ',') + ' % ' + planLabel + '; do konca Q chýba ' + plnenieFormatEUR(worst.gap) + '.'
     });
   }
 
@@ -13228,7 +13258,7 @@ function plnenieRepActionSummaryHtml(opts) {
       cls: 'risk',
       ico: '!',
       text: '<strong>' + mgrEscape(miss.label) + '</strong> sa nepodarilo splniť: ' + plnenieFormatPct(miss.pct) + '.',
-      sub: 'Chýbalo ' + plnenieFormatEUR(miss.gap) + '; produkt tvoril ' + miss.weight.toFixed(0).replace('.', ',') + ' % ' + (managerMode ? ('plánu ' + (repName ? repName.split(' ')[0] : 'repa')) : 'tvojho celkového plánu') + '.'
+      sub: 'Chýbalo ' + plnenieFormatEUR(miss.gap) + '; produkt tvoril ' + miss.weight.toFixed(0).replace('.', ',') + ' % ' + planLabel + '.'
     });
   }
 
@@ -13264,7 +13294,7 @@ function plnenieRepActionSummaryHtml(opts) {
           cls: 'trend-down',
           ico: '↓',
           text: '<strong>' + mgrEscape(down.label) + '</strong> ' + (isClosedQ ? 'bol' : 'ide') + ' o ' + Math.abs(down.delta).toFixed(0).replace('.', ',') + ' % pomalšie ako v rovnakom bode minulého Q.',
-          sub: 'Porovnanie je na pracovný deň; produkt tvorí ' + down.weight.toFixed(0).replace('.', ',') + ' % ' + (managerMode ? ('plánu ' + (repName ? repName.split(' ')[0] : 'repa')) : 'tvojho celkového plánu') + '.'
+          sub: 'Porovnanie je na pracovný deň; produkt tvorí ' + down.weight.toFixed(0).replace('.', ',') + ' % ' + planLabel + '.'
         });
       }
       if (up && up.delta > 5 && rows.length < 3) {
