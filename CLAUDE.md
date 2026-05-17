@@ -26,6 +26,14 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.28 — Plnenie: čitateľnejší prepočet na balenia
+
+- Text prepočtu z chýbajúcich eur na balenia je prerobený z dlhej vety na kompaktný dvojriadkový blok.
+- Skratka **bal.** je nahradená zrozumiteľnejším slovom **balení**.
+- Pri bežných produktoch sa zobrazuje jasne: **Do splnenia plánu chýba** + suma a približný počet balení.
+- Pri **Aflamil tbl. a sáčky** sa hlavný riadok drží krátky a mix je v samostatnom menšom riadku, aby sa karta na mobile nelámala chaoticky.
+- Verzia bumpnutá na `2.21.28`.
+
 ### v2.21.27 — Plnenie: chýbajúce eurá prepočítané na balenia
 
 - Produktové karty v Plnení zobrazujú pod riadkom predaj/plán aj praktický prepočet: **do splnenia plánu chýba X € ≈ Y bal.**.
