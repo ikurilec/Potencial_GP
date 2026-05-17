@@ -2410,7 +2410,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.30';
+var APP_VERSION = '2.21.31';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8972,6 +8972,28 @@ var WN_HISTORY = [
         { icon: '👥', bg: '#F0FDF4', title: 'Avatary reprezentantov', desc: 'V rebríčku, Plnení aj zozname reprezentantov uvidíš ich avatary. Kto si nenastavil → iniciály ako predtým.' },
         { icon: '🎲', bg: '#FFF7ED', title: 'Náhodne', desc: 'Náhodne tlačidlo (🎲) ti vygeneruje vzhľad so zachovaným pohlavím.' },
         { icon: '💾', bg: '#F5F3FF', title: 'Synchronizácia', desc: 'Avatary sú uložené v Google Sheets — synchronizované cez zariadenia.' }
+      ]
+    }
+  },
+  // ── v2.21.31 — akčný súhrn v Plnení ──
+  {
+    key: 'potencial_vl_wn_v2_21_31_action_summary',
+    rep: {
+      icon: '⚡', title: 'Novinka v Plnení', sub: 'v2.21.31 · Gedeon Richter Slovakia',
+      items: [
+        { icon: '⚡', bg: '#EFF6FF', title: 'Akčný súhrn', desc: 'V Plnení pribudol nový panel, ktorý ukáže, ktorý produkt sa oplatí riešiť ako prvý.' },
+        { icon: '📊', bg: '#F0FDF4', title: 'Počíta váhu produktu', desc: 'Odporúčanie zohľadňuje tempo predaja, chýbajúce €, aj to, koľko produkt tvorí z tvojho celkového plánu.' },
+        { icon: '📅', bg: '#FFF7ED', title: 'Férové tempo', desc: 'Výpočet berie do úvahy pracovné dni a len obdobie, za ktoré už sú nahraté predaje.' },
+        { icon: '✓', bg: '#F5F3FF', title: 'Ukončené kvartály', desc: 'Pri starších Q sa panel zmení na Vyhodnotenie kvartálu: čo sa podarilo a čo sa nepodarilo splniť.' }
+      ]
+    },
+    mgr: {
+      icon: '⚡', title: 'Novinka v detaile reprezentanta', sub: 'v2.21.31 · Gedeon Richter Slovakia',
+      items: [
+        { icon: '⚡', bg: '#EFF6FF', title: 'Na čo sa zamerať', desc: 'V Plnení reprezentanta pribudol panel, ktorý rýchlo ukáže, ktorý produkt má najväčší dopad na jeho celkový plán.' },
+        { icon: '📊', bg: '#F0FDF4', title: 'Váha produktu v pláne', desc: 'Odporúčanie nepozerá len na %, ale aj na chýbajúce € a podiel produktu v celkovom pláne reprezentanta.' },
+        { icon: '📅', bg: '#FFF7ED', title: 'Pracovné dni a obdobie dát', desc: 'Výpočet berie do úvahy pracovné dni a iba mesiace, za ktoré sú už nahraté predaje.' },
+        { icon: '✓', bg: '#F5F3FF', title: 'Vyhodnotenie kvartálu', desc: 'Pri ukončených Q sa panel prepne na spätné vyhodnotenie: čo sa podarilo, čo chýbalo a trend oproti minulému Q.' }
       ]
     }
   }
