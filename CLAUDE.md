@@ -26,6 +26,13 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.31 — What's New: akčný súhrn v Plnení
+
+- Pridaný nový WN kľúč `potencial_vl_wn_v2_21_31_action_summary`, ktorý sa každému používateľovi zobrazí iba raz.
+- Reprezentanti vidia text k novému **Akčnému súhrnu** v Plnení.
+- Manažéri/admini vidia vlastný text k panelu **Na čo sa zamerať s reprezentantom** v detaile reprezentanta.
+- WN vysvetľuje, že odporúčania berú do úvahy pracovné dni, nahraté obdobie dát, váhu produktu v pláne a chýbajúce €. Verzia bumpnutá na `2.21.31`.
+
 ### v2.21.30 — Plnenie: prirodzenejšie texty v akčnom súhrne
 
 - Manažérsky text v akčnom súhrne už nepíše napr. **plánu Michal**, ale prirodzenejšie **celkového plánu Michala**.
