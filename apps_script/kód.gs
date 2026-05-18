@@ -966,6 +966,16 @@ function lkMonthKey_(monthKey) {
   return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2);
 }
 
+function lkNormText_(value) {
+  return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function lkNormKey_(key) {
+  return String(key || '').split('|||').map(function(part) {
+    return lkNormText_(part);
+  }).join('|||');
+}
+
 function lkKremContactSheet_(ss) {
   var sheet = ss.getSheetByName('Lekarne_Krem_Oslovene');
   var headers = ['month', 'login', 'key', 'okres', 'mesto', 'lekaren', 'contacted_at'];
@@ -998,7 +1008,7 @@ function lkReadKremContacts_(ss, monthKey) {
     var login = String(data[i][cLogin] || '').trim().toLowerCase();
     var key = String(data[i][cKey] || '').trim();
     if (!login || !key) continue;
-    out[login + '|||' + key] = {
+    out[login + '|||' + lkNormKey_(key)] = {
       contacted: true,
       contactedAt: cAt >= 0 && data[i][cAt] instanceof Date ? data[i][cAt].toISOString() : String(cAt >= 0 ? data[i][cAt] || '' : '')
     };
@@ -1009,6 +1019,7 @@ function lkReadKremContacts_(ss, monthKey) {
 function lkSetKremContact_(ss, login, key, monthKey) {
   var sheet = lkKremContactSheet_(ss);
   var mKey = lkMonthKey_(monthKey);
+  var normKey = lkNormKey_(key);
   var parts = String(key || '').split('|||');
   var okres = parts[0] || '';
   var mesto = parts[1] || '';
@@ -1019,7 +1030,7 @@ function lkSetKremContact_(ss, login, key, monthKey) {
     for (var i = 0; i < data.length; i++) {
       if (String(data[i][0] || '').trim() === mKey &&
           String(data[i][1] || '').trim().toLowerCase() === login &&
-          String(data[i][2] || '').trim() === key) {
+          lkNormKey_(data[i][2]) === normKey) {
         sheet.getRange(i + 2, 7).setValue(new Date());
         return;
       }
@@ -1060,7 +1071,7 @@ function lkReadRows_(ss, filterLogin, creamMonth) {
     });
     if (!hasAny) continue;
     var rowKey = String(r[liOkr] || '').trim() + '|||' + String(r[liMesto] || '').trim() + '|||' + String(r[liLek] || '').trim();
-    var contact = kremContacts[rowLogin + '|||' + rowKey] || null;
+    var contact = kremContacts[rowLogin + '|||' + lkNormKey_(rowKey)] || null;
     rows.push({
       login:   rowLogin,
       rok:     parseInt(r[liRok])  || 0,
