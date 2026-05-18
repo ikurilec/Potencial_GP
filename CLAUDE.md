@@ -26,6 +26,12 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.39 — Lekárne: fallback párovanie osloveného Krému podľa stĺpcov
+
+- Backend pri čítaní `Lekarne_Krem_Oslovene` už nepoužíva iba uložený `key`, ale vytvorí aj záložný kľúč zo stĺpcov `okres`, `mesto`, `lekaren`.
+- Ak je v Sheete starší alebo nepresne uložený `key`, ale samostatné stĺpce s lekárňou sedia, stav **oslovená lekáreň** sa napriek tomu spáruje späť do appky.
+- Táto oprava sa prejaví reprezentantom aj manažérom/adminom pri pohľade na konkrétneho reprezentanta. Verzia bumpnutá na `2.21.39`.
+
 ### v2.21.38 — Lekárne: spoľahlivé načítanie oslovených Krém lekární
 
 - Backend pri čítaní sheetu `Lekarne_Krem_Oslovene` už páruje lekáreň normalizovane: ignoruje rozdiely vo veľkosti písmen a nadbytočné medzery v kľúči okres/mesto/lekáreň.
