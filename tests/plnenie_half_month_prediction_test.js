@@ -37,7 +37,7 @@ function buildSandbox(iso) {
   vm.createContext(sandbox);
   vm.runInContext(
     'var PL_WORKING_DAYS_MAP = { 2026: { 1:20, 2:20, 3:22, 4:20, 5:20, 6:22, 7:23, 8:21, 9:21, 10:22, 11:21, 12:21 } };' +
-    'var PL_WORKING_DAYS_HALF_MAP = { 2026: { 1:9, 2:10, 3:10, 4:9, 5:9, 6:11, 7:11, 8:10, 9:9, 10:11, 11:10, 12:11 } };' +
+    'var PL_WORKING_DAYS_HALF_MAP = { 2026: { 1:9, 2:10, 3:10, 4:9, 5:10, 6:11, 7:11, 8:10, 9:9, 10:11, 11:10, 12:11 } };' +
     extractFunction('plnenieCurrentQ') + '\n' +
     extractFunction('plnenieWorkingDays') + '\n' +
     extractFunction('plnenieWorkingDaysHalf') + '\n' +
@@ -54,7 +54,7 @@ function buildSandbox(iso) {
 }
 
 const may = buildSandbox('2026-05-18T10:00:00+02:00');
-assert.strictEqual(may.plnenieWorkingDaysHalf(2026, 5), 9);
+assert.strictEqual(may.plnenieWorkingDaysHalf(2026, 5), 10);
 assert.deepStrictEqual(
   JSON.parse(JSON.stringify(may.plneniePredictionMonthParts(2, 2026, { 4: { aflamil_kr: 2000 }, 5: { aflamil_kr: 450 } }))),
   [{ month: 4, mode: 'full' }, { month: 5, mode: 'half' }]
@@ -64,7 +64,7 @@ const mayPred = may.plnenieCalcPredikcia(2, 2026, 6200, {
   4: { aflamil_kr: 2000 },
   5: { aflamil_kr: 450 }
 }, 'aflamil_kr');
-assert.strictEqual(Math.round(mayPred * 100) / 100, 84.48);
+assert.strictEqual(Math.round(mayPred * 100) / 100, 81.67);
 
 const june = buildSandbox('2026-06-05T10:00:00+02:00');
 assert.deepStrictEqual(
