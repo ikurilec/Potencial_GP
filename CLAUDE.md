@@ -26,6 +26,11 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.35 — Trhový podiel: teritoriálny wording v signále
+
+- Celkový signál Trhového podielu pri pozitívnom raste píše **Produkt získava pozíciu v teritóriu**.
+- Okresové signály ostávajú bez teritoriálneho doplnku. Verzia bumpnutá na `2.21.35`.
+
 ### v2.21.34 — Trhový podiel: jasnejší názov objemu v signáloch
 
 - Signály v Trhovom podiele už nepíšu iba všeobecné **Objem**, ale konkrétne **Objem pacientov na [produkt]**.
