@@ -26,6 +26,13 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.38 — Lekárne: spoľahlivé načítanie oslovených Krém lekární
+
+- Backend pri čítaní sheetu `Lekarne_Krem_Oslovene` už páruje lekáreň normalizovane: ignoruje rozdiely vo veľkosti písmen a nadbytočné medzery v kľúči okres/mesto/lekáreň.
+- Existujúce riadky v Sheete netreba prerábať; rovnaký zápis sa teraz vie spárovať späť na riadky z `Lekarne_Bal`.
+- Frontend cache lekární je posunutá na `lekarne_cache_v6_*`, aby sa po update neukazoval starý lokálny stav bez označených lekární.
+- `pingLogin` ukladá lekárne do cache pod normalizovaným loginom a s hashom, aby sa následný fetch správal konzistentne. Verzia bumpnutá na `2.21.38`.
+
 ### v2.21.37 — Rep modal overlay: navigácia už nepresvitá
 
 - Pri odoslaní lekára a následnom odporúčacom okne už sticky navigácia reprezentanta (**História / Rebríček / Plnenie / Lekárne**) nepresvitá nad modalom.
