@@ -2425,7 +2425,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.33';
+var APP_VERSION = '2.21.34';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -14626,7 +14626,7 @@ function pharmaMonthName(mesiac) {
   return PHARMA_MONTH_SK[mm] || String(mesiac || '');
 }
 
-function pharmaInsightText(prev, cur) {
+function pharmaInsightText(prev, cur, volumeLabel) {
   var msDelta = cur.ms - prev.ms;
   var volDelta = null;
   if (prev.vol !== null && prev.vol > 0 && cur.vol !== null) {
@@ -14637,7 +14637,7 @@ function pharmaInsightText(prev, cur) {
   var volTxt = pharmaFmtSignedPct(volDelta);
   var volState = volDelta === null ? 'unknown' : pharmaTrendCls(volDelta, 3);
   var msState = pharmaTrendCls(msDelta, 0.25);
-  if (volTxt) parts.push('Objem ' + pharmaInsightVal(volTxt, volState));
+  if (volTxt) parts.push(mgrEscape(volumeLabel || 'Objem') + ' ' + pharmaInsightVal(volTxt, volState));
   parts.push('podiel ' + pharmaInsightVal(pharmaFmtPct2(prev.ms), 'flat') + ' → ' + pharmaInsightVal(pharmaFmtPct2(cur.ms), msState));
 
   var note = '';
@@ -14653,7 +14653,7 @@ function pharmaInsightText(prev, cur) {
   return '<strong>' + parts.join(', ') + '.</strong> ' + note;
 }
 
-function pharmaInsightHtml(points, label, cls) {
+function pharmaInsightHtml(points, label, cls, volumeLabel) {
   var usable = (points || []).filter(function(p) {
     return p && p.mesiac && p.ms !== null && p.ms > 0;
   }).sort(function(a, b) {
@@ -14664,7 +14664,7 @@ function pharmaInsightHtml(points, label, cls) {
   var cur = usable[usable.length - 1];
   return '<div class="pharma-ms-insight ' + (cls || '') + '">'
     + '<div class="pharma-ms-insight-lbl">' + mgrEscape(label) + ' · ' + mgrEscape(pharmaMonthName(cur.mesiac)) + ' vs ' + mgrEscape(pharmaMonthName(prev.mesiac)) + '</div>'
-    + '<div class="pharma-ms-insight-txt">' + pharmaInsightText(prev, cur) + '</div>'
+    + '<div class="pharma-ms-insight-txt">' + pharmaInsightText(prev, cur, volumeLabel) + '</div>'
     + '</div>';
 }
 
@@ -15379,6 +15379,9 @@ function pharmaRender(code) {
   var mLabels = months.map(function(m) {
     return PHARMA_MONTH_SK[parseInt(m.slice(2), 10)] || m;
   });
+  var prodLabel = PHARMA_PROD_LABEL[code] || code;
+  var isBoxProduct = code === 'JUN';
+  var insightVolumeLabel = isBoxProduct ? 'Objem boxov' : ('Objem pacientov na ' + prodLabel);
 
   var html = '';
 
@@ -15409,7 +15412,8 @@ function pharmaRender(code) {
   html += pharmaInsightHtml(
     pharmaSummaryInsightPoints(months, summArr, okresy),
     'Signál trhového podielu',
-    ''
+    '',
+    insightVolumeLabel
   );
 
   // ── Trend graf — vyplní sa asynchrónne z getPharmaGraf / PHARMA_GRAF_STATE ──
@@ -15425,10 +15429,8 @@ function pharmaRender(code) {
   }
 
   html += '<div class="pharma-ms-section-title">Rozpad po okresoch</div>';
-  var prodLabel = PHARMA_PROD_LABEL[code] || code;
   window._pharmaOkresData = okresy;
   window._pharmaOkresProdLabel = prodLabel;
-  var isBoxProduct = code === 'JUN';
 
   okresy.forEach(function(r, okrIdx) {
     html += '<div class="pharma-ms-district">';
@@ -15444,7 +15446,8 @@ function pharmaRender(code) {
     var districtInsightHtml = pharmaInsightHtml(
       pharmaDistrictInsightPoints(months, r),
       'Signál okresu',
-      'pharma-ms-district-insight'
+      'pharma-ms-district-insight',
+      insightVolumeLabel
     );
     if ((nasPat > 0 || totPat > 0) || districtInsightHtml) {
       html += '<div class="pharma-ms-district-meta">';
