@@ -2425,7 +2425,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.32';
+var APP_VERSION = '2.21.33';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -15428,6 +15428,7 @@ function pharmaRender(code) {
   var prodLabel = PHARMA_PROD_LABEL[code] || code;
   window._pharmaOkresData = okresy;
   window._pharmaOkresProdLabel = prodLabel;
+  var isBoxProduct = code === 'JUN';
 
   okresy.forEach(function(r, okrIdx) {
     html += '<div class="pharma-ms-district">';
@@ -15448,13 +15449,17 @@ function pharmaRender(code) {
     if ((nasPat > 0 || totPat > 0) || districtInsightHtml) {
       html += '<div class="pharma-ms-district-meta">';
       if (nasPat > 0 || totPat > 0) {
-        html += '<div class="pharma-ms-district-pat-row">V okrese ' + mgrEscape(r.okres) + ' máš v Q' + q + ' nastavených na ' + mgrEscape(prodLabel) + ' <strong>' + nasPat + '</strong> pacientov z celkového množstva <strong>' + totPat + '</strong> pacientov</div>';
+        if (isBoxProduct) {
+          html += '<div class="pharma-ms-district-pat-row">V okrese ' + mgrEscape(r.okres) + ' máš v Q' + q + ' na ' + mgrEscape(prodLabel) + ' <strong>' + nasPat + '</strong> boxov z celkového trhu <strong>' + totPat + '</strong> boxov</div>';
+        } else {
+          html += '<div class="pharma-ms-district-pat-row">V okrese ' + mgrEscape(r.okres) + ' máš v Q' + q + ' nastavených na ' + mgrEscape(prodLabel) + ' <strong>' + nasPat + '</strong> pacientov z celkového množstva <strong>' + totPat + '</strong> pacientov</div>';
+        }
       }
       html += districtInsightHtml;
       html += '</div>';
     }
     html += '<table class="pharma-ms-tbl"><thead><tr>';
-    html += '<th>Produkt <span class="pharma-ms-tbl-sublabel">MS% Pat.</span></th>';
+    html += '<th>Produkt <span class="pharma-ms-tbl-sublabel">' + (isBoxProduct ? 'MS% Box' : 'MS% Pat.') + '</span></th>';
     html += '<th>' + mgrEscape(mLabels[0]) + '</th>';
     html += '<th>' + mgrEscape(mLabels[1]) + '</th>';
     html += '<th>' + mgrEscape(mLabels[2]) + '</th>';
