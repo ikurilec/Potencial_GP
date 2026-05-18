@@ -145,6 +145,8 @@ function parseFilename(name) {
 
 // ── Hlavná funkcia — parsuje MS_ChartTab záložku ──
 function parseChartTab(wb, info, ourName) {
+  if (info.produkt === 'JUN') return parseJunodBoxTrend(wb, info, ourName);
+
   var sheet = wb.Sheets['MS_ChartTab'];
   if (!sheet) return 0;
   var data = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' });
@@ -224,6 +226,64 @@ function parseChartTab(wb, info, ourName) {
   });
 
   return monthData.length;
+}
+
+function parseJunodBoxTrend(wb, info, ourName) {
+  var sheet = wb.Sheets['data'];
+  if (!sheet) return 0;
+  var data = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' });
+  if (!data || data.length < 2) return 0;
+  var hdr = data[0].map(function(c){ return String(c || '').trim(); });
+  function idx(name) { return hdr.indexOf(name); }
+  var iProd = idx('Product'), iQtr = idx('Qtr'), iMonth = idx('Month'), iUnit = idx('Unit1');
+  if (iProd < 0 || iQtr < 0 || iMonth < 0 || iUnit < 0) return 0;
+
+  var byMonth = {};
+  data.slice(1).forEach(function(row) {
+    var prod = String(row[iProd] || '').trim().toUpperCase();
+    var qtr = String(row[iQtr] || '').trim();
+    var month = parseInt(row[iMonth], 10);
+    var unit = parseFloat(row[iUnit]) || 0;
+    if (!prod || !qtr || isNaN(month) || month < 1 || month > 12) return;
+    var yy = qtr.slice(0, 2);
+    var mesiac = yy + (month < 10 ? '0' + month : String(month));
+    if (!byMonth[mesiac]) byMonth[mesiac] = { total: 0, our: 0, prods: {} };
+    byMonth[mesiac].total += unit;
+    byMonth[mesiac].prods[prod] = (byMonth[mesiac].prods[prod] || 0) + unit;
+    if (prod === ourName.toUpperCase()) byMonth[mesiac].our += unit;
+  });
+
+  var months = Object.keys(byMonth).sort();
+  if (!months.length) return 0;
+  var compNames = {};
+  months.forEach(function(m) {
+    Object.keys(byMonth[m].prods).forEach(function(p) {
+      if (p !== ourName.toUpperCase()) compNames[p] = true;
+    });
+  });
+  var comps = Object.keys(compNames).map(function(p) {
+    var vals = months.map(function(m) {
+      var x = byMonth[m];
+      return x.total > 0 ? ((x.prods[p] || 0) / x.total * 100) : 0;
+    });
+    var avg = vals.reduce(function(s,v){ return s + v; }, 0) / (vals.length || 1);
+    return { name: p, vals: vals, avg: avg };
+  }).filter(function(c){ return c.avg > 0; }).sort(function(a,b){ return b.avg - a.avg; }).slice(0, 3);
+
+  months.forEach(function(m, mi) {
+    var x = byMonth[m];
+    var nasMs = x.total > 0 ? (x.our / x.total * 100).toFixed(2) : '';
+    var outRow = [info.produkt, info.oblast, m, nasMs];
+    for (var k = 0; k < 3; k++) {
+      var comp = comps[k];
+      outRow.push(comp ? comp.name : '');
+      outRow.push(comp ? comp.vals[mi].toFixed(2) : '');
+    }
+    while (outRow.length < 10) outRow.push('');
+    grafRows.push(outRow);
+  });
+
+  return months.length;
 }
 
 // ── Render ──

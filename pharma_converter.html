@@ -146,7 +146,7 @@ dz.addEventListener('drop', function(e){ e.preventDefault(); dz.classList.remove
 document.getElementById('file-input').addEventListener('change', function(){ processFiles(this.files); });
 
 function processFiles(files) {
-  summaryRows = []; okresyRows = []; errors = [];
+  summaryRows = []; okresyRows = []; okrGrafRows = []; errors = [];
   var fileArr = Array.from(files).filter(function(f){ return f.name.endsWith('.xlsx'); });
   if (!fileArr.length) { showStats('Žiadne .xlsx súbory.'); return; }
   var pending = fileArr.length;
@@ -178,6 +178,12 @@ function parseFilename(name) {
 
 // ── Spracovanie celého workbooku ──
 function processWorkbook(wb, info, ourName) {
+  if (info.produkt === 'JUN') {
+    var beforeS = summaryRows.length, beforeO = okresyRows.length, beforeG = okrGrafRows.length;
+    parseJunodBoxWorkbook(wb, info, ourName);
+    debugLog.push('<span class="d-dist">[' + info.produkt + '] JUNOD box mode → SUMMARY +' + (summaryRows.length - beforeS) + ', OKRESY +' + (okresyRows.length - beforeO) + ', OKRESYGRAF +' + (okrGrafRows.length - beforeG) + '</span>');
+    return;
+  }
   wb.SheetNames.forEach(function(sheetName) {
     var sheet = wb.Sheets[sheetName];
     var data = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' });
@@ -208,6 +214,142 @@ function processWorkbook(wb, info, ourName) {
         debugLog.push('<span class="d-skip">[' + info.produkt + '] "' + sheetName + '" → preskočené: ' + dist.reason + ' | r0: ' + dist.sample + '</span>');
       }
     }
+  });
+}
+
+function parseJunodBoxWorkbook(wb, info, ourName) {
+  var sheet = wb.Sheets['data'];
+  if (!sheet) {
+    errors.push(info.produkt + '_' + info.oblast + ': chýba záložka data pre JUN box mode');
+    return;
+  }
+  var rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' });
+  if (!rows || rows.length < 2) return;
+  var hdr = rows[0].map(function(c){ return String(c || '').trim(); });
+  function idx(name) { return hdr.indexOf(name); }
+  var iOkres = idx('Okres'), iProd = idx('Product'), iQtr = idx('Qtr'), iMonth = idx('Month'), iUnit = idx('Unit1');
+  if (iOkres < 0 || iProd < 0 || iQtr < 0 || iMonth < 0 || iUnit < 0) {
+    errors.push(info.produkt + '_' + info.oblast + ': data sheet nemá Okres/Product/Qtr/Month/Unit1');
+    return;
+  }
+
+  var byMonth = {}, byOkrQ = {}, byOkrMonth = {};
+  rows.slice(1).forEach(function(row) {
+    var okres = String(row[iOkres] || '').trim();
+    var prod = String(row[iProd] || '').trim().toUpperCase();
+    var qtr = String(row[iQtr] || '').trim();
+    var month = parseInt(row[iMonth], 10);
+    var unit = parseFloat(row[iUnit]) || 0;
+    if (!okres || !prod || !qtr || isNaN(month) || month < 1 || month > 12) return;
+    var yy = qtr.slice(0, 2);
+    var mesiac = yy + (month < 10 ? '0' + month : String(month));
+
+    if (!byMonth[mesiac]) byMonth[mesiac] = { total: 0, our: 0, prods: {} };
+    byMonth[mesiac].total += unit;
+    byMonth[mesiac].prods[prod] = (byMonth[mesiac].prods[prod] || 0) + unit;
+    if (prod === ourName.toUpperCase()) byMonth[mesiac].our += unit;
+
+    var oqKey = okres + '||' + qtr;
+    if (!byOkrQ[oqKey]) byOkrQ[oqKey] = { okres: okres, qtr: qtr, months: {} };
+    if (!byOkrQ[oqKey].months[month]) byOkrQ[oqKey].months[month] = { total: 0, our: 0, prods: {} };
+    byOkrQ[oqKey].months[month].total += unit;
+    byOkrQ[oqKey].months[month].prods[prod] = (byOkrQ[oqKey].months[month].prods[prod] || 0) + unit;
+    if (prod === ourName.toUpperCase()) byOkrQ[oqKey].months[month].our += unit;
+
+    var omKey = okres + '||' + mesiac;
+    if (!byOkrMonth[omKey]) byOkrMonth[omKey] = { okres: okres, mesiac: mesiac, total: 0, our: 0, prods: {} };
+    byOkrMonth[omKey].total += unit;
+    byOkrMonth[omKey].prods[prod] = (byOkrMonth[omKey].prods[prod] || 0) + unit;
+    if (prod === ourName.toUpperCase()) byOkrMonth[omKey].our += unit;
+  });
+
+  var skMsByMonth = {};
+  var skSheet = wb.Sheets['MS_SK'];
+  if (skSheet) {
+    var skRows = XLSX.utils.sheet_to_json(skSheet, { header: 1, raw: true, defval: '' });
+    if (skRows.length > 1) {
+      var skHdr = skRows[0].map(function(c){ return String(c || '').trim().toUpperCase(); });
+      var iM = skHdr.indexOf('MESIAC');
+      var iMSBox = skHdr.indexOf('MSBOX');
+      skRows.slice(1).forEach(function(row) {
+        var m = String(row[iM] || '').trim();
+        if (m && !isNaN(parseInt(m, 10))) skMsByMonth[m] = pct(row[iMSBox]);
+      });
+    }
+  }
+
+  Object.keys(byMonth).sort().forEach(function(m) {
+    var x = byMonth[m];
+    var terit = x.total > 0 ? (x.our / x.total * 100).toFixed(2) : '';
+    summaryRows.push([info.produkt, info.oblast, m, terit, skMsByMonth[m] || '']);
+  });
+
+  function monthListForQ(qtr) {
+    var q = parseInt(qtr.slice(2), 10);
+    return ({1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12]})[q] || [];
+  }
+  function msVal(bucket) { return bucket && bucket.total > 0 ? (bucket.our / bucket.total * 100).toFixed(2) : ''; }
+  function prodMs(bucket, prod) { return bucket && bucket.total > 0 ? (((bucket.prods[prod] || 0) / bucket.total) * 100).toFixed(2) : ''; }
+  function prodAvg(qData, months, prod) {
+    var s = 0, c = 0;
+    months.forEach(function(m) {
+      var v = parseFloat(prodMs(qData.months[m], prod));
+      if (!isNaN(v) && v > 0) { s += v; c++; }
+    });
+    return c ? s / c : 0;
+  }
+
+  Object.keys(byOkrQ).sort().forEach(function(key) {
+    var qData = byOkrQ[key];
+    var months = monthListForQ(qData.qtr);
+    if (!months.length) return;
+    var compNames = {};
+    months.forEach(function(m) {
+      var b = qData.months[m];
+      if (!b) return;
+      Object.keys(b.prods).forEach(function(p) { if (p !== ourName.toUpperCase()) compNames[p] = true; });
+    });
+    var compList = Object.keys(compNames).map(function(p) {
+      return { name: p, avg: prodAvg(qData, months, p), vals: months.map(function(m){ return prodMs(qData.months[m], p); }) };
+    }).filter(function(c){ return c.avg > 0; }).sort(function(a,b){ return b.avg - a.avg; }).slice(0,3);
+    var ourMs = months.map(function(m){ return msVal(qData.months[m]); });
+    var ourBox = months.map(function(m){ var b = qData.months[m]; return b ? (b.our || '') : ''; });
+    var totBox = months.map(function(m){ var b = qData.months[m]; return b ? (b.total || '') : ''; });
+    var outRow = [info.produkt, info.oblast, qData.okres, qData.qtr,
+      ourMs[0] || '', ourMs[1] || '', ourMs[2] || '',
+      ourBox[0] || '', ourBox[1] || '', ourBox[2] || '',
+      totBox[0] || '', totBox[1] || '', totBox[2] || ''];
+    for (var k = 0; k < 3; k++) {
+      var comp = compList[k];
+      outRow.push(comp ? comp.name : '', comp ? comp.vals[0] : '', comp ? comp.vals[1] : '', comp ? comp.vals[2] : '');
+    }
+    okresyRows.push(outRow);
+  });
+
+  var byOkres = {};
+  Object.keys(byOkrMonth).forEach(function(key) {
+    var x = byOkrMonth[key];
+    if (!byOkres[x.okres]) byOkres[x.okres] = [];
+    byOkres[x.okres].push(x);
+  });
+  Object.keys(byOkres).sort().forEach(function(okres) {
+    var rows = byOkres[okres].sort(function(a,b){ return a.mesiac.localeCompare(b.mesiac); });
+    var compNames = {};
+    rows.forEach(function(r) { Object.keys(r.prods).forEach(function(p){ if (p !== ourName.toUpperCase()) compNames[p] = true; }); });
+    var compList = Object.keys(compNames).map(function(p) {
+      var vals = rows.map(function(r){ return r.total > 0 ? (r.prods[p] || 0) / r.total * 100 : 0; });
+      var avg = vals.reduce(function(s,v){ return s + v; }, 0) / (vals.length || 1);
+      return { name: p, avg: avg, vals: vals };
+    }).filter(function(c){ return c.avg > 0; }).sort(function(a,b){ return b.avg - a.avg; }).slice(0, MAX_KOMP_GRAF);
+    rows.forEach(function(r, ri) {
+      var nasMs = r.total > 0 ? (r.our / r.total * 100).toFixed(2) : '';
+      var outRow = [info.produkt, info.oblast, okres, r.mesiac, nasMs];
+      for (var k = 0; k < MAX_KOMP_GRAF; k++) {
+        var comp = compList[k];
+        outRow.push(comp ? comp.name : '', comp ? comp.vals[ri].toFixed(2) : '');
+      }
+      okrGrafRows.push(outRow);
+    });
   });
 }
 
