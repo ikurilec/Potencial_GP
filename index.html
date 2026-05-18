@@ -2425,7 +2425,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.39';
+var APP_VERSION = '2.21.40';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11753,34 +11753,44 @@ function plnenieBuildAggregates(resp, q) {
   // do planEUR a predajeEUR započítavame IBA produkty, kde DANÝ rep má plán > 0.
   // Rep bez plánu na produkt X nekontribuuje svojimi predajmi pre X do svojho %.
   var activeReps = plnenieGetActiveReps();
-  var curMonthForPred = (new Date()).getMonth() + 1;
+  var aggYear = (typeof PL_STATE !== 'undefined' && PL_STATE.year) ? PL_STATE.year : (new Date()).getFullYear();
   var qMonths = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[q] || [];
+  var repPredictionParts = {};
+  function predBasisForProduct(qPlan, parts) {
+    return plneniePlanForPredictionParts(aggYear, q, qPlan, parts);
+  }
+  function predActualForProduct(byMonth, parts, key) {
+    return plnenieActualForPredictionParts(byMonth, parts, key);
+  }
   var repAgg = {};
   activeReps.forEach(function(rep){
     var rPlan = plan[rep] || {};
     var rPredajeTotal = (predaje[rep] && predaje[rep].total) || {};
     var rByMonth = (predaje[rep] && predaje[rep].byMonth) || {};
-    var planEUR = 0, predajeEUR = 0, predajeEURDone = 0;
+    var planKeys = allProdKeys.filter(function(key){ return prodVal(rPlan, key) > 0; });
+    var predParts = plneniePredictionMonthParts(q, aggYear, rByMonth, planKeys);
+    repPredictionParts[rep] = predParts;
+    var planEUR = 0, predajeEUR = 0, predajeEURDone = 0, predPlanEURDone = 0;
     allProdKeys.forEach(function(key){
       var p = prodVal(rPlan, key);
       if (p > 0) {
         planEUR += p;
         predajeEUR += prodVal(rPredajeTotal, key);
-        for (var m = 1; m <= 12; m++) {
-          if (m < curMonthForPred && qMonths.indexOf(m) >= 0 && rByMonth[m]) predajeEURDone += prodVal(rByMonth[m], key);
-        }
+        predajeEURDone += predActualForProduct(rByMonth, predParts, key);
+        predPlanEURDone += predBasisForProduct(p, predParts);
       }
     });
     var pct = (planEUR > 0) ? (predajeEUR / planEUR * 100) : null;
-    repAgg[rep] = { planEUR: planEUR, predajeEUR: predajeEUR, predajeEURDone: predajeEURDone, pct: pct };
+    repAgg[rep] = { planEUR: planEUR, predajeEUR: predajeEUR, predajeEURDone: predajeEURDone, predPlanEURDone: predPlanEURDone, pct: pct };
   });
 
   // Sumár pre aktívnych repov (Slovensko / West / East podľa roly)
-  var skPlan = 0, skPredaje = 0, skPredajeDone = 0;
+  var skPlan = 0, skPredaje = 0, skPredajeDone = 0, skPredPlanDone = 0;
   activeReps.forEach(function(rep){
     skPlan += repAgg[rep].planEUR;
     skPredaje += repAgg[rep].predajeEUR;
     skPredajeDone += repAgg[rep].predajeEURDone;
+    skPredPlanDone += repAgg[rep].predPlanEURDone || 0;
   });
   var skPct = (skPlan > 0) ? (skPredaje / skPlan * 100) : null;
 
@@ -11788,18 +11798,20 @@ function plnenieBuildAggregates(resp, q) {
   var regionAgg = {};
   [['west', MGR_AM_WEST], ['east', MGR_AM_EAST]].forEach(function(pair){
     var regionKey = pair[0], list = pair[1];
-    var rPlan = 0, rPredaje = 0, rPredajeDone = 0;
+    var rPlan = 0, rPredaje = 0, rPredajeDone = 0, rPredPlanDone = 0;
     list.forEach(function(rep){
       if (repAgg[rep]) {
         rPlan += repAgg[rep].planEUR;
         rPredaje += repAgg[rep].predajeEUR;
         rPredajeDone += repAgg[rep].predajeEURDone;
+        rPredPlanDone += repAgg[rep].predPlanEURDone || 0;
       }
     });
     regionAgg[regionKey] = {
       planEUR: rPlan,
       predajeEUR: rPredaje,
       predajeEURDone: rPredajeDone,
+      predPlanEURDone: rPredPlanDone,
       pct: (rPlan > 0) ? (rPredaje / rPlan * 100) : null
     };
   });
@@ -11807,16 +11819,16 @@ function plnenieBuildAggregates(resp, q) {
   // Per-produkt summary — iba produkty, kde aspoň jeden aktívny rep má plán > 0.
   var productsToShow = [];
   allProdKeys.forEach(function(key){
-    var pSum = 0, sSum = 0, sSumDone = 0;
+    var pSum = 0, sSum = 0, sSumDone = 0, sPredPlanDone = 0;
     activeReps.forEach(function(rep){
       var p = prodVal(plan[rep], key);
       if (p > 0) {
         pSum += p;
         sSum += prodVal((predaje[rep] && predaje[rep].total) || {}, key);
         var rByMonth = (predaje[rep] && predaje[rep].byMonth) || {};
-        for (var m = 1; m <= 12; m++) {
-          if (m < curMonthForPred && qMonths.indexOf(m) >= 0 && rByMonth[m]) sSumDone += prodVal(rByMonth[m], key);
-        }
+        var predParts = repPredictionParts[rep] || [];
+        sSumDone += predActualForProduct(rByMonth, predParts, key);
+        sPredPlanDone += predBasisForProduct(p, predParts);
       }
     });
     if (pSum > 0) {
@@ -11826,6 +11838,7 @@ function plnenieBuildAggregates(resp, q) {
         planEUR: pSum,
         predajeEUR: sSum,
         predajeEURDone: sSumDone,
+        predPlanEURDone: sPredPlanDone,
         pct: sSum / pSum * 100
       });
     }
@@ -11854,6 +11867,7 @@ function plnenieBuildAggregates(resp, q) {
       planEUR: famPlan,
       predajeEUR: famSales,
       predajeEURDone: famDone,
+      predPlanEURDone: (aflKr.predPlanEURDone || 0) + (aflTbl.predPlanEURDone || 0),
       pct: famPlan > 0 ? (famSales / famPlan * 100) : null
     });
   }
@@ -11865,6 +11879,7 @@ function plnenieBuildAggregates(resp, q) {
       planEUR: repAgg[rep].planEUR,
       predajeEUR: repAgg[rep].predajeEUR,
       predajeEURDone: repAgg[rep].predajeEURDone,
+      predPlanEURDone: repAgg[rep].predPlanEURDone,
       pct: repAgg[rep].pct
     };
   });
@@ -11876,7 +11891,7 @@ function plnenieBuildAggregates(resp, q) {
   });
 
   return {
-    sk: { planEUR: skPlan, predajeEUR: skPredaje, predajeEURDone: skPredajeDone, pct: skPct },
+    sk: { planEUR: skPlan, predajeEUR: skPredaje, predajeEURDone: skPredajeDone, predPlanEURDone: skPredPlanDone, pct: skPct },
     regions: regionAgg,
     products: productsToShow,
     reps: repList
@@ -11928,7 +11943,7 @@ function plnenieRenderSummary() {
   // Predikcia pre summary — sk.predajeEUR delíme súčtom mesačných plánov pre dokončené mesiace
   var predEl = document.getElementById('pl-sum-pred');
   if (predEl) {
-    var skPredikcia = plnenieCalcPredikciaSummary(sk.planEUR, sk.predajeEURDone, PL_STATE.q, PL_STATE.year);
+    var skPredikcia = plnenieCalcPredikciaSummary(sk.planEUR, sk.predajeEURDone, PL_STATE.q, PL_STATE.year, sk.predPlanEURDone);
     if (skPredikcia !== null) {
       predEl.style.display = '';
       predEl.innerHTML = 'predikcia konca kvartálu <span>' + plnenieFormatPct(skPredikcia) + '</span>';
@@ -11954,7 +11969,7 @@ function plnenieRenderSummary() {
       prods.innerHTML = agg.products.map(function(p){
         var safeKey = p.key.replace(/'/g, "\\'");
         var safeLbl = p.label.replace(/'/g, "\\'");
-        var predPct = plnenieCalcPredikciaSummary(p.planEUR, p.predajeEURDone, PL_STATE.q, PL_STATE.year);
+        var predPct = plnenieCalcPredikciaSummary(p.planEUR, p.predajeEURDone, PL_STATE.q, PL_STATE.year, p.predPlanEURDone);
         var predHtml = predPct !== null
           ? '<span style="font-size:11.5px;color:#64748B;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;min-width:0">predikcia <strong style="color:#334155;font-weight:700;font-size:11.5px">' + plnenieFormatPct(predPct) + '</strong></span>'
           : '';
@@ -12514,7 +12529,7 @@ function plnenieRenderRegions() {
   }
   var westPred = document.getElementById('pl-region-west-pred');
   if (westPred) {
-    var wp = plnenieCalcPredikciaSummary(regions.west.planEUR, regions.west.predajeEURDone, PL_STATE.q, PL_STATE.year);
+    var wp = plnenieCalcPredikciaSummary(regions.west.planEUR, regions.west.predajeEURDone, PL_STATE.q, PL_STATE.year, regions.west.predPlanEURDone);
     if (wp !== null) { westPred.style.display = ''; westPred.innerHTML = 'predikcia <span>' + plnenieFormatPct(wp) + '</span>'; }
     else { westPred.style.display = 'none'; }
   }
@@ -12525,7 +12540,7 @@ function plnenieRenderRegions() {
   }
   var eastPred = document.getElementById('pl-region-east-pred');
   if (eastPred) {
-    var ep = plnenieCalcPredikciaSummary(regions.east.planEUR, regions.east.predajeEURDone, PL_STATE.q, PL_STATE.year);
+    var ep = plnenieCalcPredikciaSummary(regions.east.planEUR, regions.east.predajeEURDone, PL_STATE.q, PL_STATE.year, regions.east.predPlanEURDone);
     if (ep !== null) { eastPred.style.display = ''; eastPred.innerHTML = 'predikcia <span>' + plnenieFormatPct(ep) + '</span>'; }
     else { eastPred.style.display = 'none'; }
   }
@@ -12751,7 +12766,7 @@ function buildPlnenieQPeekHtml(q) {
 
   // Predikcia
   var predEUR = (sk.planEUR > 0)
-    ? plnenieCalcPredikciaSummary(sk.planEUR, sk.predajeEURDone || 0, q, PL_STATE.year)
+    ? plnenieCalcPredikciaSummary(sk.planEUR, sk.predajeEURDone || 0, q, PL_STATE.year, sk.predPlanEURDone)
     : null;
   var predHtml = (predEUR !== null)
     ? '<div class="pl-sum-pred" style="margin-top:14px;font-size:11px;color:#94A3B8;text-align:center;border-top:1px solid #F1F5F9;padding-top:10px">predikcia konca kvartálu <span style="color:#0F172A;font-weight:700;margin-left:4px">' + plnenieFormatPct(predEUR) + '</span></div>'
@@ -12770,7 +12785,7 @@ function buildPlnenieQPeekHtml(q) {
       var rPctCls = plnenieColorClass(rd.pct);
       var rPctText = (rd.pct !== null && rd.pct !== undefined && !isNaN(rd.pct)) ? plnenieFormatPct(rd.pct) : '—';
       var rPredEUR = (rd.planEUR > 0)
-        ? plnenieCalcPredikciaSummary(rd.planEUR, rd.predajeEURDone || 0, q, PL_STATE.year) : null;
+        ? plnenieCalcPredikciaSummary(rd.planEUR, rd.predajeEURDone || 0, q, PL_STATE.year, rd.predPlanEURDone) : null;
       var rPredText = rPredEUR !== null ? plnenieFormatPct(rPredEUR) : '—';
       regionsHtml +=
         '<div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:12px 14px;text-align:center">' +
@@ -13042,6 +13057,13 @@ var PL_WORKING_DAYS_MAP = {
           7: 23, 8: 21, 9: 21, 10: 22, 11: 21, 12: 21 }
 };
 
+// Pracovné dni od 1. do 15. dňa v mesiaci vrátane (Po-Pi mínus SK sviatky).
+// Používa sa pri polmesačných predajoch, ktoré chodia približne v polovici mesiaca.
+var PL_WORKING_DAYS_HALF_MAP = {
+  2026: { 1: 9, 2: 10, 3: 10, 4: 9, 5: 9, 6: 11,
+          7: 11, 8: 10, 9: 9, 10: 11, 11: 10, 12: 11 }
+};
+
 function plnenieWorkingDays(year, month) {
   if (PL_WORKING_DAYS_MAP[year] && PL_WORKING_DAYS_MAP[year][month] !== undefined) {
     return PL_WORKING_DAYS_MAP[year][month];
@@ -13054,6 +13076,19 @@ function plnenieWorkingDays(year, month) {
     if (wd !== 0 && wd !== 6) count++;
   }
   return count;
+}
+
+function plnenieWorkingDaysHalf(year, month) {
+  if (PL_WORKING_DAYS_HALF_MAP[year] && PL_WORKING_DAYS_HALF_MAP[year][month] !== undefined) {
+    return PL_WORKING_DAYS_HALF_MAP[year][month];
+  }
+  var last = Math.min(15, new Date(year, month, 0).getDate());
+  var count = 0;
+  for (var d = 1; d <= last; d++) {
+    var wd = new Date(year, month - 1, d).getDay();
+    if (wd !== 0 && wd !== 6) count++;
+  }
+  return Math.min(count, plnenieWorkingDays(year, month));
 }
 
 // Rozdelí Q plán na mesiace proporcionálne podľa pracovných dní.
@@ -13075,6 +13110,61 @@ function plnenieMonthlyPlans(year, q, qPlanTotal) {
   return out;
 }
 
+function plnenieMonthHasSales(row, productKeys) {
+  if (!row) return false;
+  var keys = (productKeys && productKeys.length) ? productKeys : Object.keys(row);
+  return keys.some(function(key) {
+    var v = parseFloat(row[key]);
+    return !isNaN(v) && v !== 0;
+  });
+}
+
+function plneniePredictionMonthParts(q, year, predajeByMonth, productKeys, now) {
+  var d = now || new Date();
+  var curMonth = d.getMonth() + 1;
+  var curQ = Math.ceil(curMonth / 3);
+  if (q !== curQ) return [];
+  var months = plnenieQuarterMonths(q);
+  var parts = [];
+  months.forEach(function(m) {
+    var row = predajeByMonth && predajeByMonth[m] ? predajeByMonth[m] : null;
+    if (!plnenieMonthHasSales(row, productKeys)) return;
+    if (m < curMonth) parts.push({ month: m, mode: 'full' });
+    else if (m === curMonth) parts.push({ month: m, mode: 'half' });
+  });
+  return parts;
+}
+
+function plneniePlanForPredictionParts(year, q, qPlanTotal, parts) {
+  if (!qPlanTotal || qPlanTotal <= 0 || !parts || !parts.length) return 0;
+  var qMonths = plnenieQuarterMonths(q);
+  var totalWd = plnenieWorkingDaysForMonths(year, qMonths);
+  if (totalWd <= 0) return 0;
+  return parts.reduce(function(sum, p) {
+    var wd = p.mode === 'half'
+      ? plnenieWorkingDaysHalf(year, p.month)
+      : plnenieWorkingDays(year, p.month);
+    return sum + (qPlanTotal * wd / totalWd);
+  }, 0);
+}
+
+function plnenieActualForPredictionParts(predajeByMonth, parts, productKey) {
+  var sum = 0;
+  (parts || []).forEach(function(p) {
+    var row = predajeByMonth && predajeByMonth[p.month] ? predajeByMonth[p.month] : {};
+    if (productKey) {
+      var v = parseFloat(row[productKey]);
+      if (!isNaN(v)) sum += v;
+    } else {
+      Object.keys(row).forEach(function(k) {
+        var n = parseFloat(row[k]);
+        if (!isNaN(n)) sum += n;
+      });
+    }
+  });
+  return sum;
+}
+
 // Vypočíta predikciu plnenia konca Q na základe dokončených mesiacov.
 // Používa len mesiace pred aktuálnym mesiacom (m < curMonth) kde existujú predaje.
 // predajeByMonth: { m: { prodKey: EUR, ... }, ... }
@@ -13084,8 +13174,13 @@ function plnenieMonthlyPlans(year, q, qPlanTotal) {
 // Predikcia pre súhrnné karty (SK, West, East) — predajeEUR musí byť len za dokončené mesiace (predajeEURDone).
 // Delí súčtom mesačných plánov pre dokončené mesiace.
 function plnenieCalcPredikciaSummary(qPlanTotal, predajeEUR, q, year) {
+  var predPlanBasis = arguments.length >= 5 ? arguments[4] : null;
   if (plnenieCurrentQ() !== q) return null;
   if (!qPlanTotal || qPlanTotal <= 0) return null;
+  if (predPlanBasis !== null && predPlanBasis !== undefined) {
+    predPlanBasis = parseFloat(predPlanBasis) || 0;
+    return predPlanBasis > 0 ? (predajeEUR / predPlanBasis * 100) : null;
+  }
   var months = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[q] || [];
   var curMonth = (new Date()).getMonth() + 1;
   var monthlyPlans = plnenieMonthlyPlans(year, q, qPlanTotal);
@@ -13101,24 +13196,9 @@ function plnenieCalcPredikciaSummary(qPlanTotal, predajeEUR, q, year) {
 function plnenieCalcPredikcia(q, year, qPlanTotal, predajeByMonth, productKey) {
   if (plnenieCurrentQ() !== q) return null; // len aktuálny Q
   if (!qPlanTotal || qPlanTotal <= 0) return null;
-  var months = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[q] || [];
-  var curMonth = (new Date()).getMonth() + 1;
-  var monthlyPlans = plnenieMonthlyPlans(year, q, qPlanTotal);
-  var sumActual = 0, sumPlan = 0;
-  months.forEach(function(m) {
-    if (m >= curMonth) return; // len dokončené mesiace
-    var mPlan = monthlyPlans[m] || 0;
-    if (mPlan <= 0) return;
-    var monthData = predajeByMonth[m] || {};
-    var mActual = 0;
-    if (productKey) {
-      mActual = parseFloat(monthData[productKey]); if (isNaN(mActual)) mActual = 0;
-    } else {
-      Object.keys(monthData).forEach(function(k) { var v = parseFloat(monthData[k]); if (!isNaN(v)) mActual += v; });
-    }
-    sumActual += mActual;
-    sumPlan += mPlan;
-  });
+  var parts = plneniePredictionMonthParts(q, year, predajeByMonth, null);
+  var sumActual = plnenieActualForPredictionParts(predajeByMonth, parts, productKey);
+  var sumPlan = plneniePlanForPredictionParts(year, q, qPlanTotal, parts);
   if (sumPlan <= 0) return null;
   return sumActual / sumPlan * 100;
 }
@@ -13152,6 +13232,20 @@ function plnenieComparableMonths(q, year, asOfMonth) {
   return months;
 }
 
+function plnenieWorkingDaysForParts(year, parts) {
+  return (parts || []).reduce(function(sum, p) {
+    return sum + (p.mode === 'half' ? plnenieWorkingDaysHalf(year, p.month) : plnenieWorkingDays(year, p.month));
+  }, 0);
+}
+
+function plnenieEquivalentQuarterParts(parts, targetQ) {
+  var targetMonths = plnenieQuarterMonths(targetQ);
+  return (parts || []).map(function(p, idx) {
+    if (!targetMonths[idx]) return null;
+    return { month: targetMonths[idx], mode: p.mode };
+  }).filter(Boolean);
+}
+
 function plnenieSumProductMonths(byMonth, months, key) {
   var sum = 0;
   months.forEach(function(m) {
@@ -13162,11 +13256,31 @@ function plnenieSumProductMonths(byMonth, months, key) {
   return sum;
 }
 
+function plnenieSumProductParts(byMonth, parts, key) {
+  var sum = 0;
+  (parts || []).forEach(function(p) {
+    var row = byMonth && byMonth[p.month] ? byMonth[p.month] : {};
+    var v = parseFloat(row[key]);
+    if (!isNaN(v)) sum += v;
+  });
+  return sum;
+}
+
 function plnenieWorkingDaysForMonths(year, months) {
   return (months || []).reduce(function(sum, m){ return sum + plnenieWorkingDays(year, m); }, 0);
 }
 
-function plneniePeriodDataLabel(q, year, asOfMonth) {
+function plneniePeriodDataLabel(q, year, asOfMonth, predajeByMonth, productKeys) {
+  if (predajeByMonth) {
+    var parts = plneniePredictionMonthParts(q, year, predajeByMonth, productKeys);
+    if (parts.length) {
+      var partText = parts.map(function(p) {
+        var lbl = PL_MONTH_LABELS[p.month] || ('M' + p.month);
+        return p.mode === 'half' ? (lbl + ' do 15.') : lbl;
+      }).join(' + ');
+      return plnenieQLabel(q, year) + ' · ' + partText;
+    }
+  }
   var months = plnenieComparableMonths(q, year, asOfMonth);
   var monthText = months.map(function(m){ return PL_MONTH_LABELS[m] || ('M' + m); }).join(' + ');
   return plnenieQLabel(q, year) + (monthText ? ' · ' + monthText : '');
@@ -13185,11 +13299,17 @@ function plnenieWorkingDaysElapsedInMonth(year, month) {
   return Math.min(count, plnenieWorkingDays(year, month));
 }
 
-function plnenieExpectedProgressPct(year, q, asOfMonth) {
+function plnenieExpectedProgressPct(year, q, asOfMonth, predajeByMonth, productKeys) {
   var months = plnenieQuarterMonths(q);
   var curQ = plnenieCurrentQ();
   if (q < curQ) return 100;
   if (q > curQ) return 0;
+  if (predajeByMonth) {
+    var parts = plneniePredictionMonthParts(q, year, predajeByMonth, productKeys);
+    var partWd = plnenieWorkingDaysForParts(year, parts);
+    var qWd = plnenieWorkingDaysForMonths(year, months);
+    return qWd > 0 ? Math.min(100, Math.max(0, partWd / qWd * 100)) : 0;
+  }
   var curMonth = (new Date()).getMonth() + 1;
   var totalWd = plnenieWorkingDaysForMonths(year, months);
   if (totalWd <= 0) return 0;
@@ -13258,8 +13378,9 @@ function plnenieRepActionSummaryHtml(opts) {
     .filter(function(key, idx, arr){ return arr.indexOf(key) === idx && (parseFloat(plan[key]) || 0) > 0; });
   var totalPlan = products.reduce(function(sum, key){ return sum + (parseFloat(plan[key]) || 0); }, 0);
   var asOfMonth = plnenieLastSalesMonthInQ(predajeByMonth, q, products);
+  var predictionParts = plneniePredictionMonthParts(q, year, predajeByMonth, products);
   var rows = [];
-  var expectedPct = plnenieExpectedProgressPct(year, q, asOfMonth);
+  var expectedPct = plnenieExpectedProgressPct(year, q, asOfMonth, predajeByMonth, products);
 
   var risks = products.map(function(key) {
     var pPlan = parseFloat(plan[key]) || 0;
@@ -13324,14 +13445,15 @@ function plnenieRepActionSummaryHtml(opts) {
 
   var prev = plneniePrevQuarterRef(state, q);
   var curMonths = plnenieComparableMonths(q, year, asOfMonth);
-  if (prev && curMonths.length) {
-    var prevMonths = plnenieQuarterMonths(prev.q).slice(0, curMonths.length);
-    var curWd = plnenieWorkingDaysForMonths(year, curMonths);
-    var prevWd = plnenieWorkingDaysForMonths(year, prevMonths);
+  if (prev && (predictionParts.length || curMonths.length)) {
+    var curParts = predictionParts.length ? predictionParts : curMonths.map(function(m){ return { month:m, mode:'full' }; });
+    var prevParts = plnenieEquivalentQuarterParts(curParts, prev.q);
+    var curWd = plnenieWorkingDaysForParts(year, curParts);
+    var prevWd = plnenieWorkingDaysForParts(year, prevParts);
     var prevByMonth = (prev.data.predaje && prev.data.predaje[username] && prev.data.predaje[username].byMonth) || {};
     var trendRows = products.map(function(key) {
-      var curSales = plnenieSumProductMonths(predajeByMonth, curMonths, key);
-      var prevSales = plnenieSumProductMonths(prevByMonth, prevMonths, key);
+      var curSales = plnenieSumProductParts(predajeByMonth, curParts, key);
+      var prevSales = plnenieSumProductParts(prevByMonth, prevParts, key);
       var curRate = curWd > 0 ? curSales / curWd : 0;
       var prevRate = prevWd > 0 ? prevSales / prevWd : 0;
       if (prevRate <= 0 || curRate <= 0) return null;
@@ -13380,7 +13502,7 @@ function plnenieRepActionSummaryHtml(opts) {
 
   if (!rows.length) return '';
   return '<div class="pl-action-card">' +
-    '<div class="pl-action-head"><div class="pl-action-title">' + mgrEscape(title) + '</div><div class="pl-action-q">' + mgrEscape(plneniePeriodDataLabel(q, year, asOfMonth)) + '</div></div>' +
+    '<div class="pl-action-head"><div class="pl-action-title">' + mgrEscape(title) + '</div><div class="pl-action-q">' + mgrEscape(plneniePeriodDataLabel(q, year, asOfMonth, predajeByMonth, products)) + '</div></div>' +
     '<div class="pl-action-list">' +
       rows.slice(0, 3).map(function(r) {
         return '<div class="pl-action-row ' + (r.cls || '') + '">' +
@@ -13541,7 +13663,7 @@ function plnenieRenderDetail() {
   var repColorCls = plnenieDetailColorClass(repPct);
   var resp = PL_STATE.data || {};
   var predajeByMonth = (resp.predaje && resp.predaje[username] && resp.predaje[username].byMonth) || {};
-  var repPredikcia = repRow ? plnenieCalcPredikciaSummary(repRow.planEUR, repRow.predajeEURDone, PL_STATE.q, PL_STATE.year) : null;
+  var repPredikcia = repRow ? plnenieCalcPredikciaSummary(repRow.planEUR, repRow.predajeEURDone, PL_STATE.q, PL_STATE.year, repRow.predPlanEURDone) : null;
 
   // Tmavá súhrnná karta
   var noData = (repPlan === 0 && repPredaje === 0);
@@ -13720,12 +13842,13 @@ function plnenieRenderDetailTrend(username) {
     var pct = null;
     var repPlanEUR = 0;
     var predajeEURDone = 0;
+    var predPlanEURDone = null;
     if (cached && cached.aggregates && cached.aggregates.reps) {
       for (var i = 0; i < cached.aggregates.reps.length; i++) {
-        if (cached.aggregates.reps[i].username === username) { pct = cached.aggregates.reps[i].pct; repPlanEUR = cached.aggregates.reps[i].planEUR || 0; predajeEURDone = cached.aggregates.reps[i].predajeEURDone || 0; break; }
+        if (cached.aggregates.reps[i].username === username) { pct = cached.aggregates.reps[i].pct; repPlanEUR = cached.aggregates.reps[i].planEUR || 0; predajeEURDone = cached.aggregates.reps[i].predajeEURDone || 0; predPlanEURDone = cached.aggregates.reps[i].predPlanEURDone; break; }
       }
     }
-    var predikcia = plnenieCalcPredikciaSummary(repPlanEUR, predajeEURDone, q, year);
+    var predikcia = plnenieCalcPredikciaSummary(repPlanEUR, predajeEURDone, q, year, predPlanEURDone);
     qData.push({ q: q, pct: pct, predikcia: predikcia, isCurrent: q === curQ, isFuture: q > curQ });
   }
 
@@ -14016,15 +14139,15 @@ function aflamilFamilyHtml(plan, predajeTotal, predajeByMonth, qMonths, mileston
   var tblMP    = plnenieMonthlyPlans(year, q, tblPlan);
   var krMP     = plnenieMonthlyPlans(year, q, krPlan);
 
-  // Predikcia: súčet tbl+kr za dokončené mesiace
-  var famPredajeEURDone = 0;
-  qMonths.forEach(function(m) {
-    if (m < curMonth) {
-      famPredajeEURDone += (parseFloat((predajeByMonth[m] || {})[tblKey]) || 0) +
-                           (parseFloat((predajeByMonth[m] || {})[krKey])  || 0);
-    }
-  });
-  var famPredikcia = plnenieCalcPredikciaSummary(famPlan, famPredajeEURDone, q, year);
+  // Predikcia: ukončené mesiace + aktuálny mesiac ako polmesiac, ak už má dáta
+  var famPredParts = plneniePredictionMonthParts(q, year, predajeByMonth, [tblKey, krKey]);
+  var famPredajeEURDone =
+    plnenieActualForPredictionParts(predajeByMonth, famPredParts, tblKey) +
+    plnenieActualForPredictionParts(predajeByMonth, famPredParts, krKey);
+  var famPredPlanDone =
+    plneniePlanForPredictionParts(year, q, tblPlan, famPredParts) +
+    plneniePlanForPredictionParts(year, q, krPlan, famPredParts);
+  var famPredikcia = plnenieCalcPredikciaSummary(famPlan, famPredajeEURDone, q, year, famPredPlanDone);
   var famPredHtml = (famPredikcia !== null && famPlan > 0)
     ? '<div class="prod-pred">predikcia konca kvartálu <span>' + plnenieFormatPct(famPredikcia) + '</span></div>'
     : '';
@@ -14108,7 +14231,7 @@ function repPlnenieRender() {
   var repPredaje = repRow ? repRow.predajeEUR : 0;
   var repColorCls = plnenieDetailColorClass(repPct);
   var noData = (repPlan === 0 && repPredaje === 0);
-  var repPredikcia = repRow ? plnenieCalcPredikciaSummary(repRow.planEUR, repRow.predajeEURDone, REP_PL_STATE.q, REP_PL_STATE.year) : null;
+  var repPredikcia = repRow ? plnenieCalcPredikciaSummary(repRow.planEUR, repRow.predajeEURDone, REP_PL_STATE.q, REP_PL_STATE.year, repRow.predPlanEURDone) : null;
 
   // Celková karta
   if (totalCardEl) {
@@ -14258,12 +14381,13 @@ function repPlnenieRenderTrend(username) {
     var pct = null;
     var repPlanEUR = 0;
     var predajeEURDone = 0;
+    var predPlanEURDone = null;
     if (cached && cached.aggregates && cached.aggregates.reps) {
       for (var i = 0; i < cached.aggregates.reps.length; i++) {
-        if (cached.aggregates.reps[i].username === username) { pct = cached.aggregates.reps[i].pct; repPlanEUR = cached.aggregates.reps[i].planEUR || 0; predajeEURDone = cached.aggregates.reps[i].predajeEURDone || 0; break; }
+        if (cached.aggregates.reps[i].username === username) { pct = cached.aggregates.reps[i].pct; repPlanEUR = cached.aggregates.reps[i].planEUR || 0; predajeEURDone = cached.aggregates.reps[i].predajeEURDone || 0; predPlanEURDone = cached.aggregates.reps[i].predPlanEURDone; break; }
       }
     }
-    var predikcia = plnenieCalcPredikciaSummary(repPlanEUR, predajeEURDone, q, year);
+    var predikcia = plnenieCalcPredikciaSummary(repPlanEUR, predajeEURDone, q, year, predPlanEURDone);
     qData.push({ q: q, pct: pct, predikcia: predikcia, isCurrent: q === curQ });
   }
 
