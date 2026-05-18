@@ -26,6 +26,13 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.40 — Plnenie: polmesačné predaje v predikcii
+
+- Predikcie v aktuálnom kvartáli už nepoužívajú iba ukončené mesiace, ale aj aktuálny mesiac ako polmesačné predaje, ak sú v dátach nahraté.
+- Dopĺňa sa `PL_WORKING_DAYS_HALF_MAP` pre rok 2026: pracovné dni od 1. do 15. dňa vrátane. Ukončené mesiace sa rátajú cez celý fond pracovných dní, aktuálny nahratý mesiac cez polmesačný fond.
+- Predikcia, regióny, produktové karty, detail reprezentanta, Aflamil family a akčný súhrn používajú rovnaký základ: napr. v máji `Apr + Máj do 15.`, v júni už `Apr + Máj`.
+- Pridaný test `tests/plnenie_half_month_prediction_test.js` pre scenár `18.05.2026`, aby májové predaje neboli porovnané voči celému májovému plánu. Verzia bumpnutá na `2.21.40`.
+
 ### v2.21.39 — Lekárne: fallback párovanie osloveného Krému podľa stĺpcov
 
 - Backend pri čítaní `Lekarne_Krem_Oslovene` už nepoužíva iba uložený `key`, ale vytvorí aj záložný kľúč zo stĺpcov `okres`, `mesto`, `lekaren`.
