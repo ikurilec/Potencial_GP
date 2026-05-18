@@ -26,6 +26,13 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.32 — Trhový podiel: okresové signály a lepší product sheet
+
+- Do detailu **Trhový podiel** pribudol celkový signál podľa posledných dvoch dostupných PharmaData mesiacov.
+- V rozpade po okresoch je jednotná informačná bublina s počtom pacientov a signálom okresu; hodnoty rastu/poklesu sú farebne zvýraznené.
+- Tabuľka MS po okresoch má čitateľnejší kartový dizajn a produkty sa radia podľa posledného dostupného mesiaca od najvyššieho MS po najnižší, pričom náš produkt ostáva modro zvýraznený.
+- Product drill-down sheet v Plnení zobrazuje v hlavičke aj celkový plán aktuálneho Q pre zvolený produkt/subprodukt. Verzia bumpnutá na `2.21.32`.
+
 ### v2.21.31 — What's New: akčný súhrn v Plnení
 
 - Pridaný nový WN kľúč `potencial_vl_wn_v2_21_31_action_summary`, ktorý sa každému používateľovi zobrazí iba raz.
