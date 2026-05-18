@@ -26,6 +26,11 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.36 — Junod okresový graf: MS% boxov label
+
+- Fullscreen okresový graf pri Junode už v podnadpise nepíše **MS% pacientov**, ale **MS% boxov**.
+- Ostatné produkty ďalej používajú label **MS% pacientov**. Verzia bumpnutá na `2.21.36`.
+
 ### v2.21.35 — Trhový podiel: teritoriálny wording v signále
 
 - Celkový signál Trhového podielu pri pozitívnom raste píše **Produkt získava pozíciu v teritóriu**.
