@@ -23,7 +23,8 @@ const sandbox = {};
 vm.createContext(sandbox);
 vm.runInContext(
   extractFunction('lkNormText_') + '\n' +
-  extractFunction('lkNormKey_'),
+  extractFunction('lkNormKey_') + '\n' +
+  extractFunction('lkContactKeyParts_'),
   sandbox
 );
 
@@ -33,6 +34,13 @@ const fromLekarneBal = ' košice 4 ||| KOŠICE ||| Pri Aréne, Žižkova 3836/1 
 assert.strictEqual(
   sandbox.lkNormKey_(fromContactSheet),
   sandbox.lkNormKey_(fromLekarneBal)
+);
+
+const hdr = ['month', 'login', 'key', 'okres', 'mesto', 'lekaren', 'contacted_at'];
+const row = ['2026-05', 'a.makis', '', 'Košice 4', 'Košice', 'Pri Aréne, Žižkova 3836/1', ''];
+assert.strictEqual(
+  sandbox.lkNormKey_(sandbox.lkContactKeyParts_(row, hdr)),
+  sandbox.lkNormKey_('Košice 4|||Košice|||Pri Aréne, Žižkova 3836/1')
 );
 
 console.log('lekarne cream contact key normalization test passed');

@@ -980,6 +980,18 @@ function lkNormKey_(key) {
   }).join('|||');
 }
 
+function lkContactKeyParts_(row, hdr) {
+  var cOkr = hdr.indexOf('okres');
+  var cMesto = hdr.indexOf('mesto');
+  var cLek = hdr.indexOf('lekaren');
+  if (cOkr < 0 || cMesto < 0 || cLek < 0) return '';
+  var okres = String(row[cOkr] || '').trim();
+  var mesto = String(row[cMesto] || '').trim();
+  var lekaren = String(row[cLek] || '').trim();
+  if (!okres && !mesto && !lekaren) return '';
+  return okres + '|||' + mesto + '|||' + lekaren;
+}
+
 function lkKremContactSheet_(ss) {
   var sheet = ss.getSheetByName('Lekarne_Krem_Oslovene');
   var headers = ['month', 'login', 'key', 'okres', 'mesto', 'lekaren', 'contacted_at'];
@@ -1011,11 +1023,14 @@ function lkReadKremContacts_(ss, monthKey) {
     if (rowMonth !== mKey) continue;
     var login = String(data[i][cLogin] || '').trim().toLowerCase();
     var key = String(data[i][cKey] || '').trim();
-    if (!login || !key) continue;
-    out[login + '|||' + lkNormKey_(key)] = {
+    var partKey = lkContactKeyParts_(data[i], hdr);
+    if (!login || (!key && !partKey)) continue;
+    var contact = {
       contacted: true,
       contactedAt: cAt >= 0 && data[i][cAt] instanceof Date ? data[i][cAt].toISOString() : String(cAt >= 0 ? data[i][cAt] || '' : '')
     };
+    if (key) out[login + '|||' + lkNormKey_(key)] = contact;
+    if (partKey) out[login + '|||' + lkNormKey_(partKey)] = contact;
   }
   return out;
 }
