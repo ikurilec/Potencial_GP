@@ -2425,7 +2425,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.35';
+var APP_VERSION = '2.21.36';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -14988,7 +14988,7 @@ function openPharmaOkresChart(r, prodLabel) {
   var legEl   = document.getElementById('pharma-okres-legend');
 
   titleEl.textContent = r.okres;
-  subEl.textContent   = prodLabel + ' · MS% pacientov · Q' + q + '/20' + yy + ' + Q' + prevQ + '/20' + prevYY;
+  subEl.textContent   = prodLabel + ' · ' + (code === 'JUN' ? 'MS% boxov' : 'MS% pacientov') + ' · Q' + q + '/20' + yy + ' + Q' + prevQ + '/20' + prevYY;
   svgEl.innerHTML     = '<div style="color:#94A3B8;font-size:13px">Načítavam…</div>';
   legEl.innerHTML     = '';
 
