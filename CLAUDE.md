@@ -26,6 +26,11 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.37 — Rep modal overlay: navigácia už nepresvitá
+
+- Pri odoslaní lekára a následnom odporúčacom okne už sticky navigácia reprezentanta (**História / Rebríček / Plnenie / Lekárne**) nepresvitá nad modalom.
+- Zvýšený z-index pre `send-popup` a `confirm-overlay`, aby boli vždy nad rep navigáciou. Verzia bumpnutá na `2.21.37`.
+
 ### v2.21.36 — Junod okresový graf: MS% boxov label
 
 - Fullscreen okresový graf pri Junode už v podnadpise nepíše **MS% pacientov**, ale **MS% boxov**.
