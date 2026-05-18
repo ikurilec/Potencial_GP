@@ -26,6 +26,11 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.41 — Plnenie: korekcia polmesačných pracovných dní v máji
+
+- Opravený počet pracovných dní za 1.-15. máj 2026 v `PL_WORKING_DAYS_HALF_MAP`: máj je `10` pracovných dní namiesto `9`.
+- Test polmesačnej predikcie bol upravený podľa tejto korekcie. Verzia bumpnutá na `2.21.41`.
+
 ### v2.21.40 — Plnenie: polmesačné predaje v predikcii
 
 - Predikcie v aktuálnom kvartáli už nepoužívajú iba ukončené mesiace, ale aj aktuálny mesiac ako polmesačné predaje, ak sú v dátach nahraté.
