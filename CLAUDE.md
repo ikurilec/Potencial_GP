@@ -26,6 +26,11 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.34 — Trhový podiel: jasnejší názov objemu v signáloch
+
+- Signály v Trhovom podiele už nepíšu iba všeobecné **Objem**, ale konkrétne **Objem pacientov na [produkt]**.
+- Pri Junode sa zobrazuje **Objem boxov**, aby bolo jasné, že Junod používa boxové dáta. Verzia bumpnutá na `2.21.34`.
+
 ### v2.21.33 — Junod PharmaData: boxové dáta namiesto pacientov
 
 - `pharma_converter.html` má pre produkt `JUN` špeciálny Junod box-mode: dáta berie zo záložky `data` cez `Unit1`, počíta `MS Box %` a do existujúcich stĺpcov `nas_pat_*` / `tot_pat_*` zapisuje boxy.
