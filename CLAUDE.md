@@ -26,6 +26,12 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.43 — Gyn trhový podiel: konkurenti podľa reálneho 6-mesačného trendu
+
+- Opravená logika pre gyn graf konkurencie v prebiehajúcom kvartáli. Pri Q2 bez okresných dát za apríl-jún graf nášho produktu ukazuje posledných 6 dostupných mesiacov `Okt-Mar`, ale konkurencia sa predtým dotiahla iba za Q2 + Q1, takže reálne mala iba `Jan-Mar`.
+- Appka teraz z posledných 6 mesiacov v `summary` zistí, ktoré kvartály trend naozaj potrebuje, a pre konkurentov dotiahne okresné dáta presne pre tieto kvartály. Pre `Okt-Mar` je to teda Q4 2025 + Q1 2026.
+- Cache sa považuje za kompletnú až vtedy, keď má okresné dáta pre všetky kvartály použité v 6-mesačnom trende. Test `tests/gyn_pharma_prev_cache_test.js` bol rozšírený o tento scenár. Verzia bumpnutá na `2.21.43`.
+
 ### v2.21.42 — Gyn trhový podiel: konkurenti cez posledné 2Q
 
 - V gyn grafe **Vývoj trhového podielu** sa konkurencia už neberie iba z aktuálneho kvartálu, ale dopĺňa sa aj z predošlého kvartálu, aby mala rovnaký 6-mesačný rozsah ako náš produkt a Slovensko.
