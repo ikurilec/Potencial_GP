@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<title>Gyn pacienti konverter</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#EAECF2;min-height:100vh;padding:24px 16px;color:#1A2A3A}
+.app{max-width:1100px;margin:0 auto}.hdr{background:#0C1E35;color:#fff;border-radius:16px;padding:18px 22px;margin-bottom:14px;box-shadow:0 10px 40px rgba(10,25,50,.25)}
+.hdr h1{font-size:20px;font-weight:800;margin-bottom:3px}.hdr p{font-size:12px;color:#7AABCC}
+.step{background:#fff;border-radius:14px;padding:16px 20px;margin-bottom:10px;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+.step-title{font-size:14px;font-weight:700;display:flex;align-items:center;margin-bottom:10px}.step-num{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;background:#0C1E35;color:#fff;font-size:12px;font-weight:700;border-radius:50%;margin-right:8px}
+.drop-zone{border:2px dashed #CBD5E1;border-radius:12px;padding:32px;text-align:center;color:#64748B;font-size:14px;transition:all .2s;cursor:pointer;background:#F8FAFC}
+.drop-zone:hover,.drop-zone.dragover{border-color:#3B82F6;background:#EFF6FF;color:#2563EB}.drop-zone-icon{font-size:32px;margin-bottom:6px}.drop-zone-sub{font-size:11px;margin-top:4px;color:#94A3B8}
+.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}.controls label{font-size:12px;font-weight:700;color:#475569}.controls input,.controls select{padding:8px 10px;border:1px solid #CBD5E1;border-radius:8px;font:inherit;font-size:13px;background:#fff}
+.actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}.btn{padding:10px 16px;border-radius:9px;border:none;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}.btn-primary{background:#16A34A;color:#fff}.btn-secondary{background:#fff;color:#0C1E35;border:1.5px solid #E2E8F0}
+.preview-wrap{overflow:auto;margin-top:6px;border-radius:8px;border:1px solid #E2E8F0;max-height:430px}table{width:100%;border-collapse:collapse;font-size:11px;font-family:monospace}th{background:#F1F5F9;color:#0F172A;font-weight:700;padding:7px 9px;text-align:left;position:sticky;top:0;white-space:nowrap;border-bottom:2px solid #CBD5E1}td{padding:5px 9px;border-bottom:1px solid #F1F5F9;white-space:nowrap}td.num{text-align:right;font-variant-numeric:tabular-nums}.empty-state{text-align:center;padding:30px;color:#94A3B8;font-size:13px;font-style:italic}
+.hint{background:#FEF3C7;border-left:4px solid #F59E0B;padding:10px 14px;border-radius:8px;margin-bottom:10px;font-size:12px;color:#92400E}.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0C1E35;color:#fff;padding:10px 18px;border-radius:9px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .25s}.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="hdr">
+    <h1>Gyn pacienti konverter</h1>
+    <p>Plan APP OC -> TSV pre Google Sheets tab Gyn_Pacienti</p>
+  </div>
+  <div class="step">
+    <div class="step-title"><span class="step-num">1</span>Nastavenie a Excel</div>
+    <div class="controls">
+      <label>Rok <input id="rok" type="number" value="2026" min="2020" max="2035"></label>
+      <label>Q <select id="q"><option value="1">Q1</option><option value="2" selected>Q2</option><option value="3">Q3</option><option value="4">Q4</option></select></label>
+    </div>
+    <div class="drop-zone" id="drop-zone">
+      <div class="drop-zone-icon">&#128196;</div>
+      <div>Pretiahni sem Excel so zalozkou APP OC alebo klikni</div>
+      <div class="drop-zone-sub">Spracuje .xls aj .xlsx. Vystup patri do tabu Gyn_Pacienti.</div>
+      <input type="file" id="file-input" accept=".xls,.xlsx" style="display:none">
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-title"><span class="step-num">2</span>Nahlad <span id="count" style="font-size:11px;color:#64748B;margin-left:8px"></span></div>
+    <div id="preview"><div class="empty-state">Zatial ziadne data.</div></div>
+    <div class="actions">
+      <button class="btn btn-primary" onclick="copyTsv()">Kopirovat TSV</button>
+      <button class="btn btn-secondary" onclick="downloadTsv()">Stiahnut TSV</button>
+    </div>
+  </div>
+  <div class="step">
+    <div class="hint"><strong>Google Sheets:</strong> vytvor alebo otvor tab <code>Gyn_Pacienti</code>, klikni do A1 a vloz skopirovanu tabulku. Data mozes pri novom kvartali cele prepisat.</div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+var REGION_MAP = { ocBA:'BAPI', ocSE:'SEPI', ocST:'STPI', ocVY:'VYPI', ocZA:'ZAPI' };
+var rowsOut = [];
+var HEADERS = ['rok','Q','region','produkt','okres','plan_eur','plan_pacienti','eur_na_pacienta','zdroj'];
+
+function toast(msg){ var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(function(){t.classList.remove('show')},2200); }
+function num(v){ var n=parseFloat(String(v==null?'':v).replace(/\s/g,'').replace(',','.')); return isNaN(n)?0:n; }
+function fmt(n){ return (Math.round((num(n)+Number.EPSILON)*1000000)/1000000).toString().replace('.', ','); }
+function cell(row, idx){ return row && row[idx] != null ? String(row[idx]).trim() : ''; }
+function isProductHeaderRow(row){ return cell(row,1).toLowerCase()==='rep' && cell(row,2); }
+function isDistrictHeaderRow(row){ return cell(row,0).toLowerCase()==='rep' && cell(row,1).toLowerCase()==='okres'; }
+function productColumns(headerRow, startCol){
+  var cols = [];
+  for(var c=startCol; c<headerRow.length; c+=2){
+    var prod = cell(headerRow,c);
+    if(!prod) continue;
+    cols.push({ product: prod, eurCol: c, pacCol: c+1 });
+  }
+  return cols;
+}
+function addRowsFromSection(out, data, headerRowIdx, dataStartIdx, startCol, hasDistrict, rok, q){
+  var cols = productColumns(data[headerRowIdx], startCol);
+  for(var r=dataStartIdx; r<data.length; r++){
+    var rep = hasDistrict ? cell(data[r],0) : cell(data[r],1);
+    var okres = hasDistrict ? cell(data[r],1) : '';
+    if(!rep || /^spolu$/i.test(rep)) break;
+    var region = REGION_MAP[rep];
+    if(!region) continue;
+    cols.forEach(function(col){
+      var eur = num(data[r][col.eurCol]);
+      var pac = num(data[r][col.pacCol]);
+      if(eur===0 && pac===0) return;
+      out.push({
+        rok: rok,
+        Q: q,
+        region: region,
+        produkt: col.product,
+        okres: okres,
+        plan_eur: eur,
+        plan_pacienti: pac,
+        eur_na_pacienta: pac > 0 ? eur / pac : 0,
+        zdroj: 'APP OC'
+      });
+    });
+  }
+}
+function extractAppOcRows(data, rok, q){
+  var out = [];
+  for(var i=0;i<data.length;i++){
+    if(isProductHeaderRow(data[i])) addRowsFromSection(out, data, i-1, i+1, 2, false, rok, q);
+    if(isDistrictHeaderRow(data[i])) addRowsFromSection(out, data, i-1, i+1, 2, true, rok, q);
+  }
+  return out;
+}
+function toTsv(rows){
+  return [HEADERS.join('\t')].concat(rows.map(function(r){
+    return HEADERS.map(function(h){ return typeof r[h] === 'number' ? fmt(r[h]) : String(r[h] == null ? '' : r[h]); }).join('\t');
+  })).join('\n');
+}
+function render(){
+  document.getElementById('count').textContent = rowsOut.length ? '('+rowsOut.length+' riadkov)' : '';
+  if(!rowsOut.length){ document.getElementById('preview').innerHTML='<div class="empty-state">Zatial ziadne data.</div>'; return; }
+  var html='<div class="preview-wrap"><table><thead><tr>'+HEADERS.map(function(h){return '<th>'+h+'</th>';}).join('')+'</tr></thead><tbody>';
+  rowsOut.slice(0,300).forEach(function(r){
+    html += '<tr>'+HEADERS.map(function(h){
+      var v = typeof r[h] === 'number' ? fmt(r[h]) : String(r[h] == null ? '' : r[h]);
+      return '<td'+(typeof r[h] === 'number'?' class="num"':'')+'>'+v+'</td>';
+    }).join('')+'</tr>';
+  });
+  html += '</tbody></table></div>';
+  document.getElementById('preview').innerHTML = html;
+}
+async function handleFile(file){
+  var rok = parseInt(document.getElementById('rok').value,10) || 2026;
+  var q = parseInt(document.getElementById('q').value,10) || 2;
+  var buf = await file.arrayBuffer();
+  var wb = XLSX.read(buf, { type:'array' });
+  var ws = wb.Sheets['APP OC'];
+  if(!ws){ toast('Zalozka APP OC sa nenasla'); return; }
+  var data = XLSX.utils.sheet_to_json(ws, { header:1, raw:true, defval:'' });
+  rowsOut = extractAppOcRows(data, rok, q);
+  render();
+  toast('Spracovane: '+rowsOut.length+' riadkov');
+}
+function copyTsv(){
+  if(!rowsOut.length){ toast('Nie je co kopirovat'); return; }
+  navigator.clipboard.writeText(toTsv(rowsOut)).then(function(){ toast('TSV skopirovane'); });
+}
+function downloadTsv(){
+  if(!rowsOut.length){ toast('Nie je co stiahnut'); return; }
+  var blob = new Blob([toTsv(rowsOut)], {type:'text/tab-separated-values;charset=utf-8'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='Gyn_Pacienti.tsv'; a.click(); URL.revokeObjectURL(a.href);
+}
+var dz=document.getElementById('drop-zone'), inp=document.getElementById('file-input');
+dz.addEventListener('click',function(){inp.click();});
+inp.addEventListener('change',function(e){ if(e.target.files[0]) handleFile(e.target.files[0]); });
+dz.addEventListener('dragover',function(e){ e.preventDefault(); dz.classList.add('dragover'); });
+dz.addEventListener('dragleave',function(){ dz.classList.remove('dragover'); });
+dz.addEventListener('drop',function(e){ e.preventDefault(); dz.classList.remove('dragover'); if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+</script>
+</body>
+</html>

@@ -205,12 +205,15 @@ function doGet(e) {
         applyPredajeCorrections(predajeByRep, korekcieSheet.getDataRange().getValues(), rokA, qMonths);
       }
 
+      var pacientiData = readGynPacienti_(ss, rokA, qA);
+
       return jsonResp({
         ok:              true,
         rok:             rokA,
         Q:               qA,
         plan:            planByRep,
         predaje:         predajeByRep,
+        pacienti:        pacientiData,
         planProducts:    planProds,
         predajeProducts: predajeProds
       });
@@ -373,6 +376,54 @@ function jsonResp(obj) {
 function normalizeProd(name) {
   if (!name) return '';
   return String(name).trim().toLowerCase();
+}
+
+function readGynPacienti_(ss, rok, q) {
+  var out = { territory: {}, districts: {} };
+  var sheet = ss.getSheetByName('Gyn_Pacienti');
+  if (!sheet) return out;
+  var rows = sheet.getDataRange().getValues();
+  if (!rows || rows.length < 2) return out;
+  var hdr = rows[0].map(function(h){ return String(h || '').trim().toLowerCase(); });
+  function idx(name) { return hdr.indexOf(name); }
+  var iRok = idx('rok');
+  var iQ = idx('q');
+  var iRegion = idx('region');
+  var iProdukt = idx('produkt');
+  var iOkres = idx('okres');
+  var iEur = idx('plan_eur');
+  var iPac = idx('plan_pacienti');
+  var iEurPac = idx('eur_na_pacienta');
+  if (iRok < 0 || iQ < 0 || iRegion < 0 || iProdukt < 0 || iEur < 0 || iPac < 0) return out;
+
+  for (var r = 1; r < rows.length; r++) {
+    var row = rows[r];
+    if (parseInt(row[iRok]) !== rok) continue;
+    if (parseInt(row[iQ]) !== q) continue;
+    var region = String(row[iRegion] || '').trim().toUpperCase();
+    var produkt = normalizeProd(row[iProdukt]);
+    if (!region || !produkt) continue;
+    var planEur = parseNum(row[iEur]);
+    var planPac = parseNum(row[iPac]);
+    if (planEur <= 0 && planPac <= 0) continue;
+    var eurPac = iEurPac >= 0 ? parseNum(row[iEurPac]) : 0;
+    if (eurPac <= 0 && planPac > 0) eurPac = planEur / planPac;
+    var rec = {
+      plan_eur: planEur,
+      plan_pacienti: planPac,
+      eur_na_pacienta: eurPac
+    };
+    var okres = iOkres >= 0 ? String(row[iOkres] || '').trim() : '';
+    if (okres) {
+      if (!out.districts[region]) out.districts[region] = {};
+      if (!out.districts[region][produkt]) out.districts[region][produkt] = {};
+      out.districts[region][produkt][okres.toLowerCase()] = rec;
+    } else {
+      if (!out.territory[region]) out.territory[region] = {};
+      out.territory[region][produkt] = rec;
+    }
+  }
+  return out;
 }
 
 function applyPredajeCorrections(predajeByRep, rows, rok, qMonths) {
