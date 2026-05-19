@@ -6,19 +6,42 @@ const assert = require('assert');
 const htmlPath = path.join(__dirname, '..', 'index.html');
 const html = fs.readFileSync(htmlPath, 'utf8');
 
-const fnMatch = html.match(/function gynPharmaCacheHasPrevOkresy\(cached, kvartalPrev\) \{[\s\S]*?\n\}/);
-assert(fnMatch, 'gynPharmaCacheHasPrevOkresy function not found');
+function extractFunction(name) {
+  const re = new RegExp(`function ${name}\\([^)]*\\) \\{[\\s\\S]*?\\n\\}`);
+  const match = html.match(re);
+  assert(match, `${name} function not found`);
+  return match[0];
+}
 
 const sandbox = {};
 vm.createContext(sandbox);
-vm.runInContext(fnMatch[0] + '\nthis.gynPharmaCacheHasPrevOkresy = gynPharmaCacheHasPrevOkresy;', sandbox);
+vm.runInContext([
+  extractFunction('gynPharmaKvartalForYymm'),
+  extractFunction('gynPharmaYymmsForKvartal'),
+  extractFunction('gynPharmaTrendKvartals'),
+  extractFunction('gynPharmaCachedOkresyForKvartal'),
+  extractFunction('gynPharmaCacheHasPrevOkresy'),
+  'this.gynPharmaKvartalForYymm = gynPharmaKvartalForYymm;',
+  'this.gynPharmaYymmsForKvartal = gynPharmaYymmsForKvartal;',
+  'this.gynPharmaTrendKvartals = gynPharmaTrendKvartals;',
+  'this.gynPharmaCacheHasPrevOkresy = gynPharmaCacheHasPrevOkresy;',
+].join('\n'), sandbox);
 
 const hasCompleteCache = sandbox.gynPharmaCacheHasPrevOkresy;
 
-assert.strictEqual(hasCompleteCache(null, '2504'), false, 'missing cache is incomplete');
-assert.strictEqual(hasCompleteCache({ ok: true }, null), true, 'cache is complete when no previous quarter is needed');
-assert.strictEqual(hasCompleteCache({ ok: true }, '2504'), false, 'previous quarter without okresy_prev is incomplete');
-assert.strictEqual(hasCompleteCache({ ok: true, okresy_prev: [] }, '2504'), false, 'empty previous quarter okresy must be retried');
-assert.strictEqual(hasCompleteCache({ ok: true, okresy_prev: [{ okres: 'Bratislava I' }] }, '2504'), true, 'non-empty previous quarter okresy is complete');
+const q2TrendSummary = [
+  { mesiac: '2510' }, { mesiac: '2511' }, { mesiac: '2512' },
+  { mesiac: '2601' }, { mesiac: '2602' }, { mesiac: '2603' },
+];
 
-console.log('gyn pharma previous quarter cache test passed');
+assert.strictEqual(sandbox.gynPharmaKvartalForYymm('2510'), '2504', 'October 2025 belongs to Q4 2025');
+assert.deepStrictEqual(Array.from(sandbox.gynPharmaYymmsForKvartal('2601')), [2601, 2602, 2603], 'Q1 months are mapped correctly');
+assert.deepStrictEqual(Array.from(sandbox.gynPharmaTrendKvartals(q2TrendSummary)), ['2504', '2601'], 'trend needs Q4 2025 and Q1 2026');
+
+assert.strictEqual(hasCompleteCache(null, '2602'), false, 'missing cache is incomplete');
+assert.strictEqual(hasCompleteCache({ ok: true, summary: [] }, '2602'), true, 'cache without trend months is complete');
+assert.strictEqual(hasCompleteCache({ ok: true, summary: q2TrendSummary, okresy_extra: { '2601': [{ okres: 'Bratislava I' }] } }, '2602'), false, 'Q4 is still missing');
+assert.strictEqual(hasCompleteCache({ ok: true, summary: q2TrendSummary, okresy_extra: { '2504': [], '2601': [{ okres: 'Bratislava I' }] } }, '2602'), false, 'empty Q4 must be retried');
+assert.strictEqual(hasCompleteCache({ ok: true, summary: q2TrendSummary, okresy_extra: { '2504': [{ okres: 'Košice I' }], '2601': [{ okres: 'Bratislava I' }] } }, '2602'), true, 'all trend quarters are complete');
+
+console.log('gyn pharma trend quarter cache test passed');
