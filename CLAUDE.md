@@ -26,6 +26,12 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.48 — Gyn okresy: pacientsky plán aj bez PharmaData
+
+- V gyn Trhovom podiele sa pri produkte zobrazí okresný pacientsky plán z `Gyn_Pacienti` aj vtedy, keď pre daný kvartál ešte nie sú nahraté okresné `PharmaData_Okresy`.
+- Fallback okresný zoznam zobrazuje plán okresu v pacientoch a eurách, zoradený podľa počtu pacientov. Skutočné aktuálne/chýbajúce pacienty po okresoch sa neodhadujú bez okresných predajných/PharmaData vstupov.
+- Po nahratí okresných PharmaData sa k rovnakým okresom doplní MS tabuľka ako doteraz. Test `tests/gyn_patient_hint_test.js` doplnený o okresný fallback. Verzia bumpnutá na `2.21.48`.
+
 ### v2.21.47 — Gyn pacientsky blok: kompaktnejšie čísla
 
 - Pacientsky blok v gyn produktovej karte je zúžený, aby čísla boli bližšie k popisom naľavo a nepôsobili ako dve vzdialené kolóny.

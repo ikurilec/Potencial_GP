@@ -25,7 +25,9 @@ vm.runInContext([
   extractFunction('gynPatientFmtMissing'),
   extractFunction('gynPatientCurrentLabel'),
   extractFunction('gynPatientProductHint'),
+  extractFunction('gynPatientDistrictList'),
   'this.gynPatientProductHint = gynPatientProductHint;',
+  'this.gynPatientDistrictList = gynPatientDistrictList;',
 ].join('\n'), sandbox);
 
 const data = {
@@ -39,7 +41,14 @@ const data = {
         },
       },
     },
-    districts: {},
+    districts: {
+      BAPI: {
+        belara: {
+          'bratislava i': { plan_eur: 3968, plan_pacienti: 20.6 },
+          'bratislava ii': { plan_eur: 8874, plan_pacienti: 46.2 },
+        },
+      },
+    },
   },
 };
 
@@ -52,5 +61,10 @@ assert(out.includes('>56 pacientov</strong>'), 'current value has patient unit w
 assert(out.includes('Do konca Q2 chýba'), 'remaining label names the quarter');
 assert(out.includes('>127 pacientov</strong>'), 'remaining value has patient unit without cca');
 assert(!out.includes('cca'), 'patient hint does not use cca wording');
+
+const districts = sandbox.gynPatientDistrictList(data, 'BAPI', 'belara');
+assert.strictEqual(districts.length, 2, 'district patient plans are listed');
+assert.strictEqual(districts[0].okres, 'bratislava ii', 'districts are sorted by patient plan descending');
+assert.strictEqual(sandbox.gynPatientDistrictList(data, 'BAPA', 'belara').length, 2, 'patch twin region can read pill patient plans');
 
 console.log('gyn patient hint test passed');
