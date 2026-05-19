@@ -26,6 +26,14 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.45 — Gyn pacientsky plán z APP OC
+
+- Pridaný nový konverter `gyn_patient_converter.html`, ktorý číta Excel záložku `APP OC` a pripraví TSV pre nový Google Sheets tab `Gyn_Pacienti`.
+- `Gyn_Pacienti` má stĺpce `rok | Q | region | produkt | okres | plan_eur | plan_pacienti | eur_na_pacienta | zdroj`. Konverter exportuje súčty po teritóriách aj okresný rozpad pre produkty z APP OC.
+- `apps_script/kód_gyn.gs` rozširuje `getPlnenieAll` o pole `pacienti`, aby appka dostala pacientsky plán spolu s plnením. Vyžaduje redeploy gyn Apps Scriptu.
+- V gyn produktových kartách sa pri produktoch s pacientskym plánom zobrazuje pacientsky plán, približne splnení pacienti a koľko pacientov ešte chýba do plánu. V trhovom podiele pri okresoch sa zobrazuje pacientsky plán okresu.
+- Pridaný test `tests/gyn_patient_converter_test.js`. Verzia bumpnutá na `2.21.45`.
+
 ### v2.21.44 — Gyn Escapelle: PI reprezentanti používajú PA pharma dáta
 
 - Opravené otvorenie **Trhového podielu** pre Escapelle pri pill reprezentantoch. Escapelle má obchodne rovnaké PI/PA dvojice, ale PharmaData sú uložené pod PA oblasťami (`BAPA`, `SEPA`, `STPA`, `VYPA`, `ZAPA`).
