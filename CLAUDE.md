@@ -26,6 +26,12 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.47 — Gyn pacientsky blok: kompaktnejšie čísla
+
+- Pacientsky blok v gyn produktovej karte je zúžený, aby čísla boli bližšie k popisom naľavo a nepôsobili ako dve vzdialené kolóny.
+- Odstránené slovo `cca` z aktuálnych aj chýbajúcich pacientov. Hodnoty ostávajú zaokrúhlené prakticky, chýbajúci počet pacientov nahor.
+- Test `tests/gyn_patient_hint_test.js` upravený na nový text. Verzia bumpnutá na `2.21.47`.
+
 ### v2.21.46 — Gyn pacientsky plán: čitateľnejší text
 
 - Pacientsky prepočet v gyn produktových kartách je rozdelený do troch riadkov: `Plán pacienti`, `Aktuálne <mesiace>` a `Do konca Qx chýba`.
