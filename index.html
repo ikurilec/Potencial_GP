@@ -2431,7 +2431,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.47';
+var APP_VERSION = '2.21.48';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6163,6 +6163,23 @@ function gynPatientProductHint(data, region, productKey, predaje, plan, predajeB
   '</div>';
 }
 
+function gynPatientDistrictList(data, region, productKey) {
+  if(!data || !data.pacienti || !data.pacienti.districts) return [];
+  var reg = gynPatientRegionForLookup(region);
+  var pk = String(productKey || '').trim().toLowerCase();
+  var rows = data.pacienti.districts[reg] && data.pacienti.districts[reg][pk];
+  if(!rows) return [];
+  return Object.keys(rows).map(function(okresKey){
+    var rec = rows[okresKey] || {};
+    return {
+      okres: okresKey,
+      plan_eur: parseFloat(rec.plan_eur) || 0,
+      plan_pacienti: parseFloat(rec.plan_pacienti) || 0
+    };
+  }).filter(function(r){ return r.plan_pacienti > 0 || r.plan_eur > 0; })
+    .sort(function(a,b){ return b.plan_pacienti - a.plan_pacienti; });
+}
+
 function gynPreprocessData(data) {
   if(!data || !data.predaje) return data;
   // 1) Reassign — produkty ako Azalia presunúť z pill repa na patch repa
@@ -7382,7 +7399,26 @@ function gynPharmaRender(resp) {
     });
   } else {
     html += '<div class="pharma-ms-section-title">Rozpad po okresoch · Q'+q+'</div>';
-    html += '<div style="background:#fff;border-radius:12px;padding:24px 16px;text-align:center;color:#94A3B8;font-size:12px;font-style:italic">Žiadne okresné dáta pre tento kvartál.</div>';
+    var plDataFallback = GYN_APP.plCache && GYN_APP.plCache[GYN_APP.q];
+    var patientDistricts = gynPatientDistrictList(plDataFallback, GYN_PHARMA_STATE.oblast, GYN_PHARMA_STATE.produkt);
+    if(patientDistricts.length) {
+      html += '<div style="background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:8px;color:#64748B;font-size:12px;line-height:1.35;border:1px solid #E2E8F0">Okresné PharmaData pre Q'+q+' zatiaľ nie sú nahraté. Zobrazuje sa pacientsky plán podľa APP OC.</div>';
+      patientDistricts.forEach(function(r){
+        html += '<div class="pharma-ms-district">' +
+          '<div class="pharma-ms-district-hdr">' +
+            '<div class="pharma-ms-district-name">' + gynEsc(r.okres) + '</div>' +
+          '</div>' +
+          '<div class="pharma-ms-district-meta">' +
+            '<div class="pharma-ms-district-pat-row">Plán okresu: <strong>' + gynPatientFmt(r.plan_pacienti) + '</strong> pacientov' +
+              (r.plan_eur > 0 ? ' · <strong>' + plnenieFormatEUR(r.plan_eur) + '</strong>' : '') +
+            '</div>' +
+            '<div class="pharma-ms-district-pat-row" style="color:#94A3B8;margin-top:3px">Aktuálne/chýbajúce pacienty po okresoch sa doplnia po nahratí okresných PharmaData.</div>' +
+          '</div>' +
+        '</div>';
+      });
+    } else {
+      html += '<div style="background:#fff;border-radius:12px;padding:24px 16px;text-align:center;color:#94A3B8;font-size:12px;font-style:italic">Žiadne okresné dáta pre tento kvartál.</div>';
+    }
   }
 
   var bodyEl = document.getElementById('pharma-ms-body');
