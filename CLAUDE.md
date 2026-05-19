@@ -26,6 +26,12 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.44 — Gyn Escapelle: PI reprezentanti používajú PA pharma dáta
+
+- Opravené otvorenie **Trhového podielu** pre Escapelle pri pill reprezentantoch. Escapelle má obchodne rovnaké PI/PA dvojice, ale PharmaData sú uložené pod PA oblasťami (`BAPA`, `SEPA`, `STPA`, `VYPA`, `ZAPA`).
+- Pri Escapelle sa preto pre pharma overlay automaticky mapuje `BAPI → BAPA`, `SEPI → SEPA`, `STPI → STPA`, `VYPI → VYPA`, `ZAPI → ZAPA`. Plnenie, plány a predaje sa nemenia.
+- Test `tests/gyn_pharma_prev_cache_test.js` doplnený o PI→PA mapovanie. Verzia bumpnutá na `2.21.44`.
+
 ### v2.21.43 — Gyn trhový podiel: konkurenti podľa reálneho 6-mesačného trendu
 
 - Opravená logika pre gyn graf konkurencie v prebiehajúcom kvartáli. Pri Q2 bez okresných dát za apríl-jún graf nášho produktu ukazuje posledných 6 dostupných mesiacov `Okt-Mar`, ale konkurencia sa predtým dotiahla iba za Q2 + Q1, takže reálne mala iba `Jan-Mar`.
