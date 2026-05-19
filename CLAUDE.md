@@ -26,6 +26,12 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.42 — Gyn trhový podiel: konkurenti cez posledné 2Q
+
+- V gyn grafe **Vývoj trhového podielu** sa konkurencia už neberie iba z aktuálneho kvartálu, ale dopĺňa sa aj z predošlého kvartálu, aby mala rovnaký 6-mesačný rozsah ako náš produkt a Slovensko.
+- Cache pre predošlý kvartál sa považuje za hotovú až vtedy, keď `okresy_prev` obsahuje reálne okresné dáta. Prázdne `okresy_prev` sa už necachuje ako kompletný stav, takže po doplnení dát v Sheets sa graf vie znova doplniť.
+- Pridaný test `tests/gyn_pharma_prev_cache_test.js`. Verzia bumpnutá na `2.21.42`.
+
 ### v2.21.41 — Plnenie: korekcia polmesačných pracovných dní v máji
 
 - Opravený počet pracovných dní za 1.-15. máj 2026 v `PL_WORKING_DAYS_HALF_MAP`: máj je `10` pracovných dní namiesto `9`.
