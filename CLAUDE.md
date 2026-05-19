@@ -26,6 +26,12 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.46 — Gyn pacientsky plán: čitateľnejší text
+
+- Pacientsky prepočet v gyn produktových kartách je rozdelený do troch riadkov: `Plán pacienti`, `Aktuálne <mesiace>` a `Do konca Qx chýba`.
+- Riadok `Aktuálne` teraz uvádza mesiace, za ktoré už sú v kvartáli predaje (napr. `Aktuálne Apr` alebo `Aktuálne Apr + Máj`) a pri každom čísle je jednotka `pacientov`.
+- Font a usporiadanie boli zjednotené s produktovou kartou. Pridaný test `tests/gyn_patient_hint_test.js`. Verzia bumpnutá na `2.21.46`.
+
 ### v2.21.45 — Gyn pacientsky plán z APP OC
 
 - Pridaný nový konverter `gyn_patient_converter.html`, ktorý číta Excel záložku `APP OC` a pripraví TSV pre nový Google Sheets tab `Gyn_Pacienti`.
