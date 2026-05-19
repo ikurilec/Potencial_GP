@@ -2425,7 +2425,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.41';
+var APP_VERSION = '2.21.42';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6891,14 +6891,20 @@ function gynPharmaKvartalPrev(kvartal) {
   return (yy < 10 ? '0'+yy : ''+yy) + '0' + qq;
 }
 
+function gynPharmaCacheHasPrevOkresy(cached, kvartalPrev) {
+  if(!cached) return false;
+  if(!kvartalPrev) return true;
+  return Array.isArray(cached.okresy_prev) && cached.okresy_prev.length > 0;
+}
+
 function gynPharmaLoad() {
   var key = GYN_PHARMA_STATE.produkt + '|' + GYN_PHARMA_STATE.oblast + '|' + GYN_PHARMA_STATE.kvartal;
   var cached = GYN_PHARMA_STATE.cache[key];
   var kvartalPrev = gynPharmaKvartalPrev(GYN_PHARMA_STATE.kvartal);
 
-  // Cache hit & kompletné (má okresy_prev alebo nepotrebujeme prev Q) → render
+  // Cache hit & kompletné (má neprázdne okresy_prev alebo nepotrebujeme prev Q) → render
   // Inak musíme doplniť prev Q dáta (preload fetchol len aktuálny Q bez okresy_prev)
-  if (cached && (cached.okresy_prev !== undefined || !kvartalPrev)) {
+  if (gynPharmaCacheHasPrevOkresy(cached, kvartalPrev)) {
     gynPharmaRender(cached);
     return;
   }
@@ -6943,10 +6949,14 @@ function gynPharmaLoad() {
         console.warn('[gyn-pharma] Q' + kvartalPrev + ' okresy je PRÁZDNE — uistite sa že v PharmaData_Okresy sú riadky s kvartal=' + kvartalPrev);
       }
     }
-    // Spoj okresy z aktuálneho + predošlého Q
-    if (respPrev && respPrev.ok && Array.isArray(respPrev.okresy)) {
+    // Spoj okresy z aktuálneho + predošlého Q.
+    // Prázdne okresy_prev necachujeme ako "hotové", aby sa po doplnení dát do Sheets vedel chart obnoviť.
+    if (respPrev && respPrev.ok && Array.isArray(respPrev.okresy) && respPrev.okresy.length > 0) {
       resp.okresy_prev = respPrev.okresy;
       resp.kvartal_prev = kvartalPrev;
+    } else {
+      delete resp.okresy_prev;
+      delete resp.kvartal_prev;
     }
     GYN_PHARMA_STATE.cache[key] = resp;
     if(GYN_PHARMA_STATE.open && GYN_PHARMA_STATE.produkt + '|' + GYN_PHARMA_STATE.oblast + '|' + GYN_PHARMA_STATE.kvartal === key) {
