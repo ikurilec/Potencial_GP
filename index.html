@@ -2425,7 +2425,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.43';
+var APP_VERSION = '2.21.44';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6091,6 +6091,13 @@ var GYN_PILL_TO_PATCH = {
 // Produkty ktoré sa majú presunúť z pill repa na zodpovedajúceho patch repa
 var GYN_REASSIGN_TO_PATCH = ['azalia'];
 
+function gynPharmaNormalizeOblast(productName, oblast) {
+  var produkt = String(productName || '').trim().toLowerCase();
+  var ob = String(oblast || '').trim().toUpperCase();
+  if(produkt === 'escapelle' && /^[A-Z]{2}PI$/.test(ob)) return ob.slice(0, 2) + 'PA';
+  return ob;
+}
+
 function gynPreprocessData(data) {
   if(!data || !data.predaje) return data;
   // 1) Reassign — produkty ako Azalia presunúť z pill repa na patch repa
@@ -6774,7 +6781,7 @@ function gynOpenPharma(productName, oblast) {
   if(!GYN_PHARMA_PRODUCTS[pkey]) return;
   if(!oblast) oblast = 'BAPI';
   GYN_PHARMA_STATE.produkt = produkt;
-  GYN_PHARMA_STATE.oblast  = oblast.toUpperCase();
+  GYN_PHARMA_STATE.oblast  = gynPharmaNormalizeOblast(produkt, oblast);
   GYN_PHARMA_STATE.kvartal = gynPharmaKvartal(GYN_APP.year, GYN_APP.q);
   GYN_PHARMA_STATE.open    = true;
 
