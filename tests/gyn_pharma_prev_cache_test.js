@@ -16,11 +16,13 @@ function extractFunction(name) {
 const sandbox = {};
 vm.createContext(sandbox);
 vm.runInContext([
+  extractFunction('gynPharmaNormalizeOblast'),
   extractFunction('gynPharmaKvartalForYymm'),
   extractFunction('gynPharmaYymmsForKvartal'),
   extractFunction('gynPharmaTrendKvartals'),
   extractFunction('gynPharmaCachedOkresyForKvartal'),
   extractFunction('gynPharmaCacheHasPrevOkresy'),
+  'this.gynPharmaNormalizeOblast = gynPharmaNormalizeOblast;',
   'this.gynPharmaKvartalForYymm = gynPharmaKvartalForYymm;',
   'this.gynPharmaYymmsForKvartal = gynPharmaYymmsForKvartal;',
   'this.gynPharmaTrendKvartals = gynPharmaTrendKvartals;',
@@ -28,6 +30,11 @@ vm.runInContext([
 ].join('\n'), sandbox);
 
 const hasCompleteCache = sandbox.gynPharmaCacheHasPrevOkresy;
+
+assert.strictEqual(sandbox.gynPharmaNormalizeOblast('Escapelle', 'BAPI'), 'BAPA', 'Escapelle pill area uses paired patch pharma data');
+assert.strictEqual(sandbox.gynPharmaNormalizeOblast('Escapelle', 'ZAPI'), 'ZAPA', 'Escapelle maps PI suffix to PA suffix');
+assert.strictEqual(sandbox.gynPharmaNormalizeOblast('Daylette', 'BAPI'), 'BAPI', 'other pill products stay on pill area');
+assert.strictEqual(sandbox.gynPharmaNormalizeOblast('Escapelle', 'BAPA'), 'BAPA', 'Escapelle patch area stays unchanged');
 
 const q2TrendSummary = [
   { mesiac: '2510' }, { mesiac: '2511' }, { mesiac: '2512' },
