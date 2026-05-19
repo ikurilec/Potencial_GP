@@ -48,8 +48,9 @@ const out = sandbox.gynPatientProductHint(data, 'BAPI', 'belara', 10314, 33817, 
 assert(out.includes('Plán pacienti'), 'plan label is explicit');
 assert(out.includes('182 pacientov'), 'plan has patient unit');
 assert(out.includes('Aktuálne Apr'), 'current label includes loaded month');
-assert(out.includes('cca 56 pacientov'), 'current value has patient unit');
+assert(out.includes('>56 pacientov</strong>'), 'current value has patient unit without cca');
 assert(out.includes('Do konca Q2 chýba'), 'remaining label names the quarter');
-assert(out.includes('cca 127 pacientov'), 'remaining value has patient unit');
+assert(out.includes('>127 pacientov</strong>'), 'remaining value has patient unit without cca');
+assert(!out.includes('cca'), 'patient hint does not use cca wording');
 
 console.log('gyn patient hint test passed');
