@@ -26,6 +26,12 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.57 - Golem: Rebricek navstev neakceptuje ciastocne data
+
+- `lbLoadData()` teraz považuje odpoveď typu „celý tím, ale návštevy má len 1-2 repi“ za podozrivo neúplnú a skúsi `getAllHistory` znovu.
+- Pri opakovane neúplnej odpovedi sa nepremietnu falošné nuly do rebríčka. Ak existujú posledné dobré dáta, ostanú zobrazené; inak sa zobrazí chybový stav namiesto nulového poradia.
+- Rozšírený `tests/leaderboard_scope_test.js`, aby chránil retry aj odmietnutie podozrivo čiastočných dát.
+
 ### v2.21.56 - Golem: AM pingLogin zapisuje posledny_login
 
 - `pingLogin` v GP Apps Scripte teraz dovolí zapísať `posledny_login` aj pre samotný prihlásený manažérsky účet (`am.west`, `am.east`, admin...), nielen pre reprezentantov v jeho scope.
