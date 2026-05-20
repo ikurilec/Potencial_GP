@@ -11,6 +11,10 @@ assert(index.includes("var rankingScope = lbScopeReps();"), 'Q plnenie ranking m
 assert(index.includes('function plnenieBuildAggregates(resp, q, scopeReps)'), 'plnenie aggregation must accept an explicit scope');
 assert(index.includes('var activeReps = Array.isArray(scopeReps) && scopeReps.length ? scopeReps : plnenieGetActiveReps();'), 'plnenie aggregation must default to dashboard scope only when no explicit scope is provided');
 assert(index.includes('var agg = plnenieBuildAggregates(resp, lastQ, lbScopeReps());'), 'leaderboard Q plnenie must aggregate the full leaderboard roster');
+assert(index.includes('if (scope.length >= 8 && nonEmpty > 0 && nonEmpty < 3) return true;'), 'visits leaderboard must reject suspicious one-rep partial data');
+assert(index.includes('function fetchAllHistoryAttempt(attempt)'), 'visits leaderboard must retry getAllHistory before accepting fallback data');
+assert(index.includes("setTimeout(function(){ fetchAllHistoryAttempt(attempt + 1); }, 700);"), 'visits leaderboard must retry incomplete all-history responses');
+assert(index.includes("finishIncompleteAllHistory('getAllHistory-incomplete');"), 'visits leaderboard must not render suspicious partial data as zeros');
 assert(index.includes('var LB_STATIC_REPS = LB_ALL_REPS.slice();'), 'leaderboard must keep a static full-line roster');
 assert(index.includes('var isFullRoster = all.length >= LB_STATIC_REPS.length;'), 'partial AM repList must not replace full leaderboard roster');
 assert(index.includes('return isFullRoster;'), 'buildRepData must report whether the roster is complete');
