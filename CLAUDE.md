@@ -26,6 +26,12 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.52 - Golem: AM dashboard scope + full team leaderboard
+
+- Hlavná obrazovka Plnenie pre AM West/East znova zobrazuje iba ich vlastnú líniu a len reprezentantov z West/East. Celolíniový pohľad ostáva pre admin/PM/BUM/boss.
+- Rebríček návštev aj rebríček Plnenie Q používajú full-line scope pre všetky roly vrátane reprezentantov, pričom prihlásený rep je v zozname označený `TY`.
+- Tlačidlo `Rebríček` v rep navigácii už po návrate nezobrazuje malý rank badge. Backend `getInitData` posiela full roster pre leaderboard, detailné endpointy zostávajú role-filtered. Vyzaduje redeploy `apps_script/kód.gs`.
+
 ### v2.21.51 - AM rebricek a plnenie: cela linia
 
 - AM West/East v rebricku a v Plneni Q opat vidia celu liniu, nie iba vlastnych reprezentantov. Backend pre `getAllHistory` a `getPlnenieAll` pouziva full-line scope pre AM leaderboard/plnenie pohlad, ostatne chranene endpointy ostavaju filtrovane podla roly.

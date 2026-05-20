@@ -6,9 +6,11 @@ const gyn = fs.readFileSync('apps_script/kód_gyn.gs', 'utf8');
 
 assert(gp.includes('function authGetUser_(ss, username)'), 'GP backend must load the authenticated user profile');
 assert(gp.includes('function authAllowedGpReps_(ss, user, fullLine)'), 'GP backend must compute allowed reps by role');
+assert(gp.includes('if (fullLine) return null; // leaderboard/plnenie rebricek = cela linia'), 'GP full-line leaderboard endpoints must include all reps');
 assert(gp.includes('fullLine') && gp.includes('authFilterGpHistory_(ss, auth.user, rows, repIdx, true)'), 'GP AM leaderboard history must be able to use the full line');
 assert(gp.includes('authFilterGpPlnenieRows_(ss, auth.user, planRows, true)'), 'GP AM Q plnenie must be able to use the full line');
-assert(gp.includes('function authCanAccessGpRep_(ss, user, rep)'), 'GP backend must gate rep-specific endpoints');
+assert(gp.includes('authCanAccessGpRep_(ss, auth.user, login2, true)'), 'GP init repList must provide the full leaderboard roster');
+assert(gp.includes('function authCanAccessGpRep_(ss, user, rep, fullLine)'), 'GP backend must gate rep-specific endpoints');
 assert(gp.includes('function authCanAccessGpOblast_(ss, user, oblast)'), 'GP backend must gate pharma region endpoints');
 assert(gp.includes('authFilterGpHistory_'), 'GP getAllHistory must filter rows server-side');
 assert(gp.includes('authFilterGpPlnenieRows_'), 'GP getPlnenieAll must filter rows server-side');
