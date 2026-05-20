@@ -26,6 +26,13 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.49 - Bezpecnost: 12h session tokeny po prihlaseni
+
+- Po uspesnom prihlaseni backend vytvori session token s platnostou 12 hodin a frontend ho posiela ku kazdemu chranenemu volaniu Apps Scriptu.
+- Session sa viaze na `username + line + device_id`, takze rovnaky reprezentant moze pouzivat mobil aj tablet. Pri opatovnom prihlaseni na tom istom zariadeni sa prepise existujuci riadok, nevznika nekonecne vela zaznamov.
+- Apps Script automaticky vytvori harok `Sessions` so stlpcami `username | device_id | token | line | created_at | expires_at | last_seen_at | user_agent` a priebezne cisti stare expirovane session.
+- Chranene endpointy v Golem aj Gyn uz nekontroluju iba staticky frontend token, ale aj platnu session. Vyzaduje redeploy `apps_script/kód.gs` aj `apps_script/kód_gyn.gs`. Po redeployi sa pouzivatelia musia znova prihlasit.
+
 ### v2.21.48 — Gyn okresy: pacientsky plán aj bez PharmaData
 
 - V gyn Trhovom podiele sa pri produkte zobrazí okresný pacientsky plán z `Gyn_Pacienti` aj vtedy, keď pre daný kvartál ešte nie sú nahraté okresné `PharmaData_Okresy`.
