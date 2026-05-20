@@ -83,7 +83,7 @@ function authRequireSession_(ss, e, line) {
         String(rows[i][3] || '').trim() === line) {
       if (!exp || !(exp instanceof Date) || isNaN(exp.getTime()) || exp <= now) return { ok: false, error: 'Session expired' };
       sheet.getRange(i + 2, 7).setValue(now);
-      return { ok: true, username: username };
+      return { ok: true, username: username, user: authGetUser_(ss, username) };
     }
   }
   return { ok: false, error: 'Session expired' };
@@ -105,6 +105,121 @@ function authLogoutSession_(ss, e, line) {
       sheet.deleteRow(i + 2);
     }
   }
+}
+
+function authGetUser_(ss, username) {
+  var sheet = ss.getSheetByName('Pouzivatelia');
+  if (!sheet) return { username: username, role: '', region: '', name: '' };
+  var rows = sheet.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) {
+    var login = String(rows[i][0] || '').trim().toLowerCase();
+    if (login === username) {
+      return {
+        username: login,
+        name: String(rows[i][2] || '').trim(),
+        role: String(rows[i][3] || '').trim().toLowerCase(),
+        region: String(rows[i][4] || '').trim()
+      };
+    }
+  }
+  return { username: username, role: '', region: '', name: '' };
+}
+
+function authIsGpAdmin_(user) {
+  var r = String((user && user.role) || '').trim().toLowerCase();
+  return r === 'admin' || r === 'bum' || r === 'boss' || r === 'pm' || r === 'am';
+}
+
+function authIsGpAmWest_(user) {
+  var r = String((user && user.role) || '').trim().toLowerCase();
+  return r === 'am west' || r === 'amwest';
+}
+
+function authIsGpAmEast_(user) {
+  var r = String((user && user.role) || '').trim().toLowerCase();
+  return r === 'am east' || r === 'ameast';
+}
+
+function authAllowedGpReps_(ss, user) {
+  var out = {};
+  if (!user) return out;
+  if (authIsGpAdmin_(user)) return null; // null = all reps
+  var wantedRole = '';
+  if (authIsGpAmWest_(user)) wantedRole = 'rep west';
+  else if (authIsGpAmEast_(user)) wantedRole = 'rep east';
+  else {
+    out[String(user.username || '').trim().toLowerCase()] = true;
+    return out;
+  }
+  var sheet = ss.getSheetByName('Pouzivatelia');
+  if (!sheet) return out;
+  var rows = sheet.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) {
+    var login = String(rows[i][0] || '').trim().toLowerCase();
+    var role = String(rows[i][3] || '').trim().toLowerCase();
+    if (login && role === wantedRole) out[login] = true;
+  }
+  return out;
+}
+
+function authCanAccessGpRep_(ss, user, rep) {
+  var target = String(rep || '').trim().toLowerCase();
+  if (!target) return false;
+  var allowed = authAllowedGpReps_(ss, user);
+  return allowed === null || !!allowed[target];
+}
+
+function authAllowedGpOblasts_(ss, user) {
+  if (authIsGpAdmin_(user)) return null;
+  var allowedReps = authAllowedGpReps_(ss, user);
+  var out = {};
+  var sheet = ss.getSheetByName('Pouzivatelia');
+  if (!sheet) return out;
+  var rows = sheet.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) {
+    var login = String(rows[i][0] || '').trim().toLowerCase();
+    if (allowedReps !== null && !allowedReps[login]) continue;
+    var region = String(rows[i][4] || '').trim().toUpperCase();
+    if (region) out[region] = true;
+  }
+  return out;
+}
+
+function authCanAccessGpOblast_(ss, user, oblast) {
+  var ob = String(oblast || '').trim().toUpperCase();
+  if (!ob) return false;
+  var allowed = authAllowedGpOblasts_(ss, user);
+  return allowed === null || !!allowed[ob];
+}
+
+function authFilterGpHistory_(ss, user, rows, repIdx) {
+  var allowed = authAllowedGpReps_(ss, user);
+  if (allowed === null) return rows;
+  var out = [rows[0]];
+  for (var i = 1; i < rows.length; i++) {
+    var rep = String(rows[i][repIdx] || '').trim().toLowerCase();
+    if (allowed[rep]) out.push(rows[i]);
+  }
+  return out;
+}
+
+function authFilterGpPlnenieRows_(ss, user, rows) {
+  if (!rows || rows.length < 2) return rows;
+  var allowed = authAllowedGpReps_(ss, user);
+  if (allowed === null) return rows;
+  var out = [rows[0]];
+  for (var i = 1; i < rows.length; i++) {
+    var rep = String(rows[i][0] || '').trim().toLowerCase();
+    if (allowed[rep]) out.push(rows[i]);
+  }
+  return out;
+}
+
+function authFilterLekarneLogin_(ss, user, requestedLogin) {
+  var login = String(requestedLogin || '').trim().toLowerCase();
+  if (login && authCanAccessGpRep_(ss, user, login)) return login;
+  if (authIsGpAdmin_(user) || authIsGpAmWest_(user) || authIsGpAmEast_(user)) return login;
+  return String((user && user.username) || '').trim().toLowerCase();
 }
 
 function doGet(e) {
@@ -157,6 +272,7 @@ function doGet(e) {
       var auth = authRequireSession_(ss, e, 'gp'); if(!auth.ok) return jsonResponse(auth);
       var sheet = ss.getSheets()[0];
       var p = e.parameter;
+      if(!authIsGpAdmin_(auth.user)) p.reprezentant = auth.username;
       function num(v){ var n = parseFloat(v); return isNaN(n) ? 0 : n; }
       sheet.appendRow([
         p.reprezentant||'', p.datum||'', p.cas||'',
@@ -181,6 +297,7 @@ function doGet(e) {
       var headers = rows[0].map(function(h){ return String(h||'').trim().toLowerCase().replace(/\s+/g,'_'); });
       var repIdx = headers.indexOf('reprezentant');
       if(repIdx === -1) return jsonResponse({});
+      rows = authFilterGpHistory_(ss, auth.user, rows, repIdx);
       var numericCols = ['kapitacia','aflamil_n','aflamil_eur','suprax_n','suprax_eur',
                          'vidonorm_n','vidonorm_eur','cavinton_n','cavinton_eur','rocny_potential'];
       var epoch = new Date(1899, 11, 30);
@@ -209,6 +326,7 @@ function doGet(e) {
     if(action === 'getHistory') {
       var auth = authRequireSession_(ss, e, 'gp'); if(!auth.ok) return jsonResponse(auth);
       var reprezentant = e.parameter.reprezentant || '';
+      if(!authCanAccessGpRep_(ss, auth.user, reprezentant)) return jsonResponse([]);
       var sheet = ss.getSheets()[0];
       var rows = sheet.getDataRange().getValues();
       if(rows.length < 2) return jsonResponse([]);
@@ -252,6 +370,12 @@ function doGet(e) {
       var sheet = ss.getSheets()[0];
       var rowNum = parseInt(p.row);
       if(rowNum > 0) {
+        var repHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(function(h){ return String(h||'').trim().toLowerCase(); });
+        var repIdxNote = repHeaders.indexOf('reprezentant');
+        if(repIdxNote >= 0) {
+          var rowRep = String(sheet.getRange(rowNum, repIdxNote + 1).getValue() || '').trim().toLowerCase();
+          if(!authCanAccessGpRep_(ss, auth.user, rowRep)) return jsonResponse({ok: false, error: 'Forbidden'});
+        }
         var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
         var poznIdx = -1;
         for(var j = 0; j < headers.length; j++) {
@@ -265,6 +389,7 @@ function doGet(e) {
     // ── ZOZNAM MANAŽÉROV (pre admin view) ──
     if(action === 'getManagers') {
       var auth = authRequireSession_(ss, e, 'gp'); if(!auth.ok) return jsonResponse(auth);
+      if(!authIsGpAdmin_(auth.user)) return jsonResponse([]);
       var sheet = ss.getSheetByName('Pouzivatelia');
       if(!sheet) return jsonResponse([]);
       var rows = sheet.getDataRange().getValues();
@@ -309,6 +434,7 @@ function doGet(e) {
     if(action === 'pingLogin') {
       var auth = authRequireSession_(ss, e, 'gp'); if(!auth.ok) return jsonResponse(auth);
       var rep = (e.parameter.reprezentant || '').trim().toLowerCase();
+      if(!authCanAccessGpRep_(ss, auth.user, rep)) return jsonResponse({ok: false});
       if(!rep) return jsonResponse({ok: false});
       var sheet = ss.getSheetByName('Pouzivatelia');
       if(!sheet) return jsonResponse({ok: false});
@@ -339,8 +465,10 @@ function doGet(e) {
       var loginIdx = headers.indexOf('posledny_login');
       if(usernameIdx === -1 || loginIdx === -1) return jsonResponse({});
       var result = {};
+      var allowedLogins = authAllowedGpReps_(ss, auth.user);
       for(var i = 1; i < rows.length; i++){
         var u = String(rows[i][usernameIdx]||'').trim().toLowerCase();
+        if(allowedLogins !== null && !allowedLogins[u]) continue;
         var v = rows[i][loginIdx];
         if(u && v){
           result[u] = v instanceof Date ? v.toISOString() : String(v);
@@ -353,6 +481,8 @@ function doGet(e) {
     if(action === 'getReps') {
       var auth = authRequireSession_(ss, e, 'gp'); if(!auth.ok) return jsonResponse(auth);
       var region = (e.parameter.region || '').toLowerCase().trim();
+      if((region === 'west' && authIsGpAmEast_(auth.user)) || (region === 'east' && authIsGpAmWest_(auth.user))) return jsonResponse([]);
+      if(!authIsGpAdmin_(auth.user) && !authIsGpAmWest_(auth.user) && !authIsGpAmEast_(auth.user)) return jsonResponse([]);
       var sheet = ss.getSheetByName('Pouzivatelia');
       if(!sheet) return jsonResponse([]);
       var rows = sheet.getDataRange().getValues();
@@ -382,6 +512,7 @@ function doGet(e) {
         if(h === 'avatar') avatarIdx = hi;
       }
       var reps = [];
+      var allowedReps = authAllowedGpReps_(ss, auth.user);
       for(var i = 1; i < rows.length; i++) {
         var login  = String(rows[i][0] || '').trim();
         var meno   = String(rows[i][2] || '').trim();
@@ -390,6 +521,7 @@ function doGet(e) {
         var pohlavie = (pohlavieIdx >= 0) ? String(rows[i][pohlavieIdx] || '').trim() : '';
         var avatar   = (avatarIdx   >= 0) ? String(rows[i][avatarIdx]   || '').trim() : '';
         if(!login || !meno) continue;
+        if(allowedReps !== null && !allowedReps[login]) continue;
         if(rola === 'rep west' || rola === 'rep east') {
           reps.push({ login: login, meno: meno, rola: rola, region: region, pohlavie: pohlavie, avatar: avatar });
         }
@@ -404,6 +536,7 @@ function doGet(e) {
     if(action === 'setAvatar') {
       var auth = authRequireSession_(ss, e, 'gp'); if(!auth.ok) return jsonResponse(auth);
       var avUser = (e.parameter.username || '').trim().toLowerCase();
+      if(avUser !== auth.username && !authIsGpAdmin_(auth.user)) return jsonResponse({ok: false, error: 'Forbidden'});
       var avConfig = e.parameter.config || '';
       if(!avUser) return jsonResponse({ok: false, error: 'missing username'});
       // Validácia max 2000 znakov a validný JSON ak nie je prázdny
@@ -440,6 +573,7 @@ function doGet(e) {
     if(action === 'getPlnenie') {
       var auth = authRequireSession_(ss, e, 'gp'); if(!auth.ok) return jsonResponse(auth);
       var rep = (e.parameter.reprezentant || '').trim().toLowerCase();
+      if(!authCanAccessGpRep_(ss, auth.user, rep)) return jsonResponse({ok: false, error: 'Forbidden'});
       var rok = parseInt(e.parameter.rok) || 2026;
       var q = parseInt(e.parameter.Q) || 1;
       if(!rep) return jsonResponse({ok: false, error: 'missing reprezentant'});
@@ -471,6 +605,7 @@ function doGet(e) {
       var planProducts = [];
       if(planSheet) {
         var planRows = planSheet.getDataRange().getValues();
+        planRows = authFilterGpPlnenieRows_(ss, auth.user, planRows);
         if(planRows.length >= 2) {
           var planHdr = planRows[0].map(function(h){ return String(h||'').trim(); });
           for(var j = 4; j < planHdr.length; j++) {
@@ -499,6 +634,7 @@ function doGet(e) {
       var predajeProducts = [];
       if(predajeSheet) {
         var prRows = predajeSheet.getDataRange().getValues();
+        prRows = authFilterGpPlnenieRows_(ss, auth.user, prRows);
         if(prRows.length >= 2) {
           var prHdr = prRows[0].map(function(h){ return String(h||'').trim(); });
           for(var j = 4; j < prHdr.length; j++) {
@@ -543,6 +679,7 @@ function doGet(e) {
       var produkt = (e.parameter.produkt || '').trim();
       var kvartal = (e.parameter.kvartal || '').trim();
       if(!oblast || !produkt) return jsonResponse({ok: false, error: 'missing params'});
+      if(!authCanAccessGpOblast_(ss, auth.user, oblast)) return jsonResponse({ok: false, error: 'Forbidden'});
 
       function hdrIdx(hdr, name) { return hdr.indexOf(name); }
 
@@ -614,6 +751,7 @@ function doGet(e) {
       var oblast  = (e.parameter.oblast  || '').trim().toUpperCase();
       var okres   = (e.parameter.okres   || '').trim();
       if(!produkt || !oblast || !okres) return jsonResponse({ok:false, error:'missing params'});
+      if(!authCanAccessGpOblast_(ss, auth.user, oblast)) return jsonResponse({ok:false, error:'Forbidden'});
 
       var ogSheet = ss.getSheetByName('PharmaData_OkresyGraf');
       if(!ogSheet) return jsonResponse({ok:false, error:'Tab PharmaData_OkresyGraf nenajdeny'});
@@ -661,6 +799,7 @@ function doGet(e) {
       var produkt = (e.parameter.produkt || '').trim().toUpperCase();
       var oblast  = (e.parameter.oblast  || '').trim().toUpperCase();
       if(!produkt || !oblast) return jsonResponse({ok: false, error: 'missing produkt or oblast'});
+      if(!authCanAccessGpOblast_(ss, auth.user, oblast)) return jsonResponse({ok: false, error:'Forbidden'});
 
       var grafSheet = ss.getSheetByName('PharmaData_Graf');
       if(!grafSheet) return jsonResponse({ok: false, error: 'Tab PharmaData_Graf nenajdeny'});
@@ -717,6 +856,7 @@ function doGet(e) {
     // ── SET CONFIG — zapisuje hodnotu do tabu "Config" (len admin) ──
     if(action === 'setConfig') {
       var auth = authRequireSession_(ss, e, 'gp'); if(!auth.ok) return jsonResponse(auth);
+      if(!authIsGpAdmin_(auth.user)) return jsonResponse({ok: false, error: 'Forbidden'});
       var key = (e.parameter.key || '').trim();
       var value = e.parameter.value;
       if(!key) return jsonResponse({ok: false, error: 'missing key'});
@@ -744,6 +884,7 @@ function doGet(e) {
       var username = (e.parameter.username || '').trim();
       var vote = (e.parameter.vote || '').trim(); // 'up' alebo 'down'
       if(!username || !vote) return jsonResponse({ok: false, error: 'missing params'});
+      if(String(username).trim().toLowerCase() !== auth.username) return jsonResponse({ok: false, error: 'Forbidden'});
       var voteSheet = ss.getSheetByName('SatoriVotes');
       if(!voteSheet) {
         voteSheet = ss.insertSheet('SatoriVotes');
@@ -760,6 +901,8 @@ function doGet(e) {
       var rows = sheet.getDataRange().getValues();
       if(rows.length < 2) return jsonResponse({total:0, highPotentialPct:0, vyraditPct:0});
       var headers = rows[0].map(function(h){ return String(h||'').trim().toLowerCase().replace(/\s+/g,'_'); });
+      var repIdxM = headers.indexOf('reprezentant');
+      if(repIdxM !== -1) rows = authFilterGpHistory_(ss, auth.user, rows, repIdxM);
       var lekarIdx = headers.indexOf('lekar');
       var potentialIdx = headers.indexOf('rocny_potential');
       var scenarIdx = headers.indexOf('scenar');
@@ -793,6 +936,7 @@ function doGet(e) {
     if(action === 'getInitData') {
       var auth = authRequireSession_(ss, e, 'gp'); if(!auth.ok) return jsonResponse(auth);
       var username = (e.parameter.reprezentant || '').trim().toLowerCase();
+      if(!authCanAccessGpRep_(ss, auth.user, username)) return jsonResponse({ok: false, error: 'Forbidden'});
       var rok = parseInt(e.parameter.rok) || new Date().getFullYear();
       var q = parseInt(e.parameter.Q) || Math.ceil((new Date().getMonth() + 1) / 3);
 
@@ -810,6 +954,7 @@ function doGet(e) {
       var history = [];
       var repIdxI = mainHdr.indexOf('reprezentant');
       if(mainData.length >= 2 && repIdxI !== -1) {
+        mainData = authFilterGpHistory_(ss, auth.user, mainData, repIdxI);
         for(var i = 1; i < mainData.length; i++) {
           var row = mainData[i];
           if(String(row[repIdxI]||'').trim().toLowerCase() !== username) continue;
@@ -877,6 +1022,7 @@ function doGet(e) {
           var pohlavie2 = (pohlavieIdx2 >= 0) ? String(pouzRows2[i][pohlavieIdx2] || '').trim() : '';
           var avatar2   = (avatarIdx2   >= 0) ? String(pouzRows2[i][avatarIdx2]   || '').trim() : '';
           if(!login2 || !meno2) continue;
+          if(!authCanAccessGpRep_(ss, auth.user, login2)) continue;
           if(rola2 === 'rep west' || rola2 === 'rep east') {
             repList.push({ login: login2, meno: meno2, rola: rola2, region: region2, pohlavie: pohlavie2, avatar: avatar2 });
           }
@@ -910,17 +1056,31 @@ function doGet(e) {
     if(action === 'getLekarne') {
       var auth = authRequireSession_(ss, e, 'gp'); if(!auth.ok) return jsonResponse(auth);
       var lkLogin = (e.parameter.login || '').trim().toLowerCase();
+      if(!lkLogin && !authIsGpAdmin_(auth.user)) {
+        var allowedLk = authAllowedGpReps_(ss, auth.user);
+        var rowsLk = lkReadRows_(ss, '', e.parameter.creamMonth || '');
+        if(allowedLk !== null) rowsLk = rowsLk.filter(function(r){ return allowedLk[String(r.login || '').trim().toLowerCase()]; });
+        return jsonResponse({ok: true, rows: rowsLk});
+      }
+      lkLogin = authFilterLekarneLogin_(ss, auth.user, lkLogin);
       return jsonResponse({ok: true, rows: lkReadRows_(ss, lkLogin, e.parameter.creamMonth || '')});
     }
 
     if(action === 'getLekarneAll') {
       var auth = authRequireSession_(ss, e, 'gp'); if(!auth.ok) return jsonResponse(auth);
-      return jsonResponse({ok: true, rows: lkReadRows_(ss, '', e.parameter.creamMonth || '')});
+      if(authIsGpAdmin_(auth.user)) return jsonResponse({ok: true, rows: lkReadRows_(ss, '', e.parameter.creamMonth || '')});
+      var allowed = authAllowedGpReps_(ss, auth.user);
+      var rowsAll = lkReadRows_(ss, '', e.parameter.creamMonth || '');
+      if(allowed !== null) {
+        rowsAll = rowsAll.filter(function(r){ return allowed[String(r.login || '').trim().toLowerCase()]; });
+      }
+      return jsonResponse({ok: true, rows: rowsAll});
     }
 
     if(action === 'setLekarenKremContact') {
       var auth = authRequireSession_(ss, e, 'gp'); if(!auth.ok) return jsonResponse(auth);
       var lkContactLogin = String(e.parameter.username || '').trim().toLowerCase();
+      if(!authCanAccessGpRep_(ss, auth.user, lkContactLogin)) return jsonResponse({ok: false, error: 'Forbidden'});
       var lkContactKey = String(e.parameter.key || '').trim();
       var lkContactMonth = String(e.parameter.month || '').trim();
       if(!lkContactLogin || !lkContactKey) return jsonResponse({ok: false, error: 'missing login or key'});
@@ -932,6 +1092,7 @@ function doGet(e) {
     // URL: ?action=updateRecord&row=42&kapitacia=2000&kategoria=A&...
     if(action === 'updateRecord') {
       var auth = authRequireSession_(ss, e, 'gp'); if(!auth.ok) return jsonResponse(auth);
+      if(!authIsGpAdmin_(auth.user)) return jsonResponse({ok: false, error: 'Forbidden'});
       var p = e.parameter;
       var rowNum = parseInt(p.row);
       if(!rowNum || rowNum < 2) return jsonResponse({ok: false, error: 'invalid row'});

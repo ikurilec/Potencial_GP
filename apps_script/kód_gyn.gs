@@ -83,7 +83,7 @@ function authRequireSession_(ss, e, line) {
         String(rows[i][3] || '').trim() === line) {
       if (!exp || !(exp instanceof Date) || isNaN(exp.getTime()) || exp <= now) return { ok: false, error: 'Session expired' };
       sheet.getRange(i + 2, 7).setValue(now);
-      return { ok: true, username: username };
+      return { ok: true, username: username, user: authGetGynUser_(ss, username) };
     }
   }
   return { ok: false, error: 'Session expired' };
@@ -105,6 +105,55 @@ function authLogoutSession_(ss, e, line) {
       sheet.deleteRow(i + 2);
     }
   }
+}
+
+function authGetGynUser_(ss, username) {
+  var sheet = ss.getSheetByName('Pouzivatelia');
+  if (!sheet) return { username: username, role: '', linia: '', region: '' };
+  var rows = sheet.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) {
+    var login = String(rows[i][0] || '').trim().toLowerCase();
+    if (login === username) {
+      return {
+        username: login,
+        name: String(rows[i][2] || '').trim(),
+        role: String(rows[i][3] || '').trim().toLowerCase(),
+        linia: String(rows[i][4] || '').trim().toLowerCase(),
+        region: String(rows[i][5] || '').trim().toUpperCase()
+      };
+    }
+  }
+  return { username: username, role: '', linia: '', region: '' };
+}
+
+function authIsGynManager_(user) {
+  return String((user && user.role) || '').trim().toLowerCase() !== 'gyn-rep';
+}
+
+function authCanAccessGynRep_(ss, user, rep) {
+  var target = String(rep || '').trim().toLowerCase();
+  if (!target) return false;
+  return authIsGynManager_(user) || target === String((user && user.username) || '').trim().toLowerCase();
+}
+
+function authCanAccessGynRegion_(user, region) {
+  var target = String(region || '').trim().toUpperCase();
+  if (!target) return false;
+  return authIsGynManager_(user) || target === String((user && user.region) || '').trim().toUpperCase();
+}
+
+function authFilterGynPlanRows_(ss, user, rows) {
+  if (!rows || rows.length < 2 || authIsGynManager_(user)) return rows;
+  var out = [rows[0]];
+  var login = String((user && user.username) || '').trim().toLowerCase();
+  for (var i = 1; i < rows.length; i++) {
+    if (String(rows[i][0] || '').trim().toLowerCase() === login) out.push(rows[i]);
+  }
+  return out;
+}
+
+function authFilterGynPredRows_(ss, user, rows) {
+  return authFilterGynPlanRows_(ss, user, rows);
 }
 
 function doGet(e) {
@@ -160,6 +209,7 @@ function doGet(e) {
     if (action === 'pingLogin') {
       var auth = authRequireSession_(ss, e, 'gyn'); if(!auth.ok) return jsonResp(auth);
       var rep = (e.parameter.reprezentant || '').trim().toLowerCase();
+      if(!authCanAccessGynRep_(ss, auth.user, rep)) return jsonResp({ok: false});
       if (!rep) return jsonResp({ok: false});
       var sheet = ss.getSheetByName('Pouzivatelia');
       if (!sheet) return jsonResp({ok: false});
@@ -200,6 +250,7 @@ function doGet(e) {
         var pohlavie = (pohlavieIdx >= 0) ? String(rows[i][pohlavieIdx] || '').trim() : '';
         var avatar   = (avatarIdx   >= 0) ? String(rows[i][avatarIdx]   || '').trim() : '';
         if (!login || !meno) continue;
+        if(!authCanAccessGynRep_(ss, auth.user, login)) continue;
         if (rola === 'gyn-rep') {
           reps.push({login: login, meno: meno, rola: rola, linia: linia, region: region, pohlavie: pohlavie, avatar: avatar});
         }
@@ -212,6 +263,7 @@ function doGet(e) {
     if (action === 'setAvatar') {
       var auth = authRequireSession_(ss, e, 'gyn'); if(!auth.ok) return jsonResp(auth);
       var avUser = (e.parameter.username || '').trim().toLowerCase();
+      if(avUser !== auth.username && !authIsGynManager_(auth.user)) return jsonResp({ok: false, error: 'Forbidden'});
       var avConfig = e.parameter.config || '';
       if (!avUser) return jsonResp({ok: false, error: 'missing username'});
       if (avConfig.length > 2000) return jsonResp({ok: false, error: 'config too long'});
@@ -251,6 +303,7 @@ function doGet(e) {
       var planProds  = [];
       if (planSheet) {
         var planData = planSheet.getDataRange().getValues();
+        planData = authFilterGynPlanRows_(ss, auth.user, planData);
         if (planData.length >= 2) {
           var planHdr = planData[0].map(function(h){ return String(h || '').trim(); });
           for (var j = 5; j < planHdr.length; j++) {
@@ -279,6 +332,7 @@ function doGet(e) {
       var predajeProds  = [];
       if (predajeSheet) {
         var prData = predajeSheet.getDataRange().getValues();
+        prData = authFilterGynPredRows_(ss, auth.user, prData);
         if (prData.length >= 2) {
           var prHdr = prData[0].map(function(h){ return String(h || '').trim(); });
           for (var j = 4; j < prHdr.length; j++) {
@@ -309,7 +363,9 @@ function doGet(e) {
       // Korekcia prepíše iba konkrétnu hodnotu login × rok × mesiac × produkt.
       var korekcieSheet = ss.getSheetByName('Predaje_korekcie');
       if (korekcieSheet) {
-        applyPredajeCorrections(predajeByRep, korekcieSheet.getDataRange().getValues(), rokA, qMonths);
+        var corrRows = korekcieSheet.getDataRange().getValues();
+        corrRows = authFilterGynPredRows_(ss, auth.user, corrRows);
+        applyPredajeCorrections(predajeByRep, corrRows, rokA, qMonths);
       }
 
       var pacientiData = readGynPacienti_(ss, rokA, qA);
@@ -346,6 +402,7 @@ function doGet(e) {
     // ── SET CONFIG ──
     if (action === 'setConfig') {
       var auth = authRequireSession_(ss, e, 'gyn'); if(!auth.ok) return jsonResp(auth);
+      if(!authIsGynManager_(auth.user)) return jsonResp({ok: false, error: 'Forbidden'});
       var key   = (e.parameter.key   || '').trim();
       var value = e.parameter.value;
       if (!key) return jsonResp({ok: false, error: 'missing key'});
@@ -372,6 +429,7 @@ function doGet(e) {
       var rep   = (e.parameter.username || '').trim();
       var vote  = (e.parameter.vote     || '').trim();
       if (!rep || (vote !== 'up' && vote !== 'down')) return jsonResp({ok: false});
+      if(String(rep).trim().toLowerCase() !== auth.username) return jsonResp({ok: false, error: 'Forbidden'});
       var tab = ss.getSheetByName('SatoriVotes');
       if (!tab) {
         tab = ss.insertSheet('SatoriVotes');
@@ -389,6 +447,7 @@ function doGet(e) {
       var produkt = (e.parameter.produkt || '').trim();
       var kvartal = (e.parameter.kvartal || '').trim();
       if (!oblast || !produkt) return jsonResp({ok: false, error: 'missing params'});
+      if(!authCanAccessGynRegion_(auth.user, oblast)) return jsonResp({ok: false, error: 'Forbidden'});
 
       function hdrIdx(hdr, name) { return hdr.indexOf(name); }
 
