@@ -8,6 +8,9 @@ assert(index.includes("LB_STATE.period = 'all';"), 'visits leaderboard must forc
 assert(index.includes("w.classList.add('hidden')"), 'period tabs should stay hidden');
 assert(index.includes("var baseScope = lbScopeReps();"), 'visits ranking must use full leaderboard scope');
 assert(index.includes("var rankingScope = lbScopeReps();"), 'Q plnenie ranking must use full leaderboard scope');
+assert(index.includes('function plnenieBuildAggregates(resp, q, scopeReps)'), 'plnenie aggregation must accept an explicit scope');
+assert(index.includes('var activeReps = Array.isArray(scopeReps) && scopeReps.length ? scopeReps : plnenieGetActiveReps();'), 'plnenie aggregation must default to dashboard scope only when no explicit scope is provided');
+assert(index.includes('var agg = plnenieBuildAggregates(resp, lastQ, lbScopeReps());'), 'leaderboard Q plnenie must aggregate the full leaderboard roster');
 assert(index.includes('var LB_STATIC_REPS = LB_ALL_REPS.slice();'), 'leaderboard must keep a static full-line roster');
 assert(index.includes('var isFullRoster = all.length >= LB_STATIC_REPS.length;'), 'partial AM repList must not replace full leaderboard roster');
 assert(index.includes('if (isFullRoster || !Object.keys(LB_REP_INFO).length) LB_REP_INFO = {};'), 'partial AM repList must preserve full leaderboard rep info');
