@@ -26,6 +26,12 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.53 - Golem: AM leaderboard full roster sa neprepise po refreshi
+
+- Rebríček má samostatný stabilný full-line roster `LB_STATIC_REPS`/`LB_ALL_REPS`, ktorý sa pri AM refreshi `repList` neprepíše iba na West/East.
+- `buildRepData()` stále nastaví `MGR_ALL` podľa prihlásenej manažérskej roly, takže hlavný AM dashboard zostáva zúžený na West/East, ale leaderboard zostáva celolíniový.
+- Pri čiastočnom AM `repList` sa nevymaže existujúci `LB_REP_INFO`, aby sa v rebríčku po neskorom refreshi nestratili mená/avatary ostatných reprezentantov.
+
 ### v2.21.52 - Golem: AM dashboard scope + full team leaderboard
 
 - Hlavná obrazovka Plnenie pre AM West/East znova zobrazuje iba ich vlastnú líniu a len reprezentantov z West/East. Celolíniový pohľad ostáva pre admin/PM/BUM/boss.

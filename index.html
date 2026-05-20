@@ -2431,7 +2431,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.52';
+var APP_VERSION = '2.21.53';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9381,8 +9381,8 @@ var LB_PLNENIE_LOADING = false;
 var LB_APPROVED_Q = null; // admin schvaleny Q pre rebricek plnenie, null = auto (currentQ-1)
 
 function lbScopeReps() {
-  if (Array.isArray(MGR_ALL) && MGR_ALL.length) return MGR_ALL.slice();
   if (Array.isArray(LB_ALL_REPS) && LB_ALL_REPS.length) return LB_ALL_REPS.slice();
+  if (Array.isArray(MGR_ALL) && MGR_ALL.length) return MGR_ALL.slice();
   return [];
 }
 
@@ -10194,6 +10194,7 @@ var LB_REP_INFO = {
 };
 var LB_ALL_REPS = ['j.bohovic','v.hatinova','v.hromadkova','z.lescis','j.krkoska','i.kozakova',
                    'k.czidor','o.rad','l.macakova','z.lapsan','m.sabol','a.makis'];
+var LB_STATIC_REPS = LB_ALL_REPS.slice();
 
 var REP_LIST_STATE = { loaded: false, loading: false };
 
@@ -10201,14 +10202,16 @@ function buildRepData(reps) {
   var west = reps.filter(function(r){ return r.rola === 'rep west'; });
   var east = reps.filter(function(r){ return r.rola === 'rep east'; });
   var all = west.concat(east);
+  var isFullRoster = all.length >= LB_STATIC_REPS.length;
 
   MGR_AM_WEST = west.map(function(r){ return r.login.trim().toLowerCase(); });
   MGR_AM_EAST = east.map(function(r){ return r.login.trim().toLowerCase(); });
   MGR_ALL = all.map(function(r){ return r.login.trim().toLowerCase(); });
-  LB_ALL_REPS = MGR_ALL.slice();
+  if (isFullRoster) LB_ALL_REPS = MGR_ALL.slice();
+  else if (!LB_ALL_REPS.length) LB_ALL_REPS = LB_STATIC_REPS.slice();
 
   MGR_REP_NAMES = {};
-  LB_REP_INFO = {};
+  if (isFullRoster || !Object.keys(LB_REP_INFO).length) LB_REP_INFO = {};
   USERS_LOCAL = {};
 
   all.forEach(function(r, idx){

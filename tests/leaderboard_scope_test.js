@@ -8,6 +8,9 @@ assert(index.includes("LB_STATE.period = 'all';"), 'visits leaderboard must forc
 assert(index.includes("w.classList.add('hidden')"), 'period tabs should stay hidden');
 assert(index.includes("var baseScope = lbScopeReps();"), 'visits ranking must use full leaderboard scope');
 assert(index.includes("var rankingScope = lbScopeReps();"), 'Q plnenie ranking must use full leaderboard scope');
+assert(index.includes('var LB_STATIC_REPS = LB_ALL_REPS.slice();'), 'leaderboard must keep a static full-line roster');
+assert(index.includes('var isFullRoster = all.length >= LB_STATIC_REPS.length;'), 'partial AM repList must not replace full leaderboard roster');
+assert(index.includes('if (isFullRoster || !Object.keys(LB_REP_INFO).length) LB_REP_INFO = {};'), 'partial AM repList must preserve full leaderboard rep info');
 assert(index.includes("if (MGR_STATE.role === 'amwest') return MGR_AM_WEST;"), 'AM West dashboard plnenie must stay scoped to West');
 assert(index.includes("if (MGR_STATE.role === 'ameast') return MGR_AM_EAST;"), 'AM East dashboard plnenie must stay scoped to East');
 assert(index.includes("btn.innerHTML = '🏆 Rebríček';") && /return;\s*var session = getSession\(\);/.test(index), 'rep nav leaderboard button must not keep a rank badge');
