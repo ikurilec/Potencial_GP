@@ -2431,7 +2431,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.53';
+var APP_VERSION = '2.21.54';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10957,7 +10957,7 @@ function lbPreloadPlnenie() {
   mgrFetchWithRetry(url, 3)
     .then(function(resp) {
       if (!resp || !resp.ok) throw new Error('No data');
-      var agg = plnenieBuildAggregates(resp, lastQ);
+      var agg = plnenieBuildAggregates(resp, lastQ, lbScopeReps());
       LB_PLNENIE_CACHE = { q: lastQ, data: resp, aggregates: agg };
     })
     .catch(function() {
@@ -11967,7 +11967,7 @@ function plnenieSumLabel() {
   return 'Slovensko';
 }
 
-function plnenieBuildAggregates(resp, q) {
+function plnenieBuildAggregates(resp, q, scopeReps) {
   var plan = resp.plan || {};
   var predaje = resp.predaje || {};
   var planProducts = resp.planProducts || [];
@@ -11991,7 +11991,7 @@ function plnenieBuildAggregates(resp, q) {
   // Per-rep agregát — per-rep relevant products:
   // do planEUR a predajeEUR započítavame IBA produkty, kde DANÝ rep má plán > 0.
   // Rep bez plánu na produkt X nekontribuuje svojimi predajmi pre X do svojho %.
-  var activeReps = plnenieGetActiveReps();
+  var activeReps = Array.isArray(scopeReps) && scopeReps.length ? scopeReps : plnenieGetActiveReps();
   var aggYear = (typeof PL_STATE !== 'undefined' && PL_STATE.year) ? PL_STATE.year : (new Date()).getFullYear();
   var qMonths = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[q] || [];
   var repPredictionParts = {};
