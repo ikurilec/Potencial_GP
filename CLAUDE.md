@@ -26,6 +26,12 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.51 - AM rebricek a plnenie: cela linia
+
+- AM West/East v rebricku a v Plneni Q opat vidia celu liniu, nie iba vlastnych reprezentantov. Backend pre `getAllHistory` a `getPlnenieAll` pouziva full-line scope pre AM leaderboard/plnenie pohlad, ostatne chranene endpointy ostavaju filtrovane podla roly.
+- Rebricek Navstevy uz nema delenie Mesiac/Kvartal/Celkove; pouziva iba celkove poradie a period tabs ostavaju skryte.
+- Tlacidlo Rebricek pri reprezentantovi pocita rank podla celkovych navstev. Pridany test `tests/leaderboard_scope_test.js`; `tests/role_filtering_test.js` doplneny o full-line vynimku pre AM leaderboard/plnenie. Vyzaduje redeploy `apps_script/kód.gs`.
+
 ### v2.21.50 - Bezpecnost: backend role filtering
 
 - Apps Script uz po overeni session dohliada aj na rolu pouzivatela. Reprezentant dostane iba vlastne data, AM West/East iba prislusnu skupinu reprezentantov a admin/PM/BUM vsetky data.

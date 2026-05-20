@@ -140,10 +140,10 @@ function authIsGpAmEast_(user) {
   return r === 'am east' || r === 'ameast';
 }
 
-function authAllowedGpReps_(ss, user) {
+function authAllowedGpReps_(ss, user, fullLine) {
   var out = {};
   if (!user) return out;
-  if (authIsGpAdmin_(user)) return null; // null = all reps
+  if (authIsGpAdmin_(user) || (fullLine && (authIsGpAmWest_(user) || authIsGpAmEast_(user)))) return null; // null = all reps
   var wantedRole = '';
   if (authIsGpAmWest_(user)) wantedRole = 'rep west';
   else if (authIsGpAmEast_(user)) wantedRole = 'rep east';
@@ -192,8 +192,8 @@ function authCanAccessGpOblast_(ss, user, oblast) {
   return allowed === null || !!allowed[ob];
 }
 
-function authFilterGpHistory_(ss, user, rows, repIdx) {
-  var allowed = authAllowedGpReps_(ss, user);
+function authFilterGpHistory_(ss, user, rows, repIdx, fullLine) {
+  var allowed = authAllowedGpReps_(ss, user, fullLine);
   if (allowed === null) return rows;
   var out = [rows[0]];
   for (var i = 1; i < rows.length; i++) {
@@ -203,9 +203,9 @@ function authFilterGpHistory_(ss, user, rows, repIdx) {
   return out;
 }
 
-function authFilterGpPlnenieRows_(ss, user, rows) {
+function authFilterGpPlnenieRows_(ss, user, rows, fullLine) {
   if (!rows || rows.length < 2) return rows;
-  var allowed = authAllowedGpReps_(ss, user);
+  var allowed = authAllowedGpReps_(ss, user, fullLine);
   if (allowed === null) return rows;
   var out = [rows[0]];
   for (var i = 1; i < rows.length; i++) {
@@ -297,7 +297,7 @@ function doGet(e) {
       var headers = rows[0].map(function(h){ return String(h||'').trim().toLowerCase().replace(/\s+/g,'_'); });
       var repIdx = headers.indexOf('reprezentant');
       if(repIdx === -1) return jsonResponse({});
-      rows = authFilterGpHistory_(ss, auth.user, rows, repIdx);
+      rows = authFilterGpHistory_(ss, auth.user, rows, repIdx, true);
       var numericCols = ['kapitacia','aflamil_n','aflamil_eur','suprax_n','suprax_eur',
                          'vidonorm_n','vidonorm_eur','cavinton_n','cavinton_eur','rocny_potential'];
       var epoch = new Date(1899, 11, 30);
@@ -609,7 +609,7 @@ function doGet(e) {
       var planProducts = [];
       if(planSheet) {
         var planRows = planSheet.getDataRange().getValues();
-        planRows = authFilterGpPlnenieRows_(ss, auth.user, planRows);
+        planRows = authFilterGpPlnenieRows_(ss, auth.user, planRows, true);
         if(planRows.length >= 2) {
           var planHdr = planRows[0].map(function(h){ return String(h||'').trim(); });
           for(var j = 4; j < planHdr.length; j++) {
@@ -638,7 +638,7 @@ function doGet(e) {
       var predajeProducts = [];
       if(predajeSheet) {
         var prRows = predajeSheet.getDataRange().getValues();
-        prRows = authFilterGpPlnenieRows_(ss, auth.user, prRows);
+        prRows = authFilterGpPlnenieRows_(ss, auth.user, prRows, true);
         if(prRows.length >= 2) {
           var prHdr = prRows[0].map(function(h){ return String(h||'').trim(); });
           for(var j = 4; j < prHdr.length; j++) {
