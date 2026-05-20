@@ -26,6 +26,12 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.54 - Golem: Plnenie Q rebricek agreguje celu liniu
+
+- `plnenieBuildAggregates()` podporuje explicitný scope reprezentantov. Hlavný AM dashboard bez parametra zostáva zúžený na West/East.
+- `lbPreloadPlnenie()` pri rebríčku Plnenie Q posiela do agregácie `lbScopeReps()`, takže AM vidí percentá za celú líniu, nie iba vlastnú West/East časť s prázdnymi East/West hodnotami.
+- Rozšírený `tests/leaderboard_scope_test.js`, aby chránil rozdiel medzi AM dashboard scope a leaderboard full-line scope.
+
 ### v2.21.53 - Golem: AM leaderboard full roster sa neprepise po refreshi
 
 - Rebríček má samostatný stabilný full-line roster `LB_STATIC_REPS`/`LB_ALL_REPS`, ktorý sa pri AM refreshi `repList` neprepíše iba na West/East.
