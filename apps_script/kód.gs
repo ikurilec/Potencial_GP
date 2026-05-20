@@ -143,7 +143,8 @@ function authIsGpAmEast_(user) {
 function authAllowedGpReps_(ss, user, fullLine) {
   var out = {};
   if (!user) return out;
-  if (authIsGpAdmin_(user) || (fullLine && (authIsGpAmWest_(user) || authIsGpAmEast_(user)))) return null; // null = all reps
+  if (fullLine) return null; // leaderboard/plnenie rebricek = cela linia
+  if (authIsGpAdmin_(user)) return null; // null = all reps
   var wantedRole = '';
   if (authIsGpAmWest_(user)) wantedRole = 'rep west';
   else if (authIsGpAmEast_(user)) wantedRole = 'rep east';
@@ -162,10 +163,10 @@ function authAllowedGpReps_(ss, user, fullLine) {
   return out;
 }
 
-function authCanAccessGpRep_(ss, user, rep) {
+function authCanAccessGpRep_(ss, user, rep, fullLine) {
   var target = String(rep || '').trim().toLowerCase();
   if (!target) return false;
-  var allowed = authAllowedGpReps_(ss, user);
+  var allowed = authAllowedGpReps_(ss, user, fullLine);
   return allowed === null || !!allowed[target];
 }
 
@@ -1026,7 +1027,7 @@ function doGet(e) {
           var pohlavie2 = (pohlavieIdx2 >= 0) ? String(pouzRows2[i][pohlavieIdx2] || '').trim() : '';
           var avatar2   = (avatarIdx2   >= 0) ? String(pouzRows2[i][avatarIdx2]   || '').trim() : '';
           if(!login2 || !meno2) continue;
-          if(!authCanAccessGpRep_(ss, auth.user, login2)) continue;
+          if(!authCanAccessGpRep_(ss, auth.user, login2, true)) continue;
           if(rola2 === 'rep west' || rola2 === 'rep east') {
             repList.push({ login: login2, meno: meno2, rola: rola2, region: region2, pohlavie: pohlavie2, avatar: avatar2 });
           }
