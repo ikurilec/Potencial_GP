@@ -435,7 +435,7 @@ function doGet(e) {
     if(action === 'pingLogin') {
       var auth = authRequireSession_(ss, e, 'gp'); if(!auth.ok) return jsonResponse(auth);
       var rep = (e.parameter.reprezentant || '').trim().toLowerCase();
-      if(!authCanAccessGpRep_(ss, auth.user, rep)) return jsonResponse({ok: false});
+      if(rep !== auth.username && !authCanAccessGpRep_(ss, auth.user, rep)) return jsonResponse({ok: false});
       if(!rep) return jsonResponse({ok: false});
       var sheet = ss.getSheetByName('Pouzivatelia');
       if(!sheet) return jsonResponse({ok: false});

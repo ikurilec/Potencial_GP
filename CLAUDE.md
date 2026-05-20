@@ -26,6 +26,12 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.56 - Golem: AM pingLogin zapisuje posledny_login
+
+- `pingLogin` v GP Apps Scripte teraz dovolí zapísať `posledny_login` aj pre samotný prihlásený manažérsky účet (`am.west`, `am.east`, admin...), nielen pre reprezentantov v jeho scope.
+- Ostatné rep-specific endpointy ostávajú filtrované cez `authCanAccessGpRep_`; výnimka je iba self-ping login zápis.
+- Pridaný test do `tests/role_filtering_test.js`. Vyzaduje redeploy `apps_script/kód.gs`.
+
 ### v2.21.55 - Golem: full roster metadata pre avatary a aktualne mena
 
 - Ak AM dostane najprv iba čiastočný West/East `repList`, `buildRepData()` ho použije pre AM dashboard, ale neoznačí roster ako kompletne načítaný a spustí full-line `getRepList&fullLine=1`.
