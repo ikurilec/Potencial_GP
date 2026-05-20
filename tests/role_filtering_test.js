@@ -5,7 +5,9 @@ const gp = fs.readFileSync('apps_script/kód.gs', 'utf8');
 const gyn = fs.readFileSync('apps_script/kód_gyn.gs', 'utf8');
 
 assert(gp.includes('function authGetUser_(ss, username)'), 'GP backend must load the authenticated user profile');
-assert(gp.includes('function authAllowedGpReps_(ss, user)'), 'GP backend must compute allowed reps by role');
+assert(gp.includes('function authAllowedGpReps_(ss, user, fullLine)'), 'GP backend must compute allowed reps by role');
+assert(gp.includes('fullLine') && gp.includes('authFilterGpHistory_(ss, auth.user, rows, repIdx, true)'), 'GP AM leaderboard history must be able to use the full line');
+assert(gp.includes('authFilterGpPlnenieRows_(ss, auth.user, planRows, true)'), 'GP AM Q plnenie must be able to use the full line');
 assert(gp.includes('function authCanAccessGpRep_(ss, user, rep)'), 'GP backend must gate rep-specific endpoints');
 assert(gp.includes('function authCanAccessGpOblast_(ss, user, oblast)'), 'GP backend must gate pharma region endpoints');
 assert(gp.includes('authFilterGpHistory_'), 'GP getAllHistory must filter rows server-side');

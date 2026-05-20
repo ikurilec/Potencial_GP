@@ -2431,7 +2431,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.50';
+var APP_VERSION = '2.21.51';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9380,6 +9380,12 @@ var LB_PLNENIE_CACHE = null;
 var LB_PLNENIE_LOADING = false;
 var LB_APPROVED_Q = null; // admin schvaleny Q pre rebricek plnenie, null = auto (currentQ-1)
 
+function lbScopeReps() {
+  if (Array.isArray(MGR_ALL) && MGR_ALL.length) return MGR_ALL.slice();
+  if (Array.isArray(LB_ALL_REPS) && LB_ALL_REPS.length) return LB_ALL_REPS.slice();
+  return [];
+}
+
 // Deterministický hash z reťazca — zaručuje vždy rovnakú farbu pre toho istého reprezentanta
 function strHash(s) {
   var h = 0;
@@ -10685,9 +10691,12 @@ function closeLeaderboard(){
 }
 
 function lbSetPeriod(period, el){
-  LB_STATE.period = period;
+  LB_STATE.period = 'all';
   document.querySelectorAll('.lb-tab').forEach(function(t){ t.classList.remove('active'); });
-  if(el) el.classList.add('active');
+  document.querySelectorAll('.lb-tab').forEach(function(t){
+    var onclick = t.getAttribute('onclick') || '';
+    if(onclick.indexOf("'all'") !== -1) t.classList.add('active');
+  });
   lbRender();
 }
 
@@ -10960,6 +10969,7 @@ function lbPreloadPlnenie() {
 
 function lbSetMode(mode, el) {
   LB_STATE.mode = mode;
+  LB_STATE.period = 'all';
   // Sync aktívny stav oboch setov mode tabs (mgr + rep)
   document.querySelectorAll('.lb-mode-tab').forEach(function(t){ t.classList.remove('active'); });
   var isMgr = document.body.classList.contains('manager-mode');
@@ -10972,7 +10982,7 @@ function lbSetMode(mode, el) {
   // Skry/zobraziť period tabs
   ['mgr-lb-period-wrap','rep-lb-period-wrap'].forEach(function(id){
     var w = document.getElementById(id);
-    if(w) w.classList.toggle('hidden', mode !== 'navstevy');
+    if(w) w.classList.add('hidden');
   });
   lbRender();
 }
@@ -11002,7 +11012,7 @@ function lbSyncTabs() {
   // Period wrap visible/hidden
   ['mgr-lb-period-wrap','rep-lb-period-wrap'].forEach(function(id){
     var w = document.getElementById(id);
-    if(w) w.classList.toggle('hidden', LB_STATE.mode !== 'navstevy');
+    if(w) w.classList.add('hidden');
   });
 }
 
@@ -11046,12 +11056,18 @@ function lbRenderPlnenie(body) {
   function pctLbl(pct){ return pct === null ? '—' : pct.toFixed(1).replace('.',',') + ' %'; }
 
   // repsList je uz zoradený z plnenieBuildAggregates (zostupne podla pct)
-  var ranking = repsList.map(function(r){
+  var rankingScope = lbScopeReps();
+  var rankingScopeSet = {};
+  rankingScope.forEach(function(u){ rankingScopeSet[String(u).toLowerCase()] = true; });
+
+  var ranking = repsList.filter(function(r){
+    return rankingScopeSet[String(r.username || '').toLowerCase()];
+  }).map(function(r){
     var info = LB_REP_INFO[r.username] || { name: r.username, region: '', color: 'linear-gradient(135deg,#374151,#6B7280)' };
     return { username: r.username, name: info.name, region: info.region, color: info.color, pct: r.pct };
   });
   // Doplni repov bez planu (su v LB_ALL_REPS ale nie v repsList)
-  LB_ALL_REPS.forEach(function(u){
+  rankingScope.forEach(function(u){
     if(!repAggLookup[u]){
       var info = LB_REP_INFO[u] || { name: u, region: '', color: 'linear-gradient(135deg,#374151,#6B7280)' };
       ranking.push({ username: u, name: info.name, region: info.region, color: info.color, pct: null });
@@ -11137,8 +11153,11 @@ function lbRenderPlnenie(body) {
 
 function lbDataHasVisits() {
   if (!LB_STATE.data) return false;
-  return LB_ALL_REPS.some(function(u) {
+  var scope = lbScopeReps();
+  if (!scope.length) scope = Object.keys(LB_STATE.data || {});
+  return scope.some(function(u) {
     var rows = LB_STATE.data[u];
+    if (!rows) rows = LB_STATE.data[String(u).toLowerCase()];
     return rows && rows.length > 0;
   });
 }
@@ -11173,11 +11192,13 @@ function lbLoadData(force){
   // Heuristika — či je response "podozrivo prázdny" (málo repov s dátami).
   // Ak v predošlých dátach mali traja+ repi návštevy, ale teraz nikto → asi neúplný response.
   function looksIncomplete(results) {
-    var nonEmpty = LB_ALL_REPS.filter(function(u){ return Array.isArray(results[u]) && results[u].length > 0; }).length;
+    var scope = lbScopeReps();
+    if (!scope.length) scope = LB_ALL_REPS;
+    var nonEmpty = scope.filter(function(u){ return Array.isArray(results[u]) && results[u].length > 0; }).length;
     if (nonEmpty === 0) return true; // VŠETKY prázdne je veľmi podozrivé
     // Ak sme mali staré dáta a teraz drasticky menej repov má dáta — podozrivé
     if (lastGoodData) {
-      var prevNonEmpty = LB_ALL_REPS.filter(function(u){ return Array.isArray(lastGoodData[u]) && lastGoodData[u].length > 0; }).length;
+      var prevNonEmpty = scope.filter(function(u){ return Array.isArray(lastGoodData[u]) && lastGoodData[u].length > 0; }).length;
       if (prevNonEmpty >= 3 && nonEmpty < Math.floor(prevNonEmpty / 2)) return true;
     }
     return false;
@@ -11186,8 +11207,10 @@ function lbLoadData(force){
   // Spustí fallback — 12 individuálnych requestov s retry
   function fallbackIndividual() {
     var results = {};
-    var remaining = LB_ALL_REPS.length;
-    LB_ALL_REPS.forEach(function(username){
+    var scope = lbScopeReps();
+    if (!scope.length) scope = LB_ALL_REPS;
+    var remaining = scope.length;
+    scope.forEach(function(username){
       function tryFetch(attempt) {
         fetch(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username) + '&_t=' + Date.now()), { cache: 'no-store' })
           .then(function(r){ return r.ok ? r.json() : []; })
@@ -11234,7 +11257,9 @@ function lbLoadData(force){
         // Vlož všetky dáta z normHist
         Object.keys(normHist).forEach(function(lk){ results[lk] = normHist[lk]; });
         // Zabezpeč že každý rep z LB_ALL_REPS má záznam
-        LB_ALL_REPS.forEach(function(u){
+        var scope = lbScopeReps();
+        if (!scope.length) scope = LB_ALL_REPS;
+        scope.forEach(function(u){
           var lk = u.toLowerCase();
           if(!results[lk]) results[lk] = [];
           results[u] = results[lk];
@@ -11407,8 +11432,9 @@ function lbRender(){
 
   // repsToShow = LB_ALL_REPS + allHist kľúče s dátami ktoré nie sú v LB_ALL_REPS
   var seenLower = {};
+  var baseScope = lbScopeReps();
   var repsToShow = [];
-  (LB_ALL_REPS.length > 0 ? LB_ALL_REPS : Object.keys(LB_STATE.data || {})).forEach(function(u){
+  (baseScope.length > 0 ? baseScope : Object.keys(LB_STATE.data || {})).forEach(function(u){
     var lk = u.toLowerCase();
     if(!seenLower[lk]){ seenLower[lk] = true; repsToShow.push(u); }
   });
@@ -11546,9 +11572,10 @@ function lbUpdateNavBtn() {
   if (!myUsername || !LB_STATE.data) { btn.innerHTML = '🏆 Rebríček'; return; }
   var dataByLowerNav = {};
   Object.keys(LB_STATE.data).forEach(function(k){ dataByLowerNav[k.toLowerCase()] = LB_STATE.data[k]; });
-  var repsToShow = LB_ALL_REPS.length > 0 ? LB_ALL_REPS : Object.keys(LB_STATE.data);
+  var repsToShow = lbScopeReps();
+  if (!repsToShow.length) repsToShow = Object.keys(LB_STATE.data);
   var ranking = repsToShow.map(function(u) {
-    return { username: u, count: lbCountVisits(dataByLowerNav[u.toLowerCase()], 'month') };
+    return { username: u, count: lbCountVisits(dataByLowerNav[u.toLowerCase()], 'all') };
   }).sort(function(a, b) { return b.count - a.count; });
   var rank = -1;
   for (var i = 0; i < ranking.length; i++) {
@@ -11916,22 +11943,18 @@ function plnenieLoadAllQuarters() {
 }
 
 // Agregácia — Slovensko / West / East / per-produkt / per-rep
-// Vráti zoznam repov pre aktuálnu rolu (AM West/East vidia iba svojich)
+// Vráti zoznam repov pre plnenie Q; AM West/East tu vidia celú líniu.
 function plnenieGetActiveReps() {
-  if (MGR_STATE.role === 'amwest') return MGR_AM_WEST;
-  if (MGR_STATE.role === 'ameast') return MGR_AM_EAST;
   return MGR_ALL;
 }
 
-// True ak rola vidí iba jeden región (AM West / AM East) — skryje region karty
+// Plnenie Q je celolíniové aj pre AM, preto sa region karty neschovávajú.
 function plnenieIsAmRole() {
-  return MGR_STATE.role === 'amwest' || MGR_STATE.role === 'ameast';
+  return false;
 }
 
-// Label pre sumárnu kartu — namiesto "Slovensko" pre AM roly
+// Label pre sumárnu kartu.
 function plnenieSumLabel() {
-  if (MGR_STATE.role === 'amwest') return 'West';
-  if (MGR_STATE.role === 'ameast') return 'East';
   return 'Slovensko';
 }
 
