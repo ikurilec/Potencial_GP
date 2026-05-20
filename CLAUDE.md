@@ -26,6 +26,13 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.50 - Bezpecnost: backend role filtering
+
+- Apps Script uz po overeni session dohliada aj na rolu pouzivatela. Reprezentant dostane iba vlastne data, AM West/East iba prislusnu skupinu reprezentantov a admin/PM/BUM vsetky data.
+- GP endpointy `getAllHistory`, `getHistory`, `getInitData`, `getPlnenieAll`, `getLekarne`, `getLekarneAll`, pharma endpointy a zapisove endpointy maju server-side filter podla povolenych reprezentantov alebo regionov.
+- Gyn endpointy `getRepList`, `getPlnenieAll` a `getPharmaData` filtruju gyn-rep len na vlastne data/region; managerske gyn roly vidia sirsi pohlad. `setConfig` je managersky endpoint.
+- Pridany test `tests/role_filtering_test.js`. Vyzaduje redeploy `apps_script/kód.gs` aj `apps_script/kód_gyn.gs`.
+
 ### v2.21.49 - Bezpecnost: 12h session tokeny po prihlaseni
 
 - Po uspesnom prihlaseni backend vytvori session token s platnostou 12 hodin a frontend ho posiela ku kazdemu chranenemu volaniu Apps Scriptu.
