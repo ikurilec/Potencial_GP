@@ -11,6 +11,102 @@ function requireToken(e) {
   return (e.parameter.token || '') === API_TOKEN;
 }
 
+var AUTH_SESSION_HOURS = 12;
+var AUTH_SESSION_STALE_DAYS = 2;
+
+function authGetSessionsSheet_(ss) {
+  var sheet = ss.getSheetByName('Sessions');
+  if (!sheet) sheet = ss.insertSheet('Sessions');
+  if (sheet.getLastRow() < 1) {
+    sheet.getRange(1, 1, 1, 8).setValues([['username', 'device_id', 'token', 'line', 'created_at', 'expires_at', 'last_seen_at', 'user_agent']]);
+  }
+  return sheet;
+}
+
+function authCleanSessions_(sheet) {
+  var last = sheet.getLastRow();
+  if (last < 2) return;
+  var rows = sheet.getRange(2, 1, last - 1, 8).getValues();
+  var cutoff = new Date(Date.now() - AUTH_SESSION_STALE_DAYS * 24 * 60 * 60 * 1000);
+  for (var i = rows.length - 1; i >= 0; i--) {
+    var exp = rows[i][5];
+    if (exp && !(exp instanceof Date)) exp = new Date(exp);
+    if (exp && exp instanceof Date && !isNaN(exp.getTime()) && exp < cutoff) {
+      sheet.deleteRow(i + 2);
+    }
+  }
+}
+
+function authCreateSession_(ss, username, line, deviceId, userAgent) {
+  var sheet = authGetSessionsSheet_(ss);
+  authCleanSessions_(sheet);
+  var now = new Date();
+  var expires = new Date(now.getTime() + AUTH_SESSION_HOURS * 60 * 60 * 1000);
+  var token = Utilities.getUuid() + '-' + Utilities.getUuid();
+  var device = deviceId || ('dev_' + Utilities.getUuid());
+  var rowToUpdate = 0;
+  var last = sheet.getLastRow();
+  if (last >= 2) {
+    var rows = sheet.getRange(2, 1, last - 1, 8).getValues();
+    for (var i = 0; i < rows.length; i++) {
+      if (String(rows[i][0] || '').trim().toLowerCase() === username &&
+          String(rows[i][1] || '').trim() === device &&
+          String(rows[i][3] || '').trim() === line) {
+        rowToUpdate = i + 2;
+        break;
+      }
+    }
+  }
+  var values = [username, device, token, line, now, expires, now, userAgent || ''];
+  if (rowToUpdate) sheet.getRange(rowToUpdate, 1, 1, 8).setValues([values]);
+  else sheet.appendRow(values);
+  return { token: token, expires: expires, device_id: device };
+}
+
+function authRequireSession_(ss, e, line) {
+  if (!requireToken(e)) return { ok: false, error: 'Unauthorized' };
+  var username = String(e.parameter.username || '').trim().toLowerCase();
+  var device = String(e.parameter.device_id || '').trim();
+  var token = String(e.parameter.session_token || '').trim();
+  if (!username || !device || !token) return { ok: false, error: 'Session missing' };
+  var sheet = authGetSessionsSheet_(ss);
+  var last = sheet.getLastRow();
+  if (last < 2) return { ok: false, error: 'Session expired' };
+  var rows = sheet.getRange(2, 1, last - 1, 8).getValues();
+  var now = new Date();
+  for (var i = 0; i < rows.length; i++) {
+    var exp = rows[i][5];
+    if (exp && !(exp instanceof Date)) exp = new Date(exp);
+    if (String(rows[i][0] || '').trim().toLowerCase() === username &&
+        String(rows[i][1] || '').trim() === device &&
+        String(rows[i][2] || '').trim() === token &&
+        String(rows[i][3] || '').trim() === line) {
+      if (!exp || !(exp instanceof Date) || isNaN(exp.getTime()) || exp <= now) return { ok: false, error: 'Session expired' };
+      sheet.getRange(i + 2, 7).setValue(now);
+      return { ok: true, username: username };
+    }
+  }
+  return { ok: false, error: 'Session expired' };
+}
+
+function authLogoutSession_(ss, e, line) {
+  var username = String(e.parameter.username || '').trim().toLowerCase();
+  var device = String(e.parameter.device_id || '').trim();
+  var token = String(e.parameter.session_token || '').trim();
+  var sheet = authGetSessionsSheet_(ss);
+  var last = sheet.getLastRow();
+  if (last < 2) return;
+  var rows = sheet.getRange(2, 1, last - 1, 8).getValues();
+  for (var i = rows.length - 1; i >= 0; i--) {
+    if (String(rows[i][0] || '').trim().toLowerCase() === username &&
+        String(rows[i][1] || '').trim() === device &&
+        String(rows[i][2] || '').trim() === token &&
+        String(rows[i][3] || '').trim() === line) {
+      sheet.deleteRow(i + 2);
+    }
+  }
+}
+
 function doGet(e) {
   try {
     var ss = SpreadsheetApp.getActive();
@@ -35,6 +131,7 @@ function doGet(e) {
         var rowLogin = String(rows[i][0] || '').trim().toLowerCase();
         var rowHeslo = String(rows[i][1] || '');
         if (rowLogin === username && rowHeslo === password) {
+          var sessionInfo = authCreateSession_(ss, username, 'gyn', String(e.parameter.device_id || '').trim(), String(e.parameter.user_agent || '').trim());
           return jsonResp({
             ok:       true,
             line:     'gyn',
@@ -43,15 +140,25 @@ function doGet(e) {
             linia:    String(rows[i][4] || '').trim().toLowerCase(),
             region:   String(rows[i][5] || '').trim().toUpperCase(),
             pohlavie: loginPohlavieIdx >= 0 ? String(rows[i][loginPohlavieIdx] || '').trim() : '',
-            avatar:   loginAvatarIdx   >= 0 ? String(rows[i][loginAvatarIdx]   || '').trim() : ''
+            avatar:   loginAvatarIdx   >= 0 ? String(rows[i][loginAvatarIdx]   || '').trim() : '',
+            session_token: sessionInfo.token,
+            session_expires_at: sessionInfo.expires.toISOString(),
+            device_id: sessionInfo.device_id
           });
         }
       }
       return jsonResp({ok: false});
     }
 
+    if (action === 'logoutSession') {
+      if(!requireToken(e)) return jsonResp({ok: false, error: 'Unauthorized'});
+      authLogoutSession_(ss, e, 'gyn');
+      return jsonResp({ok: true});
+    }
+
     // ── PING LOGIN — aktualizuje posledný prístup ──
     if (action === 'pingLogin') {
+      var auth = authRequireSession_(ss, e, 'gyn'); if(!auth.ok) return jsonResp(auth);
       var rep = (e.parameter.reprezentant || '').trim().toLowerCase();
       if (!rep) return jsonResp({ok: false});
       var sheet = ss.getSheetByName('Pouzivatelia');
@@ -71,7 +178,7 @@ function doGet(e) {
 
     // ── ZOZNAM REPREZENTANTOV ──
     if (action === 'getRepList') {
-      if (!requireToken(e)) return jsonResp({ok: false, error: 'Unauthorized'});
+      var auth = authRequireSession_(ss, e, 'gyn'); if(!auth.ok) return jsonResp(auth);
       var sheet = ss.getSheetByName('Pouzivatelia');
       if (!sheet) return jsonResp({ok: false, error: 'Sheet Pouzivatelia nenajdeny'});
       var rows = sheet.getDataRange().getValues();
@@ -103,7 +210,7 @@ function doGet(e) {
     // ── ULOŽENIE AVATAR CONFIGU ──
     // URL: ?action=setAvatar&username=b.sivakova&config=<JSON>&token=...
     if (action === 'setAvatar') {
-      if (!requireToken(e)) return jsonResp({ok: false, error: 'Unauthorized'});
+      var auth = authRequireSession_(ss, e, 'gyn'); if(!auth.ok) return jsonResp(auth);
       var avUser = (e.parameter.username || '').trim().toLowerCase();
       var avConfig = e.parameter.config || '';
       if (!avUser) return jsonResp({ok: false, error: 'missing username'});
@@ -132,7 +239,7 @@ function doGet(e) {
     // ── PLNENIE PRE VŠETKÝCH REPOV ──
     // URL: ?action=getPlnenieAll&rok=2026&Q=2&token=xxx
     if (action === 'getPlnenieAll') {
-      if (!requireToken(e)) return jsonResp({ok: false, error: 'Unauthorized'});
+      var auth = authRequireSession_(ss, e, 'gyn'); if(!auth.ok) return jsonResp(auth);
       var rokA    = parseInt(e.parameter.rok) || 2026;
       var qA      = parseInt(e.parameter.Q)   || 1;
       var qMonths = {1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12]}[qA] || [];
@@ -221,7 +328,7 @@ function doGet(e) {
 
     // ── GET CONFIG ──
     if (action === 'getConfig') {
-      if (!requireToken(e)) return jsonResp({ok: false, error: 'Unauthorized'});
+      var auth = authRequireSession_(ss, e, 'gyn'); if(!auth.ok) return jsonResp(auth);
       var key = (e.parameter.key || '').trim();
       if (!key) return jsonResp({ok: false, error: 'missing key'});
       var cfg = ss.getSheetByName('Config');
@@ -238,7 +345,7 @@ function doGet(e) {
 
     // ── SET CONFIG ──
     if (action === 'setConfig') {
-      if (!requireToken(e)) return jsonResp({ok: false, error: 'Unauthorized'});
+      var auth = authRequireSession_(ss, e, 'gyn'); if(!auth.ok) return jsonResp(auth);
       var key   = (e.parameter.key   || '').trim();
       var value = e.parameter.value;
       if (!key) return jsonResp({ok: false, error: 'missing key'});
@@ -261,6 +368,7 @@ function doGet(e) {
 
     // ── SATORI VOTE ──
     if (action === 'satoriVote') {
+      var auth = authRequireSession_(ss, e, 'gyn'); if(!auth.ok) return jsonResp(auth);
       var rep   = (e.parameter.username || '').trim();
       var vote  = (e.parameter.vote     || '').trim();
       if (!rep || (vote !== 'up' && vote !== 'down')) return jsonResp({ok: false});
@@ -276,7 +384,7 @@ function doGet(e) {
     // ── PHARMA DATA — trhový podiel pre gyn produkty ──
     // URL: ?action=getPharmaData&oblast=BAPA&produkt=Levosert&kvartal=2601&token=xxx
     if (action === 'getPharmaData') {
-      if (!requireToken(e)) return jsonResp({ok: false, error: 'Unauthorized'});
+      var auth = authRequireSession_(ss, e, 'gyn'); if(!auth.ok) return jsonResp(auth);
       var oblast  = (e.parameter.oblast  || '').trim().toUpperCase();
       var produkt = (e.parameter.produkt || '').trim();
       var kvartal = (e.parameter.kvartal || '').trim();

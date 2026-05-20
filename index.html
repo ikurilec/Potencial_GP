@@ -2431,7 +2431,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.48';
+var APP_VERSION = '2.21.49';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -2609,15 +2609,42 @@ var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbziSBvq1u8Jq0u0sTMynd-
 var API_TOKEN  = 'GR-Slovakia-2026-xK9mP'; // musí sedieť s hodnotou v Apps Script Script Properties → API_TOKEN
 
 // Helper — pridá token ku každej URL smerujúcej na SCRIPT_URL
+function authDeviceId() {
+  var key = 'potencial_gp_device_id';
+  try {
+    var id = localStorage.getItem(key);
+    if (!id) {
+      id = 'dev_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 14);
+      localStorage.setItem(key, id);
+    }
+    return id;
+  } catch(e) {
+    return 'dev_fallback_' + Math.random().toString(36).slice(2, 14);
+  }
+}
+
+function authSessionParams() {
+  try {
+    var s = (typeof getSession === 'function') ? getSession() : null;
+    if (!s || !s.username || !s.session_token) return '';
+    var deviceId = s.device_id || authDeviceId();
+    return '&username=' + encodeURIComponent(s.username) +
+           '&device_id=' + encodeURIComponent(deviceId) +
+           '&session_token=' + encodeURIComponent(s.session_token);
+  } catch(e) {
+    return '';
+  }
+}
+
 function scriptUrl(params) {
-  return SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(API_TOKEN);
+  return SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(API_TOKEN) + authSessionParams('gp');
 }
 
 // ── GYN LINKA ──
 var GYN_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwOZxhmwH9jwGTQroagVzhibavO8XowAQpiryp4567SNfHWevk9UHSwqY_v-zuZd5WQ/exec';
 var GYN_API_TOKEN  = 'gr-gyn-2026';
 function gynScriptUrl(params) {
-  return GYN_SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(GYN_API_TOKEN);
+  return GYN_SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(GYN_API_TOKEN) + authSessionParams('gyn');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -3537,7 +3564,7 @@ function potvrdit(){
     iframe.style.cssText='display:none;width:0;height:0;border:0;position:absolute;left:-9999px';
     document.body.appendChild(iframe);
   }
-  iframe.src=SCRIPT_URL+'?'+params;
+  iframe.src=scriptUrl(params);
   window._lastScenario = scenario;
   window._lastOdporucanie = odporucanieTxt;
   setTimeout(function(){showConfirm(isYes, scenario);},4000);
@@ -5202,8 +5229,8 @@ function saveEditRecord() {
 function pingLogin(username){
   if(!username) return;
   var session = getSession();
-  var url = (session && session.line === 'gyn') ? GYN_SCRIPT_URL : SCRIPT_URL;
-  fetch(url + '?action=pingLogin&reprezentant=' + encodeURIComponent(username), {
+  var url = (session && session.line === 'gyn') ? gynScriptUrl('action=pingLogin&reprezentant=' + encodeURIComponent(username)) : scriptUrl('action=pingLogin&reprezentant=' + encodeURIComponent(username));
+  fetch(url, {
     cache: 'no-store'
   }).then(function(r){ return r.json(); }).then(function(data){
     // Uloži lekárne dáta do cache — eliminuje extra request pri otvorení
@@ -5680,8 +5707,16 @@ function getSession() {
       data = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
     }
     if(!data) return null;
-    // Kontrola 8 hodín nečinnosti
-    var maxAge = 8 * 60 * 60 * 1000; // 8 hodín v ms
+    if(data.username && !data.session_token && !(typeof IS_DEV !== 'undefined' && IS_DEV)) {
+      clearSession();
+      return null;
+    }
+    if(data.session_expires_at && Date.parse(data.session_expires_at) <= Date.now()) {
+      clearSession();
+      return null;
+    }
+    // Kontrola 12 hodin necinnosti
+    var maxAge = 12 * 60 * 60 * 1000; // 12 hodin v ms
     if(data.loginTime && (Date.now() - data.loginTime) > maxAge) {
       clearSession();
       return null;
@@ -5740,6 +5775,9 @@ function loginSuccess(username, name, role, region, extra) {
         }
       } catch(e){}
     }
+    if (extra.session_token) user.session_token = String(extra.session_token || '');
+    if (extra.session_expires_at) user.session_expires_at = String(extra.session_expires_at || '');
+    if (extra.device_id) user.device_id = String(extra.device_id || '');
   }
   setSession(user);
   haptic('success');
@@ -5838,7 +5876,7 @@ function doLogin() {
   btn.disabled = true;
   btn.textContent = 'Prihlasujem...';
 
-  var loginParams = '?action=login&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password);
+  var loginParams = '?action=login&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password) + '&device_id=' + encodeURIComponent(authDeviceId());
   var gpFetch  = fetch(SCRIPT_URL     + loginParams).then(function(r){ return r.json(); }).catch(function(){ return {ok:false}; });
   var gynFetch = fetch(GYN_SCRIPT_URL + loginParams).then(function(r){ return r.json(); }).catch(function(){ return {ok:false}; });
 
@@ -5889,6 +5927,13 @@ function closeLogoutConfirm() {
 
 function confirmLogout() {
   _isLoggingOut = true;
+  try {
+    var s = getSession();
+    if (s && s.session_token) {
+      var url = (s.line === 'gyn') ? gynScriptUrl('action=logoutSession') : scriptUrl('action=logoutSession');
+      fetch(url, { cache: 'no-store', keepalive: true }).catch(function(){});
+    }
+  } catch(e){}
   clearSession();
   location.reload();
 }
@@ -6307,6 +6352,9 @@ function gynLoginSuccess(username, data) {
       }
     } catch(e){}
   }
+  if (data.session_token) user.session_token = String(data.session_token || '');
+  if (data.session_expires_at) user.session_expires_at = String(data.session_expires_at || '');
+  if (data.device_id) user.device_id = String(data.device_id || '');
   setSession(user);
   haptic('success');
   var appEl = document.querySelector('.app');
@@ -9522,15 +9570,15 @@ function avatarSetConfig(username, config) {
   try {
     var sess = (typeof getSession === 'function') ? getSession() : null;
     var isGyn = sess && sess.line === 'gyn';
-    var baseUrl = isGyn ? (typeof GYN_SCRIPT_URL !== 'undefined' ? GYN_SCRIPT_URL : '') : (typeof SCRIPT_URL !== 'undefined' ? SCRIPT_URL : '');
-    var token = isGyn ? (typeof GYN_API_TOKEN !== 'undefined' ? GYN_API_TOKEN : '') : (typeof API_TOKEN !== 'undefined' ? API_TOKEN : '');
-    if (!baseUrl || !token) {
+    var hasUrlHelper = isGyn ? (typeof gynScriptUrl === 'function') : (typeof scriptUrl === 'function');
+    if (!hasUrlHelper) {
       // Fallback iba lokálne — broadcast aj tak
       try { window.dispatchEvent(new CustomEvent('avatar-changed', { detail: { username: username }})); } catch(e){}
       return;
     }
-    var url = baseUrl + '?action=setAvatar&username=' + encodeURIComponent(username) +
-              '&config=' + encodeURIComponent(configStr) + '&token=' + encodeURIComponent(token);
+    var params = 'action=setAvatar&username=' + encodeURIComponent(username) +
+                 '&config=' + encodeURIComponent(configStr);
+    var url = isGyn ? gynScriptUrl(params) : scriptUrl(params);
     fetch(url, { cache: 'no-store' })
       .then(function(r){ return r.json(); })
       .then(function(data){
