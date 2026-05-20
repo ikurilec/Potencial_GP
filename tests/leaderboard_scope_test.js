@@ -13,6 +13,9 @@ assert(index.includes('var activeReps = Array.isArray(scopeReps) && scopeReps.le
 assert(index.includes('var agg = plnenieBuildAggregates(resp, lastQ, lbScopeReps());'), 'leaderboard Q plnenie must aggregate the full leaderboard roster');
 assert(index.includes('var LB_STATIC_REPS = LB_ALL_REPS.slice();'), 'leaderboard must keep a static full-line roster');
 assert(index.includes('var isFullRoster = all.length >= LB_STATIC_REPS.length;'), 'partial AM repList must not replace full leaderboard roster');
+assert(index.includes('return isFullRoster;'), 'buildRepData must report whether the roster is complete');
+assert(index.includes('loadRepList(true);'), 'partial AM roster must trigger a full roster fetch for avatars and names');
+assert(index.includes("action=getRepList' + (forceFullRoster ? '&fullLine=1' : '')"), 'forced rep list load must request full-line roster');
 assert(index.includes('if (isFullRoster || !Object.keys(LB_REP_INFO).length) LB_REP_INFO = {};'), 'partial AM repList must preserve full leaderboard rep info');
 assert(index.includes("if (MGR_STATE.role === 'amwest') return MGR_AM_WEST;"), 'AM West dashboard plnenie must stay scoped to West');
 assert(index.includes("if (MGR_STATE.role === 'ameast') return MGR_AM_EAST;"), 'AM East dashboard plnenie must stay scoped to East');
