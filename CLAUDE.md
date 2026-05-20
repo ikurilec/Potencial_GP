@@ -26,6 +26,13 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.55 - Golem: full roster metadata pre avatary a aktualne mena
+
+- Ak AM dostane najprv iba čiastočný West/East `repList`, `buildRepData()` ho použije pre AM dashboard, ale neoznačí roster ako kompletne načítaný a spustí full-line `getRepList&fullLine=1`.
+- `getRepList` v `apps_script/kód.gs` podporuje parameter `fullLine=1`, aby leaderboard metadata (mená, regióny, pohlavie, avatar JSON) vedel dotiahnuť pre celú líniu aj pri AM účte.
+- Statický fallback pre `o.rad` je zmenený z `Olexandra Rad` na `Prázdne teritórium`, aby sa aj pred dobehnutím Sheets metadát nezobrazovalo staré meno.
+- Vyzaduje redeploy `apps_script/kód.gs`, aby full-line metadata fetch fungoval online.
+
 ### v2.21.54 - Golem: Plnenie Q rebricek agreguje celu liniu
 
 - `plnenieBuildAggregates()` podporuje explicitný scope reprezentantov. Hlavný AM dashboard bez parametra zostáva zúžený na West/East.

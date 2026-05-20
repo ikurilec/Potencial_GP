@@ -513,7 +513,8 @@ function doGet(e) {
         if(h === 'avatar') avatarIdx = hi;
       }
       var reps = [];
-      var allowedReps = authAllowedGpReps_(ss, auth.user);
+      var fullLineReps = String(e.parameter.fullLine || '') === '1';
+      var allowedReps = authAllowedGpReps_(ss, auth.user, fullLineReps);
       for(var i = 1; i < rows.length; i++) {
         var login  = String(rows[i][0] || '').trim();
         var meno   = String(rows[i][2] || '').trim();
