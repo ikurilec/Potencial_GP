@@ -2431,7 +2431,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.56';
+var APP_VERSION = '2.21.57';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11205,11 +11205,26 @@ function lbLoadData(force){
     var nonEmpty = scope.filter(function(u){ return Array.isArray(results[u]) && results[u].length > 0; }).length;
     if (nonEmpty === 0) return true; // VŠETKY prázdne je veľmi podozrivé
     // Ak sme mali staré dáta a teraz drasticky menej repov má dáta — podozrivé
+    if (scope.length >= 8 && nonEmpty > 0 && nonEmpty < 3) return true;
     if (lastGoodData) {
       var prevNonEmpty = scope.filter(function(u){ return Array.isArray(lastGoodData[u]) && lastGoodData[u].length > 0; }).length;
       if (prevNonEmpty >= 3 && nonEmpty < Math.floor(prevNonEmpty / 2)) return true;
     }
     return false;
+  }
+
+  function finishIncompleteAllHistory(source) {
+    if (lastGoodData) {
+      onDone(lastGoodData, source + '-lastGood');
+      return;
+    }
+    LB_STATE.loading = false;
+    var mgrOpen = document.body.classList.contains('manager-mode') && document.body.classList.contains('mgr-subtab-leaderboard');
+    var repOpen = (function(){ var ov = document.getElementById('lb-overlay'); return ov && ov.classList.contains('show'); })();
+    if (mgrOpen || repOpen) {
+      var body = lbGetBody();
+      if (body) body.innerHTML = mkEmpty('warning', 'Rebríček sa nenačítal', 'Dáta prišli neúplné. Skús rebríček otvoriť znova.');
+    }
   }
 
   // Spustí fallback — 12 individuálnych requestov s retry
@@ -11250,7 +11265,8 @@ function lbLoadData(force){
   }
 
   // Cache buster — vždy fetchni čerstvé
-  fetch(scriptUrl('action=getAllHistory&_t=' + Date.now()), { cache: 'no-store' })
+  function fetchAllHistoryAttempt(attempt) {
+    fetch(scriptUrl('action=getAllHistory&_t=' + Date.now()), { cache: 'no-store' })
     .then(function(r){ return r.ok ? r.json() : null; })
     .then(function(allHist){
       if(allHist && allHist.ok !== false && typeof allHist === 'object' && !Array.isArray(allHist)){
@@ -11273,8 +11289,12 @@ function lbLoadData(force){
           results[u] = results[lk];
         });
         if (looksIncomplete(results)) {
-          if (window.console) console.warn('[lb-load] getAllHistory vyzerá neúplne, padám na individuálne fetche');
-          fallbackIndividual();
+          if (window.console) console.warn('[lb-load] getAllHistory vyzerá neúplne, skúšam znova');
+          if (attempt < 2) {
+            setTimeout(function(){ fetchAllHistoryAttempt(attempt + 1); }, 700);
+            return;
+          }
+          finishIncompleteAllHistory('getAllHistory-incomplete');
         } else {
           onDone(results, 'getAllHistory');
         }
@@ -11283,8 +11303,14 @@ function lbLoadData(force){
       }
     })
     .catch(function(){
+      if (attempt < 2) {
+        setTimeout(function(){ fetchAllHistoryAttempt(attempt + 1); }, 700);
+        return;
+      }
       fallbackIndividual();
     });
+  }
+  fetchAllHistoryAttempt(0);
 }
 
 // ── EMPTY STATE HELPER ──
