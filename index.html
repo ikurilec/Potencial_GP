@@ -2431,7 +2431,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.51';
+var APP_VERSION = '2.21.52';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11567,6 +11567,8 @@ function plnenieCountUpEUR(el, targetVal) {
 function lbUpdateNavBtn() {
   var btn = document.getElementById('rep-nav-lb-btn');
   if (!btn) return;
+  btn.innerHTML = '🏆 Rebríček';
+  return;
   var session = getSession();
   var myUsername = session ? session.username : null;
   if (!myUsername || !LB_STATE.data) { btn.innerHTML = '🏆 Rebríček'; return; }
@@ -11943,18 +11945,22 @@ function plnenieLoadAllQuarters() {
 }
 
 // Agregácia — Slovensko / West / East / per-produkt / per-rep
-// Vráti zoznam repov pre plnenie Q; AM West/East tu vidia celú líniu.
+// Vráti zoznam repov pre hlavné Plnenie; AM West/East tu vidia iba svoju líniu.
 function plnenieGetActiveReps() {
+  if (MGR_STATE.role === 'amwest') return MGR_AM_WEST;
+  if (MGR_STATE.role === 'ameast') return MGR_AM_EAST;
   return MGR_ALL;
 }
 
-// Plnenie Q je celolíniové aj pre AM, preto sa region karty neschovávajú.
+// True ak rola vidí iba jeden región (AM West / AM East) — skryje region karty.
 function plnenieIsAmRole() {
-  return false;
+  return MGR_STATE.role === 'amwest' || MGR_STATE.role === 'ameast';
 }
 
 // Label pre sumárnu kartu.
 function plnenieSumLabel() {
+  if (MGR_STATE.role === 'amwest') return 'West';
+  if (MGR_STATE.role === 'ameast') return 'East';
   return 'Slovensko';
 }
 
