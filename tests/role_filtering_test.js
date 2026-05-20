@@ -12,6 +12,7 @@ assert(gp.includes('authFilterGpPlnenieRows_(ss, auth.user, planRows, true)'), '
 assert(gp.includes('authCanAccessGpRep_(ss, auth.user, login2, true)'), 'GP init repList must provide the full leaderboard roster');
 assert(gp.includes("var fullLineReps = String(e.parameter.fullLine || '') === '1';"), 'GP getRepList must support explicit full-line roster fetch');
 assert(gp.includes('var allowedReps = authAllowedGpReps_(ss, auth.user, fullLineReps);'), 'GP getRepList fullLine must bypass AM-only filtering for leaderboard metadata');
+assert(gp.includes('if(rep !== auth.username && !authCanAccessGpRep_(ss, auth.user, rep)) return jsonResponse({ok: false});'), 'GP pingLogin must allow managers to write their own posledny_login');
 assert(gp.includes('function authCanAccessGpRep_(ss, user, rep, fullLine)'), 'GP backend must gate rep-specific endpoints');
 assert(gp.includes('function authCanAccessGpOblast_(ss, user, oblast)'), 'GP backend must gate pharma region endpoints');
 assert(gp.includes('authFilterGpHistory_'), 'GP getAllHistory must filter rows server-side');
