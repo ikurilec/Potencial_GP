@@ -2431,7 +2431,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.58';
+var APP_VERSION = '2.21.59';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7101,6 +7101,67 @@ function gynPharmaCacheHasPrevOkresy(cached, currentKvartal) {
   });
 }
 
+function gynPharmaRowsByKvartal(resp, currentKvartal) {
+  var out = {};
+  out[currentKvartal] = Array.isArray(resp && resp.okresy) ? resp.okresy : [];
+  if(resp && resp.okresy_extra) {
+    Object.keys(resp.okresy_extra).forEach(function(k){
+      if(Array.isArray(resp.okresy_extra[k])) out[k] = resp.okresy_extra[k];
+    });
+  }
+  if(resp && resp.kvartal_prev && Array.isArray(resp.okresy_prev) && !out[resp.kvartal_prev]) {
+    out[resp.kvartal_prev] = resp.okresy_prev;
+  }
+  return out;
+}
+
+function gynPharmaDistrictMonthMap(resp, currentKvartal) {
+  var byDistrict = {};
+  var monthsWithData = {};
+  var rowsByKvartal = gynPharmaRowsByKvartal(resp || {}, currentKvartal);
+  Object.keys(rowsByKvartal).forEach(function(kvartal){
+    var yymms = gynPharmaYymmsForKvartal(kvartal);
+    (rowsByKvartal[kvartal] || []).forEach(function(row){
+      var okres = String(row.okres || '').trim();
+      if(!okres) return;
+      if(!byDistrict[okres]) byDistrict[okres] = { okres: okres, nas: {}, comps: {} };
+      [
+        { yy: yymms[0], nas: row.nas_m1, km: 'm1' },
+        { yy: yymms[1], nas: row.nas_m2, km: 'm2' },
+        { yy: yymms[2], nas: row.nas_m3, km: 'm3' }
+      ].forEach(function(m){
+        var nv = parseFloat(m.nas);
+        if(!isNaN(nv) && nv > 0) {
+          byDistrict[okres].nas[m.yy] = nv;
+          monthsWithData[m.yy] = true;
+        }
+        [row.k1, row.k2, row.k3].forEach(function(k){
+          if(!k || !k.name) return;
+          var cv = parseFloat(k[m.km]);
+          if(isNaN(cv) || cv <= 0) return;
+          if(!byDistrict[okres].comps[k.name]) byDistrict[okres].comps[k.name] = {};
+          byDistrict[okres].comps[k.name][m.yy] = cv;
+          monthsWithData[m.yy] = true;
+        });
+      });
+    });
+  });
+  return { districts: byDistrict, months: Object.keys(monthsWithData).map(function(x){ return parseInt(x, 10); }).sort(function(a,b){ return a-b; }) };
+}
+
+function gynPharmaDistrictDisplayYymms(resp, currentKvartal, fallbackYymms) {
+  var map = gynPharmaDistrictMonthMap(resp || {}, currentKvartal);
+  var months = map.months.length ? map.months : (fallbackYymms || []);
+  if(months.length < 3 && fallbackYymms && fallbackYymms.length >= 3) return fallbackYymms.slice(-3);
+  return months.slice(-3);
+}
+
+function gynPharmaDistrictDisplayYymmsForQ(q, resp, currentKvartal, fallbackYymms) {
+  return q === plnenieCurrentQ()
+    ? gynPharmaDistrictDisplayYymms(resp, currentKvartal, fallbackYymms)
+    : (fallbackYymms || []).slice(-3);
+}
+
 function gynPharmaLoad() {
   var key = GYN_PHARMA_STATE.produkt + '|' + GYN_PHARMA_STATE.oblast + '|' + GYN_PHARMA_STATE.kvartal;
   var cached = GYN_PHARMA_STATE.cache[key];
@@ -7425,9 +7486,13 @@ function gynPharmaRender(resp) {
 
   // ── Rozpad po okresoch (Golem štýl) ──
   if(okresy.length) {
-    // Mesačné popisky Jan/Feb/Mar atď podľa Q
-    var monthsForQ = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[q] || [1,2,3];
-    var mLabels = monthsForQ.map(function(m){ return (typeof PHARMA_MONTH_SK !== 'undefined' && PHARMA_MONTH_SK[m]) ? PHARMA_MONTH_SK[m] : ('M'+m); });
+    // Aktuálny Q ukáže posledné 3 dostupné mesiace; uzavreté Q ukážu vlastné mesiace kvartálu.
+    var districtMonthMap = gynPharmaDistrictMonthMap(resp, GYN_PHARMA_STATE.kvartal);
+    var displayYymms = gynPharmaDistrictDisplayYymmsForQ(q, resp, GYN_PHARMA_STATE.kvartal, qYymms);
+    function districtMonthLabel(yymm) {
+      var m = parseInt(yymm, 10) % 100;
+      return (typeof PHARMA_MONTH_SK !== 'undefined' && PHARMA_MONTH_SK[m]) ? PHARMA_MONTH_SK[m] : _gynMonthLabel(yymm).split(" '")[0];
+    }
 
     html += '<div class="pharma-ms-section-title">Rozpad po okresoch · Q'+q+'</div>';
     okresy.forEach(function(o){
@@ -7435,6 +7500,11 @@ function gynPharmaRender(resp) {
         var n = parseFloat(v);
         return (!isNaN(n) && n > 0) ? n.toFixed(2) + '%' : '—';
       }
+      var dSeries = districtMonthMap.districts[o.okres] || { nas:{}, comps:{} };
+      var compRows = Object.keys(dSeries.comps || {}).map(function(name){
+        var total = displayYymms.reduce(function(sum, yy){ return sum + (parseFloat(dSeries.comps[name][yy]) || 0); }, 0);
+        return { name: name, total: total, values: dSeries.comps[name] || {} };
+      }).sort(function(a,b){ return b.total - a.total; }).slice(0, 3);
       html += '<div class="pharma-ms-district">' +
         '<div class="pharma-ms-district-hdr">' +
           '<div class="pharma-ms-district-name">' + gynEsc(o.okres) + '</div>' +
@@ -7453,21 +7523,20 @@ function gynPharmaRender(resp) {
         '<table class="pharma-ms-tbl gyn-pharma-ms-tbl">' +
           '<thead><tr>' +
             '<th>Produkt <span class="gyn-pharma-ms-sublbl">MS%</span></th>' +
-            '<th>' + gynEsc(mLabels[0]) + '</th>' +
-            '<th>' + gynEsc(mLabels[1]) + '</th>' +
-            '<th>' + gynEsc(mLabels[2]) + '</th>' +
+            '<th>' + gynEsc(districtMonthLabel(displayYymms[0])) + '</th>' +
+            '<th>' + gynEsc(districtMonthLabel(displayYymms[1])) + '</th>' +
+            '<th>' + gynEsc(districtMonthLabel(displayYymms[2])) + '</th>' +
           '</tr></thead><tbody>' +
             '<tr class="ours"><td>' + gynEsc(GYN_PHARMA_STATE.produkt) + '</td>' +
-              '<td>' + fmtMs(o.nas_m1) + '</td>' +
-              '<td>' + fmtMs(o.nas_m2) + '</td>' +
-              '<td>' + fmtMs(o.nas_m3) + '</td>' +
+              '<td>' + fmtMs(dSeries.nas[displayYymms[0]]) + '</td>' +
+              '<td>' + fmtMs(dSeries.nas[displayYymms[1]]) + '</td>' +
+              '<td>' + fmtMs(dSeries.nas[displayYymms[2]]) + '</td>' +
             '</tr>';
-      [o.k1, o.k2, o.k3].forEach(function(k){
-        if(!k || !k.name) return;
+      compRows.forEach(function(k){
         html += '<tr><td>' + gynEsc(k.name) + '</td>' +
-          '<td>' + fmtMs(k.m1) + '</td>' +
-          '<td>' + fmtMs(k.m2) + '</td>' +
-          '<td>' + fmtMs(k.m3) + '</td>' +
+          '<td>' + fmtMs(k.values[displayYymms[0]]) + '</td>' +
+          '<td>' + fmtMs(k.values[displayYymms[1]]) + '</td>' +
+          '<td>' + fmtMs(k.values[displayYymms[2]]) + '</td>' +
         '</tr>';
       });
       html += '</tbody></table></div></div>';
