@@ -26,6 +26,13 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.59 - Gyn: okresy v aktualnom Q ukazuju posledne 3 dostupne mesiace
+
+- V gyn Trhovy podiel -> Rozpad po okresoch sa pri aktualnom rozbehnutom kvartali nezobrazuju prazdne mesiace kvartalu, ak este nemaju PharmaData.
+- Ak je napriklad v Q2 dostupny iba april, okresna tabulka zobrazi posledne tri realne dostupne mesiace (Feb/Mar/Apr) z aktualneho a predosleho kvartalu.
+- Pri spatnom otvoreni uzavreteho kvartalu ostava povodne spravanie: Q1 ukaze Jan/Feb/Mar, Q2 ukaze Apr/Maj/Jun atd.
+- Pridany `tests/gyn_pharma_district_months_test.js`; frontend-only zmena, bez Apps Script redeploy.
+
 ### v2.21.58 - Gyn: predikcia podporuje polmesiacove predaje
 
 - Gyn Plnenie pouziva rovnaky zaklad pracovnych dni ako Golem: ukoncene mesiace sa ratuju ako cele a aktualny mesiac s nahratymi predajmi sa rata ako polmesiac.
