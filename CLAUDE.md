@@ -26,6 +26,13 @@ Potenciál GP (GP = General Practitioner (všeobecný lekár)) je field tool pre
 
 ## Aktuálna stabilná verzia
 
+### v2.21.58 - Gyn: predikcia podporuje polmesiacove predaje
+
+- Gyn Plnenie pouziva rovnaky zaklad pracovnych dni ako Golem: ukoncene mesiace sa ratuju ako cele a aktualny mesiac s nahratymi predajmi sa rata ako polmesiac.
+- Celkove, Pill/Patch, produktove aj rep predikcie v gyn manazerskom pohlade uz nepocitaju iba dokoncene mesiace, ale pouzivaju dostupne predaje a pracovnodnovy zaklad pre polmesiac/cely mesiac.
+- Detail reprezentanta v gyn pohlade pouziva rovnaku logiku aj pre celkovu predikciu a produktove predikcie.
+- Pridany `tests/gyn_half_month_prediction_test.js`; frontend-only zmena, bez Apps Script redeploy.
+
 ### v2.21.57 - Golem: Rebricek navstev neakceptuje ciastocne data
 
 - `lbLoadData()` teraz považuje odpoveď typu „celý tím, ale návštevy má len 1-2 repi“ za podozrivo neúplnú a skúsi `getAllHistory` znovu.
