@@ -2434,7 +2434,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.78';
+var APP_VERSION = '2.21.79';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -14608,6 +14608,14 @@ function aflamilFamilyMaybeRefresh(code, oblast, kvartal) {
   }, 80);
 }
 
+function aflamilFamilyMsIsLoading(oblast, year, q) {
+  if (!oblast || !year || !q) return false;
+  var kvartal = pharmaKvartalCode(year, q);
+  var prevKv = pharmaKvartalPrev(kvartal);
+  return !!(PHARMA_STATE.loading['AFLtbl_' + oblast + '_' + kvartal] ||
+            PHARMA_STATE.loading['AFLtbl_' + oblast + '_' + prevKv]);
+}
+
 function aflamilFamilyMsData(username, oblast, year, q) {
   if (!oblast) return null;
   var kvartal = pharmaKvartalCode(year, q);
@@ -14677,6 +14685,7 @@ function aflamilFamilyHtml(plan, predajeTotal, predajeByMonth, qMonths, mileston
 
   // MS porovnanie
   var msData = aflamilFamilyMsData(username, oblast, year, q);
+  var msLoading = aflamilFamilyMsIsLoading(oblast, year, q);
   var msHtml = '';
   if (msData && msData.q1Avg !== null && msData.curAvg !== null) {
     // Máme oba priemery — zobraz porovnanie
@@ -14695,6 +14704,10 @@ function aflamilFamilyHtml(plan, predajeTotal, predajeByMonth, qMonths, mileston
     // Máme Q1, ale Q2 dáta ešte nie sú (IQVIA chodí ~15. v mesiaci)
     msHtml = '<div style="background:#F1F5F9;color:#64748B;border-radius:8px;padding:7px 10px;margin:7px 0 4px;font-size:12px;line-height:1.5;">' +
       '⏳ MS dáta za Q2 zatiaľ nie sú k dispozícii &nbsp;·&nbsp; Q1 priemer: <strong>' + msData.q1Avg.toFixed(1) + '%</strong>' +
+      '</div>';
+  } else if (msLoading) {
+    msHtml = '<div style="background:#EFF6FF;color:#1E40AF;border-radius:8px;padding:7px 10px;margin:7px 0 4px;font-size:12px;line-height:1.5;">' +
+      '⏳ Načítavam MS dáta pre Aflamil Family<span class="lk-loading-dots"></span>' +
       '</div>';
   } else {
     // Žiadne pharma dáta — cache prázdna alebo región neznámy
