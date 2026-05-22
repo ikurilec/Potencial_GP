@@ -1198,6 +1198,9 @@
   .lk-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:2000;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   .lk-overlay.show{display:block}
   .lk-inner{padding:82px 16px 48px}
+.lk-floating-back{position:fixed;left:max(22px,calc(50% - 190px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:2200;border:0;border-radius:999px;background:#fff;color:#2563EB;font-size:13px;font-weight:800;font-family:inherit;padding:11px 16px;box-shadow:0 10px 26px rgba(15,23,42,.18),0 0 0 1px rgba(15,23,42,.06);cursor:pointer;-webkit-tap-highlight-color:transparent;display:inline-flex;align-items:center;gap:6px}
+.lk-floating-back:active{transform:scale(.97);box-shadow:0 6px 18px rgba(15,23,42,.16),0 0 0 1px rgba(15,23,42,.06)}
+.mgr-plnenie-detail .lk-floating-back{position:fixed}
 .lk-sticky-controls{position:sticky;z-index:2050;padding:0;background:transparent}
 body:not(.manager-mode) .lk-sticky-controls{top:82px;background:#EAECF2;padding:0 0 10px}
 body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
@@ -2431,7 +2434,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.76';
+var APP_VERSION = '2.21.77';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -19196,6 +19199,10 @@ function lkMgrLoadingHtml() {
   '</div>';
 }
 
+function lkMgrBackButtonHtml() {
+  return "<button type=\"button\" class=\"lk-floating-back\" onclick=\"plnenieDetailSwitchSubtab('predaje',null);window.scrollTo(0,0)\">← Späť</button>";
+}
+
 function lkMgrSyncTabs() {
   var root = document.getElementById('pl-detail-lekarne');
   if (!root) return;
@@ -19237,14 +19244,14 @@ function lkMgrRenderBody(lekarne, searchQ) {
   }
   lkMgrSyncTabs();
   if (LK_MGR_STATE.loading && (!lekarne || lekarne.length === 0)) {
-    body.innerHTML = lkMgrLoadingHtml();
+    body.innerHTML = lkMgrLoadingHtml() + lkMgrBackButtonHtml();
     return;
   }
   if (shown.length === 0) {
-    body.innerHTML = '<div class="lk-empty">' + lkMgrEmptyMsg(tab) + '</div>';
+    body.innerHTML = '<div class="lk-empty">' + lkMgrEmptyMsg(tab) + '</div>' + lkMgrBackButtonHtml();
     return;
   }
-  body.innerHTML = shown.map(function(l){ return lkMgrItem(l, tab); }).join('');
+  body.innerHTML = shown.map(function(l){ return lkMgrItem(l, tab); }).join('') + lkMgrBackButtonHtml();
 }
 
 function lkMgrFilterSearch(val) {
@@ -19416,6 +19423,7 @@ function lkMgrItem(l, tab) {
       </div>
     </div>
     <div id="lk-list"></div>
+    <button type="button" class="lk-floating-back" onclick="closeLekarne()">← Späť</button>
   </div>
 </div>
 
