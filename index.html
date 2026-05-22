@@ -2431,7 +2431,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.71';
+var APP_VERSION = '2.21.72';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -4399,44 +4399,55 @@ function initCounter() {
 // Načíta celú históriu zo Sheets (alebo localStorage fallback), uloží do _histAllItems a aktualizuje badge.
 // Volá sa pri prihlásení aj pri otvorení histórie — zabezpečuje že duplikátna kontrola má vždy dáta.
 // _histPromise cache zabraňuje dvojitému fetchu: ak fetch práve beží alebo už dobehol, vráti ten istý Promise.
+function _histParseRawRows(rows) {
+  return (Array.isArray(rows) ? rows : []).map(function(item) {
+    var rawDate = item.datum || '';
+    var dateStr = rawDate;
+    try {
+      var d = new Date(rawDate);
+      if(!isNaN(d.getTime())) dateStr = d.getDate() + '.' + (d.getMonth()+1) + '.' + d.getFullYear();
+    } catch(e) {}
+    var rawCas = item.cas || '';
+    var casStr = rawCas;
+    try {
+      if(typeof rawCas === 'object' || (typeof rawCas === 'string' && rawCas.length > 5 && rawCas.indexOf('T') !== -1)) {
+        var dc = new Date(rawCas);
+        if(!isNaN(dc.getTime())) casStr = ('0'+dc.getHours()).slice(-2) + ':' + ('0'+dc.getMinutes()).slice(-2);
+      }
+    } catch(e) {}
+    var dParts = dateStr.split('.');
+    var dk = (dParts.length === 3) ? dParts[2]+'-'+dParts[1]+'-'+dParts[0] : dateStr;
+    return Object.assign({}, item, { dateKey: dk, dateStr: dateStr, cas: casStr, lekar: item.lekar, okres: item.okres, scenar: item.scenar, poznamka: item.poznamka || '' });
+  });
+}
+
 function loadHistoryItems(username) {
   if(!username) return Promise.resolve([]);
-  // Cache hit — dáta sú v pamäti alebo fetch práve beží, nespúšťaj nový request
   if(_histPromise) return _histPromise;
+
+  // SWR: zobraz z localStorage okamžite, fetch ticho na pozadí
+  var _lsHist = _histLsLoad(username);
+  if (_lsHist !== null) {
+    _histAllItems = _lsHist;
+    updateBadge(_histAllItems.length, false);
+    // Background refresh — aktualizuje _histAllItems a localStorage
+    fetch(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username)))
+      .then(function(r){ return r.json(); })
+      .then(function(rows) {
+        if (!Array.isArray(rows) || rows.length === 0) return;
+        _histAllItems = _histParseRawRows(rows);
+        _histLsSave(username, _histAllItems);
+        updateBadge(_histAllItems.length, false);
+      })
+      .catch(function(){});
+    return Promise.resolve(_histAllItems);
+  }
+
   _histPromise = fetch(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username)))
     .then(function(r){ return r.json(); })
     .then(function(rows) {
-      _histAllItems = rows.map(function(item) {
-        var rawDate = item.datum || '';
-        var dateStr = rawDate;
-        try {
-          var d = new Date(rawDate);
-          if(!isNaN(d.getTime())) {
-            dateStr = d.getDate() + '.' + (d.getMonth()+1) + '.' + d.getFullYear();
-          }
-        } catch(e) {}
-        var rawCas = item.cas || '';
-        var casStr = rawCas;
-        try {
-          if(typeof rawCas === 'object' || (typeof rawCas === 'string' && rawCas.length > 5 && rawCas.indexOf('T') !== -1)) {
-            var dc = new Date(rawCas);
-            if(!isNaN(dc.getTime())) {
-              casStr = ('0'+dc.getHours()).slice(-2) + ':' + ('0'+dc.getMinutes()).slice(-2);
-            }
-          }
-        } catch(e) {}
-        var dParts = dateStr.split('.');
-        var dk = (dParts.length === 3) ? dParts[2]+'-'+dParts[1]+'-'+dParts[0] : dateStr;
-        return Object.assign({}, item, {
-          dateKey: dk,
-          dateStr: dateStr,
-          cas: casStr,
-          lekar: item.lekar,
-          okres: item.okres,
-          scenar: item.scenar,
-          poznamka: item.poznamka || ''
-        });
-      });
+      _histAllItems = _histParseRawRows(rows);
+      _histLsSave(username, _histAllItems);
       updateBadge(_histAllItems.length, false);
       return _histAllItems;
     })
@@ -11306,19 +11317,24 @@ function lbLoadData(force){
   if(LB_STATE.loading) return;
   if(LB_STATE.data && !force) return;
   LB_STATE.loading = true;
-  // Zachovaj posledné dobré dáta počas loading-u (aby nezmizli zo zobrazenia v prípade fail-u)
-  var lastGoodData = LB_STATE.data;
-  LB_STATE.data = null;
   var isMgrOpen = document.body.classList.contains('manager-mode') && document.body.classList.contains('mgr-subtab-leaderboard');
   var isRepOpen = (function(){ var ov = document.getElementById('lb-overlay'); return ov && ov.classList.contains('show'); })();
-  if(isMgrOpen || isRepOpen){
-    var body = lbGetBody();
-    if(body) body.innerHTML = skelLb();
+  // SWR: zobraz z localStorage okamžite, fetch prebehne na pozadí
+  var _lbLsCached = !force && _lbHsLoad();
+  var lastGoodData = _lbLsCached || LB_STATE.data;
+  if (_lbLsCached) {
+    LB_STATE.data = _lbLsCached;
+    if(isMgrOpen || isRepOpen) lbRender();
+    lbUpdateNavBtn();
+  } else {
+    LB_STATE.data = null;
+    if(isMgrOpen || isRepOpen){ var body = lbGetBody(); if(body) body.innerHTML = skelLb(); }
   }
 
   function onDone(results, source){
     LB_STATE.data = results;
     LB_STATE.loading = false;
+    _lbHsSave(results);
     if (window.console) {
       var nonEmpty = Object.keys(results).filter(function(u){ return Array.isArray(results[u]) && results[u].length > 0; });
       console.log('[lb-load] zdroj=' + source + ', reps s návštevami=' + nonEmpty.length + '/' + LB_ALL_REPS.length);
@@ -14917,6 +14933,45 @@ var PHARMA_STATE = {
 var PHARMA_GRAF_STATE = { cache: {}, loading: {} };
 var PHARMA_OKRES_STATE = { cache: {}, loading: {}, current: null };
 
+// ── Leaderboard history localStorage SWR ─────────────────────────
+var _LB_LS_V = 'v1';
+function _lbHsKey() { return 'lb_allhist_' + _LB_LS_V; }
+function _lbHsSave(data) {
+  try { localStorage.setItem(_lbHsKey(), JSON.stringify({ data: data, ts: Date.now() })); } catch(e) {}
+}
+function _lbHsLoad() {
+  try {
+    var p = JSON.parse(localStorage.getItem(_lbHsKey()) || 'null');
+    return (p && p.data && typeof p.data === 'object') ? p.data : null;
+  } catch(e) { return null; }
+}
+
+// ── Per-rep history localStorage SWR ──────────────────────────────
+var _HIST_LS_V = 'v1';
+function _histLsKey(username) { return 'hist_' + _HIST_LS_V + '_' + (username || '').toLowerCase(); }
+function _histLsSave(username, items) {
+  try { localStorage.setItem(_histLsKey(username), JSON.stringify({ items: items, ts: Date.now() })); } catch(e) {}
+}
+function _histLsLoad(username) {
+  try {
+    var p = JSON.parse(localStorage.getItem(_histLsKey(username)) || 'null');
+    return (p && Array.isArray(p.items)) ? p.items : null;
+  } catch(e) { return null; }
+}
+
+// ── PharmaGraf localStorage SWR ────────────────────────────────────
+var _PG_LS_V = 'v1';
+function _pgLsKey(code, oblast) { return 'ph_graf_' + _PG_LS_V + '_' + code + '_' + oblast; }
+function _pgLsSave(code, oblast, resp) {
+  try { localStorage.setItem(_pgLsKey(code, oblast), JSON.stringify({ resp: resp, ts: Date.now() })); } catch(e) {}
+}
+function _pgLsLoad(code, oblast) {
+  try {
+    var p = JSON.parse(localStorage.getItem(_pgLsKey(code, oblast)) || 'null');
+    return (p && p.resp) ? p.resp : null;
+  } catch(e) { return null; }
+}
+
 // ── Pharma localStorage SWR ───────────────────────────────────────
 var _PH_LS_V = 'v1';
 function _phLsKey(code, oblast, kvartal) { return 'ph_c_' + _PH_LS_V + '_' + code + '_' + oblast + '_' + kvartal; }
@@ -15268,6 +15323,13 @@ function loadPharmaGrafData(code, oblast, callback) {
     if (callback) callback(PHARMA_GRAF_STATE.cache[cacheKey]);
     return;
   }
+  // SWR: localStorage fallback
+  var _lsPg = _pgLsLoad(code, oblast);
+  if (_lsPg) {
+    PHARMA_GRAF_STATE.cache[cacheKey] = _lsPg;
+    if (callback) callback(_lsPg);
+    return;
+  }
   if (PHARMA_GRAF_STATE.loading[cacheKey]) return;
   PHARMA_GRAF_STATE.loading[cacheKey] = true;
 
@@ -15291,6 +15353,7 @@ function loadPharmaGrafData(code, oblast, callback) {
       delete PHARMA_GRAF_STATE.loading[cacheKey];
       if (resp.ok && resp.rows && resp.rows.length >= 1) {
         PHARMA_GRAF_STATE.cache[cacheKey] = resp;
+        _pgLsSave(code, oblast, resp);
         if (callback) callback(resp);
       }
       // Ak žiadne dáta — nezachovávame v cache, ďalšie otvorenie skúsi znova
