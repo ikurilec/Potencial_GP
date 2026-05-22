@@ -2431,7 +2431,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.75';
+var APP_VERSION = '2.21.76';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8400,17 +8400,18 @@ function mgrLoadReps(repList){
       if(!mgrs || !mgrs.length) return;
       mgrs.forEach(function(mgr){
         if(!mgr.username) return;
+        var mgrUsername = String(mgr.username).trim().toLowerCase();
         try {
           var raw = String(mgr.avatar || '').trim();
           if(raw){
             var p = JSON.parse(raw);
             if(p && p.style && typeof AVATAR_SCHEMAS !== 'undefined' && AVATAR_SCHEMAS[p.style]){
-              localStorage.setItem('avatar_cfg_' + mgr.username, JSON.stringify(p));
+              localStorage.setItem('avatar_cfg_' + mgrUsername, JSON.stringify(p));
               return;
             }
           }
           // Prázdny/neplatný avatar v Sheets — vymazať prípadnú starú cache
-          localStorage.removeItem('avatar_cfg_' + mgr.username);
+          localStorage.removeItem('avatar_cfg_' + mgrUsername);
         } catch(e){}
       });
     })();
@@ -9649,6 +9650,7 @@ function avatarUrl(config, size) {
 // potom z session (ak ide o prihláseného usera), potom z localStorage (offline cache).
 function avatarGetConfig(username) {
   if (!username) return null;
+  username = String(username).trim().toLowerCase();
   // 1. In-memory zo Sheets (rep list)
   try {
     if (typeof USERS_LOCAL !== 'undefined' && USERS_LOCAL[username] && USERS_LOCAL[username].avatar) {
@@ -9679,6 +9681,7 @@ function avatarGetConfig(username) {
 // Vráti gender ('male'/'female') pre user-a — najprv zo session, potom z USERS_LOCAL / LB_REP_INFO
 function avatarGetUserGender(username) {
   if (!username) return null;
+  username = String(username).trim().toLowerCase();
   try {
     var s = (typeof getSession === 'function') ? getSession() : null;
     if (s && s.username === username && (s.gender === 'male' || s.gender === 'female')) return s.gender;
@@ -9695,6 +9698,7 @@ function avatarGetUserGender(username) {
 // Po backend úspechu/zlyhaní — broadcast event aby sa re-renderovali avatary.
 function avatarSetConfig(username, config) {
   if (!username) return;
+  username = String(username).trim().toLowerCase();
   var configStr = config ? JSON.stringify(config) : '';
   // 1. In-memory update (synchronne)
   try {
@@ -10383,6 +10387,10 @@ function buildRepData(reps) {
     MGR_REP_NAMES[u] = r.meno;
     LB_REP_INFO[u]   = { name: r.meno, region: r.region, color: color, gender: gender, avatar: avatarConfig };
     USERS_LOCAL[u]   = { region: r.region, gender: gender, avatar: avatarConfig };
+    try {
+      if (avatarConfig) localStorage.setItem('avatar_cfg_' + u, JSON.stringify(avatarConfig));
+      else localStorage.removeItem('avatar_cfg_' + u);
+    } catch(e) {}
   });
 
   MGR_ROLE_CFG.bum.reps    = MGR_ALL;
@@ -18553,6 +18561,51 @@ function lkLocalKey(login) {
   return 'lekarne_cache_v7_' + lkCacheKey(login);
 }
 
+var _LK_IDB_NAME = 'potencial_gp_lekarne_cache';
+var _LK_IDB_STORE = 'lekarne';
+var _LK_IDB_PROMISE = null;
+function lkIdbSupported() {
+  return typeof indexedDB !== 'undefined';
+}
+function lkIdbOpen() {
+  if (!lkIdbSupported()) return Promise.reject(new Error('indexedDB unavailable'));
+  if (_LK_IDB_PROMISE) return _LK_IDB_PROMISE;
+  _LK_IDB_PROMISE = new Promise(function(resolve, reject) {
+    var req = indexedDB.open(_LK_IDB_NAME, 1);
+    req.onupgradeneeded = function() {
+      var db = req.result;
+      if (!db.objectStoreNames.contains(_LK_IDB_STORE)) db.createObjectStore(_LK_IDB_STORE, { keyPath: 'key' });
+    };
+    req.onsuccess = function() { resolve(req.result); };
+    req.onerror = function() { reject(req.error || new Error('indexedDB open failed')); };
+  });
+  return _LK_IDB_PROMISE;
+}
+function lkIdbLoad(login) {
+  var key = lkCacheKey(login);
+  return lkIdbOpen().then(function(db) {
+    return new Promise(function(resolve) {
+      var tx = db.transaction(_LK_IDB_STORE, 'readonly');
+      var req = tx.objectStore(_LK_IDB_STORE).get(key);
+      req.onsuccess = function() { resolve(req.result && Array.isArray(req.result.rows) ? req.result : null); };
+      req.onerror = function() { resolve(null); };
+    });
+  }).catch(function(){ return null; });
+}
+function lkIdbSave(login, entry) {
+  var key = lkCacheKey(login);
+  if (!entry || key === '__all__') return;
+  lkIdbOpen().then(function(db) {
+    var tx = db.transaction(_LK_IDB_STORE, 'readwrite');
+    tx.objectStore(_LK_IDB_STORE).put({
+      key: key,
+      rows: entry.rows || [],
+      ts: entry.ts || Date.now(),
+      hash: entry.hash || lkRowsHash(entry.rows || [])
+    });
+  }).catch(function(){});
+}
+
 function lkRowsHash(rows) {
   var s = JSON.stringify(rows || []);
   var h = 0;
@@ -18568,9 +18621,11 @@ function lkSetCache(login, rows, persist) {
   var hash = lkRowsHash(rows);
   var prev = LK_STATE.cache[key];
   var changed = !prev || prev.hash !== hash;
-  LK_STATE.cache[key] = { rows: rows || [], ts: Date.now(), hash: hash };
+  var entry = { rows: rows || [], ts: Date.now(), hash: hash };
+  LK_STATE.cache[key] = entry;
   if (persist && key !== '__all__') {
-    try { localStorage.setItem(lkLocalKey(key), JSON.stringify(LK_STATE.cache[key])); } catch(e) {}
+    try { localStorage.setItem(lkLocalKey(key), JSON.stringify(entry)); } catch(e) {}
+    lkIdbSave(key, entry);
   }
   return changed;
 }
@@ -18592,6 +18647,18 @@ function lkGetCachedRows(login) {
     } catch(e) {}
   }
   return null;
+}
+
+function lkGetCachedRowsAsync(login) {
+  var syncRows = lkGetCachedRows(login);
+  if (syncRows) return Promise.resolve(syncRows);
+  return lkIdbLoad(login).then(function(entry) {
+    if (entry && Array.isArray(entry.rows)) {
+      LK_STATE.cache[lkCacheKey(login)] = entry;
+      return entry.rows;
+    }
+    return null;
+  });
 }
 
 function lkPrimeCacheFromRows(rows, persist) {
@@ -18629,6 +18696,14 @@ function lkFetch(login, cb) {
   if (_lkInFlight[cacheKey]) { _lkInFlight[cacheKey].push(cb); return; }
   // Spusti nový fetch
   _lkInFlight[cacheKey] = [cb];
+  if (!servedCached && lkIdbSupported() && cacheKey !== '__all__') {
+    lkIdbLoad(cacheKey).then(function(entry) {
+      if (!entry || servedCached) return;
+      servedCached = true;
+      LK_STATE.cache[cacheKey] = entry;
+      try { cb(entry.rows || []); } catch(e) {}
+    });
+  }
   var url = scriptUrl('action=getLekarne&login=' + encodeURIComponent(cacheKey === '__all__' ? '' : cacheKey) + '&creamMonth=' + encodeURIComponent(lkCreamContactMonthKey()) + '&_t=' + Date.now());
   fetch(url, { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(data) {
     var rows = (data.ok && data.rows) ? data.rows : [];
@@ -18799,6 +18874,15 @@ function openLekarne() {
   var cachedRows = lkGetCachedRows(login);
   if (cachedRows && cachedRows.length > 0) {
     LK_STATE._rows = lkBuildLekarne(cachedRows);
+  }
+  if (!cachedRows && lkIdbSupported()) {
+    lkIdbLoad(login).then(function(entry) {
+      var currentLogin = (getSession() || {}).username || '';
+      if (!entry || !LK_STATE.open || lkCacheKey(currentLogin) !== lkCacheKey(login)) return;
+      LK_STATE.cache[lkCacheKey(login)] = entry;
+      LK_STATE._rows = lkBuildLekarne(entry.rows || []);
+      lkRender();
+    });
   }
   lkSwitchTab('reaktivacia', null);
   if (!cachedRows || cachedRows.length === 0) {
@@ -19188,6 +19272,15 @@ function lkMgrLoadForRep(login) {
   } else {
     LK_MGR_STATE.loading = true;
     body.innerHTML = lkSkelHtml();
+    if (lkIdbSupported()) {
+      lkIdbLoad(login).then(function(entry) {
+        if (!entry || LK_MGR_LOGIN !== (login || null)) return;
+        LK_MGR_STATE.loading = false;
+        LK_STATE.cache[lkCacheKey(login)] = entry;
+        LK_MGR_ALL = lkBuildLekarne(entry.rows || []);
+        lkMgrRenderBody(LK_MGR_ALL, '');
+      });
+    }
   }
 
   // Per-rep fetch (rýchly, má vlastné SWR v lkFetch) ako primárny zdroj
