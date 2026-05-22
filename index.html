@@ -2431,7 +2431,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.61';
+var APP_VERSION = '2.21.62';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -16121,26 +16121,30 @@ function pharmaRender(code) {
       var n = parseFloat(row.vals[idx]);
       return (!isNaN(n) && n > 0) ? n : null;
     }
-    var msRows = [{
+    var ourMsRow = {
       name: prodLabel,
       vals: districtDisplayMonths.map(function(m){ return dSeries.nas[m]; }),
       ours: true
-    }];
+    };
+    var compMsRows = [];
     Object.keys(dSeries.comps || {}).forEach(function(name) {
-      msRows.push({ name: name, vals: districtDisplayMonths.map(function(m){ return dSeries.comps[name][m]; }), ours: false });
+      compMsRows.push({ name: name, vals: districtDisplayMonths.map(function(m){ return dSeries.comps[name][m]; }), ours: false });
     });
+    var msRows = [ourMsRow].concat(compMsRows);
     var sortIdx = 2;
     for (var si = 2; si >= 0; si--) {
       if (msRows.some(function(row) { return rowVal(row, si) !== null; })) { sortIdx = si; break; }
     }
-    msRows.sort(function(a, b) {
+    function cmpMsRows(a, b) {
       var av = rowVal(a, sortIdx);
       var bv = rowVal(b, sortIdx);
       if (av === null && bv === null) return 0;
       if (av === null) return 1;
       if (bv === null) return -1;
       return bv - av;
-    });
+    }
+    compMsRows.sort(cmpMsRows);
+    msRows = [ourMsRow].concat(compMsRows.slice(0, 3)).sort(cmpMsRows);
     msRows.forEach(function(row) {
       html += '<tr' + (row.ours ? ' class="ours"' : '') + '><td>' + mgrEscape(row.name) + '</td>';
       html += '<td>' + fmtMs(row.vals[0]) + '</td><td>' + fmtMs(row.vals[1]) + '</td><td>' + fmtMs(row.vals[2]) + '</td></tr>';
@@ -16216,38 +16220,10 @@ function closePharmaMs() {
 }
 
 function preloadAllPharmaData() {
-  var session = getSession();
-  if (!session) return;
-
-  var q    = REP_PL_STATE.q    || plnenieCurrentQ();
-  var year = REP_PL_STATE.year || (new Date()).getFullYear();
-  var kvartal = pharmaKvartalCode(year, q);
-
-  var allCodes = [];
-  Object.keys(PHARMA_CODES).forEach(function(key) {
-    PHARMA_CODES[key].forEach(function(code) {
-      if (allCodes.indexOf(code) < 0) allCodes.push(code);
-    });
-  });
-
-  if (document.body.classList.contains('manager-mode')) {
-    var seenOblasts = {};
-    Object.keys(USERS_LOCAL).forEach(function(username) {
-      var oblast = (USERS_LOCAL[username] && USERS_LOCAL[username].region) || '';
-      if (!oblast || seenOblasts[oblast]) return;
-      seenOblasts[oblast] = true;
-      allCodes.forEach(function(code) {
-        loadPharmaData(code, oblast, kvartal);
-        loadPharmaGrafData(code, oblast, null);
-      });
-    });
-  } else {
-    var oblast = (USERS_LOCAL[session.username] && USERS_LOCAL[session.username].region) || session.region || '';
-    if (oblast) allCodes.forEach(function(code) {
-      loadPharmaData(code, oblast, kvartal);
-      loadPharmaGrafData(code, oblast, null);
-    });
-  }
+  // Normalized PharmaData_Okresy stores the full market and can be large.
+  // Preloading every product/territory would fan out into many Apps Script scans,
+  // so market-share data is loaded lazily when the user opens a specific product.
+  return;
 }
 
 // ── PULL-TO-REFRESH pre manažérsky zoznam ──
