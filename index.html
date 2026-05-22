@@ -2431,7 +2431,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.60';
+var APP_VERSION = '2.21.61';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7135,7 +7135,8 @@ function gynPharmaDistrictMonthMap(resp, currentKvartal) {
           byDistrict[okres].nas[m.yy] = nv;
           monthsWithData[m.yy] = true;
         }
-        [row.k1, row.k2, row.k3].forEach(function(k){
+        var compRows = Array.isArray(row.k_all) && row.k_all.length ? row.k_all : [row.k1, row.k2, row.k3];
+        compRows.forEach(function(k){
           if(!k || !k.name) return;
           var cv = parseFloat(k[m.km]);
           if(isNaN(cv) || cv <= 0) return;
@@ -14915,7 +14916,8 @@ function pharmaDistrictMonthMap(resp, currentKvartal) {
           byDistrict[okres].nas[m.yy] = nv;
           monthsWithData[m.yy] = true;
         }
-        [row.k1, row.k2, row.k3].forEach(function(k){
+        var compRows = Array.isArray(row.k_all) && row.k_all.length ? row.k_all : [row.k1, row.k2, row.k3];
+        compRows.forEach(function(k){
           if(!k || !k.name) return;
           var cv = parseFloat(k[m.km]);
           if(isNaN(cv) || cv <= 0) return;

@@ -82,13 +82,8 @@
   <div class="table-scroll">
     <table>
       <thead><tr>
-        <th>produkt</th><th>oblast</th><th>okres</th><th>kvartal</th>
-        <th>nas_m1</th><th>nas_m2</th><th>nas_m3</th>
-        <th>nas_pat_m1</th><th>nas_pat_m2</th><th>nas_pat_m3</th>
-        <th>tot_pat_m1</th><th>tot_pat_m2</th><th>tot_pat_m3</th>
-        <th>k1_nazov</th><th>k1_m1</th><th>k1_m2</th><th>k1_m3</th>
-        <th>k2_nazov</th><th>k2_m1</th><th>k2_m2</th><th>k2_m3</th>
-        <th>k3_nazov</th><th>k3_m1</th><th>k3_m2</th><th>k3_m3</th>
+        <th>produkt</th><th>oblast</th><th>okres</th><th>mesiac</th>
+        <th>produkt_trhu</th><th>ms</th><th>objem</th><th>total_trh</th><th>typ</th>
       </tr></thead>
       <tbody id="body-okresy"></tbody>
     </table>
@@ -299,31 +294,24 @@ function parseJunodBoxWorkbook(wb, info, ourName) {
     return c ? s / c : 0;
   }
 
-  Object.keys(byOkrQ).sort().forEach(function(key) {
-    var qData = byOkrQ[key];
-    var months = monthListForQ(qData.qtr);
-    if (!months.length) return;
-    var compNames = {};
-    months.forEach(function(m) {
-      var b = qData.months[m];
-      if (!b) return;
-      Object.keys(b.prods).forEach(function(p) { if (p !== ourName.toUpperCase()) compNames[p] = true; });
+  Object.keys(byOkrMonth).sort().forEach(function(key) {
+    var x = byOkrMonth[key];
+    Object.keys(x.prods).sort().forEach(function(prod) {
+      var unit = x.prods[prod] || 0;
+      if (unit <= 0) return;
+      var ms = x.total > 0 ? (unit / x.total * 100).toFixed(2) : '';
+      okresyRows.push([
+        info.produkt,
+        info.oblast,
+        x.okres,
+        x.mesiac,
+        prod,
+        ms,
+        unit || '',
+        x.total || '',
+        prod === ourName.toUpperCase() ? 'nas' : 'konkurencia'
+      ]);
     });
-    var compList = Object.keys(compNames).map(function(p) {
-      return { name: p, avg: prodAvg(qData, months, p), vals: months.map(function(m){ return prodMs(qData.months[m], p); }) };
-    }).filter(function(c){ return c.avg > 0; }).sort(function(a,b){ return b.avg - a.avg; }).slice(0,3);
-    var ourMs = months.map(function(m){ return msVal(qData.months[m]); });
-    var ourBox = months.map(function(m){ var b = qData.months[m]; return b ? (b.our || '') : ''; });
-    var totBox = months.map(function(m){ var b = qData.months[m]; return b ? (b.total || '') : ''; });
-    var outRow = [info.produkt, info.oblast, qData.okres, qData.qtr,
-      ourMs[0] || '', ourMs[1] || '', ourMs[2] || '',
-      ourBox[0] || '', ourBox[1] || '', ourBox[2] || '',
-      totBox[0] || '', totBox[1] || '', totBox[2] || ''];
-    for (var k = 0; k < 3; k++) {
-      var comp = compList[k];
-      outRow.push(comp ? comp.name : '', comp ? comp.vals[0] : '', comp ? comp.vals[1] : '', comp ? comp.vals[2] : '');
-    }
-    okresyRows.push(outRow);
   });
 
   var byOkres = {};
@@ -453,7 +441,49 @@ function parseDistrictSheet(data, sheetName, info, ourName, dist) {
   }
 
   // Pre každý kvartál vybuduj výstupný riadok
+  var ourProdAll = null;
+  Object.keys(products).forEach(function(pName) {
+    if (pName.indexOf(ourName.toUpperCase()) >= 0) ourProdAll = pName;
+  });
+
   var qtrKeys = Object.keys(dist.quarters).sort(function(a,b){ return parseInt(a)-parseInt(b); });
+  qtrKeys.forEach(function(qtr) {
+    var colsAll = dist.quarters[qtr].slice().sort(function(a,b){ return a.month - b.month; });
+    var yyAll = qtr.slice(0, 2);
+    colsAll.forEach(function(x) {
+      var mmAll = x.month < 10 ? '0' + x.month : String(x.month);
+      var mesiacAll = yyAll + mmAll;
+      var totalAll = '';
+      if (totalPatRow) {
+        var totalParsed = parseInt(totalPatRow[x.col], 10);
+        totalAll = isNaN(totalParsed) ? '' : totalParsed;
+      }
+      Object.keys(products).sort().forEach(function(pName) {
+        var prod = products[pName];
+        if (!prod || !prod.msRow) return;
+        var msAll = pct(prod.msRow[x.col]);
+        if (!msAll || parseFloat(msAll) <= 0) return;
+        var objemAll = '';
+        if (prod.patRow) {
+          var objemParsed = parseInt(prod.patRow[x.col], 10);
+          objemAll = isNaN(objemParsed) ? '' : objemParsed;
+        }
+        okresyRows.push([
+          info.produkt,
+          info.oblast,
+          sheetName,
+          mesiacAll,
+          pName,
+          msAll,
+          objemAll,
+          totalAll,
+          pName === ourProdAll ? 'nas' : 'konkurencia'
+        ]);
+      });
+    });
+  });
+
+  qtrKeys = Object.keys(dist.quarters).sort(function(a,b){ return parseInt(a)-parseInt(b); });
   qtrKeys.forEach(function(qtr) {
     var cols = dist.quarters[qtr].slice().sort(function(a,b){ return a.month - b.month; });
 
@@ -500,7 +530,7 @@ function parseDistrictSheet(data, sheetName, info, ourName, dist) {
       outRow.push(comp ? mVal(comp.vals,1) : '');
       outRow.push(comp ? mVal(comp.vals,2) : '');
     }
-    okresyRows.push(outRow);
+    // Legacy wide top-3 row disabled: PharmaData_Okresy now uses the normalized full-market rows above.
   });
 
   // ── OkresyGraf: per-mesiac výstup pre historický district chart ──
@@ -568,7 +598,7 @@ function renderAll() {
   statsEl.innerHTML = '✅ Summary: <strong>' + summaryRows.length + '</strong> &nbsp;·&nbsp; Okresy: <strong>' + okresyRows.length + '</strong> &nbsp;·&nbsp; OkresyGraf: <strong>' + okrGrafRows.length + '</strong>' + errHtml;
 
   renderTable('body-summary',   'more-summary',   'block-summary',   summaryRows,  5);
-  renderTable('body-okresy',    'more-okresy',    'block-okresy',    okresyRows,   25);
+  renderTable('body-okresy',    'more-okresy',    'block-okresy',    okresyRows,   9);
   renderTable('body-okrgraf',   'more-okrgraf',   'block-okrgraf',   okrGrafRows,  21);
 
   document.getElementById('actions').style.display = (summaryRows.length || okresyRows.length) ? 'flex' : 'none';
@@ -608,7 +638,7 @@ function copyOutput(type) {
     tsv = buildTsv(summaryRows, ['produkt','oblast','mesiac','terit_ms','sk_ms']);
     label = 'Summary';
   } else if (type === 'okresy') {
-    tsv = buildTsv(okresyRows, ['produkt','oblast','okres','kvartal','nas_m1','nas_m2','nas_m3','nas_pat_m1','nas_pat_m2','nas_pat_m3','tot_pat_m1','tot_pat_m2','tot_pat_m3','k1_nazov','k1_m1','k1_m2','k1_m3','k2_nazov','k2_m1','k2_m2','k2_m3','k3_nazov','k3_m1','k3_m2','k3_m3']);
+    tsv = buildTsv(okresyRows, ['produkt','oblast','okres','mesiac','produkt_trhu','ms','objem','total_trh','typ']);
     label = 'Okresy';
   } else {
     var grafHdrs = ['produkt','oblast','okres','mesiac','nas_ms'];
