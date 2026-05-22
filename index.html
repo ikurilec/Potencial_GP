@@ -2431,7 +2431,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.68';
+var APP_VERSION = '2.21.69';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -18418,7 +18418,9 @@ function lkPrimeCacheFromRows(rows, persist) {
     });
   }
   Object.keys(grouped).forEach(function(login) {
-    lkSetCache(login, grouped[login], persist);
+    var rows = grouped[login];
+    // Prázdne pole uložíme iba do pamäte (nie localStorage) — inak by prepísalo validnú cache
+    lkSetCache(login, rows, persist && rows.length > 0);
   });
   LK_STATE.allLoaded = true;
 }
