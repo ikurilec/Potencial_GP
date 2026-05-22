@@ -2431,7 +2431,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.67';
+var APP_VERSION = '2.21.68';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11804,6 +11804,20 @@ function plnenieNormalizeKey(s) {
   return String(s == null ? '' : s).toLowerCase().trim();
 }
 
+// ── Plnenie localStorage SWR ──────────────────────────────────────
+var _PL_LS_V = 'v1';
+function _plLsKey(year, q) { return 'pl_c_' + _PL_LS_V + '_' + year + '_' + q; }
+function _plRepLsKey(uname, year, q) { return 'pl_rc_' + _PL_LS_V + '_' + (uname || '_') + '_' + year + '_' + q; }
+function _plLsLoad(key) {
+  try {
+    var p = JSON.parse(localStorage.getItem(key) || 'null');
+    return (p && p.data) ? p : null;
+  } catch(e) { return null; }
+}
+function _plLsSave(key, data, agg) {
+  try { localStorage.setItem(key, JSON.stringify({ data: data, agg: agg, ts: Date.now() })); } catch(e) {}
+}
+
 function plnenieDisplayName(rawKey) {
   var norm = plnenieNormalizeKey(rawKey);
   return PL_PRODUCT_LABELS[norm] || rawKey;
@@ -12049,10 +12063,6 @@ function plnenieLoadAllQuarters() {
   PL_STATE.loaded = false;
   PL_STATE.data = null;
   PL_STATE.aggregates = null;
-  // Ukáž loading stav hneď
-  plnenieUpdateQTabs();
-  plnenieRenderSummaryEmpty();
-  plnenieRenderLoading();
 
   // DEV MODE — použi mock dáta namiesto Sheets fetchu
   if (IS_DEV) {
@@ -12070,12 +12080,37 @@ function plnenieLoadAllQuarters() {
       }
     });
     PL_STATE.loading = false;
+    plnenieUpdateQTabs();
+    plnenieRenderSummaryEmpty();
     plnenieRenderAll();
     return;
   }
 
   var year = PL_STATE.year;
   var qs = [1, 2, 3, 4];
+
+  // SWR: pre-načítaj všetky Q z localStorage ešte pred fetchom
+  qs.forEach(function(q) {
+    if (PL_STATE.qCache[q]) return; // už máme z predchádzajúceho loadu
+    var cached = _plLsLoad(_plLsKey(year, q));
+    if (cached) {
+      PL_STATE.qCache[q] = { data: cached.data, aggregates: cached.agg };
+      if (q === PL_STATE.q) {
+        PL_STATE.data = cached.data;
+        PL_STATE.aggregates = cached.agg;
+        PL_STATE.loaded = true;
+      }
+    }
+  });
+
+  plnenieUpdateQTabs();
+  plnenieRenderSummaryEmpty();
+  if (PL_STATE.loaded) {
+    plnenieRenderAll(); // zobraz cache okamžite — žiadny skeleton
+  } else {
+    plnenieRenderLoading(); // prvý štart, žiadna cache
+  }
+
   var pending = qs.length;
 
   qs.forEach(function(q) {
@@ -12085,6 +12120,7 @@ function plnenieLoadAllQuarters() {
         if (!resp || !resp.ok) throw new Error('No data for Q' + q);
         var agg = plnenieBuildAggregates(resp, q);
         PL_STATE.qCache[q] = { data: resp, aggregates: agg };
+        _plLsSave(_plLsKey(year, q), resp, agg); // ulož do localStorage
         // Ak práve zobrazujeme tento Q, hneď renderuj
         if (q === PL_STATE.q) {
           PL_STATE.data = resp;
@@ -12094,14 +12130,14 @@ function plnenieLoadAllQuarters() {
         }
       })
       .catch(function() {
-        PL_STATE.qCache[q] = null; // fetch zlyhal pre tento Q
+        PL_STATE.qCache[q] = PL_STATE.qCache[q] || null; // zachovaj cache pri chybe fetchu
       })
       .then(function() {
         pending--;
         if (pending === 0) {
           // Všetky Q fetche skončili
           PL_STATE.loading = false;
-          // Ak current Q sa stále nenačítal (error), renderuj error stav
+          // Ak current Q sa stále nenačítal (error), renderuj z cache alebo error stav
           if (!PL_STATE.loaded) {
             plnenieRenderAll();
           }
@@ -14341,6 +14377,26 @@ function repPlnenieLoad() {
   REP_PL_STATE.qCache = {};
   var year = REP_PL_STATE.year;
   var qs = [1, 2, 3, 4];
+  var uname = (getSession() || {}).username || '';
+
+  // SWR: pre-načítaj všetky Q z localStorage pred fetchom
+  qs.forEach(function(q) {
+    var cached = _plLsLoad(_plRepLsKey(uname, year, q));
+    if (cached) {
+      REP_PL_STATE.qCache[q] = { data: cached.data, aggregates: cached.agg };
+      if (q === REP_PL_STATE.q) {
+        REP_PL_STATE.data = cached.data;
+        REP_PL_STATE.aggregates = cached.agg;
+        REP_PL_STATE.loaded = true;
+      }
+    }
+  });
+  // Ak máme cache pre aktuálny Q, zobraz hneď (overlay môže byť ešte zatvorený)
+  if (REP_PL_STATE.loaded) {
+    var overlay = document.getElementById('rep-plnenie-overlay');
+    if (overlay && overlay.classList.contains('show')) repPlnenieRender();
+  }
+
   var pending = qs.length;
   qs.forEach(function(q) {
     var url = scriptUrl('action=getPlnenieAll&rok=' + year + '&Q=' + q);
@@ -14349,6 +14405,7 @@ function repPlnenieLoad() {
         if (!resp || !resp.ok) throw new Error('No data Q' + q);
         var agg = plnenieBuildAggregates(resp, q);
         REP_PL_STATE.qCache[q] = { data: resp, aggregates: agg };
+        _plLsSave(_plRepLsKey(uname, year, q), resp, agg); // ulož do localStorage
         if (q === REP_PL_STATE.q) {
           REP_PL_STATE.data = resp;
           REP_PL_STATE.aggregates = agg;
@@ -14357,13 +14414,11 @@ function repPlnenieLoad() {
           if (overlay && overlay.classList.contains('show')) repPlnenieRender();
         }
       })
-      .catch(function() { REP_PL_STATE.qCache[q] = null; })
+      .catch(function() { REP_PL_STATE.qCache[q] = REP_PL_STATE.qCache[q] || null; })
       .then(function() {
         pending--;
         if (pending === 0) {
           REP_PL_STATE.loading = false;
-          // Vždy re-render keď všetky fetche skončia — opravuje zaseknutý loading state
-          // ak user prepol Q tab počas načítavania
           var overlay = document.getElementById('rep-plnenie-overlay');
           if (overlay && overlay.classList.contains('show')) {
             var cached = REP_PL_STATE.qCache[REP_PL_STATE.q];
@@ -14862,6 +14917,19 @@ var PHARMA_STATE = {
 var PHARMA_GRAF_STATE = { cache: {}, loading: {} };
 var PHARMA_OKRES_STATE = { cache: {}, loading: {}, current: null };
 
+// ── Pharma localStorage SWR ───────────────────────────────────────
+var _PH_LS_V = 'v1';
+function _phLsKey(code, oblast, kvartal) { return 'ph_c_' + _PH_LS_V + '_' + code + '_' + oblast + '_' + kvartal; }
+function _phLsLoad(code, oblast, kvartal) {
+  try {
+    var p = JSON.parse(localStorage.getItem(_phLsKey(code, oblast, kvartal)) || 'null');
+    return (p && p.resp) ? p.resp : null;
+  } catch(e) { return null; }
+}
+function _phLsSave(code, oblast, kvartal, resp) {
+  try { localStorage.setItem(_phLsKey(code, oblast, kvartal), JSON.stringify({ resp: resp, ts: Date.now() })); } catch(e) {}
+}
+
 function pharmaKvartalCode(year, q) {
   return String(year).slice(2) + (q < 10 ? '0' + q : String(q));
 }
@@ -15035,6 +15103,11 @@ function openPharmaMs(prodKey, label) {
   if (titleEl)  titleEl.textContent = 'Trhový podiel · Q' + q + ' ' + year + ' · ' + label;
   if (mesiacEl) mesiacEl.textContent = '';
   var firstCacheKey = codes[0] + '_' + oblast + '_' + kvartal;
+  // SWR: pred zobrazením skeletonu skús localStorage
+  if (!PHARMA_STATE.cache[firstCacheKey]) {
+    var _lsCachedFirst = _phLsLoad(codes[0], oblast, kvartal);
+    if (_lsCachedFirst) PHARMA_STATE.cache[firstCacheKey] = _lsCachedFirst;
+  }
   if (bodyEl && !PHARMA_STATE.cache[firstCacheKey]) bodyEl.innerHTML = skelPharma();
 
   if (codes.length > 1) {
@@ -15068,6 +15141,21 @@ function loadPharmaData(code, oblast, kvartal) {
     } else {
       pharmaRender(code);
     }
+    return;
+  }
+  // SWR: localStorage fallback — zobraz okamžite, na pozadí fetch čerstvých dát
+  var _lsCached = _phLsLoad(code, oblast, kvartal);
+  if (_lsCached) {
+    PHARMA_STATE.cache[cacheKey] = _lsCached;
+    if (pharmaIsCurrentKvartal(kvartal) && !_lsCached.okresy_prev) {
+      pharmaAttachPrevDistrictsForCurrent(code, oblast, kvartal, _lsCached, function(enrichedResp){
+        PHARMA_STATE.cache[cacheKey] = enrichedResp;
+        pharmaRender(code);
+      });
+    } else if (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal) {
+      pharmaRender(code);
+    }
+    // Nepokračuj ďalej — background fetch sa spustí cez preload alebo pri ďalšom otvorení
     return;
   }
   if (PHARMA_STATE.loading[cacheKey]) return;
@@ -15126,6 +15214,7 @@ function loadPharmaData(code, oblast, kvartal) {
         }
         pharmaAttachPrevDistrictsForCurrent(code, oblast, kvartal, resp, function(enrichedResp){
         PHARMA_STATE.cache[cacheKey] = enrichedResp;
+        _phLsSave(code, oblast, kvartal, enrichedResp);
         if (PHARMA_STATE.activeCode === code &&
             PHARMA_STATE.oblast     === oblast &&
             PHARMA_STATE.kvartal    === kvartal) {
@@ -18742,66 +18831,6 @@ function lkSkelHtml() {
 var LK_MGR_ALL = [];  // cache pre filter
 var LK_MGR_LOGIN = null;
 
-function lkMgrRenderBody(lekarne, searchQ) {
-  var body = document.getElementById('pl-detail-lekarne-body');
-  if (!body) return;
-  var q = (searchQ || '').toLowerCase().trim();
-  var list = q ? lekarne.filter(function(l){ return l.lekaren.toLowerCase().indexOf(q) >= 0 || l.mesto.toLowerCase().indexOf(q) >= 0; }) : lekarne;
-
-  var sleeping = list.filter(function(l){ return l.isSleeping; });
-  var newOnes  = list.filter(function(l){ return l.isNew; });
-  var html = '';
-
-  if (q) {
-    // Keď hľadáme — len výsledky bez sekcií
-    if (list.length === 0) { body.innerHTML = '<div class="lk-empty">Žiadna lekáreň nezodpovedá hľadaniu.</div>'; return; }
-    html += '<div class="lk-section-lbl">' + list.length + ' výsledkov</div>';
-    list.forEach(function(l){ html += lkMgrItem(l); });
-  } else {
-    // Summary stats
-    html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">' +
-      lkStatCard(lekarne.length, 'Spolu') +
-      lkStatCard(sleeping.length, '🔴 Spiace') +
-      lkStatCard(newOnes.length,  '🟢 Nové') +
-      '</div>';
-
-    if (sleeping.length > 0) {
-      html += '<div class="lk-section-lbl">Spiace lekárne — bez nákupu 2+ mesiace</div>';
-      sleeping.slice(0,5).forEach(function(l){ html += lkMgrItem(l); });
-      if (sleeping.length > 5) html += '<div style="font-size:11px;color:#64748B;text-align:center;padding:6px">+' + (sleeping.length-5) + ' ďalších spiacich</div>';
-    }
-    if (newOnes.length > 0) {
-      html += '<div class="lk-section-lbl">Nové lekárne</div>';
-      newOnes.forEach(function(l){ html += lkMgrItem(l); });
-    }
-    html += '<div class="lk-section-lbl">Všetky lekárne (' + lekarne.length + ')</div>';
-    lekarne.forEach(function(l){ html += lkMgrItem(l); });
-  }
-
-  body.innerHTML = html;
-}
-
-function lkMgrFilterSearch(val) {
-  lkMgrRenderBody(LK_MGR_ALL, val);
-}
-
-function lkMgrLoadForRep(login) {
-  var body = document.getElementById('pl-detail-lekarne-body');
-  if (!body) return;
-  // Reset search
-  var searchEl = document.getElementById('mgr-lk-search');
-  if (searchEl) searchEl.value = '';
-  LK_MGR_ALL = [];
-  body.innerHTML = lkSkelHtml();
-  lkFetch(login, function(rows) {
-    if (!rows || rows.length === 0) {
-      body.innerHTML = '<div class="lk-empty">Žiadne dáta o lekárňach pre tohto reprezentanta.</div>';
-      return;
-    }
-    LK_MGR_ALL = lkBuildLekarne(rows);
-    lkMgrRenderBody(LK_MGR_ALL, '');
-  });
-}
 
 function lkStatCard(num, lbl) {
   return '<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:10px;text-align:center">' +
@@ -18955,6 +18984,8 @@ function lkMgrLoadForRep(login) {
   LK_MGR_ALL = [];
   LK_MGR_LOGIN = login || null;
   lkMgrSyncTabs();
+
+  // SWR — zobraziť cache okamžite, na pozadí dotiahni čerstvé dáta
   var cachedRows = lkGetCachedRows(login);
   if (cachedRows) {
     LK_MGR_STATE.loading = false;
@@ -18962,37 +18993,19 @@ function lkMgrLoadForRep(login) {
     lkMgrRenderBody(LK_MGR_ALL, '');
   } else {
     LK_MGR_STATE.loading = true;
-    lkMgrRenderBody(LK_MGR_ALL, '');
+    body.innerHTML = lkSkelHtml();
   }
-  lkFetchAll(function(ok) {
-    if (LK_MGR_LOGIN !== (login || null) || PL_STATE.detailRep !== login) return;
-    if (!ok) {
-      lkFetch(login, function(fallbackRows) {
-        if (LK_MGR_LOGIN !== (login || null) || PL_STATE.detailRep !== login) return;
-        LK_MGR_STATE.loading = false;
-        LK_MGR_ALL = lkBuildLekarne(fallbackRows || []);
-        lkMgrRenderBody(LK_MGR_ALL, '');
-      });
-      return;
-    }
-    var rows = lkGetCachedRows(login);
-    if (!rows) {
-      lkFetch(login, function(fallbackRows) {
-        if (LK_MGR_LOGIN !== (login || null) || PL_STATE.detailRep !== login) return;
-        LK_MGR_STATE.loading = false;
-        LK_MGR_ALL = lkBuildLekarne(fallbackRows || []);
-        lkMgrRenderBody(LK_MGR_ALL, '');
-      });
-      return;
-    }
+
+  // Per-rep fetch (rýchly, má vlastné SWR v lkFetch) ako primárny zdroj
+  lkFetch(login, function(rows) {
+    if (LK_MGR_LOGIN !== (login || null)) return;
     LK_MGR_STATE.loading = false;
-    if (rows.length === 0) {
-      body.innerHTML = '<div class="lk-empty">Žiadne dáta o lekárňach pre tohto reprezentanta.</div>';
-      return;
-    }
-    LK_MGR_ALL = lkBuildLekarne(rows);
+    LK_MGR_ALL = lkBuildLekarne(rows || []);
     lkMgrRenderBody(LK_MGR_ALL, '');
   });
+
+  // Background refresh všetkých repov (žiadny re-render — iba naplní cache pre ostatných)
+  lkFetchAll(function() {});
 }
 
 function lkMgrItem(l, tab) {
