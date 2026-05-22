@@ -1198,9 +1198,8 @@
   .lk-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:2000;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   .lk-overlay.show{display:block}
   .lk-inner{padding:82px 16px 48px}
-.lk-floating-back{position:fixed;left:max(22px,calc(50% - 190px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:2200;border:0;border-radius:999px;background:#fff;color:#2563EB;font-size:13px;font-weight:800;font-family:inherit;padding:11px 16px;box-shadow:0 10px 26px rgba(15,23,42,.18),0 0 0 1px rgba(15,23,42,.06);cursor:pointer;-webkit-tap-highlight-color:transparent;display:inline-flex;align-items:center;gap:6px}
-.lk-floating-back:active{transform:scale(.97);box-shadow:0 6px 18px rgba(15,23,42,.16),0 0 0 1px rgba(15,23,42,.06)}
-.mgr-plnenie-detail .lk-floating-back{position:fixed}
+.lk-floating-back{width:100%;border:0;border-radius:12px;background:#fff;color:#2563EB;font-size:13px;font-weight:800;font-family:inherit;padding:11px 16px;box-shadow:0 5px 16px rgba(15,23,42,.10),0 0 0 1px rgba(15,23,42,.06);cursor:pointer;-webkit-tap-highlight-color:transparent;display:inline-flex;align-items:center;justify-content:center;gap:6px;margin:8px 0 0}
+.lk-floating-back:active{transform:scale(.98);box-shadow:0 3px 12px rgba(15,23,42,.12),0 0 0 1px rgba(15,23,42,.06)}
 .lk-sticky-controls{position:sticky;z-index:2050;padding:0;background:transparent}
 body:not(.manager-mode) .lk-sticky-controls{top:82px;background:#EAECF2;padding:0 0 10px}
 body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
@@ -1862,6 +1861,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
           <button class="lk-tab" data-lk-tab="new" onclick="lkMgrSwitchTab('new',this)">Nové 🟢</button>
           <button class="lk-tab" data-lk-tab="all" onclick="lkMgrSwitchTab('all',this)">Všetky</button>
         </div>
+        <button type="button" class="lk-floating-back" onclick="plnenieDetailSwitchSubtab('predaje',null);window.scrollTo(0,0)">← Späť na plnenie</button>
       </div>
       <div class="mgr-lk-wrap" id="pl-detail-lekarne-body">
         <div class="lk-empty">Načítavam…</div>
@@ -2434,7 +2434,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.77';
+var APP_VERSION = '2.21.78';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -14559,6 +14559,55 @@ function repPlnenieUpdateQTabs() {
 // username — rep ktorého dáta sa zobrazujú (rep mód = session.username, mgr mód = detailRep)
 // oblast   — región rep (raw hodnota zo USERS_LOCAL, bez normalizácie)
 // year, q  — zobrazovaný rok a kvartál
+var _AFL_FAMILY_REFRESH_TIMER = null;
+var _AFL_FAMILY_BG_REFRESH_TS = {};
+
+function aflamilFamilyEnsureMsCache(username, oblast, year, q) {
+  if (!oblast || !year || !q) return;
+  var kvartal = pharmaKvartalCode(year, q);
+  var prevKv = pharmaKvartalPrev(kvartal);
+  [kvartal, prevKv].forEach(function(kv) {
+    if (!kv) return;
+    var ck = 'AFLtbl_' + oblast + '_' + kv;
+    if (!PHARMA_STATE.cache[ck] && !PHARMA_STATE.loading[ck]) {
+      loadPharmaData('AFLtbl', oblast, kv);
+    } else if (PHARMA_STATE.cache[ck] && !PHARMA_STATE.loading[ck]) {
+      var now = Date.now();
+      if (!_AFL_FAMILY_BG_REFRESH_TS[ck] || now - _AFL_FAMILY_BG_REFRESH_TS[ck] > 5 * 60 * 1000) {
+        _AFL_FAMILY_BG_REFRESH_TS[ck] = now;
+        setTimeout(function(){ loadPharmaDataNetwork('AFLtbl', oblast, kv); }, 250);
+      }
+    }
+  });
+}
+
+function aflamilFamilyMaybeRefresh(code, oblast, kvartal) {
+  if (code !== 'AFLtbl' || !oblast || !kvartal) return;
+  clearTimeout(_AFL_FAMILY_REFRESH_TIMER);
+  _AFL_FAMILY_REFRESH_TIMER = setTimeout(function() {
+    var repOverlay = document.getElementById('rep-plnenie-overlay');
+    if (repOverlay && repOverlay.classList.contains('show') && REP_PL_STATE && REP_PL_STATE.loaded) {
+      var s = getSession();
+      var repUser = s && s.username;
+      var repOblast = repUser && USERS_LOCAL[repUser] ? USERS_LOCAL[repUser].region : '';
+      var repKv = pharmaKvartalCode(REP_PL_STATE.year, REP_PL_STATE.q);
+      if (repOblast === oblast && (kvartal === repKv || kvartal === pharmaKvartalPrev(repKv))) {
+        plnenieRunSilentRender(repPlnenieRender);
+        return;
+      }
+    }
+
+    var predajeEl = document.getElementById('pl-detail-predaje');
+    if (document.body.classList.contains('mgr-plnenie-detail-open') && predajeEl && predajeEl.style.display !== 'none' && PL_STATE && PL_STATE.detailRep) {
+      var mgrOblast = USERS_LOCAL[PL_STATE.detailRep] ? USERS_LOCAL[PL_STATE.detailRep].region : '';
+      var mgrKv = pharmaKvartalCode(PL_STATE.year, PL_STATE.q);
+      if (mgrOblast === oblast && (kvartal === mgrKv || kvartal === pharmaKvartalPrev(mgrKv))) {
+        plnenieRunSilentRender(plnenieRenderDetail);
+      }
+    }
+  }, 80);
+}
+
 function aflamilFamilyMsData(username, oblast, year, q) {
   if (!oblast) return null;
   var kvartal = pharmaKvartalCode(year, q);
@@ -14612,6 +14661,7 @@ function aflamilFamilyMsData(username, oblast, year, q) {
 // Vygeneruje HTML kartu Aflamil Family (kombinácia tbl+sáčky + krém)
 // username, oblast — pre MS fetch; year, q — zobrazovaný kvartál
 function aflamilFamilyHtml(plan, predajeTotal, predajeByMonth, qMonths, milestonesHtml, msLabelsHtml, username, oblast, year, q) {
+  aflamilFamilyEnsureMsCache(username, oblast, year, q);
   var tblKey = 'aflamil_tablety_sacky';
   var krKey  = 'aflamil_kr';
   var tblPlan  = parseFloat(plan[tblKey])          || 0;
@@ -15295,6 +15345,7 @@ function loadPharmaData(code, oblast, kvartal) {
       pharmaAttachPrevDistrictsForCurrent(code, oblast, kvartal, PHARMA_STATE.cache[cacheKey], function(enrichedResp){
         PHARMA_STATE.cache[cacheKey] = enrichedResp;
         _phPersistSave(code, oblast, kvartal, enrichedResp);
+        aflamilFamilyMaybeRefresh(code, oblast, kvartal);
         if (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal) {
           pharmaRender(code);
         }
@@ -15306,10 +15357,12 @@ function loadPharmaData(code, oblast, kvartal) {
   var _lsCached = _phLsLoad(code, oblast, kvartal);
   if (_lsCached) {
     PHARMA_STATE.cache[cacheKey] = _lsCached;
+    aflamilFamilyMaybeRefresh(code, oblast, kvartal);
     if (pharmaIsCurrentKvartal(kvartal) && !_lsCached.okresy_prev) {
       pharmaAttachPrevDistrictsForCurrent(code, oblast, kvartal, _lsCached, function(enrichedResp){
         PHARMA_STATE.cache[cacheKey] = enrichedResp;
         _phPersistSave(code, oblast, kvartal, enrichedResp);
+        aflamilFamilyMaybeRefresh(code, oblast, kvartal);
         pharmaRender(code);
       });
     } else if (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal) {
@@ -15324,10 +15377,12 @@ function loadPharmaData(code, oblast, kvartal) {
       if (idbCached) {
         delete PHARMA_STATE.loading[cacheKey];
         PHARMA_STATE.cache[cacheKey] = idbCached;
+        aflamilFamilyMaybeRefresh(code, oblast, kvartal);
         if (pharmaIsCurrentKvartal(kvartal) && !idbCached.okresy_prev) {
           pharmaAttachPrevDistrictsForCurrent(code, oblast, kvartal, idbCached, function(enrichedResp){
             PHARMA_STATE.cache[cacheKey] = enrichedResp;
             _phPersistSave(code, oblast, kvartal, enrichedResp);
+            aflamilFamilyMaybeRefresh(code, oblast, kvartal);
             if (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal) {
               pharmaRender(code);
             }
@@ -15355,6 +15410,7 @@ function loadPharmaDataNetwork(code, oblast, kvartal) {
     var mockResp = MOCK_PHARMA_DATA[code] || MOCK_PHARMA_DATA['VID'];
     delete PHARMA_STATE.loading[cacheKey];
     PHARMA_STATE.cache[cacheKey] = mockResp;
+    aflamilFamilyMaybeRefresh(code, oblast, kvartal);
     if (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal) {
       pharmaRender(code);
     }
@@ -15404,6 +15460,7 @@ function loadPharmaDataNetwork(code, oblast, kvartal) {
         pharmaAttachPrevDistrictsForCurrent(code, oblast, kvartal, resp, function(enrichedResp){
         PHARMA_STATE.cache[cacheKey] = enrichedResp;
         _phPersistSave(code, oblast, kvartal, enrichedResp);
+        aflamilFamilyMaybeRefresh(code, oblast, kvartal);
         if (PHARMA_STATE.activeCode === code &&
             PHARMA_STATE.oblast     === oblast &&
             PHARMA_STATE.kvartal    === kvartal) {
@@ -19199,10 +19256,6 @@ function lkMgrLoadingHtml() {
   '</div>';
 }
 
-function lkMgrBackButtonHtml() {
-  return "<button type=\"button\" class=\"lk-floating-back\" onclick=\"plnenieDetailSwitchSubtab('predaje',null);window.scrollTo(0,0)\">← Späť</button>";
-}
-
 function lkMgrSyncTabs() {
   var root = document.getElementById('pl-detail-lekarne');
   if (!root) return;
@@ -19244,14 +19297,14 @@ function lkMgrRenderBody(lekarne, searchQ) {
   }
   lkMgrSyncTabs();
   if (LK_MGR_STATE.loading && (!lekarne || lekarne.length === 0)) {
-    body.innerHTML = lkMgrLoadingHtml() + lkMgrBackButtonHtml();
+    body.innerHTML = lkMgrLoadingHtml();
     return;
   }
   if (shown.length === 0) {
-    body.innerHTML = '<div class="lk-empty">' + lkMgrEmptyMsg(tab) + '</div>' + lkMgrBackButtonHtml();
+    body.innerHTML = '<div class="lk-empty">' + lkMgrEmptyMsg(tab) + '</div>';
     return;
   }
-  body.innerHTML = shown.map(function(l){ return lkMgrItem(l, tab); }).join('') + lkMgrBackButtonHtml();
+  body.innerHTML = shown.map(function(l){ return lkMgrItem(l, tab); }).join('');
 }
 
 function lkMgrFilterSearch(val) {
@@ -19421,9 +19474,9 @@ function lkMgrItem(l, tab) {
         <button class="lk-tab" data-lk-tab="new" onclick="lkSwitchTab('new',this)">Nové 🟢</button>
         <button class="lk-tab" data-lk-tab="all" onclick="lkSwitchTab('all',this)">Všetky</button>
       </div>
+      <button type="button" class="lk-floating-back" onclick="closeLekarne()">← Späť</button>
     </div>
     <div id="lk-list"></div>
-    <button type="button" class="lk-floating-back" onclick="closeLekarne()">← Späť</button>
   </div>
 </div>
 
