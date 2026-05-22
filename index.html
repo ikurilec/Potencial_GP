@@ -2431,7 +2431,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.63';
+var APP_VERSION = '2.21.64';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -18064,6 +18064,10 @@ function lkReaktivaciaSort(a, b) {
   return (b.aflTblSachAvg || 0) - (a.aflTblSachAvg || 0);
 }
 
+function lkIsCreamCandidate(l) {
+  return !!(l && !l.isSleeping && (l.isReaktivacia || l.isKrmPotential));
+}
+
 function lkOpportunityProducts(info, now, portfolio) {
   var currentIdx = now.rok * 12 + now.mesiac;
   return (portfolio || []).map(function(p) {
@@ -18566,14 +18570,14 @@ function lkRender() {
   var shown;
   if      (tab === 'sleeping')    shown = filtered.filter(function(l){ return l.isSleeping && !lkIsChainHiddenInTab(l, tab); });
   else if (tab === 'new')         shown = filtered.filter(function(l){ return l.isNew && !lkIsChainHiddenInTab(l, tab); });
-  else if (tab === 'reaktivacia') shown = filtered.filter(function(l){ return (l.isReaktivacia || l.isKrmPotential) && !lkIsChainHiddenInTab(l, tab); });
+  else if (tab === 'reaktivacia') shown = filtered.filter(function(l){ return lkIsCreamCandidate(l) && !lkIsChainHiddenInTab(l, tab); });
   else if (tab === 'priority')    shown = filtered.filter(function(l){ return l.isPriority && !lkIsChainHiddenInTab(l, tab); });
   else shown = filtered;
 
   // Aktualizuj badge na záložkách
   var sleepingCnt    = all.filter(function(l){ return l.isSleeping && !lkIsChainHiddenInTab(l, 'sleeping'); }).length;
   var newCnt         = all.filter(function(l){ return l.isNew && !lkIsChainHiddenInTab(l, 'new'); }).length;
-  var reaktivaciaCnt = all.filter(function(l){ return (l.isReaktivacia || l.isKrmPotential) && !lkIsChainHiddenInTab(l, 'reaktivacia'); }).length;
+  var reaktivaciaCnt = all.filter(function(l){ return lkIsCreamCandidate(l) && !lkIsChainHiddenInTab(l, 'reaktivacia'); }).length;
   var priorityCnt    = all.filter(function(l){ return l.isPriority && !lkIsChainHiddenInTab(l, 'priority'); }).length;
   var tabCounts = { sleeping: sleepingCnt, reaktivacia: reaktivaciaCnt, priority: priorityCnt, new: newCnt, all: all.length };
   document.querySelectorAll('.lk-tab').forEach(function(b) {
@@ -18846,7 +18850,7 @@ function lkMgrVisibleList(lekarne, searchQ, tab) {
   var shown;
   if      (tab === 'sleeping')    shown = list.filter(function(l){ return l.isSleeping && !lkIsChainHiddenInTab(l, tab); });
   else if (tab === 'new')         shown = list.filter(function(l){ return l.isNew && !lkIsChainHiddenInTab(l, tab); });
-  else if (tab === 'reaktivacia') shown = list.filter(function(l){ return (l.isReaktivacia || l.isKrmPotential) && !lkIsChainHiddenInTab(l, tab); });
+  else if (tab === 'reaktivacia') shown = list.filter(function(l){ return lkIsCreamCandidate(l) && !lkIsChainHiddenInTab(l, tab); });
   else if (tab === 'priority')    shown = list.filter(function(l){ return l.isPriority && !lkIsChainHiddenInTab(l, tab); });
   else shown = list.filter(function(l){ return !lkIsChainHiddenInTab(l, tab); });
 
@@ -18863,7 +18867,7 @@ function lkMgrVisibleList(lekarne, searchQ, tab) {
 function lkMgrTabCounts(lekarne) {
   return {
     sleeping: lekarne.filter(function(l){ return l.isSleeping && !lkIsChainHiddenInTab(l, 'sleeping'); }).length,
-    reaktivacia: lekarne.filter(function(l){ return (l.isReaktivacia || l.isKrmPotential) && !lkIsChainHiddenInTab(l, 'reaktivacia'); }).length,
+    reaktivacia: lekarne.filter(function(l){ return lkIsCreamCandidate(l) && !lkIsChainHiddenInTab(l, 'reaktivacia'); }).length,
     priority: lekarne.filter(function(l){ return l.isPriority && !lkIsChainHiddenInTab(l, 'priority'); }).length,
     new: lekarne.filter(function(l){ return l.isNew && !lkIsChainHiddenInTab(l, 'new'); }).length,
     all: lekarne.length
