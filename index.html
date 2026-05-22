@@ -2431,7 +2431,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.69';
+var APP_VERSION = '2.21.70';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -18359,7 +18359,7 @@ function lkCacheKey(login) {
 }
 
 function lkLocalKey(login) {
-  return 'lekarne_cache_v6_' + lkCacheKey(login);
+  return 'lekarne_cache_v7_' + lkCacheKey(login);
 }
 
 function lkRowsHash(rows) {
@@ -18987,9 +18987,9 @@ function lkMgrLoadForRep(login) {
   LK_MGR_LOGIN = login || null;
   lkMgrSyncTabs();
 
-  // SWR — zobraziť cache okamžite, na pozadí dotiahni čerstvé dáta
+  // SWR — zobraziť cache okamžite (len ak má reálne dáta), na pozadí dotiahni čerstvé dáta
   var cachedRows = lkGetCachedRows(login);
-  if (cachedRows) {
+  if (cachedRows && cachedRows.length > 0) {
     LK_MGR_STATE.loading = false;
     LK_MGR_ALL = lkBuildLekarne(cachedRows);
     lkMgrRenderBody(LK_MGR_ALL, '');
