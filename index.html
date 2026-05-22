@@ -2431,7 +2431,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.73';
+var APP_VERSION = '2.21.74';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11709,10 +11709,23 @@ function lbRender(){
 }
 
 var PL_SUPPRESS_COUNT_ANIM = false;
+var PL_SUPPRESS_COUNT_ANIM_UNTIL = 0;
+
+function plnenieSilentAnimationsActive() {
+  return PL_SUPPRESS_COUNT_ANIM || Date.now() < PL_SUPPRESS_COUNT_ANIM_UNTIL;
+}
+
+function plnenieRunSilentRender(fn) {
+  var prev = PL_SUPPRESS_COUNT_ANIM;
+  PL_SUPPRESS_COUNT_ANIM = true;
+  PL_SUPPRESS_COUNT_ANIM_UNTIL = Math.max(PL_SUPPRESS_COUNT_ANIM_UNTIL, Date.now() + 2500);
+  try { return fn(); }
+  finally { PL_SUPPRESS_COUNT_ANIM = prev; }
+}
 
 function plnenieCountUp(el, targetPct) {
   if (!el || targetPct === null || isNaN(targetPct)) return;
-  if (PL_SUPPRESS_COUNT_ANIM) {
+  if (plnenieSilentAnimationsActive()) {
     el.textContent = targetPct.toFixed(2).replace('.', ',') + '%';
     return;
   }
@@ -11730,7 +11743,7 @@ function plnenieCountUp(el, targetPct) {
 }
 function plnenieCountUpEUR(el, targetVal) {
   if (!el || targetVal === null || targetVal === undefined || isNaN(targetVal)) return;
-  if (PL_SUPPRESS_COUNT_ANIM) {
+  if (plnenieSilentAnimationsActive()) {
     el.textContent = Math.round(targetVal).toLocaleString('sk-SK').replace(/ /g, ' ') + ' €';
     return;
   }
@@ -11825,14 +11838,19 @@ function plnenieNormalizeKey(s) {
 var _PL_LS_V = 'v1';
 function _plLsKey(year, q) { return 'pl_c_' + _PL_LS_V + '_' + year + '_' + q; }
 function _plRepLsKey(uname, year, q) { return 'pl_rc_' + _PL_LS_V + '_' + (uname || '_') + '_' + year + '_' + q; }
+function _plHashData(data) {
+  try { return JSON.stringify(data || null); }
+  catch(e) { return String(Date.now()); }
+}
 function _plLsLoad(key) {
   try {
     var p = JSON.parse(localStorage.getItem(key) || 'null');
+    if (p && p.data && !p.hash) p.hash = _plHashData(p.data);
     return (p && p.data) ? p : null;
   } catch(e) { return null; }
 }
-function _plLsSave(key, data, agg) {
-  try { localStorage.setItem(key, JSON.stringify({ data: data, agg: agg, ts: Date.now() })); } catch(e) {}
+function _plLsSave(key, data, agg, hash) {
+  try { localStorage.setItem(key, JSON.stringify({ data: data, agg: agg, hash: hash || _plHashData(data), ts: Date.now() })); } catch(e) {}
 }
 
 function plnenieDisplayName(rawKey) {
@@ -12088,7 +12106,10 @@ function plnenieLoadAllQuarters() {
       var resp = MOCK_PLNENIE['Q' + q];
       if (resp) {
         var agg = plnenieBuildAggregates(resp, q);
-        PL_STATE.qCache[q] = { data: resp, aggregates: agg };
+        var hash = _plHashData(resp);
+        var prev = PL_STATE.qCache[q];
+        var changed = !prev || prev.hash !== hash;
+        PL_STATE.qCache[q] = { data: resp, aggregates: agg, hash: hash };
         if (q === PL_STATE.q) {
           PL_STATE.data = resp;
           PL_STATE.aggregates = agg;
@@ -12111,10 +12132,10 @@ function plnenieLoadAllQuarters() {
     if (PL_STATE.qCache[q]) return; // už máme z predchádzajúceho loadu
     var cached = _plLsLoad(_plLsKey(year, q));
     if (cached) {
-      PL_STATE.qCache[q] = { data: cached.data, aggregates: cached.agg };
+      PL_STATE.qCache[q] = { data: cached.data, aggregates: plnenieBuildAggregates(cached.data, q), hash: cached.hash };
       if (q === PL_STATE.q) {
         PL_STATE.data = cached.data;
-        PL_STATE.aggregates = cached.agg;
+        PL_STATE.aggregates = PL_STATE.qCache[q].aggregates;
         PL_STATE.loaded = true;
       }
     }
@@ -12136,14 +12157,21 @@ function plnenieLoadAllQuarters() {
       .then(function(resp) {
         if (!resp || !resp.ok) throw new Error('No data for Q' + q);
         var agg = plnenieBuildAggregates(resp, q);
-        PL_STATE.qCache[q] = { data: resp, aggregates: agg };
-        _plLsSave(_plLsKey(year, q), resp, agg); // ulož do localStorage
+        var hash = _plHashData(resp);
+        var prev = PL_STATE.qCache[q];
+        var changed = !prev || prev.hash !== hash;
+        PL_STATE.qCache[q] = { data: resp, aggregates: agg, hash: hash };
+        _plLsSave(_plLsKey(year, q), resp, agg, hash); // ulož do localStorage
         // Ak práve zobrazujeme tento Q, hneď renderuj
         if (q === PL_STATE.q) {
+          var wasShowingData = !!PL_STATE.loaded;
           PL_STATE.data = resp;
           PL_STATE.aggregates = agg;
           PL_STATE.loaded = true;
-          plnenieRenderAll();
+          if (changed) {
+            if (wasShowingData) plnenieRunSilentRender(plnenieRenderAll);
+            else plnenieRenderAll();
+          }
         }
       })
       .catch(function() {
@@ -14400,10 +14428,10 @@ function repPlnenieLoad() {
   qs.forEach(function(q) {
     var cached = _plLsLoad(_plRepLsKey(uname, year, q));
     if (cached) {
-      REP_PL_STATE.qCache[q] = { data: cached.data, aggregates: cached.agg };
+      REP_PL_STATE.qCache[q] = { data: cached.data, aggregates: plnenieBuildAggregates(cached.data, q), hash: cached.hash };
       if (q === REP_PL_STATE.q) {
         REP_PL_STATE.data = cached.data;
-        REP_PL_STATE.aggregates = cached.agg;
+        REP_PL_STATE.aggregates = REP_PL_STATE.qCache[q].aggregates;
         REP_PL_STATE.loaded = true;
       }
     }
@@ -14421,14 +14449,21 @@ function repPlnenieLoad() {
       .then(function(resp) {
         if (!resp || !resp.ok) throw new Error('No data Q' + q);
         var agg = plnenieBuildAggregates(resp, q);
-        REP_PL_STATE.qCache[q] = { data: resp, aggregates: agg };
-        _plLsSave(_plRepLsKey(uname, year, q), resp, agg); // ulož do localStorage
+        var hash = _plHashData(resp);
+        var prev = REP_PL_STATE.qCache[q];
+        var changed = !prev || prev.hash !== hash;
+        REP_PL_STATE.qCache[q] = { data: resp, aggregates: agg, hash: hash };
+        _plLsSave(_plRepLsKey(uname, year, q), resp, agg, hash); // ulož do localStorage
         if (q === REP_PL_STATE.q) {
+          var wasShowingData = !!REP_PL_STATE.loaded;
           REP_PL_STATE.data = resp;
           REP_PL_STATE.aggregates = agg;
           REP_PL_STATE.loaded = true;
           var overlay = document.getElementById('rep-plnenie-overlay');
-          if (overlay && overlay.classList.contains('show')) repPlnenieRender();
+          if (changed && overlay && overlay.classList.contains('show')) {
+            if (wasShowingData) plnenieRunSilentRender(repPlnenieRender);
+            else repPlnenieRender();
+          }
         }
       })
       .catch(function() { REP_PL_STATE.qCache[q] = REP_PL_STATE.qCache[q] || null; })
@@ -14437,7 +14472,7 @@ function repPlnenieLoad() {
         if (pending === 0) {
           REP_PL_STATE.loading = false;
           var overlay = document.getElementById('rep-plnenie-overlay');
-          if (overlay && overlay.classList.contains('show')) {
+          if (!REP_PL_STATE.loaded && overlay && overlay.classList.contains('show')) {
             var cached = REP_PL_STATE.qCache[REP_PL_STATE.q];
             if (cached) {
               REP_PL_STATE.data = cached.data;
@@ -16346,6 +16381,11 @@ function animatePlanBars(container) {
   var bars = container.querySelectorAll('.bar-fill[data-bar-w]');
   bars.forEach(function(bar, i) {
     var target = bar.getAttribute('data-bar-w');
+    if (plnenieSilentAnimationsActive()) {
+      bar.style.transition = 'width .35s ease';
+      bar.style.width = target + '%';
+      return;
+    }
     bar.style.transition = 'none';
     bar.style.width = '0%';
     setTimeout(function() {
