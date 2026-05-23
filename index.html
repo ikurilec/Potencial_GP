@@ -2434,7 +2434,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.79';
+var APP_VERSION = '2.21.81';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -17023,6 +17023,19 @@ function rptCss() {
     '.rpt-predikcia-val{font-weight:700;color:#FBBF24;font-size:12px}' +
     '.rpt-prod-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}' +
     '.rpt-prod-card{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:12px 14px}' +
+    '.rpt-prod-compact-grid{display:grid;grid-template-columns:1fr;gap:6px}' +
+    '.rpt-prod-compact{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:8px 10px;break-inside:avoid}' +
+    '.rpt-prod-compact-top{display:grid;grid-template-columns:1.1fr .7fr .7fr;gap:8px;align-items:center}' +
+    '.rpt-prod-compact-name{font-size:12px;font-weight:800;color:#0C1E35;display:flex;align-items:center;gap:6px;min-width:0}' +
+    '.rpt-prod-compact-name span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+    '.rpt-prod-tag{display:inline-flex;align-items:center;border-radius:999px;padding:2px 7px;font-size:8.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;background:#E0F2FE;color:#0369A1;margin-left:6px;white-space:nowrap}' +
+    '.rpt-prod-tag.danger{background:#FEE2E2;color:#B91C1C}.rpt-prod-tag.warn{background:#FEF3C7;color:#92400E}.rpt-prod-tag.good{background:#DCFCE7;color:#047857}.rpt-prod-tag.muted{background:#E2E8F0;color:#64748B}' +
+    '.rpt-prod-compact-metric{text-align:right;font-size:10px;color:#64748B;line-height:1.25}' +
+    '.rpt-prod-compact-metric strong{display:block;font-size:13px;color:#0C1E35}' +
+    '.rpt-prod-compact-metric strong.green{color:#059669}.rpt-prod-compact-metric strong.orange{color:#D97706}.rpt-prod-compact-metric strong.red{color:#DC2626}' +
+    '.rpt-prod-compact-bar{height:5px;background:#E2E8F0;border-radius:5px;overflow:hidden;margin-top:6px}' +
+    '.rpt-prod-compact-fill{height:100%;border-radius:5px}' +
+    '.rpt-prod-compact-note{font-size:10px;color:#64748B;margin-top:5px;line-height:1.35}' +
     '.rpt-prod-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}' +
     '.rpt-prod-name{font-size:13px;font-weight:700;color:#0C1E35;display:flex;align-items:center;gap:5px}' +
     '.rpt-prod-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}' +
@@ -17326,6 +17339,448 @@ function rptMsCompetitorHtml(oblasts) {
   '</div>';
 }
 
+var RPT_PHARMA_PRODS = [
+  { label: 'Aflamil krem',   code: 'AFLcrm', dot: '#3B82F6' },
+  { label: 'Aflamil tbl',    code: 'AFLtbl', dot: '#60A5FA' },
+  { label: 'Suprax',         code: 'SUP',    dot: '#8B5CF6' },
+  { label: 'Vidonorm',       code: 'VID',    dot: '#10B981' },
+  { label: 'Cavinton Forte', code: 'CAV',    dot: '#F59E0B' },
+  { label: 'Junod',          code: 'JUN',    dot: '#EC4899' },
+  { label: 'Telexer',        code: 'TEL',    dot: '#0EA5E9' }
+];
+
+var RPT_PHARMA_PLAN_KEY = {
+  AFLcrm: 'aflamil_kr',
+  AFLtbl: 'aflamil_tablety_sacky',
+  AFLsach: 'aflamil_tablety_sacky',
+  SUP: 'suprax',
+  VID: 'vidonorm',
+  CAV: 'cavinton',
+  JUN: 'junod',
+  KOGGOL: 'kogavant',
+  TEL: 'telexer'
+};
+
+function rptNum(v) {
+  var n = parseFloat(v);
+  return isNaN(n) ? null : n;
+}
+
+function rptPlainDeltaFmt(delta) {
+  if (delta === null || delta === undefined || isNaN(delta)) return 'bez porovnania s minulym mesiacom';
+  var abs = Math.abs(Math.round(delta * 100) / 100).toFixed(2).replace('.', ',');
+  return delta >= 0 ? 'zlepsenie o ' + abs + ' % v trhovom podiele' : 'pokles o ' + abs + ' % v trhovom podiele';
+}
+
+function rptDeltaColor(delta) {
+  if (delta === null || delta === undefined || isNaN(delta)) return '#64748B';
+  return delta >= 0 ? '#059669' : '#DC2626';
+}
+
+function rptMsMoveText(prev, cur) {
+  if (cur === null || cur === undefined || isNaN(cur)) return 'bez dostupneho MS';
+  if (prev === null || prev === undefined || isNaN(prev)) return 'aktualne ' + rptFmtPct(cur);
+  return 'z ' + rptFmtPct(prev) + ' na ' + rptFmtPct(cur);
+}
+
+function rptMonthPairText(prevYy, curYy) {
+  function lbl(yy) {
+    if (!yy || String(yy).length < 4) return '';
+    var m = parseInt(String(yy).slice(2), 10);
+    var monthLbl = {1:'Jan',2:'Feb',3:'Mar',4:'Apr',5:'Maj',6:'Jun',7:'Jul',8:'Aug',9:'Sep',10:'Okt',11:'Nov',12:'Dec'};
+    return monthLbl[m] || String(yy);
+  }
+  var prev = lbl(prevYy);
+  var cur = lbl(curYy);
+  return prev && cur ? prev + ' vs ' + cur : 'posledny mesiac vs aktualny mesiac';
+}
+
+function rptPharmaMetricLabel(code) {
+  return code === 'JUN' ? 'MS boxov' : 'MS pacientov';
+}
+
+function rptPlanImpactMap(pl) {
+  var out = {};
+  if (!pl || !pl.prods || !pl.totalPlan) return out;
+  Object.keys(RPT_PHARMA_PLAN_KEY).forEach(function(code) {
+    var key = RPT_PHARMA_PLAN_KEY[code];
+    var pd = pl.prods[key];
+    out[code] = pd && pd.plan > 0 ? pd.plan / pl.totalPlan : 0;
+  });
+  return out;
+}
+
+function rptPlanImpactMapFromSums(prodSums, totalPlan) {
+  var out = {};
+  Object.keys(RPT_PHARMA_PLAN_KEY).forEach(function(code) {
+    var key = RPT_PHARMA_PLAN_KEY[code];
+    var pd = prodSums && prodSums[key];
+    out[code] = pd && totalPlan > 0 ? pd.plan / totalPlan : 0;
+  });
+  return out;
+}
+
+function rptSortedPharmaProds(planImpact) {
+  var impact = planImpact || {};
+  return RPT_PHARMA_PRODS.slice().sort(function(a,b) {
+    var ai = impact[a.code] || 0;
+    var bi = impact[b.code] || 0;
+    if (bi !== ai) return bi - ai;
+    return a.label.localeCompare(b.label);
+  });
+}
+
+function rptPharmaCacheFor(code, oblast, p) {
+  var kvartal = pharmaKvartalCode(p.year, p.q);
+  return PHARMA_STATE.cache[code + '_' + oblast + '_' + kvartal] || null;
+}
+
+function rptPharmaLatestSummary(code, oblasts, p) {
+  var arr = Array.isArray(oblasts) ? oblasts : (oblasts ? [oblasts] : []);
+  var target = String(p.year).slice(2) + (p.month < 10 ? '0' + p.month : String(p.month));
+  var found = [];
+  arr.forEach(function(oblast) {
+    var resp = rptPharmaCacheFor(code, oblast, p);
+    var rows = (resp && Array.isArray(resp.summary)) ? resp.summary.slice() : [];
+    rows = rows.filter(function(r){ return r && r.mesiac && String(r.mesiac) <= target; });
+    if (!rows.length && resp && Array.isArray(resp.summary)) rows = resp.summary.slice();
+    rows.sort(function(a,b){ return String(a.mesiac).localeCompare(String(b.mesiac)); });
+    if (!rows.length) return;
+    var last = rows[rows.length - 1];
+    var prev = rows.length > 1 ? rows[rows.length - 2] : null;
+    found.push({ last: last, prev: prev });
+  });
+  if (!found.length) return null;
+  var teritVals = [], skVals = [], deltaVals = [], latestMonth = '';
+  found.forEach(function(x) {
+    var cur = rptNum(x.last.terit_ms);
+    var sk = rptNum(x.last.sk_ms);
+    var prevVal = x.prev ? rptNum(x.prev.terit_ms) : null;
+    if (cur !== null) teritVals.push(cur);
+    if (sk !== null) skVals.push(sk);
+    if (cur !== null && prevVal !== null) deltaVals.push(cur - prevVal);
+    if (String(x.last.mesiac) > latestMonth) latestMonth = String(x.last.mesiac);
+  });
+  function avg(list) {
+    return list.length ? +(list.reduce(function(a,b){ return a + b; }, 0) / list.length).toFixed(2) : null;
+  }
+  return {
+    mesiac: latestMonth,
+    terit: avg(teritVals),
+    sk: avg(skVals),
+    delta: avg(deltaVals)
+  };
+}
+
+function rptDistrictCompRows(row, key) {
+  var list = Array.isArray(row.k_all) && row.k_all.length ? row.k_all : [row.k1, row.k2, row.k3];
+  return list.filter(function(k){ return k && k.name; }).map(function(k){
+    return { name: k.name, pct: rptNum(k[key]) };
+  }).filter(function(k){ return k.pct !== null; }).sort(function(a,b){ return b.pct - a.pct; });
+}
+
+function rptDistrictSignalsForCode(code, oblasts, p, limit) {
+  var arr = Array.isArray(oblasts) ? oblasts : (oblasts ? [oblasts] : []);
+  var kvartal = pharmaKvartalCode(p.year, p.q);
+  var targetYy = String(p.year).slice(2) + (p.month < 10 ? '0' + p.month : String(p.month));
+  var out = [];
+  arr.forEach(function(oblast) {
+    var resp = rptPharmaCacheFor(code, oblast, p);
+    if (!resp) return;
+    var monthMap = pharmaDistrictMonthMap(resp, kvartal);
+    var months = (monthMap.months || []).filter(function(m){ return String(m) <= targetYy; }).sort();
+    if (!months.length) return;
+    var curYy = months[months.length - 1];
+    var prevYy = months.length > 1 ? months[months.length - 2] : null;
+    var qMonths = pharmaQuarterMonths(kvartal);
+    var curIdx = qMonths.indexOf(curYy);
+    var key = curIdx >= 0 ? ['m1','m2','m3'][curIdx] : null;
+    var rowByOkres = {};
+    (resp.okresy || []).forEach(function(r){ if (r && r.okres) rowByOkres[String(r.okres)] = r; });
+    Object.keys(monthMap.districts || {}).forEach(function(okres) {
+      var rec = monthMap.districts[okres];
+      var cur = rptNum(rec.nas && rec.nas[curYy]);
+      if (cur === null || cur <= 0) return;
+      var prev = prevYy ? rptNum(rec.nas && rec.nas[prevYy]) : null;
+      var comps = Object.keys(rec.comps || {}).map(function(name){
+        var pct = rptNum(rec.comps[name] && rec.comps[name][curYy]);
+        var prevComp = prevYy ? rptNum(rec.comps[name] && rec.comps[name][prevYy]) : null;
+        return {
+          name: name,
+          pct: pct,
+          prev: prevComp,
+          delta: pct !== null && prevComp !== null ? +(pct - prevComp).toFixed(2) : null
+        };
+      }).filter(function(c){ return c.pct !== null; }).sort(function(a,b){ return b.pct - a.pct; });
+      var comp = comps[0] || null;
+      var fastestComp = comps.filter(function(c){ return c.delta !== null; }).sort(function(a,b){ return b.delta - a.delta; })[0] || null;
+      var row = rowByOkres[okres] || {};
+      var total = key ? (pharmaToNum ? pharmaToNum(row['total_' + key]) : rptNum(row['total_' + key])) : null;
+      var vol = rptNum(rec.vol && rec.vol[curYy]);
+      out.push({
+        oblast: oblast,
+        okres: okres,
+        cur: cur,
+        prev: prev,
+        delta: prev !== null ? +(cur - prev).toFixed(2) : null,
+        total: total,
+        vol: vol,
+        comp: comp,
+        comps: comps.slice(0, 3),
+        compDelta: comp && comp.delta !== null ? comp.delta : null,
+        fastestComp: fastestComp,
+        curYy: curYy,
+        prevYy: prevYy
+      });
+    });
+  });
+  out.sort(function(a,b){ return b.cur - a.cur; });
+  var strongest = out.slice().filter(function(x){ return x.delta !== null; }).sort(function(a,b){ return b.delta - a.delta; }).slice(0, limit || 2);
+  var weakest = out.slice().filter(function(x){ return x.delta !== null; }).sort(function(a,b){ return a.delta - b.delta; }).slice(0, limit || 2);
+  function pressureGap(x) {
+    var rival = (x.comps || []).filter(function(c){ return c.pct > x.cur; }).sort(function(a,b){ return b.pct - a.pct; })[0];
+    return rival ? rival.pct - x.cur : 0;
+  }
+  var pressure = out.slice().filter(function(x){ return x.comps && x.comps.some(function(c){ return c.pct > x.cur; }); }).sort(function(a,b){
+    return pressureGap(b) - pressureGap(a);
+  }).slice(0, limit || 2);
+  var risingCompetitors = out.slice().filter(function(x){
+    return x.fastestComp && x.fastestComp.delta !== null && x.fastestComp.delta > 0.3;
+  }).sort(function(a,b){ return b.fastestComp.delta - a.fastestComp.delta; }).slice(0, limit || 2);
+  var opportunity = out.slice().filter(function(x){ return x.total !== null && x.total > 0; }).sort(function(a,b){
+    var aScore = (a.total || 0) * Math.max(0, 100 - (a.cur || 0));
+    var bScore = (b.total || 0) * Math.max(0, 100 - (b.cur || 0));
+    return bScore - aScore;
+  }).slice(0, limit || 2);
+  return { rows: out, strongest: strongest, weakest: weakest, pressure: pressure, risingCompetitors: risingCompetitors, opportunity: opportunity };
+}
+
+function rptSignalItemsHtml(items, emptyText, mode, metric) {
+  if (!items || !items.length) return '<div style="font-size:10.5px;color:#94A3B8">' + emptyText + '</div>';
+  return items.map(function(it) {
+    var period = rptMonthPairText(it.prevYy, it.curYy);
+    if (mode === 'opportunity') {
+      return '<div style="font-size:10.5px;color:#334155;line-height:1.4;margin-top:3px"><strong style="color:#0C1E35">' + it.okres + '</strong> (' + period + '): trh je tu velky ' + (it.total ? Math.round(it.total).toLocaleString('sk') : 'bez objemu') + ', nas ' + (metric || 'MS') + ' je ' + rptFmtPct(it.cur) + '. Prakticky: vyber si tu hlavnych lekarov a sustred aktivitu tam, kde vie rast najviac pomoct k 100 % planu.</div>';
+    }
+    if (mode === 'pressure') {
+      var rivals = (it.comps || []).filter(function(c){ return c.pct > it.cur; }).slice(0, 3);
+      var rivalsTxt = rivals.map(function(c){
+        var trend = c.delta !== null ? ' - ' + rptMsMoveText(c.prev, c.pct) : ' - aktualne ' + rptFmtPct(c.pct);
+        return c.name + ' ' + rptFmtPct(c.pct) + trend;
+      }).join('; ');
+      return '<div style="font-size:10.5px;color:#334155;line-height:1.4;margin-top:3px"><strong style="color:#0C1E35">' + it.okres + '</strong> (' + period + '): nad nami su ' + rivalsTxt + '; my mame ' + rptFmtPct(it.cur) + '. Prakticky: pri navstevach v tomto okrese si priprav argumentaciu voci tymto konkurentom a hladaj lekarov, kde ma nas produkt sancu ziskat spat podiel.</div>';
+    }
+    if (mode === 'risingComp') {
+      var fc = it.fastestComp;
+      return '<div style="font-size:10.5px;color:#334155;line-height:1.4;margin-top:3px"><strong style="color:#B91C1C">! ' + it.okres + '</strong> (' + period + '): ' + fc.name + ' najrychlejsie vyrastol - ' + rptMsMoveText(fc.prev, fc.pct) + '. Prakticky: daj si pozor, ci sa pri lekaroch nezacina presadzovat prave tento konkurent.</div>';
+    }
+    var move = rptMsMoveText(it.prev, it.cur);
+    var plain = it.delta !== null ? rptPlainDeltaFmt(it.delta) : 'bez porovnania s minulym mesiacom';
+    return '<div style="font-size:10.5px;color:#334155;line-height:1.4;margin-top:3px"><strong style="color:#0C1E35">' + it.okres + '</strong> (' + period + '): nas ' + (metric || 'MS') + ' ' + move + ' - <span style="color:' + rptDeltaColor(it.delta) + ';font-weight:800">' + plain + '</span></div>';
+  }).join('');
+}
+
+function rptPharmaRecommendationHtml(pp, ms, district, curPct, delta) {
+  var period = district && district.rows && district.rows.length ? rptMonthPairText(district.rows[0].prevYy, district.rows[0].curYy) : 'posledny mesiac vs aktualny mesiac';
+  var main = '';
+  if (delta !== null && delta < -0.5) {
+    main = 'V porovnani ' + period + ' produkt stratil podiel. Netreba panikarit, ale treba pozriet okresy, kde konkurencia ziskava alebo kde mame nizky podiel pri vacsom trhu.';
+  } else if (delta !== null && delta > 0.5) {
+    main = 'V porovnani ' + period + ' produkt rastie. Toto je dobry signal - pozri, v ktorych okresoch to fungovalo, a skus rovnaky pristup preniest aj inde.';
+  } else {
+    main = 'V porovnani ' + period + ' je produkt priblizne stabilny. Ak je produkt alebo cely plan pod tempom, najvacsi zmysel ma hladat rast v okresoch s vacsim trhom a nizsim nasim podielom.';
+  }
+  var action = '';
+  if (district.pressure && district.pressure.length) {
+    action = 'Zacni okresmi, kde je konkurencia vyssie ako my. Pri rozhovoroch s lekarmi zisti, co rozhoduje v prospech konkurencie a kde vieme ponuknut lepsi argument.';
+  } else if (district.opportunity && district.opportunity.length) {
+    action = 'Zameraj sa na okresy s vacsim trhom a nizsim nasim podielom - tam moze jedna dobra aktivita najviac pomoct k 100 % planu.';
+  } else {
+    action = 'Drz pravidelnu aktivitu a pri navstevach prepajaj tieto data s konkretnymi lekarmi v okrese.';
+  }
+  return '<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:9px 10px;margin:8px 0;font-size:11px;color:#334155;line-height:1.45">' +
+    '<strong style="color:#0C1E35">Co z toho vyplyva:</strong> ' + main + ' <strong style="color:#0C1E35">Odporucanie:</strong> ' + action +
+  '</div>';
+}
+
+function rptPharmaDeepHtml(oblasts, title, mode, planImpact) {
+  var p = rptPeriod();
+  var cards = '';
+  rptSortedPharmaProds(planImpact).forEach(function(pp) {
+    var ms = rptPharmaLatestSummary(pp.code, oblasts, p) || rptMsForProd(pp.code, oblasts);
+    var district = rptDistrictSignalsForCode(pp.code, oblasts, p, 3);
+    var hasData = !!ms || (district.rows && district.rows.length);
+    if (!hasData) return;
+    var curPct = ms && ms.terit !== undefined ? ms.terit : (ms ? ms.nasPct : null);
+    var delta = ms && ms.delta !== undefined ? ms.delta : (ms ? ms.trend : null);
+    var sk = ms && ms.sk !== undefined ? ms.sk : null;
+    var metric = rptPharmaMetricLabel(pp.code);
+    var period = district.rows && district.rows.length ? rptMonthPairText(district.rows[0].prevYy, district.rows[0].curYy) : 'posledny mesiac vs aktualny mesiac';
+    var impact = planImpact && planImpact[pp.code] ? Math.round(planImpact[pp.code] * 100) : 0;
+    cards += '<div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:12px 13px;break-inside:avoid;page-break-inside:avoid">' +
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">' +
+        '<div><div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:#0C1E35"><span style="width:9px;height:9px;border-radius:50%;background:' + pp.dot + ';display:inline-block"></span>' + pp.label + '</div>' +
+        '<div style="font-size:9.5px;color:#94A3B8;margin-top:1px">Porovnanie: ' + period + ' - ' + metric + (impact ? ' - vaha v plane cca ' + impact + '%' : '') + '</div></div>' +
+        '<div style="text-align:right;flex-shrink:0"><div style="font-size:18px;font-weight:800;color:#0C1E35">' + rptFmtPct(curPct) + '</div>' +
+        '<div style="font-size:10.5px;font-weight:800;color:' + rptDeltaColor(delta) + '">' + rptPlainDeltaFmt(delta) + '</div></div>' +
+      '</div>' +
+      '<div style="font-size:10.5px;color:#64748B;line-height:1.35;margin-bottom:8px">' +
+        (sk !== null ? 'Slovensky ' + metric + ': <strong style="color:#0C1E35">' + rptFmtPct(sk) + '</strong>. ' : '') +
+        (delta !== null ? (delta >= 0 ? 'V tomto porovnani ideme hore.' : 'V tomto porovnani ideme dole.') : 'Zatial nie je dostupne mesacne porovnanie.') +
+      '</div>' +
+      rptPharmaRecommendationHtml(pp, ms, district, curPct, delta) +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+        '<div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:9px;padding:8px"><div style="font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#047857;margin-bottom:4px">Co sa podarilo</div>' + rptSignalItemsHtml(district.strongest, 'Zatial nevidim okres s jasnym rastom oproti minulemu mesiacu.', 'growth', metric) + '</div>' +
+        '<div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:9px;padding:8px"><div style="font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#B91C1C;margin-bottom:4px">Na co si dat pozor</div>' + rptSignalItemsHtml(district.weakest, 'Zatial nevidim okres s vyraznym poklesom.', 'risk', metric) + '</div>' +
+      '</div>' +
+      (district.risingCompetitors && district.risingCompetitors.length ? '<div style="margin-top:8px;background:#FEF2F2;border:1px solid #FECACA;border-radius:9px;padding:8px"><div style="font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#B91C1C;margin-bottom:4px">Pozor - najrychlejsie rastuci konkurent</div>' + rptSignalItemsHtml(district.risingCompetitors, '', 'risingComp', metric) + '</div>' : '') +
+      (district.opportunity && district.opportunity.length ? '<div style="margin-top:8px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:9px;padding:8px"><div style="font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#1D4ED8;margin-bottom:4px">Priestor na rast</div>' + rptSignalItemsHtml(district.opportunity, '', 'opportunity', metric) + '</div>' : '') +
+      (district.pressure && district.pressure.length ? '<div style="margin-top:8px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:9px;padding:8px"><div style="font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#C2410C;margin-bottom:4px">Kde je konkurencia silnejsia</div>' + rptSignalItemsHtml(district.pressure, '', 'pressure', metric) + '</div>' : '') +
+    '</div>';
+  });
+  if (!cards) {
+    return '<div class="rpt-ms-placeholder">PharmaData pre ' + title + ' zatial nie su nacitane alebo dostupne.</div>';
+  }
+  return '<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:14px;padding:12px;display:grid;grid-template-columns:1fr;gap:9px">' + cards + '</div>';
+}
+
+function rptAggregatePlnenieForReps(reps, q, month, year) {
+  var totalPlan = 0, totalPred = 0, prodSums = {};
+  reps.forEach(function(username) {
+    var pl = rptPlnenieForRep(username, q, month, year);
+    if (!pl) return;
+    totalPlan += pl.totalPlan || 0;
+    totalPred += pl.totalPred || 0;
+    pl.prodOrder.forEach(function(k){
+      var pd = pl.prods[k]; if (!pd) return;
+      if (!prodSums[k]) prodSums[k] = { label: pd.label, dot: pd.dot, plan:0, pred:0 };
+      prodSums[k].plan += pd.plan || 0;
+      prodSums[k].pred += pd.predaje || 0;
+    });
+  });
+  Object.keys(prodSums).forEach(function(k){
+    prodSums[k].pct = prodSums[k].plan > 0 ? Math.round(prodSums[k].pred / prodSums[k].plan * 10000) / 100 : null;
+  });
+  return { totalPlan: totalPlan, totalPred: totalPred, totalPct: totalPlan > 0 ? Math.round(totalPred / totalPlan * 10000) / 100 : null, prods: prodSums };
+}
+
+function rptPredikciaProdForReps(reps, q, month, year, prodKey) {
+  var qc = PL_STATE.qCache[q]; if (!qc || !qc.data) return null;
+  var qStart = (q - 1) * 3 + 1;
+  var qEnd = qStart + 2;
+  var endMonth = Math.min(month, qEnd);
+  var sumPlan = 0, sumPred = 0, qPlanTotal = 0;
+  (Array.isArray(reps) ? reps : [reps]).forEach(function(username) {
+    var plan = qc.data.plan && qc.data.plan[username]; if (!plan) return;
+    var predaje = qc.data.predaje && qc.data.predaje[username];
+    var key = plnenieNormalizeKey(prodKey);
+    var qPlan = parseFloat(plan[key]); if (isNaN(qPlan) || qPlan <= 0) return;
+    var byMonth = (predaje && predaje.byMonth) || {};
+    qPlanTotal += qPlan;
+    for (var cm = qStart; cm <= endMonth; cm++) {
+      var mPredObj = byMonth[cm] || {};
+      sumPlan += (plnenieMonthlyPlans(year, q, qPlan)[cm] || 0);
+      sumPred += (mPredObj[key] || 0);
+    }
+  });
+  if (sumPlan === 0 || qPlanTotal === 0) return null;
+  var predPct = Math.round(sumPred / sumPlan * 10000) / 100;
+  return { pct: predPct, eur: Math.round(predPct / 100 * qPlanTotal), qPlan: qPlanTotal };
+}
+
+function rptProductImpactItems(prods, order, totalPlan, predictionForKey) {
+  var list = (order || Object.keys(prods || {})).map(function(key) {
+    var pd = prods && prods[key]; if (!pd) return null;
+    var plan = pd.qPlan !== undefined ? pd.qPlan : (pd.plan || 0);
+    var pred = pd.predaje !== undefined ? pd.predaje : (pd.pred || 0);
+    var pct = pd.pct !== undefined && pd.pct !== null ? pd.pct : (plan > 0 ? Math.round(pred / plan * 10000) / 100 : null);
+    var prediction = predictionForKey ? predictionForKey(key, pd) : null;
+    var impact = totalPlan > 0 && plan > 0 ? plan / totalPlan : 0;
+    var gapEur = Math.max(0, plan - pred);
+    var gapPct = pct !== null ? Math.max(0, 100 - pct) : 100;
+    var predGapPct = prediction && prediction.pct !== null ? Math.max(0, 100 - prediction.pct) : gapPct;
+    return {
+      key: key,
+      label: pd.label || plnenieDisplayName(key),
+      dot: pd.dot || rptProdDotColor(pd.label || key),
+      plan: plan,
+      pred: pred,
+      pct: pct,
+      prediction: prediction,
+      impact: impact,
+      gapEur: gapEur,
+      score: impact * Math.max(gapPct, predGapPct)
+    };
+  }).filter(Boolean);
+  return list.sort(function(a,b) {
+    if (b.score !== a.score) return b.score - a.score;
+    if (b.impact !== a.impact) return b.impact - a.impact;
+    return a.label.localeCompare(b.label);
+  });
+}
+
+function rptProductImpactTag(item) {
+  var pct = item.pct;
+  var predPct = item.prediction && item.prediction.pct !== null ? item.prediction.pct : null;
+  if (item.impact >= 0.15 && ((pct !== null && pct < 95) || (predPct !== null && predPct < 95))) return { cls:'danger', txt:'Taha dole' };
+  if ((pct !== null && pct < 95) || (predPct !== null && predPct < 95)) return { cls:'warn', txt:'Pod tempom' };
+  if ((pct !== null && pct >= 100) || (predPct !== null && predPct >= 100)) return { cls:'good', txt:'Drzi plan' };
+  return { cls:'muted', txt:'Sledovat' };
+}
+
+function rptProductsCompactHtml(prods, order, totalPlan, predictionForKey) {
+  var items = rptProductImpactItems(prods, order, totalPlan, predictionForKey);
+  if (!items.length) return '';
+  return '<div class="rpt-prod-compact-grid">' + items.map(function(item) {
+    var cls = rptColorClass(item.pct);
+    var tag = rptProductImpactTag(item);
+    var predTxt = item.prediction ? rptFmtPct(item.prediction.pct) : 'bez predikcie';
+    var impactPct = Math.round(item.impact * 100);
+    var fill = Math.min(100, Math.max(0, item.pct || 0));
+    var missingTxt = item.gapEur > 0 ? 'Do 100 % chyba ' + rptFmtEur(item.gapEur) + '.' : 'Plan je uz splneny alebo nad planom.';
+    return '<div class="rpt-prod-compact">' +
+      '<div class="rpt-prod-compact-top">' +
+        '<div class="rpt-prod-compact-name"><div class="rpt-prod-dot" style="background:' + item.dot + '"></div><span>' + item.label + '</span><span class="rpt-prod-tag ' + tag.cls + '">' + tag.txt + '</span></div>' +
+        '<div class="rpt-prod-compact-metric"><strong class="' + cls + '">' + rptFmtPct(item.pct) + '</strong>plnenie</div>' +
+        '<div class="rpt-prod-compact-metric"><strong>' + predTxt + '</strong>predikcia Q</div>' +
+      '</div>' +
+      '<div class="rpt-prod-compact-bar"><div class="rpt-prod-compact-fill" style="width:' + fill + '%;background:' + rptGradientVal(fill) + '"></div></div>' +
+      '<div class="rpt-prod-compact-note">' + rptFmtEur(item.pred) + ' z planu ' + rptFmtEur(item.plan) + ' - vaha v celkovom plane cca ' + impactPct + ' %. ' + missingTxt + '</div>' +
+    '</div>';
+  }).join('') + '</div>';
+}
+
+function rptLineComparisonHtml(username, pl, p) {
+  if (!pl) return '';
+  var reps = MGR_AM_WEST.indexOf(username) !== -1 ? MGR_AM_WEST : MGR_AM_EAST;
+  var label = MGR_AM_WEST.indexOf(username) !== -1 ? 'West' : 'East';
+  var agg = rptAggregatePlnenieForReps(reps, p.q, p.month, p.year);
+  var diff = (pl.totalPct !== null && agg.totalPct !== null) ? +(pl.totalPct - agg.totalPct).toFixed(2) : null;
+  var rows = pl.prodOrder.map(function(k) {
+    var mine = pl.prods[k], line = agg.prods[k];
+    if (!mine || !line || mine.pct === null || line.pct === null) return null;
+    return { label: mine.label, mine: mine.pct, line: line.pct, diff: +(mine.pct - line.pct).toFixed(2) };
+  }).filter(Boolean).sort(function(a,b){ return Math.abs(b.diff) - Math.abs(a.diff); }).slice(0,3);
+  return '<div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:14px;padding:13px 15px">' +
+    '<div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#1D4ED8;margin-bottom:7px">Porovnanie s liniou ' + label + '</div>' +
+    '<div style="font-size:12px;color:#334155;line-height:1.45;margin-bottom:8px">' + (diff === null ? 'Zatial nie je porovnanie s liniou.' : (diff >= 0 ? 'Si nad priemerom linie ' + label + ': ty ' + rptFmtPct(pl.totalPct) + ', linia ' + rptFmtPct(agg.totalPct) + '. Drz tempo a prenes ho hlavne na produkty pod planom.' : 'Si pod priemerom linie ' + label + ': ty ' + rptFmtPct(pl.totalPct) + ', linia ' + rptFmtPct(agg.totalPct) + '. Najvacsiu pozornost daj produktom pod tempom, aby si dobehol 100 % plan.')) + '</div>' +
+    rows.map(function(r){ return '<div style="font-size:10.5px;color:#64748B;margin-top:3px"><strong style="color:#0C1E35">' + r.label + '</strong>: ty ' + rptFmtPct(r.mine) + ', linia ' + rptFmtPct(r.line) + ' - <span style="font-weight:800;color:' + rptDeltaColor(r.diff) + '">' + (r.diff >= 0 ? 'nad liniou' : 'pod liniou') + '</span></div>'; }).join('') +
+  '</div>';
+}
+
+function rptVisitCategoryBriefHtml(allVisits) {
+  var cur = rptCurrentScenarMap(allVisits || []);
+  var counts = { A1:0, A2:0, B1:0, B2:0, other:0 };
+  Object.keys(cur).forEach(function(lekar){
+    var k = RPT_SCENAR_SEG[cur[lekar]] || 'other';
+    counts[k] = (counts[k] || 0) + 1;
+  });
+  var total = Object.keys(cur).length;
+  return '<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:12px 14px">' +
+    '<div style="font-size:12px;color:#334155;line-height:1.45">V databáze je <strong style="color:#0C1E35">' + total + '</strong> lekárov podľa posledného zaradenia. Stručne: Platinum ' + counts.A1 + ', Gold ' + counts.B1 + ', Silver 1 ' + counts.A2 + ', Silver 2 ' + counts.B2 + ', ostatní ' + counts.other + '.</div>' +
+  '</div>';
+}
+
 // scenar → golden-square segment (A1/A2/B1/B2) alebo null
 var RPT_SCENAR_SEG = { top:'A1', zvysit3:'A2', udrzat:'B1', zvysit:'B2' };
 
@@ -17521,67 +17976,9 @@ function rptBuildRepHtml(username) {
     '<div class="rpt-plnenie-card"><div style="font-size:12px;color:#94B8D4">Plnenie — dáta nie sú dostupné</div></div>';
 
   var RPT_SK_M = { 1:'Jan',2:'Feb',3:'Mar',4:'Apr',5:'Máj',6:'Jún',7:'Júl',8:'Aug',9:'Sep',10:'Okt',11:'Nov',12:'Dec' };
-  var prodsHtml = '';
-  if (pl) {
-    var repProdOrder = pl.prodOrder;
-    var qMonths = pl.qMonths || [];
-    var wdPcts  = pl.wdPcts  || {};
-    repProdOrder.forEach(function(key, idx) {
-      var pd = pl.prods[key]; if (!pd) return;
-      var pct = pd.pct;
-      var cls = rptColorClass(pct);
-      var isLast = (idx === repProdOrder.length - 1) && (repProdOrder.length % 2 !== 0);
-
-      // Progress bar — rovnako ako pd.pct (z predaje.total, nie byMonth súčet)
-      var cumFillPct = pd.pct !== null ? Math.min(100, pd.pct) : 0;
-
-      // Milestone ticky (iba medzi mesiacmi, nie na konci)
-      var milestonesHtml = '';
-      qMonths.slice(0, -1).forEach(function(m) {
-        var leftPct = wdPcts[m] || 0;
-        milestonesHtml += '<div class="rpt-ms-m" style="left:' + leftPct + '%">' +
-          '<div class="rpt-ms-m-line"></div>' +
-          '<div class="rpt-ms-m-lbl">' + RPT_SK_M[m] + ' · ' + rptFmtPct(leftPct) + '</div>' +
-        '</div>';
-      });
-
-      // Mesačné riadky
-      var monthRowsHtml = '';
-      if (pd.monthData) {
-        monthRowsHtml = '<div class="rpt-mr-grid">' + qMonths.map(function(m) {
-          var md = pd.monthData[m];
-          var hasActual = md && md.actual !== null;
-          var actColor = (hasActual && md.plan > 0)
-            ? (md.actual >= md.plan ? '#059669' : md.actual >= md.plan * 0.95 ? '#D97706' : '#DC2626')
-            : '#CBD5E1';
-          return '<div class="rpt-mr-cell">' +
-            '<div class="rpt-mr-cell-lbl">' + RPT_SK_M[m].toUpperCase() + '</div>' +
-            '<div class="rpt-mr-cell-val" style="color:' + actColor + '">' + (hasActual ? rptFmtEur(md.actual) : '—') + '</div>' +
-            '<div class="rpt-mr-cell-plan">plán ' + rptFmtEur(md ? md.plan : 0) + '</div>' +
-          '</div>';
-        }).join('') + '</div>';
-      }
-
-      prodsHtml += '<div class="rpt-prod-card"' + (isLast ? ' style="grid-column:1/-1"' : '') + '>' +
-        '<div class="rpt-prod-header">' +
-          '<div class="rpt-prod-name"><div class="rpt-prod-dot" style="background:' + pd.dot + '"></div>' + pd.label + '</div>' +
-          '<div class="rpt-prod-pct ' + cls + '">' + rptFmtPct(pct) + '</div>' +
-        '</div>' +
-        '<div class="rpt-ms-wrap">' +
-          '<div class="rpt-ms-track"><div class="rpt-ms-fill" style="width:' + cumFillPct + '%;background:' + rptGradientVal(cumFillPct) + '"></div></div>' +
-          milestonesHtml +
-        '</div>' +
-        monthRowsHtml +
-        (pd.qPlan > 0 ? '<div class="rpt-prod-numbers" style="margin-top:6px"><strong>' + rptFmtEur(pd.predaje) + '</strong> z Q plánu ' + rptFmtEur(pd.qPlan) + '</div>' : '') +
-        (function() {
-          var pp = rptPredikciaProd(username, p.q, p.month, p.year, pd.rawKey);
-          if (!pp) return '';
-          var ppCls = pp.pct >= 100 ? '#059669' : pp.pct >= 70 ? '#D97706' : '#DC2626';
-          return '<div style="font-size:9px;color:#64748B;margin-top:4px;text-align:center">📈 predikcia Q: <strong style="color:' + ppCls + '">' + rptFmtPct(pp.pct) + '</strong></div>';
-        })() +
-      '</div>';
-    });
-  }
+  var prodsHtml = pl ? rptProductsCompactHtml(pl.prods, pl.prodOrder, pl.totalPlan, function(key, pd) {
+    return rptPredikciaProd(username, p.q, p.month, p.year, pd.rawKey || key);
+  }) : '';
 
   var visitsHtml = '<div class="rpt-visits-grid">' +
     '<div class="rpt-visit-card">' +
@@ -17636,18 +18033,15 @@ function rptBuildRepHtml(username) {
     '<div class="rpt-gs-card">' + lbWidgetHtml + '</div>' +
   '</div>' : '';
 
-  var msGrid = rptMsGridHtml(region);
   var body = '<div class="rpt-body">' +
-    '<div><div class="rpt-section-label">Plnenie plánu — Q' + p.q + ' ' + p.year + '</div>' + plCard + '</div>' +
-    '<div><div class="rpt-section-label">Návštevy lekárov — Q' + p.q + ' ' + p.year + '</div>' + visitsHtml + '</div>' +
-    (prodsHtml ? '<div><div class="rpt-section-label">Plnenie per produkt</div><div class="rpt-prod-grid">' + prodsHtml + '</div></div>' : '') +
-    (function() { var afl = rptAflRuleHtml(pl); return afl ? '<div><div class="rpt-section-label">Pravidlo Aflamil / Krém</div>' + afl + '</div>' : ''; })() +
-    (repDbHtml ? '<div><div class="rpt-section-label">Lekári v databáze</div>' + repDbHtml + '</div>' : '') +
+    '<div><div class="rpt-section-label">Plnenie planu - Q' + p.q + ' ' + p.year + '</div>' + plCard + '</div>' +
+    '<div><div class="rpt-section-label">Strucny suhrn navstev / kategorii</div>' + rptVisitCategoryBriefHtml(allV) + '</div>' +
+    rptLineComparisonHtml(username, pl, p) +
+    (prodsHtml ? '<div><div class="rpt-section-label">Plnenie produktov podla dopadu na plan</div>' + prodsHtml + '</div>' : '') +
+    (function() { var afl = rptAflRuleHtml(pl); return afl ? '<div><div class="rpt-section-label">Pravidlo Aflamil / Krem</div>' + afl + '</div>' : ''; })() +
     '<div>' +
-      '<div class="rpt-section-label">Trhový podiel — ' + region + '</div>' +
-      msGrid +
-      '<div class="rpt-comp-lbl" style="font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#94A3B8;margin:14px 0 8px">Pohyby konkurencie</div>' +
-      rptMsCompetitorHtml(region) +
+      '<div class="rpt-section-label">PharmaData a okresy - ' + region + '</div>' +
+      rptPharmaDeepHtml(region, 'Teritorium ' + region, 'rep', rptPlanImpactMap(pl)) +
     '</div>' +
   '</div>';
 
@@ -17763,29 +18157,16 @@ function rptBuildAmHtml(isWest) {
     '<div style="margin-left:auto;font-size:9.5px;color:#94A3B8;font-style:italic">Q' + p.q + ' plán: ' + rptFmtEur(totalPlanSum / Math.max(reps.length,1)) + ' / rep</div>' +
   '</div>';
 
-  var amProdsHtml = '';
-  var prodOrder2 = plnenieSortProducts(Object.keys(prodSums));
-  prodOrder2.forEach(function(key, idx) {
-    var pd = prodSums[key]; if (!pd) return;
-    var pct2 = pd.plan > 0 ? Math.round(pd.pred / pd.plan * 10000) / 100 : null;
-    var cls2 = rptColorClass(pct2);
-    var isLast = (idx === prodOrder2.length - 1) && (prodOrder2.length % 2 !== 0);
-    amProdsHtml += '<div class="rpt-prod-card"' + (isLast ? ' style="grid-column:1/-1"' : '') + '>' +
-      '<div class="rpt-prod-header">' +
-        '<div class="rpt-prod-name"><div class="rpt-prod-dot" style="background:' + pd.dot + '"></div>' + pd.label + '</div>' +
-        '<div class="rpt-prod-pct ' + cls2 + '">' + rptFmtPct(pct2) + '</div>' +
-      '</div>' +
-      '<div class="rpt-prod-bar-wrap"><div class="rpt-prod-bar-fill" style="width:' + Math.min(100,pct2||0) + '%;background:' + rptGradientVal(pct2) + '"></div></div>' +
-      '<div class="rpt-prod-numbers"><strong>' + rptFmtEur(pd.pred) + '</strong> z Q' + p.q + ' plánu ' + rptFmtEur(pd.plan) + '</div>' +
-    '</div>';
+  var amProdsHtml = rptProductsCompactHtml(prodSums, Object.keys(prodSums), totalPlanSum, function(key) {
+    return rptPredikciaProdForReps(reps, p.q, p.month, p.year, key);
   });
 
   var body = '<div class="rpt-body">' +
     rptAtRiskHtml(atRisk, false) +
-    '<div><div class="rpt-section-label">Plnenie per reprezentant — Q' + p.q + ' ' + p.year + '</div>' + darkCard + '<div class="rpt-rep-grid">' + repCards + '</div>' + legendNote + '</div>' +
-    (amProdsHtml ? '<div><div class="rpt-section-label">Plnenie per produkt — ' + label + ' · Q' + p.q + ' ' + p.year + '</div><div class="rpt-prod-grid">' + amProdsHtml + '</div></div>' : '') +
-    '<div><div class="rpt-section-label">Lekári v databáze — ' + label + '</div>' + rptDbBlockHtml(reps, label) + '</div>' +
-    '<div><div class="rpt-section-label">Pohyby konkurencie — ' + label + ' · ' + p.label + '</div>' + rptMsCompetitorHtml(oblasts) + '</div>' +
+    '<div><div class="rpt-section-label">Plnenie per reprezentant - Q' + p.q + ' ' + p.year + '</div>' + darkCard + '<div class="rpt-rep-grid">' + repCards + '</div>' + legendNote + '</div>' +
+    (amProdsHtml ? '<div><div class="rpt-section-label">Plnenie produktov podla dopadu na plan - ' + label + ' - Q' + p.q + ' ' + p.year + '</div>' + amProdsHtml + '</div>' : '') +
+    '<div><div class="rpt-section-label">Strucny suhrn lekarov / kategorii - ' + label + '</div>' + rptDbBlockHtml(reps, label) + '</div>' +
+    '<div><div class="rpt-section-label">PharmaData a okresy - ' + label + ' - ' + p.label + '</div>' + rptPharmaDeepHtml(oblasts, label, 'am', rptPlanImpactMapFromSums(prodSums, totalPlanSum)) + '</div>' +
   '</div>';
 
   return '<!DOCTYPE html><html><head><meta charset="UTF-8">' + rptCss() + '</head><body><div class="page">' +
@@ -17933,21 +18314,8 @@ function rptBuildMgmtHtml() {
     '<th>#</th><th>Reprezentant</th><th class="rep-bar-cell"></th><th style="text-align:right">%</th>' +
   '</tr></thead><tbody>' + repTableRows2 + '</tbody></table>';
 
-  var mgmtProdsHtml = '';
-  var prodOrder3 = plnenieSortProducts(Object.keys(prodSums));
-  prodOrder3.forEach(function(key, idx) {
-    var pd = prodSums[key]; if (!pd) return;
-    var pct3 = pd.plan > 0 ? Math.round(pd.pred / pd.plan * 10000) / 100 : null;
-    var cls3 = rptColorClass(pct3);
-    var isLast = (idx === prodOrder3.length - 1) && (prodOrder3.length % 2 !== 0);
-    mgmtProdsHtml += '<div class="rpt-prod-card"' + (isLast ? ' style="grid-column:1/-1"' : '') + '>' +
-      '<div class="rpt-prod-header">' +
-        '<div class="rpt-prod-name"><div class="rpt-prod-dot" style="background:' + pd.dot + '"></div>' + pd.label + '</div>' +
-        '<div class="rpt-prod-pct ' + cls3 + '">' + rptFmtPct(pct3) + '</div>' +
-      '</div>' +
-      '<div class="rpt-prod-bar-wrap"><div class="rpt-prod-bar-fill" style="width:' + Math.min(100,pct3||0) + '%;background:' + rptGradientVal(pct3) + '"></div></div>' +
-      '<div class="rpt-prod-numbers"><strong>' + rptFmtEur(pd.pred) + '</strong> z Q' + p.q + ' plánu ' + rptFmtEur(pd.plan) + '</div>' +
-    '</div>';
+  var mgmtProdsHtml = rptProductsCompactHtml(prodSums, Object.keys(prodSums), totalPlan, function(key) {
+    return rptPredikciaProdForReps(allReps, p.q, p.month, p.year, key);
   });
 
   var skOblasts = [];
@@ -17955,12 +18323,12 @@ function rptBuildMgmtHtml() {
 
   var body = '<div class="rpt-body">' +
     rptAtRiskHtml(atRisk, true) +
-    '<div><div class="rpt-section-label">Plnenie plánu — Slovensko · Q' + p.q + ' ' + p.year + '</div>' + skCard + '</div>' +
-    '<div><div class="rpt-section-label">West vs East — Q' + p.q + ' ' + p.year + '</div>' + regionGrid + '</div>' +
-    '<div><div class="rpt-section-label">Plnenie per reprezentant — Slovensko · Q' + p.q + ' ' + p.year + '</div>' + repTable2 + '</div>' +
-    (mgmtProdsHtml ? '<div><div class="rpt-section-label">Plnenie per produkt — Slovensko · Q' + p.q + ' ' + p.year + '</div><div class="rpt-prod-grid">' + mgmtProdsHtml + '</div></div>' : '') +
-    '<div><div class="rpt-section-label">Lekári v databáze — Slovensko</div>' + rptDbBlockHtml(allReps, 'SK') + '</div>' +
-    '<div><div class="rpt-section-label">Pohyby konkurencie — Slovensko · ' + p.label + '</div>' + rptMsCompetitorHtml(skOblasts) + '</div>' +
+    '<div><div class="rpt-section-label">Plnenie planu - Slovensko - Q' + p.q + ' ' + p.year + '</div>' + skCard + '</div>' +
+    '<div><div class="rpt-section-label">West vs East - Q' + p.q + ' ' + p.year + '</div>' + regionGrid + '</div>' +
+    '<div><div class="rpt-section-label">Plnenie per reprezentant - Slovensko - Q' + p.q + ' ' + p.year + '</div>' + repTable2 + '</div>' +
+    (mgmtProdsHtml ? '<div><div class="rpt-section-label">Plnenie produktov podla dopadu na plan - Slovensko - Q' + p.q + ' ' + p.year + '</div>' + mgmtProdsHtml + '</div>' : '') +
+    '<div><div class="rpt-section-label">Strucny suhrn lekarov / kategorii - Slovensko</div>' + rptDbBlockHtml(allReps, 'SK') + '</div>' +
+    '<div><div class="rpt-section-label">PharmaData a okresy - Slovensko - ' + p.label + '</div>' + rptPharmaDeepHtml(skOblasts, 'Slovensko', 'mgmt', rptPlanImpactMapFromSums(prodSums, totalPlan)) + '</div>' +
   '</div>';
 
   return '<!DOCTYPE html><html><head><meta charset="UTF-8">' + rptCss() + '</head><body><div class="page">' +
@@ -17986,25 +18354,33 @@ function rptIosOpen() {
 // Načíta pharma GRAF dáta pre všetky oblasti (iba getPharmaGraf, nie getPharmaData —
 // report číta iba PHARMA_GRAF_STATE). Pokračuje aj s čiastočnými dátami po 20s.
 function rptFetchPharmaForAllReps(oblasts, onDone) {
+  var p = rptPeriod();
+  var kvartal = pharmaKvartalCode(p.year, p.q);
   var allCodes = [];
   Object.keys(PHARMA_CODES).forEach(function(key) {
     PHARMA_CODES[key].forEach(function(code) { if (allCodes.indexOf(code) < 0) allCodes.push(code); });
   });
-  // Spusti iba fetchne, ktoré ešte nie sú v cache ani loading (preload ich mohol spustiť skôr)
+  allCodes = allCodes.filter(function(code){ return code !== 'KOGGOL'; });
+  var phKeys = [];
   oblasts.forEach(function(oblast) {
     allCodes.forEach(function(code) {
-      loadPharmaGrafData(code, oblast, null); // vnútorný guard preskočí ak cached/loading
+      loadPharmaGrafData(code, oblast, null);
+      phKeys.push(code + '_' + oblast + '_' + kvartal);
+      loadPharmaData(code, oblast, kvartal);
     });
   });
-  // Ak nič nenačítavame (všetko v cache z preloadu), okamžite hotovo
-  if (Object.keys(PHARMA_GRAF_STATE.loading).length === 0) { onDone(true); return; }
-  var deadline = Date.now() + 20000; // 20s pre pomalé mobilné spojenie
+  function hasPendingPharma() {
+    return phKeys.some(function(k) { return !!PHARMA_STATE.loading[k]; });
+  }
+  if (Object.keys(PHARMA_GRAF_STATE.loading).length === 0 && !hasPendingPharma()) { onDone(true); return; }
+  var deadline = Date.now() + 26000;
   function check() {
-    if (Object.keys(PHARMA_GRAF_STATE.loading).length === 0) { onDone(true); return; }
+    if (Object.keys(PHARMA_GRAF_STATE.loading).length === 0 && !hasPendingPharma()) { onDone(true); return; }
     if (Date.now() > deadline) {
-      // Timeout — pokračuj s tým čo sa stihlo načítať (report ukáže — pre chýbajúce)
       var hasAny = oblasts.some(function(ob) {
-        return allCodes.some(function(code) { return !!PHARMA_GRAF_STATE.cache[code + '_' + ob]; });
+        return allCodes.some(function(code) {
+          return !!PHARMA_GRAF_STATE.cache[code + '_' + ob] || !!PHARMA_STATE.cache[code + '_' + ob + '_' + kvartal];
+        });
       });
       onDone(hasAny);
       return;
