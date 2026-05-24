@@ -2434,7 +2434,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.84';
+var APP_VERSION = '2.21.85';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -17866,12 +17866,39 @@ function rptLineComparisonHtml(username, pl, p) {
   var rows = pl.prodOrder.map(function(k) {
     var mine = pl.prods[k], line = agg.prods[k];
     if (!mine || !line || mine.pct === null || line.pct === null) return null;
-    return { label: mine.label, mine: mine.pct, line: line.pct, diff: +(mine.pct - line.pct).toFixed(2) };
-  }).filter(Boolean).sort(function(a,b){ return Math.abs(b.diff) - Math.abs(a.diff); }).slice(0,3);
+    var productDiff = +(mine.pct - line.pct).toFixed(2);
+    var impact = pl.totalPlan > 0 && mine.plan > 0 ? mine.plan / pl.totalPlan : 0;
+    var pred = rptPredikciaProd(username, p.q, p.month, p.year, mine.rawKey || k);
+    var predPct = pred && pred.pct !== null ? pred.pct : null;
+    var pctGap = Math.max(0, 100 - (mine.pct || 0));
+    var predGap = predPct !== null ? Math.max(0, 100 - predPct) : 0;
+    var belowLine = Math.max(0, -productDiff);
+    var underTempo = (mine.pct < 95) || (predPct !== null && predPct < 95);
+    var score = (impact * 120) + (underTempo ? 35 : 0) + (belowLine * 1.2) + (pctGap * impact * 1.4) + (predGap * impact * 1.1);
+    return {
+      label: mine.label,
+      mine: mine.pct,
+      line: line.pct,
+      diff: productDiff,
+      impact: impact,
+      predPct: predPct,
+      underTempo: underTempo,
+      score: score
+    };
+  }).filter(Boolean).sort(function(a,b){
+    if (b.score !== a.score) return b.score - a.score;
+    return Math.abs(b.diff) - Math.abs(a.diff);
+  }).slice(0,3);
   return '<div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:14px;padding:13px 15px">' +
     '<div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#1D4ED8;margin-bottom:7px">Porovnanie s liniou ' + label + '</div>' +
     '<div style="font-size:12px;color:#334155;line-height:1.45;margin-bottom:8px">' + (diff === null ? 'Zatial nie je porovnanie s liniou.' : (diff >= 0 ? 'Si nad priemerom linie ' + label + ': ty ' + rptFmtPct(pl.totalPct) + ', linia ' + rptFmtPct(agg.totalPct) + '. Drz tempo a prenes ho hlavne na produkty pod planom.' : 'Si pod priemerom linie ' + label + ': ty ' + rptFmtPct(pl.totalPct) + ', linia ' + rptFmtPct(agg.totalPct) + '. Najvacsiu pozornost daj produktom pod tempom, aby si dobehol 100 % plan.')) + '</div>' +
-    rows.map(function(r){ return '<div style="font-size:10.5px;color:#64748B;margin-top:3px"><strong style="color:#0C1E35">' + r.label + '</strong>: ty ' + rptFmtPct(r.mine) + ', linia ' + rptFmtPct(r.line) + ' - <span style="font-weight:800;color:' + rptDeltaColor(r.diff) + '">' + (r.diff >= 0 ? 'nad liniou' : 'pod liniou') + '</span></div>'; }).join('') +
+    rows.map(function(r){
+      var state = r.diff >= 0 ? 'nad liniou' : 'pod liniou';
+      var impactTxt = Math.round(r.impact * 100);
+      var predTxt = r.predPct !== null ? ', predikcia ' + rptFmtPct(r.predPct) : '';
+      var why = r.underTempo ? ' - priorita pre dobehnutie planu' : ' - sledovat a udrzat tempo';
+      return '<div style="font-size:10.5px;color:#64748B;margin-top:3px"><strong style="color:#0C1E35">' + r.label + '</strong>: ty ' + rptFmtPct(r.mine) + ', linia ' + rptFmtPct(r.line) + predTxt + ', vaha planu cca ' + impactTxt + ' % - <span style="font-weight:800;color:' + rptDeltaColor(r.diff) + '">' + state + '</span><span style="color:#334155">' + why + '</span></div>';
+    }).join('') +
   '</div>';
 }
 
