@@ -1403,6 +1403,16 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .prod-ms-link{display:block;width:100%;text-align:center;margin-top:12px;padding:12px 14px;background:linear-gradient(180deg,#EFF6FF 0%,#DBEAFE 100%);border-radius:10px;border:1.5px solid #3B82F6;font-size:13px;font-weight:700;color:#1D4ED8;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;letter-spacing:.02em;transition:transform var(--t-fast),box-shadow var(--t-fast);box-shadow:0 2px 6px rgba(37,99,235,.10)}
   .prod-ms-link:hover{box-shadow:0 4px 12px rgba(37,99,235,.20);transform:translateY(-1px)}
   .prod-ms-link:active{background:linear-gradient(180deg,#DBEAFE 0%,#BFDBFE 100%);border-color:#2563EB;transform:scale(.99)}
+  .prod-action-row{display:grid;grid-template-columns:1fr;gap:7px;margin-top:12px}
+  .prod-action-row .prod-ms-link{margin-top:0}
+  .prod-district-link{display:block;width:100%;text-align:center;padding:11px 14px;background:linear-gradient(180deg,#F8FAFC 0%,#EEF2FF 100%);border-radius:10px;border:1.5px solid #CBD5E1;font-size:12.5px;font-weight:750;color:#0F172A;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;letter-spacing:.01em;transition:transform var(--t-fast),box-shadow var(--t-fast);box-shadow:0 2px 6px rgba(15,23,42,.08)}
+  .prod-district-link:hover{box-shadow:0 4px 12px rgba(15,23,42,.14);transform:translateY(-1px)}
+  .gyn-district-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
+  .gyn-district-summary-grid.compact{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:0}
+  .gyn-district-summary-grid div{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:9px;padding:8px 9px}
+  .gyn-district-summary-grid span{display:block;color:#64748B;font-size:10px;font-weight:750;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
+  .gyn-district-summary-grid strong{color:#0F172A;font-size:13px;font-weight:850}
+  .gyn-district-summary-grid strong.miss{color:#DC2626}
   .prod-insight-card{margin-top:8px;background:linear-gradient(180deg,#F8FAFC 0%,#F1F5F9 100%);border:1px solid #D9E4F2;border-radius:11px;padding:9px 10px;text-align:left}
   .prod-insight-head{display:flex;flex-direction:column;align-items:flex-start;gap:3px;margin-bottom:6px}
   .prod-insight-title{font-size:10px;font-weight:900;color:#1D4ED8;text-transform:uppercase;letter-spacing:.06em;font-family:var(--font-display)}
@@ -2448,7 +2458,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.86';
+var APP_VERSION = '2.21.88';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6112,7 +6122,7 @@ var GYN_ROLE_LABEL  = { 'gyn-rep':'Reprezentant', 'gyn-am':'Area Manager', 'gyn-
 // Mapovanie produkt → línia (kľúč = lowercase názov produktu zo Sheets)
 // 'both' = produkt patrí do Pill aj Patch (zobrazí sa v oboch sekciách)
 // Produkty vyňaté z výpočtu celkového plnenia (sumár, PILL/PATCH karty) — zobrazia sa len v per-produkt sekcii
-var GYN_EXCLUDE_FROM_TOTALS = { 'escapelle': 1, 'daylla': 1 };
+var GYN_EXCLUDE_FROM_TOTALS = { 'escapelle': 1, 'daylla': 1, 'lenzetto': 1 };
 var GYN_PRODUCT_LINIA = {
   // Pill
   'belara':'pill','daylette':'pill','daylla':'pill','drovelis':'pill',
@@ -6128,7 +6138,7 @@ var GYN_PRODUCT_LINIA = {
 // Produkty pre ktoré máme IQVIA trhový podiel dáta (klúč = lowercase názov produktu)
 var GYN_PHARMA_PRODUCTS = {
   // Patch
-  'escapelle': 1, 'levosert': 1, 'ryeqo': 1, 'lenzetto': 1,
+  'escapelle': 1, 'levosert': 1, 'ryeqo': 1,
   // Pill
   'drovelis': 1, 'belara': 1, 'daylette': 1, 'daylla': 1,
   'maitalon': 1, 'mistra': 1, 'evra': 1,
@@ -6137,6 +6147,61 @@ var GYN_PHARMA_PRODUCTS = {
 };
 // Stav pharma overlayu
 var GYN_PHARMA_STATE = { open: false, produkt: null, oblast: null, kvartal: null, cache: {}, loading: {} };
+var GYN_CACHE_PREFIX = 'potencial_gyn_cache_v1:';
+function gynCacheUserScope() {
+  var s = getSession() || {};
+  return [s.username || 'anon', s.role || '', s.region || '', s.linia || ''].join('|');
+}
+function gynCacheRead(key) {
+  try {
+    var raw = localStorage.getItem(GYN_CACHE_PREFIX + key);
+    if(!raw) return null;
+    var item = JSON.parse(raw);
+    return item && item.data ? item.data : null;
+  } catch(e) { return null; }
+}
+function gynCacheWrite(key, data) {
+  try {
+    localStorage.setItem(GYN_CACHE_PREFIX + key, JSON.stringify({ ts: Date.now(), data: data }));
+  } catch(e) {}
+}
+function gynCacheSame(a, b) {
+  try { return JSON.stringify(a || null) === JSON.stringify(b || null); }
+  catch(e) { return false; }
+}
+function gynPlnenieCacheKey(year, q) {
+  return 'plnenie|' + gynCacheUserScope() + '|' + year + '|Q' + q;
+}
+function gynPharmaCacheKey(produkt, oblast, kvartal) {
+  return 'pharma|' + String(produkt || '').toLowerCase() + '|' + String(oblast || '').toUpperCase() + '|' + String(kvartal || '');
+}
+var GYN_HIDE_PRODUCTS = { 'lenzetto': 1 };
+var GYN_VIRTUAL_PRODUCTS = [
+  {
+    key: '__oc_bez_drovelis',
+    name: 'OC spolu bez Drovelis',
+    linia: 'pill',
+    products: ['belara','daylette','daylla','evra','maitalon','mistra'],
+    order: -30,
+    district: true
+  },
+  {
+    key: '__papilo_immuno',
+    name: 'Papilocare Hgel + Immuno',
+    linia: 'pill',
+    products: ['papilocare hgel','immunocaps'],
+    order: -20,
+    district: false
+  },
+  {
+    key: '__levosert_spolu',
+    name: 'Levosert SHI + THI spolu',
+    linia: 'patch',
+    products: ['levosert','levosert shi','levosert thi'],
+    order: -20,
+    district: false
+  }
+];
 // Mapovanie PILL login → PATCH login (rovnaký región, prefix I → A)
 // Používa sa na presmerovanie produktov ktoré patria k patch repovi ale predávajú ich pill repi
 var GYN_PILL_TO_PATCH = {
@@ -6156,7 +6221,7 @@ function gynPharmaNormalizeOblast(productName, oblast) {
   return ob;
 }
 
-function gynPatientRegionForLookup(region) {
+function gynPatientRegionFallback(region) {
   var r = String(region || '').trim().toUpperCase();
   if(/^[A-Z]{2}PA$/.test(r)) {
     var pill = r.slice(0, 2) + 'PI';
@@ -6165,18 +6230,27 @@ function gynPatientRegionForLookup(region) {
   return r;
 }
 
+function gynPatientRegionForLookup(region) {
+  return gynPatientRegionFallback(region);
+}
+
 function gynPatientPlan(data, region, productKey, okres) {
   if(!data || !data.pacienti) return null;
-  var reg = gynPatientRegionForLookup(region);
   var pk = String(productKey || '').trim().toLowerCase();
-  if(!reg || !pk) return null;
-  if(okres) {
-    var ok = String(okres || '').trim().toLowerCase();
-    var d = data.pacienti.districts && data.pacienti.districts[reg] && data.pacienti.districts[reg][pk];
-    if(d && d[ok]) return d[ok];
+  var exactReg = String(region || '').trim().toUpperCase();
+  var regs = [exactReg, gynPatientRegionFallback(exactReg)].filter(function(v,i,a){ return v && a.indexOf(v) === i; });
+  if(!pk || !regs.length) return null;
+  for(var ri=0; ri<regs.length; ri++) {
+    var reg = regs[ri];
+    if(okres) {
+      var ok = String(okres || '').trim().toLowerCase();
+      var d = data.pacienti.districts && data.pacienti.districts[reg] && data.pacienti.districts[reg][pk];
+      if(d && d[ok]) return d[ok];
+    }
+    var t = data.pacienti.territory && data.pacienti.territory[reg] && data.pacienti.territory[reg][pk];
+    if(t) return t;
   }
-  var t = data.pacienti.territory && data.pacienti.territory[reg] && data.pacienti.territory[reg][pk];
-  return t || null;
+  return null;
 }
 
 function gynPatientFmt(n) {
@@ -6200,14 +6274,15 @@ function gynPatientCurrentLabel(predajeByMonth, productKey, q) {
 }
 
 function gynPatientProductHint(data, region, productKey, predaje, plan, predajeByMonth, q) {
-  var rec = gynPatientPlan(data, region, productKey);
+  var keys = Array.isArray(productKey) ? productKey : [productKey];
+  var rec = gynPatientPlanForKeys(data, region, keys);
   if(!rec || !(rec.eur_na_pacienta > 0) || !(rec.plan_pacienti > 0)) return '';
   var sales = parseFloat(predaje) || 0;
   var planEur = parseFloat(plan) || rec.plan_eur || 0;
   var missing = Math.max(planEur - sales, 0);
   var donePac = sales / rec.eur_na_pacienta;
   var missPac = missing / rec.eur_na_pacienta;
-  var currentLabel = gynPatientCurrentLabel(predajeByMonth, productKey, q || GYN_APP.q);
+  var currentLabel = gynPatientCurrentLabelForKeys(predajeByMonth, keys, q || GYN_APP.q);
   return '<div class="gyn-patient-hint">' +
     '<div class="gyn-patient-row"><span>Plán pacienti</span><strong>' + gynPatientFmt(rec.plan_pacienti) + ' pacientov</strong></div>' +
     '<div class="gyn-patient-row"><span>Aktuálne ' + gynEsc(currentLabel) + '</span><strong>' + gynPatientFmt(donePac) + ' pacientov</strong></div>' +
@@ -6217,19 +6292,107 @@ function gynPatientProductHint(data, region, productKey, predaje, plan, predajeB
 
 function gynPatientDistrictList(data, region, productKey) {
   if(!data || !data.pacienti || !data.pacienti.districts) return [];
-  var reg = gynPatientRegionForLookup(region);
   var pk = String(productKey || '').trim().toLowerCase();
-  var rows = data.pacienti.districts[reg] && data.pacienti.districts[reg][pk];
-  if(!rows) return [];
-  return Object.keys(rows).map(function(okresKey){
-    var rec = rows[okresKey] || {};
-    return {
-      okres: okresKey,
-      plan_eur: parseFloat(rec.plan_eur) || 0,
-      plan_pacienti: parseFloat(rec.plan_pacienti) || 0
-    };
+  return gynPatientDistrictListForKeys(data, region, [pk]);
+}
+
+function gynPatientPlanForKeys(data, region, productKeys, okres) {
+  var keys = (productKeys || []).map(function(k){ return String(k || '').trim().toLowerCase(); }).filter(Boolean);
+  var total = { plan_eur: 0, plan_pacienti: 0, eur_na_pacienta: 0 };
+  keys.forEach(function(pk){
+    var rec = gynPatientPlan(data, region, pk, okres);
+    if(!rec) return;
+    total.plan_eur += parseFloat(rec.plan_eur) || 0;
+    total.plan_pacienti += parseFloat(rec.plan_pacienti) || 0;
+  });
+  if(total.plan_eur <= 0 && total.plan_pacienti <= 0) return null;
+  total.eur_na_pacienta = total.plan_pacienti > 0 ? total.plan_eur / total.plan_pacienti : 0;
+  return total;
+}
+
+function gynPatientDistrictListForKeys(data, region, productKeys) {
+  if(!data || !data.pacienti || !data.pacienti.districts) return [];
+  var exactReg = String(region || '').trim().toUpperCase();
+  var regs = [exactReg, gynPatientRegionFallback(exactReg)].filter(function(v,i,a){ return v && a.indexOf(v) === i; });
+  var keys = (productKeys || []).map(function(k){ return String(k || '').trim().toLowerCase(); }).filter(Boolean);
+  var out = {};
+  regs.forEach(function(reg){
+    keys.forEach(function(pk){
+      var rows = data.pacienti.districts[reg] && data.pacienti.districts[reg][pk];
+      if(!rows) return;
+      Object.keys(rows).forEach(function(okresKey){
+        var rec = rows[okresKey] || {};
+        if(!out[okresKey]) out[okresKey] = { okres: okresKey, plan_eur: 0, plan_pacienti: 0 };
+        out[okresKey].plan_eur += parseFloat(rec.plan_eur) || 0;
+        out[okresKey].plan_pacienti += parseFloat(rec.plan_pacienti) || 0;
+      });
+    });
+  });
+  return Object.keys(out).map(function(k){
+    var r = out[k];
+    r.eur_na_pacienta = r.plan_pacienti > 0 ? r.plan_eur / r.plan_pacienti : 0;
+    return r;
   }).filter(function(r){ return r.plan_pacienti > 0 || r.plan_eur > 0; })
     .sort(function(a,b){ return b.plan_pacienti - a.plan_pacienti; });
+}
+
+function gynPatientCurrentLabelForKeys(predajeByMonth, productKeys, q) {
+  var months = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[q] || [];
+  var keys = (productKeys || []).map(function(k){ return String(k || '').trim().toLowerCase(); });
+  var used = [];
+  months.forEach(function(m){
+    var total = 0;
+    keys.forEach(function(pk){
+      total += parseFloat(predajeByMonth && predajeByMonth[m] ? predajeByMonth[m][pk] : 0) || 0;
+    });
+    if(total > 0) used.push(PL_MONTH_LABELS[m] || ('M' + m));
+  });
+  return used.length ? used.join(' + ') : 'aktuálne';
+}
+
+function gynProductKeysForMetric(product) {
+  return product && product.products ? product.products : [product.key];
+}
+
+function gynSumPlanForKeys(plan, keys) {
+  return (keys || []).reduce(function(sum, pk){ return sum + (parseFloat(plan[pk]) || 0); }, 0);
+}
+
+function gynSumSalesForKeys(predajeTotal, keys) {
+  return (keys || []).reduce(function(sum, pk){ return sum + (parseFloat(predajeTotal[pk]) || 0); }, 0);
+}
+
+function gynSumMonthForKeys(predajeByMonth, month, keys) {
+  var md = (predajeByMonth && predajeByMonth[month]) || {};
+  return (keys || []).reduce(function(sum, pk){ return sum + (parseFloat(md[pk]) || 0); }, 0);
+}
+
+function gynEnhanceProductsForDisplay(products, plan, predajeTotal, linia) {
+  var list = (products || []).filter(function(p){ return !GYN_HIDE_PRODUCTS[p.key]; });
+  GYN_VIRTUAL_PRODUCTS.forEach(function(vp){
+    if(vp.linia && linia && vp.linia !== linia) return;
+    var pPlan = gynSumPlanForKeys(plan, vp.products);
+    var pSales = gynSumSalesForKeys(predajeTotal, vp.products);
+    if(pPlan > 0 || pSales > 0) {
+      list.unshift({
+        key: vp.key,
+        name: vp.name,
+        plan: pPlan,
+        predaje: pSales,
+        products: vp.products.slice(),
+        isVirtual: true,
+        order: vp.order || -1,
+        district: !!vp.district
+      });
+    }
+  });
+  list.sort(function(a,b){
+    var ao = a.order || 0, bo = b.order || 0;
+    if(ao !== bo) return ao - bo;
+    if((a.plan > 0) !== (b.plan > 0)) return a.plan > 0 ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+  return list;
 }
 
 function gynPreprocessData(data) {
@@ -6563,7 +6726,14 @@ function gynQTabsHtml() {
 function gynPreloadAllQuarters() {
   var year = GYN_APP.year;
   [1,2,3,4].forEach(function(q){
-    if(GYN_APP.plCache[q]) return;       // už máme cache
+    var cacheKey = gynPlnenieCacheKey(year, q);
+    if(!GYN_APP.plCache[q]) {
+      var persisted = gynCacheRead(cacheKey);
+      if(persisted) {
+        gynPreprocessData(persisted);
+        GYN_APP.plCache[q] = persisted;
+      }
+    }
     if(GYN_APP.plLoading[q]) return;     // už sa načítava (gynPlnenieShow)
     GYN_APP.plLoading[q] = true;
     fetch(gynScriptUrl('action=getPlnenieAll&rok='+year+'&Q='+q), { cache:'no-store' })
@@ -6572,9 +6742,11 @@ function gynPreloadAllQuarters() {
         delete GYN_APP.plLoading[q];
         if(!data) return;
         gynPreprocessData(data);
+        var changed = !gynCacheSame(GYN_APP.plCache[q], data);
         GYN_APP.plCache[q] = data;
+        gynCacheWrite(cacheKey, data);
         // Re-render aktuálneho Q ak ešte nebol vyrenderovaný (loading text vidno)
-        if(GYN_APP.q === q && GYN_APP.nav === 'plnenie') {
+        if(GYN_APP.q === q && GYN_APP.nav === 'plnenie' && changed) {
           var el = document.getElementById('gyn-content');
           var session = getSession();
           if(el && session && el.querySelector && !el.querySelector('.pl-sum-big')) {
@@ -6609,7 +6781,9 @@ function gynPreloadAllPharma() {
     ALL_REGIONS.forEach(function(reg){
       quartals.forEach(function(q){
         var key = pname + '|' + reg + '|' + q;
-        if(GYN_PHARMA_STATE.cache[key] || GYN_PHARMA_STATE.loading[key]) return;
+        var persisted = gynCacheRead(gynPharmaCacheKey(pname, reg, q));
+        if(persisted && !GYN_PHARMA_STATE.cache[key]) GYN_PHARMA_STATE.cache[key] = persisted;
+        if(GYN_PHARMA_STATE.loading[key]) return;
         queue.push({ produkt: pname, oblast: reg, kvartal: q, key: key });
       });
     });
@@ -6631,7 +6805,10 @@ function gynPreloadAllPharma() {
       .then(function(r){ return r.json(); })
       .then(function(resp){
         delete GYN_PHARMA_STATE.loading[task.key];
-        if(resp && resp.ok) GYN_PHARMA_STATE.cache[task.key] = resp;
+        if(resp && resp.ok) {
+          GYN_PHARMA_STATE.cache[task.key] = resp;
+          gynCacheWrite(gynPharmaCacheKey(task.produkt, task.oblast, task.kvartal), resp);
+        }
         next();
       })
       .catch(function(){
@@ -6645,9 +6822,16 @@ function gynPreloadAllPharma() {
 // ── PLNENIE ──
 function gynPlnenieShow(el, user) {
   var q = GYN_APP.q;
-  if(GYN_APP.plCache[q]) { gynPlnenieRender(el, user, GYN_APP.plCache[q]); return; }
-  el.innerHTML = gynQTabsHtml() +
-    '<div style="padding:32px 0;text-align:center;color:#64748B;font-size:13px">Načítavam...</div>';
+  var cacheKey = gynPlnenieCacheKey(GYN_APP.year, q);
+  var cached = GYN_APP.plCache[q] || gynCacheRead(cacheKey);
+  if(cached) {
+    gynPreprocessData(cached);
+    GYN_APP.plCache[q] = cached;
+    gynPlnenieRender(el, user, cached);
+  } else {
+    el.innerHTML = gynQTabsHtml() +
+      '<div style="padding:32px 0;text-align:center;color:#64748B;font-size:13px">Načítavam...</div>';
+  }
   if(GYN_APP.plLoading[q]) return;
   GYN_APP.plLoading[q] = true;
   fetch(gynScriptUrl('action=getPlnenieAll&rok='+GYN_APP.year+'&Q='+q), {cache:'no-store'})
@@ -6655,13 +6839,17 @@ function gynPlnenieShow(el, user) {
     .then(function(data){
       delete GYN_APP.plLoading[q];
       gynPreprocessData(data);
+      var changed = !gynCacheSame(GYN_APP.plCache[q], data);
       GYN_APP.plCache[q] = data;
-      if(GYN_APP.nav === 'plnenie' && GYN_APP.q === q) gynPlnenieRender(el, user, data);
+      gynCacheWrite(cacheKey, data);
+      if(GYN_APP.nav === 'plnenie' && GYN_APP.q === q && (!cached || changed)) gynPlnenieRender(el, user, data);
     })
     .catch(function(){
       delete GYN_APP.plLoading[q];
-      el.innerHTML = gynQTabsHtml() +
-        '<div style="padding:32px 0;text-align:center;color:#EF4444;font-size:13px">Chyba načítavania. Skús znova.</div>';
+      if(!cached) {
+        el.innerHTML = gynQTabsHtml() +
+          '<div style="padding:32px 0;text-align:center;color:#EF4444;font-size:13px">Chyba načítavania. Skús znova.</div>';
+      }
     });
 }
 
@@ -6986,6 +7174,77 @@ function gynClosePharma() {
 // ── Interactive legend pre gyn pharma trend graf ──
 var _gynPharmaSelectedKeys = {}; // multi-select: key → true
 
+function gynOpenDistrictFulfillment(productName, oblast, keysPipe, login) {
+  var data = GYN_APP.plCache && GYN_APP.plCache[GYN_APP.q];
+  var keys = String(keysPipe || '').split('|').map(function(k){ return k.trim().toLowerCase(); }).filter(Boolean);
+  if(!data || !keys.length) return;
+  var titleEl = document.getElementById('pharma-ms-title');
+  var subtabsEl = document.getElementById('pharma-ms-subtabs');
+  var bodyEl = document.getElementById('pharma-ms-body');
+  var overlay = document.getElementById('pharma-ms-overlay');
+  var backBtn = overlay && overlay.querySelector('.pharma-ms-back');
+  if(backBtn) backBtn.setAttribute('onclick', 'gynClosePharma()');
+  if(titleEl) titleEl.textContent = 'Plnenie po okresoch · Q' + GYN_APP.q + ' ' + GYN_APP.year + ' · ' + productName;
+  if(subtabsEl) subtabsEl.style.display = 'none';
+  var plan = (data.plan && data.plan[login]) || {};
+  var pred = (data.predaje && data.predaje[login] && data.predaje[login].total) || {};
+  var totalPlanEur = gynSumPlanForKeys(plan, keys);
+  var totalSalesEur = gynSumSalesForKeys(pred, keys);
+  var territoryPatient = gynPatientPlanForKeys(data, oblast, keys);
+  var districtRows = gynPatientDistrictListForKeys(data, oblast, keys);
+  var distPlanEurTotal = districtRows.reduce(function(s,r){ return s + (parseFloat(r.plan_eur) || 0); }, 0);
+  var html = '';
+  if(territoryPatient) {
+    var donePatients = territoryPatient.eur_na_pacienta > 0 ? totalSalesEur / territoryPatient.eur_na_pacienta : 0;
+    var missPatients = Math.max((territoryPatient.plan_pacienti || 0) - donePatients, 0);
+    html += '<div class="pharma-ms-card" style="margin-bottom:14px">' +
+      '<div class="pharma-ms-card-title">Súhrn teritória</div>' +
+      '<div class="gyn-district-summary-grid">' +
+        '<div><span>Plán EUR</span><strong>' + plnenieFormatEUR(totalPlanEur || territoryPatient.plan_eur) + '</strong></div>' +
+        '<div><span>Plnenie EUR</span><strong>' + plnenieFormatEUR(totalSalesEur) + '</strong></div>' +
+        '<div><span>Plán pacienti</span><strong>' + gynPatientFmt(territoryPatient.plan_pacienti) + '</strong></div>' +
+        '<div><span>Aktuálne pacienti</span><strong>' + gynPatientFmt(donePatients) + '</strong></div>' +
+        '<div><span>Chýba nastaviť</span><strong class="miss">' + gynPatientFmtMissing(missPatients) + '</strong></div>' +
+      '</div>' +
+    '</div>';
+  }
+  if(!districtRows.length) {
+    html += '<div style="background:#fff;border-radius:12px;padding:24px 16px;text-align:center;color:#94A3B8;font-size:12px;font-style:italic">Pre tento produkt zatiaľ nie sú okresné pacientské dáta.</div>';
+  } else {
+    html += '<div class="pl-section-lbl" style="padding:2px 0 8px">Okresy · orientačný rozpad podľa okresného pacientského plánu</div>';
+    districtRows.forEach(function(r){
+      var share = distPlanEurTotal > 0 ? (r.plan_eur / distPlanEurTotal) : 0;
+      var estSales = totalSalesEur * share;
+      var donePac = r.eur_na_pacienta > 0 ? estSales / r.eur_na_pacienta : 0;
+      var missPac = Math.max((r.plan_pacienti || 0) - donePac, 0);
+      var pct = r.plan_eur > 0 ? estSales / r.plan_eur * 100 : null;
+      html += '<div class="pharma-ms-district">' +
+        '<div class="pharma-ms-district-hdr"><div class="pharma-ms-district-name">' + gynEsc(r.okres) + '</div></div>' +
+        '<div class="pharma-ms-district-meta">' +
+          '<div class="gyn-district-summary-grid compact">' +
+            '<div><span>Plán EUR</span><strong>' + plnenieFormatEUR(r.plan_eur) + '</strong></div>' +
+            '<div><span>Plnenie EUR</span><strong>' + plnenieFormatEUR(estSales) + '</strong></div>' +
+            '<div><span>Plán pacienti</span><strong>' + gynPatientFmt(r.plan_pacienti) + '</strong></div>' +
+            '<div><span>Aktuálne pacienti</span><strong>' + gynPatientFmt(donePac) + '</strong></div>' +
+            '<div><span>Chýba nastaviť</span><strong class="miss">' + gynPatientFmtMissing(missPac) + '</strong></div>' +
+            '<div><span>Plnenie</span><strong>' + plnenieFormatPct(pct) + '</strong></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    });
+  }
+  if(bodyEl) bodyEl.innerHTML = html;
+  if(overlay){
+    GYN_PHARMA_STATE.open = true;
+    overlay.classList.remove('panel-anim-r','pl-detail-exit-r');
+    overlay.classList.add('show');
+    overlay.scrollTop = 0;
+    void overlay.offsetWidth;
+    overlay.classList.add('panel-anim-r');
+    setTimeout(function(){ overlay.classList.remove('panel-anim-r'); }, 300);
+  }
+}
+
 function gynPharmaResetLines() {
   _gynPharmaSelectedKeys = {};
   var body = document.getElementById('pharma-ms-body');
@@ -7172,7 +7431,9 @@ function gynPharmaDistrictDisplayYymmsForQ(q, resp, currentKvartal, fallbackYymm
 
 function gynPharmaLoad() {
   var key = GYN_PHARMA_STATE.produkt + '|' + GYN_PHARMA_STATE.oblast + '|' + GYN_PHARMA_STATE.kvartal;
-  var cached = GYN_PHARMA_STATE.cache[key];
+  var persistentKey = gynPharmaCacheKey(GYN_PHARMA_STATE.produkt, GYN_PHARMA_STATE.oblast, GYN_PHARMA_STATE.kvartal);
+  var cached = GYN_PHARMA_STATE.cache[key] || gynCacheRead(persistentKey);
+  if(cached && !GYN_PHARMA_STATE.cache[key]) GYN_PHARMA_STATE.cache[key] = cached;
 
   // Cache hit je kompletný až vtedy, keď má okresy pre všetky kvartály zobrazené v 6-mesačnom trende.
   if (gynPharmaCacheHasPrevOkresy(cached, GYN_PHARMA_STATE.kvartal)) {
@@ -7238,6 +7499,7 @@ function gynPharmaLoad() {
         console.log('[gyn-pharma] trend kvartály:', neededKvartals.join(', '), 'extra=', Object.keys(extra).join(', '));
       }
       GYN_PHARMA_STATE.cache[key] = resp;
+      gynCacheWrite(persistentKey, resp);
       if(GYN_PHARMA_STATE.open && GYN_PHARMA_STATE.produkt + '|' + GYN_PHARMA_STATE.oblast + '|' + GYN_PHARMA_STATE.kvartal === key) {
         gynPharmaRender(resp);
       }
@@ -7670,6 +7932,7 @@ function gynPlnenieRenderRepDetail(el, data) {
     if((a.plan > 0) !== (b.plan > 0)) return a.plan > 0 ? -1 : 1;
     return a.name.localeCompare(b.name);
   });
+  products = gynEnhanceProductsForDisplay(products, plan, predajeTotal, /^[A-Z]{2}PA$/i.test(region) ? 'patch' : 'pill');
 
   if(products.length === 0) {
     html += '<div style="padding:24px 0;text-align:center;color:#94A3B8;font-size:13px">Žiadne produkty pre Q' + q + '.</div>';
@@ -7682,15 +7945,21 @@ function gynPlnenieRenderRepDetail(el, data) {
       var prodColorCls = plnenieDetailColorClass(pPct);
       var barWidth = (pPct === null || isNaN(pPct)) ? 0 : Math.min(pPct, 100);
 
+      var metricKeys = gynProductKeysForMetric(p);
       var monthlyPlans = plnenieMonthlyPlans(year, q, p.plan);
-      var pPredBasis = gynPredictionBasisForRep(login, data, q, year, p.key);
+      var pPredBasis = p.isVirtual
+        ? metricKeys.reduce(function(acc, pk){
+            var b = gynPredictionBasisForRep(login, data, q, year, pk);
+            acc.actual += b.actual; acc.planBasis += b.planBasis;
+            return acc;
+          }, { actual: 0, planBasis: 0 })
+        : gynPredictionBasisForRep(login, data, q, year, p.key);
       var pPredikcia = (pPredBasis.planBasis > 0)
         ? plnenieCalcPredikciaSummary(p.plan, pPredBasis.actual, q, year, pPredBasis.planBasis)
         : null;
 
       var monthRowsHtml = qMonths.map(function(m){
-        var monthData = predajeByMonth[m] || {};
-        var mVal = parseFloat(monthData[p.key]); if(isNaN(mVal)) mVal = 0;
+        var mVal = gynSumMonthForKeys(predajeByMonth, m, metricKeys);
         var mPlan = monthlyPlans[m] || 0;
         var mPct = (mPlan > 0) ? (mVal / mPlan * 100) : null;
         var isFuture = (q === curQ && m > curMonth) || q > curQ;
@@ -7712,7 +7981,7 @@ function gynPlnenieRenderRepDetail(el, data) {
       } else {
         moneyHtml = '<div class="prod-money muted">Žiadny plán pre tento kvartál</div>';
       }
-      var patientHintHtml = gynPatientProductHint(data, GYN_APP.detailRegion, p.key, p.predaje, p.plan, predajeByMonth, q);
+      var patientHintHtml = gynPatientProductHint(data, GYN_APP.detailRegion, metricKeys, p.predaje, p.plan, predajeByMonth, q);
 
       var prodPredHtml = (pPredikcia !== null && p.plan > 0)
         ? '<div class="prod-pred">predikcia konca kvartálu <span>' + plnenieFormatPct(pPredikcia) + '</span></div>'
@@ -7721,6 +7990,10 @@ function gynPlnenieRenderRepDetail(el, data) {
       var pkLow = p.name.trim().toLowerCase();
       var msBtnHtml = GYN_PHARMA_PRODUCTS[pkLow]
         ? '<button type="button" class="prod-ms-link" onclick="gynOpenPharma(\''+p.name.replace(/\'/g,"\\\'")+'\',\''+(GYN_APP.detailRegion||'').replace(/\'/g,"\\\'")+'\')">📊 Trhový podiel</button>'
+        : '';
+      var distRows = gynPatientDistrictListForKeys(data, GYN_APP.detailRegion, metricKeys);
+      var distBtnHtml = distRows.length && (p.district || GYN_PHARMA_PRODUCTS[pkLow])
+        ? '<button type="button" class="prod-district-link" onclick="gynOpenDistrictFulfillment(\''+p.name.replace(/\'/g,"\\\'")+'\',\''+(GYN_APP.detailRegion||'').replace(/\'/g,"\\\'")+'\',\''+metricKeys.join('|').replace(/\'/g,"\\\'")+'\',\''+login.replace(/\'/g,"\\\'")+'\')">Plnenie po okresoch</button>'
         : '';
       html += '<div class="prod-item-adv">' +
         '<div class="prod-adv-top">' +
@@ -7734,7 +8007,7 @@ function gynPlnenieRenderRepDetail(el, data) {
         patientHintHtml +
         prodPredHtml +
         '<div class="month-rows">' + monthRowsHtml + '</div>' +
-        msBtnHtml +
+        (msBtnHtml || distBtnHtml ? '<div class="prod-action-row">' + msBtnHtml + distBtnHtml + '</div>' : '') +
       '</div>';
     });
   }
@@ -7813,6 +8086,7 @@ function gynPlnenieRenderRep(el, user, data) {
     if((a.plan > 0) !== (b.plan > 0)) return a.plan > 0 ? -1 : 1;
     return a.name.localeCompare(b.name);
   });
+  products = gynEnhanceProductsForDisplay(products, plan, predajeTotal, /^[A-Z]{2}PA$/i.test(region) ? 'patch' : 'pill');
 
   if(products.length === 0) {
     html += '<div style="padding:24px 0;text-align:center;color:#94A3B8;font-size:13px">Žiadne produkty pre Q' + q + '.</div>';
@@ -7824,15 +8098,21 @@ function gynPlnenieRenderRep(el, user, data) {
       var pPct = (p.plan > 0) ? (p.predaje / p.plan * 100) : null;
       var prodColorCls = plnenieDetailColorClass(pPct);
       var barWidth = (pPct === null || isNaN(pPct)) ? 0 : Math.min(pPct, 100);
+      var metricKeys = gynProductKeysForMetric(p);
       var monthlyPlans = plnenieMonthlyPlans(year, q, p.plan);
-      var pPredBasis = gynPredictionBasisForRep(login, data, q, year, p.key);
+      var pPredBasis = p.isVirtual
+        ? metricKeys.reduce(function(acc, pk){
+            var b = gynPredictionBasisForRep(login, data, q, year, pk);
+            acc.actual += b.actual; acc.planBasis += b.planBasis;
+            return acc;
+          }, { actual: 0, planBasis: 0 })
+        : gynPredictionBasisForRep(login, data, q, year, p.key);
       var pPredikcia = (pPredBasis.planBasis > 0)
         ? plnenieCalcPredikciaSummary(p.plan, pPredBasis.actual, q, year, pPredBasis.planBasis)
         : null;
 
       var monthRowsHtml = qMonths.map(function(m){
-        var monthData = predajeByMonth[m] || {};
-        var mVal = parseFloat(monthData[p.key]); if(isNaN(mVal)) mVal = 0;
+        var mVal = gynSumMonthForKeys(predajeByMonth, m, metricKeys);
         var mPlan = monthlyPlans[m] || 0;
         var mPct = (mPlan > 0) ? (mVal / mPlan * 100) : null;
         var isFuture = (q === curQ && m > curMonth) || q > curQ;
@@ -7854,7 +8134,7 @@ function gynPlnenieRenderRep(el, user, data) {
       } else {
         moneyHtml = '<div class="prod-money muted">Žiadny plán pre tento kvartál</div>';
       }
-      var patientHintHtml = gynPatientProductHint(data, region, p.key, p.predaje, p.plan, predajeByMonth, q);
+      var patientHintHtml = gynPatientProductHint(data, region, metricKeys, p.predaje, p.plan, predajeByMonth, q);
 
       var prodPredHtml = (pPredikcia !== null && p.plan > 0)
         ? '<div class="prod-pred">predikcia konca kvartálu <span>' + plnenieFormatPct(pPredikcia) + '</span></div>'
@@ -7864,6 +8144,10 @@ function gynPlnenieRenderRep(el, user, data) {
       var pkLow = p.name.trim().toLowerCase();
       var msBtnHtml = GYN_PHARMA_PRODUCTS[pkLow]
         ? '<button type="button" class="prod-ms-link" onclick="gynOpenPharma(\''+p.name.replace(/\'/g,"\\\'")+'\',\''+region.replace(/\'/g,"\\\'")+'\')">📊 Trhový podiel</button>'
+        : '';
+      var distRows = gynPatientDistrictListForKeys(data, region, metricKeys);
+      var distBtnHtml = distRows.length && (p.district || GYN_PHARMA_PRODUCTS[pkLow])
+        ? '<button type="button" class="prod-district-link" onclick="gynOpenDistrictFulfillment(\''+p.name.replace(/\'/g,"\\\'")+'\',\''+region.replace(/\'/g,"\\\'")+'\',\''+metricKeys.join('|').replace(/\'/g,"\\\'")+'\',\''+login.replace(/\'/g,"\\\'")+'\')">Plnenie po okresoch</button>'
         : '';
 
       html += '<div class="prod-item-adv">' +
@@ -7878,7 +8162,7 @@ function gynPlnenieRenderRep(el, user, data) {
         patientHintHtml +
         prodPredHtml +
         '<div class="month-rows">' + monthRowsHtml + '</div>' +
-        msBtnHtml +
+        (msBtnHtml || distBtnHtml ? '<div class="prod-action-row">' + msBtnHtml + distBtnHtml + '</div>' : '') +
       '</div>';
     });
   }
