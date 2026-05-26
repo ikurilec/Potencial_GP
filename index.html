@@ -2482,7 +2482,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.93';
+var APP_VERSION = '2.21.94';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5367,9 +5367,10 @@ var ARABIC_ROMAN = {'1':'I','2':'II','3':'III','4':'IV','5':'V'};
 
 function normalizeOkresInput(val) {
   // Convert "Bratislava 1" -> "Bratislava I", "Košice 2" -> "Košice II" etc.
-  return val.replace(/(Bratislava|Košice)\s*([1-5])$/i, function(match, name, num) {
+  return val.replace(/(Bratislava|Košice|Kosice)\s*([1-5])$/i, function(match, name, num) {
     var roman = ARABIC_ROMAN[num];
-    return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase() + ' ' + roman;
+    var cleanName = name.toLowerCase() === 'kosice' ? 'Košice' : (name.charAt(0).toUpperCase() + name.slice(1).toLowerCase());
+    return cleanName + ' ' + roman;
   });
 }
 
@@ -6360,16 +6361,28 @@ function gynPatientDistrictListForKeys(data, region, productKeys) {
     .sort(function(a,b){ return b.plan_pacienti - a.plan_pacienti; });
 }
 
+function gynDistrictLookupKey(okres) {
+  var s = String(okres || '').trim();
+  if(!s) return '';
+  if(typeof normalizeOkresInput === 'function') s = normalizeOkresInput(s);
+  return s.normalize ? s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() : s.toLowerCase();
+}
+
 function gynDistrictActualForKeys(data, login, productKeys, okres) {
   var out = { eur: 0, mnozstvo: 0, pacienti: 0, hasReal: false };
   if(!data || !data.predajeOkresy) return out;
   var loginKey = String(login || '').trim().toLowerCase();
   var okKey = String(okres || '').trim().toLowerCase();
+  var okLookupKey = gynDistrictLookupKey(okres);
   var repRows = data.predajeOkresy[loginKey];
   if(!repRows || !okKey) return out;
   (productKeys || []).forEach(function(pk){
     var prodRows = repRows[String(pk || '').trim().toLowerCase()];
     var rec = prodRows && prodRows[okKey];
+    if(!rec && prodRows && okLookupKey) {
+      var foundKey = Object.keys(prodRows).find(function(k){ return gynDistrictLookupKey(k) === okLookupKey; });
+      if(foundKey) rec = prodRows[foundKey];
+    }
     if(!rec) return;
     out.eur += parseFloat(rec.eur) || 0;
     out.mnozstvo += parseFloat(rec.mnozstvo) || 0;
