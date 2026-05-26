@@ -2458,7 +2458,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.89';
+var APP_VERSION = '2.21.90';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -19807,6 +19807,38 @@ function lkCreamContactDateText(value) {
   return s;
 }
 
+function lkCreamContactLocalIsPending(login, key, now) {
+  try {
+    var raw = localStorage.getItem(lkCreamContactedAtKey(login, key, now));
+    var ts = raw ? Date.parse(raw) : NaN;
+    return !isNaN(ts) && (Date.now() - ts) < 120000;
+  } catch(e) { return false; }
+}
+
+function lkReconcileCreamContactLocal(login, rows, now) {
+  var seen = {};
+  var confirmed = {};
+  (rows || []).forEach(function(r) {
+    var key = String(r && r.okres || '').trim() + '|||' + String(r && r.mesto || '').trim() + '|||' + String(r && r.lekaren || '').trim();
+    if (!key || key === '||||||') return;
+    seen[key] = true;
+    if (r.creamContacted) confirmed[key] = r.creamContactedAt || '';
+  });
+  Object.keys(seen).forEach(function(key) {
+    try {
+      var doneKey = lkCreamContactedKey(login, key, now);
+      var atKey = lkCreamContactedAtKey(login, key, now);
+      if (confirmed[key]) {
+        localStorage.setItem(doneKey, '1');
+        if (confirmed[key]) localStorage.setItem(atKey, confirmed[key]);
+      } else if (!lkCreamContactLocalIsPending(login, key, now)) {
+        localStorage.removeItem(doneKey);
+        localStorage.removeItem(atKey);
+      }
+    } catch(e) {}
+  });
+}
+
 function lkCreamContactInfo(login, key, now) {
   if (!key) return { done: false, at: '' };
   var rows = [];
@@ -20044,6 +20076,7 @@ function lkFetch(login, cb) {
   var url = scriptUrl('action=getLekarne&login=' + encodeURIComponent(cacheKey === '__all__' ? '' : cacheKey) + '&creamMonth=' + encodeURIComponent(lkCreamContactMonthKey()) + '&_t=' + Date.now());
   fetch(url, { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(data) {
     var rows = (data.ok && data.rows) ? data.rows : [];
+    lkReconcileCreamContactLocal(cacheKey, rows);
     var changed = lkSetCache(cacheKey, rows, cacheKey !== '__all__');
     var cbs = _lkInFlight[cacheKey] || [];
     delete _lkInFlight[cacheKey];
@@ -20084,7 +20117,17 @@ function lkFetchAll(cb) {
     .then(function(data) {
       var ok = !!(data && data.ok && Array.isArray(data.rows));
       var rows = ok ? data.rows : [];
-      if (ok) lkPrimeCacheFromRows(rows, true);
+      if (ok) {
+        var grouped = {};
+        rows.forEach(function(r) {
+          var login = lkCacheKey(r && r.login);
+          if (!login || login === '__all__') return;
+          if (!grouped[login]) grouped[login] = [];
+          grouped[login].push(r);
+        });
+        Object.keys(grouped).forEach(function(login){ lkReconcileCreamContactLocal(login, grouped[login]); });
+        lkPrimeCacheFromRows(rows, true);
+      }
       LK_STATE.allLoading = false;
       var cbs = LK_STATE.allCallbacks.splice(0);
       cbs.forEach(function(fn){ try { fn(ok); } catch(e){} });
