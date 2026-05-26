@@ -1407,12 +1407,36 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .prod-action-row .prod-ms-link{margin-top:0}
   .prod-district-link{display:block;width:100%;text-align:center;padding:11px 14px;background:linear-gradient(180deg,#F8FAFC 0%,#EEF2FF 100%);border-radius:10px;border:1.5px solid #CBD5E1;font-size:12.5px;font-weight:750;color:#0F172A;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;letter-spacing:.01em;transition:transform var(--t-fast),box-shadow var(--t-fast);box-shadow:0 2px 6px rgba(15,23,42,.08)}
   .prod-district-link:hover{box-shadow:0 4px 12px rgba(15,23,42,.14);transform:translateY(-1px)}
-  .gyn-district-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
-  .gyn-district-summary-grid.compact{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:0}
-  .gyn-district-summary-grid div{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:9px;padding:8px 9px}
+  .gyn-district-summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px;font-family:var(--font-display)}
+  .gyn-district-summary-grid.compact{grid-template-columns:1fr;margin-top:0;gap:9px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:10px}
+  .gyn-district-summary-grid>div{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:9px;padding:8px 9px}
+  .gyn-district-summary-grid.compact>div{background:#fff}
   .gyn-district-summary-grid span{display:block;color:#64748B;font-size:10px;font-weight:750;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
   .gyn-district-summary-grid strong{color:#0F172A;font-size:13px;font-weight:850}
   .gyn-district-summary-grid strong.miss{color:#DC2626}
+  .gyn-district-summary-grid strong.g{color:#059669}
+  .gyn-district-summary-grid strong.o{color:#D97706}
+  .gyn-district-summary-grid strong.r{color:#DC2626}
+  .gyn-tempo-line{margin-top:7px;padding:7px 9px;border-radius:9px;background:#F8FAFC;border:1px solid #E2E8F0;font-size:11.2px;line-height:1.32;color:#475569;font-weight:650}
+  .gyn-tempo-line strong{font-weight:850}
+  .gyn-tempo-line.g{background:#ECFDF5;border-color:#BBF7D0;color:#047857}
+  .gyn-tempo-line.o{background:#FFFBEB;border-color:#FDE68A;color:#92400E}
+  .gyn-tempo-line.r{background:#FEF2F2;border-color:#FECACA;color:#991B1B}
+  .gyn-total-now{margin-top:9px;padding-top:9px;border-top:1px solid rgba(255,255,255,.1);font-size:11.5px;color:#94A3B8}
+  .gyn-total-now strong{font-size:15px;font-weight:800;margin-left:5px}
+  .gyn-total-now.g strong{color:#10B981}.gyn-total-now.o strong{color:#F59E0B}.gyn-total-now.r strong{color:#EF4444}
+  .gyn-district-block{border-radius:10px;padding:10px 11px;display:flex;flex-direction:column;gap:7px;box-shadow:0 1px 2px rgba(15,23,42,.03)}
+  .gyn-district-block-title{font-size:10.5px;font-weight:850;color:#0C1E35;text-transform:uppercase;letter-spacing:.05em;padding-bottom:5px;border-bottom:1px solid #E2E8F0}
+  .gyn-district-block-row{display:flex;justify-content:space-between;gap:10px;align-items:baseline;font-size:11.5px;color:#64748B;font-weight:750;line-height:1.25}
+  .gyn-district-block-row span{display:block;min-width:0;margin:0;color:#64748B;font-size:11px;font-weight:750;text-transform:uppercase;letter-spacing:.025em}
+  .gyn-district-block-row strong{font-size:14px;color:#0F172A;font-weight:850;text-align:right;white-space:nowrap;letter-spacing:0}
+  .gyn-district-block-row strong.miss{color:#DC2626}
+  .gyn-district-block-row strong.g{color:#059669}.gyn-district-block-row strong.o{color:#D97706}.gyn-district-block-row strong.r{color:#DC2626}
+  #gyn-view .pl-sum-prod-tempo{font-size:11px;line-height:1.25;font-weight:650;white-space:normal;overflow:hidden;text-overflow:ellipsis;color:#64748B}
+  #gyn-view .pl-sum-prod-tempo strong{font-size:11px!important;font-family:inherit!important;font-weight:850!important}
+  #gyn-view .pl-sum-prod-tempo.g{color:#047857}
+  #gyn-view .pl-sum-prod-tempo.o{color:#92400E}
+  #gyn-view .pl-sum-prod-tempo.r{color:#B91C1C}
   .prod-insight-card{margin-top:8px;background:linear-gradient(180deg,#F8FAFC 0%,#F1F5F9 100%);border:1px solid #D9E4F2;border-radius:11px;padding:9px 10px;text-align:left}
   .prod-insight-head{display:flex;flex-direction:column;align-items:flex-start;gap:3px;margin-bottom:6px}
   .prod-insight-title{font-size:10px;font-weight:900;color:#1D4ED8;text-transform:uppercase;letter-spacing:.06em;font-family:var(--font-display)}
@@ -2458,7 +2482,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.90';
+var APP_VERSION = '2.21.92';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6336,6 +6360,25 @@ function gynPatientDistrictListForKeys(data, region, productKeys) {
     .sort(function(a,b){ return b.plan_pacienti - a.plan_pacienti; });
 }
 
+function gynDistrictActualForKeys(data, login, productKeys, okres) {
+  var out = { eur: 0, mnozstvo: 0, pacienti: 0, hasReal: false };
+  if(!data || !data.predajeOkresy) return out;
+  var loginKey = String(login || '').trim().toLowerCase();
+  var okKey = String(okres || '').trim().toLowerCase();
+  var repRows = data.predajeOkresy[loginKey];
+  if(!repRows || !okKey) return out;
+  (productKeys || []).forEach(function(pk){
+    var prodRows = repRows[String(pk || '').trim().toLowerCase()];
+    var rec = prodRows && prodRows[okKey];
+    if(!rec) return;
+    out.eur += parseFloat(rec.eur) || 0;
+    out.mnozstvo += parseFloat(rec.mnozstvo) || 0;
+    out.pacienti += parseFloat(rec.pacienti) || 0;
+    out.hasReal = true;
+  });
+  return out;
+}
+
 function gynPatientCurrentLabelForKeys(predajeByMonth, productKeys, q) {
   var months = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[q] || [];
   var keys = (productKeys || []).map(function(k){ return String(k || '').trim().toLowerCase(); });
@@ -6367,6 +6410,40 @@ function gynSumMonthForKeys(predajeByMonth, month, keys) {
   return (keys || []).reduce(function(sum, pk){ return sum + (parseFloat(md[pk]) || 0); }, 0);
 }
 
+function gynTempoPct(actualPct, expectedPct) {
+  actualPct = parseFloat(actualPct);
+  expectedPct = parseFloat(expectedPct);
+  if(isNaN(actualPct) || isNaN(expectedPct) || expectedPct <= 0) return null;
+  return actualPct / expectedPct * 100;
+}
+
+function gynTempoDetailClass(actualPct, expectedPct) {
+  var tempo = gynTempoPct(actualPct, expectedPct);
+  return tempo === null ? plnenieDetailColorClass(actualPct) : plnenieDetailColorClass(tempo);
+}
+
+function gynTempoPlClass(actualPct, expectedPct) {
+  var tempo = gynTempoPct(actualPct, expectedPct);
+  return tempo === null ? plnenieColorClass(actualPct) : plnenieColorClass(tempo);
+}
+
+function gynTempoLineHtml(actualPct, expectedPct, compact) {
+  var tempo = gynTempoPct(actualPct, expectedPct);
+  if(tempo === null) return '';
+  var cls = plnenieDetailColorClass(tempo);
+  var status = tempo >= 100 ? 'v plnení' : (tempo >= 95 ? 'tesne pri plnení' : 'pod plnením');
+  var label = compact ? 'Aktuálne má byť' : 'Aktuálne plnenie by malo byť na úrovni';
+  return '<div class="gyn-tempo-line ' + cls + '">' +
+    label + ' <strong>' + plnenieFormatPct(expectedPct) + '</strong>. Produkt je aktuálne na <strong>' + plnenieFormatPct(actualPct) + '</strong> (' + status + ').' +
+  '</div>';
+}
+
+function gynPatchFirstOrder(productName) {
+  var n = String(productName || '').trim().toLowerCase();
+  if(n === 'ryeqo') return -100;
+  return 0;
+}
+
 function gynEnhanceProductsForDisplay(products, plan, predajeTotal, linia) {
   var list = (products || []).filter(function(p){ return !GYN_HIDE_PRODUCTS[p.key]; });
   GYN_VIRTUAL_PRODUCTS.forEach(function(vp){
@@ -6388,6 +6465,10 @@ function gynEnhanceProductsForDisplay(products, plan, predajeTotal, linia) {
   });
   list.sort(function(a,b){
     var ao = a.order || 0, bo = b.order || 0;
+    if(linia === 'patch') {
+      ao += gynPatchFirstOrder(a.name || a.key);
+      bo += gynPatchFirstOrder(b.name || b.key);
+    }
     if(ao !== bo) return ao - bo;
     if((a.plan > 0) !== (b.plan > 0)) return a.plan > 0 ? -1 : 1;
     return a.name.localeCompare(b.name);
@@ -7188,8 +7269,10 @@ function gynOpenDistrictFulfillment(productName, oblast, keysPipe, login) {
   if(subtabsEl) subtabsEl.style.display = 'none';
   var plan = (data.plan && data.plan[login]) || {};
   var pred = (data.predaje && data.predaje[login] && data.predaje[login].total) || {};
+  var predajeByMonth = (data.predaje && data.predaje[login] && data.predaje[login].byMonth) || {};
   var totalPlanEur = gynSumPlanForKeys(plan, keys);
   var totalSalesEur = gynSumSalesForKeys(pred, keys);
+  var expectedPct = plnenieExpectedProgressPct(GYN_APP.year, GYN_APP.q, null, predajeByMonth, keys);
   var territoryPatient = gynPatientPlanForKeys(data, oblast, keys);
   var districtRows = gynPatientDistrictListForKeys(data, oblast, keys);
   var distPlanEurTotal = districtRows.reduce(function(s,r){ return s + (parseFloat(r.plan_eur) || 0); }, 0);
@@ -7205,29 +7288,49 @@ function gynOpenDistrictFulfillment(productName, oblast, keysPipe, login) {
         '<div><span>Plán pacienti</span><strong>' + gynPatientFmt(territoryPatient.plan_pacienti) + '</strong></div>' +
         '<div><span>Aktuálne pacienti</span><strong>' + gynPatientFmt(donePatients) + '</strong></div>' +
         '<div><span>Chýba nastaviť</span><strong class="miss">' + gynPatientFmtMissing(missPatients) + '</strong></div>' +
+        '<div><span>Teraz má byť</span><strong>' + plnenieFormatPct(expectedPct) + '</strong></div>' +
       '</div>' +
     '</div>';
   }
   if(!districtRows.length) {
     html += '<div style="background:#fff;border-radius:12px;padding:24px 16px;text-align:center;color:#94A3B8;font-size:12px;font-style:italic">Pre tento produkt zatiaľ nie sú okresné pacientské dáta.</div>';
   } else {
-    html += '<div class="pl-section-lbl" style="padding:2px 0 8px">Okresy · orientačný rozpad podľa okresného pacientského plánu</div>';
+    var hasDistrictSales = districtRows.some(function(r){
+      return gynDistrictActualForKeys(data, login, keys, r.okres).hasReal;
+    });
+    html += '<div class="pl-section-lbl" style="padding:2px 0 8px">Okresy · ' + (hasDistrictSales ? 'reálne okresné predaje' : 'orientačný rozpad podľa okresného pacientského plánu') + '</div>';
     districtRows.forEach(function(r){
       var share = distPlanEurTotal > 0 ? (r.plan_eur / distPlanEurTotal) : 0;
-      var estSales = totalSalesEur * share;
-      var donePac = r.eur_na_pacienta > 0 ? estSales / r.eur_na_pacienta : 0;
+      var actual = gynDistrictActualForKeys(data, login, keys, r.okres);
+      var districtSales = actual.hasReal ? actual.eur : (totalSalesEur * share);
+      var donePac = actual.hasReal && actual.pacienti > 0 ? actual.pacienti : (r.eur_na_pacienta > 0 ? districtSales / r.eur_na_pacienta : 0);
       var missPac = Math.max((r.plan_pacienti || 0) - donePac, 0);
-      var pct = r.plan_eur > 0 ? estSales / r.plan_eur * 100 : null;
+      var pct = r.plan_eur > 0 ? districtSales / r.plan_eur * 100 : null;
+      var tempoCls = gynTempoDetailClass(pct, expectedPct);
+      var tempoPct = gynTempoPct(pct, expectedPct);
+      var districtPred = tempoPct;
       html += '<div class="pharma-ms-district">' +
         '<div class="pharma-ms-district-hdr"><div class="pharma-ms-district-name">' + gynEsc(r.okres) + '</div></div>' +
         '<div class="pharma-ms-district-meta">' +
           '<div class="gyn-district-summary-grid compact">' +
-            '<div><span>Plán EUR</span><strong>' + plnenieFormatEUR(r.plan_eur) + '</strong></div>' +
-            '<div><span>Plnenie EUR</span><strong>' + plnenieFormatEUR(estSales) + '</strong></div>' +
-            '<div><span>Plán pacienti</span><strong>' + gynPatientFmt(r.plan_pacienti) + '</strong></div>' +
-            '<div><span>Aktuálne pacienti</span><strong>' + gynPatientFmt(donePac) + '</strong></div>' +
-            '<div><span>Chýba nastaviť</span><strong class="miss">' + gynPatientFmtMissing(missPac) + '</strong></div>' +
-            '<div><span>Plnenie</span><strong>' + plnenieFormatPct(pct) + '</strong></div>' +
+            '<div class="gyn-district-block">' +
+              '<div class="gyn-district-block-title">EUR</div>' +
+              '<div class="gyn-district-block-row"><span>Plán</span><strong>' + plnenieFormatEUR(r.plan_eur) + '</strong></div>' +
+              '<div class="gyn-district-block-row"><span>Plnenie</span><strong>' + plnenieFormatEUR(districtSales) + '</strong></div>' +
+              (actual.hasReal && actual.mnozstvo > 0 ? '<div class="gyn-district-block-row"><span>Balenia/cykly</span><strong>' + gynPatientFmt(actual.mnozstvo) + '</strong></div>' : '') +
+            '</div>' +
+            '<div class="gyn-district-block">' +
+              '<div class="gyn-district-block-title">Pacienti</div>' +
+              '<div class="gyn-district-block-row"><span>Plán</span><strong>' + gynPatientFmt(r.plan_pacienti) + '</strong></div>' +
+              '<div class="gyn-district-block-row"><span>Aktuálne</span><strong>' + gynPatientFmt(donePac) + '</strong></div>' +
+              '<div class="gyn-district-block-row"><span>Chýba nastaviť</span><strong class="miss">' + gynPatientFmtMissing(missPac) + '</strong></div>' +
+            '</div>' +
+            '<div class="gyn-district-block">' +
+              '<div class="gyn-district-block-title">Plnenie okresu</div>' +
+              '<div class="gyn-district-block-row"><span>Aktuálne</span><strong class="' + tempoCls + '">' + plnenieFormatPct(pct) + '</strong></div>' +
+              '<div class="gyn-district-block-row"><span>Teraz má byť</span><strong>' + plnenieFormatPct(expectedPct) + '</strong></div>' +
+              '<div class="gyn-district-block-row"><span>Predikcia konca Q</span><strong class="' + tempoCls + '">' + plnenieFormatPct(districtPred) + '</strong></div>' +
+            '</div>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -7881,6 +7984,8 @@ function gynPlnenieRenderRepDetail(el, data) {
   var repPredikcia = (repPlan > 0 && repPredBasis.planBasis > 0)
     ? plnenieCalcPredikciaSummary(repPlan, repPredBasis.actual, q, year, repPredBasis.planBasis)
     : null;
+  var repExpectedPct = plnenieExpectedProgressPct(year, q, null, predajeByMonth, null);
+  var repNowCls = gynTempoDetailClass(repPct, repExpectedPct);
 
   // Avatar farba — deterministická podľa loginu
   var avatarColors = ['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#F97316','#22C55E','#6366F1'];
@@ -7912,6 +8017,7 @@ function gynPlnenieRenderRepDetail(el, data) {
         (repPredikcia !== null
           ? '<div class="total-pred">predikcia konca kvartálu <span>' + plnenieFormatPct(repPredikcia) + '</span></div>'
           : '') +
+        (repPlan > 0 ? '<div class="gyn-total-now ' + repNowCls + '">aktuálne plnenie by malo byť na úrovni <strong>' + plnenieFormatPct(repExpectedPct) + '</strong></div>' : '') +
       '</div>' +
       '<div class="pl-section-lbl" style="padding:12px 0 6px">Plnenie per produkt · ' + plnenieQLabel(q, year) + '</div>';
 
@@ -7942,10 +8048,11 @@ function gynPlnenieRenderRepDetail(el, data) {
 
     products.forEach(function(p){
       var pPct = (p.plan > 0) ? (p.predaje / p.plan * 100) : null;
-      var prodColorCls = plnenieDetailColorClass(pPct);
       var barWidth = (pPct === null || isNaN(pPct)) ? 0 : Math.min(pPct, 100);
 
       var metricKeys = gynProductKeysForMetric(p);
+      var expectedPct = plnenieExpectedProgressPct(year, q, null, predajeByMonth, metricKeys);
+      var prodColorCls = gynTempoDetailClass(pPct, expectedPct);
       var monthlyPlans = plnenieMonthlyPlans(year, q, p.plan);
       var pPredBasis = p.isVirtual
         ? metricKeys.reduce(function(acc, pk){
@@ -7986,6 +8093,7 @@ function gynPlnenieRenderRepDetail(el, data) {
       var prodPredHtml = (pPredikcia !== null && p.plan > 0)
         ? '<div class="prod-pred">predikcia konca kvartálu <span>' + plnenieFormatPct(pPredikcia) + '</span></div>'
         : '';
+      var tempoHtml = (p.plan > 0) ? gynTempoLineHtml(pPct, expectedPct, false) : '';
 
       var pkLow = p.name.trim().toLowerCase();
       var msBtnHtml = GYN_PHARMA_PRODUCTS[pkLow]
@@ -8006,6 +8114,7 @@ function gynPlnenieRenderRepDetail(el, data) {
         moneyHtml +
         patientHintHtml +
         prodPredHtml +
+        tempoHtml +
         '<div class="month-rows">' + monthRowsHtml + '</div>' +
         (msBtnHtml || distBtnHtml ? '<div class="prod-action-row">' + msBtnHtml + distBtnHtml + '</div>' : '') +
       '</div>';
@@ -8051,6 +8160,8 @@ function gynPlnenieRenderRep(el, user, data) {
   var repPredikcia = (repPlan > 0 && repPredBasis.planBasis > 0)
     ? plnenieCalcPredikciaSummary(repPlan, repPredBasis.actual, q, year, repPredBasis.planBasis)
     : null;
+  var repExpectedPct = plnenieExpectedProgressPct(year, q, null, predajeByMonth, null);
+  var repNowCls = gynTempoDetailClass(repPct, repExpectedPct);
 
   var html =
     '<div class="mgr-plnenie-detail" style="display:block">' +
@@ -8067,6 +8178,7 @@ function gynPlnenieRenderRep(el, user, data) {
         (repPredikcia !== null
           ? '<div class="total-pred">predikcia konca kvartálu <span>' + plnenieFormatPct(repPredikcia) + '</span></div>'
           : '') +
+        (repPlan > 0 ? '<div class="gyn-total-now ' + repNowCls + '">aktuálne plnenie by malo byť na úrovni <strong>' + plnenieFormatPct(repExpectedPct) + '</strong></div>' : '') +
       '</div>' +
       '<div class="pl-section-lbl" style="padding:12px 0 6px">Plnenie per produkt · ' + plnenieQLabel(q, year) + '</div>';
 
@@ -8096,9 +8208,10 @@ function gynPlnenieRenderRep(el, user, data) {
 
     products.forEach(function(p){
       var pPct = (p.plan > 0) ? (p.predaje / p.plan * 100) : null;
-      var prodColorCls = plnenieDetailColorClass(pPct);
       var barWidth = (pPct === null || isNaN(pPct)) ? 0 : Math.min(pPct, 100);
       var metricKeys = gynProductKeysForMetric(p);
+      var expectedPct = plnenieExpectedProgressPct(year, q, null, predajeByMonth, metricKeys);
+      var prodColorCls = gynTempoDetailClass(pPct, expectedPct);
       var monthlyPlans = plnenieMonthlyPlans(year, q, p.plan);
       var pPredBasis = p.isVirtual
         ? metricKeys.reduce(function(acc, pk){
@@ -8139,6 +8252,7 @@ function gynPlnenieRenderRep(el, user, data) {
       var prodPredHtml = (pPredikcia !== null && p.plan > 0)
         ? '<div class="prod-pred">predikcia konca kvartálu <span>' + plnenieFormatPct(pPredikcia) + '</span></div>'
         : '';
+      var tempoHtml = (p.plan > 0) ? gynTempoLineHtml(pPct, expectedPct, false) : '';
 
       // Trhový podiel tlačidlo (ak má pharma dáta)
       var pkLow = p.name.trim().toLowerCase();
@@ -8161,6 +8275,7 @@ function gynPlnenieRenderRep(el, user, data) {
         moneyHtml +
         patientHintHtml +
         prodPredHtml +
+        tempoHtml +
         '<div class="month-rows">' + monthRowsHtml + '</div>' +
         (msBtnHtml || distBtnHtml ? '<div class="prod-action-row">' + msBtnHtml + distBtnHtml + '</div>' : '') +
       '</div>';
@@ -8262,10 +8377,16 @@ function gynPlnenieRenderMgr(el, user, data) {
   var prodAggs = [];
   Object.keys(prodNameByKey).forEach(function(pk){
     var pName = prodNameByKey[pk], pv=0, sv=0;
+    var prodByMonth = {};
     reps.forEach(function(r){
       var pl=(data.plan&&data.plan[r.login])||{};
       var pr=(data.predaje&&data.predaje[r.login])||{total:{}};
       pv+=pl[pk]||0; sv+=(pr.total&&pr.total[pk])||0;
+      var byMonth = (data.predaje && data.predaje[r.login] && data.predaje[r.login].byMonth) || {};
+      Object.keys(byMonth).forEach(function(m){
+        if(!prodByMonth[m]) prodByMonth[m] = {};
+        prodByMonth[m][pk] = (parseFloat(prodByMonth[m][pk]) || 0) + (parseFloat(byMonth[m] && byMonth[m][pk]) || 0);
+      });
     });
     if(pv>0||sv>0) {
       var prodActual = 0, prodBasis = 0;
@@ -8277,7 +8398,9 @@ function gynPlnenieRenderMgr(el, user, data) {
         prodBasis += b.planBasis;
       });
       var predikcia = prodBasis > 0 ? plnenieCalcPredikciaSummary(pv, prodActual, q, year, prodBasis) : null;
-      prodAggs.push({ key:pk, name:pName, plan:pv, predaj:sv, pct:pv>0?sv/pv*100:null, predikcia:predikcia });
+      var pct = pv>0?sv/pv*100:null;
+      var expectedPct = plnenieExpectedProgressPct(year, q, null, prodByMonth, [pk]);
+      prodAggs.push({ key:pk, name:pName, plan:pv, predaj:sv, pct:pct, predikcia:predikcia, expectedPct:expectedPct, tempoPct:gynTempoPct(pct, expectedPct) });
     }
   });
 
@@ -8306,11 +8429,19 @@ function gynPlnenieRenderMgr(el, user, data) {
       else otherP.push(p);
     });
     function renderProdCards(list) {
+      list = (list || []).slice().sort(function(a,b){
+        var ao = gynPatchFirstOrder(a.name || a.key), bo = gynPatchFirstOrder(b.name || b.key);
+        if(ao !== bo) return ao - bo;
+        return 0;
+      });
       var out = '<div class="pl-sum-prods">';
       list.forEach(function(p){
-        var pc = plnenieColorClass(p.pct);
+        var pc = gynTempoPlClass(p.pct, p.expectedPct);
         var predHtml = (p.predikcia !== null && p.predikcia !== undefined)
           ? '<span style="font-size:11.5px;color:#64748B;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;min-width:0">predikcia <strong style="color:#334155;font-weight:700;font-size:11.5px">' + plnenieFormatPct(p.predikcia) + '</strong></span>'
+          : '';
+        var tempoHtml = p.plan > 0 && p.tempoPct !== null
+          ? '<span class="pl-sum-prod-tempo ' + pc.replace('pl-', '') + '">aktuálne má byť <strong>' + plnenieFormatPct(p.expectedPct) + '</strong></span>'
           : '';
         var pctAttr  = (p.pct !== null && !isNaN(p.pct)) ? p.pct : '';
         var initVal  = (p.pct !== null && !isNaN(p.pct)) ? '0,00%' : gynFmtPctOrEur(p.pct, p.predaj);
@@ -8319,6 +8450,7 @@ function gynPlnenieRenderMgr(el, user, data) {
           '<div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px">' +
             '<span class="pl-sum-prod-name">' + gynEsc(p.name) + '</span>' +
             predHtml +
+            tempoHtml +
           '</div>' +
           '<strong class="'+pc+'" data-pct="'+pctAttr+'" style="flex-shrink:0">' + initVal + '</strong>' +
           '<span class="pl-sum-prod-chev" style="flex-shrink:0">›</span>' +
