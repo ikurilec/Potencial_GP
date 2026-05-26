@@ -2482,7 +2482,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.92';
+var APP_VERSION = '2.21.93';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7302,7 +7302,7 @@ function gynOpenDistrictFulfillment(productName, oblast, keysPipe, login) {
     districtRows.forEach(function(r){
       var share = distPlanEurTotal > 0 ? (r.plan_eur / distPlanEurTotal) : 0;
       var actual = gynDistrictActualForKeys(data, login, keys, r.okres);
-      var districtSales = actual.hasReal ? actual.eur : (totalSalesEur * share);
+      var districtSales = actual.hasReal ? actual.eur : (hasDistrictSales ? 0 : (totalSalesEur * share));
       var donePac = actual.hasReal && actual.pacienti > 0 ? actual.pacienti : (r.eur_na_pacienta > 0 ? districtSales / r.eur_na_pacienta : 0);
       var missPac = Math.max((r.plan_pacienti || 0) - donePac, 0);
       var pct = r.plan_eur > 0 ? districtSales / r.plan_eur * 100 : null;
