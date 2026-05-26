@@ -2458,7 +2458,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.88';
+var APP_VERSION = '2.21.89';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -19793,15 +19793,40 @@ function lkCreamContactedKey(login, key, now) {
   return 'lekarne_cream_contacted_' + lkCreamContactMonthKey(now) + '_' + user + '_' + String(key || '');
 }
 
-function lkIsCreamContacted(login, key, now) {
-  if (!key) return false;
+function lkCreamContactedAtKey(login, key, now) {
+  return lkCreamContactedKey(login, key, now) + '_at';
+}
+
+function lkCreamContactDateText(value) {
+  var s = String(value || '').trim();
+  if (!s) return '';
+  var iso = s.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (iso) return parseInt(iso[3], 10) + '.' + parseInt(iso[2], 10) + '.' + iso[1] + ' ' + iso[4] + ':' + iso[5];
+  var sk = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);
+  if (sk) return sk[1] + '.' + sk[2] + '.' + sk[3] + (sk[4] ? ' ' + sk[4] + ':' + sk[5] : '');
+  return s;
+}
+
+function lkCreamContactInfo(login, key, now) {
+  if (!key) return { done: false, at: '' };
   var rows = [];
   if (typeof LK_STATE !== 'undefined' && Array.isArray(LK_STATE && LK_STATE._rows)) rows = rows.concat(LK_STATE._rows);
   if (typeof LK_MGR_ALL !== 'undefined' && Array.isArray(LK_MGR_ALL)) rows = rows.concat(LK_MGR_ALL);
   for (var i = 0; i < rows.length; i++) {
-    if (rows[i] && rows[i].key === key && rows[i].creamContacted) return true;
+    if (rows[i] && rows[i].key === key && rows[i].creamContacted) {
+      return { done: true, at: rows[i].creamContactedAt || '' };
+    }
   }
-  try { return localStorage.getItem(lkCreamContactedKey(login, key, now)) === '1'; } catch(e) { return false; }
+  try {
+    if (localStorage.getItem(lkCreamContactedKey(login, key, now)) === '1') {
+      return { done: true, at: localStorage.getItem(lkCreamContactedAtKey(login, key, now)) || '' };
+    }
+  } catch(e) {}
+  return { done: false, at: '' };
+}
+
+function lkIsCreamContacted(login, key, now) {
+  return lkCreamContactInfo(login, key, now).done;
 }
 
 function lkSetCreamContactedInRows(key) {
@@ -19822,7 +19847,10 @@ function lkMarkCreamContacted(key, ev) {
     ev.stopPropagation();
   }
   if (!key) return;
-  try { localStorage.setItem(lkCreamContactedKey(null, key), '1'); } catch(e) {}
+  try {
+    localStorage.setItem(lkCreamContactedKey(null, key), '1');
+    localStorage.setItem(lkCreamContactedAtKey(null, key), new Date().toISOString());
+  } catch(e) {}
   lkSetCreamContactedInRows(key);
   try {
     fetch(scriptUrl('action=setLekarenKremContact&key=' + encodeURIComponent(key) + '&username=' + encodeURIComponent(lkSessionUsername()) + '&month=' + encodeURIComponent(lkCreamContactMonthKey()) + '&_t=' + Date.now()), { cache: 'no-store' })
@@ -19838,11 +19866,13 @@ function lkMarkCreamContacted(key, ev) {
 
 function lkCreamContactButtonHtml(l, tab, mode) {
   if (tab !== 'reaktivacia' || !l || (!l.isReaktivacia && !l.isKrmPotential)) return '';
-  var done = lkIsCreamContacted(null, l.key);
+  var contact = lkCreamContactInfo(null, l.key);
+  var done = contact.done;
+  var atText = lkCreamContactDateText(contact.at);
   if (mode === 'manager') {
-    return '<div class="lk-contact-status ' + (done ? 'done' : '') + '">' + (done ? 'Reprezentant už oslovil túto lekáreň' : 'Reprezentant ešte neoslovil túto lekáreň') + '</div>';
+    return '<div class="lk-contact-status ' + (done ? 'done' : '') + '">' + (done ? 'Reprezentant oslovil túto lekáreň' + (atText ? ' dňa ' + lkEsc(atText) : '') : 'Reprezentant ešte neoslovil túto lekáreň') + '</div>';
   }
-  if (done) return '<button type="button" class="lk-contact-btn done" onclick="event.stopPropagation()" disabled>Oslovená lekáreň</button>';
+  if (done) return '<button type="button" class="lk-contact-btn done" onclick="event.stopPropagation()" disabled>Oslovená lekáreň' + (atText ? ' dňa ' + lkEsc(atText) : '') + '</button>';
   return '<button type="button" class="lk-contact-btn" onclick="lkMarkCreamContacted(\'' + lkEscAttr(l.key) + '\', event)">Označiť ako oslovenú</button>';
 }
 
