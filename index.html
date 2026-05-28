@@ -6249,15 +6249,21 @@ var GYN_VIRTUAL_PRODUCTS = [
     district: false
   }
 ];
-// Mapovanie PILL login → PATCH login (rovnaký región, prefix I → A)
-// Používa sa na presmerovanie produktov ktoré patria k patch repovi ale predávajú ich pill repi
-var GYN_PILL_TO_PATCH = {
-  'b.sivakova':       'k.basternakova',  // BAPI → BAPA
-  'a.almanova':       'sepa',            // SEPI → SEPA
-  'l.petrasova':      'm.bohacik',       // STPI → STPA
-  'j.tavoda':         'm.olejnakova',    // VYPI → VYPA
-  'k.stefanovicova':  'a.slezackova'     // ZAPI → ZAPA
-};
+// Mapovanie PILL login → PATCH login — dynamicky z regiónov (XXPI → XXPA)
+// Netreba meniť keď sa zmení reprezentant — páruje sa podľa kódu regiónu, nie loginu
+function gynGetPillToPatch() {
+  var pillReps = {}, patchReps = {};
+  Object.keys(USERS_LOCAL).forEach(function(login) {
+    var reg = String((USERS_LOCAL[login] && USERS_LOCAL[login].region) || '').trim().toUpperCase();
+    if (/^[A-Z]{2}PI$/.test(reg)) pillReps[reg.slice(0,2)] = login;
+    else if (/^[A-Z]{2}PA$/.test(reg)) patchReps[reg.slice(0,2)] = login;
+  });
+  var map = {};
+  Object.keys(pillReps).forEach(function(prefix) {
+    if (patchReps[prefix]) map[pillReps[prefix]] = patchReps[prefix];
+  });
+  return map;
+}
 // Produkty ktoré sa majú presunúť z pill repa na zodpovedajúceho patch repa
 var GYN_REASSIGN_TO_PATCH = ['azalia'];
 
@@ -6537,10 +6543,11 @@ function gynEnhanceProductsForDisplay(products, plan, predajeTotal, linia) {
 
 function gynPreprocessData(data) {
   if(!data || !data.predaje) return data;
+  var _pillToPatch = gynGetPillToPatch();
   // 1) Reassign — produkty ako Azalia presunúť z pill repa na patch repa
   GYN_REASSIGN_TO_PATCH.forEach(function(prod){
-    Object.keys(GYN_PILL_TO_PATCH).forEach(function(pillLogin){
-      var patchLogin = GYN_PILL_TO_PATCH[pillLogin];
+    Object.keys(_pillToPatch).forEach(function(pillLogin){
+      var patchLogin = _pillToPatch[pillLogin];
       if(data.plan && data.plan[pillLogin] && data.plan[pillLogin][prod]) {
         if(!data.plan[patchLogin]) data.plan[patchLogin] = {};
         data.plan[patchLogin][prod] = (data.plan[patchLogin][prod]||0) + data.plan[pillLogin][prod];
@@ -6573,8 +6580,8 @@ function gynPreprocessData(data) {
     if(GYN_PRODUCT_LINIA[pk] === 'both') BOTH_PRODS.push(pk);
   });
   BOTH_PRODS.forEach(function(prod){
-    Object.keys(GYN_PILL_TO_PATCH).forEach(function(pillLogin){
-      var patchLogin = GYN_PILL_TO_PATCH[pillLogin];
+    Object.keys(_pillToPatch).forEach(function(pillLogin){
+      var patchLogin = _pillToPatch[pillLogin];
       var pillP = data.predaje[pillLogin];
       if(!pillP || !pillP.total || !pillP.total[prod]) return;
       if(!data.predaje[patchLogin]) data.predaje[patchLogin] = {total:{}, byMonth:{}};
