@@ -896,6 +896,8 @@
   .line-switch-btn:active{transform:scale(.96)}
   .line-diag-btn{width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#CBD5E1;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.20);cursor:pointer;-webkit-tap-highlight-color:transparent}
   .line-diag-btn:active{transform:scale(.94)}
+  .line-enable-btn{font-family:var(--font-display);font-size:11px;font-weight:700;letter-spacing:.02em;color:#0C1E35;background:#fff;border:1px solid rgba(255,255,255,.30);border-radius:18px;padding:6px 12px;min-height:30px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.22);-webkit-tap-highlight-color:transparent}
+  .line-enable-btn:active{transform:scale(.96)}
   .note-wrap{background:#FFFBEB;border-radius:10px;padding:10px 12px;margin:10px 0 4px;border:1px solid #FDE68A}
   .note-label{font-size:10px;font-weight:600;color:#92400E;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px}
   .note-text{font-size:12px;color:#78350F;line-height:1.5;white-space:pre-wrap}
@@ -2556,7 +2558,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.23.2';
+var APP_VERSION = '2.23.3';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5939,6 +5941,39 @@ function mgrShowLineDiag(){
   msg += '\nDual session uložená: ' + (dual ? 'áno' : 'nie');
   alert(msg);
 }
+// Aktivuj prepínač línie BEZ odhlásenia — re-auth oba backendy na pozadí (obchádza biely-screen logout)
+function mgrEnableLineSwitch(){
+  var s = getSession();
+  if(!s || !s.username){ alert('Nie si prihlásený.'); return; }
+  var pwd = prompt('Zadaj svoje heslo pre zapnutie prepínača Golem ↔ Gyn:');
+  if(pwd === null) return;            // zrušené
+  if(!pwd){ alert('Heslo je prázdne.'); return; }
+  var lp = '?action=login&username=' + encodeURIComponent(s.username) +
+           '&password=' + encodeURIComponent(pwd) +
+           '&device_id=' + encodeURIComponent(authDeviceId());
+  var gpF  = fetch(SCRIPT_URL     + lp).then(function(r){ return r.json(); }).catch(function(){ return {ok:false}; });
+  var gynF = fetch(GYN_SCRIPT_URL + lp).then(function(r){ return r.json(); }).catch(function(){ return {ok:false}; });
+  Promise.all([gpF, gynF]).then(function(res){
+    var gp = res[0], gyn = res[1];
+    mgrCaptureLineDiag(s.username, gp, gyn);
+    mgrStoreDualIfEligible(s.username, gp, gyn);
+    if(mgrLineSwitchAvailable()){
+      // Re-login pregeneroval session tokeny — obnov aktuálnu session čerstvým tokenom danej línie
+      var d = mgrGetDual();
+      var cur = (s.line === 'gyn') ? 'gyn' : 'gp';
+      var fresh = (cur === 'gyn') ? d.gyn : d.gp;
+      if(fresh) setSession(fresh);
+      mgrRenderLineSwitch();
+      alert('Hotovo! Prepínač Golem | Gyn je teraz aktívny.');
+    } else {
+      var why = '';
+      if(!gp.ok)  why += '\n• Golem login zlyhal (nesprávne heslo?).';
+      if(!gyn.ok) why += '\n• Gyn login zlyhal — skontroluj, či máš v GYN Google Sheets (hárok Pouzivatelia) rovnaké meno + heslo.';
+      if(gp.ok && gyn.ok) why += '\n• Oba loginy OK, ale rola v Golem nie je "admin".';
+      alert('Prepínač sa nepodarilo aktivovať.' + (why || ''));
+    }
+  }).catch(function(){ alert('Chyba siete pri prihlasovaní.'); });
+}
 function mgrLineSwitchHtml(activeLine){
   function btn(line, label){
     return '<button class="line-switch-btn' + (activeLine === line ? ' active' : '') +
@@ -5955,7 +5990,9 @@ function mgrRenderLineSwitch(){
   var isAdmin = false; try { isAdmin = mgrDetectRole(s) === 'admin'; } catch(e){}
   var html = '';
   if(avail) html += mgrLineSwitchHtml(active);
-  // DOČASNÉ ⓘ — pre admina vždy (aj keď prepínač nie je dostupný), nech vie spustiť diagnostiku
+  // Admin bez aktívneho prepínača → tlačidlo na zapnutie (re-auth bez odhlásenia)
+  else if(isAdmin) html += '<button class="line-enable-btn" onclick="mgrEnableLineSwitch()">Prepnúť líniu</button>';
+  // DOČASNÉ ⓘ — pre admina vždy, nech vie spustiť diagnostiku
   if(isAdmin || avail) html += '<button class="line-diag-btn" onclick="mgrShowLineDiag()" aria-label="Diagnostika línie">ⓘ</button>';
   ['line-switch-slot', 'gyn-line-switch-slot'].forEach(function(id){
     var el = document.getElementById(id);
