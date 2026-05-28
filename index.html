@@ -2521,7 +2521,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.22.14';
+var APP_VERSION = '2.22.15';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6435,10 +6435,11 @@ function gynPatientDistrictListForKeys(data, region, productKeys) {
       if(!rows) return;
       Object.keys(rows).forEach(function(okresKey){
         var rec = rows[okresKey] || {};
-        if(!out[okresKey]) out[okresKey] = { okres: okresKey, plan_eur: 0, plan_pacienti: 0, plan_balenia: 0 };
+        if(!out[okresKey]) out[okresKey] = { okres: okresKey, plan_eur: 0, plan_pacienti: 0, plan_balenia: 0, plan_trh: 0 };
         out[okresKey].plan_eur += parseFloat(rec.plan_eur) || 0;
         out[okresKey].plan_pacienti += parseFloat(rec.plan_pacienti) || 0;
         out[okresKey].plan_balenia += parseFloat(rec.plan_balenia) || 0;
+        if(parseFloat(rec.plan_trh) > 0) out[okresKey].plan_trh = Math.max(out[okresKey].plan_trh, parseFloat(rec.plan_trh));
       });
     });
   });
@@ -7596,7 +7597,9 @@ function gynOpenDistrictFulfillment(productName, oblast, keysPipe, login) {
       var pctBadge = pct !== null
         ? '<div class="gyn-district-pct-badge ' + tempoCls + '">Plnenie v okrese: ' + plnenieFormatPct(pct) + '</div>'
         : '';
-      var trhInfo = gynGetDistrictTotalMarket(productName, oblast, r.okres);
+      var trhInfo = r.plan_trh > 0
+        ? { total: Math.round(r.plan_trh), unit: 'bal.' }
+        : gynGetDistrictTotalMarket(productName, oblast, r.okres);
       var trhBadge = trhInfo
         ? '<div class="gyn-district-trh-badge">🏪 Trh: ' + gynPatientFmt(trhInfo.total) + ' ' + trhInfo.unit + '</div>'
         : '';
