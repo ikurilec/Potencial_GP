@@ -4,7 +4,7 @@
 // ║  cache-first pre ostatné assety (rýchly štart, offline ready).║
 // ╚══════════════════════════════════════════════════════════════╝
 
-var CACHE_NAME = 'potencial-vl-v6-avatars';
+var CACHE_NAME = 'potencial-vl-v7-ios-reload-fix';
 
 self.addEventListener('install', function(event){
   // Okamžitá aktivácia — nechceme čakať na zavretie všetkých kariet
@@ -22,15 +22,9 @@ self.addEventListener('activate', function(event){
         // Prevziať kontrolu nad všetkými otvorenými oknami okamžite
         return self.clients.claim();
       })
-      .then(function(){
-        // Vynútiť reload všetkých otvorených okien — dostanú čerstvé HTML
-        return self.clients.matchAll({ type: 'window' });
-      })
-      .then(function(clients){
-        clients.forEach(function(client){
-          try { client.navigate(client.url); } catch(e){}
-        });
-      })
+    // POZN.: zámerne NErobíme client.navigate(client.url) — na iOS standalone PWA
+    // vynútená navigácia pri aktivácii SW končí bielou obrazovkou. Reload rieši appReload()
+    // vo frontende (odregistruje SW a reloadne), čo iOS vykreslí korektne.
   );
 });
 

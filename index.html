@@ -2563,7 +2563,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.23.11';
+var APP_VERSION = '2.23.12';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -2629,13 +2629,32 @@ function _isAppBusy(){
   );
 }
 
+// Reload, ktorý najprv odregistruje service worker. Na iOS standalone PWA totiž reload
+// stránky ovládanej service workerom často skončí bielou obrazovkou — bez SW sa vykreslí
+// normálne a SW sa po načítaní zase sám zaregistruje.
+function appReload(){
+  try {
+    if('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations){
+      var done = false;
+      var go = function(){ if(done) return; done = true; try { location.reload(); } catch(e){} };
+      navigator.serviceWorker.getRegistrations()
+        .then(function(regs){ return Promise.all((regs||[]).map(function(r){ try { return r.unregister(); } catch(e){ return null; } })); })
+        .catch(function(){})
+        .then(go);
+      setTimeout(go, 1200);   // poistka, keby unregister visel
+    } else {
+      location.reload();
+    }
+  } catch(e){ try { location.reload(); } catch(e2){} }
+}
+
 function _applySwUpdate(){
   if(_isAppBusy()){
     _swUpdatePending = true;
   } else {
     _swUpdatePending = false;
     showSwToast('Aktualizujem appku…');
-    setTimeout(function(){ location.reload(); }, 900);
+    setTimeout(function(){ appReload(); }, 900);
   }
 }
 
@@ -6254,7 +6273,7 @@ function confirmLogout() {
     }
   } catch(e){}
   clearSession();
-  location.reload();
+  appReload();
 }
 
 function showSessionExpiredModal() {
@@ -7021,7 +7040,7 @@ function gynEnter(user) {
 
 function gynExit() {
   clearSession();
-  location.reload();
+  appReload();
 }
 
 function gynLoadRepList(user) {
