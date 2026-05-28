@@ -2558,7 +2558,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.23.4';
+var APP_VERSION = '2.23.5';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5911,7 +5911,10 @@ function mgrStoreDualIfEligible(username, gpData, gynData){
 function mgrLineSwitchAvailable(){
   var d = mgrGetDual();
   if(!(d && d.gp && d.gyn)) return false;
-  return mgrDetectRole(d.gp) === 'admin';
+  if(mgrDetectRole(d.gp) === 'admin') return true;
+  // Poistka — ak by stored gp rola nebola admin, akceptuj živú Golem admin session
+  try { var s = getSession(); if(s && s.line !== 'gyn' && mgrDetectRole(s) === 'admin') return true; } catch(e){}
+  return false;
 }
 // ── DOČASNÁ diagnostika prepínača línie (odstrániť po vyriešení) ──
 var MGR_LS_DIAG_KEY = 'potencial_gp_ls_diag';
@@ -5941,10 +5944,16 @@ function mgrShowLineDiag(){
   msg += '\nDual session uložená: ' + (dual ? 'áno' : 'nie');
   alert(msg);
 }
-// Aktivuj prepínač línie BEZ odhlásenia — re-auth oba backendy na pozadí (obchádza biely-screen logout)
+// Aktivuj prepínač línie BEZ odhlásenia — re-auth oba backendy na pozadí (obchádza biely-screen logout).
+// Admin status berieme zo ŽIVEJ session (admin pohľad beží len pre admina), nie z role čerstvého
+// loginu (Golem login môže vrátiť 'rep' fallback pri prázdnej bunke role v Sheets).
 function mgrEnableLineSwitch(){
   var s = getSession();
   if(!s || !s.username){ alert('Nie si prihlásený.'); return; }
+  if(s.line === 'gyn' || mgrDetectRole(s) !== 'admin'){
+    alert('Prepínač línie je dostupný len pre admina v Golem pohľade.');
+    return;
+  }
   var pwd = prompt('Zadaj svoje heslo pre zapnutie prepínača Golem ↔ Gyn:');
   if(pwd === null) return;            // zrušené
   if(!pwd){ alert('Heslo je prázdne.'); return; }
@@ -5956,22 +5965,21 @@ function mgrEnableLineSwitch(){
   Promise.all([gpF, gynF]).then(function(res){
     var gp = res[0], gyn = res[1];
     mgrCaptureLineDiag(s.username, gp, gyn);
-    mgrStoreDualIfEligible(s.username, gp, gyn);
-    if(mgrLineSwitchAvailable()){
-      // Re-login pregeneroval session tokeny — obnov aktuálnu session čerstvým tokenom danej línie
-      var d = mgrGetDual();
-      var cur = (s.line === 'gyn') ? 'gyn' : 'gp';
-      var fresh = (cur === 'gyn') ? d.gyn : d.gp;
-      if(fresh) setSession(fresh);
-      mgrRenderLineSwitch();
-      alert('Hotovo! Prepínač Golem | Gyn je teraz aktívny.');
-    } else {
-      var why = '';
-      if(!gp.ok)  why += '\n• Golem login zlyhal (nesprávne heslo?).';
-      if(!gyn.ok) why += '\n• Gyn login zlyhal — skontroluj, či máš v GYN Google Sheets (hárok Pouzivatelia) rovnaké meno + heslo.';
-      if(gp.ok && gyn.ok) why += '\n• Oba loginy OK, ale rola v Golem nie je "admin".';
-      alert('Prepínač sa nepodarilo aktivovať.' + (why || ''));
-    }
+    if(!gp.ok){ alert('Golem login zlyhal — nesprávne heslo?'); return; }
+    if(!gyn.ok){ alert('Gyn login zlyhal — skontroluj, či máš v GYN Google Sheets (hárok Pouzivatelia) rovnaké meno + heslo.'); return; }
+    // GP dual = aktuálna admin session (rola admin je istá) + čerstvé tokeny z gp re-loginu
+    var gpUser;
+    try { gpUser = JSON.parse(JSON.stringify(s)); } catch(e){ gpUser = { username: s.username, name: s.name, role: s.role, region: s.region }; }
+    delete gpUser.line;
+    gpUser.role = 'admin';   // živá session dokazuje admina — zafixuj
+    if(gp.session_token)      gpUser.session_token = String(gp.session_token);
+    if(gp.session_expires_at) gpUser.session_expires_at = String(gp.session_expires_at);
+    if(gp.device_id)          gpUser.device_id = String(gp.device_id);
+    var gynUser = mgrBuildGynUser(s.username, gyn);
+    try { localStorage.setItem(MGR_DUAL_KEY, JSON.stringify({ username: s.username, gp: gpUser, gyn: gynUser })); } catch(e){}
+    setSession(gpUser);      // obnov aktuálnu session čerstvým gp tokenom, ostávame admin
+    mgrRenderLineSwitch();
+    alert('Hotovo! Prepínač Golem | Gyn je teraz aktívny.');
   }).catch(function(){ alert('Chyba siete pri prihlasovaní.'); });
 }
 function mgrLineSwitchHtml(activeLine){
