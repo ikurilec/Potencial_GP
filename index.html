@@ -2563,7 +2563,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.23.12';
+var APP_VERSION = '2.23.13';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6028,7 +6028,7 @@ function mgrRenderLineSwitch(){
   var inGyn = !!(s && s.line === 'gyn');
   var html = '';
   if(mgrShouldShowLineToggle()){
-    var label = inGyn ? 'Golem' : 'Gyn';
+    var label = inGyn ? 'Gol' : 'Gyn';
     html = '<button class="line-toggle-btn" onclick="mgrToggleLine()">' + label + '</button>';
   }
   ['line-switch-slot', 'gyn-line-switch-slot'].forEach(function(id){
@@ -7099,11 +7099,12 @@ function gynRenderShell(user) {
   document.getElementById('gyn-view').innerHTML =
     '<div class="gyn-inner">' +
       '<div class="gyn-mgr-hdr">' +
-        '<div class="gyn-mgr-hdr-row">' +
-          '<div style="flex:1;min-width:0">' +
+        '<div style="position:relative;z-index:1">' +
             hdrInnerHtml +
-          '</div>' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">' +
+            '<div></div>' +
           '<div style="display:flex;align-items:center;gap:10px">' +
+            '<div class="line-switch-slot" id="gyn-line-switch-slot"></div>' +
             '<div class="logout-wrap">' +
               '<button class="logout-btn" onclick="gynExit()" aria-label="Odhlásiť"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>' +
               '<span class="logout-btn-lbl">Odhlásiť</span>' +
@@ -7113,8 +7114,8 @@ function gynRenderShell(user) {
               '<div class="hdr-avatar-edit">✎</div>' +
             '</div>' +
           '</div>' +
+          '</div>' +
         '</div>' +
-        '<div class="line-switch-slot gyn-line-switch-row" id="gyn-line-switch-slot"></div>' +
       '</div>' +
       '<nav class="gyn-nav" id="gyn-nav">' +
         '<button class="gyn-nav-btn active" data-tab="plnenie"     onclick="gynNavTo(\'plnenie\')">💊 Plnenie</button>' +
