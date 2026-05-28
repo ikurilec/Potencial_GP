@@ -894,6 +894,8 @@
   .line-switch-btn.active{background:#fff;color:#0C1E35;box-shadow:0 1px 3px rgba(0,0,0,.22)}
   .line-switch-btn:not(.active):hover{color:#fff}
   .line-switch-btn:active{transform:scale(.96)}
+  .line-diag-btn{width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#CBD5E1;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.20);cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .line-diag-btn:active{transform:scale(.94)}
   .note-wrap{background:#FFFBEB;border-radius:10px;padding:10px 12px;margin:10px 0 4px;border:1px solid #FDE68A}
   .note-label{font-size:10px;font-weight:600;color:#92400E;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px}
   .note-text{font-size:12px;color:#78350F;line-height:1.5;white-space:pre-wrap}
@@ -2554,7 +2556,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.23.1';
+var APP_VERSION = '2.23.2';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5909,6 +5911,34 @@ function mgrLineSwitchAvailable(){
   if(!(d && d.gp && d.gyn)) return false;
   return mgrDetectRole(d.gp) === 'admin';
 }
+// ── DOČASNÁ diagnostika prepínača línie (odstrániť po vyriešení) ──
+var MGR_LS_DIAG_KEY = 'potencial_gp_ls_diag';
+function mgrCaptureLineDiag(username, gpData, gynData){
+  var detected = false;
+  try { detected = mgrDetectRole(mgrBuildGpUser(username, gpData)) === 'admin'; } catch(e){}
+  try {
+    localStorage.setItem(MGR_LS_DIAG_KEY, JSON.stringify({
+      ts: Date.now(), user: username,
+      gpOk:  !!(gpData  && gpData.ok),  gpRole:  (gpData  && gpData.role)  || '',
+      gynOk: !!(gynData && gynData.ok), gynRole: (gynData && gynData.role) || '',
+      detectedAdmin: detected
+    }));
+  } catch(e){}
+}
+function mgrShowLineDiag(){
+  var d = null; try { d = JSON.parse(localStorage.getItem(MGR_LS_DIAG_KEY) || 'null'); } catch(e){}
+  var dual = mgrGetDual();
+  var msg = 'Diagnostika prepínača línie\n\nVerzia appky: ' + APP_VERSION + '\n';
+  if(!d){
+    msg += '\nŽiadny záznam z posledného prihlásenia.\nOdhlás sa a znova prihlás (fresh login).';
+  } else {
+    msg += '\nGolem login: ' + (d.gpOk ? 'OK' : 'ZLYHAL') + '  (role: "' + d.gpRole + '")';
+    msg += '\nGyn login: '   + (d.gynOk ? 'OK' : 'ZLYHAL') + '  (role: "' + d.gynRole + '")';
+    msg += '\nDetekovaný admin: ' + (d.detectedAdmin ? 'áno' : 'nie');
+  }
+  msg += '\nDual session uložená: ' + (dual ? 'áno' : 'nie');
+  alert(msg);
+}
 function mgrLineSwitchHtml(activeLine){
   function btn(line, label){
     return '<button class="line-switch-btn' + (activeLine === line ? ' active' : '') +
@@ -5922,7 +5952,11 @@ function mgrRenderLineSwitch(){
   var avail = mgrLineSwitchAvailable();
   var s = getSession();
   var active = (s && s.line === 'gyn') ? 'gyn' : 'gp';
-  var html = avail ? mgrLineSwitchHtml(active) : '';
+  var isAdmin = false; try { isAdmin = mgrDetectRole(s) === 'admin'; } catch(e){}
+  var html = '';
+  if(avail) html += mgrLineSwitchHtml(active);
+  // DOČASNÉ ⓘ — pre admina vždy (aj keď prepínač nie je dostupný), nech vie spustiť diagnostiku
+  if(isAdmin || avail) html += '<button class="line-diag-btn" onclick="mgrShowLineDiag()" aria-label="Diagnostika línie">ⓘ</button>';
   ['line-switch-slot', 'gyn-line-switch-slot'].forEach(function(id){
     var el = document.getElementById(id);
     if(el) el.innerHTML = html;
@@ -6086,6 +6120,7 @@ function doLogin() {
     var gpData  = results[0];
     var gynData = results[1];
     // Admin v oboch linkách → ulož dual session pre prepínač Golem ↔ Gyn (inak no-op)
+    try { mgrCaptureLineDiag(username, gpData, gynData); } catch(e){}
     mgrStoreDualIfEligible(username, gpData, gynData);
     if(gpData.ok) {
       loginSuccess(username, gpData.name, gpData.role, gpData.region, gpData);
