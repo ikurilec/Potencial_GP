@@ -901,6 +901,8 @@
   /* Jedno toggle tlačidlo línie (Golem ↔ Gyn) vedľa Odhlásiť */
   .line-toggle-btn{font-family:var(--font-display);font-size:12px;font-weight:800;letter-spacing:.02em;color:#0C1E35;background:#fff;border:1.5px solid rgba(255,255,255,.35);border-radius:20px;padding:8px 16px;min-height:38px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25);-webkit-tap-highlight-color:transparent}
   .line-toggle-btn:active{transform:scale(.95)}
+  /* V gyn hlavičke je toggle vlastný rad POD názvom (nech neprekrýva "Manažérsky pohľad") */
+  .gyn-line-switch-row{position:relative;z-index:1;display:flex;margin-top:10px}
   .note-wrap{background:#FFFBEB;border-radius:10px;padding:10px 12px;margin:10px 0 4px;border:1px solid #FDE68A}
   .note-label{font-size:10px;font-weight:600;color:#92400E;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px}
   .note-text{font-size:12px;color:#78350F;line-height:1.5;white-space:pre-wrap}
@@ -2561,7 +2563,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.23.8';
+var APP_VERSION = '2.23.9';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7091,7 +7093,6 @@ function gynRenderShell(user) {
             hdrInnerHtml +
           '</div>' +
           '<div style="display:flex;align-items:center;gap:10px">' +
-            '<div class="line-switch-slot" id="gyn-line-switch-slot"></div>' +
             '<div class="logout-wrap">' +
               '<button class="logout-btn" onclick="gynExit()" aria-label="Odhlásiť"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>' +
               '<span class="logout-btn-lbl">Odhlásiť</span>' +
@@ -7102,6 +7103,7 @@ function gynRenderShell(user) {
             '</div>' +
           '</div>' +
         '</div>' +
+        '<div class="line-switch-slot gyn-line-switch-row" id="gyn-line-switch-slot"></div>' +
       '</div>' +
       '<nav class="gyn-nav" id="gyn-nav">' +
         '<button class="gyn-nav-btn active" data-tab="plnenie"     onclick="gynNavTo(\'plnenie\')">💊 Plnenie</button>' +
