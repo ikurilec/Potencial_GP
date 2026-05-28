@@ -2563,7 +2563,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.23.14';
+var APP_VERSION = '2.23.15';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -2658,20 +2658,14 @@ function _applySwUpdate(){
   }
 }
 
-// Service worker je ZÁMERNE VYPNUTÝ. Na iOS standalone PWA spôsoboval bielu obrazovku
-// po programovom reloade (update/odhlásenie) — nutný force-quit. Appka aj tak potrebuje
-// sieť (Google Sheets), takže offline cache mala marginálny prínos. Bez SW iOS reload
-// funguje normálne. Existujúce registrácie z minulosti aktívne odregistrujeme.
 if('serviceWorker' in navigator){
   try {
-    if(navigator.serviceWorker.getRegistrations){
-      navigator.serviceWorker.getRegistrations().then(function(regs){
-        (regs||[]).forEach(function(r){ try { r.unregister(); } catch(e){} });
-      }).catch(function(){});
-    }
-    if(window.caches && caches.keys){
-      caches.keys().then(function(names){ (names||[]).forEach(function(n){ try { caches.delete(n); } catch(e){} }); }).catch(function(){});
-    }
+    navigator.serviceWorker.register('./sw.js').catch(function(){});
+    var _swHadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      if(!_swHadController){ _swHadController = true; return; }
+      _applySwUpdate();
+    });
   } catch(e){}
 }
 
