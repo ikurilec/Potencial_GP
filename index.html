@@ -1334,7 +1334,8 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .gyn-lev-nas-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
   .gyn-lev-nas-name{font-size:12px;font-weight:800;color:#1E40AF;font-family:var(--font-display)}
   .gyn-lev-nas-pct{font-size:12px;font-weight:700;color:#1E40AF;margin-left:auto}
-  .gyn-lev-clear-btn{margin-left:auto;padding:4px 11px;border-radius:14px;border:none;background:#FEE2E2;color:#DC2626;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-display);-webkit-tap-highlight-color:transparent;transition:background .12s}
+  .gyn-lev-clear-btn{margin-left:auto;padding:4px 11px;border-radius:14px;border:none;background:#FEE2E2;color:#DC2626;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-display);-webkit-tap-highlight-color:transparent;transition:background .12s,opacity .15s;opacity:0;pointer-events:none;flex-shrink:0}
+  .gyn-lev-clear-btn.visible{opacity:1;pointer-events:auto}
   .gyn-lev-clear-btn:active{background:#FECACA;transform:scale(.95)}
   .pharma-ms-trend-chart-legend-item{display:flex;align-items:center;gap:5px;font-size:10px;color:#64748B;font-weight:500;min-width:0;padding:4px 8px 4px 6px;border-radius:20px;background:#F8FAFC;border:1px solid #E2E8F0;cursor:pointer;transition:background .15s,border-color .15s;-webkit-tap-highlight-color:transparent}
   .pharma-ms-trend-chart-legend-item:active{background:#E2E8F0;border-color:#CBD5E1}
@@ -2539,7 +2540,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.22.18';
+var APP_VERSION = '2.22.19';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8280,10 +8281,13 @@ function gynPharmaRender(resp) {
         '<span class="gyn-lev-nas-name">Levosert</span>' +
         '<span class="gyn-lev-nas-pct">' + _gynPharmaPct(lastT) + '</span>' +
       '</div>';
-      // Picker header + hint
-      legHtml += '<div class="gyn-lev-picker-header"><span class="gyn-lev-picker-title">Porovnaj s konkurenciou</span></div>';
+      // Picker header s X tlačidlom (vždy v DOM, opacity 0/1 — bez layout shift)
+      legHtml += '<div class="gyn-lev-picker-header">' +
+        '<span class="gyn-lev-picker-title">Porovnaj s konkurenciou</span>' +
+        '<button id="gyn-pharma-reset-btn" class="gyn-lev-clear-btn' + (isLevosertShareMode ? ' visible' : '') + '" onclick="gynPharmaResetLines()">✕ Zrušiť výber</button>' +
+      '</div>';
       legHtml += '<div class="gyn-lev-picker-hint">👆 Ťukni na konkurenta — graf ukáže Levosert vs vybraní konkurenti</div>';
-      // Tlačidlá konkurentov + X tlačidlo vpravo dole
+      // Tlačidlá konkurentov
       legHtml += '<div class="gyn-lev-comp-grid">';
       compLines.forEach(function(c, ci){
         var color = compColors[ci % compColors.length];
@@ -8298,9 +8302,6 @@ function gynPharmaRender(resp) {
           '<span class="gyn-lev-comp-btn-pct">'+lastStr+'</span>' +
         '</button>';
       });
-      if(isLevosertShareMode) {
-        legHtml += '<button id="gyn-pharma-reset-btn" class="gyn-lev-clear-btn" onclick="gynPharmaResetLines()">✕ Zrušiť výber</button>';
-      }
       legHtml += '</div>';
       legHtml += '</div>';
     } else {
