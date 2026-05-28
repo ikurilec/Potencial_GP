@@ -1334,7 +1334,9 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .gyn-lev-nas-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
   .gyn-lev-nas-name{font-size:12px;font-weight:800;color:#1E40AF;font-family:var(--font-display)}
   .gyn-lev-nas-pct{font-size:12px;font-weight:700;color:#1E40AF;margin-left:auto}
-  .gyn-lev-clear-btn{margin-left:auto;padding:4px 11px;border-radius:14px;border:none;background:#FEE2E2;color:#DC2626;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-display);-webkit-tap-highlight-color:transparent;transition:background .12s,opacity .15s;opacity:0;pointer-events:none;flex-shrink:0}
+  .gyn-lev-comp-row{display:flex;align-items:flex-start;gap:8px}
+  .gyn-lev-comp-row .gyn-lev-comp-grid{flex:1;min-width:0}
+  .gyn-lev-clear-btn{align-self:flex-start;padding:4px 11px;border-radius:14px;border:none;background:#FEE2E2;color:#DC2626;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-display);-webkit-tap-highlight-color:transparent;transition:background .12s,opacity .15s;opacity:0;pointer-events:none;flex-shrink:0}
   .gyn-lev-clear-btn.visible{opacity:1;pointer-events:auto}
   .gyn-lev-clear-btn:active{background:#FECACA;transform:scale(.95)}
   .pharma-ms-trend-chart-legend-item{display:flex;align-items:center;gap:5px;font-size:10px;color:#64748B;font-weight:500;min-width:0;padding:4px 8px 4px 6px;border-radius:20px;background:#F8FAFC;border:1px solid #E2E8F0;cursor:pointer;transition:background .15s,border-color .15s;-webkit-tap-highlight-color:transparent}
@@ -1641,6 +1643,8 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .gyn-mgr-hdr-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;position:relative;z-index:1}
   .gyn-mgr-hdr-title{font-size:19px;font-weight:700;color:#fff;line-height:1.1;letter-spacing:.01em;font-family:var(--font-display);text-shadow:0 1px 2px rgba(0,0,0,.25)}
   .gyn-mgr-hdr-sub{font-size:10px;color:#7AABCC;margin-top:2px;letter-spacing:.04em;font-weight:500}
+  .gyn-rep-hdr-region{font-size:10.5px;color:#7AABCC;margin-top:2px;letter-spacing:.04em;font-weight:500;text-transform:uppercase}
+  .gyn-rep-hdr-name{font-size:16px;font-weight:800;color:#fff;margin-top:3px;font-family:var(--font-display);letter-spacing:-.01em;line-height:1.15}
   /* GYN NAV TABS */
   .gyn-nav{display:flex;gap:6px;margin:0 0 10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06);position:sticky;top:0;z-index:100}
   .gyn-nav-btn{flex:1;padding:13px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;background:transparent;color:#64748B;touch-action:manipulation;transition:all .2s ease;-webkit-tap-highlight-color:transparent}
@@ -2540,7 +2544,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.22.19';
+var APP_VERSION = '2.22.20';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6848,18 +6852,19 @@ function gynRenderShell(user) {
   var isRep     = user.role === 'gyn-rep';
   var roleLabel = GYN_ROLE_LABEL[user.role] || user.role;
   var liniaLabel = GYN_LINIA_LABEL[user.linia] || '';
-  var hdrTitle  = isRep ? 'Gyn linka' : 'Manažérsky pohľad';
-  var hdrSub    = isRep
-    ? gynEsc((liniaLabel||user.linia) + ' · ' + (user.region||'') + ' · ' + (user.name||''))
-    : gynEsc((user.name||'') + ' · ' + roleLabel + ' · Gynekológia');
+  var hdrInnerHtml = isRep
+    ? '<div class="gyn-mgr-hdr-title">Gyn línia</div>' +
+      '<div class="gyn-rep-hdr-region">' + gynEsc((liniaLabel||user.linia||'') + (user.region ? ' · ' + user.region : '')) + '</div>' +
+      '<div class="gyn-rep-hdr-name">' + gynEsc(user.name||'') + '</div>'
+    : '<div class="gyn-mgr-hdr-title">Manažérsky pohľad</div>' +
+      '<div class="gyn-mgr-hdr-sub">' + gynEsc((user.name||'') + ' · ' + roleLabel + ' · Gynekológia') + '</div>';
 
   document.getElementById('gyn-view').innerHTML =
     '<div class="gyn-inner">' +
       '<div class="gyn-mgr-hdr">' +
         '<div class="gyn-mgr-hdr-row">' +
           '<div style="flex:1;min-width:0">' +
-            '<div class="gyn-mgr-hdr-title">' + hdrTitle + '</div>' +
-            '<div class="gyn-mgr-hdr-sub">' + hdrSub + '</div>' +
+            hdrInnerHtml +
           '</div>' +
           '<div style="display:flex;align-items:center;gap:10px">' +
             '<div class="logout-wrap">' +
@@ -8281,13 +8286,13 @@ function gynPharmaRender(resp) {
         '<span class="gyn-lev-nas-name">Levosert</span>' +
         '<span class="gyn-lev-nas-pct">' + _gynPharmaPct(lastT) + '</span>' +
       '</div>';
-      // Picker header s X tlačidlom (vždy v DOM, opacity 0/1 — bez layout shift)
+      // Picker header (bez X tlačidla — to je vedľa gridu)
       legHtml += '<div class="gyn-lev-picker-header">' +
         '<span class="gyn-lev-picker-title">Porovnaj s konkurenciou</span>' +
-        '<button id="gyn-pharma-reset-btn" class="gyn-lev-clear-btn' + (isLevosertShareMode ? ' visible' : '') + '" onclick="gynPharmaResetLines()">✕ Zrušiť výber</button>' +
       '</div>';
       legHtml += '<div class="gyn-lev-picker-hint">👆 Ťukni na konkurenta — graf ukáže Levosert vs vybraní konkurenti</div>';
-      // Tlačidlá konkurentov
+      // Tlačidlá konkurentov + X tlačidlo vedľa
+      legHtml += '<div class="gyn-lev-comp-row">';
       legHtml += '<div class="gyn-lev-comp-grid">';
       compLines.forEach(function(c, ci){
         var color = compColors[ci % compColors.length];
@@ -8302,6 +8307,8 @@ function gynPharmaRender(resp) {
           '<span class="gyn-lev-comp-btn-pct">'+lastStr+'</span>' +
         '</button>';
       });
+      legHtml += '</div>';
+      legHtml += '<button id="gyn-pharma-reset-btn" class="gyn-lev-clear-btn' + (isLevosertShareMode ? ' visible' : '') + '" onclick="gynPharmaResetLines()">✕ Zrušiť výber</button>';
       legHtml += '</div>';
       legHtml += '</div>';
     } else {
