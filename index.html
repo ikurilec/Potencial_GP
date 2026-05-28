@@ -2482,7 +2482,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.95';
+var APP_VERSION = '2.21.96';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6170,6 +6170,20 @@ var GYN_PHARMA_PRODUCTS = {
   // Both lines (Azalia duplikovaná v dátach)
   'azalia': 1
 };
+var GYN_PACK_ONLY_PRODUCTS = {
+  'ryeqo': 1,
+  'levosert': 1,
+  'levosert shi': 1,
+  'levosert thi': 1,
+  'escapelle': 1,
+  'globifer': 1,
+  'ovosicare': 1
+};
+function gynIsPackOnlyKeys(productKeys) {
+  return (productKeys || []).some(function(k){
+    return !!GYN_PACK_ONLY_PRODUCTS[String(k || '').trim().toLowerCase()];
+  });
+}
 // Stav pharma overlayu
 var GYN_PHARMA_STATE = { open: false, produkt: null, oblast: null, kvartal: null, cache: {}, loading: {} };
 var GYN_CACHE_PREFIX = 'potencial_gyn_cache_v1:';
@@ -6302,12 +6316,13 @@ function gynPatientProductHint(data, region, productKey, predaje, plan, predajeB
   var keys = Array.isArray(productKey) ? productKey : [productKey];
   var rec = gynPatientPlanForKeys(data, region, keys);
   if(!rec || !((rec.eur_na_pacienta > 0 && rec.plan_pacienti > 0) || (rec.eur_na_balenie > 0 && rec.plan_balenia > 0))) return '';
+  var packOnly = gynIsPackOnlyKeys(keys);
   var sales = parseFloat(predaje) || 0;
   var planEur = parseFloat(plan) || rec.plan_eur || 0;
   var missing = Math.max(planEur - sales, 0);
   var currentLabel = gynPatientCurrentLabelForKeys(predajeByMonth, keys, q || GYN_APP.q);
   var rows = [];
-  if(rec.eur_na_pacienta > 0 && rec.plan_pacienti > 0) {
+  if(!packOnly && rec.eur_na_pacienta > 0 && rec.plan_pacienti > 0) {
     var donePac = sales / rec.eur_na_pacienta;
     var missPac = missing / rec.eur_na_pacienta;
     rows.push('<div class="gyn-patient-row"><span>Plán pacienti</span><strong>' + gynPatientFmt(rec.plan_pacienti) + ' pacientov</strong></div>');
@@ -7301,6 +7316,7 @@ function gynOpenDistrictFulfillment(productName, oblast, keysPipe, login) {
   var expectedPct = plnenieExpectedProgressPct(GYN_APP.year, GYN_APP.q, null, predajeByMonth, keys);
   var territoryPatient = gynPatientPlanForKeys(data, oblast, keys);
   var districtRows = gynPatientDistrictListForKeys(data, oblast, keys);
+  var packOnly = gynIsPackOnlyKeys(keys);
   var distPlanEurTotal = districtRows.reduce(function(s,r){ return s + (parseFloat(r.plan_eur) || 0); }, 0);
   var html = '';
   if(territoryPatient) {
@@ -7313,9 +7329,9 @@ function gynOpenDistrictFulfillment(productName, oblast, keysPipe, login) {
       '<div class="gyn-district-summary-grid">' +
         '<div><span>Plán EUR</span><strong>' + plnenieFormatEUR(totalPlanEur || territoryPatient.plan_eur) + '</strong></div>' +
         '<div><span>Plnenie EUR</span><strong>' + plnenieFormatEUR(totalSalesEur) + '</strong></div>' +
-        (territoryPatient.plan_pacienti > 0 ? '<div><span>Plán pacienti</span><strong>' + gynPatientFmt(territoryPatient.plan_pacienti) + '</strong></div>' : '') +
-        (territoryPatient.plan_pacienti > 0 ? '<div><span>Aktuálne pacienti</span><strong>' + gynPatientFmt(donePatients) + '</strong></div>' : '') +
-        (territoryPatient.plan_pacienti > 0 ? '<div><span>Chýba nastaviť</span><strong class="miss">' + gynPatientFmtMissing(missPatients) + '</strong></div>' : '') +
+        (!packOnly && territoryPatient.plan_pacienti > 0 ? '<div><span>Plán pacienti</span><strong>' + gynPatientFmt(territoryPatient.plan_pacienti) + '</strong></div>' : '') +
+        (!packOnly && territoryPatient.plan_pacienti > 0 ? '<div><span>Aktuálne pacienti</span><strong>' + gynPatientFmt(donePatients) + '</strong></div>' : '') +
+        (!packOnly && territoryPatient.plan_pacienti > 0 ? '<div><span>Chýba nastaviť</span><strong class="miss">' + gynPatientFmtMissing(missPatients) + '</strong></div>' : '') +
         (territoryPatient.plan_balenia > 0 ? '<div><span>Plán balenia</span><strong>' + gynPatientFmt(territoryPatient.plan_balenia) + '</strong></div>' : '') +
         (territoryPatient.plan_balenia > 0 ? '<div><span>Aktuálne balenia</span><strong>' + gynPatientFmt(donePacks) + '</strong></div>' : '') +
         (territoryPatient.plan_balenia > 0 ? '<div><span>Chýba balení</span><strong class="miss">' + gynPatientFmtMissing(missPacks) + '</strong></div>' : '') +
@@ -7351,7 +7367,7 @@ function gynOpenDistrictFulfillment(productName, oblast, keysPipe, login) {
               '<div class="gyn-district-block-row"><span>Plán</span><strong>' + plnenieFormatEUR(r.plan_eur) + '</strong></div>' +
               '<div class="gyn-district-block-row"><span>Plnenie</span><strong>' + plnenieFormatEUR(districtSales) + '</strong></div>' +
             '</div>' +
-            (r.plan_pacienti > 0 ? '<div class="gyn-district-block">' +
+            (!packOnly && r.plan_pacienti > 0 ? '<div class="gyn-district-block">' +
               '<div class="gyn-district-block-title">Pacienti</div>' +
               '<div class="gyn-district-block-row"><span>Plán</span><strong>' + gynPatientFmt(r.plan_pacienti) + '</strong></div>' +
               '<div class="gyn-district-block-row"><span>Aktuálne</span><strong>' + gynPatientFmt(donePac) + '</strong></div>' +
