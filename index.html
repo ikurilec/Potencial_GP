@@ -2483,7 +2483,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.99';
+var APP_VERSION = '2.22.00';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6323,23 +6323,30 @@ function gynPatientCurrentLabel(predajeByMonth, productKey, q) {
 function gynPatientProductHint(data, region, productKey, predaje, plan, predajeByMonth, q) {
   var keys = Array.isArray(productKey) ? productKey : [productKey];
   var rec = gynPatientPlanForKeys(data, region, keys);
-  if(!rec || !((rec.eur_na_pacienta > 0 && rec.plan_pacienti > 0) || (rec.eur_na_balenie > 0 && rec.plan_balenia > 0))) return '';
+  if(!rec) return '';
   var packOnly = gynIsPackOnlyKeys(keys);
   var preferPackHint = gynPreferPackHintKeys(keys);
   var sales = parseFloat(predaje) || 0;
   var planEur = parseFloat(plan) || rec.plan_eur || 0;
+  var recPlanPac = parseFloat(rec.plan_pacienti) || 0;
+  var recEurPac = parseFloat(rec.eur_na_pacienta) || 0;
+  var recPlanBal = parseFloat(rec.plan_balenia) || 0;
+  var recEurBal = parseFloat(rec.eur_na_balenie) || 0;
+  if(recEurBal <= 0 && recPlanBal > 0 && planEur > 0) recEurBal = planEur / recPlanBal;
+  if(recEurPac <= 0 && recPlanPac > 0 && planEur > 0) recEurPac = planEur / recPlanPac;
+  if(!((recEurPac > 0 && recPlanPac > 0) || (recEurBal > 0 && recPlanBal > 0))) return '';
   var missing = Math.max(planEur - sales, 0);
   var currentLabel = gynPatientCurrentLabelForKeys(predajeByMonth, keys, q || GYN_APP.q);
   var rows = [];
-  if(!preferPackHint && rec.eur_na_pacienta > 0 && rec.plan_pacienti > 0) {
-    var donePac = sales / rec.eur_na_pacienta;
-    var missPac = missing / rec.eur_na_pacienta;
-    rows.push('<div class="gyn-patient-row"><span>Plán pacienti</span><strong>' + gynPatientFmt(rec.plan_pacienti) + ' pacientov</strong></div>');
+  if(!preferPackHint && recEurPac > 0 && recPlanPac > 0) {
+    var donePac = sales / recEurPac;
+    var missPac = missing / recEurPac;
+    rows.push('<div class="gyn-patient-row"><span>Plán pacienti</span><strong>' + gynPatientFmt(recPlanPac) + ' pacientov</strong></div>');
     rows.push('<div class="gyn-patient-row"><span>Aktuálne ' + gynEsc(currentLabel) + '</span><strong>' + gynPatientFmt(donePac) + ' pacientov</strong></div>');
     rows.push('<div class="gyn-patient-row miss"><span>Do konca Q' + (q || GYN_APP.q) + ' chýba</span><strong>' + (missing > 0 ? gynPatientFmtMissing(missPac) + ' pacientov' : '0 pacientov') + '</strong></div>');
   }
-  var packPlan = rec.plan_balenia || (preferPackHint ? rec.plan_pacienti : 0);
-  var packEur = rec.eur_na_balenie || (preferPackHint ? rec.eur_na_pacienta : 0);
+  var packPlan = recPlanBal || (preferPackHint ? recPlanPac : 0);
+  var packEur = recEurBal || (preferPackHint ? recEurPac : 0);
   if(packEur > 0 && packPlan > 0) {
     var doneBal = sales / packEur;
     var missBal = missing / packEur;
