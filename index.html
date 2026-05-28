@@ -2561,7 +2561,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.23.7';
+var APP_VERSION = '2.23.8';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -2628,17 +2628,12 @@ function _isAppBusy(){
 }
 
 function _applySwUpdate(){
-  if(_isAppBusy()){
-    _swUpdatePending = true;
-  } else {
-    _swUpdatePending = false;
-    showSwToast('Aktualizujem appku…');
-    // Cache-bust navigácia namiesto location.reload() — na iOS PWA standalone reload končí bielou obrazovkou
-    setTimeout(function(){
-      try { window.location.replace(window.location.pathname + '?v=' + Date.now()); }
-      catch(e){ try { location.reload(); } catch(e2){} }
-    }, 900);
-  }
+  // ŽIADNY auto-reload! Na iOS PWA pri pomalšom pripojení SW servíruje starú HTML z cache,
+  // version.json je čerstvý → auto-navigácia padla do nekonečnej slučky bielej obrazovky.
+  // Update je teraz IBA manuálny cez banner — applyUpdate() pred navigáciou zmaže SW cache,
+  // takže sa vynúti čerstvá HTML a slučka nevznikne.
+  _swUpdatePending = false;
+  try { showUpdateBanner(window._serverVersion); } catch(e){}
 }
 
 if('serviceWorker' in navigator){
