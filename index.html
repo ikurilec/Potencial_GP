@@ -1349,7 +1349,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .pharma-ms-district:hover{box-shadow:0 8px 20px rgba(15,23,42,.08),0 2px 4px rgba(15,23,42,.05),0 0 0 1px rgba(37,99,235,.10)}
   .pharma-ms-district-hdr{display:flex;align-items:center;background:linear-gradient(135deg,#0C1E35 0%,#13294B 100%);padding:0 10px 0 14px;gap:6px;box-shadow:inset 0 -1px 0 rgba(255,255,255,.06)}
   .pharma-ms-district-name{font-size:11px;font-weight:700;color:#fff;padding:8px 0;text-transform:uppercase;letter-spacing:.07em;font-family:var(--font-display);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .gyn-district-pct-badge{font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:20px;flex-shrink:0;font-family:var(--font-display);letter-spacing:-.01em}
+  .gyn-district-pct-badge{font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;flex-shrink:0;font-family:var(--font-display);letter-spacing:-.01em;white-space:nowrap}
   .gyn-district-trh-badge{font-size:10px;font-weight:700;color:rgba(255,255,255,.65);padding:2px 8px;border-radius:20px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);flex-shrink:0;font-family:var(--font-display);white-space:nowrap;letter-spacing:.01em}
   .gyn-district-pct-badge.g{background:rgba(16,185,129,.20);color:#34D399}
   .gyn-district-pct-badge.o{background:rgba(251,191,36,.20);color:#FBBF24}
@@ -1440,6 +1440,21 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .gyn-district-block-row strong{font-size:14px;color:#0F172A;font-weight:850;text-align:right;white-space:nowrap;letter-spacing:0}
   .gyn-district-block-row strong.miss{color:#DC2626}
   .gyn-district-block-row strong.g{color:#059669}.gyn-district-block-row strong.o{color:#D97706}.gyn-district-block-row strong.r{color:#DC2626}
+  .gyn-dc-wrap{padding:9px 12px 11px;display:flex;flex-direction:column;gap:8px}
+  .gyn-dc-top{display:grid;grid-template-columns:1fr 1fr;gap:10px;font-family:var(--font-display)}
+  .gyn-dc-top.single{grid-template-columns:1fr}
+  .gyn-dc-col{display:flex;flex-direction:column;gap:3px}
+  .gyn-dc-lbl{font-size:9.5px;font-weight:800;color:#94A3B8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px;font-family:var(--font-display)}
+  .gyn-dc-row{display:flex;justify-content:space-between;align-items:baseline;gap:4px;font-family:var(--font-display)}
+  .gyn-dc-row span{font-size:10px;color:#64748B;font-weight:700;text-transform:uppercase;letter-spacing:.02em}
+  .gyn-dc-row strong{font-size:12.5px;color:#0F172A;font-weight:850;white-space:nowrap;letter-spacing:-.01em}
+  .gyn-dc-row strong.miss{color:#DC2626}
+  .gyn-dc-strip{display:grid;grid-template-columns:repeat(3,1fr);border-radius:8px;overflow:hidden;border:1px solid #E2E8F0;margin-top:2px}
+  .gyn-dc-si{display:flex;flex-direction:column;align-items:center;padding:5px 3px 4px;background:#F8FAFC;border-right:1px solid #E2E8F0;gap:1px}
+  .gyn-dc-si:last-child{border-right:none}
+  .gyn-dc-si span{font-size:8.5px;color:#94A3B8;font-weight:700;text-transform:uppercase;letter-spacing:.03em;text-align:center;line-height:1.2;font-family:var(--font-display)}
+  .gyn-dc-si strong{font-size:13px;font-weight:850;color:#0F172A;letter-spacing:-.01em;font-family:var(--font-display)}
+  .gyn-dc-si.g strong{color:#059669}.gyn-dc-si.o strong{color:#D97706}.gyn-dc-si.r strong{color:#DC2626}.gyn-dc-si.n strong{color:#94A3B8}
   #gyn-view .pl-sum-prod-tempo{font-size:11px;line-height:1.25;font-weight:650;white-space:normal;overflow:hidden;text-overflow:ellipsis;color:#64748B}
   #gyn-view .pl-sum-prod-tempo strong{font-size:11px!important;font-family:inherit!important;font-weight:850!important}
   #gyn-view .pl-sum-prod-tempo.g{color:#047857}
@@ -2490,7 +2505,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.22.08';
+var APP_VERSION = '2.22.10';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7563,39 +7578,52 @@ function gynOpenDistrictFulfillment(productName, oblast, keysPipe, login) {
       var tempoPct = gynTempoPct(pct, expectedPct);
       var districtPred = tempoPct;
       var pctBadge = pct !== null
-        ? '<div class="gyn-district-pct-badge ' + tempoCls + '">' + plnenieFormatPct(pct) + '</div>'
+        ? '<div class="gyn-district-pct-badge ' + tempoCls + '">Plnenie v okrese: ' + plnenieFormatPct(pct) + '</div>'
         : '';
       var trhInfo = gynGetDistrictTotalMarket(productName, oblast, r.okres);
       var trhBadge = trhInfo
         ? '<div class="gyn-district-trh-badge">🏪 Trh: ' + gynPatientFmt(trhInfo.total) + ' ' + trhInfo.unit + '</div>'
         : '';
+      var hasPatCol = !packOnly && r.plan_pacienti > 0;
+      var hasBalCol = showPackDistrictMetrics && (r.plan_balenia > 0 || doneBal > 0);
+      var dc2 = '';
+      if(hasPatCol) {
+        dc2 = '<div class="gyn-dc-col">' +
+          '<div class="gyn-dc-lbl">👥 Pacienti</div>' +
+          '<div class="gyn-dc-row"><span>Plán</span><strong>' + gynPatientFmt(r.plan_pacienti) + '</strong></div>' +
+          '<div class="gyn-dc-row"><span>Aktuálne</span><strong>' + gynPatientFmt(donePac) + '</strong></div>' +
+          '<div class="gyn-dc-row"><span>⚠️ Chýba</span><strong class="miss">' + gynPatientFmtMissing(missPac) + '</strong></div>' +
+          (hasBalCol ?
+            '<div style="height:4px"></div>' +
+            '<div class="gyn-dc-lbl">📦 Balenia</div>' +
+            '<div class="gyn-dc-row"><span>Plán</span><strong>' + gynPatientFmt(r.plan_balenia) + '</strong></div>' +
+            '<div class="gyn-dc-row"><span>Aktuálne</span><strong>' + gynPatientFmt(doneBal) + '</strong></div>' +
+            '<div class="gyn-dc-row"><span>⚠️ Chýba</span><strong class="miss">' + gynPatientFmtMissing(missBal) + '</strong></div>'
+          : '') +
+        '</div>';
+      } else if(hasBalCol) {
+        dc2 = '<div class="gyn-dc-col">' +
+          '<div class="gyn-dc-lbl">📦 Balenia</div>' +
+          '<div class="gyn-dc-row"><span>Plán</span><strong>' + gynPatientFmt(r.plan_balenia) + '</strong></div>' +
+          '<div class="gyn-dc-row"><span>Aktuálne</span><strong>' + gynPatientFmt(doneBal) + '</strong></div>' +
+          '<div class="gyn-dc-row"><span>⚠️ Chýba</span><strong class="miss">' + gynPatientFmtMissing(missBal) + '</strong></div>' +
+        '</div>';
+      }
       html += '<div class="pharma-ms-district">' +
-        '<div class="pharma-ms-district-hdr"><div class="pharma-ms-district-name">' + gynEsc(r.okres) + '</div>' + trhBadge + pctBadge + '</div>' +
-        '<div class="pharma-ms-district-meta">' +
-          '<div class="gyn-district-summary-grid compact">' +
-            '<div class="gyn-district-block">' +
-              '<div class="gyn-district-block-title">💶 EUR</div>' +
-              '<div class="gyn-district-block-row"><span>Plán</span><strong>' + plnenieFormatEUR(r.plan_eur) + '</strong></div>' +
-              '<div class="gyn-district-block-row"><span>Plnenie</span><strong>' + plnenieFormatEUR(districtSales) + '</strong></div>' +
+        '<div class="pharma-ms-district-hdr"><div style="display:flex;align-items:center;gap:5px;flex:1;min-width:0;overflow:hidden"><div class="pharma-ms-district-name">' + gynEsc(r.okres) + '</div>' + trhBadge + '</div>' + pctBadge + '</div>' +
+        '<div class="gyn-dc-wrap">' +
+          '<div class="gyn-dc-top' + (dc2 ? '' : ' single') + '">' +
+            '<div class="gyn-dc-col">' +
+              '<div class="gyn-dc-lbl">💶 EUR</div>' +
+              '<div class="gyn-dc-row"><span>Plán</span><strong>' + plnenieFormatEUR(r.plan_eur) + '</strong></div>' +
+              '<div class="gyn-dc-row"><span>Plnenie</span><strong>' + plnenieFormatEUR(districtSales) + '</strong></div>' +
             '</div>' +
-            (!packOnly && r.plan_pacienti > 0 ? '<div class="gyn-district-block">' +
-              '<div class="gyn-district-block-title">👥 Pacienti</div>' +
-              '<div class="gyn-district-block-row"><span>Plán</span><strong>' + gynPatientFmt(r.plan_pacienti) + '</strong></div>' +
-              '<div class="gyn-district-block-row"><span>Aktuálne</span><strong>' + gynPatientFmt(donePac) + '</strong></div>' +
-              '<div class="gyn-district-block-row"><span>⚠️ Chýba nastaviť</span><strong class="miss">' + gynPatientFmtMissing(missPac) + '</strong></div>' +
-            '</div>' : '') +
-            (showPackDistrictMetrics && (r.plan_balenia > 0 || doneBal > 0) ? '<div class="gyn-district-block">' +
-              '<div class="gyn-district-block-title">📦 Balenia</div>' +
-              '<div class="gyn-district-block-row"><span>Plán</span><strong>' + gynPatientFmt(r.plan_balenia) + '</strong></div>' +
-              '<div class="gyn-district-block-row"><span>Aktuálne</span><strong>' + gynPatientFmt(doneBal) + '</strong></div>' +
-              '<div class="gyn-district-block-row"><span>⚠️ Chýba balení</span><strong class="miss">' + gynPatientFmtMissing(missBal) + '</strong></div>' +
-            '</div>' : '') +
-            '<div class="gyn-district-block">' +
-              '<div class="gyn-district-block-title">📊 Plnenie okresu</div>' +
-              '<div class="gyn-district-block-row"><span>Aktuálne</span><strong class="' + tempoCls + '">' + plnenieFormatPct(pct) + '</strong></div>' +
-              '<div class="gyn-district-block-row"><span>⏱ Teraz má byť</span><strong>' + plnenieFormatPct(expectedPct) + '</strong></div>' +
-              '<div class="gyn-district-block-row"><span>🔮 Predikcia konca Q</span><strong class="' + tempoCls + '">' + plnenieFormatPct(districtPred) + '</strong></div>' +
-            '</div>' +
+            dc2 +
+          '</div>' +
+          '<div class="gyn-dc-strip">' +
+            '<div class="gyn-dc-si ' + tempoCls + '"><strong>' + plnenieFormatPct(pct) + '</strong><span>Aktuálne</span></div>' +
+            '<div class="gyn-dc-si n"><strong>' + plnenieFormatPct(expectedPct) + '</strong><span>⏱ Má byť</span></div>' +
+            '<div class="gyn-dc-si ' + tempoCls + '"><strong>' + plnenieFormatPct(districtPred) + '</strong><span>🔮 Predikcia Q</span></div>' +
           '</div>' +
         '</div>' +
       '</div>';
