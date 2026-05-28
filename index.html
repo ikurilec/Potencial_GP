@@ -1440,21 +1440,30 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .gyn-district-block-row strong{font-size:14px;color:#0F172A;font-weight:850;text-align:right;white-space:nowrap;letter-spacing:0}
   .gyn-district-block-row strong.miss{color:#DC2626}
   .gyn-district-block-row strong.g{color:#059669}.gyn-district-block-row strong.o{color:#D97706}.gyn-district-block-row strong.r{color:#DC2626}
-  .gyn-dc-wrap{padding:9px 12px 11px;display:flex;flex-direction:column;gap:8px}
-  .gyn-dc-top{display:grid;grid-template-columns:1fr 1fr;gap:10px;font-family:var(--font-display)}
-  .gyn-dc-top.single{grid-template-columns:1fr}
-  .gyn-dc-col{display:flex;flex-direction:column;gap:3px}
-  .gyn-dc-lbl{font-size:9.5px;font-weight:800;color:#94A3B8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px;font-family:var(--font-display)}
-  .gyn-dc-row{display:flex;justify-content:space-between;align-items:baseline;gap:4px;font-family:var(--font-display)}
-  .gyn-dc-row span{font-size:10px;color:#64748B;font-weight:700;text-transform:uppercase;letter-spacing:.02em}
-  .gyn-dc-row strong{font-size:12.5px;color:#0F172A;font-weight:850;white-space:nowrap;letter-spacing:-.01em}
-  .gyn-dc-row strong.miss{color:#DC2626}
-  .gyn-dc-strip{display:grid;grid-template-columns:repeat(3,1fr);border-radius:8px;overflow:hidden;border:1px solid #E2E8F0;margin-top:2px}
-  .gyn-dc-si{display:flex;flex-direction:column;align-items:center;padding:5px 3px 4px;background:#F8FAFC;border-right:1px solid #E2E8F0;gap:1px}
-  .gyn-dc-si:last-child{border-right:none}
-  .gyn-dc-si span{font-size:8.5px;color:#94A3B8;font-weight:700;text-transform:uppercase;letter-spacing:.03em;text-align:center;line-height:1.2;font-family:var(--font-display)}
-  .gyn-dc-si strong{font-size:13px;font-weight:850;color:#0F172A;letter-spacing:-.01em;font-family:var(--font-display)}
-  .gyn-dc-si.g strong{color:#059669}.gyn-dc-si.o strong{color:#D97706}.gyn-dc-si.r strong{color:#DC2626}.gyn-dc-si.n strong{color:#94A3B8}
+  .gyn-dc-wrap{padding:10px 12px 0;display:flex;flex-direction:column;gap:8px}
+  .gyn-dc-prog{display:flex;flex-direction:column;gap:4px}
+  .gyn-dc-prog-track{position:relative;height:9px;background:#E2E8F0;border-radius:6px;overflow:hidden}
+  .gyn-dc-prog-fill{position:absolute;top:0;left:0;height:100%;border-radius:6px;min-width:3px}
+  .gyn-dc-prog-fill.g{background:linear-gradient(90deg,#10B981,#34D399)}
+  .gyn-dc-prog-fill.o{background:linear-gradient(90deg,#F59E0B,#FBBF24)}
+  .gyn-dc-prog-fill.r{background:linear-gradient(90deg,#EF4444,#F87171)}
+  .gyn-dc-prog-fill.n{background:#CBD5E1}
+  .gyn-dc-prog-mark{position:absolute;top:0;bottom:0;width:2px;background:rgba(15,23,42,.35);transform:translateX(-50%)}
+  .gyn-dc-prog-meta{display:flex;justify-content:space-between;align-items:center}
+  .gyn-dc-prog-meta>strong{font-size:17px;font-weight:850;letter-spacing:-.02em;font-family:var(--font-display)}
+  .gyn-dc-prog-meta>strong.g{color:#059669}.gyn-dc-prog-meta>strong.o{color:#D97706}.gyn-dc-prog-meta>strong.r{color:#DC2626}.gyn-dc-prog-meta>strong.n{color:#94A3B8}
+  .gyn-dc-prog-meta>span{font-size:10px;color:#64748B;font-weight:700;font-family:var(--font-display)}
+  .gyn-dc-chips{display:flex;gap:5px}
+  .gyn-dc-chip{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:5px 7px;display:flex;flex-direction:column;gap:1px;flex:1;min-width:0}
+  .gyn-dc-chip-lbl{font-size:8.5px;color:#94A3B8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-family:var(--font-display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .gyn-dc-chip-val{font-size:13px;font-weight:850;letter-spacing:-.01em;font-family:var(--font-display);color:#0F172A}
+  .gyn-dc-chip-val.g{color:#059669}.gyn-dc-chip-val.o{color:#D97706}.gyn-dc-chip-val.r{color:#DC2626}.gyn-dc-chip-val.miss{color:#DC2626}
+  .gyn-dc-drows{display:flex;flex-direction:column;gap:5px;padding:7px 0 10px;border-top:1px solid #F1F5F9}
+  .gyn-dc-drow{display:flex;align-items:center;gap:7px;font-family:var(--font-display)}
+  .gyn-dc-drow-ico{font-size:13px;flex-shrink:0;line-height:1}
+  .gyn-dc-drow-val{font-size:12.5px;font-weight:750;color:#0F172A}
+  .gyn-dc-drow-of{color:#CBD5E1;font-weight:600;margin:0 3px}
+  .gyn-dc-drow-miss{color:#EF4444;font-size:11px;font-weight:750;margin-left:4px}
   #gyn-view .pl-sum-prod-tempo{font-size:11px;line-height:1.25;font-weight:650;white-space:normal;overflow:hidden;text-overflow:ellipsis;color:#64748B}
   #gyn-view .pl-sum-prod-tempo strong{font-size:11px!important;font-family:inherit!important;font-weight:850!important}
   #gyn-view .pl-sum-prod-tempo.g{color:#047857}
@@ -2505,7 +2514,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.22.10';
+var APP_VERSION = '2.22.11';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7586,45 +7595,35 @@ function gynOpenDistrictFulfillment(productName, oblast, keysPipe, login) {
         : '';
       var hasPatCol = !packOnly && r.plan_pacienti > 0;
       var hasBalCol = showPackDistrictMetrics && (r.plan_balenia > 0 || doneBal > 0);
-      var dc2 = '';
-      if(hasPatCol) {
-        dc2 = '<div class="gyn-dc-col">' +
-          '<div class="gyn-dc-lbl">👥 Pacienti</div>' +
-          '<div class="gyn-dc-row"><span>Plán</span><strong>' + gynPatientFmt(r.plan_pacienti) + '</strong></div>' +
-          '<div class="gyn-dc-row"><span>Aktuálne</span><strong>' + gynPatientFmt(donePac) + '</strong></div>' +
-          '<div class="gyn-dc-row"><span>⚠️ Chýba</span><strong class="miss">' + gynPatientFmtMissing(missPac) + '</strong></div>' +
-          (hasBalCol ?
-            '<div style="height:4px"></div>' +
-            '<div class="gyn-dc-lbl">📦 Balenia</div>' +
-            '<div class="gyn-dc-row"><span>Plán</span><strong>' + gynPatientFmt(r.plan_balenia) + '</strong></div>' +
-            '<div class="gyn-dc-row"><span>Aktuálne</span><strong>' + gynPatientFmt(doneBal) + '</strong></div>' +
-            '<div class="gyn-dc-row"><span>⚠️ Chýba</span><strong class="miss">' + gynPatientFmtMissing(missBal) + '</strong></div>'
-          : '') +
-        '</div>';
-      } else if(hasBalCol) {
-        dc2 = '<div class="gyn-dc-col">' +
-          '<div class="gyn-dc-lbl">📦 Balenia</div>' +
-          '<div class="gyn-dc-row"><span>Plán</span><strong>' + gynPatientFmt(r.plan_balenia) + '</strong></div>' +
-          '<div class="gyn-dc-row"><span>Aktuálne</span><strong>' + gynPatientFmt(doneBal) + '</strong></div>' +
-          '<div class="gyn-dc-row"><span>⚠️ Chýba</span><strong class="miss">' + gynPatientFmtMissing(missBal) + '</strong></div>' +
-        '</div>';
-      }
+      var chybEUR = r.plan_eur > 0 ? Math.max(r.plan_eur - districtSales, 0) : 0;
+      var fillW = pct !== null ? Math.min(Math.max(pct, 0), 100).toFixed(1) : '0';
+      var markW = expectedPct > 0 ? Math.min(expectedPct, 100).toFixed(1) : null;
+      var chipsHtml = '<div class="gyn-dc-chips">' +
+        '<div class="gyn-dc-chip"><div class="gyn-dc-chip-lbl">🔮 Predikcia Q</div><div class="gyn-dc-chip-val ' + tempoCls + '">' + plnenieFormatPct(districtPred) + '</div></div>' +
+        (chybEUR > 0 ? '<div class="gyn-dc-chip"><div class="gyn-dc-chip-lbl">⚠️ Chýba €</div><div class="gyn-dc-chip-val miss">' + plnenieFormatEUR(chybEUR) + '</div></div>' : '') +
+        (hasPatCol && missPac > 0 ? '<div class="gyn-dc-chip"><div class="gyn-dc-chip-lbl">👥 Chýba pac.</div><div class="gyn-dc-chip-val miss">' + gynPatientFmt(missPac) + '</div></div>' : '') +
+        (hasBalCol && missBal > 0 && !hasPatCol ? '<div class="gyn-dc-chip"><div class="gyn-dc-chip-lbl">📦 Chýba bal.</div><div class="gyn-dc-chip-val miss">' + gynPatientFmt(missBal) + '</div></div>' : '') +
+      '</div>';
+      var drowsHtml = '<div class="gyn-dc-drows">' +
+        '<div class="gyn-dc-drow"><span class="gyn-dc-drow-ico">💶</span><span class="gyn-dc-drow-val">' + plnenieFormatEUR(districtSales) + '<span class="gyn-dc-drow-of">z</span>' + plnenieFormatEUR(r.plan_eur) + '</span></div>' +
+        (hasPatCol ? '<div class="gyn-dc-drow"><span class="gyn-dc-drow-ico">👥</span><span class="gyn-dc-drow-val">' + gynPatientFmt(donePac) + '<span class="gyn-dc-drow-of">z</span>' + gynPatientFmt(r.plan_pacienti) + ' pac.' + (missPac > 0 ? '<span class="gyn-dc-drow-miss">−' + gynPatientFmt(missPac) + '</span>' : '') + '</span></div>' : '') +
+        (hasBalCol ? '<div class="gyn-dc-drow"><span class="gyn-dc-drow-ico">📦</span><span class="gyn-dc-drow-val">' + gynPatientFmt(doneBal) + '<span class="gyn-dc-drow-of">z</span>' + gynPatientFmt(r.plan_balenia) + ' bal.' + (missBal > 0 ? '<span class="gyn-dc-drow-miss">−' + gynPatientFmt(missBal) + '</span>' : '') + '</span></div>' : '') +
+      '</div>';
       html += '<div class="pharma-ms-district">' +
         '<div class="pharma-ms-district-hdr"><div style="display:flex;align-items:center;gap:5px;flex:1;min-width:0;overflow:hidden"><div class="pharma-ms-district-name">' + gynEsc(r.okres) + '</div>' + trhBadge + '</div>' + pctBadge + '</div>' +
         '<div class="gyn-dc-wrap">' +
-          '<div class="gyn-dc-top' + (dc2 ? '' : ' single') + '">' +
-            '<div class="gyn-dc-col">' +
-              '<div class="gyn-dc-lbl">💶 EUR</div>' +
-              '<div class="gyn-dc-row"><span>Plán</span><strong>' + plnenieFormatEUR(r.plan_eur) + '</strong></div>' +
-              '<div class="gyn-dc-row"><span>Plnenie</span><strong>' + plnenieFormatEUR(districtSales) + '</strong></div>' +
+          '<div class="gyn-dc-prog">' +
+            '<div class="gyn-dc-prog-track">' +
+              '<div class="gyn-dc-prog-fill ' + tempoCls + '" style="width:' + fillW + '%"></div>' +
+              (markW ? '<div class="gyn-dc-prog-mark" style="left:' + markW + '%"></div>' : '') +
             '</div>' +
-            dc2 +
+            '<div class="gyn-dc-prog-meta">' +
+              '<strong class="' + tempoCls + '">' + plnenieFormatPct(pct) + '</strong>' +
+              (markW ? '<span>⏱ tempo: ' + plnenieFormatPct(expectedPct) + '</span>' : '') +
+            '</div>' +
           '</div>' +
-          '<div class="gyn-dc-strip">' +
-            '<div class="gyn-dc-si ' + tempoCls + '"><strong>' + plnenieFormatPct(pct) + '</strong><span>Aktuálne</span></div>' +
-            '<div class="gyn-dc-si n"><strong>' + plnenieFormatPct(expectedPct) + '</strong><span>⏱ Má byť</span></div>' +
-            '<div class="gyn-dc-si ' + tempoCls + '"><strong>' + plnenieFormatPct(districtPred) + '</strong><span>🔮 Predikcia Q</span></div>' +
-          '</div>' +
+          chipsHtml +
+          drowsHtml +
         '</div>' +
       '</div>';
     });
