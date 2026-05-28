@@ -898,6 +898,9 @@
   .line-diag-btn:active{transform:scale(.94)}
   .line-enable-btn{font-family:var(--font-display);font-size:11px;font-weight:700;letter-spacing:.02em;color:#0C1E35;background:#fff;border:1px solid rgba(255,255,255,.30);border-radius:18px;padding:6px 12px;min-height:30px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.22);-webkit-tap-highlight-color:transparent}
   .line-enable-btn:active{transform:scale(.96)}
+  /* Jedno toggle tlačidlo línie (Golem ↔ Gyn) vedľa Odhlásiť */
+  .line-toggle-btn{font-family:var(--font-display);font-size:12px;font-weight:800;letter-spacing:.02em;color:#0C1E35;background:#fff;border:1.5px solid rgba(255,255,255,.35);border-radius:20px;padding:8px 16px;min-height:38px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25);-webkit-tap-highlight-color:transparent}
+  .line-toggle-btn:active{transform:scale(.95)}
   .note-wrap{background:#FFFBEB;border-radius:10px;padding:10px 12px;margin:10px 0 4px;border:1px solid #FDE68A}
   .note-label{font-size:10px;font-weight:600;color:#92400E;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px}
   .note-text{font-size:12px;color:#78350F;line-height:1.5;white-space:pre-wrap}
@@ -2558,7 +2561,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.23.6';
+var APP_VERSION = '2.23.7';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5860,8 +5863,10 @@ function clearSession() {
   try {
     sessionStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(SESSION_KEY);
-    // Vyčisti aj dual-line store, aby iný používateľ na tom istom zariadení nevidel admin prepínač
+    // Vyčisti aj dual-line store (pamäť + storage), aby iný používateľ na tom istom zariadení nevidel admin prepínač
+    if(typeof MGR_DUAL_MEM !== 'undefined') MGR_DUAL_MEM = null;
     localStorage.removeItem(MGR_DUAL_KEY);
+    sessionStorage.removeItem(MGR_DUAL_KEY);
   } catch(e){}
   stopNotifPolling();
 }
@@ -5894,8 +5899,21 @@ function mgrBuildGynUser(username, data){
   return mgrParseLoginExtras({ username: username, name: data.name, role: data.role, linia: data.linia || '', region: data.region || '', line: 'gyn' }, data);
 }
 
+// Dual session držíme primárne v PAMÄTI — localStorage na iPhone býva plný (cache) a setItem
+// ticho zlyhá. Pamäť prežije in-place prepínanie (nereloadujeme), localStorage je len záloha.
+var MGR_DUAL_MEM = null;
+function mgrSetDual(obj){
+  MGR_DUAL_MEM = obj || null;
+  try { if(obj) localStorage.setItem(MGR_DUAL_KEY, JSON.stringify(obj)); } catch(e){}
+  try { if(obj) sessionStorage.setItem(MGR_DUAL_KEY, JSON.stringify(obj)); } catch(e){}
+}
 function mgrGetDual(){
-  try { return JSON.parse(localStorage.getItem(MGR_DUAL_KEY) || 'null'); } catch(e){ return null; }
+  if(MGR_DUAL_MEM) return MGR_DUAL_MEM;
+  var d = null;
+  try { d = JSON.parse(localStorage.getItem(MGR_DUAL_KEY) || 'null'); } catch(e){}
+  if(!d){ try { d = JSON.parse(sessionStorage.getItem(MGR_DUAL_KEY) || 'null'); } catch(e){} }
+  if(d) MGR_DUAL_MEM = d;
+  return d;
 }
 // Ulož dual-line session iba ak je používateľ admin a má platný účet v oboch linkách.
 // Admin detekujeme cez mgrDetectRole — tú istú kanonickú funkciu, ktorou appka rozhoduje
@@ -5904,13 +5922,7 @@ function mgrStoreDualIfEligible(username, gpData, gynData){
   if(!(gpData && gpData.ok && gynData && gynData.ok)) return;
   var gpUser = mgrBuildGpUser(username, gpData);
   if(mgrDetectRole(gpUser) !== 'admin') return; // iba admin
-  try {
-    localStorage.setItem(MGR_DUAL_KEY, JSON.stringify({
-      username: username,
-      gp:  gpUser,
-      gyn: mgrBuildGynUser(username, gynData)
-    }));
-  } catch(e){}
+  mgrSetDual({ username: username, gp: gpUser, gyn: mgrBuildGynUser(username, gynData) });
 }
 function mgrLineSwitchAvailable(){
   var d = mgrGetDual();
@@ -5951,14 +5963,16 @@ function mgrShowLineDiag(){
 // Aktivuj prepínač línie BEZ odhlásenia — re-auth oba backendy na pozadí (obchádza biely-screen logout).
 // Admin status berieme zo ŽIVEJ session (admin pohľad beží len pre admina), nie z role čerstvého
 // loginu (Golem login môže vrátiť 'rep' fallback pri prázdnej bunke role v Sheets).
-function mgrEnableLineSwitch(){
+// Re-auth oba backendy na pozadí (bez odhlásenia), ulož dual session a (voliteľne) rovno prepni
+// na cieľovú líniu. Admin status berieme zo ŽIVEJ session (admin pohľad beží len pre admina).
+function mgrEnableLineSwitch(targetLine){
   var s = getSession();
   if(!s || !s.username){ alert('Nie si prihlásený.'); return; }
   if(s.line === 'gyn' || mgrDetectRole(s) !== 'admin'){
     alert('Prepínač línie je dostupný len pre admina v Golem pohľade.');
     return;
   }
-  var pwd = prompt('Zadaj svoje heslo pre zapnutie prepínača Golem ↔ Gyn:');
+  var pwd = prompt('Zadaj svoje heslo pre načítanie Gyn línie:');
   if(pwd === null) return;            // zrušené
   if(!pwd){ alert('Heslo je prázdne.'); return; }
   var lp = '?action=login&username=' + encodeURIComponent(s.username) +
@@ -5968,7 +5982,6 @@ function mgrEnableLineSwitch(){
   var gynF = fetch(GYN_SCRIPT_URL + lp).then(function(r){ return r.json(); }).catch(function(){ return {ok:false}; });
   Promise.all([gpF, gynF]).then(function(res){
     var gp = res[0], gyn = res[1];
-    mgrCaptureLineDiag(s.username, gp, gyn);
     if(!gp.ok){ alert('Golem login zlyhal — nesprávne heslo?'); return; }
     if(!gyn.ok){ alert('Gyn login zlyhal — skontroluj, či máš v GYN Google Sheets (hárok Pouzivatelia) rovnaké meno + heslo.'); return; }
     // GP dual = aktuálna admin session (rola admin je istá) + čerstvé tokeny z gp re-loginu
@@ -5980,36 +5993,39 @@ function mgrEnableLineSwitch(){
     if(gp.session_expires_at) gpUser.session_expires_at = String(gp.session_expires_at);
     if(gp.device_id)          gpUser.device_id = String(gp.device_id);
     var gynUser = mgrBuildGynUser(s.username, gyn);
-    try { localStorage.setItem(MGR_DUAL_KEY, JSON.stringify({ username: s.username, gp: gpUser, gyn: gynUser })); } catch(e){}
+    mgrSetDual({ username: s.username, gp: gpUser, gyn: gynUser });
     setSession(gpUser);      // obnov aktuálnu session čerstvým gp tokenom, ostávame admin
-    mgrRenderLineSwitch();
-    alert('Hotovo! Prepínač Golem | Gyn je teraz aktívny.');
+    if(targetLine === 'gyn'){ mgrSwitchLine('gyn'); }   // tapol "Gyn" → rovno tam prepni
+    else { mgrRenderLineSwitch(); }
   }).catch(function(){ alert('Chyba siete pri prihlasovaní.'); });
 }
-function mgrLineSwitchHtml(activeLine){
-  function btn(line, label){
-    return '<button class="line-switch-btn' + (activeLine === line ? ' active' : '') +
-           '" onclick="mgrSwitchLine(\'' + line + '\')">' + label + '</button>';
-  }
-  return '<div class="line-switch" role="group" aria-label="Prepnúť líniu">' +
-           btn('gp', 'Golem') + btn('gyn', 'Gyn') +
-         '</div>';
+// Či zobraziť toggle tlačidlo: v Goleme pre admina vždy; v Gyne len ak tam admin prišiel cez switch (máme dual)
+function mgrShouldShowLineToggle(){
+  var s = getSession(); if(!s) return false;
+  if(s.line === 'gyn') return mgrLineSwitchAvailable();
+  try { return mgrDetectRole(s) === 'admin'; } catch(e){ return false; }
 }
+// JEDNO tlačidlo vedľa Odhlásiť — v Goleme "Gyn", v Gyne "Golem"
 function mgrRenderLineSwitch(){
-  var avail = mgrLineSwitchAvailable();
   var s = getSession();
-  var active = (s && s.line === 'gyn') ? 'gyn' : 'gp';
-  var isAdmin = false; try { isAdmin = mgrDetectRole(s) === 'admin'; } catch(e){}
+  var inGyn = !!(s && s.line === 'gyn');
   var html = '';
-  if(avail) html += mgrLineSwitchHtml(active);
-  // Admin bez aktívneho prepínača → tlačidlo na zapnutie (re-auth bez odhlásenia)
-  else if(isAdmin) html += '<button class="line-enable-btn" onclick="mgrEnableLineSwitch()">Prepnúť líniu</button>';
-  // DOČASNÉ ⓘ — pre admina vždy, nech vie spustiť diagnostiku
-  if(isAdmin || avail) html += '<button class="line-diag-btn" onclick="mgrShowLineDiag()" aria-label="Diagnostika línie">ⓘ</button>';
+  if(mgrShouldShowLineToggle()){
+    var label = inGyn ? 'Golem' : 'Gyn';
+    html = '<button class="line-toggle-btn" onclick="mgrToggleLine()">' + label + '</button>';
+  }
   ['line-switch-slot', 'gyn-line-switch-slot'].forEach(function(id){
     var el = document.getElementById(id);
     if(el) el.innerHTML = html;
   });
+}
+// Klik na toggle: ak máme tokeny druhej línie → prepni in-place; inak najprv re-auth (heslo) a potom prepni
+function mgrToggleLine(){
+  var s = getSession();
+  var cur = (s && s.line === 'gyn') ? 'gyn' : 'gp';
+  var target = (cur === 'gyn') ? 'gp' : 'gyn';
+  if(mgrLineSwitchAvailable()) mgrSwitchLine(target);
+  else mgrEnableLineSwitch(target);
 }
 function mgrSwitchLine(target){
   var s = getSession();
