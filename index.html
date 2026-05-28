@@ -2483,7 +2483,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.22.04';
+var APP_VERSION = '2.22.05';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7147,6 +7147,53 @@ function gynOpenProdSheet(prodLabel) {
 
   gynProdSheetRenderRepList(prodLabel, data);
 
+  // Triggernúť pharma fetche pre všetky regióny repov × aktuálny + prev kvartal
+  if(GYN_PHARMA_PRODUCTS[pkeyLow]) {
+    var kv = gynPharmaKvartal(q, year); // pozor: gynPharmaKvartal(year, q)
+    kv = gynPharmaKvartal(year, q);
+    var kvPrev = pharmaKvartalPrev(kv);
+    var neededOblasts = {};
+    (GYN_STATE.repList || []).forEach(function(rep){
+      var norm = gynPharmaNormalizeOblast(prodLabel, (rep.region || '').toUpperCase());
+      if(norm) neededOblasts[norm] = true;
+    });
+    [kv, kvPrev].forEach(function(kvartal){
+      Object.keys(neededOblasts).forEach(function(oblast){
+        var key = prodLabel + '|' + oblast + '|' + kvartal;
+        if(!GYN_PHARMA_STATE.cache[key] && !GYN_PHARMA_STATE.loading[key]) {
+          GYN_PHARMA_STATE.loading[key] = true;
+          fetch(gynScriptUrl(
+            'action=getPharmaData' +
+            '&oblast='  + encodeURIComponent(oblast) +
+            '&produkt=' + encodeURIComponent(prodLabel) +
+            '&kvartal=' + encodeURIComponent(kvartal)
+          ), { cache:'no-store' })
+            .then(function(r){ return r.json(); })
+            .then(function(resp){
+              delete GYN_PHARMA_STATE.loading[key];
+              if(resp && resp.ok) {
+                GYN_PHARMA_STATE.cache[key] = resp;
+                gynCacheWrite(gynPharmaCacheKey(prodLabel, oblast, kvartal), resp);
+              }
+            })
+            .catch(function(){ delete GYN_PHARMA_STATE.loading[key]; });
+        }
+      });
+    });
+
+    // Polling — aktualizuje MS bunky keď fetche dobehnu
+    if(typeof PL_PROD_SHEET_STATE !== 'undefined') {
+      if(PL_PROD_SHEET_STATE.msPollTimer) clearInterval(PL_PROD_SHEET_STATE.msPollTimer);
+      var pollAttempts = 0;
+      PL_PROD_SHEET_STATE.msPollTimer = setInterval(function(){
+        if(!PL_PROD_SHEET_STATE.open){ clearInterval(PL_PROD_SHEET_STATE.msPollTimer); PL_PROD_SHEET_STATE.msPollTimer = null; return; }
+        gynProdSheetUpdateMsCells();
+        pollAttempts++;
+        if(pollAttempts >= 20){ clearInterval(PL_PROD_SHEET_STATE.msPollTimer); PL_PROD_SHEET_STATE.msPollTimer = null; }
+      }, 800);
+    }
+  }
+
   // Zobraz sheet
   var bd = document.getElementById('pl-prod-sheet-bd');
   if(bd) bd.classList.add('show');
@@ -7193,24 +7240,46 @@ function gynProdSheetRenderRepList(prodLabel, data) {
     return;
   }
 
-  // Helper: vyextrahuj terit MS z cache pre daný rep + produkt + aktuálny kvartal
+  var _kv = gynPharmaKvartal(GYN_APP.year, GYN_APP.q);
+  var _kvPrev = pharmaKvartalPrev(_kv);
+
+  // Helper: normalizovaná oblast pre pharma cache (napr. Escapelle STPI → STPA)
+  function _normOblast(rawRegion) {
+    return gynPharmaNormalizeOblast(prodLabel, (rawRegion || '').toUpperCase());
+  }
+
+  // Helper: vyextrahuj terit MS z cache pre daný rep + produkt
+  // Skúša aktuálny aj predchádzajúci kvartal (fallback ak aktuálny ešte nie je)
   function getRepTeritMs(rep) {
     if(!hasPharma) return null;
-    var kvartal = gynPharmaKvartal(GYN_APP.year, GYN_APP.q);
-    var key = prodLabel + '|' + (rep.region || '').toUpperCase() + '|' + kvartal;
-    var d = GYN_PHARMA_STATE.cache[key];
-    if(!d || !d.summary) return null;
+    var oblast = _normOblast(rep.region);
     var qMonths = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[GYN_APP.q] || [];
     var qYymms = qMonths.map(function(m){ return (GYN_APP.year - 2000) * 100 + m; });
-    var vals = [];
-    d.summary.forEach(function(s){
-      if(qYymms.indexOf(parseInt(s.mesiac)) !== -1) {
-        var v = parseFloat(s.terit_ms);
-        if(!isNaN(v) && v > 0) vals.push(v);
-      }
-    });
-    if(!vals.length) return null;
-    return vals.reduce(function(a,b){return a+b;},0) / vals.length;
+    function extractMs(cacheKey) {
+      var d = GYN_PHARMA_STATE.cache[cacheKey];
+      if(!d || !d.summary) return null;
+      var vals = [];
+      d.summary.forEach(function(s){
+        if(qYymms.indexOf(parseInt(s.mesiac)) !== -1) {
+          var v = parseFloat(s.terit_ms);
+          if(!isNaN(v) && v > 0) vals.push(v);
+        }
+      });
+      return vals.length ? vals.reduce(function(a,b){return a+b;},0) / vals.length : null;
+    }
+    var ms = extractMs(prodLabel + '|' + oblast + '|' + _kv);
+    if(ms !== null) return ms;
+    return extractMs(prodLabel + '|' + oblast + '|' + _kvPrev);
+  }
+
+  // Helper: beží fetch pre tohto repa?
+  function isFetching(rep) {
+    if(!hasPharma) return false;
+    var oblast = _normOblast(rep.region);
+    var k1 = prodLabel + '|' + oblast + '|' + _kv;
+    var k2 = prodLabel + '|' + oblast + '|' + _kvPrev;
+    return !!(GYN_PHARMA_STATE.loading[k1] || GYN_PHARMA_STATE.loading[k2] ||
+      (!GYN_PHARMA_STATE.cache[k1] && !GYN_PHARMA_STATE.cache[k2]));
   }
 
   var rank = 0;
@@ -7235,11 +7304,14 @@ function gynProdSheetRenderRepList(prodLabel, data) {
 
     // Terit MS pre tohto repa (z cache) — zobrazí sa pod menom
     var teritMs = getRepTeritMs(r);
-    var teritHtml = teritMs !== null
-      ? '<div class="pl-ps-ms" style="font-size:11px;color:#475569">' + gynEsc(r.region) + (pkeyLow === 'ryeqo'
+    var msVal = teritMs !== null
+      ? (pkeyLow === 'ryeqo'
           ? ' · Terit.: <strong>' + gynPatientFmt(teritMs) + ' bal.</strong>'
-          : ' · Terit. MS: <strong>' + (teritMs * 100).toFixed(2) + '%</strong>') + '</div>'
-      : '<div class="pl-ps-ms">' + gynEsc(r.region) + '</div>';
+          : ' · Terit. MS: <strong>' + (teritMs * 100).toFixed(2) + '%</strong>')
+      : (hasPharma && isFetching(r)
+          ? ' · Terit. MS: <span class="ms-dots"><span></span><span></span><span></span></span>'
+          : '');
+    var teritHtml = '<div class="pl-ps-ms">' + gynEsc(r.region) + msVal + '</div>';
 
     // Klikateľnosť — len ak má produkt pharma dáta
     var clickable = hasPharma;
@@ -7263,6 +7335,61 @@ function gynProdSheetRenderRepList(prodLabel, data) {
       chevron +
     '</div>';
   }).join('');
+}
+
+// Aktualizuje MS bunky v gyn product sheet bez full re-renderu
+function gynProdSheetUpdateMsCells() {
+  var bodyEl = document.getElementById('pl-ps-body');
+  if(!bodyEl || !PL_PROD_SHEET_STATE.open) return;
+  var prodLabel = PL_PROD_SHEET_STATE.prodKey || '';
+  var pkeyLow = prodLabel.trim().toLowerCase();
+  if(!GYN_PHARMA_PRODUCTS[pkeyLow]) return;
+  var kv = gynPharmaKvartal(GYN_APP.year, GYN_APP.q);
+  var kvPrev = pharmaKvartalPrev(kv);
+  var qMonths = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[GYN_APP.q] || [];
+  var qYymms = qMonths.map(function(m){ return (GYN_APP.year - 2000) * 100 + m; });
+
+  Array.from(bodyEl.querySelectorAll('.pl-ps-rep[data-username]')).forEach(function(row) {
+    var login = row.getAttribute('data-username');
+    var repInfo = (GYN_STATE.repList || []).filter(function(r){ return r.login === login; })[0];
+    var rawRegion = (repInfo && repInfo.region) || (USERS_LOCAL[login] && USERS_LOCAL[login].region) || '';
+    var oblast = gynPharmaNormalizeOblast(prodLabel, rawRegion.toUpperCase());
+    var msEl = row.querySelector('.pl-ps-ms');
+    if(!msEl || !oblast) return;
+
+    function extractMs(cacheKey) {
+      var d = GYN_PHARMA_STATE.cache[cacheKey];
+      if(!d || !d.summary) return null;
+      var vals = [];
+      d.summary.forEach(function(s){
+        if(qYymms.indexOf(parseInt(s.mesiac)) !== -1) {
+          var v = parseFloat(s.terit_ms);
+          if(!isNaN(v) && v > 0) vals.push(v);
+        }
+      });
+      return vals.length ? vals.reduce(function(a,b){return a+b;},0) / vals.length : null;
+    }
+    var ms = extractMs(prodLabel + '|' + oblast + '|' + kv);
+    if(ms === null) ms = extractMs(prodLabel + '|' + oblast + '|' + kvPrev);
+
+    var regionText = gynEsc(rawRegion || oblast);
+    if(ms !== null) {
+      var msText = pkeyLow === 'ryeqo'
+        ? ' · Terit.: <strong>' + gynPatientFmt(ms) + ' bal.</strong>'
+        : ' · Terit. MS: <strong>' + (ms * 100).toFixed(2) + '%</strong>';
+      msEl.innerHTML = regionText + msText;
+    } else {
+      var k1 = prodLabel + '|' + oblast + '|' + kv;
+      var k2 = prodLabel + '|' + oblast + '|' + kvPrev;
+      var fetching = GYN_PHARMA_STATE.loading[k1] || GYN_PHARMA_STATE.loading[k2] ||
+        (!GYN_PHARMA_STATE.cache[k1] && !GYN_PHARMA_STATE.cache[k2]);
+      if(fetching) {
+        msEl.innerHTML = regionText + ' · Terit. MS: <span class="ms-dots"><span></span><span></span><span></span></span>';
+      } else {
+        msEl.innerHTML = regionText;
+      }
+    }
+  });
 }
 
 // Klik na rep v prod sheet → otvorí Trhový podiel pre tohto repa
