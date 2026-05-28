@@ -6543,7 +6543,12 @@ function gynEnhanceProductsForDisplay(products, plan, predajeTotal, linia) {
 
 function gynPreprocessData(data) {
   if(!data || !data.predaje) return data;
+  // Guard — ak USERS_LOCAL ešte nie je naplnený, neoznačujeme data ako spracované
+  // aby sa preprocessing zopakoval po gynLoadRepList so správnou pill→patch mapou
   var _pillToPatch = gynGetPillToPatch();
+  var _mapKey = Object.keys(_pillToPatch).sort().join(',');
+  if(data._preprocessedMapKey === _mapKey) return data; // už spracované s rovnakou mapou
+  data._preprocessedMapKey = _mapKey;
   // 1) Reassign — produkty ako Azalia presunúť z pill repa na patch repa
   GYN_REASSIGN_TO_PATCH.forEach(function(prod){
     Object.keys(_pillToPatch).forEach(function(pillLogin){
@@ -6744,6 +6749,7 @@ function gynLoadRepList(user) {
     .then(function(r){ return r.json(); })
     .then(function(data){
       if(data.ok && data.reps) {
+        var wasEmpty = !GYN_STATE.repList.length;
         GYN_STATE.repList = data.reps;
         // Naplň USERS_LOCAL — aby avatarGetConfig našiel avatary gyn reprezentantov vo všetkých render miestach
         data.reps.forEach(function(r) {
@@ -6761,7 +6767,10 @@ function gynLoadRepList(user) {
           }
           USERS_LOCAL[r.login] = { region: r.region, gender: g, avatar: av };
         });
-        if(GYN_APP.nav === 'plnenie') gynRenderContent(user);
+        // Re-render iba ak repList bol prázdny (manažér potrebuje zoznam repov na prvý render)
+        // Inak stačí refresh avatarov — nespúšťame zbytočnú druhú animáciu
+        if(GYN_APP.nav === 'plnenie' && wasEmpty) gynRenderContent(user);
+        else if(typeof avatarRefreshAllInDom === 'function') avatarRefreshAllInDom();
       }
     }).catch(function(){});
 }
