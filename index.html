@@ -2482,7 +2482,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.21.94';
+var APP_VERSION = '2.21.95';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6301,18 +6301,27 @@ function gynPatientCurrentLabel(predajeByMonth, productKey, q) {
 function gynPatientProductHint(data, region, productKey, predaje, plan, predajeByMonth, q) {
   var keys = Array.isArray(productKey) ? productKey : [productKey];
   var rec = gynPatientPlanForKeys(data, region, keys);
-  if(!rec || !(rec.eur_na_pacienta > 0) || !(rec.plan_pacienti > 0)) return '';
+  if(!rec || !((rec.eur_na_pacienta > 0 && rec.plan_pacienti > 0) || (rec.eur_na_balenie > 0 && rec.plan_balenia > 0))) return '';
   var sales = parseFloat(predaje) || 0;
   var planEur = parseFloat(plan) || rec.plan_eur || 0;
   var missing = Math.max(planEur - sales, 0);
-  var donePac = sales / rec.eur_na_pacienta;
-  var missPac = missing / rec.eur_na_pacienta;
   var currentLabel = gynPatientCurrentLabelForKeys(predajeByMonth, keys, q || GYN_APP.q);
-  return '<div class="gyn-patient-hint">' +
-    '<div class="gyn-patient-row"><span>Plán pacienti</span><strong>' + gynPatientFmt(rec.plan_pacienti) + ' pacientov</strong></div>' +
-    '<div class="gyn-patient-row"><span>Aktuálne ' + gynEsc(currentLabel) + '</span><strong>' + gynPatientFmt(donePac) + ' pacientov</strong></div>' +
-    '<div class="gyn-patient-row miss"><span>Do konca Q' + (q || GYN_APP.q) + ' chýba</span><strong>' + (missing > 0 ? gynPatientFmtMissing(missPac) + ' pacientov' : '0 pacientov') + '</strong></div>' +
-  '</div>';
+  var rows = [];
+  if(rec.eur_na_pacienta > 0 && rec.plan_pacienti > 0) {
+    var donePac = sales / rec.eur_na_pacienta;
+    var missPac = missing / rec.eur_na_pacienta;
+    rows.push('<div class="gyn-patient-row"><span>Plán pacienti</span><strong>' + gynPatientFmt(rec.plan_pacienti) + ' pacientov</strong></div>');
+    rows.push('<div class="gyn-patient-row"><span>Aktuálne ' + gynEsc(currentLabel) + '</span><strong>' + gynPatientFmt(donePac) + ' pacientov</strong></div>');
+    rows.push('<div class="gyn-patient-row miss"><span>Do konca Q' + (q || GYN_APP.q) + ' chýba</span><strong>' + (missing > 0 ? gynPatientFmtMissing(missPac) + ' pacientov' : '0 pacientov') + '</strong></div>');
+  }
+  if(rec.eur_na_balenie > 0 && rec.plan_balenia > 0) {
+    var doneBal = sales / rec.eur_na_balenie;
+    var missBal = missing / rec.eur_na_balenie;
+    rows.push('<div class="gyn-patient-row"><span>Plán balenia</span><strong>' + gynPatientFmt(rec.plan_balenia) + ' balení</strong></div>');
+    rows.push('<div class="gyn-patient-row"><span>Aktuálne ' + gynEsc(currentLabel) + '</span><strong>' + gynPatientFmt(doneBal) + ' balení</strong></div>');
+    rows.push('<div class="gyn-patient-row miss"><span>Do konca Q' + (q || GYN_APP.q) + ' chýba</span><strong>' + (missing > 0 ? gynPatientFmtMissing(missBal) + ' balení' : '0 balení') + '</strong></div>');
+  }
+  return '<div class="gyn-patient-hint">' + rows.join('') + '</div>';
 }
 
 function gynPatientDistrictList(data, region, productKey) {
@@ -6323,15 +6332,17 @@ function gynPatientDistrictList(data, region, productKey) {
 
 function gynPatientPlanForKeys(data, region, productKeys, okres) {
   var keys = (productKeys || []).map(function(k){ return String(k || '').trim().toLowerCase(); }).filter(Boolean);
-  var total = { plan_eur: 0, plan_pacienti: 0, eur_na_pacienta: 0 };
+  var total = { plan_eur: 0, plan_pacienti: 0, plan_balenia: 0, eur_na_pacienta: 0, eur_na_balenie: 0 };
   keys.forEach(function(pk){
     var rec = gynPatientPlan(data, region, pk, okres);
     if(!rec) return;
     total.plan_eur += parseFloat(rec.plan_eur) || 0;
     total.plan_pacienti += parseFloat(rec.plan_pacienti) || 0;
+    total.plan_balenia += parseFloat(rec.plan_balenia) || 0;
   });
-  if(total.plan_eur <= 0 && total.plan_pacienti <= 0) return null;
+  if(total.plan_eur <= 0 && total.plan_pacienti <= 0 && total.plan_balenia <= 0) return null;
   total.eur_na_pacienta = total.plan_pacienti > 0 ? total.plan_eur / total.plan_pacienti : 0;
+  total.eur_na_balenie = total.plan_balenia > 0 ? total.plan_eur / total.plan_balenia : 0;
   return total;
 }
 
@@ -6347,17 +6358,19 @@ function gynPatientDistrictListForKeys(data, region, productKeys) {
       if(!rows) return;
       Object.keys(rows).forEach(function(okresKey){
         var rec = rows[okresKey] || {};
-        if(!out[okresKey]) out[okresKey] = { okres: okresKey, plan_eur: 0, plan_pacienti: 0 };
+        if(!out[okresKey]) out[okresKey] = { okres: okresKey, plan_eur: 0, plan_pacienti: 0, plan_balenia: 0 };
         out[okresKey].plan_eur += parseFloat(rec.plan_eur) || 0;
         out[okresKey].plan_pacienti += parseFloat(rec.plan_pacienti) || 0;
+        out[okresKey].plan_balenia += parseFloat(rec.plan_balenia) || 0;
       });
     });
   });
   return Object.keys(out).map(function(k){
     var r = out[k];
     r.eur_na_pacienta = r.plan_pacienti > 0 ? r.plan_eur / r.plan_pacienti : 0;
+    r.eur_na_balenie = r.plan_balenia > 0 ? r.plan_eur / r.plan_balenia : 0;
     return r;
-  }).filter(function(r){ return r.plan_pacienti > 0 || r.plan_eur > 0; })
+  }).filter(function(r){ return r.plan_pacienti > 0 || r.plan_eur > 0 || r.plan_balenia > 0; })
     .sort(function(a,b){ return b.plan_pacienti - a.plan_pacienti; });
 }
 
@@ -7293,14 +7306,19 @@ function gynOpenDistrictFulfillment(productName, oblast, keysPipe, login) {
   if(territoryPatient) {
     var donePatients = territoryPatient.eur_na_pacienta > 0 ? totalSalesEur / territoryPatient.eur_na_pacienta : 0;
     var missPatients = Math.max((territoryPatient.plan_pacienti || 0) - donePatients, 0);
+    var donePacks = territoryPatient.eur_na_balenie > 0 ? totalSalesEur / territoryPatient.eur_na_balenie : 0;
+    var missPacks = Math.max((territoryPatient.plan_balenia || 0) - donePacks, 0);
     html += '<div class="pharma-ms-card" style="margin-bottom:14px">' +
       '<div class="pharma-ms-card-title">Súhrn teritória</div>' +
       '<div class="gyn-district-summary-grid">' +
         '<div><span>Plán EUR</span><strong>' + plnenieFormatEUR(totalPlanEur || territoryPatient.plan_eur) + '</strong></div>' +
         '<div><span>Plnenie EUR</span><strong>' + plnenieFormatEUR(totalSalesEur) + '</strong></div>' +
-        '<div><span>Plán pacienti</span><strong>' + gynPatientFmt(territoryPatient.plan_pacienti) + '</strong></div>' +
-        '<div><span>Aktuálne pacienti</span><strong>' + gynPatientFmt(donePatients) + '</strong></div>' +
-        '<div><span>Chýba nastaviť</span><strong class="miss">' + gynPatientFmtMissing(missPatients) + '</strong></div>' +
+        (territoryPatient.plan_pacienti > 0 ? '<div><span>Plán pacienti</span><strong>' + gynPatientFmt(territoryPatient.plan_pacienti) + '</strong></div>' : '') +
+        (territoryPatient.plan_pacienti > 0 ? '<div><span>Aktuálne pacienti</span><strong>' + gynPatientFmt(donePatients) + '</strong></div>' : '') +
+        (territoryPatient.plan_pacienti > 0 ? '<div><span>Chýba nastaviť</span><strong class="miss">' + gynPatientFmtMissing(missPatients) + '</strong></div>' : '') +
+        (territoryPatient.plan_balenia > 0 ? '<div><span>Plán balenia</span><strong>' + gynPatientFmt(territoryPatient.plan_balenia) + '</strong></div>' : '') +
+        (territoryPatient.plan_balenia > 0 ? '<div><span>Aktuálne balenia</span><strong>' + gynPatientFmt(donePacks) + '</strong></div>' : '') +
+        (territoryPatient.plan_balenia > 0 ? '<div><span>Chýba balení</span><strong class="miss">' + gynPatientFmtMissing(missPacks) + '</strong></div>' : '') +
         '<div><span>Teraz má byť</span><strong>' + plnenieFormatPct(expectedPct) + '</strong></div>' +
       '</div>' +
     '</div>';
@@ -7318,6 +7336,8 @@ function gynOpenDistrictFulfillment(productName, oblast, keysPipe, login) {
       var districtSales = actual.hasReal ? actual.eur : (hasDistrictSales ? 0 : (totalSalesEur * share));
       var donePac = actual.hasReal && actual.pacienti > 0 ? actual.pacienti : (r.eur_na_pacienta > 0 ? districtSales / r.eur_na_pacienta : 0);
       var missPac = Math.max((r.plan_pacienti || 0) - donePac, 0);
+      var doneBal = actual.hasReal && actual.mnozstvo > 0 ? actual.mnozstvo : (r.eur_na_balenie > 0 ? districtSales / r.eur_na_balenie : 0);
+      var missBal = Math.max((r.plan_balenia || 0) - doneBal, 0);
       var pct = r.plan_eur > 0 ? districtSales / r.plan_eur * 100 : null;
       var tempoCls = gynTempoDetailClass(pct, expectedPct);
       var tempoPct = gynTempoPct(pct, expectedPct);
@@ -7330,14 +7350,19 @@ function gynOpenDistrictFulfillment(productName, oblast, keysPipe, login) {
               '<div class="gyn-district-block-title">EUR</div>' +
               '<div class="gyn-district-block-row"><span>Plán</span><strong>' + plnenieFormatEUR(r.plan_eur) + '</strong></div>' +
               '<div class="gyn-district-block-row"><span>Plnenie</span><strong>' + plnenieFormatEUR(districtSales) + '</strong></div>' +
-              (actual.hasReal && actual.mnozstvo > 0 ? '<div class="gyn-district-block-row"><span>Balenia/cykly</span><strong>' + gynPatientFmt(actual.mnozstvo) + '</strong></div>' : '') +
             '</div>' +
-            '<div class="gyn-district-block">' +
+            (r.plan_pacienti > 0 ? '<div class="gyn-district-block">' +
               '<div class="gyn-district-block-title">Pacienti</div>' +
               '<div class="gyn-district-block-row"><span>Plán</span><strong>' + gynPatientFmt(r.plan_pacienti) + '</strong></div>' +
               '<div class="gyn-district-block-row"><span>Aktuálne</span><strong>' + gynPatientFmt(donePac) + '</strong></div>' +
               '<div class="gyn-district-block-row"><span>Chýba nastaviť</span><strong class="miss">' + gynPatientFmtMissing(missPac) + '</strong></div>' +
-            '</div>' +
+            '</div>' : '') +
+            ((r.plan_balenia > 0 || doneBal > 0) ? '<div class="gyn-district-block">' +
+              '<div class="gyn-district-block-title">Balenia</div>' +
+              '<div class="gyn-district-block-row"><span>Plán</span><strong>' + gynPatientFmt(r.plan_balenia) + '</strong></div>' +
+              '<div class="gyn-district-block-row"><span>Aktuálne</span><strong>' + gynPatientFmt(doneBal) + '</strong></div>' +
+              '<div class="gyn-district-block-row"><span>Chýba balení</span><strong class="miss">' + gynPatientFmtMissing(missBal) + '</strong></div>' +
+            '</div>' : '') +
             '<div class="gyn-district-block">' +
               '<div class="gyn-district-block-title">Plnenie okresu</div>' +
               '<div class="gyn-district-block-row"><span>Aktuálne</span><strong class="' + tempoCls + '">' + plnenieFormatPct(pct) + '</strong></div>' +
