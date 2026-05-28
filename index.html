@@ -1350,6 +1350,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .pharma-ms-district-hdr{display:flex;align-items:center;background:linear-gradient(135deg,#0C1E35 0%,#13294B 100%);padding:0 10px 0 14px;gap:6px;box-shadow:inset 0 -1px 0 rgba(255,255,255,.06)}
   .pharma-ms-district-name{font-size:11px;font-weight:700;color:#fff;padding:8px 0;text-transform:uppercase;letter-spacing:.07em;font-family:var(--font-display);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .gyn-district-pct-badge{font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:20px;flex-shrink:0;font-family:var(--font-display);letter-spacing:-.01em}
+  .gyn-district-trh-badge{font-size:10px;font-weight:700;color:rgba(255,255,255,.65);padding:2px 8px;border-radius:20px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);flex-shrink:0;font-family:var(--font-display);white-space:nowrap;letter-spacing:.01em}
   .gyn-district-pct-badge.g{background:rgba(16,185,129,.20);color:#34D399}
   .gyn-district-pct-badge.o{background:rgba(251,191,36,.20);color:#FBBF24}
   .gyn-district-pct-badge.r{background:rgba(248,113,113,.18);color:#F87171}
@@ -2489,7 +2490,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.22.07';
+var APP_VERSION = '2.22.08';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7465,6 +7466,39 @@ function gynClosePharma() {
 // ── Interactive legend pre gyn pharma trend graf ──
 var _gynPharmaSelectedKeys = {}; // multi-select: key → true
 
+// Celkový trh okresu z pharma cache (len pre pack metriku — Ryeqo a podobné)
+// Vracia { total: N, unit: 'bal.' } alebo null ak dáta nie sú k dispozícii
+function gynGetDistrictTotalMarket(prodLabel, oblast, okrNazov) {
+  var kv = gynPharmaKvartal(GYN_APP.year, GYN_APP.q);
+  var kvPrev = pharmaKvartalPrev(kv);
+  var normOblast = gynPharmaNormalizeOblast(prodLabel, String(oblast || '').toUpperCase());
+  var resp = GYN_PHARMA_STATE.cache[prodLabel + '|' + normOblast + '|' + kv] ||
+             GYN_PHARMA_STATE.cache[prodLabel + '|' + normOblast + '|' + kvPrev];
+  if(!resp || !resp.okresy) return null;
+  // Len pre pack metriku — pre pacientske produkty máme len MS%, nie absolútne objemy
+  if(resp.metric !== 'packs') return null;
+  var okrLow = String(okrNazov || '').toLowerCase().trim();
+  var okrData = null;
+  for(var i = 0; i < resp.okresy.length; i++) {
+    if(String(resp.okresy[i].okres || '').toLowerCase().trim() === okrLow) { okrData = resp.okresy[i]; break; }
+  }
+  if(!okrData) return null;
+  // Ryeqo má plan_trh priamo ako trh
+  if(parseFloat(okrData.trh) > 0) return { total: Math.round(parseFloat(okrData.trh)), unit: 'bal.' };
+  // Iné pack produkty: súčet nás + konkurenti pre posledný dostupný mesiac
+  var monthSuffixes = ['m3', 'm2', 'm1'];
+  for(var mi = 0; mi < monthSuffixes.length; mi++) {
+    var ms = monthSuffixes[mi];
+    var nas = parseFloat(okrData['nas_' + ms]) || 0;
+    var compRows = Array.isArray(okrData.k_all) && okrData.k_all.length ? okrData.k_all : [okrData.k1, okrData.k2, okrData.k3];
+    var compSum = 0;
+    (compRows || []).forEach(function(k){ if(k) compSum += parseFloat(k[ms]) || 0; });
+    var total = nas + compSum;
+    if(total > 0) return { total: Math.round(total), unit: 'bal.' };
+  }
+  return null;
+}
+
 function gynOpenDistrictFulfillment(productName, oblast, keysPipe, login) {
   var data = GYN_APP.plCache && GYN_APP.plCache[GYN_APP.q];
   var keys = String(keysPipe || '').split('|').map(function(k){ return k.trim().toLowerCase(); }).filter(Boolean);
@@ -7531,8 +7565,12 @@ function gynOpenDistrictFulfillment(productName, oblast, keysPipe, login) {
       var pctBadge = pct !== null
         ? '<div class="gyn-district-pct-badge ' + tempoCls + '">' + plnenieFormatPct(pct) + '</div>'
         : '';
+      var trhInfo = gynGetDistrictTotalMarket(productName, oblast, r.okres);
+      var trhBadge = trhInfo
+        ? '<div class="gyn-district-trh-badge">🏪 Trh: ' + gynPatientFmt(trhInfo.total) + ' ' + trhInfo.unit + '</div>'
+        : '';
       html += '<div class="pharma-ms-district">' +
-        '<div class="pharma-ms-district-hdr"><div class="pharma-ms-district-name">' + gynEsc(r.okres) + '</div>' + pctBadge + '</div>' +
+        '<div class="pharma-ms-district-hdr"><div class="pharma-ms-district-name">' + gynEsc(r.okres) + '</div>' + trhBadge + pctBadge + '</div>' +
         '<div class="pharma-ms-district-meta">' +
           '<div class="gyn-district-summary-grid compact">' +
             '<div class="gyn-district-block">' +
