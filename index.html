@@ -2558,7 +2558,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.23.3';
+var APP_VERSION = '2.23.4';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6008,8 +6008,13 @@ function mgrSwitchLine(target){
   var u = (target === 'gyn') ? d.gyn : d.gp;
   if(!u) return;
   try { haptic('selection'); } catch(e){}
-  setSession(u);            // dual store ostáva v localStorage, reload ho nezmaže
-  location.reload();
+  setSession(u);            // dual store ostáva v localStorage, navigácia ho nezmaže
+  // Čistá navigácia (nie location.reload) — na iOS PWA standalone reload končí bielou obrazovkou
+  var dest = window.location.pathname + window.location.search;
+  setTimeout(function(){
+    try { window.location.replace(dest); }
+    catch(e){ try { window.location.href = dest; } catch(e2){ try { location.reload(); } catch(e3){} } }
+  }, 50);
 }
 
 // ── Región reprezentantov — defaults, prepísané zo Sheets cez loadRepList() ──
@@ -6209,7 +6214,13 @@ function confirmLogout() {
     }
   } catch(e){}
   clearSession();
-  location.reload();
+  // iOS PWA standalone: location.reload() po vyčistení storage spoľahlivo končí bielou
+  // obrazovkou. Čistá navigácia na rovnakú URL (nový dokument) tento problém obchádza.
+  var dest = window.location.pathname + window.location.search;
+  setTimeout(function(){
+    try { window.location.replace(dest); }
+    catch(e){ try { window.location.href = dest; } catch(e2){ try { location.reload(); } catch(e3){} } }
+  }, 50);
 }
 
 function showSessionExpiredModal() {
@@ -6976,7 +6987,12 @@ function gynEnter(user) {
 
 function gynExit() {
   clearSession();
-  location.reload();
+  // iOS PWA standalone: location.reload() po clearSession končí bielou obrazovkou — čistá navigácia
+  var dest = window.location.pathname + window.location.search;
+  setTimeout(function(){
+    try { window.location.replace(dest); }
+    catch(e){ try { window.location.href = dest; } catch(e2){ try { location.reload(); } catch(e3){} } }
+  }, 50);
 }
 
 function gynLoadRepList(user) {
