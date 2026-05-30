@@ -3320,6 +3320,211 @@ function devModeInit() {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+//   USAGE ANALYTICS — tiché trackovanie používania appky (per reprezentant)
+//   Cieľ: zaznamenať VŠETKO, na čo používateľ klikne / čo otvorí / pozrie.
+//   - sémantické eventy: section_open, section_time, drilldown, action, app_open
+//   - globálny zachytávač klikov: každé ťuknutie na tlačidlo/odkaz/tab/input
+//   Eventy sa buffrujú a posielajú v dávkach (logUsage endpoint), aby appka
+//   v teréne nelagovala. V DEV móde sa nič neposiela (len in-memory log).
+// ═══════════════════════════════════════════════════════════════════════════
+var USAGE = {
+  buffer: [],
+  active: null,          // { section, detail, ts } — práve otvorená sekcia
+  lastKey: '', lastTs: 0,
+  flushTimer: null,
+  STORAGE_KEY: 'potencial_usage_buffer_v1',
+  FLUSH_AT: 12,          // flush keď je v bufferi toľko eventov
+  FLUSH_EVERY: 25000,    // alebo každých 25 s
+  MAX_BATCH: 40,         // max eventov v jednej dávke
+  devLog: []             // DEV mód — namiesto siete
+};
+
+function usageDevice() {
+  try {
+    var ua = navigator.userAgent || '';
+    var w = Math.min(screen.width || 0, screen.height || 0);
+    if (/iPad|Tablet|PlayBook|Silk/i.test(ua) || (/Android/i.test(ua) && !/Mobile/i.test(ua))) return 'tablet';
+    if (/Mobi|iPhone|Android|iPod/i.test(ua) || w < 768) return 'mobile';
+    return 'desktop';
+  } catch(e) { return 'unknown'; }
+}
+
+function usageLine() {
+  try { var s = getSession(); return (s && s.line === 'gyn') ? 'gyn' : 'gp'; } catch(e){ return 'gp'; }
+}
+
+// Hlavná funkcia — zaznamenaj jeden event do buffera.
+function usageTrack(type, section, detail, durationS) {
+  try {
+    var s = (typeof getSession === 'function') ? getSession() : null;
+    if (!s || !s.username) return;            // bez prihlásenia netrackujeme
+    var ev = {
+      ts:       new Date().toISOString(),
+      login:    s.username,
+      line:     (s.line === 'gyn') ? 'gyn' : 'gp',
+      type:     type || 'event',
+      section:  section || '',
+      detail:   (detail == null ? '' : String(detail)).slice(0, 160),
+      duration: (durationS != null && isFinite(durationS)) ? Math.round(durationS) : '',
+      device:   usageDevice(),
+      ver:      (typeof APP_VERSION !== 'undefined') ? APP_VERSION : ''
+    };
+    USAGE.buffer.push(ev);
+    if (typeof IS_DEV !== 'undefined' && IS_DEV) { USAGE.devLog.push(ev); return; }
+    try { localStorage.setItem(USAGE.STORAGE_KEY, JSON.stringify(USAGE.buffer.slice(-200))); } catch(e){}
+    if (USAGE.buffer.length >= USAGE.FLUSH_AT) usageFlush(false);
+    else usageScheduleFlush();
+  } catch(e){}
+}
+
+function usageScheduleFlush() {
+  if (USAGE.flushTimer) return;
+  USAGE.flushTimer = setTimeout(function(){ USAGE.flushTimer = null; usageFlush(false); }, USAGE.FLUSH_EVERY);
+}
+
+// Otvorenie sekcie — auto-uzavrie predošlú (single-active model, sekcie sú fullscreen).
+function usageSectionEnter(section, detail) {
+  usageSectionClose();
+  USAGE.active = { section: section, detail: detail || '', ts: Date.now() };
+  usageTrack('section_open', section, detail);
+}
+
+// Uzavri práve aktívnu sekciu a zaznamenaj strávený čas.
+function usageSectionClose() {
+  if (!USAGE.active) return;
+  var a = USAGE.active;
+  USAGE.active = null;
+  var dur = Math.round((Date.now() - a.ts) / 1000);
+  if (dur >= 1) usageTrack('section_time', a.section, a.detail, dur);
+}
+
+// Drilldown — konkrétny detail v rámci sekcie (produkt, lekáreň, okres, Q…).
+function usageDrill(section, detail) { usageTrack('drilldown', section, detail); }
+// Akcia — submit záznamu, označenie lekárne, zmena avatara…
+function usageAction(detail, section) { usageTrack('action', section || (USAGE.active && USAGE.active.section) || '', detail); }
+
+// Pošli buffer na backend v dávke. useBeacon=true pri odchode zo stránky.
+function usageFlush(useBeacon) {
+  try {
+    if (typeof IS_DEV !== 'undefined' && IS_DEV) { USAGE.buffer = []; return; }
+    if (!USAGE.buffer.length) return;
+    var batch = USAGE.buffer.slice(0, USAGE.MAX_BATCH);
+    // rozdeľ podľa linky (gp / gyn) — posielame na správny backend
+    var byLine = { gp: [], gyn: [] };
+    batch.forEach(function(ev){ (byLine[ev.line] || byLine.gp).push(ev); });
+    var sent = [];
+    ['gp','gyn'].forEach(function(line){
+      var evs = byLine[line];
+      if (!evs.length) return;
+      var json = JSON.stringify(evs);
+      var base = (line === 'gyn') ? gynScriptUrl('action=logUsage') : scriptUrl('action=logUsage');
+      if (useBeacon && navigator.sendBeacon) {
+        try {
+          var blob = new Blob(['events=' + encodeURIComponent(json)], { type: 'text/plain;charset=UTF-8' });
+          navigator.sendBeacon(base, blob);
+          evs.forEach(function(ev){ sent.push(ev); });
+        } catch(e){}
+      } else {
+        var url = base + '&events=' + encodeURIComponent(json);
+        // GET keď je krátky, inak POST text/plain (bez preflightu)
+        if (url.length < 7000) {
+          fetch(url, { cache: 'no-store', keepalive: true }).catch(function(){});
+        } else {
+          fetch(base, { method: 'POST', cache: 'no-store', keepalive: true,
+            headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+            body: 'events=' + encodeURIComponent(json) }).catch(function(){});
+        }
+        evs.forEach(function(ev){ sent.push(ev); });
+      }
+    });
+    // odstráň odoslané z buffera
+    USAGE.buffer = USAGE.buffer.filter(function(ev){ return sent.indexOf(ev) === -1; });
+    try { localStorage.setItem(USAGE.STORAGE_KEY, JSON.stringify(USAGE.buffer.slice(-200))); } catch(e){}
+  } catch(e){}
+}
+
+// Zisti čitateľný popis klikateľného elementu.
+function usageLabelFor(target) {
+  try {
+    var el = target.closest('[data-usage],button,a,[role="button"],[onclick],.lk-tab,.pl-q-tab,.mgr-subtab,.lb-tab,.lb-mode-tab,.gyn-nav-btn,.av-tab,.pl-sub-tab,input,select,label');
+    if (!el) return null;
+    var tag = (el.tagName || '').toLowerCase();
+    var explicit = el.getAttribute('data-usage');
+    if (explicit) return explicit;
+    if (tag === 'select') {
+      var nm = el.getAttribute('name') || el.id || 'výber';
+      var optTxt = '';
+      try { optTxt = el.options[el.selectedIndex] ? el.options[el.selectedIndex].text : el.value; } catch(e){ optTxt = el.value; }
+      return 'výber: ' + nm + ' = ' + (optTxt || '');
+    }
+    if (tag === 'input') {
+      var ph = el.getAttribute('placeholder') || el.getAttribute('name') || el.id || 'pole';
+      return 'pole: ' + ph;
+    }
+    var txt = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (txt) return txt.slice(0, 48);
+    var aria = el.getAttribute('aria-label') || el.getAttribute('title');
+    if (aria) return aria.slice(0, 48);
+    if (el.id) return '#' + el.id;
+    return (el.className ? ('.' + String(el.className).split(' ')[0]) : tag);
+  } catch(e){ return null; }
+}
+
+// Zisti, v ktorej obrazovke sme práve teraz.
+function usageCurrentSection() {
+  function shown(id) { var x = document.getElementById(id); return x && (x.classList.contains('show') || (x.style && x.style.display && x.style.display !== 'none' && getComputedStyle(x).display !== 'none')); }
+  try {
+    if (shown('pharma-okres-overlay')) return 'Trhový podiel · graf okresu';
+    if (shown('pharma-ms-overlay'))    return 'Trhový podiel';
+    if (shown('lk-overlay') || (typeof LK_STATE !== 'undefined' && LK_STATE.open)) return 'Lekárne';
+    if (shown('rep-plnenie-overlay'))  return 'Plnenie';
+    if (shown('hist-overlay'))         return 'História';
+    if (shown('lb-overlay'))           return 'Rebríček';
+    if (shown('detail-overlay'))       return 'Karta lekára';
+    if (shown('av-overlay'))           return 'Avatar';
+    if (document.body.classList.contains('manager-mode')) {
+      if (document.body.classList.contains('mgr-subtab-leaderboard')) return 'Manažér · Rebríček';
+      if (document.body.classList.contains('mgr-subtab-activity'))    return 'Manažér · Aktivita';
+      if (document.body.classList.contains('mgr-subtab-plnenie'))     return 'Manažér · Plnenie';
+      return 'Manažér · Návštevy';
+    }
+    if (document.getElementById('gyn-view') && getComputedStyle(document.getElementById('gyn-view')).display !== 'none') {
+      var nav = (typeof GYN_APP !== 'undefined' && GYN_APP.nav) ? GYN_APP.nav : '';
+      return 'Gyn · ' + (nav === 'plnenie' ? 'Plnenie' : nav === 'leaderboard' ? 'Rebríček' : 'História');
+    }
+    return 'Formulár';
+  } catch(e){ return ''; }
+}
+
+// Globálny zachytávač klikov — zaznamená každé ťuknutie na klikateľný prvok.
+document.addEventListener('click', function(e){
+  try {
+    var label = usageLabelFor(e.target);
+    if (!label) return;
+    var section = usageCurrentSection();
+    var key = section + '|' + label;
+    var now = Date.now();
+    if (key === USAGE.lastKey && (now - USAGE.lastTs) < 400) return; // dedupe dvojkliku
+    USAGE.lastKey = key; USAGE.lastTs = now;
+    usageTrack('click', section, label);
+  } catch(err){}
+}, true);
+
+// Flush + uzavretie sekcie pri odchode / prepnutí appky do pozadia.
+window.addEventListener('visibilitychange', function(){
+  if (document.visibilityState === 'hidden') { usageSectionClose(); usageFlush(true); }
+});
+window.addEventListener('pagehide', function(){ usageSectionClose(); usageFlush(true); });
+
+// Obnov nedoručený buffer z localStorage (appka spadla / zatvorila sa offline).
+(function usageRestoreBuffer(){
+  try {
+    var raw = localStorage.getItem(USAGE.STORAGE_KEY);
+    if (raw) { var arr = JSON.parse(raw); if (Array.isArray(arr)) USAGE.buffer = arr; }
+  } catch(e){}
+})();
+
 var SEGMENTS = {
   top: {
     label: 'Platinum', icon: '✅', color: 'green',
@@ -3602,6 +3807,7 @@ function potvrdit(){
   // scenario: kapitacia < 1500 AND total < 3700 → red, vyradit
   var scenario = (kapitacia < 1501 && total < 3700) ? 'vyradit' : (kapitacia < 1501 && total >= 3700) ? 'frekvencia' : (kapitacia >= 1501 && kapitacia <= 1999 && total < 3700) ? 'zvysit' : (kapitacia >= 1501 && kapitacia <= 1999 && total >= 3700) ? 'udrzat' : (kapitacia >= 2000 && total < 3700) ? 'zvysit3' : (kapitacia >= 2000 && total >= 3700) ? 'top' : 'ok';
 
+  usageAction('zadanie záznamu lekára · ' + (scenario || ''), 'Formulár');
   // show send popup + scroll to top
   var bar=document.getElementById('send-bar');
   var sendPopup2 = document.getElementById('send-popup');
@@ -4996,6 +5202,7 @@ function closeAllPanels() {
 }
 
 function openHistory() {
+  usageSectionEnter('História');
   var overlay = document.getElementById('hist-overlay');
   var body = document.getElementById('hist-body');
   var dateEl = document.getElementById('hist-date');
@@ -5017,6 +5224,7 @@ function openHistory() {
 }
 
 function closeHistory() {
+  usageSectionClose();
   var overlay = document.getElementById('hist-overlay');
   if(overlay) overlay.classList.remove('show');
   _panelCurrent = null;
@@ -6115,6 +6323,7 @@ function loginSuccess(username, name, role, region, extra) {
     if (extra.device_id) user.device_id = String(extra.device_id || '');
   }
   setSession(user);
+  usageTrack('app_open', '', 'prihlásenie · rola: ' + (role || ''));
   haptic('success');
   var _appEl = document.querySelector('.app');
   if (_appEl) { _appEl.style.visibility = 'visible'; _appEl.classList.add('app-enter'); setTimeout(function(){ _appEl.classList.remove('app-enter'); }, 500); }
@@ -6370,6 +6579,7 @@ function initLogin() {
     }
   }
   var session = getSession();
+  if(session && session.username) usageTrack('app_open', '', 'štart appky · rola: ' + (session.role || ''));
   if(session && session.username && session.line === 'gyn') {
     document.querySelector('.app').style.visibility = 'visible';
     gynEnter(session);
@@ -7143,6 +7353,7 @@ function gynRenderShell(user) {
 // ── Navigácia medzi tabmi ──
 function gynNavTo(tab) {
   GYN_APP.nav = tab;
+  usageSectionEnter('Gyn · ' + (tab === 'plnenie' ? 'Plnenie' : tab === 'leaderboard' ? 'Rebríček' : 'História'));
   // pri prepnutí na ľubovoľný tab zatvor otvorený rep detail
   GYN_APP.detailLogin = null;
   document.querySelectorAll('#gyn-nav .gyn-nav-btn').forEach(function(b){
@@ -10886,6 +11097,7 @@ function avatarGetUserGender(username) {
 function avatarSetConfig(username, config) {
   if (!username) return;
   username = String(username).trim().toLowerCase();
+  usageAction(config ? 'zmena avatara' : 'odstránenie avatara', 'Avatar');
   var configStr = config ? JSON.stringify(config) : '';
   // 1. In-memory update (synchronne)
   try {
@@ -11921,6 +12133,7 @@ function loadInitData(username, _attempt) {
 
 function openLeaderboard(){
   if(!document.getElementById('lb-overlay')) return;
+  usageSectionEnter('Rebríček');
   _panelShow('lb-overlay');
   LB_STATE.showConfetti = true;
   lbSyncTabs();
@@ -12031,6 +12244,7 @@ function lbConfetti() {
 }
 
 function closeLeaderboard(){
+  usageSectionClose();
   var overlay = document.getElementById('lb-overlay');
   if(!overlay) return;
   overlay.className = 'lb-overlay';
@@ -13719,6 +13933,7 @@ function prodSheetUpdateHeader() {
 
 function openProdSheet(prodKey, prodLabel) {
   if (!PL_STATE.data || !PL_STATE.aggregates) return;
+  usageDrill(usageCurrentSection(), 'produkt sheet: ' + (prodLabel || prodKey));
   PL_PROD_SHEET_STATE.open = true;
   PL_PROD_SHEET_STATE.prodKey = prodKey;
   PL_PROD_SHEET_STATE.prodLabel = prodLabel;
@@ -15873,6 +16088,7 @@ var REP_PL_STATE = {
 function openRepPlnenie() {
   var session = getSession();
   if (!session || !session.username) return;
+  usageSectionEnter('Plnenie');
   _panelShow('rep-plnenie-overlay');
   // Default: aktuálny kvartál
   var curQ = plnenieCurrentQ();
@@ -15895,6 +16111,7 @@ function openRepPlnenie() {
 }
 
 function closeRepPlnenie() {
+  usageSectionClose();
   var overlay = document.getElementById('rep-plnenie-overlay');
   if (overlay) overlay.classList.remove('show');
   _panelCurrent = null;
@@ -16841,6 +17058,7 @@ function pharmaGetOblast() {
 function openPharmaMs(prodKey, label) {
   var codes = PHARMA_CODES[prodKey];
   if (!codes || !codes.length) return;
+  usageSectionEnter('Trhový podiel', 'produkt: ' + (label || prodKey));
   var session = getSession();
   if (!session) return;
   var oblast = pharmaGetOblast();
@@ -18157,6 +18375,10 @@ function pharmaTrendAnimate(container) {
 }
 
 function closePharmaMs() {
+  usageSectionClose();
+  // ak sa vraciame do otvoreného Plnenia, znovu začni merať čas v ňom
+  var repPl = document.getElementById('rep-plnenie-overlay');
+  if (repPl && repPl.classList.contains('show')) usageSectionEnter('Plnenie');
   var overlay = document.getElementById('pharma-ms-overlay');
   if (!overlay) return;
   // Ak animácia už beží (pl-detail-exit-r), nereštartuj ju — inak by sa show nikdy neodstránilo
@@ -21129,6 +21351,7 @@ function lkBuildLekarne(rows) {
 
 // Otvorenie lekárne overlay (rep)
 function openLekarne() {
+  usageSectionEnter('Lekárne');
   LK_STATE.open = true;
   LK_STATE.activeTab = 'reaktivacia';
   LK_STATE.searchQ = '';
@@ -21163,6 +21386,7 @@ function openLekarne() {
 }
 
 function closeLekarne() {
+  usageSectionClose();
   LK_STATE.open = false;
   closeAllPanels();
 }
