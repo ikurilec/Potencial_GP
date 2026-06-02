@@ -2654,7 +2654,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.24.17';
+var APP_VERSION = '2.24.18';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -2782,7 +2782,7 @@ function pushRegisterToken(){
         var s = (typeof getSession === 'function') ? getSession() : null;
         if (!s || !s.username) return;
         var urlFn = (s.line === 'gyn' && typeof gynScriptUrl === 'function') ? gynScriptUrl : scriptUrl;
-        fetch(urlFn('action=registerPushToken&token=' + encodeURIComponent(token)), { cache:'no-store' }).catch(function(){});
+        fetch(urlFn('action=registerPushToken&pushtoken=' + encodeURIComponent(token)), { cache:'no-store' }).catch(function(){});
       })
       .catch(function(){});
   } catch(e){}
