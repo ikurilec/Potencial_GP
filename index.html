@@ -3406,7 +3406,8 @@ var MOCK_USAGE_EVENTS = (function() {
 // Aggreguj mock eventy do server-shaped odpovede (team súhrn alebo rep stream).
 function usageMockResponse(rep, dni) {
   var cutoff = Date.now() - (dni||30)*24*60*60*1000;
-  var allowed = (typeof plnenieGetActiveReps === 'function') ? plnenieGetActiveReps() : null;
+  var allowed = (typeof usageRepList === 'function') ? usageRepList() : null;
+  if (allowed && !allowed.length) allowed = null;
   rep = rep ? String(rep).toLowerCase() : '';
   var events = [], reps = {};
   // zabezpeč že aj neaktívni repi sú v team súhrne
@@ -7473,6 +7474,7 @@ function gynRenderShell(user) {
         '<button class="gyn-nav-btn active" data-tab="plnenie"     onclick="gynNavTo(\'plnenie\')">💊 Plnenie</button>' +
         '<button class="gyn-nav-btn"        data-tab="visits"      onclick="gynNavTo(\'visits\')">📋 Návštevy</button>' +
         '<button class="gyn-nav-btn"        data-tab="leaderboard" onclick="gynNavTo(\'leaderboard\')">🏆 Rebríček</button>' +
+        (isRep ? '' : '<button class="gyn-nav-btn" data-tab="activity" onclick="gynNavTo(\'activity\')">📈 Aktivita</button>') +
       '</nav>' +
       '<div id="gyn-content"></div>' +
     '</div>';
@@ -7495,7 +7497,7 @@ function gynRenderShell(user) {
 // ── Navigácia medzi tabmi ──
 function gynNavTo(tab) {
   GYN_APP.nav = tab;
-  usageSectionEnter('Gyn · ' + (tab === 'plnenie' ? 'Plnenie' : tab === 'leaderboard' ? 'Rebríček' : 'História'));
+  usageSectionEnter('Gyn · ' + (tab === 'plnenie' ? 'Plnenie' : tab === 'leaderboard' ? 'Rebríček' : tab === 'activity' ? 'Aktivita' : 'História'));
   // pri prepnutí na ľubovoľný tab zatvor otvorený rep detail
   GYN_APP.detailLogin = null;
   document.querySelectorAll('#gyn-nav .gyn-nav-btn').forEach(function(b){
@@ -7521,7 +7523,22 @@ function gynRenderContent(user) {
   if(!el || !user) return;
   if(GYN_APP.nav === 'plnenie')      gynPlnenieShow(el, user);
   else if(GYN_APP.nav === 'leaderboard') gynLbShow(el);
+  else if(GYN_APP.nav === 'activity')    gynActivityShow(el, user);
   else                                gynHistShow(el);
+}
+
+// ── Aktivita (usage analytics) — gyn manažérsky pohľad ──
+function gynActivityShow(el, user) {
+  USAGE_VIEW.line = 'gyn';
+  USAGE_VIEW.bodyId = 'gyn-act-body';
+  USAGE_VIEW.currentRep = null;
+  var dni = USAGE_VIEW.dni || 30;
+  el.innerHTML =
+    '<div class="act-period" id="gyn-act-period">' +
+      [7,30,90].map(function(d){ return '<button class="act-period-btn' + (d===dni?' active':'') + '" data-dni="' + d + '" onclick="usageSetPeriod(' + d + ',this)">' + d + ' dní</button>'; }).join('') +
+    '</div>' +
+    '<div class="act-body" id="gyn-act-body"><div class="act-empty">Načítavam…</div></div>';
+  usageStatsLoad();
 }
 
 // ── Q tabs HTML — rovnaké triedy ako Golem ──
@@ -13599,6 +13616,8 @@ function mgrSwitchSubtab(tab) {
     }
   }
   if (tab === 'activity') {
+    USAGE_VIEW.line = 'gp';
+    USAGE_VIEW.bodyId = 'act-body';
     USAGE_VIEW.currentRep = null;
     usageStatsLoad();
   }
@@ -13608,11 +13627,26 @@ function mgrSwitchSubtab(tab) {
 //   AKTIVITA — usage analytics (manažérsky pohľad)
 //   Team prehľad používania appky + per-reprezentant deep dive
 // ═══════════════════════════════════════════════════════════════════════════
-var USAGE_VIEW = { dni: 30, currentRep: null, loading: false, teamCache: {}, repCache: {} };
+var USAGE_VIEW = { dni: 30, currentRep: null, loading: false, line: 'gp', bodyId: 'act-body', teamCache: {}, repCache: {} };
+
+// Kontext-aware helpery (GP manažér vs gyn manažér majú iný roster a iné mená).
+function usageBody() { return document.getElementById(USAGE_VIEW.bodyId || 'act-body'); }
+function usageRepList() {
+  if (USAGE_VIEW.line === 'gyn') return ((typeof GYN_STATE !== 'undefined' && GYN_STATE.repList) || []).map(function(r){ return String(r.login || '').toLowerCase(); }).filter(Boolean);
+  return (typeof plnenieGetActiveReps === 'function') ? plnenieGetActiveReps() : [];
+}
+function usageRepName(login) {
+  if (USAGE_VIEW.line === 'gyn') {
+    var r = ((typeof GYN_STATE !== 'undefined' && GYN_STATE.repList) || []).filter(function(x){ return String(x.login || '').toLowerCase() === login; })[0];
+    return (r && (r.meno || r.login)) || login;
+  }
+  return (typeof MGR_REP_NAMES !== 'undefined' && MGR_REP_NAMES[login]) || login;
+}
 
 function usageSetPeriod(dni, btn) {
   USAGE_VIEW.dni = dni;
-  document.querySelectorAll('#act-period .act-period-btn').forEach(function(b){ b.classList.toggle('active', b === btn); });
+  var parent = (btn && btn.parentNode) || document.getElementById('act-period');
+  if (parent) parent.querySelectorAll('.act-period-btn').forEach(function(b){ b.classList.toggle('active', b === btn); });
   if (USAGE_VIEW.currentRep) usageStatsLoad(USAGE_VIEW.currentRep);
   else usageStatsLoad();
 }
@@ -13620,7 +13654,7 @@ function usageSetPeriod(dni, btn) {
 // Načítaj štatistiky (team ak rep nie je zadaný, inak deep dive konkrétneho repa).
 function usageStatsLoad(rep) {
   USAGE_VIEW.currentRep = rep || null;
-  var body = document.getElementById('act-body');
+  var body = usageBody();
   if (!body) return;
   var cacheKey = (rep || '_team') + '_' + USAGE_VIEW.dni;
   var cache = rep ? USAGE_VIEW.repCache : USAGE_VIEW.teamCache;
@@ -13646,7 +13680,7 @@ function usageStatsLoad(rep) {
 }
 
 function usageRenderError() {
-  var body = document.getElementById('act-body');
+  var body = usageBody();
   if (body) body.innerHTML = '<div class="act-empty">Štatistiku sa nepodarilo načítať.<br>Skús to znova alebo skontroluj pripojenie.</div>';
 }
 
@@ -13690,10 +13724,11 @@ function usageStatusClass(iso) {
 
 // ── TEAM prehľad ──
 function usageRenderTeam(data) {
-  var body = document.getElementById('act-body');
+  var body = usageBody();
   if (!body) return;
   var reps = data.reps || {};
-  var list = (typeof plnenieGetActiveReps === 'function') ? plnenieGetActiveReps().slice() : Object.keys(reps);
+  var list = usageRepList().slice();
+  if (!list.length) list = Object.keys(reps);
   // pulz: aktívni dnes / týždeň, spolu otvorení
   var today = 0, week = 0, opens = 0;
   list.forEach(function(l){
@@ -13720,7 +13755,7 @@ function usageRenderTeam(data) {
   html += '<div class="act-section-lbl">Reprezentanti · posledných ' + USAGE_VIEW.dni + ' dní</div>';
   list.forEach(function(l){
     var r = reps[l] || { opens:0, clicks:0, timeS:0, last:'', sections:{} };
-    var name = (MGR_REP_NAMES[l] || l);
+    var name = usageRepName(l);
     var topSec = '';
     var maxC = 0;
     Object.keys(r.sections || {}).forEach(function(s){ if (r.sections[s] > maxC) { maxC = r.sections[s]; topSec = s; } });
@@ -13736,7 +13771,7 @@ function usageRenderTeam(data) {
   body.innerHTML = html;
   // doplň avatary
   body.querySelectorAll('.act-rep-avatar[data-username]').forEach(function(el){
-    try { avatarFillElement(el, { username: el.getAttribute('data-username'), name: MGR_REP_NAMES[el.getAttribute('data-username')] || '', size: 42, color: el.style.background }); } catch(e){}
+    try { avatarFillElement(el, { username: el.getAttribute('data-username'), name: usageRepName(el.getAttribute('data-username')) || '', size: 42, color: el.style.background }); } catch(e){}
   });
 }
 
@@ -13747,10 +13782,10 @@ function usageOpenRepActivity(login) {
 
 // ── PER-REP deep dive ──
 function usageRenderRep(data, login) {
-  var body = document.getElementById('act-body');
+  var body = usageBody();
   if (!body) return;
   var events = (data.events || []).slice().sort(function(a,b){ return Date.parse(a.ts) - Date.parse(b.ts); });
-  var name = MGR_REP_NAMES[login] || login;
+  var name = usageRepName(login);
   var color = (typeof strHash === 'function') ? ('hsl(' + (strHash(login) % 360) + ',55%,45%)') : '#0C1E35';
 
   // agregácie
