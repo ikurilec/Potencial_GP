@@ -2633,7 +2633,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.24.13';
+var APP_VERSION = '2.24.14';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8115,6 +8115,7 @@ function gynOpenPharma(productName, oblast) {
   var pkey = produkt.toLowerCase();
   if(!GYN_PHARMA_PRODUCTS[pkey]) return;
   if(!oblast) oblast = 'BAPI';
+  usageSectionEnter('Trhový podiel', 'produkt: ' + produkt);
   GYN_PHARMA_STATE.produkt = produkt;
   GYN_PHARMA_STATE.oblast  = gynPharmaNormalizeOblast(produkt, oblast);
   GYN_PHARMA_STATE.kvartal = gynPharmaKvartal(GYN_APP.year, GYN_APP.q);
@@ -8144,6 +8145,7 @@ function gynOpenPharma(productName, oblast) {
 }
 
 function gynClosePharma() {
+  usageSectionClose();
   GYN_PHARMA_STATE.open = false;
   var overlay = document.getElementById('pharma-ms-overlay');
   if(overlay){
@@ -13835,12 +13837,28 @@ function usageRenderRep(data, login) {
   // agregácie
   var opens = 0, clicks = 0, timeS = 0, last = '';
   var sectionCount = {}, sectionTime = {};
+  // ── detailné záujmy: čo konkrétne pozerá (produkt v Trhovom podiele, okres, drilldown, klik) ──
+  var prodCount = {}, prodTime = {};   // Trhový podiel — produkt: počet otvorení + čas
+  var drillCount = {};                  // drilldowny (produkt sheet, okres, sub-produkt…)
+  var clickCount = {};                  // konkrétne kliknutia (label)
+  function _cleanDetail(d){ return String(d||'').replace(/^produkt:\s*/i,'').replace(/^produkt sheet:\s*/i,'').trim(); }
   var hm = []; for (var i=0;i<7*24;i++) hm.push(0); // deň(0=Po..6=Ne) × hodina
   events.forEach(function(ev){
     if (ev.type === 'app_open') opens++;
     if (ev.type === 'click') clicks++;
     if (ev.type === 'section_time' && ev.duration) { timeS += ev.duration; sectionTime[ev.section] = (sectionTime[ev.section]||0) + ev.duration; }
     if (ev.type === 'section_open') sectionCount[ev.section] = (sectionCount[ev.section]||0) + 1;
+    // Produkt v Trhovom podiele (GP aj gyn) — detail je "produkt: <názov>"
+    var isTP = ev.section === 'Trhový podiel' || (ev.section && ev.section.indexOf('Trhový podiel') !== -1);
+    if (isTP && ev.detail) {
+      var pd = _cleanDetail(ev.detail);
+      if (pd) {
+        if (ev.type === 'section_open') prodCount[pd] = (prodCount[pd]||0) + 1;
+        if (ev.type === 'section_time' && ev.duration) prodTime[pd] = (prodTime[pd]||0) + ev.duration;
+      }
+    }
+    if (ev.type === 'drilldown' && ev.detail) { var dd0 = _cleanDetail(ev.detail); if (dd0) drillCount[dd0] = (drillCount[dd0]||0) + 1; }
+    if (ev.type === 'click' && ev.detail) { var cl0 = String(ev.detail).trim(); if (cl0) clickCount[cl0] = (clickCount[cl0]||0) + 1; }
     if (!last || ev.ts > last) last = ev.ts;
     var d = new Date(ev.ts);
     var dow = (d.getDay() + 6) % 7; // pondelok=0
@@ -13879,6 +13897,48 @@ function usageRenderRep(data, login) {
       html += '<div class="act-bar-row"><div class="act-bar-lbl">' + mgrEscape(s || '—') + '</div>' +
               '<div class="act-bar-track"><div class="act-bar-fill" style="width:0%" data-w="' + w + '%"></div></div>' +
               '<div class="act-bar-val">' + (sectionCount[s]||0) + '× · ' + usageFmtDur(sectionTime[s]||0) + '</div></div>';
+    });
+  }
+
+  // ── Trhový podiel: ktoré produkty pozerá najviac (počet + čas) ──
+  var prodKeys = Object.keys(prodCount);
+  Object.keys(prodTime).forEach(function(p){ if (prodKeys.indexOf(p) === -1) prodKeys.push(p); });
+  prodKeys.sort(function(a,b){ return (prodTime[b]||0) - (prodTime[a]||0) || (prodCount[b]||0) - (prodCount[a]||0); });
+  if (prodKeys.length) {
+    var maxPT = Math.max.apply(null, prodKeys.map(function(p){ return prodTime[p]||0; }).concat([1]));
+    html += '<div class="act-section-lbl">📊 Trhový podiel — najpozeranejšie produkty</div>';
+    prodKeys.forEach(function(p){
+      var w = Math.round(((prodTime[p]||0) / maxPT) * 100);
+      var valTxt = (prodCount[p]||0) + '×' + ((prodTime[p]||0) ? ' · ' + usageFmtDur(prodTime[p]||0) : '');
+      html += '<div class="act-bar-row"><div class="act-bar-lbl">' + mgrEscape(p) + '</div>' +
+              '<div class="act-bar-track"><div class="act-bar-fill" style="width:0%" data-w="' + w + '%"></div></div>' +
+              '<div class="act-bar-val">' + valTxt + '</div></div>';
+    });
+  }
+
+  // ── Drilldowny — okresy, product sheety, sub-produkty (čo ho zaujíma do hĺbky) ──
+  var drillKeys = Object.keys(drillCount).sort(function(a,b){ return drillCount[b] - drillCount[a]; }).slice(0, 12);
+  if (drillKeys.length) {
+    var maxD = Math.max.apply(null, drillKeys.map(function(k){ return drillCount[k]; }).concat([1]));
+    html += '<div class="act-section-lbl">🔎 Najčastejšie detaily (okresy, grafy, sub-produkty)</div>';
+    drillKeys.forEach(function(k){
+      var w = Math.round((drillCount[k] / maxD) * 100);
+      html += '<div class="act-bar-row"><div class="act-bar-lbl">' + mgrEscape(k) + '</div>' +
+              '<div class="act-bar-track"><div class="act-bar-fill" style="width:0%" data-w="' + w + '%"></div></div>' +
+              '<div class="act-bar-val">' + drillCount[k] + '×</div></div>';
+    });
+  }
+
+  // ── Najklikanejšie akcie/tlačidlá (na čo najviac ťuká) ──
+  var clickKeys = Object.keys(clickCount).sort(function(a,b){ return clickCount[b] - clickCount[a]; }).slice(0, 12);
+  if (clickKeys.length) {
+    var maxC = Math.max.apply(null, clickKeys.map(function(k){ return clickCount[k]; }).concat([1]));
+    html += '<div class="act-section-lbl">👆 Najčastejšie ťukania</div>';
+    clickKeys.forEach(function(k){
+      var w = Math.round((clickCount[k] / maxC) * 100);
+      html += '<div class="act-bar-row"><div class="act-bar-lbl">' + mgrEscape(k) + '</div>' +
+              '<div class="act-bar-track"><div class="act-bar-fill" style="width:0%" data-w="' + w + '%"></div></div>' +
+              '<div class="act-bar-val">' + clickCount[k] + '×</div></div>';
     });
   }
 
@@ -18264,6 +18324,7 @@ function loadPharmaOkresGrafData(code, oblast, okres, callback) {
 
 function openPharmaOkresChart(r, prodLabel) {
   if (!r) return;
+  try { usageDrill(usageCurrentSection(), 'okres graf: ' + ((r && (r.okres || r.nazov)) || '') + (prodLabel ? ' (' + prodLabel + ')' : '')); } catch(e){}
   var code   = PHARMA_STATE.activeCode;
   var oblast = PHARMA_STATE.oblast;
   // Fallback ak kvartal ešte nie je nastavený — vypočítaj z aktuálneho dátumu
@@ -18597,6 +18658,7 @@ function pharmaSwitchTab(code) {
   var oldIdx = PHARMA_STATE.codes.indexOf(PHARMA_STATE.activeCode);
   var newIdx = PHARMA_STATE.codes.indexOf(code);
   var dir = newIdx > oldIdx ? 'r' : 'l';
+  try { usageDrill('Trhový podiel', 'sub-produkt: ' + code); } catch(e){}
   PHARMA_STATE.activeCode = code;
   var subtabsEl = document.getElementById('pharma-ms-subtabs');
   if (subtabsEl) {
