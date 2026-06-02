@@ -4,7 +4,7 @@
 // ║  cache-first pre ostatné assety (rýchly štart, offline ready).║
 // ╚══════════════════════════════════════════════════════════════╝
 
-var CACHE_NAME = 'potencial-vl-v8-reload-fix';
+var CACHE_NAME = 'potencial-vl-v9-reload-fix';
 
 self.addEventListener('install', function(event){
   self.skipWaiting();
@@ -82,11 +82,13 @@ self.addEventListener('fetch', function(event){
       event.respondWith(
         fetch(freshReq).then(function(resp){
           if(resp && resp.ok){
-            var cloned = resp.clone();
+            // Klonuj SYNCHRÓNNE pred returnom — resp.clone() v async callbacku
+            // by zlyhalo, lebo telo response je už skonzumované browserom.
+            var c1 = resp.clone();
+            var c2 = resp.clone();
             caches.open(CACHE_NAME).then(function(cache){
-              // Ulož pod presnou URL aj pod './' (fallback kľúč)
-              cache.put(req, cloned).catch(function(){});
-              cache.put('./', resp.clone()).catch(function(){});
+              cache.put(req, c1).catch(function(){});  // presná URL
+              cache.put('./', c2).catch(function(){}); // fallback kľúč
             }).catch(function(){});
             return resp;
           }

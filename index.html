@@ -2633,7 +2633,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.24.10';
+var APP_VERSION = '2.24.11';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -2699,14 +2699,18 @@ function _isAppBusy(){
   );
 }
 
-// Reload pri aktualizácii. Len clearSession + location.reload — žiadne SW unregister,
-// žiadne cache delete, žiadne location.replace. SW (network-first) stiahne čerstvý
-// index.html zo servera. DOMContentLoaded deteguje zmenu verzie a zobrazí login screen.
+// Reload pri aktualizácii. Len clearSession + update_msg + location.reload.
+// SW (network-first, no-store) stiahne čerstvý index.html zo servera.
+// Po reloade DOMContentLoaded deteguje zmenu verzie a initLogin zobrazí
+// login screen so zelenou hláškou "Aplikácia bola aktualizovaná".
 function appReload(){
+  // Guard: zapamätaj že sme už reloadovali pre túto serverovú verziu (prežije reload v tom istom tabe).
+  // Zabráni nekonečnému reload-loopu keby SW omylom servíroval starú HTML.
+  try {
+    if(window._serverVersion) sessionStorage.setItem('potencial_gp_reloaded_for', window._serverVersion);
+  } catch(e){}
   try { if(typeof clearSession === 'function') clearSession(); } catch(e){}
   try { localStorage.setItem('potencial_gp_update_msg', '1'); } catch(e){}
-  // Nastav flag aby controllerchange na novej stránke nespustil druhý reload
-  try { localStorage.setItem('potencial_vl_reloading', String(Date.now())); } catch(e){}
   try { location.reload(); } catch(e){}
 }
 
@@ -2726,16 +2730,10 @@ function _applySwUpdate(){
 if('serviceWorker' in navigator){
   try {
     navigator.serviceWorker.register('./sw.js').catch(function(){});
-    var _swHadController = !!navigator.serviceWorker.controller;
-    navigator.serviceWorker.addEventListener('controllerchange', function(){
-      if(!_swHadController){ _swHadController = true; return; }
-      // Ak sme práve reloadovali kvôli update, nový SW preberá kontrolu — to je OK, nereloaduj znova
-      try {
-        var ts = parseInt(localStorage.getItem('potencial_vl_reloading') || '0', 10);
-        if(Date.now() - ts < 30000){ localStorage.removeItem('potencial_vl_reloading'); return; }
-      } catch(e){}
-      _applySwUpdate();
-    });
+    // POZN.: zámerne NEreloadujeme z controllerchange. Aktualizáciu rieši VÝHRADNE
+    // version.json polling (checkForUpdate). Predtým reloadovali oba → dvojitý toast,
+    // strata zelenej hlášky a sivá obrazovka (SW chytený v polovici aktivácie).
+    // Nový SW prevezme kontrolu ticho; čerstvú HTML appka dostane pri reloade z checkForUpdate.
   } catch(e){}
 }
 
@@ -2770,7 +2768,15 @@ function checkForUpdate(){
           var ack = '';
           try { ack = localStorage.getItem('potencial_vl_ack_ver') || ''; } catch(e){}
           if(srv !== APP_VERSION && srv !== ack){
-            _applySwUpdate();
+            // Poistka proti loopu: ak sme už raz reloadli pre túto verziu a appka je
+            // stále stará (SW servíruje staré HTML), nereloaduj znova — ukáž banner.
+            var reloadedFor = '';
+            try { reloadedFor = sessionStorage.getItem('potencial_gp_reloaded_for') || ''; } catch(e){}
+            if(reloadedFor === srv){
+              showUpdateBanner(srv);
+            } else {
+              _applySwUpdate();
+            }
           }
         }
       })
