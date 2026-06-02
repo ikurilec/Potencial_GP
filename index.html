@@ -1867,7 +1867,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     <button type="button" class="mgr-subtab active" data-tab="plnenie" onclick="mgrSwitchSubtab('plnenie')">💊 Plnenie</button>
     <button type="button" class="mgr-subtab" data-tab="visits" onclick="mgrSwitchSubtab('visits')">📋 Návštevy</button>
     <button type="button" class="mgr-subtab" data-tab="leaderboard" onclick="mgrSwitchSubtab('leaderboard')">🏆 Rebríček</button>
-    <button type="button" class="mgr-subtab" data-tab="activity" onclick="mgrSwitchSubtab('activity')">📈 Aktivita</button>
+    <button type="button" class="mgr-subtab" data-tab="activity" id="mgr-subtab-activity-btn" style="display:none" onclick="mgrSwitchSubtab('activity')">📈 Aktivita</button>
   </div>
 
   <!-- PTR indicator — zdieľaný pre Návštevy aj Plnenie -->
@@ -7474,7 +7474,7 @@ function gynRenderShell(user) {
         '<button class="gyn-nav-btn active" data-tab="plnenie"     onclick="gynNavTo(\'plnenie\')">💊 Plnenie</button>' +
         '<button class="gyn-nav-btn"        data-tab="visits"      onclick="gynNavTo(\'visits\')">📋 Návštevy</button>' +
         '<button class="gyn-nav-btn"        data-tab="leaderboard" onclick="gynNavTo(\'leaderboard\')">🏆 Rebríček</button>' +
-        (isRep ? '' : '<button class="gyn-nav-btn" data-tab="activity" onclick="gynNavTo(\'activity\')">📈 Aktivita</button>') +
+        (user.role === 'admin' ? '<button class="gyn-nav-btn" data-tab="activity" onclick="gynNavTo(\'activity\')">📈 Aktivita</button>' : '') +
       '</nav>' +
       '<div id="gyn-content"></div>' +
     '</div>';
@@ -7496,6 +7496,8 @@ function gynRenderShell(user) {
 
 // ── Navigácia medzi tabmi ──
 function gynNavTo(tab) {
+  // Aktivita (usage analytics) je iba pre admina
+  if (tab === 'activity') { var _gs = getSession(); if (!_gs || _gs.role !== 'admin') return; }
   GYN_APP.nav = tab;
   usageSectionEnter('Gyn · ' + (tab === 'plnenie' ? 'Plnenie' : tab === 'leaderboard' ? 'Rebríček' : tab === 'activity' ? 'Aktivita' : 'História'));
   // pri prepnutí na ľubovoľný tab zatvor otvorený rep detail
@@ -9847,6 +9849,10 @@ function mgrEnter(roleKey){
   // Tlačidlo PDF Reporty — skryté kým sa dáta nenačítajú (zobrazí sa v plnenieRenderSummary)
   var rptWrap = document.getElementById('pl-rpt-btn-wrap');
   if (rptWrap) rptWrap.style.display = 'none';
+
+  // Záložka Aktivita (usage analytics) — iba pre admina
+  var actBtn = document.getElementById('mgr-subtab-activity-btn');
+  if (actBtn) actBtn.style.display = (roleKey === 'admin') ? '' : 'none';
 
   mgrLoadData();
   // Plnenie je default tab — načítaj všetky kvartály hneď pri vstupe
@@ -13586,6 +13592,8 @@ function mgrAnimateSubtab(tab, dir) {
 
 // Sub-tab switch medzi "Návštevy" a "Plnenie"
 function mgrSwitchSubtab(tab) {
+  // Aktivita (usage analytics) je iba pre admina
+  if (tab === 'activity' && MGR_STATE.role !== 'admin') return;
   var prevTab = MGR_STATE.subtab;
   if (prevTab && prevTab !== tab) _mgrPrevSubtab = prevTab; // zapamätaj odkiaľ si prišiel
   var dir = (MGR_TAB_ORDER[tab] || 0) > (MGR_TAB_ORDER[prevTab] || 0) ? 'r' : 'l';
