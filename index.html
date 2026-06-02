@@ -991,6 +991,7 @@
   .act-rep-avatar.has-avatar{background:transparent !important}
   .act-rep-main{flex:1;min-width:0}
   .act-rep-name{font-size:14.5px;font-weight:700;color:#0F172A;letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .act-role{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;background:#EFF6FF;color:#1D4ED8;font-size:9px;font-weight:800;letter-spacing:.05em;vertical-align:1px}
   .act-rep-meta{font-size:11px;color:#64748B;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .act-rep-meta b{color:#334155;font-variant-numeric:tabular-nums}
   .act-rep-status{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
@@ -13641,14 +13642,36 @@ var USAGE_VIEW = { dni: 30, currentRep: null, loading: false, line: 'gp', bodyId
 function usageBody() { return document.getElementById(USAGE_VIEW.bodyId || 'act-body'); }
 function usageRepList() {
   if (USAGE_VIEW.line === 'gyn') return ((typeof GYN_STATE !== 'undefined' && GYN_STATE.repList) || []).map(function(r){ return String(r.login || '').toLowerCase(); }).filter(Boolean);
-  return (typeof plnenieGetActiveReps === 'function') ? plnenieGetActiveReps() : [];
+  // GP admin: reprezentanti + všetci ostatní manažéri (PM, BUM, AM)
+  var out = (typeof plnenieGetActiveReps === 'function') ? plnenieGetActiveReps().slice() : [];
+  if (typeof MGR_STATE !== 'undefined' && MGR_STATE.managers) {
+    MGR_STATE.managers.forEach(function(m){ var u = String(m.username || '').trim().toLowerCase(); if (u && out.indexOf(u) === -1) out.push(u); });
+  }
+  return out;
 }
 function usageRepName(login) {
   if (USAGE_VIEW.line === 'gyn') {
     var r = ((typeof GYN_STATE !== 'undefined' && GYN_STATE.repList) || []).filter(function(x){ return String(x.login || '').toLowerCase() === login; })[0];
     return (r && (r.meno || r.login)) || login;
   }
-  return (typeof MGR_REP_NAMES !== 'undefined' && MGR_REP_NAMES[login]) || login;
+  if (typeof MGR_REP_NAMES !== 'undefined' && MGR_REP_NAMES[login]) return MGR_REP_NAMES[login];
+  if (typeof MGR_STATE !== 'undefined' && MGR_STATE.managers) {
+    var m = MGR_STATE.managers.filter(function(x){ return String(x.username || '').trim().toLowerCase() === login; })[0];
+    if (m) return m.name || m.username || login;
+  }
+  return login;
+}
+// Rola používateľa (pre štítok v zozname) — z managers/roster, inak prázdne.
+function usageRepRole(login) {
+  if (typeof MGR_STATE !== 'undefined' && MGR_STATE.managers) {
+    var m = MGR_STATE.managers.filter(function(x){ return String(x.username || '').trim().toLowerCase() === login; })[0];
+    if (m && m.role) return String(m.role);
+  }
+  if (USAGE_VIEW.line === 'gyn') {
+    var r = ((typeof GYN_STATE !== 'undefined' && GYN_STATE.repList) || []).filter(function(x){ return String(x.login || '').toLowerCase() === login; })[0];
+    if (r && r.rola) return String(r.rola);
+  }
+  return '';
 }
 
 function usageSetPeriod(dni, btn) {
@@ -13735,8 +13758,9 @@ function usageRenderTeam(data) {
   var body = usageBody();
   if (!body) return;
   var reps = data.reps || {};
+  // zoznam = roster (reprezentanti + manažéri) ∪ ktokoľvek s aktivitou v dátach
   var list = usageRepList().slice();
-  if (!list.length) list = Object.keys(reps);
+  Object.keys(reps).forEach(function(l){ if (list.indexOf(l) === -1) list.push(l); });
   // pulz: aktívni dnes / týždeň, spolu otvorení
   var today = 0, week = 0, opens = 0;
   list.forEach(function(l){
@@ -13760,10 +13784,13 @@ function usageRenderTeam(data) {
   html += '<div class="act-pulse-card"><div class="act-pulse-num">' + week + '<span style="font-size:14px;color:#7AABCC">/' + list.length + '</span></div><div class="act-pulse-lbl">Tento týždeň</div></div>';
   html += '<div class="act-pulse-card"><div class="act-pulse-num">' + opens + '</div><div class="act-pulse-lbl">Otvorení appky</div></div>';
   html += '</div>';
-  html += '<div class="act-section-lbl">Reprezentanti · posledných ' + USAGE_VIEW.dni + ' dní</div>';
+  html += '<div class="act-section-lbl">Používatelia · posledných ' + USAGE_VIEW.dni + ' dní</div>';
   list.forEach(function(l){
     var r = reps[l] || { opens:0, clicks:0, timeS:0, last:'', sections:{} };
     var name = usageRepName(l);
+    var roleRaw = usageRepRole(l).toLowerCase();
+    var isRep = !roleRaw || roleRaw.indexOf('rep') !== -1;
+    var roleChip = (!isRep && roleRaw) ? '<span class="act-role">' + mgrEscape(usageRepRole(l).toUpperCase()) + '</span>' : '';
     var topSec = '';
     var maxC = 0;
     Object.keys(r.sections || {}).forEach(function(s){ if (r.sections[s] > maxC) { maxC = r.sections[s]; topSec = s; } });
@@ -13772,7 +13799,7 @@ function usageRenderTeam(data) {
     var meta = r.last ? ('<b>' + (r.opens||0) + '</b> otvorení · ' + usageFmtDur(r.timeS) + (topSec ? ' · ' + topSec : '')) : 'zatiaľ žiadna aktivita';
     html += '<div class="act-rep" onclick="usageOpenRepActivity(\'' + l + '\')">' +
       '<div class="act-rep-avatar" data-username="' + l + '" style="background:' + color + '">' + (typeof mgrInitials==='function'?mgrInitials(name):'') + '</div>' +
-      '<div class="act-rep-main"><div class="act-rep-name">' + mgrEscape(name) + '</div><div class="act-rep-meta">' + meta + '</div></div>' +
+      '<div class="act-rep-main"><div class="act-rep-name">' + mgrEscape(name) + roleChip + '</div><div class="act-rep-meta">' + meta + '</div></div>' +
       '<div class="act-rep-status"><span class="act-dot ' + st + '"></span><span class="act-ago">' + usageAgo(r.last) + '</span></div>' +
     '</div>';
   });
