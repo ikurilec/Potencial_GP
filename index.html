@@ -992,6 +992,8 @@
   .act-rep-main{flex:1;min-width:0}
   .act-rep-name{font-size:14.5px;font-weight:700;color:#0F172A;letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .act-role{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;background:#EFF6FF;color:#1D4ED8;font-size:9px;font-weight:800;letter-spacing:.05em;vertical-align:1px}
+  .act-push{display:inline-block;margin-left:6px;font-size:12px;vertical-align:1px}
+  .act-push.off{opacity:.4;filter:grayscale(1)}
   .act-rep-meta{font-size:11px;color:#64748B;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .act-rep-meta b{color:#334155;font-variant-numeric:tabular-nums}
   .act-rep-status{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
@@ -2654,7 +2656,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.24.18';
+var APP_VERSION = '2.24.19';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -3575,7 +3577,10 @@ function usageMockResponse(rep, dni) {
     _mkDaily[dk].active[ev.login]=1;
   });
   var _dArr = Object.keys(_mkDaily).sort().map(function(d){ return {day:d,opens:_mkDaily[d].opens,active:Object.keys(_mkDaily[d].active).length}; });
+  // mock push: každý druhý rep má zapnuté notifikácie
+  var _mkPush = {}; Object.keys(reps).forEach(function(l,ix){ if(ix%2===0) _mkPush[l]=true; });
   return { ok:true, mode: rep?'rep':'team', dni:dni, events:events, reps:reps,
+           push: rep?{}:_mkPush,
            team:{ products:_mkProd, drills:_mkDrill, daily:_dArr } };
 }
 
@@ -13913,6 +13918,7 @@ function usageRenderTeam(data) {
   var body = usageBody();
   if (!body) return;
   var reps = data.reps || {};
+  var pushMap = data.push || {};  // login → true ak má zapnuté push notifikácie
   // zoznam = roster (reprezentanti + manažéri) ∪ ktokoľvek s aktivitou v dátach
   var list = usageRepList().slice();
   Object.keys(reps).forEach(function(l){ if (list.indexOf(l) === -1) list.push(l); });
@@ -13959,9 +13965,12 @@ function usageRenderTeam(data) {
     var st = usageStatusClass(r.last);
     var color = (typeof strHash === 'function') ? ('hsl(' + (strHash(l) % 360) + ',55%,45%)') : '#0C1E35';
     var meta = r.last ? ('<b>' + (r.opens||0) + '</b> otvorení · ' + usageFmtDur(r.timeS) + (topSec ? ' · ' + topSec : '')) : 'zatiaľ žiadna aktivita';
+    var hasPush = !!pushMap[l];
+    var pushChip = '<span class="act-push ' + (hasPush ? 'on' : 'off') + '" title="' +
+      (hasPush ? 'Notifikácie zapnuté' : 'Notifikácie vypnuté') + '">' + (hasPush ? '🔔' : '🔕') + '</span>';
     html += '<div class="act-rep" onclick="usageOpenRepActivity(\'' + l + '\')">' +
       '<div class="act-rep-avatar" data-username="' + l + '" style="background:' + color + '">' + (typeof mgrInitials==='function'?mgrInitials(name):'') + '</div>' +
-      '<div class="act-rep-main"><div class="act-rep-name">' + mgrEscape(name) + roleChip + '</div><div class="act-rep-meta">' + meta + '</div></div>' +
+      '<div class="act-rep-main"><div class="act-rep-name">' + mgrEscape(name) + roleChip + pushChip + '</div><div class="act-rep-meta">' + meta + '</div></div>' +
       '<div class="act-rep-status"><span class="act-dot ' + st + '"></span><span class="act-ago">' + usageAgo(r.last) + '</span></div>' +
     '</div>';
   });
