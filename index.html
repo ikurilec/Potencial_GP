@@ -3503,6 +3503,7 @@ function usageTrack(type, section, detail, durationS) {
   try {
     var s = (typeof getSession === 'function') ? getSession() : null;
     if (!s || !s.username) return;            // bez prihlásenia netrackujeme
+    if (s.role === 'admin') return;           // admin sa netrackuje
     var ev = {
       ts:       new Date().toISOString(),
       login:    s.username,
