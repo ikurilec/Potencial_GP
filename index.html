@@ -2633,7 +2633,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.24.4';
+var APP_VERSION = '2.24.5';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -2699,25 +2699,14 @@ function _isAppBusy(){
   );
 }
 
-// Reload cez cache-bust URL parameter — spolahlivejší ako location.reload() na iOS PWA.
-// Neoregistrujeme SW — SW má network-first pre HTML, takže dostane čerstvý index.html zo servera.
+// Reload cez cache-bust URL — spolahlivejší ako location.reload() na iOS PWA.
+// SW má network-first pre HTML, takže vždy stiahne čerstvý index.html zo servera.
+// Nemaže cache — keby sieť padla práve pri navigate, SW vie poskytnúť cached fallback.
 function appReload(){
   // Označ že prebieha update, aby controllerchange na novej stránke nespustil ďalší reload
   try { localStorage.setItem('potencial_vl_reloading', String(Date.now())); } catch(e){}
-  var go = function(){
-    try { window.location.replace(window.location.pathname + '?v=' + Date.now()); }
-    catch(e){ try { location.reload(); } catch(e2){} }
-  };
-  // Zmaž SW cache pred navigáciou (voliteľné — SW si ju znova naplní z network)
-  if('caches' in window){
-    var done = false;
-    caches.keys().then(function(names){
-      return Promise.all(names.map(function(n){ return caches.delete(n); }));
-    }).catch(function(){}).then(function(){ if(!done){ done=true; go(); } });
-    setTimeout(function(){ if(!done){ done=true; go(); } }, 800); // poistka
-  } else {
-    go();
-  }
+  try { window.location.replace(window.location.pathname + '?v=' + Date.now()); }
+  catch(e){ try { location.reload(); } catch(e2){} }
 }
 
 var _swUpdateTimer = null;
