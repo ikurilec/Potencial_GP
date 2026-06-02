@@ -2633,7 +2633,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.24.12';
+var APP_VERSION = '2.24.13';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -2688,6 +2688,36 @@ document.addEventListener('DOMContentLoaded', function(){
 window.addEventListener('error', function(ev){
   if(window.console && console.error) console.error('[global error]', ev.message, ev.filename+':'+ev.lineno);
 });
+
+// ── localStorage QUOTA SPRÁVA ──
+// Admin pri prihlásení prednačíta obrovské množstvo PharmaData → localStorage sa
+// zaplní (~5MB limit) → QuotaExceededError. Ak nie je odchytený, zhodí štart appky
+// (sivá obrazovka). Tieto cache kľúče sú re-fetchovateľné (sú aj v IndexedDB alebo
+// sa dotiahnu zo Sheets), takže ich môžeme bezpečne zmazať keď treba uvoľniť miesto.
+var LS_CACHE_PREFIXES = ['ph_c_', 'ph_graf_', 'pl_c_', 'pl_rc_', 'hist_', 'lb_allhist_', 'lekarne_cache_', 'potencial_gyn_cache_v2:'];
+function lsPruneCaches() {
+  var removed = 0;
+  try {
+    var keys = [];
+    for (var i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
+    for (var k = 0; k < keys.length; k++) {
+      var key = keys[k];
+      if (!key) continue;
+      for (var j = 0; j < LS_CACHE_PREFIXES.length; j++) {
+        if (key.indexOf(LS_CACHE_PREFIXES[j]) === 0) { localStorage.removeItem(key); removed++; break; }
+      }
+    }
+  } catch(e){}
+  return removed;
+}
+// Bezpečný zápis do localStorage — pri quota chybe uvoľní cache a skúsi znova.
+function lsSafeSet(key, val) {
+  try { localStorage.setItem(key, val); return true; }
+  catch(e) {
+    lsPruneCaches();
+    try { localStorage.setItem(key, val); return true; } catch(e2) { return false; }
+  }
+}
 
 // ── SERVICE WORKER ──
 var _swUpdatePending = false;
@@ -10624,14 +10654,18 @@ document.addEventListener('visibilitychange', function(){
 
 document.addEventListener('DOMContentLoaded', function(){
   // ── Kontrola verzie appky (po aktualizácii logout + info) ──
-  var storedVersion = localStorage.getItem('potencial_gp_version');
+  // KRITICKÉ: všetky zápisy cez lsSafeSet — keď je localStorage plný (admin preload
+  // PharmaData), surový setItem by vyhodil QuotaExceededError a zhodil celý štart
+  // → sivá obrazovka. lsSafeSet pri plnom localStorage uvoľní cache a zapíše znova.
+  var storedVersion = '';
+  try { storedVersion = localStorage.getItem('potencial_gp_version') || ''; } catch(e){}
   if(storedVersion && storedVersion !== APP_VERSION) {
     // Nová verzia — odhlásiť a informovať
-    clearSession();
-    localStorage.setItem('potencial_gp_version', APP_VERSION);
-    localStorage.setItem('potencial_gp_update_msg', '1');
+    try { clearSession(); } catch(e){}
+    lsSafeSet('potencial_gp_version', APP_VERSION);
+    lsSafeSet('potencial_gp_update_msg', '1');
   } else {
-    localStorage.setItem('potencial_gp_version', APP_VERSION);
+    lsSafeSet('potencial_gp_version', APP_VERSION);
   }
 
   if (IS_DEV) {
@@ -17273,7 +17307,8 @@ function _histLsLoad(username) {
 var _PG_LS_V = 'v1';
 function _pgLsKey(code, oblast) { return 'ph_graf_' + _PG_LS_V + '_' + code + '_' + oblast; }
 function _pgLsSave(code, oblast, resp) {
-  try { localStorage.setItem(_pgLsKey(code, oblast), JSON.stringify({ resp: resp, ts: Date.now() })); } catch(e) {}
+  // lsSafeSet — pri plnom localStorage (admin preload) uvoľní cache namiesto tichého zlyhania
+  lsSafeSet(_pgLsKey(code, oblast), JSON.stringify({ resp: resp, ts: Date.now() }));
 }
 function _pgLsLoad(code, oblast) {
   try {
@@ -17292,7 +17327,9 @@ function _phLsLoad(code, oblast, kvartal) {
   } catch(e) { return null; }
 }
 function _phLsSave(code, oblast, kvartal, resp) {
-  try { localStorage.setItem(_phLsKey(code, oblast, kvartal), JSON.stringify({ resp: resp, ts: Date.now() })); } catch(e) {}
+  // lsSafeSet — PharmaData je hlavný vinník zaplnenia localStorage pri admin preloade.
+  // Dáta sú aj v IndexedDB (väčšia kapacita), takže localStorage je len rýchly bonus tier.
+  lsSafeSet(_phLsKey(code, oblast, kvartal), JSON.stringify({ resp: resp, ts: Date.now() }));
 }
 
 var _PH_IDB_NAME = 'potencial_gp_pharma_cache';
