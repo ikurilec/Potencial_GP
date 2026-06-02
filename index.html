@@ -2633,7 +2633,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.24.3';
+var APP_VERSION = '2.24.4';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -2699,32 +2699,37 @@ function _isAppBusy(){
   );
 }
 
-// Reload, ktorý najprv odregistruje service worker. Na iOS standalone PWA totiž reload
-// stránky ovládanej service workerom často skončí bielou obrazovkou — bez SW sa vykreslí
-// normálne a SW sa po načítaní zase sám zaregistruje.
+// Reload cez cache-bust URL parameter — spolahlivejší ako location.reload() na iOS PWA.
+// Neoregistrujeme SW — SW má network-first pre HTML, takže dostane čerstvý index.html zo servera.
 function appReload(){
-  try {
-    if('serviceWorker' in navigator && navigator.serviceWorker.getRegistrations){
-      var done = false;
-      var go = function(){ if(done) return; done = true; try { location.reload(); } catch(e){} };
-      navigator.serviceWorker.getRegistrations()
-        .then(function(regs){ return Promise.all((regs||[]).map(function(r){ try { return r.unregister(); } catch(e){ return null; } })); })
-        .catch(function(){})
-        .then(go);
-      setTimeout(go, 1200);   // poistka, keby unregister visel
-    } else {
-      location.reload();
-    }
-  } catch(e){ try { location.reload(); } catch(e2){} }
+  // Označ že prebieha update, aby controllerchange na novej stránke nespustil ďalší reload
+  try { localStorage.setItem('potencial_vl_reloading', String(Date.now())); } catch(e){}
+  var go = function(){
+    try { window.location.replace(window.location.pathname + '?v=' + Date.now()); }
+    catch(e){ try { location.reload(); } catch(e2){} }
+  };
+  // Zmaž SW cache pred navigáciou (voliteľné — SW si ju znova naplní z network)
+  if('caches' in window){
+    var done = false;
+    caches.keys().then(function(names){
+      return Promise.all(names.map(function(n){ return caches.delete(n); }));
+    }).catch(function(){}).then(function(){ if(!done){ done=true; go(); } });
+    setTimeout(function(){ if(!done){ done=true; go(); } }, 800); // poistka
+  } else {
+    go();
+  }
 }
+
+var _swUpdateTimer = null;
 
 function _applySwUpdate(){
   if(_isAppBusy()){
     _swUpdatePending = true;
   } else {
+    if(_swUpdateTimer) return; // už naplánované, nezačínaj druhý reload
     _swUpdatePending = false;
     showSwToast('Aktualizujem appku…');
-    setTimeout(function(){ appReload(); }, 900);
+    _swUpdateTimer = setTimeout(function(){ _swUpdateTimer = null; appReload(); }, 900);
   }
 }
 
@@ -2734,6 +2739,11 @@ if('serviceWorker' in navigator){
     var _swHadController = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.addEventListener('controllerchange', function(){
       if(!_swHadController){ _swHadController = true; return; }
+      // Ak sme práve reloadovali kvôli update, nový SW preberá kontrolu — to je OK, nereloaduj znova
+      try {
+        var ts = parseInt(localStorage.getItem('potencial_vl_reloading') || '0', 10);
+        if(Date.now() - ts < 30000){ localStorage.removeItem('potencial_vl_reloading'); return; }
+      } catch(e){}
       _applySwUpdate();
     });
   } catch(e){}
