@@ -2633,7 +2633,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.24.6';
+var APP_VERSION = '2.24.7';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -2699,52 +2699,24 @@ function _isAppBusy(){
   );
 }
 
-// Reload pri aktualizácii appky.
-// Krok 1: vyčisti session + nastav update správu — pred navigáciou, aby loop nebol možný.
-// Krok 2: zmaž SW cache — SW musí stiahnuť čerstvý index.html zo servera.
-// Krok 3: naviguj na root URL — jednoduchšie ako cache-bust param, rovnako spoľahlivé.
+// Reload pri aktualizácii — volá sa z applyUpdate() (klik na banner).
+// Nevymazávame cache ani neodregistrujeme SW — SW robí network-first pre HTML
+// a spoľahlivo stiahne čerstvý index.html. Keď nová stránka načíta DOMContentLoaded,
+// deteguje zmenu verzie, vyčistí session a zobrazí login screen so zelenou hláškou.
 function appReload(){
-  // Ochrana proti rýchlemu loopovaniu (napr. SW stále servíruje starú verziu)
-  try {
-    var lastR = parseInt(sessionStorage.getItem('potencial_gp_last_reload') || '0', 10);
-    if(Date.now() - lastR < 8000) return; // max 1 reload za 8 sekúnd
-    sessionStorage.setItem('potencial_gp_last_reload', String(Date.now()));
-  } catch(e){}
-
-  // Vyčisti session a nastav update správu PRED navigáciou
-  // — tak aj keby SW servíroval starú verziu, initLogin ukáže login screen (nie auto-login)
-  try { if(typeof clearSession === 'function') clearSession(); } catch(e){}
-  try { localStorage.setItem('potencial_gp_update_msg', '1'); } catch(e){}
-  try { localStorage.setItem('potencial_vl_reloading', String(Date.now())); } catch(e){}
-
-  var go = function(){
-    try { window.location.replace(window.location.pathname); }
-    catch(e){ try { location.reload(); } catch(e2){} }
-  };
-
-  // Zmaž SW cache — zabráni SW servírovať starú verziu ako fallback
-  if('caches' in window){
-    var done = false;
-    caches.keys().then(function(names){
-      return Promise.all(names.map(function(n){ return caches.delete(n); }));
-    }).catch(function(){}).then(function(){ if(!done){ done=true; go(); } });
-    setTimeout(function(){ if(!done){ done=true; go(); } }, 800);
-  } else {
-    go();
-  }
+  try { location.reload(); } catch(e){}
 }
 
 var _swUpdateTimer = null;
 
 function _applySwUpdate(){
-  if(_isAppBusy()){
-    _swUpdatePending = true;
-  } else {
-    if(_swUpdateTimer) return; // už naplánované, nezačínaj druhý reload
-    _swUpdatePending = false;
-    showSwToast('Aktualizujem appku…');
-    _swUpdateTimer = setTimeout(function(){ _swUpdateTimer = null; appReload(); }, 900);
-  }
+  // Nezobrazujeme toast ani nereloadujeme automaticky — len ukážeme banner.
+  // Používateľ sám ťukne keď mu to vyhovuje; tým sa vyhne bielej obrazovke.
+  if(_swUpdateTimer) return;
+  _swUpdateTimer = setTimeout(function(){
+    _swUpdateTimer = null;
+    if(window._serverVersion) showUpdateBanner(window._serverVersion);
+  }, 1500); // krátky delay aby sa app stihla načítať
 }
 
 if('serviceWorker' in navigator){
@@ -2822,24 +2794,15 @@ function applyUpdate(){
   }
   // Zapíš že sme potvrdili túto serverovú verziu — nech banner neotravuje znova
   try {
-    if(window._serverVersion){
-      localStorage.setItem('potencial_vl_ack_ver', window._serverVersion);
-    }
+    if(window._serverVersion) localStorage.setItem('potencial_vl_ack_ver', window._serverVersion);
   } catch(e){}
-  // Zmaž cache API (ak tam niečo zostalo zo starého SW) a potom hard reload
-  var tasks = [];
-  if('caches' in window){
-    tasks.push(
-      caches.keys().then(function(names){
-        return Promise.all(names.map(function(n){ return caches.delete(n); }));
-      }).catch(function(){})
-    );
-  }
-  var done = function(){
-    // Cache-bust query param donúti prehliadač stiahnuť HTML nanovo zo servera
-    window.location.replace(window.location.pathname + '?v=' + Date.now());
-  };
-  if(tasks.length) Promise.all(tasks).then(done, done); else done();
+  // Vyčisti session a nastav update správu PRED reloadom —
+  // po reloade DOMContentLoaded deteguje zmenu verzie, ale session je už vyčistená
+  // takže initLogin() určite zobrazí login screen so zelenou hláškou (nie auto-login)
+  try { if(typeof clearSession === 'function') clearSession(); } catch(e){}
+  try { localStorage.setItem('potencial_gp_update_msg', '1'); } catch(e){}
+  // Jednoduchý reload — SW (network-first) stiahne čerstvý index.html zo servera
+  try { location.reload(); } catch(e){}
 }
 
 // Kontrola pri štarte (s oneskorením aby nebrzdila načítanie)
