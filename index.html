@@ -2654,7 +2654,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.24.16';
+var APP_VERSION = '2.24.17';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -2794,8 +2794,7 @@ function pushMaybePrompt(){
   if (!pushSupported()) return;
   var s = (typeof getSession === 'function') ? getSession() : null;
   if (!s || !s.username) return;
-  // Admin notifikácie nepotrebuje
-  if (s.role === 'admin') return;
+  // Admin dostane push tiež — na potvrdenie že odoslanie prebehlo
   pushInit();
   // Už povolené → len obnov token (tokeny sa môžu meniť)
   if (Notification.permission === 'granted') { pushRegisterToken(); return; }
