@@ -2633,7 +2633,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.24.0';
+var APP_VERSION = '2.24.3';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9821,6 +9821,7 @@ function mgrEnter(roleKey){
   // v2.3.1 — Plnenie je default sub-tab pri otvorení
   MGR_STATE.subtab = 'plnenie';
   document.body.classList.add('mgr-subtab-plnenie');
+  usageSectionEnter('Manažér · Plnenie');
   PL_STATE.q = plnenieCurrentQ();
   PL_STATE.loaded = false;
   PL_STATE.loading = false;
@@ -13580,6 +13581,9 @@ function mgrSwitchSubtab(tab) {
   if (prevTab && prevTab !== tab) _mgrPrevSubtab = prevTab; // zapamätaj odkiaľ si prišiel
   var dir = (MGR_TAB_ORDER[tab] || 0) > (MGR_TAB_ORDER[prevTab] || 0) ? 'r' : 'l';
   MGR_STATE.subtab = tab;
+  // Trackuj čas strávený v každom manažérskom tabe
+  var _mgrTabLabels = { plnenie: 'Plnenie', visits: 'Návštevy', leaderboard: 'Rebríček', activity: 'Aktivita' };
+  usageSectionEnter('Manažér · ' + (_mgrTabLabels[tab] || tab));
   document.body.classList.toggle('mgr-subtab-plnenie', tab === 'plnenie');
   document.body.classList.toggle('mgr-subtab-leaderboard', tab === 'leaderboard');
   document.body.classList.toggle('mgr-subtab-activity', tab === 'activity');
