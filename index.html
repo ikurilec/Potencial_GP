@@ -2656,7 +2656,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.24.19';
+var APP_VERSION = '2.24.20';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9921,14 +9921,14 @@ var MGR_REP_NAMES = {
   'j.krkoska':    'Juraj Krkoška',
   'i.kozakova':   'Ida Kozáková',
   'k.czidor':     'Katarína Czidor',
-  'o.rad':        'Prázdne teritórium',
+  'r.fekiacova':  'Renáta Fekiačová',
   'l.macakova':   'Lenka Mačáková',
   'z.lapsan':     'Zuzana Lapšanská',
   'm.sabol':      'Michal Sabol',
   'a.makis':      'Andrej Makiš'
 };
 var MGR_AM_WEST = ['j.bohovic','v.hatinova','v.hromadkova','z.lescis','j.krkoska','i.kozakova'];
-var MGR_AM_EAST = ['k.czidor','o.rad','l.macakova','z.lapsan','m.sabol','a.makis'];
+var MGR_AM_EAST = ['k.czidor','r.fekiacova','l.macakova','z.lapsan','m.sabol','a.makis'];
 var MGR_ALL = MGR_AM_WEST.concat(MGR_AM_EAST);
 
 var MGR_ROLE_CFG = {
@@ -12069,14 +12069,14 @@ var LB_REP_INFO = {
   'j.krkoska':    { name: 'Juraj Krkoška',         region: 'MT',   color: 'linear-gradient(135deg,#065F46,#10B981)' },
   'i.kozakova':   { name: 'Ida Kozáková',          region: 'NR',   color: 'linear-gradient(135deg,#065F46,#10B981)' },
   'k.czidor':     { name: 'Katarína Czidor',       region: 'LV',   color: 'linear-gradient(135deg,#B45309,#F59E0B)' },
-  'o.rad':        { name: 'Prázdne teritórium',   region: 'RS',   color: 'linear-gradient(135deg,#DC2626,#F87171)' },
+  'r.fekiacova':  { name: 'Renáta Fekiačová',     region: 'RS',   color: 'linear-gradient(135deg,#DC2626,#F87171)' },
   'l.macakova':   { name: 'Lenka Mačáková',        region: 'PP',   color: 'linear-gradient(135deg,#374151,#6B7280)' },
   'z.lapsan':     { name: 'Zuzana Lapšanská',      region: 'PO',   color: 'linear-gradient(135deg,#7C3AED,#C084FC)' },
   'm.sabol':      { name: 'Michal Sabol',          region: 'MI',   color: 'linear-gradient(135deg,#059669,#10B981)' },
   'a.makis':      { name: 'Andrej Makiš',           region: 'KE',   color: 'linear-gradient(135deg,#1E1B4B,#4338CA)' }
 };
 var LB_ALL_REPS = ['j.bohovic','v.hatinova','v.hromadkova','z.lescis','j.krkoska','i.kozakova',
-                   'k.czidor','o.rad','l.macakova','z.lapsan','m.sabol','a.makis'];
+                   'k.czidor','r.fekiacova','l.macakova','z.lapsan','m.sabol','a.makis'];
 var LB_STATIC_REPS = LB_ALL_REPS.slice();
 
 var REP_LIST_STATE = { loaded: false, loading: false, fullRosterRequested: false };
@@ -12140,6 +12140,26 @@ function buildRepData(reps) {
     mgrRenderReps();
     preloadAllPharmaData();
   }
+
+  // Plnenie sa renderuje z MGR_ALL (plnenieGetActiveReps). Keď sa roster zmení až po
+  // prvom rendere (login → statický fallback, neskôr dobehne Sheets), agregáty Plnenia
+  // ostanú postavené na starom zozname a vo view svieti starý/placeholder reprezentant
+  // (napr. "Prázdne teritórium") kým používateľ manuálne nepotiahne refresh.
+  // Tu prebudujeme agregáty z už načítaných dát (bez nového fetchu) a prekreslíme.
+  try {
+    if (typeof PL_STATE !== 'undefined' && PL_STATE.qCache) {
+      Object.keys(PL_STATE.qCache).forEach(function(qk){
+        var entry = PL_STATE.qCache[qk];
+        if (entry && entry.data) {
+          entry.aggregates = plnenieBuildAggregates(entry.data, parseInt(qk, 10));
+          if (parseInt(qk, 10) === PL_STATE.q) PL_STATE.aggregates = entry.aggregates;
+        }
+      });
+      if (document.body.classList.contains('mgr-subtab-plnenie') && PL_STATE.loaded && typeof plnenieRenderAll === 'function') {
+        plnenieRunSilentRender(plnenieRenderAll);
+      }
+    }
+  } catch(e){}
 
   // Re-fill všetkých avatar containerov ktoré sú už v DOM
   // (Plnenie, manažér zoznam, atď. mohli byť renderované PRED tým ako prišli avatar dáta zo Sheets)
