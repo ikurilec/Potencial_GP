@@ -2673,7 +2673,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.24.26';
+var APP_VERSION = '2.24.27';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -14197,12 +14197,19 @@ function usageSetPeriod(dni, btn) {
 }
 
 // Načítaj štatistiky (team ak rep nie je zadaný, inak deep dive konkrétneho repa).
-function usageStatsLoad(rep) {
+var _usageLoadToken = 0;
+function usageStatsLoad(rep, _retry) {
   USAGE_VIEW.currentRep = rep || null;
   var body = usageBody();
-  if (!body) return;
+  // DOM ešte nemusí byť pripravený (re-render línie/tabu tesne predtým) — skús znova,
+  // namiesto tichého návratu, ktorý by nechal placeholder "Načítavam…" navždy.
+  if (!body) {
+    if ((_retry || 0) < 5) { setTimeout(function(){ usageStatsLoad(rep, (_retry||0)+1); }, 60); }
+    return;
+  }
   // Cache kľúč MUSÍ obsahovať líniu — inak sa gyn a Golem dáta miešajú (rovnaký _team_30).
   var line = USAGE_VIEW.line;
+  var myToken = ++_usageLoadToken;
   var cacheKey = line + '_' + (rep || '_team') + '_' + USAGE_VIEW.dni;
   var cache = rep ? USAGE_VIEW.repCache : USAGE_VIEW.teamCache;
   if (cache[cacheKey]) { usageRenderStats(cache[cacheKey], rep); return; }
@@ -14210,24 +14217,36 @@ function usageStatsLoad(rep) {
   if (typeof IS_DEV !== 'undefined' && IS_DEV) {
     var mock = usageMockResponse(rep, USAGE_VIEW.dni);
     cache[cacheKey] = mock;
-    setTimeout(function(){ if (USAGE_VIEW.currentRep === (rep||null) && USAGE_VIEW.line === line) usageRenderStats(mock, rep); }, 220);
+    setTimeout(function(){ if (_usageLoadToken === myToken && USAGE_VIEW.currentRep === (rep||null) && USAGE_VIEW.line === line) usageRenderStats(mock, rep); }, 220);
     return;
   }
   // Endpoint podľa práve zobrazenej línie Aktivity (nie podľa session.line —
   // admin môže byť v oboch a prepínať medzi nimi).
   var params = 'action=getUsageStats&dni=' + USAGE_VIEW.dni + (rep ? '&rep=' + encodeURIComponent(rep) : '');
   var url = (line === 'gyn') ? gynScriptUrl(params) : scriptUrl(params);
+  var settled = false;
+  // Watchdog — ak odpoveď nepríde do 15 s, neostaň visieť na skeletone, ukáž chybu.
+  setTimeout(function(){
+    if (settled) return;
+    settled = true;
+    if (_usageLoadToken === myToken && USAGE_VIEW.line === line && USAGE_VIEW.currentRep === (rep || null)) usageRenderError();
+  }, 15000);
   fetch(url, { cache: 'no-store' })
     .then(function(r){ return r.json(); })
     .then(function(data){
-      // Ak medzitým používateľ prepol líniu/repa, zahoď neskorú odpoveď (inak sa
-      // gyn dáta vykreslia do Golem pohľadu a naopak).
-      if (USAGE_VIEW.line !== line) return;
+      if (settled) return;
+      settled = true;
+      // Ak medzitým používateľ prepol líniu/repa/period, zahoď neskorú odpoveď.
+      if (_usageLoadToken !== myToken || USAGE_VIEW.line !== line) return;
       if (!data || !data.ok) { if (USAGE_VIEW.currentRep === (rep || null)) usageRenderError(); return; }
       cache[cacheKey] = data;
       if (USAGE_VIEW.currentRep === (rep || null)) usageRenderStats(data, rep);
     })
-    .catch(function(){ if (USAGE_VIEW.line === line && USAGE_VIEW.currentRep === (rep || null)) usageRenderError(); });
+    .catch(function(){
+      if (settled) return;
+      settled = true;
+      if (_usageLoadToken === myToken && USAGE_VIEW.line === line && USAGE_VIEW.currentRep === (rep || null)) usageRenderError();
+    });
 }
 
 function usageRenderError() {
