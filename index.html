@@ -2673,7 +2673,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.24.21';
+var APP_VERSION = '2.24.22';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7096,12 +7096,14 @@ function gynMsAllCompNames(resp) {
 // Tabuľka vybraných konkurentov + náš produkt pod grafom (MS% po mesiacoch).
 function gynMsBuildCompTableHtml(produkt, compLines, trendRows) {
   if (!Array.isArray(trendRows) || !trendRows.length) return '';
-  var yymms = trendRows.map(function(s){ return parseInt(s.mesiac, 10); });
+  // Tabuľka ukazuje len posledné 3 mesiace (posledný nahraný + 2 dozadu) ako okresy
+  var tblRows = trendRows.slice(-3);
+  var yymms = tblRows.map(function(s){ return parseInt(s.mesiac, 10); });
   function pct(v){ var n = parseFloat(v); return (!isNaN(n) && n > 0) ? n.toFixed(2) + '%' : '—'; }
   var head = '<tr><th>Produkt <span class="gyn-pharma-ms-sublbl">MS%</span></th>' +
-    trendRows.map(function(s){ return '<th>' + gynEsc(_gynMonthLabel(s.mesiac).split(" '")[0]) + '</th>'; }).join('') + '</tr>';
+    tblRows.map(function(s){ return '<th>' + gynEsc(_gynMonthLabel(s.mesiac).split(" '")[0]) + '</th>'; }).join('') + '</tr>';
   var rows = '<tr class="ours"><td>' + gynEsc(produkt) + '</td>' +
-    trendRows.map(function(s){ return '<td>' + pct((parseFloat(s.terit_ms)||0) * 100) + '</td>'; }).join('') + '</tr>';
+    tblRows.map(function(s){ return '<td>' + pct((parseFloat(s.terit_ms)||0) * 100) + '</td>'; }).join('') + '</tr>';
   (compLines || []).forEach(function(c){
     rows += '<tr><td>' + gynEsc(c.name) + '</td>' +
       yymms.map(function(yy){ return '<td>' + pct(c.byYymm[yy]) + '</td>'; }).join('') + '</tr>';
