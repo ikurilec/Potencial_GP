@@ -2673,7 +2673,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.24.23';
+var APP_VERSION = '2.24.24';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7049,8 +7049,26 @@ function gynMsKey(produkt, okres) {
   return okres ? (String(produkt) + '||' + String(okres)) : String(produkt);
 }
 
+// Scope kľúča: keď manažér pozerá reprezentanta, výber je oddelený per reprezentant
+// (uloží sa na manažérov účet, nemení repov výber). Reprezentant na vlastnom pohľade
+// (bez detailLogin) má prázdny scope → jeho osobný výber.
+function gynMsScope() {
+  try {
+    var s = (typeof getSession === 'function') ? getSession() : null;
+    var me = s && s.username ? String(s.username).toLowerCase() : '';
+    var viewed = (typeof GYN_APP !== 'undefined' && GYN_APP && GYN_APP.detailLogin) ? String(GYN_APP.detailLogin).toLowerCase() : '';
+    if (viewed && viewed !== me) return 'rep:' + viewed;
+  } catch(e){}
+  return '';
+}
+
+function gynMsStorageKey(produkt, okres) {
+  var sc = gynMsScope();
+  return (sc ? sc + '::' : '') + gynMsKey(produkt, okres);
+}
+
 function gynMsGetSelection(produkt, okres) {
-  var v = GYN_MS_SELECTION[gynMsKey(produkt, okres)];
+  var v = GYN_MS_SELECTION[gynMsStorageKey(produkt, okres)];
   return Array.isArray(v) ? v : null;
 }
 
@@ -7069,7 +7087,7 @@ function gynMsHydrate(raw) {
 
 // Uloží výber do pamäte + localStorage + (mimo DEV) na backend.
 function gynMsSetSelection(produkt, names, okres) {
-  GYN_MS_SELECTION[gynMsKey(produkt, okres)] = Array.isArray(names) ? names.slice() : [];
+  GYN_MS_SELECTION[gynMsStorageKey(produkt, okres)] = Array.isArray(names) ? names.slice() : [];
   try { lsSafeSet(gynMsLsKey(), JSON.stringify(GYN_MS_SELECTION)); } catch(e){}
   if (typeof IS_DEV !== 'undefined' && IS_DEV) return;
   var s = (typeof getSession === 'function') ? getSession() : null;
@@ -7737,6 +7755,9 @@ function gynLoginSuccess(username, data) {
   if (data.session_expires_at) user.session_expires_at = String(data.session_expires_at || '');
   if (data.device_id) user.device_id = String(data.device_id || '');
   setSession(user);
+  // Výber konkurentov pre MS graf — localStorage (instant) + zo Sheets (login response)
+  try { gynMsHydrate(localStorage.getItem(gynMsLsKey())); } catch(e){}
+  if (data.gyn_ms_vyber) gynMsHydrate(data.gyn_ms_vyber);
   haptic('success');
   var appEl = document.querySelector('.app');
   if(appEl){ appEl.style.visibility='visible'; appEl.classList.add('app-enter');
