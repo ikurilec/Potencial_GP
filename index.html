@@ -904,6 +904,15 @@
   .logout-btn:active{transform:scale(.94)}
   .logout-btn svg{display:block}
   .logout-btn-lbl{font-size:9.5px;font-weight:700;color:#FCA5A5;font-family:var(--font-display);letter-spacing:.06em;text-transform:uppercase;line-height:1;user-select:none;pointer-events:none}
+  /* ── Zvonček: zapnúť notifikácie (zobrazí sa len ak nie sú povolené) ── */
+  .notif-bell-wrap{display:inline-flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0}
+  .notif-bell-btn{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0;border:2px solid rgba(253,230,138,.85);background:linear-gradient(135deg,#F59E0B 0%,#D97706 100%);color:#fff;cursor:pointer;transition:background var(--t-base),transform var(--t-fast),border-color var(--t-base),box-shadow var(--t-base);-webkit-tap-highlight-color:transparent;flex-shrink:0;box-shadow:0 4px 12px rgba(245,158,11,.40),inset 0 1px 0 rgba(255,255,255,.20);animation:notifBellPulse 2.2s ease-in-out infinite}
+  .notif-bell-btn:hover{background:linear-gradient(135deg,#FBBF24 0%,#F59E0B 100%);border-color:#fff;box-shadow:0 6px 16px rgba(245,158,11,.55),inset 0 1px 0 rgba(255,255,255,.24)}
+  .notif-bell-btn:active{transform:scale(.94)}
+  .notif-bell-btn svg{display:block}
+  .notif-bell-lbl{font-size:9.5px;font-weight:700;color:#FCD34D;font-family:var(--font-display);letter-spacing:.06em;text-transform:uppercase;line-height:1;user-select:none;pointer-events:none}
+  @keyframes notifBellPulse{0%,100%{box-shadow:0 4px 12px rgba(245,158,11,.40),inset 0 1px 0 rgba(255,255,255,.20)}50%{box-shadow:0 4px 12px rgba(245,158,11,.40),inset 0 1px 0 rgba(255,255,255,.20),0 0 0 6px rgba(245,158,11,.18)}}
+  @media(prefers-reduced-motion:reduce){.notif-bell-btn{animation:none}}
   /* Admin prepínač línie Golem ↔ Gyn (iba admin, viditeľný len keď má účet v oboch linkách) */
   .line-switch-slot{display:inline-flex;align-items:center}
   .line-switch{display:inline-flex;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.20);border-radius:20px;padding:2px;gap:2px}
@@ -1877,6 +1886,10 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   </div>
   <div style="display:flex;align-items:center;gap:10px">
   <div class="line-switch-slot" id="line-switch-slot"></div>
+  <div class="notif-bell-wrap" id="notif-bell-wrap" style="display:none">
+    <button class="notif-bell-btn" onclick="pushBellClick()" aria-label="Zapnúť notifikácie" title="Zapnúť notifikácie"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+    <span class="notif-bell-lbl">Zapnúť</span>
+  </div>
   <div class="logout-wrap">
     <button class="logout-btn" onclick="doLogout()" aria-label="Odhlásiť"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
     <span class="logout-btn-lbl">Odhlásiť</span>
@@ -2673,7 +2686,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.24.28';
+var APP_VERSION = '2.24.29';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -2817,11 +2830,11 @@ function pushMaybePrompt(){
   pushInit();
   // Už povolené → len obnov token (tokeny sa môžu meniť)
   if (Notification.permission === 'granted') { pushRegisterToken(); return; }
-  // Zamietnuté → nenúť znova
-  if (Notification.permission === 'denied') return;
-  // Pýtali sme sa už? (raz stačí)
+  // Zamietnuté → nenúť znova automaticky, ale ukáž zvonček (cez neho dáme návod)
+  if (Notification.permission === 'denied') { pushUpdateBell(); return; }
+  // Pýtali sme sa už? (raz stačí) → ukáž zvonček, nech sa vie vrátiť neskôr
   var askedKey = 'push_prompt_seen_' + (s.line === 'gyn' ? 'gyn' : 'gp');
-  try { if (localStorage.getItem(askedKey) === '1') return; } catch(e){}
+  try { if (localStorage.getItem(askedKey) === '1') { pushUpdateBell(); return; } } catch(e){}
   pushShowSoftPrompt(askedKey);
 }
 
@@ -2844,6 +2857,7 @@ function pushShowSoftPrompt(askedKey){
   document.getElementById('push-soft-no').onclick = function(){
     try { localStorage.setItem(askedKey, '1'); } catch(e){}
     close();
+    pushUpdateBell();
   };
   document.getElementById('push-soft-yes').onclick = function(){
     try { localStorage.setItem(askedKey, '1'); } catch(e){}
@@ -2851,8 +2865,64 @@ function pushShowSoftPrompt(askedKey){
     try { haptic && haptic('light'); } catch(e){}
     Notification.requestPermission().then(function(perm){
       if (perm === 'granted') pushRegisterToken();
-    }).catch(function(){});
+      pushUpdateBell();
+    }).catch(function(){ pushUpdateBell(); });
   };
+}
+
+// Zobraz/skry zvonček „Zapnúť notifikácie" v hlavičke (GP aj gyn).
+// Ukáže sa iba ak appka podporuje push a povolenie ešte nie je 'granted'.
+function pushUpdateBell(){
+  var show = false;
+  try {
+    if (!IS_DEV && pushSupported() && typeof Notification !== 'undefined' &&
+        Notification.permission !== 'granted') {
+      var s = (typeof getSession === 'function') ? getSession() : null;
+      show = !!(s && s.username);
+    }
+  } catch(e){ show = false; }
+  ['notif-bell-wrap','gyn-notif-bell-wrap'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.style.display = show ? 'inline-flex' : 'none';
+  });
+}
+
+// Klik na zvonček — pokus o povolenie notifikácií.
+function pushBellClick(){
+  try { haptic && haptic('light'); } catch(e){}
+  if (typeof Notification === 'undefined') return;
+  // Systémovo zablokované — prehliadač už prompt nepustí, treba návod
+  if (Notification.permission === 'denied') { pushShowDeniedHelp(); return; }
+  if (Notification.permission === 'granted') { pushRegisterToken(); pushUpdateBell(); return; }
+  pushInit();
+  Notification.requestPermission().then(function(perm){
+    if (perm === 'granted') pushRegisterToken();
+    else if (perm === 'denied') pushShowDeniedHelp();
+    pushUpdateBell();
+  }).catch(function(){ pushUpdateBell(); });
+}
+
+// Návod, ako zapnúť notifikácie keď sú systémovo zablokované v prehliadači.
+function pushShowDeniedHelp(){
+  var ex = document.getElementById('push-soft-prompt');
+  if (ex) { try { ex.remove(); } catch(e){} }
+  var box = document.createElement('div');
+  box.id = 'push-soft-prompt';
+  box.className = 'push-soft';
+  var iOS = /iP(hone|ad|od)/.test(navigator.userAgent);
+  var howto = iOS
+    ? 'Otvor Nastavenia telefónu → Notifikácie → nájdi túto appku a povoľ ich.'
+    : 'Ťukni na ikonu zámku/nastavení vedľa adresy (alebo „Nastavenia stránky") a pri položke Notifikácie zvoľ Povoliť.';
+  box.innerHTML =
+    '<div class="push-soft-inner">' +
+      '<div class="push-soft-icon">🔕</div>' +
+      '<div class="push-soft-txt">Notifikácie sú zablokované v prehliadači, preto ich appka nevie zapnúť priamo.<br><br>' + howto + '</div>' +
+      '<div class="push-soft-btns" style="grid-template-columns:1fr">' +
+        '<button class="push-soft-yes" id="push-soft-ok">Rozumiem</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(box);
+  document.getElementById('push-soft-ok').onclick = function(){ try { box.remove(); } catch(e){} };
 }
 
 // ── SERVICE WORKER ──
@@ -7925,6 +7995,10 @@ function gynRenderShell(user) {
             '<div></div>' +
           '<div style="display:flex;align-items:center;gap:10px">' +
             '<div class="line-switch-slot" id="gyn-line-switch-slot"></div>' +
+            '<div class="notif-bell-wrap" id="gyn-notif-bell-wrap" style="display:none">' +
+              '<button class="notif-bell-btn" onclick="pushBellClick()" aria-label="Zapnúť notifikácie" title="Zapnúť notifikácie"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>' +
+              '<span class="notif-bell-lbl">Zapnúť</span>' +
+            '</div>' +
             '<div class="logout-wrap">' +
               '<button class="logout-btn" onclick="gynExit()" aria-label="Odhlásiť"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>' +
               '<span class="logout-btn-lbl">Odhlásiť</span>' +
@@ -7949,6 +8023,8 @@ function gynRenderShell(user) {
       '</div>' +
       '<div id="gyn-content"></div>' +
     '</div>';
+  // Po re-rendri gyn hlavičky obnov stav zvončeka notifikácií
+  try { pushUpdateBell(); } catch(e){}
   // Naplň gyn header avatar (fallback iniciály) — rovnaký pattern ako Golem
   var ghav = document.getElementById('gyn-hdr-avatar');
   if (ghav && user.username) {
