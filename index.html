@@ -2686,7 +2686,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.24.29';
+var APP_VERSION = '2.24.30';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7093,7 +7093,7 @@ function gynPreferPackHintKeys(productKeys) {
   return keys.every(function(k){ return k === 'papilocare hgel' || k === 'immunocaps'; });
 }
 // Stav pharma overlayu
-var GYN_PHARMA_STATE = { open: false, produkt: null, oblast: null, kvartal: null, cache: {}, loading: {} };
+var GYN_PHARMA_STATE = { open: false, produkt: null, oblast: null, kvartal: null, cache: {}, loading: {}, repLogin: null };
 
 // ── Výber zobrazených konkurentov v gyn MS grafe (per produkt) ──
 // Mapa: produkt(string) -> pole mien konkurentov.
@@ -7126,7 +7126,15 @@ function gynMsScope() {
   try {
     var s = (typeof getSession === 'function') ? getSession() : null;
     var me = s && s.username ? String(s.username).toLowerCase() : '';
-    var viewed = (typeof GYN_APP !== 'undefined' && GYN_APP && GYN_APP.detailLogin) ? String(GYN_APP.detailLogin).toLowerCase() : '';
+    // Reprezentant otvorený priamo v Trhovom podiele (cesta cez produktový prehľad)
+    // má prednosť; inak rep z otvoreného detailu (cesta cez detail reprezentanta).
+    // Vďaka tomu je výber vždy naviazaný na konkrétneho repa bez ohľadu na cestu.
+    var viewed = '';
+    if (typeof GYN_PHARMA_STATE !== 'undefined' && GYN_PHARMA_STATE && GYN_PHARMA_STATE.repLogin) {
+      viewed = String(GYN_PHARMA_STATE.repLogin).toLowerCase();
+    } else if (typeof GYN_APP !== 'undefined' && GYN_APP && GYN_APP.detailLogin) {
+      viewed = String(GYN_APP.detailLogin).toLowerCase();
+    }
     if (viewed && viewed !== me) return 'rep:' + viewed;
   } catch(e){}
   return '';
@@ -8539,7 +8547,7 @@ function gynProdSheetRenderRepList(prodLabel, data) {
     // Klikateľnosť — len ak má produkt pharma dáta
     var clickable = hasPharma;
     var clickAttr = clickable
-      ? ' onclick="gynOpenPharmaForRep(\''+prodLabel.replace(/\'/g,"\\\'")+'\',\''+(r.region||'').replace(/\'/g,"\\\'")+'\')" style="cursor:pointer"'
+      ? ' onclick="gynOpenPharmaForRep(\''+prodLabel.replace(/\'/g,"\\\'")+'\',\''+(r.region||'').replace(/\'/g,"\\\'")+'\',\''+(r.login||'').replace(/\'/g,"\\\'")+'\')" style="cursor:pointer"'
       : '';
     var chevron = clickable ? '<div class="gyn-ps-chev">›</div>' : '';
 
@@ -8616,9 +8624,9 @@ function gynProdSheetUpdateMsCells() {
 }
 
 // Klik na rep v prod sheet → otvorí Trhový podiel pre tohto repa
-function gynOpenPharmaForRep(productName, oblast) {
+function gynOpenPharmaForRep(productName, oblast, repLogin) {
   closeProdSheet();
-  setTimeout(function(){ gynOpenPharma(productName, oblast); }, 200);
+  setTimeout(function(){ gynOpenPharma(productName, oblast, repLogin); }, 200);
 }
 
 function gynOpenPharmaFromSheet(productName) {
@@ -8635,12 +8643,15 @@ function gynPharmaKvartal(year, q) {
   return (yy < 10 ? '0'+yy : ''+yy) + '0' + q;
 }
 
-function gynOpenPharma(productName, oblast) {
+function gynOpenPharma(productName, oblast, repLogin) {
   var produkt = String(productName).trim();
   var pkey = produkt.toLowerCase();
   if(!GYN_PHARMA_PRODUCTS[pkey]) return;
   if(!oblast) oblast = 'BAPI';
   usageSectionEnter('Trhový podiel', 'produkt: ' + produkt);
+  // Rep, ktorého teritórium pozeráme (z produktového prehľadu). Bez neho sa scope
+  // odvodí z otvoreného detailu reprezentanta (gynMsScope). Reset pri každom otvorení.
+  GYN_PHARMA_STATE.repLogin = repLogin ? String(repLogin).toLowerCase() : null;
   GYN_PHARMA_STATE.produkt = produkt;
   GYN_PHARMA_STATE.oblast  = gynPharmaNormalizeOblast(produkt, oblast);
   GYN_PHARMA_STATE.kvartal = gynPharmaKvartal(GYN_APP.year, GYN_APP.q);
@@ -8672,6 +8683,7 @@ function gynOpenPharma(productName, oblast) {
 function gynClosePharma() {
   usageSectionClose();
   GYN_PHARMA_STATE.open = false;
+  GYN_PHARMA_STATE.repLogin = null;
   var overlay = document.getElementById('pharma-ms-overlay');
   if(overlay){
     overlay.classList.add('pl-detail-exit-r');
