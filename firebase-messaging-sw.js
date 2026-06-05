@@ -17,7 +17,7 @@ var messaging = firebase.messaging();
 // Data-only správy (bez 'notification' poľa) → notifikáciu zostavíme tu, žiadne duplicity.
 messaging.onBackgroundMessage(function(payload) {
   var d = (payload && payload.data) || {};
-  var title = d.title || 'Potenciál GP';
+  var title = d.title || 'Satori';
   var options = {
     body: d.body || '',
     icon: 'https://ikurilec.github.io/Potencial_GP/icon-192.png',

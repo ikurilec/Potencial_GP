@@ -2686,7 +2686,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.24.30';
+var APP_VERSION = '2.24.31';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -22809,7 +22809,8 @@ function lkRender() {
   // Aktualizuj badge na záložkách
   var sleepingCnt    = all.filter(function(l){ return l.isSleeping && !lkIsChainHiddenInTab(l, 'sleeping'); }).length;
   var newCnt         = all.filter(function(l){ return l.isNew && !lkIsChainHiddenInTab(l, 'new'); }).length;
-  var reaktivaciaCnt = all.filter(function(l){ return lkIsCreamCandidate(l) && !lkIsChainHiddenInTab(l, 'reaktivacia'); }).length;
+  // Krém počet = kandidáti na oslovenie MÍNUS tie, ktoré rep už označil ako oslovené (ostávajú v zozname, ale nepočítajú sa)
+  var reaktivaciaCnt = all.filter(function(l){ return lkIsCreamCandidate(l) && !lkIsChainHiddenInTab(l, 'reaktivacia') && !lkIsCreamContacted(null, l.key); }).length;
   var priorityCnt    = all.filter(function(l){ return l.isPriority && !lkIsChainHiddenInTab(l, 'priority'); }).length;
   var tabCounts = { sleeping: sleepingCnt, reaktivacia: reaktivaciaCnt, priority: priorityCnt, new: newCnt, all: all.length };
   document.querySelectorAll('.lk-tab').forEach(function(b) {
@@ -23039,7 +23040,7 @@ function lkMgrVisibleList(lekarne, searchQ, tab) {
 function lkMgrTabCounts(lekarne) {
   return {
     sleeping: lekarne.filter(function(l){ return l.isSleeping && !lkIsChainHiddenInTab(l, 'sleeping'); }).length,
-    reaktivacia: lekarne.filter(function(l){ return lkIsCreamCandidate(l) && !lkIsChainHiddenInTab(l, 'reaktivacia'); }).length,
+    reaktivacia: lekarne.filter(function(l){ return lkIsCreamCandidate(l) && !lkIsChainHiddenInTab(l, 'reaktivacia') && !lkIsCreamContacted(null, l.key); }).length,
     priority: lekarne.filter(function(l){ return l.isPriority && !lkIsChainHiddenInTab(l, 'priority'); }).length,
     new: lekarne.filter(function(l){ return l.isNew && !lkIsChainHiddenInTab(l, 'new'); }).length,
     all: lekarne.length
