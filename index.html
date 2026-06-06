@@ -2799,7 +2799,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.25.1';
+var APP_VERSION = '2.25.2';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8600,10 +8600,10 @@ function gynRenderShell(user) {
     : gynEsc((typeof nameDayLabel === 'function') ? nameDayLabel(new Date()) : '');
   var gynNdayHtml = gynNdayTxt ? '<div class="gyn-hdr-nameday' + (gynNdayCelebrate ? ' celebrate' : '') + '">' + gynNdayTxt + '</div>' : '';
 
+  var gynFirst = String(user.name||'').trim().split(/\s+/)[0];
   var hdrInnerHtml = (isRep
-    ? '<div class="gyn-mgr-hdr-title">Gyn línia</div>' +
-      '<div class="gyn-rep-hdr-region">' + gynEsc((liniaLabel||user.linia||'') + (user.region ? ' · ' + user.region : '')) + '</div>' +
-      '<div class="gyn-rep-hdr-name">' + gynEsc(user.name||'') + '</div>'
+    ? '<div class="gyn-mgr-hdr-title">Gynekológia</div>' +
+      '<div class="hdr-greeting">' + gynEsc((typeof greetingForTime === 'function' ? greetingForTime() : 'Dobrý deň') + (gynFirst ? ', ' + gynFirst : '') + ' 👋') + '</div>'
     : '<div class="gyn-mgr-hdr-title">Manažérsky pohľad</div>' +
       '<div class="gyn-mgr-hdr-sub">' + gynEsc((user.name||'') + ' · ' + roleLabel + ' · Gynekológia') + '</div>'
     ) + gynNdayHtml;
