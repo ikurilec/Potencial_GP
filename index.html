@@ -7398,17 +7398,12 @@ function nameDayLabel(d){
   var sv = (typeof MENINY_SVIATKY !== 'undefined') ? MENINY_SVIATKY[m + '.' + day] : '';
   return sv || '';
 }
-// Test bez menenia dátumu: pridaj ?namedaytest=1 do URL → oslava sa vynúti
-var NAMEDAY_TEST = false;
-try { NAMEDAY_TEST = new URLSearchParams(window.location.search).has('namedaytest'); } catch(e){}
-
 // Má dnes meniny práve prihlásený používateľ? (krstné meno = dnešné meno)
 function nameDayMatchesUser(user){
   try {
     var u = user || getSession(); if(!u || !u.name) return false;
     var first = String(u.name).trim().split(/\s+/)[0].toLowerCase();
     if(!first) return false;
-    if(NAMEDAY_TEST) return true;   // testovací režim — vždy „má meniny"
     var d = new Date();
     var arr = (typeof MENINY !== 'undefined') ? MENINY[d.getMonth()+1] : null;
     var nm = (arr && arr[d.getDate()]) ? arr[d.getDate()] : '';
@@ -7426,8 +7421,7 @@ function nameDayCelebrate(user){
     var d = new Date();
     var line = (u.line === 'gyn') ? 'gyn' : 'gp';
     var key = 'nameday_party_' + line + '_' + u.username + '_' + d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
-    // V testovacom režime preskočíme „raz za deň" guard, aby sa dala oslava opakovať
-    if(!NAMEDAY_TEST){ try { if(localStorage.getItem(key) === '1') return; localStorage.setItem(key, '1'); } catch(e){} }
+    try { if(localStorage.getItem(key) === '1') return; localStorage.setItem(key, '1'); } catch(e){}
     nameDayShowOverlay(u);
   } catch(e){}
 }
