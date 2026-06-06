@@ -205,6 +205,7 @@
   body.manager-mode .app > .restore-overlay.show,
   body.manager-mode .app > .tutorial-overlay.show,
   body.manager-mode .wn-overlay.show{display:flex !important}
+  body.manager-mode .settings-overlay.show{display:block !important}
   body.manager-mode .app > .lb-overlay.show{display:block !important}
   /* Leaderboard overlay */
 
@@ -232,7 +233,7 @@
   .scroll-pill-inner.hidden{opacity:0}
 
 
-  .wn-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);z-index:2000;align-items:center;justify-content:center;padding:20px;box-sizing:border-box}
+  .wn-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);z-index:5300;align-items:center;justify-content:center;padding:20px;box-sizing:border-box}
   .wn-overlay.show{display:flex}
 
   /* ═══ AVATAR CUSTOMIZER MODAL ═══ */
@@ -348,7 +349,7 @@
   .wn-btn{width:100%;background:linear-gradient(180deg,#3B82F6 0%,#2563EB 50%,#1E40AF 100%);color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;font-family:var(--font-display);cursor:pointer;margin-top:16px;letter-spacing:.01em;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 6px 18px rgba(37,99,235,.30);transition:transform var(--t-fast),box-shadow var(--t-fast);-webkit-tap-highlight-color:transparent}
   .wn-btn:active{transform:scale(.985);box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 3px 10px rgba(37,99,235,.25)}
   /* ── Satori rebrand overlay ── */
-  .satori-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.65);z-index:2001;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}
+  .satori-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.65);z-index:5301;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}
   .satori-overlay.show{display:flex}
   .satori-box{background:#fff;border-radius:24px;width:100%;max-width:370px;overflow:hidden;animation:slideUp .38s cubic-bezier(.16,1,.3,1);display:flex;flex-direction:column}
   .satori-hero{background:linear-gradient(170deg,#0C1E35 0%,#0E2A4A 60%,#0C1E35 100%);flex-shrink:0;overflow:hidden}
@@ -576,7 +577,7 @@
   .info-input{height:44px;padding:0 13px;border-radius:9px;border:1.5px solid #E2E8F0;background:#F8FAFC;font-size:16px;font-family:inherit;color:#1A2A3A;outline:none;transition:border-color .18s;width:100%;-webkit-appearance:none}
   .info-input:focus{border-color:#3B82F6;background:#fff;box-shadow:0 0 0 3px rgba(59,130,246,.11)}
   .info-input.has-error{border-color:#FCA5A5;background:#FFF5F5}
-  .restore-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.45);z-index:1001;align-items:center;justify-content:center}
+  .restore-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.45);z-index:5300;align-items:center;justify-content:center}
   .restore-overlay.show{display:flex}
   .restore-box{background:#fff;border-radius:16px;padding:24px;max-width:300px;width:88%;box-shadow:0 20px 60px rgba(0,0,0,.25);text-align:center;animation:slideUp .3s ease}
   .restore-icon{font-size:32px;margin-bottom:10px}
@@ -619,12 +620,71 @@
   .hist-close{display:none}
   .hist-body-card{background:#fff;border-radius:14px;overflow:hidden}
   .hist-body{padding:4px 0}
+  /* ═══ NASTAVENIA — tlačidlo ⚙️ v hlavičke ═══ */
+  /* Avatar v hlavičke je teraz len obrázok (úprava je v ⚙️ Nastaveniach) */
+  .hdr-avatar-wrap{cursor:default}
+  .hdr-avatar{cursor:default}
+  .hdr-avatar:active{transform:none}
+  .hdr-avatar:hover{border-color:rgba(255,255,255,.28)}
+  .gear-wrap{display:inline-flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0}
+  .gear-btn{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0;border:2px solid rgba(255,255,255,.30);background:rgba(255,255,255,.12);color:#fff;cursor:pointer;transition:background var(--t-base),transform var(--t-fast);-webkit-tap-highlight-color:transparent;flex-shrink:0;box-shadow:0 4px 12px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.12);position:relative}
+  .gear-btn:hover{background:rgba(255,255,255,.22)}
+  .gear-btn:active{transform:scale(.94)}
+  .gear-btn-lbl{font-size:9.5px;font-weight:700;color:#CBD5E1;font-family:var(--font-display);letter-spacing:.06em;text-transform:uppercase;line-height:1;user-select:none;pointer-events:none}
+  /* ═══ NASTAVENIA — obrazovka ═══ */
+  .settings-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#EAECF2;z-index:2600;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  .settings-overlay.show{display:block}
+  .settings-inner{max-width:660px;margin:0 auto;padding:24px 16px 48px}
+  .set-topbar{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+  .set-back{border:none;background:#fff;color:#0F172A;font-size:14px;font-weight:700;font-family:inherit;padding:10px 15px;border-radius:12px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.06);-webkit-tap-highlight-color:transparent}
+  .set-back:active{transform:scale(.97)}
+  .set-title{font-size:20px;font-weight:800;color:#0F172A;font-family:var(--font-display);letter-spacing:-.01em}
+  .set-card{background:#fff;border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+  .set-card-title{font-size:11px;font-weight:700;color:#64748B;letter-spacing:.07em;text-transform:uppercase;margin-bottom:12px}
+  .set-profile{display:flex;align-items:center;gap:14px}
+  .set-avatar-wrap{position:relative;flex-shrink:0}
+  .set-action-pulse{animation:setBtnPulse 1.8s ease-in-out infinite}
+  @keyframes setBtnPulse{0%,100%{box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 4px 12px rgba(37,99,235,.28),0 0 0 0 rgba(37,99,235,.45)}50%{box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 4px 12px rgba(37,99,235,.28),0 0 0 7px rgba(37,99,235,0)}}
+  @media(prefers-reduced-motion:reduce){.set-action-pulse{animation:none}}
+  .set-avatar{width:64px;height:64px;border-radius:50%;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--font-display);font-weight:700;font-size:20px;background:linear-gradient(135deg,#1E40AF,#3B82F6)}
+  .set-profile-info{min-width:0}
+  .set-name{font-size:18px;font-weight:800;color:#0F172A;font-family:var(--font-display);letter-spacing:-.01em}
+  .set-role{font-size:12.5px;color:#64748B;font-weight:600;margin-top:2px}
+  .set-row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-top:1px solid #F1F5F9;gap:12px}
+  .set-row:first-child{border-top:none}
+  .set-row-label{font-size:13px;color:#475569;font-weight:600}
+  .set-row-val{font-size:13px;color:#0F172A;font-weight:700;text-align:right;word-break:break-word}
+  .set-soon{font-size:12.5px;color:#94A3B8;font-style:italic;padding:2px 0;line-height:1.5}
+  .set-logout-btn{width:100%;padding:13px;border-radius:12px;border:1.5px solid #FCA5A5;background:#fff;color:#DC2626;font-size:14px;font-weight:700;font-family:var(--font-display);cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .set-logout-btn:active{transform:scale(.98)}
+  .set-action-btn{width:100%;margin-top:12px;padding:12px;border-radius:12px;border:1.5px solid #E2E8F0;background:#F8FAFC;color:#0F172A;font-size:13.5px;font-weight:700;font-family:var(--font-display);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform var(--t-fast),background var(--t-base)}
+  .set-action-btn:hover{background:#F1F5F9}
+  .set-action-btn:active{transform:scale(.98)}
+  .set-action-primary{border:none;background:linear-gradient(180deg,#3B82F6 0%,#2563EB 50%,#1E40AF 100%);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 4px 12px rgba(37,99,235,.28)}
+  .set-action-primary:hover{background:linear-gradient(180deg,#3B82F6 0%,#2563EB 60%,#1E40AF 100%)}
+  .set-row-desc{font-size:12.5px;color:#64748B;line-height:1.5}
+  .set-note-ok{font-size:13px;color:#047857;font-weight:700;display:flex;align-items:center;gap:6px}
+  .set-card-sub{font-size:11px;font-weight:700;color:#94A3B8;letter-spacing:.04em;text-transform:uppercase;margin:2px 0 2px}
+  .set-switch{position:relative;width:46px;height:28px;border-radius:14px;border:none;background:#CBD5E1;cursor:pointer;transition:background .2s;flex-shrink:0;padding:0;-webkit-tap-highlight-color:transparent}
+  .set-switch.on{background:#2563EB}
+  .set-switch::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+  .set-switch.on::after{transform:translateX(18px)}
+  .set-mini-btn{border:1.5px solid #BFDBFE;background:#EFF6FF;color:#1D4ED8;font-size:12.5px;font-weight:700;font-family:var(--font-display);padding:7px 13px;border-radius:10px;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap}
+  .set-mini-btn:active{transform:scale(.97)}
+  .set-cache-status{font-size:12px;color:#047857;font-weight:600;margin-top:8px;line-height:1.4;min-height:0}
+  .set-loading{color:#94A3B8;font-weight:600;font-style:italic;font-size:12px}
+  .set-select{font-family:var(--font-display);font-size:13px;font-weight:700;color:#0F172A;background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:10px;padding:9px 10px;cursor:pointer;-webkit-tap-highlight-color:transparent;max-width:160px}
+  .set-select:focus{outline:none;border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  .set-saved{font-size:12px;font-weight:700;color:#047857;opacity:0;transition:opacity .2s;white-space:nowrap;flex-shrink:0}
+  .set-saved.show{opacity:1}
   /* Zdielaný panel-nav pre História / Rebríček / Plnenie */
-  .panel-nav{display:grid;grid-template-columns:repeat(4,1fr) 32px;gap:4px;background:#fff;border-radius:12px;padding:4px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
-  .panel-nav-btn{border:none;background:#F1F5F9;padding:13px 4px;font-size:11.5px;font-weight:600;color:#64748B;cursor:pointer;border-radius:10px;transition:all .2s ease;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:4px;-webkit-tap-highlight-color:transparent;white-space:nowrap}
+  .panel-nav{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;background:#fff;border-radius:12px;padding:6px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  .panel-nav-btn{border:none;background:#F1F5F9;padding:9px 2px;font-size:10px;font-weight:700;color:#64748B;cursor:pointer;border-radius:10px;transition:background .2s ease,color .2s ease,transform .15s ease;font-family:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;-webkit-tap-highlight-color:transparent;white-space:nowrap;overflow:hidden}
+  .panel-nav-btn .rn-ico{font-size:17px;line-height:1}
+  .panel-nav-btn .rn-lbl{font-size:10px;line-height:1}
   .panel-nav-btn:hover:not(.active){background:#E2E8F0;color:#0F172A}
   .panel-nav-btn.active{background:linear-gradient(135deg,#0C1E35 0%,#13294B 100%);color:#fff;box-shadow:0 4px 12px rgba(12,30,53,.25),inset 0 1px 0 rgba(255,255,255,.10);font-weight:700}
-  .panel-nav-btn:active{opacity:.75}
+  .panel-nav-btn:active{opacity:.75;transform:scale(.96)}
   .panel-nav-close{border:none;background:#E2E8F0;color:#475569;font-size:16px;font-weight:700;cursor:pointer;border-radius:8px;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;transition:background .15s}
   .panel-nav-close:active{background:#CBD5E1;color:#1E293B}
   .panel-nav-mgr-back{display:none;margin-bottom:10px}
@@ -646,7 +706,7 @@
   @keyframes emptyIconIn{0%{opacity:0;transform:scale(.5) translateY(12px)}60%{transform:scale(1.06) translateY(-2px)}100%{opacity:1;transform:scale(1) translateY(0)}}
   @keyframes emptyTextIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
   @media(prefers-reduced-motion:reduce){.empty-state,.empty-state svg,.empty-state-title,.empty-state-sub{animation:none}}
-  .hist-search-wrap{padding:10px 14px;border-bottom:1px solid #E2E8F0;background:#fff;position:sticky;top:0;z-index:5;box-shadow:0 2px 8px rgba(15,23,42,.04)}
+  .hist-search-wrap{padding:10px;border-radius:14px;background:#fff;position:sticky;top:0;z-index:6;box-shadow:0 2px 8px rgba(15,23,42,.06);margin-bottom:10px}
   .hist-search{width:100%;height:40px;padding:0 12px 0 36px;border-radius:10px;border:1.5px solid #E2E8F0;background:#F8FAFC;font-size:14px;font-family:inherit;color:#1A2A3A;outline:none;box-sizing:border-box;transition:border-color var(--t-base),background var(--t-base),box-shadow var(--t-base)}
   .hist-search:focus{border-color:var(--color-primary);background:#fff;box-shadow:0 0 0 4px rgba(37,99,235,.14),inset 0 1px 2px rgba(37,99,235,.04)}
   .hist-search-icon{position:absolute;left:26px;top:50%;transform:translateY(-50%);font-size:14px;color:#94A3B8;pointer-events:none;transition:color var(--t-base)}
@@ -811,7 +871,7 @@
   .conf-seg-goal.orange .conf-seg-goal-val{color:#92400E}
   .conf-seg-goal.red .conf-seg-goal-val{color:#7F1D1D}
   .conf-seg-divider{height:1px;background:#F1F5F9;margin:8px 0 8px}
-  .thankyou{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(145deg,#0C1E35,#1A3A5C);z-index:2000;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px;overflow:hidden}
+  .thankyou{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(145deg,#0C1E35,#1A3A5C);z-index:5300;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px;overflow:hidden}
   .thankyou.show{display:flex}
   .thankyou-canvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
   .thankyou-content{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center}
@@ -1304,9 +1364,52 @@
   .mgr-plnenie-detail .trend-ms{position:absolute;left:-5px;right:-5px;height:3px;background:#0F172A;z-index:2;pointer-events:none}
   .mgr-plnenie-detail .trend-ms-lbl{position:absolute;left:50%;transform:translateX(-50%);font-size:11px;font-weight:600;color:#94A3B8;white-space:nowrap;z-index:3;pointer-events:none;line-height:1}
   /* ═══ REP NAV BAR (História / Rebríček / Plnenie) ═══ */
-  .rep-nav{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:0;position:sticky;top:0;z-index:1400;background:#EAECF2;padding-top:12px;padding-bottom:4px}
-  .rep-nav-btn{background:#fff;border:1px solid rgba(0,0,0,.07);border-radius:12px;padding:14px 6px;font-size:12px;font-weight:700;color:#1A2A3A;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(0,0,0,.06),0 1px 3px rgba(0,0,0,.04);display:flex;align-items:center;justify-content:center;gap:5px;transition:opacity .15s,transform .15s;-webkit-tap-highlight-color:transparent;white-space:nowrap;overflow:hidden;position:relative}
+  .rep-nav{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:0;position:sticky;top:0;z-index:1400;background:#EAECF2;padding-top:12px;padding-bottom:4px}
+  .rep-nav-btn{background:#fff;border:1px solid rgba(0,0,0,.07);border-radius:12px;padding:9px 2px;font-size:10px;font-weight:700;color:#1A2A3A;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(0,0,0,.06),0 1px 3px rgba(0,0,0,.04);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:opacity .15s,transform .15s,background .2s;-webkit-tap-highlight-color:transparent;white-space:nowrap;overflow:hidden;position:relative}
   .rep-nav-btn:active{opacity:.82;transform:scale(.96)}
+  .rep-nav-btn .rn-ico{font-size:17px;line-height:1}
+  .rep-nav-btn .rn-lbl{font-size:10px;line-height:1}
+  .rep-nav-btn.active{background:linear-gradient(135deg,#0C1E35 0%,#13294B 100%);color:#fff;border-color:transparent;box-shadow:0 4px 12px rgba(12,30,53,.25),inset 0 1px 0 rgba(255,255,255,.10)}
+  /* ═══ Nový header — pozdrav + meniny ═══ */
+  .hdr-greeting{font-size:13.5px;color:#BFD4E8;font-weight:600;margin-top:4px;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hdr-nameday{font-size:11px;color:#7AABCC;margin-top:3px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hdr-nameday.hdr-nameday-celebrate{color:#FCD34D;font-weight:800;font-size:12px;text-shadow:0 1px 6px rgba(251,191,36,.45);animation:ndayGlow 2s ease-in-out infinite}
+  @keyframes ndayGlow{0%,100%{text-shadow:0 1px 6px rgba(251,191,36,.35)}50%{text-shadow:0 1px 12px rgba(251,191,36,.75)}}
+  @media(prefers-reduced-motion:reduce){.hdr-nameday.hdr-nameday-celebrate{animation:none}}
+  #nameday-confetti{position:fixed;inset:0;z-index:9998;pointer-events:none}
+  /* Meniny — oslavná obrazovka */
+  .nday-overlay{display:none;position:fixed;inset:0;z-index:9600;background:linear-gradient(160deg,#0C1E35 0%,#13294B 55%,#1A3A5C 100%);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:28px;overflow:hidden}
+  .nday-overlay.show{display:flex}
+  .nday-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  .nday-content{position:relative;z-index:1;max-width:360px;animation:slideUp .45s cubic-bezier(.34,1.56,.64,1) both}
+  .nday-emoji{font-size:72px;line-height:1;margin-bottom:14px;animation:ndayBounce 1.6s ease-in-out infinite}
+  @keyframes ndayBounce{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-10px) rotate(4deg)}}
+  .nday-title{font-size:24px;font-weight:800;color:#FCD34D;font-family:var(--font-display);letter-spacing:-.01em;text-shadow:0 2px 12px rgba(251,191,36,.4)}
+  .nday-name{font-size:34px;font-weight:800;color:#fff;font-family:var(--font-display);letter-spacing:-.02em;margin:6px 0 2px;line-height:1.05}
+  .nday-sub{font-size:15px;font-weight:600;color:#9DC0DE;margin-top:8px}
+  .nday-wish{font-size:13.5px;color:#7AABCC;line-height:1.5;margin-top:14px}
+  .nday-btn{margin-top:26px;background:linear-gradient(180deg,#F59E0B,#D97706);color:#1F2937;border:none;border-radius:16px;padding:15px 28px;font-size:16px;font-weight:800;font-family:var(--font-display);cursor:pointer;box-shadow:0 8px 24px rgba(245,158,11,.4),inset 0 1px 0 rgba(255,255,255,.3);-webkit-tap-highlight-color:transparent}
+  .nday-btn:active{transform:scale(.96)}
+  @media(prefers-reduced-motion:reduce){.nday-emoji{animation:none}}
+  /* ═══ Persistentný topbar pre GP reprezentanta (header + záložky vždy hore) ═══ */
+  .rt-inner{max-width:660px;margin:0 auto}
+  body.gp-rep #rep-topbar{position:fixed;top:0;left:0;right:0;z-index:2100;background:#EAECF2;padding:14px 16px 6px;box-shadow:0 6px 16px rgba(15,23,42,.06)}
+  body.gp-rep #rep-topbar .hdr{margin-bottom:8px}
+  body.gp-rep #rep-topbar .rep-nav{position:static;top:auto;padding-top:0;padding-bottom:0;background:transparent;z-index:auto}
+  body.gp-rep .app{padding-top:var(--rep-top-h,150px)}
+  /* Progress bar: pri reprezentantovi vždy prilepený pod headerom (nezmizne pri scrollovaní) */
+  body.gp-rep .progress-wrap{position:sticky;top:var(--rep-top-h,150px);z-index:997}
+  body.gp-rep .progress-wrap.sticky{top:var(--rep-top-h,150px)}
+  body.gp-rep .update-bar{position:fixed;top:var(--rep-top-h,150px);left:16px;right:16px;z-index:2099;border-radius:12px;max-width:628px;margin:0 auto}
+  /* Sticky vyhľadávanie/skupiny v paneloch — prilepia sa pod fixný topbar */
+  body.gp-rep .hist-search-wrap{top:var(--rep-top-h,150px)}
+  body.gp-rep .hist-date-group{position:static}
+  body.gp-rep .hist-inner,
+  body.gp-rep .lb-inner,
+  body.gp-rep .lk-inner,
+  body.gp-rep .rep-pl-inner{padding-top:calc(var(--rep-top-h,150px) + 10px)}
+  /* Lekárne: obsah začína presne pod headerom, aby sticky search „necuklo" pri scrolle */
+  body.gp-rep .lk-inner{padding-top:var(--rep-top-h,150px)}
   .rep-nav-badge{background:linear-gradient(135deg,#F59E0B,#EF4444);color:#fff;border-radius:8px;font-size:9px;font-weight:800;padding:1px 5px;min-width:16px;text-align:center;flex-shrink:0}
   body.manager-mode .rep-nav{display:none !important}
   /* ═══ REP PLNENIE OVERLAY ═══ */
@@ -1321,6 +1424,7 @@
 .lk-floating-back:active{transform:scale(.98);box-shadow:0 3px 12px rgba(15,23,42,.12),0 0 0 1px rgba(15,23,42,.06)}
 .lk-sticky-controls{position:sticky;z-index:2050;padding:0;background:transparent}
 body:not(.manager-mode) .lk-sticky-controls{top:82px;background:#EAECF2;padding:0 0 10px}
+body.gp-rep .lk-sticky-controls{top:var(--rep-top-h,150px)}
 body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 .mgr-plnenie-detail .lk-sticky-controls{top:46px;background:#EAECF2;padding:0 0 10px}
   .lk-sticky-controls::before{content:'';position:absolute;left:-16px;right:-16px;top:0;bottom:0;border-radius:0 0 18px 18px;background:linear-gradient(180deg,rgba(234,236,242,.98) 0%,rgba(234,236,242,.96) 72%,rgba(234,236,242,0) 100%);z-index:-1;pointer-events:none}
@@ -1872,31 +1976,22 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
 
+<div id="rep-topbar"><div class="rt-inner">
+
 <div class="hdr">
   <div class="hdr-row">
     <div style="flex:1;min-width:0">
-      <div class="hdr-title">Potenci&#225;l v&#353;eobecn&#233;ho lek&#225;ra</div>
-      <div class="hdr-sub">Medic&#237;nsky reprezentant &#8212; kalkula&#269;ka potenci&#225;lu</div>
+      <div class="hdr-title" id="hdr-line-name">Golem</div>
+      <div class="hdr-greeting" id="hdr-greeting"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
-  <div class="hdr-dots" style="margin-top:0">
-        <div class="hdr-dot"><div class="dot" style="background:#34D399"></div>Vidonorm</div>
-        <div class="hdr-dot"><div class="dot" style="background:#60A5FA"></div>Aflamil</div>
-        <div class="hdr-dot"><div class="dot" style="background:#C084FC"></div>Suprax</div>
-        <div class="hdr-dot"><div class="dot" style="background:#FCD34D"></div>Cavinton Forte</div>
-  </div>
+  <div class="hdr-nameday" id="hdr-nameday"></div>
   <div style="display:flex;align-items:center;gap:10px">
-  <div class="line-switch-slot" id="line-switch-slot"></div>
-  <div class="notif-bell-wrap" id="notif-bell-wrap" style="display:none">
-    <button class="notif-bell-btn" onclick="pushBellClick()" aria-label="Zapnúť notifikácie" title="Zapnúť notifikácie"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
-    <span class="notif-bell-lbl">Zapnúť</span>
+  <div class="gear-wrap" id="gear-wrap">
+    <button class="gear-btn" onclick="openSettings()" aria-label="Nastavenia" title="Nastavenia"><svg viewBox="0 0 24 24" width="21" height="21" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+    <span class="gear-btn-lbl">Nastavenia</span>
   </div>
-  <div class="logout-wrap">
-    <button class="logout-btn" onclick="doLogout()" aria-label="Odhlásiť"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
-    <span class="logout-btn-lbl">Odhlásiť</span>
-  </div>
-  <div class="hdr-avatar-wrap" id="hdr-avatar-wrap" onclick="avatarOpenCustomizer()" title="Zmeniť avatar">
+  <div class="hdr-avatar-wrap" id="hdr-avatar-wrap">
     <div class="hdr-avatar" id="hdr-avatar" data-username="">?</div>
-    <div class="hdr-avatar-edit">✎</div>
   </div>
   <!-- hdr-badge-wrap zachovaný (skrytý) kvôli JS kompatibilite -->
   <div id="hdr-badge-wrap" style="display:none"><div class="hdr-badge" id="hdr-badge"></div></div>
@@ -1906,13 +2001,16 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   </div>
 </div>
 
-<!-- ═══ REP NAV BAR — História / Rebríček / Plnenie (viditeľné len pre reprezentantov, skryté v manažérskom móde) ═══ -->
+<!-- ═══ REP NAV BAR — Formulár / História / Rebríček / Plnenie / Lekárne (len reprezentant, skryté v manažérskom móde) ═══ -->
 <div class="rep-nav" id="rep-nav">
-  <button type="button" class="rep-nav-btn" onclick="openHistory()">📋 História</button>
-  <button type="button" class="rep-nav-btn" id="rep-nav-lb-btn" onclick="openLeaderboard()">🏆 Rebríček</button>
-  <button type="button" class="rep-nav-btn" id="rep-nav-plnenie-btn" onclick="openRepPlnenie()">💊 Plnenie</button>
-  <button type="button" class="rep-nav-btn" id="rep-nav-lekarne-btn" onclick="openLekarne()">🏪 Lekárne</button>
+  <button type="button" class="rep-nav-btn active" id="rep-nav-form-btn" onclick="repNavToForm()"><span class="rn-ico">📝</span><span class="rn-lbl">Formulár</span></button>
+  <button type="button" class="rep-nav-btn" id="rep-nav-hist-btn" onclick="openHistory()"><span class="rn-ico">📋</span><span class="rn-lbl">História</span></button>
+  <button type="button" class="rep-nav-btn" id="rep-nav-lb-btn" onclick="openLeaderboard()"><span class="rn-ico">🏆</span><span class="rn-lbl">Rebríček</span></button>
+  <button type="button" class="rep-nav-btn" id="rep-nav-plnenie-btn" onclick="openRepPlnenie()"><span class="rn-ico">💊</span><span class="rn-lbl">Plnenie</span></button>
+  <button type="button" class="rep-nav-btn" id="rep-nav-lekarne-btn" onclick="openLekarne()"><span class="rn-ico">🏪</span><span class="rn-lbl">Lekárne</span></button>
 </div>
+
+</div></div><!-- /rt-inner /rep-topbar -->
 
 <!-- ═══ MANAGER VIEW (zobrazí sa iba keď sa prihlási BUM/admin/boss/AM West/AM East) ═══ -->
 <div class="mgr-view" id="mgr-view">
@@ -2334,14 +2432,27 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     </div>
   </div>
 
+  <!-- ── MENINY — oslavná obrazovka ── -->
+  <div class="nday-overlay" id="nday-overlay">
+    <canvas class="nday-canvas" id="nday-canvas"></canvas>
+    <div class="nday-content">
+      <div class="nday-emoji">🎂</div>
+      <div class="nday-title">Všetko najlepšie!</div>
+      <div class="nday-name" id="nday-name"></div>
+      <div class="nday-sub">Dnes máš meniny 🎉</div>
+      <div class="nday-wish">Nech sa Ti darí — aj v teréne aj mimo neho. 💙</div>
+      <button class="nday-btn" onclick="ndayClose()">Ďakujem 🎉</button>
+    </div>
+  </div>
+
   <!-- ── ZDIEĽANÝ PANEL NAV — fixný, zostáva počas prechodov medzi panelmi ── -->
   <div id="shared-panel-nav" style="display:none">
     <div class="panel-nav">
-      <button class="panel-nav-btn" id="spn-hist" onclick="openHistory()">📋 História</button>
-      <button class="panel-nav-btn" id="spn-lb" onclick="openLeaderboard()">🏆 Rebríček</button>
-      <button class="panel-nav-btn" id="spn-pl" onclick="openRepPlnenie()">💊 Plnenie</button>
-      <button class="panel-nav-btn" id="spn-lk" onclick="openLekarne()">🏪 Lekárne</button>
-      <button class="panel-nav-close" onclick="closeAllPanels()">✕</button>
+      <button class="panel-nav-btn" id="spn-form" onclick="repNavToForm()"><span class="rn-ico">📝</span><span class="rn-lbl">Formulár</span></button>
+      <button class="panel-nav-btn" id="spn-hist" onclick="openHistory()"><span class="rn-ico">📋</span><span class="rn-lbl">História</span></button>
+      <button class="panel-nav-btn" id="spn-lb" onclick="openLeaderboard()"><span class="rn-ico">🏆</span><span class="rn-lbl">Rebríček</span></button>
+      <button class="panel-nav-btn" id="spn-pl" onclick="openRepPlnenie()"><span class="rn-ico">💊</span><span class="rn-lbl">Plnenie</span></button>
+      <button class="panel-nav-btn" id="spn-lk" onclick="openLekarne()"><span class="rn-ico">🏪</span><span class="rn-lbl">Lekárne</span></button>
     </div>
   </div>
 
@@ -2351,11 +2462,11 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
         <div class="hist-title">História lekárov</div>
         <div class="hist-date" id="hist-date"></div>
       </div>
+      <div class="hist-search-wrap">
+        <span class="hist-search-icon">🔍</span>
+        <input type="text" class="hist-search" id="hist-search" placeholder="Hľadať lekára..." oninput="filterHistory()" autocomplete="off">
+      </div>
       <div class="hist-body-card">
-        <div class="hist-search-wrap">
-          <span class="hist-search-icon">🔍</span>
-          <input type="text" class="hist-search" id="hist-search" placeholder="Hľadať lekára..." oninput="filterHistory()" autocomplete="off">
-        </div>
         <div class="hist-body" id="hist-body"></div>
       </div>
     </div>
@@ -2686,7 +2797,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.24.31';
+var APP_VERSION = '2.25.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5533,7 +5644,8 @@ function _panelShow(newId, isBack) {
   }
   var animCls;
   if (!prevVisible) {
-    animCls = 'panel-anim-up';
+    // Prichádzame z Formulára (poradie 0) — všetky panely sú napravo → sprava
+    animCls = 'panel-anim-r';
   } else {
     var nOrd = _PANEL_ORDER[newId] || 0;
     var pOrd = _PANEL_ORDER[_panelCurrent] || 0;
@@ -5542,18 +5654,9 @@ function _panelShow(newId, isBack) {
   var newEl = document.getElementById(newId);
   if (!newEl) return;
   _panelCurrent = newId;
-  // Zdieľaný fixný nav — aktualizuj active stav
+  // Persistentný topbar — zvýrazni aktívnu záložku v rep-nav
   if (!document.body.classList.contains('manager-mode')) {
-    var snav = document.getElementById('shared-panel-nav');
-    if (snav) {
-      snav.style.display = '';
-      var _panelToBtn = {'hist-overlay':'spn-hist','lb-overlay':'spn-lb','rep-plnenie-overlay':'spn-pl','lk-overlay':'spn-lk'};
-      var _activeBtnId = _panelToBtn[newId];
-      ['spn-hist','spn-lb','spn-pl','spn-lk'].forEach(function(id){
-        var btn = document.getElementById(id);
-        if(btn) btn.classList.toggle('active', id === _activeBtnId);
-      });
-    }
+    repNavSetActive(newId);
   }
   // Nový panel ide dopredu (nad starý), aby počas animácie nebolo vidieť pozadie
   newEl.style.zIndex = '1600';
@@ -5585,6 +5688,59 @@ function closeAllPanels() {
   document.body.style.overflow = '';
   var snav = document.getElementById('shared-panel-nav');
   if(snav) snav.style.display = 'none';
+  repNavSetActive(null);
+}
+
+// Zvýrazni aktívnu záložku v rep-nav (persistentný topbar). panelId=null → Formulár.
+function repNavSetActive(panelId){
+  var map = {
+    'hist-overlay':'rep-nav-hist-btn',
+    'lb-overlay':'rep-nav-lb-btn',
+    'rep-plnenie-overlay':'rep-nav-plnenie-btn',
+    'lk-overlay':'rep-nav-lekarne-btn'
+  };
+  var activeId = (panelId && map[panelId]) ? map[panelId] : 'rep-nav-form-btn';
+  ['rep-nav-form-btn','rep-nav-hist-btn','rep-nav-lb-btn','rep-nav-plnenie-btn','rep-nav-lekarne-btn'].forEach(function(id){
+    var b = document.getElementById(id);
+    if(b) b.classList.toggle('active', id === activeId);
+  });
+}
+
+// Záložka „Formulár GP" — zatvor všetky panely a vráť sa na formulár (základná vrstva)
+// Smer: Formulár je vľavo → otvorený panel odíde von doprava (reverz vstupu)
+function repNavToForm() {
+  var goHome = function(){
+    if(typeof closeAllPanels === 'function') closeAllPanels();
+    try { window.scrollTo({ top: 0, behavior: 'instant' }); } catch(e){ window.scrollTo(0,0); }
+  };
+  var cur = _panelCurrent ? document.getElementById(_panelCurrent) : null;
+  if(cur && cur.classList.contains('show')){
+    cur.classList.remove('panel-anim-up','panel-anim-l','panel-anim-r');
+    cur.classList.add('pl-detail-exit-r');
+    setTimeout(function(){ cur.classList.remove('pl-detail-exit-r'); goHome(); }, 200);
+  } else {
+    goHome();
+  }
+}
+
+// Po prihlásení reprezentanta (GP línia) otvor zvolenú predvolenú záložku.
+// Default = 'form' (formulár) → neotvára sa nič. Platí len pre reprezentanta v GP línii.
+function applyDefaultTabIfRep() {
+  try {
+    var s = getSession();
+    if(!s || s.line === 'gyn') return;          // len GP línia
+    if(mgrDetectRole(s)) return;                 // len reprezentant (nie manažér/admin)
+    var def = userPrefsGet().defaultTab || '';
+    if(!def || def === 'form') return;
+    var openers = {
+      historia: (typeof openHistory === 'function') ? openHistory : null,
+      rebricek: (typeof openLeaderboard === 'function') ? openLeaderboard : null,
+      plnenie:  (typeof openRepPlnenie === 'function') ? openRepPlnenie : null,
+      lekarne:  (typeof openLekarne === 'function') ? openLekarne : null
+    };
+    var fn = openers[def];
+    if(typeof fn === 'function'){ setTimeout(function(){ try { fn(); } catch(e){} }, 350); }
+  } catch(e){}
 }
 
 function openHistory() {
@@ -5615,6 +5771,310 @@ function closeHistory() {
   if(overlay) overlay.classList.remove('show');
   _panelCurrent = null;
   document.body.style.overflow = '';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// NASTAVENIA — jednotná obrazovka pre rep / manažéra / admina (GP aj Gyn)
+// ═══════════════════════════════════════════════════════════════════
+function settingsEsc(x){
+  if(typeof gynEsc === 'function') return gynEsc(x);
+  return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+// Rola → čitateľný label (zjednotené pre obe línie)
+function settingsRoleLabel(s){
+  if(!s) return '';
+  if(s.line === 'gyn'){
+    return (typeof GYN_ROLE_LABEL !== 'undefined' && GYN_ROLE_LABEL[s.role]) || s.role || '';
+  }
+  switch(s.role){
+    case 'admin': return 'Admin';
+    case 'pm':    return 'Produktový manažér';
+    case 'bum':   return 'Business Unit Manager';
+    case 'am':    return 'Area Manager';
+    case 'boss':  return 'Vedenie';
+    default:      return 'Medicínsky reprezentant';
+  }
+}
+function settingsLineLabel(s){ return (s && s.line === 'gyn') ? 'Gynekológia' : 'Golem'; }
+
+function settingsRow(label, val){
+  if(val == null || val === '') return '';
+  return '<div class="set-row"><div class="set-row-label">' + settingsEsc(label) +
+         '</div><div class="set-row-val">' + settingsEsc(val) + '</div></div>';
+}
+
+function openSettings(){
+  var s = getSession(); if(!s) return;
+  var overlay = document.getElementById('settings-overlay');
+  if(!overlay) return;
+  renderSettings(s);
+  overlay.classList.add('show');
+  document.body.style.overflow = 'hidden';
+  try { usageSectionEnter('Nastavenia'); } catch(e){}
+}
+function closeSettings(){
+  var overlay = document.getElementById('settings-overlay');
+  if(overlay) overlay.classList.remove('show');
+  document.body.style.overflow = '';
+  try { usageSectionClose(); } catch(e){}
+}
+function settingsLogout(){
+  var s = getSession();
+  // Gyn sa odhlási hneď (bez potvrdenia) → zavri Nastavenia a reload
+  if(s && s.line === 'gyn' && typeof gynExit === 'function'){ closeSettings(); gynExit(); return; }
+  // GP má potvrdzovacie okno — Nastavenia nechaj OTVORENÉ za ním (rovnaké pozadie).
+  // Pri zrušení ostanú Nastavenia, pri potvrdení sa appka aj tak reloadne.
+  if(typeof doLogout === 'function') doLogout();
+}
+
+function renderSettings(s){
+  s = s || getSession(); if(!s) return;
+  var body = document.getElementById('settings-body');
+  if(!body) return;
+  var roleLbl = settingsRoleLabel(s);
+  var lineLbl = settingsLineLabel(s);
+  var hasAvatar = (typeof userHasAvatar === 'function') ? userHasAvatar() : true;
+
+  var rows = '';
+  rows += settingsRow('Rola', roleLbl);
+  rows += settingsRow('Línia', lineLbl);
+  if(s.region) rows += settingsRow('Región', s.region);
+
+  body.innerHTML =
+    '<div class="set-card">' +
+      '<div class="set-card-title">Profil</div>' +
+      '<div class="set-profile">' +
+        '<div class="set-avatar-wrap">' +
+          '<div class="set-avatar" id="set-avatar" data-username="' + settingsEsc(s.username||'') + '"></div>' +
+        '</div>' +
+        '<div class="set-profile-info">' +
+          '<div class="set-name">' + settingsEsc(s.name || s.username || '') + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="margin-top:14px">' + rows + '</div>' +
+      (hasAvatar ? '' : '<div class="set-row-desc" style="margin-top:12px">Ešte nemáš vlastný avatar — vytvor si ho.</div>') +
+      '<button type="button" class="set-action-btn' + (hasAvatar ? '' : ' set-action-primary set-action-pulse') + '" onclick="settingsOpenAvatar()">🎨 ' + (hasAvatar ? 'Upraviť avatar' : 'Vytvoriť avatar') + '</button>' +
+    '</div>' +
+    '<div class="set-card"><div class="set-card-title">Notifikácie</div>' +
+      settingsNotifHtml() + '</div>' +
+    '<div class="set-card"><div class="set-card-title">Aplikácia</div>' +
+      settingsAppHtml(s) + '</div>' +
+    '<div class="set-card"><button type="button" class="set-logout-btn" onclick="settingsLogout()">Odhlásiť sa</button></div>';
+
+  // Avatar (rovnaký pattern ako v hlavičke)
+  var av = document.getElementById('set-avatar');
+  if(av && typeof avatarFillElement === 'function'){
+    var palette = (typeof LB_COLOR_PALETTE !== 'undefined') ? LB_COLOR_PALETTE : null;
+    var color = (palette && typeof strHash === 'function')
+      ? palette[strHash(s.username||'') % palette.length]
+      : 'linear-gradient(135deg,#1E40AF,#3B82F6)';
+    av.style.background = color;
+    avatarFillElement(av, { username: s.username, name: s.name || s.username, color: color, size: 64 });
+  }
+
+  // Dátumy aktualizácie dát (predaje / PharmaData) — async naplnenie
+  settingsLoadDataDates();
+}
+
+// Avatar — otvor existujúci customizer (presun z hlavičky)
+function settingsOpenAvatar(){
+  if(typeof avatarOpenCustomizer === 'function') avatarOpenCustomizer();
+}
+
+// Notifikácie — stav + akcia (presun zvončeka z hlavičky)
+function settingsNotifHtml(){
+  var dev = (typeof IS_DEV !== 'undefined' && IS_DEV);
+  var supported = (typeof pushSupported === 'function') ? pushSupported() : false;
+  if(dev || !supported || typeof Notification === 'undefined'){
+    return '<div class="set-soon">Upozornenia nie sú v tomto prostredí dostupné.</div>';
+  }
+  var perm = Notification.permission;
+  if(perm === 'granted'){
+    return '<div class="set-note-ok">🔔 Upozornenia sú zapnuté.</div>';
+  }
+  if(perm === 'denied'){
+    return '<div class="set-row-desc">Upozornenia sú zablokované v prehliadači.</div>' +
+           '<button type="button" class="set-action-btn" onclick="settingsNotifHelp()">Ako povoliť</button>';
+  }
+  return '<div class="set-row-desc">Dostávaj upozornenia, keď pribudnú nové dáta (predaje, trhové podiely).</div>' +
+         '<button type="button" class="set-action-btn set-action-primary" onclick="settingsNotifEnable()">🔔 Zapnúť upozornenia</button>';
+}
+function settingsNotifEnable(){
+  if(typeof pushBellClick === 'function') pushBellClick();
+  // Po vyriešení promptu prerenderuj sekciu (stav sa mohol zmeniť)
+  setTimeout(function(){ var s = getSession(); if(s) renderSettings(s); }, 500);
+}
+function settingsNotifHelp(){
+  if(typeof pushShowDeniedHelp === 'function') pushShowDeniedHelp();
+}
+
+// ── Osobné nastavenia používateľa (synchronizované cez Sheets stĺpec "nastavenia") ──
+function userPrefsGet(){
+  var s = getSession();
+  if(s && s.prefs && typeof s.prefs === 'object') return s.prefs;
+  try { if(s && s.username){ var raw = localStorage.getItem('prefs_' + s.username); if(raw){ var o = JSON.parse(raw); if(o && typeof o === 'object') return o; } } } catch(e){}
+  return {};
+}
+// Lokálne zrkadlo (rýchle čítanie + offline) vrátane haptiky pre haptic()
+function userPrefsApplyMirror(user){
+  try {
+    var u = user || getSession(); if(!u || !u.username) return;
+    var pf = (u.prefs && typeof u.prefs === 'object') ? u.prefs : {};
+    localStorage.setItem('prefs_' + u.username, JSON.stringify(pf));
+    localStorage.setItem('haptics_enabled', pf.haptics === false ? '0' : '1');
+  } catch(e){}
+}
+function userPrefsSet(patch){
+  var s = getSession(); if(!s || !s.username) return;
+  var cur = (s.prefs && typeof s.prefs === 'object') ? s.prefs : {};
+  for(var k in patch){ if(Object.prototype.hasOwnProperty.call(patch, k)) cur[k] = patch[k]; }
+  s.prefs = cur;
+  try { setSession(s); } catch(e){}
+  try { userPrefsApplyMirror(s); } catch(e){}
+  // Zápis do Sheetu (Golem alebo Gyn podľa línie) — stĺpec "nastavenia"
+  try {
+    if(typeof IS_DEV !== 'undefined' && IS_DEV) return;
+    var urlFn = (s.line === 'gyn' && typeof gynScriptUrl === 'function') ? gynScriptUrl : scriptUrl;
+    fetch(urlFn('action=setUserPref&username=' + encodeURIComponent(s.username) + '&prefs=' + encodeURIComponent(JSON.stringify(cur))), { cache:'no-store' })
+      .then(function(r){ return r.json(); })
+      .then(function(d){ if(d && d.ok === false && window.console) console.warn('setUserPref backend:', d.error); })
+      .catch(function(){ /* offline — ostane lokálne, zosynchronizuje sa pri ďalšej zmene/prihlásení */ });
+  } catch(e){}
+}
+
+// Predvolená záložka po prihlásení — ulož voľbu (sync cez Sheets) + potvrdenie
+function settingsSetDefaultTab(val){
+  userPrefsSet({ defaultTab: val || 'form' });
+  try { haptic('selection'); } catch(e){}
+  var el = document.getElementById('set-defaulttab-saved');
+  if(el){
+    el.classList.add('show');
+    clearTimeout(window._setSavedT);
+    window._setSavedT = setTimeout(function(){ el.classList.remove('show'); }, 2200);
+  }
+}
+
+// ── Aplikácia — sekcia (dáta, haptika, prepínač línie pre admina, cache) ──
+function settingsAppHtml(s){
+  var html = '';
+  // Kedy admin naposledy odoslal aktualizáciu dát
+  html += '<div class="set-card-sub">Aktuálnosť dát</div>';
+  html += settingsDataDateRow('📊 Predaje', 'predaje');
+  html += settingsDataDateRow('📈 PharmaData', 'pharma');
+
+  // Haptická odozva
+  var hOn = settingsHapticsOn();
+  html += '<div class="set-row" style="margin-top:6px"><div class="set-row-label">Haptická odozva</div>' +
+            '<button type="button" class="set-switch' + (hOn ? ' on' : '') + '" role="switch" aria-checked="' + (hOn ? 'true' : 'false') + '" aria-label="Haptická odozva" onclick="settingsToggleHaptics()"></button>' +
+          '</div>';
+
+  // Predvolená záložka po prihlásení — len reprezentant v GP línii
+  var isGpRep = s && s.line !== 'gyn' && (typeof mgrDetectRole !== 'function' || !mgrDetectRole(s));
+  if(isGpRep){
+    var def = userPrefsGet().defaultTab || 'form';
+    var opts = [['form','📝 Formulár GP'],['historia','📋 História'],['rebricek','🏆 Rebríček'],['plnenie','💊 Plnenie'],['lekarne','🏪 Lekárne']];
+    var optHtml = opts.map(function(o){
+      return '<option value="' + o[0] + '"' + (o[0] === def ? ' selected' : '') + '>' + o[1] + '</option>';
+    }).join('');
+    html += '<div class="set-default-tab">' +
+              '<div class="set-row-label" style="margin-bottom:3px">Úvodná obrazovka</div>' +
+              '<div class="set-row-desc">Čo sa otvorí hneď po prihlásení. Štandardne <strong>Formulár GP</strong>.</div>' +
+              '<div style="display:flex;align-items:center;gap:10px;margin-top:8px">' +
+                '<select class="set-select" style="flex:1;max-width:none" onchange="settingsSetDefaultTab(this.value)">' + optHtml + '</select>' +
+                '<span class="set-saved" id="set-defaulttab-saved">✓ Uložené</span>' +
+              '</div>' +
+            '</div>';
+  }
+
+  // Prepínač línie — iba admin (rovnaká podmienka ako pôvodne v hlavičke)
+  if(typeof mgrShouldShowLineToggle === 'function' && mgrShouldShowLineToggle()){
+    var inGyn = !!(s && s.line === 'gyn');
+    var targetLbl = inGyn ? 'Golem' : 'Gynekológia';
+    html += '<div class="set-row"><div class="set-row-label">Prepnúť líniu (admin)</div>' +
+              '<button type="button" class="set-mini-btn" onclick="settingsSwitchLine()">→ ' + settingsEsc(targetLbl) + '</button>' +
+            '</div>';
+  }
+
+  // Čistenie vyrovnávacej pamäte
+  html += '<div style="border-top:1px solid #F1F5F9;margin-top:6px;padding-top:14px">' +
+            '<div class="set-card-sub">Riešenie problémov</div>' +
+            '<div class="set-row-desc">Appka sa správa divne, dáta sa načítali nesprávne, niečo sa nezobrazuje alebo je appka pomalá? Skús vymazať vyrovnávaciu pamäť — je to bezpečné. Vymažú sa len dočasne uložené dáta (predaje, trhové podiely, história, lekárne), ktoré sa vzápätí znova načítajú zo servera. <strong>Zostávaš prihlásený a o nič neprídeš.</strong></div>' +
+            '<button type="button" class="set-action-btn" onclick="settingsClearCache()">🧹 Vymazať vyrovnávaciu pamäť</button>' +
+            '<div class="set-cache-status" id="set-cache-status"></div>' +
+          '</div>';
+  return html;
+}
+
+// Dátum aktualizácie dát — riadok. Posledný známy dátum sa zobrazí OKAMŽITE
+// (z localStorage, funguje aj offline), na pozadí sa obnoví zo servera.
+function settingsDataDateRow(label, key){
+  var fmt = (typeof formatNotifDate === 'function') ? formatNotifDate : function(x){ return x || ''; };
+  var cachedLs = '';
+  try { cachedLs = localStorage.getItem('notif_date_' + key) || ''; } catch(e){}
+  var init = cachedLs ? fmt(cachedLs) : '<span class="set-loading">načítava…</span>';
+  return '<div class="set-row"><div class="set-row-label">' + settingsEsc(label) + '</div>' +
+         '<div class="set-row-val" id="set-date-' + key + '">' + init + '</div></div>';
+}
+function settingsLoadDataDates(){
+  var dev = (typeof IS_DEV !== 'undefined' && IS_DEV);
+  var cache = (typeof NOTIF_PREFETCH_CACHE !== 'undefined') ? NOTIF_PREFETCH_CACHE : {};
+  var fmt = (typeof formatNotifDate === 'function') ? formatNotifDate : function(x){ return x || ''; };
+  ['predaje','pharma'].forEach(function(key){
+    var el = document.getElementById('set-date-' + key);
+    if(!el) return;
+    function lastKnown(){ try { return localStorage.getItem('notif_date_' + key) || ''; } catch(e){ return ''; } }
+    function persist(ts){ try { if(ts) localStorage.setItem('notif_date_' + key, ts); } catch(e){} }
+    function show(ts){
+      if(ts){ el.textContent = fmt(ts); persist(ts); return; }
+      var ls = lastKnown();                 // server nič nevrátil → ponechaj posledný známy
+      el.textContent = ls ? fmt(ls) : '—';
+    }
+    if(key in cache){ show(cache[key]); return; }      // už prefetchnuté v pamäti
+    if(dev || typeof scriptUrl !== 'function'){ show(null); return; }
+    // počas fetchu necháme v DOM posledný známy dátum / „načítava…"
+    try {
+      fetch(scriptUrl('action=getConfig&key=' + encodeURIComponent('notif_' + key)))
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          var ts = (d && d.ok && d.value) ? d.value : null;
+          try { cache[key] = ts; } catch(e){}
+          show(ts);
+        })
+        .catch(function(){ show(null); });   // fail → posledný známy z localStorage
+    } catch(e){ show(null); }
+  });
+}
+
+// Haptická odozva — stav + prepnutie (default zapnuté, sync cez Sheets)
+function settingsHapticsOn(){
+  var pf = userPrefsGet();
+  return pf.haptics !== false;
+}
+function settingsToggleHaptics(){
+  var on = settingsHapticsOn();
+  userPrefsSet({ haptics: !on });           // mirror aktualizuje aj 'haptics_enabled' pre haptic()
+  if(on === false){ try { haptic('selection'); } catch(e){} } // krátka ukážka pri zapnutí
+  var s = getSession(); if(s) renderSettings(s);
+}
+
+// Prepínač línie (admin) — zatvor Nastavenia a prepni
+function settingsSwitchLine(){
+  closeSettings();
+  if(typeof mgrToggleLine === 'function') mgrToggleLine();
+}
+
+// Vymazať vyrovnávaciu pamäť (re-fetchovateľné cache; session ostáva)
+function settingsClearCache(){
+  var removed = (typeof lsPruneCaches === 'function') ? lsPruneCaches() : 0;
+  // IndexedDB PharmaData cache (re-fetchovateľná zo Sheets)
+  try {
+    if(window.indexedDB && typeof _PH_IDB_NAME !== 'undefined' && _PH_IDB_NAME){
+      indexedDB.deleteDatabase(_PH_IDB_NAME);
+    }
+  } catch(e){}
+  var el = document.getElementById('set-cache-status');
+  if(el) el.textContent = '✓ Vyrovnávacia pamäť vyčistená (' + removed + ' položiek). Dáta sa znova načítajú.';
+  try { haptic('success'); } catch(e){}
 }
 
 var _currentDetailIdx = -1;
@@ -6103,6 +6563,8 @@ function autoAdvance(currentId) {
 // ── haptic feedback ──
 function haptic(type) {
   if(!navigator.vibrate) return; // not supported
+  // Rešpektuj vypnutie v Nastaveniach (default zapnuté; vypnuté len keď je '0')
+  try { if(localStorage.getItem('haptics_enabled') === '0') return; } catch(e){}
   switch(type) {
     case 'success':
       // Two short pulses - like Apple Pay confirmation
@@ -6501,6 +6963,7 @@ function mgrParseLoginExtras(user, data){
   if (data.session_token) user.session_token = String(data.session_token || '');
   if (data.session_expires_at) user.session_expires_at = String(data.session_expires_at || '');
   if (data.device_id) user.device_id = String(data.device_id || '');
+  if (data.nastavenia) { try { var _pf = JSON.parse(data.nastavenia); if(_pf && typeof _pf === 'object') user.prefs = _pf; } catch(e){} }
   return user;
 }
 function mgrBuildGpUser(username, data){
@@ -6707,8 +7170,13 @@ function loginSuccess(username, name, role, region, extra) {
     if (extra.session_token) user.session_token = String(extra.session_token || '');
     if (extra.session_expires_at) user.session_expires_at = String(extra.session_expires_at || '');
     if (extra.device_id) user.device_id = String(extra.device_id || '');
+    // Osobné nastavenia (JSON v stĺpci "nastavenia") — predvolená záložka, haptika
+    if (extra.nastavenia) {
+      try { var _pf = JSON.parse(extra.nastavenia); if(_pf && typeof _pf === 'object') user.prefs = _pf; } catch(e){}
+    }
   }
   setSession(user);
+  try { userPrefsApplyMirror(user); } catch(e){}
   usageTrack('app_open', '', 'prihlásenie · rola: ' + (role || ''));
   haptic('success');
   var _appEl = document.querySelector('.app');
@@ -6716,6 +7184,7 @@ function loginSuccess(username, name, role, region, extra) {
   document.getElementById('login-screen').classList.remove('show');
   try { mgrDedupUnique(); } catch(e){}
   updateHdrForUser(user);
+  setTimeout(function(){ try { nameDayCelebrate(user); } catch(e){} }, 1500);
   pingLogin(username);
   loadInitData(username); // nahrádza loadRepList() + refreshBadgeFromSheets() — 1 request namiesto 3
   // Vyčisti akékoľvek stuck body štýly (position:fixed z tutoriálu, lockScroll atď.)
@@ -6724,6 +7193,11 @@ function loginSuccess(username, name, role, region, extra) {
   document.body.style.overflow = '';
   document.body.style.width = '';
   var mgrRole = mgrDetectRole(user);
+  // GP reprezentant → persistentný header + záložky (fixný topbar)
+  if(!mgrRole && user.line !== 'gyn'){
+    document.body.classList.add('gp-rep');
+    try { repTopbarSync(); setTimeout(repTopbarSync, 120); } catch(e){}
+  }
   if(mgrRole){
     mgrEnter(mgrRole);
     try { mgrDedupUnique(); } catch(e){}
@@ -6787,6 +7261,8 @@ function loginSuccess(username, name, role, region, extra) {
   // Ponuka push notifikácií reprezentantovi
   setTimeout(function(){ try { pushMaybePrompt(); } catch(e){} }, 3500);
   window.scrollTo({top: 0, behavior: 'instant'});
+  // Predvolená záložka po prihlásení (ak si rep zvolil inú ako Formulár)
+  try { applyDefaultTabIfRep(); } catch(e){}
 }
 
 function doLogin() {
@@ -6880,18 +7356,145 @@ function showSessionExpiredModal() {
   if(overlay) overlay.classList.add('show');
 }
 
+// ── Slovenský kalendár menín (index 0 nepoužitý; '' = deň bez menín → sviatok nižšie) ──
+var MENINY = {
+  1:['','','Alexandra','Daniela','Drahoslav','Andrea','Antónia','Bohuslava','Severín','Alexej','Dáša','Malvína','Ernest','Rastislav','Radovan','Dobroslav','Kristína','Nataša','Bohdana','Drahomíra','Dalibor','Vincent','Zora','Miloš','Timotej','Gejza','Tamara','Bohuš','Alfonz','Gašpar','Ema','Emil'],
+  2:['','Tatiana','Erika','Blažej','Veronika','Agáta','Dorota','Vanda','Zoja','Zdenko','Gabriela','Dezider','Perla','Arpád','Valentín','Pravoslav','Ida','Miloslava','Jaromír','Vlasta','Lívia','Eleonóra','Etela','Roman','Matej','Frederik','Viktor','Alexander','Zlatica','Radomír'],
+  3:['','Albín','Anežka','Bohumil','Kazimír','Fridrich','Radoslav','Tomáš','Alan','Františka','Branislav','Angela','Gregor','Vlastimil','Matilda','Svetlana','Boleslav','Ľubica','Eduard','Jozef','Víťazoslav','Blahoslav','Beňadik','Adrián','Gabriel','Marián','Emanuel','Alena','Soňa','Miroslav','Vieroslava','Benjamín'],
+  4:['','Hugo','Zita','Richard','Izidor','Miroslava','Irena','Zoltán','Albert','Milena','Igor','Július','Estera','Aleš','Justína','Fedor','Dana','Rudolf','Valér','Jela','Marcel','Ervín','Slavomír','Vojtech','Juraj','Marek','Jaroslava','Jaroslav','Jarmila','Lea','Anastázia'],
+  5:['','','Žigmund','Galina','Florián','Lesana','Hermína','Monika','','Roland','Viktória','Blažena','Pankrác','Servác','Bonifác','Žofia','Svetozár','Gizela','Viola','Gertrúda','Bernard','Zina','Júlia','Želmíra','Ela','Urban','Dušan','Iveta','Viliam','Vilma','Ferdinand','Petronela'],
+  6:['','Žaneta','Xénia','Karolína','Lenka','Laura','Norbert','Róbert','Medard','Stanislava','Margaréta','Dobroslava','Zlatko','Anton','Vasil','Vít','Blanka','Adolf','Vratislav','Alfréd','Valéria','Alojz','Paulína','Sidónia','Ján','Tadeáš','Adriána','Ladislav','Beáta','Peter a Pavol','Melánia'],
+  7:['','Diana','Berta','Miloslav','Prokop','','Patrik','Oliver','Ivan','Lujza','Amália','Milota','Nina','Margita','Kamil','Henrich','Drahomír','Bohuslav','Kamila','Dušana','Iľja','Daniel','Magdaléna','Oľga','Vladimír','Jakub','Anna','Božena','Krištof','Marta','Libuša','Ignác'],
+  8:['','Božidara','Gustáv','Jerguš','Dominik','Hortenzia','Jozefína','Štefánia','Oskar','Ľubomíra','Vavrinec','Zuzana','Darina','Ľubomír','Mojmír','Marcela','Leonard','Milica','Elena','Lýdia','Anabela','Jana','Tichomír','Filip','Bartolomej','Ľudovít','Samuel','Silvia','Augustín','Nikola','Ružena','Nora'],
+  9:['','Drahoslava','Linda','Belo','Rozália','Regina','Alica','Marianna','Miriam','Martina','Oleg','Bystrík','Mária','Ctibor','Ľudomil','Jolana','Ľudmila','Olympia','Eugénia','Konštantín','Ľuboslav','Matúš','Móric','Zdenka','Ľuboš','Vladislav','Edita','Cyprián','Václav','Michal','Jarolím'],
+  10:['','Arnold','Levoslav','Stela','František','Viera','Natália','Eliška','Brigita','Dionýz','Slavomíra','Valentína','Maximilián','Koloman','Boris','Terézia','Vladimíra','Hedviga','Lukáš','Kristián','Vendelín','Uršuľa','Sergej','Alojzia','Kvetoslava','Aurel','Demeter','Sabína','Dobromila','Klára','Šimon','Aurélia'],
+  11:['','','Pamiatka zosnulých','Hubert','Karol','Imrich','Renáta','René','Bohumír','Teodor','Tibor','Maroš','Svätopluk','Stanislav','Irma','Leopold','Agnesa','Klaudia','Eugen','Alžbeta','Félix','Elvíra','Cecília','Klement','Emília','Katarína','Kornel','Milan','Henrieta','Vratko','Ondrej'],
+  12:['','Edmund','Bibiána','Oldrich','Barbora','Oto','Mikuláš','Ambróz','Marína','Izabela','Radúz','Hilda','Otília','Lucia','Branislava','Ivica','Albína','Kornélia','Sláva','Judita','Dagmara','Bohdan','Adela','Nadežda','Adam a Eva','','Štefan','Filoména','Ivana','Milada','Dávid','Silvester']
+};
+// Dni bez menín → názov sviatku (kľúč "mesiac.deň")
+var MENINY_SVIATKY = {
+  '1.1':'Nový rok',
+  '5.1':'Sviatok práce',
+  '5.8':'Deň víťazstva nad fašizmom',
+  '7.5':'Sviatok sv. Cyrila a Metoda',
+  '11.1':'Sviatok všetkých svätých',
+  '12.25':'Prvý sviatok vianočný'
+};
+
+// Pozdrav podľa dennej doby
+function greetingForTime(){
+  var h = new Date().getHours();
+  if(h < 10) return 'Dobré ráno';
+  if(h < 18) return 'Dobrý deň';
+  return 'Dobrý večer';
+}
+// Meniny / sviatok pre daný dátum
+function nameDayLabel(d){
+  d = d || new Date();
+  var m = d.getMonth() + 1, day = d.getDate();
+  var arr = (typeof MENINY !== 'undefined') ? MENINY[m] : null;
+  var nm = (arr && arr[day]) ? arr[day] : '';
+  if(nm && nm !== '-') return 'Dnes má meniny ' + nm;
+  var sv = (typeof MENINY_SVIATKY !== 'undefined') ? MENINY_SVIATKY[m + '.' + day] : '';
+  return sv || '';
+}
+// Test bez menenia dátumu: pridaj ?namedaytest=1 do URL → oslava sa vynúti
+var NAMEDAY_TEST = false;
+try { NAMEDAY_TEST = new URLSearchParams(window.location.search).has('namedaytest'); } catch(e){}
+
+// Má dnes meniny práve prihlásený používateľ? (krstné meno = dnešné meno)
+function nameDayMatchesUser(user){
+  try {
+    var u = user || getSession(); if(!u || !u.name) return false;
+    var first = String(u.name).trim().split(/\s+/)[0].toLowerCase();
+    if(!first) return false;
+    if(NAMEDAY_TEST) return true;   // testovací režim — vždy „má meniny"
+    var d = new Date();
+    var arr = (typeof MENINY !== 'undefined') ? MENINY[d.getMonth()+1] : null;
+    var nm = (arr && arr[d.getDate()]) ? arr[d.getDate()] : '';
+    if(!nm || nm === '-') return false;
+    var tokens = nm.split(/\s*(?:\/|,| a )\s*/i); // "Peter a Pavol", "Erik/Erika"
+    for(var i=0;i<tokens.length;i++){ if(tokens[i].trim().toLowerCase() === first) return true; }
+    return false;
+  } catch(e){ return false; }
+}
+// Oslava menín — raz za deň: celoobrazovkové konfety + haptika
+function nameDayCelebrate(user){
+  try {
+    var u = user || getSession(); if(!u || !u.username) return;
+    if(!nameDayMatchesUser(u)) return;
+    var d = new Date();
+    var line = (u.line === 'gyn') ? 'gyn' : 'gp';
+    var key = 'nameday_party_' + line + '_' + u.username + '_' + d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
+    // V testovacom režime preskočíme „raz za deň" guard, aby sa dala oslava opakovať
+    if(!NAMEDAY_TEST){ try { if(localStorage.getItem(key) === '1') return; localStorage.setItem(key, '1'); } catch(e){} }
+    nameDayShowOverlay(u);
+  } catch(e){}
+}
+// Oslavná obrazovka menín — veľký modal + konfety
+function nameDayShowOverlay(u){
+  var ov = document.getElementById('nday-overlay'); if(!ov) return;
+  var nameEl = document.getElementById('nday-name');
+  var fn = (u && u.name) ? String(u.name).trim().split(/\s+/)[0] : '';
+  if(nameEl) nameEl.textContent = fn;
+  ov.classList.add('show');
+  document.body.style.overflow = 'hidden';
+  try { haptic('success'); } catch(e){}
+  var cv = document.getElementById('nday-canvas');
+  if(cv && typeof startFireworksOnCanvas === 'function'){
+    try { if(window._ndayStop) window._ndayStop(); } catch(e){}
+    window._ndayStop = startFireworksOnCanvas(cv);
+  }
+}
+function ndayClose(){
+  var ov = document.getElementById('nday-overlay'); if(ov) ov.classList.remove('show');
+  document.body.style.overflow = '';
+  try { if(window._ndayStop){ window._ndayStop(); window._ndayStop = null; } } catch(e){}
+}
+// Zmeria výšku persistentného topbaru a nastaví CSS premennú (pre odsadenie obsahu)
+function repTopbarSync(){
+  try {
+    if(!document.body.classList.contains('gp-rep')) return;
+    var bar = document.getElementById('rep-topbar');
+    if(!bar) return;
+    var h = Math.round(bar.getBoundingClientRect().height) || 150;
+    document.documentElement.style.setProperty('--rep-top-h', h + 'px');
+  } catch(e){}
+}
+try { window.addEventListener('resize', function(){ repTopbarSync(); }); } catch(e){}
+try { window.addEventListener('orientationchange', function(){ setTimeout(repTopbarSync, 200); }); } catch(e){}
+
 function updateHdrForUser(user) {
-  var subEl = document.querySelector('.hdr-sub');
-  var roleLabel = user.role === 'admin' ? 'Admin' : user.role === 'pm' ? 'PM' : user.role === 'bum' ? 'BUM' : user.role === 'am' ? 'AM' : 'Medicínsky reprezentant';
-  var regionPart = user.region ? ' · ' + user.region : '';
-  if(subEl) subEl.textContent = user.name + ' · ' + roleLabel + regionPart;
+  // Názov línie ako titul
+  var lineEl = document.getElementById('hdr-line-name');
+  if(lineEl) lineEl.textContent = (user && user.line === 'gyn') ? 'Gynekológia' : 'Golem';
+  // Pozdrav podľa dennej doby + krstné meno
+  var grEl = document.getElementById('hdr-greeting');
+  if(grEl){
+    var fn = (user && user.name) ? String(user.name).trim().split(/\s+/)[0] : '';
+    grEl.textContent = greetingForTime() + (fn ? ', ' + fn : '') + ' 👋';
+  }
+  // Meniny / sviatok (personalizované, ak má meniny prihlásený rep)
+  var ndEl = document.getElementById('hdr-nameday');
+  if(ndEl){
+    if(nameDayMatchesUser(user)){
+      var fnm = (user && user.name) ? String(user.name).trim().split(/\s+/)[0] : '';
+      ndEl.innerHTML = '🎉 Dnes máš meniny, ' + settingsEsc(fnm) + ' — všetko najlepšie!';
+      ndEl.classList.add('hdr-nameday-celebrate');
+    } else {
+      ndEl.textContent = nameDayLabel(new Date());
+      ndEl.classList.remove('hdr-nameday-celebrate');
+    }
+  }
   // Nastav region do skrytého poľa
   var regEl = document.getElementById('reprezentant');
-  if(regEl && user.region) regEl.value = user.region;
+  if(regEl && user && user.region) regEl.value = user.region;
   // Aktualizuj header avatar
   updateHdrAvatar(user);
-  // Admin prepínač línie (zobrazí sa len ak má admin účet v oboch linkách)
+  // Admin prepínač línie (no-op v hlavičke; ostal kvôli kompatibilite)
   try { mgrRenderLineSwitch(); } catch(e){}
+  // Prepočítaj výšku topbaru (pozdrav/meniny zmenili obsah)
+  try { repTopbarSync(); setTimeout(repTopbarSync, 60); } catch(e){}
 }
 
 function updateHdrAvatar(user) {
@@ -6982,10 +7585,15 @@ function initLogin() {
       session.region = USERS_LOCAL[session.username].region || '';
       setSession(session);
     }
+    try { userPrefsApplyMirror(session); } catch(e){}
+    var mgrRole = mgrDetectRole(session);
+    // GP reprezentant → persistentný header + záložky (fixný topbar) — pred renderom hlavičky
+    if(!mgrRole && session.line !== 'gyn'){ document.body.classList.add('gp-rep'); }
     updateHdrForUser(session);
+    setTimeout(function(){ try { nameDayCelebrate(session); } catch(e){} }, 1500);
     pingLogin(session.username);
     loadInitData(session.username); // nahrádza loadRepList() + refreshBadgeFromSheets() — 1 request namiesto 3
-    var mgrRole = mgrDetectRole(session);
+    try { repTopbarSync(); setTimeout(repTopbarSync, 120); } catch(e){}
     if(mgrRole){
       mgrEnter(mgrRole);
       setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(true);}else{checkMilestone();} }, 400);
@@ -7026,6 +7634,8 @@ function initLogin() {
     setTimeout(function(){ try { hdrAvatarShowTipIfNeeded(); } catch(e){} }, 1500);
     // Ponuka push notifikácií
     setTimeout(function(){ try { pushMaybePrompt(); } catch(e){} }, 3500);
+    // Predvolená záložka (aj pri obnovení stránky / reopen PWA)
+    try { applyDefaultTabIfRep(); } catch(e){}
   } else {
     // Zobraziť login
     document.getElementById('login-screen').classList.add('show');
@@ -8002,18 +8612,12 @@ function gynRenderShell(user) {
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">' +
             '<div></div>' +
           '<div style="display:flex;align-items:center;gap:10px">' +
-            '<div class="line-switch-slot" id="gyn-line-switch-slot"></div>' +
-            '<div class="notif-bell-wrap" id="gyn-notif-bell-wrap" style="display:none">' +
-              '<button class="notif-bell-btn" onclick="pushBellClick()" aria-label="Zapnúť notifikácie" title="Zapnúť notifikácie"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>' +
-              '<span class="notif-bell-lbl">Zapnúť</span>' +
+            '<div class="gear-wrap" id="gyn-gear-wrap">' +
+              '<button class="gear-btn" onclick="openSettings()" aria-label="Nastavenia" title="Nastavenia"><svg viewBox="0 0 24 24" width="21" height="21" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>' +
+              '<span class="gear-btn-lbl">Nastavenia</span>' +
             '</div>' +
-            '<div class="logout-wrap">' +
-              '<button class="logout-btn" onclick="gynExit()" aria-label="Odhlásiť"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>' +
-              '<span class="logout-btn-lbl">Odhlásiť</span>' +
-            '</div>' +
-            '<div class="hdr-avatar-wrap" id="gyn-hdr-avatar-wrap" onclick="avatarOpenCustomizer()" title="Zmeniť avatar">' +
+            '<div class="hdr-avatar-wrap" id="gyn-hdr-avatar-wrap">' +
               '<div class="hdr-avatar" id="gyn-hdr-avatar" data-username="' + gynEsc(user.username||'') + '">?</div>' +
-              '<div class="hdr-avatar-edit">✎</div>' +
             '</div>' +
           '</div>' +
           '</div>' +
@@ -10426,9 +11030,9 @@ function mgrEnter(roleKey){
   }
   document.body.classList.add('manager-mode');
 
-  // Customizuj hlavičku
+  // Customizuj hlavičku (manažér používa rovnaký header, len iný obsah)
   var titleEl = document.querySelector('.hdr-title');
-  var subEl = document.querySelector('.hdr-sub');
+  var subEl = document.getElementById('hdr-greeting');
   var session = getSession() || {};
   if(titleEl) titleEl.textContent = 'Manažérsky pohľad';
   if(subEl) subEl.textContent = (session.name || session.username || '') + ' · ' + cfg.label + ' · ' + cfg.title;
@@ -11524,6 +12128,28 @@ var WN_HISTORY = [
         { icon: '⚡', bg: '#F5F3FF', title: 'Automatická aktualizácia', desc: 'Keď pribudnú nové predaje alebo PharmaData, signály sa po otvorení appky aktualizujú podľa najnovších dát.' }
       ]
     }
+  },
+  // ── v2.25 — Nastavenia + nový header + navigácia (rovnaké pre všetkých) ──
+  {
+    key: 'potencial_vl_wn_v2_25_nastavenia',
+    rep: {
+      icon: '✨', title: 'Nový vzhľad a Nastavenia', sub: 'v2.25 · Gedeon Richter Slovakia',
+      items: [
+        { icon: '⚙️', bg: '#EFF6FF', title: 'Nastavenia na jednom mieste', desc: 'Vpravo hore nájdeš ⚙️ Nastavenia — úprava avatara, upozornenia, čistenie pamäte aj odhlásenie pohromade.' },
+        { icon: '🧭', bg: '#F0FDF4', title: 'Jednoduchšie prepínanie medzi sekciami', desc: 'Lišta so záložkami (Formulár, História, Rebríček, Plnenie, Lekárne) je teraz vždy hore. Prepneš sa jedným ťuknutím a Formulár je plnohodnotná záložka.' },
+        { icon: '🚀', bg: '#FFF7ED', title: 'Vyber si úvodnú obrazovku', desc: 'V ⚙️ Nastaveniach si nastavíš, ktorá obrazovka sa otvorí hneď po prihlásení (štandardne Formulár). Uloží sa ti to aj na iné zariadenie.' },
+        { icon: '🎂', bg: '#F5F3FF', title: 'Pozdrav a meniny v hlavičke', desc: 'Hlavička ťa privíta podľa dennej doby a napíše, kto má dnes meniny.' }
+      ]
+    },
+    mgr: {
+      icon: '✨', title: 'Nový vzhľad a Nastavenia', sub: 'v2.25 · Gedeon Richter Slovakia',
+      items: [
+        { icon: '⚙️', bg: '#EFF6FF', title: 'Nastavenia na jednom mieste', desc: 'Vpravo hore nájdeš ⚙️ Nastavenia — úprava avatara, upozornenia, čistenie pamäte aj odhlásenie pohromade.' },
+        { icon: '🧭', bg: '#F0FDF4', title: 'Jednoduchšie prepínanie medzi sekciami', desc: 'Lišta so záložkami (Formulár, História, Rebríček, Plnenie, Lekárne) je teraz vždy hore. Prepneš sa jedným ťuknutím a Formulár je plnohodnotná záložka.' },
+        { icon: '🚀', bg: '#FFF7ED', title: 'Vyber si úvodnú obrazovku', desc: 'V ⚙️ Nastaveniach si nastavíš, ktorá obrazovka sa otvorí hneď po prihlásení (štandardne Formulár). Uloží sa ti to aj na iné zariadenie.' },
+        { icon: '🎂', bg: '#F5F3FF', title: 'Pozdrav a meniny v hlavičke', desc: 'Hlavička ťa privíta podľa dennej doby a napíše, kto má dnes meniny.' }
+      ]
+    }
   }
 ];
 
@@ -12461,11 +13087,11 @@ window.addEventListener('avatar-changed', function(ev) {
         el.classList.contains('mgr-avatar') || el.classList.contains('mgr-davatar') ||
         el.classList.contains('dhdr-avatar') || el.classList.contains('pl-ps-avatar') ||
         el.classList.contains('pl-rep-avatar') || el.classList.contains('gyn-rep-avatar') ||
-        el.classList.contains('hdr-avatar')) {
+        el.classList.contains('hdr-avatar') || el.classList.contains('set-avatar')) {
       avatarFillElement(el, { username: u, name: name, color: color });
     }
   });
-  // Update header hint (pulse halo + bouncing pencil) — vypne sa po nastavení avatara
+  // Update header hint (bodka na koliesku) — vypne sa po nastavení avatara
   try { hdrAvatarUpdateHint(); } catch(e){}
 });
 
@@ -12607,35 +13233,38 @@ function buildRepData(reps) {
   return isFullRoster;
 }
 
-// ─── Header avatar discoverability — pulse halo + one-time tooltip ───
-// Pridá/odstráni .avatar-unset class na header wrapper(y) podľa toho či má
-// prihlásený užívateľ nastavený custom avatar. Pulzujúce halo + bouncing
-// ceruzka upozornia že je tam clickable feature.
-function hdrAvatarUpdateHint() {
+// ─── Avatar discoverability ───
+// Avatar v hlavičke je teraz len obrázok; úprava avatara je v ⚙️ Nastaveniach.
+// Indikátor „nemáš ešte vlastný avatar" sa zobrazuje vnútri Nastavení pri avatarovi
+// (viď renderSettings). Hlavička už nemá žiadny indikátor.
+// Pomocná: má prihlásený user nastavený vlastný avatar?
+function userHasAvatar() {
   try {
     var s = (typeof getSession === 'function') ? getSession() : null;
-    var username = s && s.username ? s.username : '';
-    var hasAvatar = false;
-    if (username) {
-      var cfg = avatarGetConfig(username);
-      hasAvatar = !!(cfg && cfg.style);
+    if (!s || !s.username) return false;
+    var cfg = avatarGetConfig(s.username);
+    return !!(cfg && cfg.style);
+  } catch(e){ return false; }
+}
+// Ponechané kvôli existujúcim call-site (po prihlásení / po uložení avatara).
+// Ak sú práve otvorené Nastavenia, prerenderuj ich, aby bodka pri avatarovi sedela.
+function hdrAvatarUpdateHint() {
+  try {
+    var so = document.getElementById('settings-overlay');
+    if (so && so.classList.contains('show')) {
+      var s = (typeof getSession === 'function') ? getSession() : null;
+      if (s) renderSettings(s);
     }
-    ['hdr-avatar-wrap', 'gyn-hdr-avatar-wrap'].forEach(function(id){
-      var wrap = document.getElementById(id);
-      if (!wrap) return;
-      if (hasAvatar) wrap.classList.remove('avatar-unset');
-      else wrap.classList.add('avatar-unset');
-    });
   } catch(e){}
 }
 
-// One-time onboarding tooltip — žltý chip ktorý sa raz zobrazí po prihlásení
-// (iba ak user ešte nemá nastavený avatar). Auto-dismiss po 6s alebo prvom tap-e.
-// Smart-wait: ak je otvorený nejaký modal, počká kým sa zatvorí.
-// Stability check: po zatvorení modalu počká 900ms (3× 300ms) aby pokryl gap
-// medzi satori-close a wn-open (login cascade) — ak by sa medzi tým otvoril ďalší
-// modal, counter sa resetuje.
+// One-time onboarding tooltip — ZRUŠENÉ.
+// Indikácia „nemáš ešte vlastný avatar" je teraz výhradne vnútri ⚙️ Nastavení
+// (bodka pri avatarovi v profile). Tento header tooltip sa už nezobrazuje.
+// Funkcia ponechaná ako no-op kvôli existujúcim call-site.
 function hdrAvatarShowTipIfNeeded(_stableTicks) {
+  return;
+  /* eslint-disable no-unreachable */
   try {
     var s = (typeof getSession === 'function') ? getSession() : null;
     if (!s || !s.username) return;
@@ -12681,17 +13310,18 @@ function hdrAvatarShowTipIfNeeded(_stableTicks) {
     window._hdrTipRetryCount = 0;
 
     // Vyber VIDITEĽNÝ wrap — v gyn móde je Golem hdr-avatar-wrap skrytý a vrátil by zlé súradnice
-    var hdrGp  = document.getElementById('hdr-avatar-wrap');
-    var hdrGyn = document.getElementById('gyn-hdr-avatar-wrap');
+    var hdrGp  = document.getElementById('gear-wrap');
+    var hdrGyn = document.getElementById('gyn-gear-wrap');
     function isVis(el) { return el && el.offsetWidth > 0 && el.offsetHeight > 0; }
     var wrap = isVis(hdrGyn) ? hdrGyn : (isVis(hdrGp) ? hdrGp : null);
-    if (!wrap || !wrap.classList.contains('avatar-unset')) return;
+    // Iba ak user ešte nemá vlastný avatar
+    if (!wrap || userHasAvatar()) return;
     // Nesmie už existovať iný tip
     if (document.querySelector('.hdr-avatar-tip')) return;
 
     var tip = document.createElement('div');
     tip.className = 'hdr-avatar-tip';
-    tip.innerHTML = '✎ Ťukni si na svoj avatar — môžeš si ho upraviť';
+    tip.innerHTML = '⚙️ Otvor Nastavenia — nastav si vlastný avatar';
     // Append najprv (skrytý), aby sme zmerali šírku
     tip.style.left = '-9999px';
     tip.style.top = '-9999px';
@@ -12780,7 +13410,7 @@ function hdrAvatarDismissTip() {
 function avatarRefreshAllInDom() {
   if (typeof avatarFillElement !== 'function') return;
   var classes = ['lb-p-avatar','lb-avatar','mgr-avatar','mgr-davatar','dhdr-avatar',
-                 'pl-ps-avatar','pl-rep-avatar','gyn-rep-avatar','hdr-avatar'];
+                 'pl-ps-avatar','pl-rep-avatar','gyn-rep-avatar','hdr-avatar','set-avatar'];
   classes.forEach(function(cls){
     var nodes = document.querySelectorAll('.' + cls + '[data-username]');
     Array.prototype.forEach.call(nodes, function(el){
@@ -13961,7 +14591,7 @@ function plnenieCountUpEUR(el, targetVal) {
 function lbUpdateNavBtn() {
   var btn = document.getElementById('rep-nav-lb-btn');
   if (!btn) return;
-  btn.innerHTML = '🏆 Rebríček';
+  btn.innerHTML = '<span class="rn-ico">🏆</span><span class="rn-lbl">Rebríček</span>';
   return;
   var session = getSession();
   var myUsername = session ? session.username : null;
@@ -17485,7 +18115,7 @@ function repPlnenieUpdateNavBtn() {
       if (cached.aggregates.reps[i].username === username) { pct = cached.aggregates.reps[i].pct; break; }
     }
   }
-  btn.innerHTML = '💊 Plnenie';
+  btn.innerHTML = '<span class="rn-ico">💊</span><span class="rn-lbl">Plnenie</span>';
 }
 
 function repPlnenieUpdateQTabs() {
@@ -23280,7 +23910,6 @@ function lkMgrItem(l, tab) {
         <button class="lk-tab" data-lk-tab="new" onclick="lkSwitchTab('new',this)">Nové 🟢</button>
         <button class="lk-tab" data-lk-tab="all" onclick="lkSwitchTab('all',this)">Všetky</button>
       </div>
-      <button type="button" class="lk-floating-back" onclick="closeLekarne()">← Späť</button>
     </div>
     <div id="lk-list"></div>
   </div>
@@ -23453,6 +24082,17 @@ function lkMgrItem(l, tab) {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <div id="gyn-view"></div>
+
+<!-- ── NASTAVENIA — mimo .app, funguje pre GP aj Gyn ── -->
+<div class="settings-overlay" id="settings-overlay">
+  <div class="settings-inner">
+    <div class="set-topbar">
+      <button type="button" class="set-back" onclick="closeSettings()">← Späť</button>
+      <div class="set-title">Nastavenia</div>
+    </div>
+    <div id="settings-body"></div>
+  </div>
+</div>
 
 <!-- ── WHAT'S NEW OVERLAY — mimo .app, funguje aj pre gyn ── -->
 <div class="wn-overlay" id="wn-overlay">
