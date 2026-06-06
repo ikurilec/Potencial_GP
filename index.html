@@ -1870,6 +1870,8 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .gyn-mgr-hdr-sub{font-size:10px;color:#7AABCC;margin-top:2px;letter-spacing:.04em;font-weight:500}
   .gyn-rep-hdr-region{font-size:10.5px;color:#7AABCC;margin-top:2px;letter-spacing:.04em;font-weight:500;text-transform:uppercase}
   .gyn-rep-hdr-name{font-size:16px;font-weight:800;color:#fff;margin-top:3px;font-family:var(--font-display);letter-spacing:-.01em;line-height:1.15}
+  .gyn-hdr-nameday{font-size:11px;color:#9DC0DE;margin-top:5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .gyn-hdr-nameday.celebrate{color:#FCD34D;font-weight:800;font-size:12px;text-shadow:0 1px 6px rgba(251,191,36,.45)}
   /* GYN NAV TABS */
   .gyn-nav{display:flex;gap:6px;margin:0 0 10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06);position:sticky;top:0;z-index:100}
   .gyn-nav-btn{flex:1;padding:13px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;background:transparent;color:#64748B;touch-action:manipulation;transition:all .2s ease;-webkit-tap-highlight-color:transparent}
@@ -2797,7 +2799,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.25.0';
+var APP_VERSION = '2.25.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8591,12 +8593,20 @@ function gynRenderShell(user) {
   var isRep     = user.role === 'gyn-rep';
   var roleLabel = GYN_ROLE_LABEL[user.role] || user.role;
   var liniaLabel = GYN_LINIA_LABEL[user.linia] || '';
-  var hdrInnerHtml = isRep
+  // Meniny / oslava (rovnako ako v GP hlavičke)
+  var gynNdayCelebrate = (typeof nameDayMatchesUser === 'function') && nameDayMatchesUser(user);
+  var gynNdayTxt = gynNdayCelebrate
+    ? '🎉 Dnes máš meniny, ' + gynEsc(String(user.name||'').trim().split(/\s+/)[0]) + ' — všetko najlepšie!'
+    : gynEsc((typeof nameDayLabel === 'function') ? nameDayLabel(new Date()) : '');
+  var gynNdayHtml = gynNdayTxt ? '<div class="gyn-hdr-nameday' + (gynNdayCelebrate ? ' celebrate' : '') + '">' + gynNdayTxt + '</div>' : '';
+
+  var hdrInnerHtml = (isRep
     ? '<div class="gyn-mgr-hdr-title">Gyn línia</div>' +
       '<div class="gyn-rep-hdr-region">' + gynEsc((liniaLabel||user.linia||'') + (user.region ? ' · ' + user.region : '')) + '</div>' +
       '<div class="gyn-rep-hdr-name">' + gynEsc(user.name||'') + '</div>'
     : '<div class="gyn-mgr-hdr-title">Manažérsky pohľad</div>' +
-      '<div class="gyn-mgr-hdr-sub">' + gynEsc((user.name||'') + ' · ' + roleLabel + ' · Gynekológia') + '</div>';
+      '<div class="gyn-mgr-hdr-sub">' + gynEsc((user.name||'') + ' · ' + roleLabel + ' · Gynekológia') + '</div>'
+    ) + gynNdayHtml;
 
   document.getElementById('gyn-view').innerHTML =
     '<div class="gyn-inner">' +
@@ -8645,6 +8655,8 @@ function gynRenderShell(user) {
   try { mgrRenderLineSwitch(); } catch(e){}
   // Update header hint (pulse halo + bouncing pencil) hneď po vyrenderovaní headera
   try { hdrAvatarUpdateHint(); } catch(e){}
+  // Oslava menín (raz za deň) — aj v gyn línii
+  setTimeout(function(){ try { nameDayCelebrate(user); } catch(e){} }, 900);
 }
 
 // ── Navigácia medzi tabmi ──
