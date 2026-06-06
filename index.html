@@ -2799,7 +2799,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.25.3';
+var APP_VERSION = '2.25.4';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6009,37 +6009,42 @@ function settingsAppHtml(s){
 
 // Dátum aktualizácie dát — riadok. Posledný známy dátum sa zobrazí OKAMŽITE
 // (z localStorage, funguje aj offline), na pozadí sa obnoví zo servera.
+function settingsDateLsKey(key){
+  return 'notif_date_' + ((typeof notifIsGyn === 'function' && notifIsGyn()) ? 'gyn_' : '') + key;
+}
 function settingsDataDateRow(label, key){
   var fmt = (typeof formatNotifDate === 'function') ? formatNotifDate : function(x){ return x || ''; };
   var cachedLs = '';
-  try { cachedLs = localStorage.getItem('notif_date_' + key) || ''; } catch(e){}
+  try { cachedLs = localStorage.getItem(settingsDateLsKey(key)) || ''; } catch(e){}
   var init = cachedLs ? fmt(cachedLs) : '<span class="set-loading">načítava…</span>';
   return '<div class="set-row"><div class="set-row-label">' + settingsEsc(label) + '</div>' +
          '<div class="set-row-val" id="set-date-' + key + '">' + init + '</div></div>';
 }
 function settingsLoadDataDates(){
   var dev = (typeof IS_DEV !== 'undefined' && IS_DEV);
+  var gyn = (typeof notifIsGyn === 'function') && notifIsGyn();
   var cache = (typeof NOTIF_PREFETCH_CACHE !== 'undefined') ? NOTIF_PREFETCH_CACHE : {};
   var fmt = (typeof formatNotifDate === 'function') ? formatNotifDate : function(x){ return x || ''; };
   ['predaje','pharma'].forEach(function(key){
     var el = document.getElementById('set-date-' + key);
     if(!el) return;
-    function lastKnown(){ try { return localStorage.getItem('notif_date_' + key) || ''; } catch(e){ return ''; } }
-    function persist(ts){ try { if(ts) localStorage.setItem('notif_date_' + key, ts); } catch(e){} }
+    var lsKey = settingsDateLsKey(key);
+    function lastKnown(){ try { return localStorage.getItem(lsKey) || ''; } catch(e){ return ''; } }
+    function persist(ts){ try { if(ts) localStorage.setItem(lsKey, ts); } catch(e){} }
     function show(ts){
       if(ts){ el.textContent = fmt(ts); persist(ts); return; }
       var ls = lastKnown();                 // server nič nevrátil → ponechaj posledný známy
       el.textContent = ls ? fmt(ls) : '—';
     }
-    if(key in cache){ show(cache[key]); return; }      // už prefetchnuté v pamäti
-    if(dev || typeof scriptUrl !== 'function'){ show(null); return; }
-    // počas fetchu necháme v DOM posledný známy dátum / „načítava…"
+    // GP môže použiť prefetch cache; Gyn vždy fetchne fresh cez gyn backend
+    if(!gyn && (key in cache)){ show(cache[key]); return; }
+    if(dev || typeof notifUrl !== 'function'){ show(null); return; }
     try {
-      fetch(scriptUrl('action=getConfig&key=' + encodeURIComponent('notif_' + key)))
+      fetch(notifUrl('action=getConfig&key=' + encodeURIComponent('notif_' + key)))
         .then(function(r){ return r.json(); })
         .then(function(d){
           var ts = (d && d.ok && d.value) ? d.value : null;
-          try { cache[key] = ts; } catch(e){}
+          if(!gyn){ try { cache[key] = ts; } catch(e){} }
           show(ts);
         })
         .catch(function(){ show(null); });   // fail → posledný známy z localStorage
@@ -8529,6 +8534,8 @@ function gynEnter(user) {
   setTimeout(function(){ try { hdrAvatarShowTipIfNeeded(); } catch(e){} }, 1500);
   // Ponuka push notifikácií (gyn) — nie admin
   setTimeout(function(){ try { pushMaybePrompt(); } catch(e){} }, 3500);
+  // In-app notifikácie (banner + polling) — admin je odosielateľ, ten ich nepotrebuje
+  if(user.role !== 'admin'){ try { checkNotifications(); startNotifPolling(); } catch(e){} }
 }
 
 function gynExit() {
@@ -10885,6 +10892,23 @@ function gynPlnenieRenderMgr(el, user, data) {
 
   // Trend graf cez kvartály — Slovensko aggregate
   html += '<div class="mgr-plnenie-detail" style="display:block;margin-top:18px"><div id="gyn-mgr-trend" class="trend"></div></div>';
+
+  // ── Admin: notifikačné tlačidlá (Odoslať predaje / trhový podiel) — len admin ──
+  if(user && user.role === 'admin'){
+    html += '<div class="pl-notif-btns" style="display:flex">' +
+      '<div class="pl-notif-btn" id="gyn-pl-notif-btn-predaje">' +
+        '<span class="pl-notif-icon">📊</span>' +
+        '<span class="pl-notif-lbl">Dáta predajov boli aktualizované</span>' +
+        '<button type="button" class="pl-notif-action" id="gyn-pl-notif-status-predaje" onclick="plnenieSetNotif(\'predaje\')">Odoslať</button>' +
+      '</div>' +
+      '<div class="pl-notif-btn" id="gyn-pl-notif-btn-pharma">' +
+        '<span class="pl-notif-icon">📈</span>' +
+        '<span class="pl-notif-lbl">Dáta o trhových podieloch boli aktualizované</span>' +
+        '<button type="button" class="pl-notif-action" id="gyn-pl-notif-status-pharma" onclick="plnenieSetNotif(\'pharma\')">Odoslať</button>' +
+      '</div>' +
+    '</div>';
+  }
+
   el.innerHTML = html;
   // Render trend
   gynRenderTrendBars('gyn-mgr-trend', null);
@@ -13739,10 +13763,12 @@ function lbApproveQ(q) {
 
 // Admin klikne na tlačidlo → zapíše aktuálny timestamp do Config Sheets
 function plnenieSetNotif(type) {
-  var btnId = 'pl-notif-btn-' + type;
-  var statusId = 'pl-notif-status-' + type;
-  var btn = document.getElementById(btnId);
-  var statusEl = document.getElementById(statusId);
+  var s = getSession() || {};
+  var isGyn = s.line === 'gyn';
+  var pfx = isGyn ? 'gyn-pl-notif' : 'pl-notif';
+  var urlFn = (isGyn && typeof gynScriptUrl === 'function') ? gynScriptUrl : scriptUrl;
+  var btn = document.getElementById(pfx + '-btn-' + type);
+  var statusEl = document.getElementById(pfx + '-status-' + type);
   if (!btn || btn.classList.contains('saving')) return;
 
   btn.classList.add('saving');
@@ -13750,7 +13776,7 @@ function plnenieSetNotif(type) {
 
   var ts = new Date().toISOString();
   var key = 'notif_' + type;
-  var url = scriptUrl('action=setConfig&key=' + encodeURIComponent(key) + '&value=' + encodeURIComponent(ts));
+  var url = urlFn('action=setConfig&key=' + encodeURIComponent(key) + '&value=' + encodeURIComponent(ts));
 
   fetch(url)
     .then(function(r){ return r.json(); })
@@ -13759,10 +13785,8 @@ function plnenieSetNotif(type) {
       if (d && d.ok) {
         btn.classList.add('done');
         if (statusEl) statusEl.textContent = 'Odoslané ✓';
-        // Okrem in-app banneru pošli aj natívnu push notifikáciu (FCM)
-        var s = getSession() || {};
-        var pushFn = (s.line === 'gyn' && typeof gynScriptUrl === 'function') ? gynScriptUrl : scriptUrl;
-        fetch(pushFn('action=sendPush&type=' + encodeURIComponent(type)), { cache:'no-store' })
+        // Okrem in-app banneru pošli aj natívnu push notifikáciu (FCM) — rovnaký backend
+        fetch(urlFn('action=sendPush&type=' + encodeURIComponent(type)), { cache:'no-store' })
           .then(function(r){ return r.json(); })
           .then(function(pr){ if (pr && pr.ok && statusEl) statusEl.textContent = 'Odoslané ✓ (' + (pr.sent||0) + ' push)'; })
           .catch(function(){});
@@ -13792,6 +13816,11 @@ var NOTIF_TYPES = [
 // Cache prefetchnutých výsledkov — { key: serverTs } alebo null kým nepríde odpoveď
 var NOTIF_PREFETCH_CACHE = {};
 
+// ── Line-aware helpery (notifikácie fungujú pre GP aj Gyn podľa aktívnej línie) ──
+function notifIsGyn(){ var s = getSession(); return !!(s && s.line === 'gyn'); }
+function notifUrl(params){ return (notifIsGyn() && typeof gynScriptUrl === 'function') ? gynScriptUrl(params) : scriptUrl(params); }
+function notifSeenKey(key){ return notifIsGyn() ? ('seen_notif_gyn_' + key) : ('seen_notif_' + key); }
+
 // Spustí sa hneď pri načítaní stránky (ešte pred prihlásením) — výsledky čakajú v cache
 function prefetchNotifications() {
   if (IS_DEV) return;
@@ -13809,31 +13838,28 @@ function prefetchNotifications() {
   });
 }
 
-// Po prihlásení — použije cache ak je hotová, inak počká na fetch
+// Po prihlásení — GP použije prefetch cache (rýchle), Gyn fetchne fresh cez gyn backend
 function checkNotifications() {
   if (IS_DEV) return;
+  var gyn = notifIsGyn();
   NOTIF_TYPES.forEach(function(n) {
-    var lsKey = 'seen_notif_' + n.key;
-    if (n.key in NOTIF_PREFETCH_CACHE) {
-      // Výsledok už máme — zobraz okamžite
+    var lsKey = notifSeenKey(n.key);
+    if (!gyn && (n.key in NOTIF_PREFETCH_CACHE)) {
       var serverTs = NOTIF_PREFETCH_CACHE[n.key];
       if (serverTs && serverTs !== (localStorage.getItem(lsKey) || '')) {
         showNotifBanner(n.icon, n.text, lsKey, serverTs);
       }
-    } else {
-      // Fetch ešte beží — počkaj na výsledok (polling každých 200ms, max 8s)
-      var attempts = 0;
-      var interval = setInterval(function() {
-        attempts++;
-        if (n.key in NOTIF_PREFETCH_CACHE || attempts > 40) {
-          clearInterval(interval);
-          var serverTs = NOTIF_PREFETCH_CACHE[n.key];
-          if (serverTs && serverTs !== (localStorage.getItem(lsKey) || '')) {
-            showNotifBanner(n.icon, n.text, lsKey, serverTs);
-          }
-        }
-      }, 200);
+      return;
     }
+    fetch(notifUrl('action=getConfig&key=' + encodeURIComponent('notif_' + n.key)))
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var serverTs = (d && d.ok && d.value) ? d.value : null;
+        if (serverTs && serverTs !== (localStorage.getItem(lsKey) || '')) {
+          showNotifBanner(n.icon, n.text, lsKey, serverTs);
+        }
+      })
+      .catch(function(){});
   });
 }
 
@@ -13845,16 +13871,13 @@ function startNotifPolling() {
   stopNotifPolling();
   NOTIF_POLL_INTERVAL = setInterval(function() {
     NOTIF_TYPES.forEach(function(n) {
-      var cfgKey = 'notif_' + n.key;
-      var lsKey  = 'seen_notif_' + n.key;
-      var url = scriptUrl('action=getConfig&key=' + encodeURIComponent(cfgKey));
-      fetch(url)
+      var lsKey = notifSeenKey(n.key);
+      fetch(notifUrl('action=getConfig&key=' + encodeURIComponent('notif_' + n.key)))
         .then(function(r){ return r.json(); })
         .then(function(d){
           if (!d || !d.ok || !d.value) return;
-          var serverTs = d.value;
-          if (serverTs !== (localStorage.getItem(lsKey) || '')) {
-            showNotifBanner(n.icon, n.text, lsKey, serverTs);
+          if (d.value !== (localStorage.getItem(lsKey) || '')) {
+            showNotifBanner(n.icon, n.text, lsKey, d.value);
           }
         })
         .catch(function(){});
@@ -13870,16 +13893,13 @@ function stopNotifPolling() {
 document.addEventListener('visibilitychange', function() {
   if (document.visibilityState === 'visible' && NOTIF_POLL_INTERVAL) {
     NOTIF_TYPES.forEach(function(n) {
-      var cfgKey = 'notif_' + n.key;
-      var lsKey  = 'seen_notif_' + n.key;
-      var url = scriptUrl('action=getConfig&key=' + encodeURIComponent(cfgKey));
-      fetch(url)
+      var lsKey = notifSeenKey(n.key);
+      fetch(notifUrl('action=getConfig&key=' + encodeURIComponent('notif_' + n.key)))
         .then(function(r){ return r.json(); })
         .then(function(d){
           if (!d || !d.ok || !d.value) return;
-          var serverTs = d.value;
-          if (serverTs !== (localStorage.getItem(lsKey) || '')) {
-            showNotifBanner(n.icon, n.text, lsKey, serverTs);
+          if (d.value !== (localStorage.getItem(lsKey) || '')) {
+            showNotifBanner(n.icon, n.text, lsKey, d.value);
           }
         })
         .catch(function(){});
