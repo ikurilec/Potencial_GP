@@ -2799,7 +2799,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.25.2';
+var APP_VERSION = '2.25.3';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8611,10 +8611,8 @@ function gynRenderShell(user) {
   document.getElementById('gyn-view').innerHTML =
     '<div class="gyn-inner">' +
       '<div class="gyn-mgr-hdr">' +
-        '<div style="position:relative;z-index:1">' +
-            hdrInnerHtml +
-          '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">' +
-            '<div></div>' +
+        '<div class="hdr-row" style="position:relative;z-index:1">' +
+          '<div style="flex:1;min-width:0">' + hdrInnerHtml + '</div>' +
           '<div style="display:flex;align-items:center;gap:10px">' +
             '<div class="gear-wrap" id="gyn-gear-wrap">' +
               '<button class="gear-btn" onclick="openSettings()" aria-label="Nastavenia" title="Nastavenia"><svg viewBox="0 0 24 24" width="21" height="21" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>' +
@@ -8623,7 +8621,6 @@ function gynRenderShell(user) {
             '<div class="hdr-avatar-wrap" id="gyn-hdr-avatar-wrap">' +
               '<div class="hdr-avatar" id="gyn-hdr-avatar" data-username="' + gynEsc(user.username||'') + '">?</div>' +
             '</div>' +
-          '</div>' +
           '</div>' +
         '</div>' +
       '</div>' +
