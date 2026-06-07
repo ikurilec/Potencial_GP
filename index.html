@@ -455,6 +455,13 @@
   .lb-region{font-size:10px;color:#64748B;font-weight:600}
   .lb-count{font-size:15px;font-weight:700;color:#0F172A;font-family:var(--font-display);flex-shrink:0}
   .lb-me-tag{font-size:8px;background:#2563EB;color:#fff;padding:1px 5px;border-radius:20px;margin-left:5px;font-weight:700}
+  /* Pohyb v rebríčku — pekný badge: ▲ hore (zelená), ▼ dole (červená), • bez zmeny (sivá) */
+  .lb-move{display:inline-flex;align-items:center;gap:2px;font-size:10px;font-weight:800;line-height:1;margin-left:6px;vertical-align:middle;padding:2px 6px;border-radius:20px}
+  .lb-move svg{display:block}
+  .lb-move-n{font-variant-numeric:tabular-nums}
+  .lb-move.up{color:#059669;background:#DCFCE7}
+  .lb-move.down{color:#DC2626;background:#FEE2E2}
+  .lb-move.same{color:#94A3B8;background:#F1F5F9;padding:3px}
   .lb-empty{text-align:center;padding:32px 20px;color:#64748B;font-size:13px}
   body.manager-mode .note-btn-edit,
   body.manager-mode .note-btn-delete,
@@ -1876,6 +1883,8 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .gyn-rep-avatar{width:34px;height:34px;border-radius:50%;background:#0C1E35;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;font-family:var(--font-display)}
   .gyn-rep-name{font-size:13px;font-weight:600;color:#0F172A;flex:1}
   .gyn-rep-region{font-size:11px;color:#64748B;font-weight:600}
+  /* Gyn rebríček — biela karta ako v Goleme (mode-tabs + podium + zoznam v jednom bielom boxe) */
+  .gyn-lb-card{background:#fff;border-radius:14px;overflow:hidden;margin-top:4px;box-shadow:0 2px 8px rgba(15,23,42,.06),0 0 0 1px rgba(15,23,42,.04)}
   .gyn-coming{background:#fff;border-radius:14px;padding:32px 16px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.07)}
   .gyn-coming p{font-size:14px;color:#64748B;margin:8px 0 0}
   .gyn-mgr-hdr{background:linear-gradient(135deg,#0C1E35 0%,#13294B 55%,#0C1E35 100%);border-radius:18px;padding:10px 20px 10px;margin:0 0 10px;box-shadow:0 12px 32px rgba(12,30,53,.35),0 4px 12px rgba(37,99,235,.18),inset 0 1px 0 rgba(255,255,255,.08);position:relative;overflow:hidden;min-height:60px}
@@ -2815,7 +2824,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.25.9';
+var APP_VERSION = '2.26.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11047,10 +11056,12 @@ function gynLbColor(login){
 }
 function gynLbCatTabsHtml(){
   var cats = [['all','Všetci'],['pill','💊 Pill'],['patch','🩹 Patch']];
-  return '<div class="lb-tabs">' + cats.map(function(c){
-    return '<button class="lb-tab' + (c[0] === GYN_LB.cat ? ' active' : '') + '" onclick="gynLbSetCat(\'' + c[0] + '\')">' + c[1] + '</button>';
+  return '<div class="lb-mode-tabs">' + cats.map(function(c){
+    return '<button class="lb-mode-tab' + (c[0] === GYN_LB.cat ? ' active' : '') + '" onclick="gynLbSetCat(\'' + c[0] + '\')">' + c[1] + '</button>';
   }).join('') + '</div>';
 }
+// Obal celého gyn rebríčka do bielej karty (vizuálna parita s Golemom)
+function gynLbCard(inner){ return '<div class="gyn-lb-card">' + inner + '</div>'; }
 function gynLbSetCat(cat){
   if(GYN_LB.cat === cat) return;
   GYN_LB.cat = cat;
@@ -11079,9 +11090,9 @@ function gynLbRender(el){
   var tabs = gynLbCatTabsHtml();
   var lastQ = gynLbLastCompletedQ();
   if(lastQ < 1){
-    el.innerHTML = tabs + '<div class="gyn-empty"><div class="gyn-empty-icon">📅</div>' +
+    el.innerHTML = gynLbCard(tabs + '<div class="gyn-empty"><div class="gyn-empty-icon">📅</div>' +
       '<div class="gyn-empty-title">Žiadny ukončený kvartál</div>' +
-      '<div class="gyn-empty-sub">Rebríček bude dostupný po skončení Q1.</div></div>';
+      '<div class="gyn-empty-sub">Rebríček bude dostupný po skončení Q1.</div></div>');
     return;
   }
   var qLabel = 'Q' + lastQ + ' ' + GYN_APP.year;
@@ -11090,7 +11101,7 @@ function gynLbRender(el){
   var key = gynPlnenieCacheKey(GYN_APP.year, lastQ);
   var data = GYN_APP.plCache[lastQ] || gynCacheRead(key);
   if(!data){
-    el.innerHTML = tabs + '<div style="padding:32px 0;text-align:center;color:#64748B;font-size:13px">Načítavam rebríček…</div>';
+    el.innerHTML = gynLbCard(tabs + '<div style="padding:32px 0;text-align:center;color:#64748B;font-size:13px">Načítavam rebríček…</div>');
     if(!GYN_APP.plLoading[lastQ]){
       GYN_APP.plLoading[lastQ] = true;
       fetch(gynScriptUrl('action=getPlnenieAll&rok=' + GYN_APP.year + '&Q=' + lastQ), { cache:'no-store' })
@@ -11104,7 +11115,7 @@ function gynLbRender(el){
         })
         .catch(function(){
           delete GYN_APP.plLoading[lastQ];
-          if(GYN_APP.nav === 'leaderboard'){ var e2 = gynLbBody(); if(e2) e2.innerHTML = tabs + '<div style="padding:32px 0;text-align:center;color:#EF4444;font-size:13px">Chyba načítavania. Skús znova.</div>'; }
+          if(GYN_APP.nav === 'leaderboard'){ var e2 = gynLbBody(); if(e2) e2.innerHTML = gynLbCard(tabs + '<div style="padding:32px 0;text-align:center;color:#EF4444;font-size:13px">Chyba načítavania. Skús znova.</div>'); }
         });
     }
     return;
@@ -11113,7 +11124,7 @@ function gynLbRender(el){
 
   var reps = GYN_STATE.repList || [];
   if(!reps.length){
-    el.innerHTML = tabs + '<div style="padding:32px 0;text-align:center;color:#64748B;font-size:13px">Načítavam reprezentantov…</div>';
+    el.innerHTML = gynLbCard(tabs + '<div style="padding:32px 0;text-align:center;color:#64748B;font-size:13px">Načítavam reprezentantov…</div>');
     return;
   }
 
@@ -11135,6 +11146,18 @@ function gynLbRender(el){
   function pctCls(pct){ return pct === null ? 'n' : pct >= 100 ? 'g' : pct >= 95 ? 'o' : 'r'; }
   function pctLbl(pct){ return pct === null ? '—' : pct.toFixed(1).replace('.',',') + ' %'; }
 
+  // Pohyb v rebríčku — baseline cez VŠETKÝCH repov (nezávislé od kategórie), snapshot v Sheete
+  var gynPctAll = {};
+  reps.forEach(function(r){ gynPctAll[r.login] = gynBuildRepAgg(r.login, data).pct; });
+  var moveKey = 'gyn_q' + lastQ;
+  var moveSt = LB_MOVE_STATE[moveKey];
+  var moveMap = (moveSt && moveSt.loaded) ? lbMoveMap(ranking, moveSt.prevPct) : null;
+  if(!moveSt || !moveSt.loaded){
+    lbMoveEnsure(gynScriptUrl, moveKey, lastQ, gynPctAll, function(){
+      if(GYN_APP.nav === 'leaderboard') gynLbRender();
+    });
+  }
+
   // Podium (top 3)
   var top3 = ranking.slice(0,3);
   var podiumOrder = top3.length >= 3 ? [top3[1],top3[0],top3[2]] : top3.length === 2 ? [top3[1],top3[0]] : [top3[0]];
@@ -11155,7 +11178,7 @@ function gynLbRender(el){
         '<div class="lb-p-avatar' + (av.hasAvatar ? ' has-avatar' : '') + '" data-username="' + gynEsc(rep.username) + '" style="background:' + rep.color + '">' + av.html + '</div>' +
         (medal ? '<span class="lb-p-medal">' + medal + '</span>' : '') +
         '<div class="lb-p-name">' + gynEsc(lastName) + '</div>' +
-        '<div class="lb-p-count lb-count-pct ' + cls + '">' + pctLbl(rep.pct) + '</div>' +
+        '<div class="lb-p-count lb-count-pct ' + cls + '">' + pctLbl(rep.pct) + lbMoveHtml(moveMap && moveMap[rep.username]) + '</div>' +
         '<div class="lb-p-block"></div>' +
       '</div>';
   });
@@ -11174,7 +11197,7 @@ function gynLbRender(el){
         '<div class="lb-rank">' + rank + '</div>' +
         '<div class="lb-avatar' + (av2.hasAvatar ? ' has-avatar' : '') + '" data-username="' + gynEsc(rep.username) + '" style="background:' + rep.color + '">' + av2.html + '</div>' +
         '<div class="lb-info">' +
-          '<div class="lb-name">' + gynEsc(rep.name) + (isMe ? '<span class="lb-me-tag">TY</span>' : '') + '</div>' +
+          '<div class="lb-name">' + gynEsc(rep.name) + lbMoveHtml(moveMap && moveMap[rep.username]) + (isMe ? '<span class="lb-me-tag">TY</span>' : '') + '</div>' +
           '<div class="lb-region">' + gynEsc(rep.region) + '</div>' +
         '</div>' +
         '<div class="lb-count lb-count-pct ' + cls + '">' + pctLbl(rep.pct) + '</div>' +
@@ -11190,7 +11213,7 @@ function gynLbRender(el){
   }
   var headerHtml = '<div class="lb-pl-q-header">Plnenie plánu · ' + qLabel + '</div>' + approveBtn;
 
-  el.innerHTML = tabs + headerHtml + podiumHtml + listHtml;
+  el.innerHTML = gynLbCard(tabs + headerHtml + podiumHtml + listHtml);
 
   // Konfety pri prvom otvorení (parita s Golemom)
   if(GYN_LB.showConfetti){
@@ -14310,6 +14333,81 @@ function lbSyncTabs() {
   });
 }
 
+// ── Pohyb v rebríčku (šípky) ──────────────────────────────────────────
+// Porovná aktuálne poradie s poradím PRED poslednou zmenou predajov. Snapshot
+// poradia sa ukladá do Sheetu (setConfig key lb_move_q<N>) → zobrazuje sa rovnako
+// na každom zariadení. Verziou je timestamp poslednej zmeny predajov (notif_predaje):
+// keď pribudnú predaje, starý "cur" snapshot sa stane "prev" a uloží sa nový "cur".
+// Monotónne (ISO timestamp) → žiadne spätné prepisovanie pri súbehu zariadení.
+// Zdieľané Golemom aj Gyn rebríčkom.
+var LB_MOVE_STATE = {};   // key -> { loaded, loading, prevPct }
+
+function lbMoveConfigKey(q){ return 'lb_move_q' + q; }
+// Zaokrúhli pct mapu na 1 desatinu — menší payload do Sheetu (na poradie úplne stačí)
+function lbMoveRound(m){
+  var o = {};
+  for(var k in m){ if(Object.prototype.hasOwnProperty.call(m,k)){ var v = m[k]; o[k] = (v == null) ? null : Math.round(v*10)/10; } }
+  return o;
+}
+
+function lbMoveEnsure(urlFn, key, q, curPct, cb){
+  var st = LB_MOVE_STATE[key] || (LB_MOVE_STATE[key] = { loaded:false, loading:false, prevPct:null });
+  if(st.loaded){ if(cb) cb(st.prevPct); return; }
+  if(st.loading) return;
+  if(typeof IS_DEV !== 'undefined' && IS_DEV){ st.loaded = true; st.prevPct = null; if(cb) cb(null); return; }
+  st.loading = true;
+  Promise.all([
+    fetch(urlFn('action=getConfig&key=notif_predaje'), {cache:'no-store'}).then(function(r){return r.json();}).catch(function(){return null;}),
+    fetch(urlFn('action=getConfig&key=' + lbMoveConfigKey(q)), {cache:'no-store'}).then(function(r){return r.json();}).catch(function(){return null;})
+  ]).then(function(res){
+    var curTs = (res[0] && res[0].ok && res[0].value) ? String(res[0].value) : '';
+    var snap = null;
+    try { if(res[1] && res[1].ok && res[1].value) snap = JSON.parse(res[1].value); } catch(e){}
+    if(!snap || typeof snap !== 'object') snap = { ts:'', cur:null, prev:null };
+    var prevPct = null, commitObj = null;
+    if(snap.ts === curTs){
+      prevPct = snap.prev || null;                 // bez zmeny predajov — stabilné poradie
+    } else if(!snap.ts || snap.ts < curTs){
+      prevPct = snap.cur || null;                  // nové predaje → starý cur = nový prev
+      commitObj = { ts: curTs, cur: lbMoveRound(curPct), prev: snap.cur || null };
+    } else {
+      prevPct = snap.prev || null;                 // naše dáta sú staršie — neprepisuj snapshot
+    }
+    st.prevPct = prevPct; st.loaded = true; st.loading = false;
+    if(commitObj){
+      try { fetch(urlFn('action=setConfig&key=' + lbMoveConfigKey(q) + '&value=' + encodeURIComponent(JSON.stringify(commitObj))), {cache:'no-store'}).then(function(r){return r.json();}).catch(function(){}); } catch(e){}
+    }
+    if(cb) cb(prevPct);
+  }).catch(function(){ st.loading = false; if(cb) cb(null); });
+}
+
+// rankingArr: aktuálne zoradené pole {username,...}. Vráti mapu username -> delta
+// (kladné = posun hore, záporné = dole, 0 = bez zmeny, 'new' = nový/bez histórie).
+function lbMoveMap(rankingArr, prevPct){
+  if(!prevPct) return null;
+  var inPrev = rankingArr.filter(function(r){ return prevPct[r.username] != null; });
+  if(!inPrev.length) return null;
+  var prevOrder = inPrev.slice().sort(function(a,b){ return (prevPct[b.username]||0) - (prevPct[a.username]||0); });
+  var prevRank = {}; prevOrder.forEach(function(r,i){ prevRank[r.username] = i; });
+  var curRank  = {}; inPrev.forEach(function(r,i){ curRank[r.username] = i; });
+  var map = {};
+  rankingArr.forEach(function(r){
+    if(prevPct[r.username] == null){ map[r.username] = 'new'; return; }
+    map[r.username] = prevRank[r.username] - curRank[r.username];
+  });
+  return map;
+}
+// Pekný badge: ▲ zelený / ▼ červený (s počtom miest) · — sivý (bez zmeny)
+var LB_ARROW_UP   = '<svg viewBox="0 0 10 10" width="7" height="7" aria-hidden="true"><path d="M5 1.2 9 8 1 8Z" fill="currentColor"/></svg>';
+var LB_ARROW_DOWN = '<svg viewBox="0 0 10 10" width="7" height="7" aria-hidden="true"><path d="M5 8.8 1 2 9 2Z" fill="currentColor"/></svg>';
+var LB_DOT_SAME   = '<svg viewBox="0 0 10 10" width="7" height="7" aria-hidden="true"><circle cx="5" cy="5" r="2" fill="currentColor"/></svg>';
+function lbMoveHtml(v){
+  if(v == null || v === 'new') return '';
+  if(v > 0) return '<span class="lb-move up">' + LB_ARROW_UP + '<span class="lb-move-n">' + v + '</span></span>';
+  if(v < 0) return '<span class="lb-move down">' + LB_ARROW_DOWN + '<span class="lb-move-n">' + (-v) + '</span></span>';
+  return '<span class="lb-move same">' + LB_DOT_SAME + '</span>';
+}
+
 function lbRenderPlnenie(body) {
   var lastQ = lbLastCompletedQ();
   if (lastQ < 1) {
@@ -14368,6 +14466,18 @@ function lbRenderPlnenie(body) {
     }
   });
 
+  // Pohyb v rebríčku — porovnaj poradie s poradím pred poslednou zmenou predajov (snapshot v Sheete)
+  var pctAll = {}; ranking.forEach(function(r){ pctAll[r.username] = r.pct; });
+  var moveKey = 'gp_q' + lastQ;
+  var moveSt = LB_MOVE_STATE[moveKey];
+  var moveMap = (moveSt && moveSt.loaded) ? lbMoveMap(ranking, moveSt.prevPct) : null;
+  if(!moveSt || !moveSt.loaded){
+    lbMoveEnsure(scriptUrl, moveKey, lastQ, pctAll, function(){
+      var b = lbGetBody();
+      if(b && LB_STATE.mode === 'plnenie') lbRenderPlnenie(b);
+    });
+  }
+
   // Podium (top 3)
   var top3 = ranking.slice(0,3);
   var podiumOrder = top3.length >= 3 ? [top3[1],top3[0],top3[2]] : top3.length === 2 ? [top3[1],top3[0]] : [top3[0]];
@@ -14392,7 +14502,7 @@ function lbRenderPlnenie(body) {
         '</div>' +
         (medal ? '<span class="lb-p-medal">' + medal + '</span>' : '') +
         '<div class="lb-p-name">' + lastName + '</div>' +
-        '<div class="lb-p-count lb-count-pct ' + cls + '">' + pctLbl(rep.pct) + '</div>' +
+        '<div class="lb-p-count lb-count-pct ' + cls + '">' + pctLbl(rep.pct) + lbMoveHtml(moveMap && moveMap[rep.username]) + '</div>' +
         '<div class="lb-p-block"></div>' +
       '</div>';
   });
@@ -14411,7 +14521,7 @@ function lbRenderPlnenie(body) {
         '<div class="lb-rank">' + rank + '</div>' +
         '<div class="lb-avatar' + (av2.hasAvatar ? ' has-avatar' : '') + '" data-username="' + rep.username + '" style="background:' + rep.color + '">' + av2.html + '</div>' +
         '<div class="lb-info">' +
-          '<div class="lb-name">' + rep.name + (isMe ? '<span class="lb-me-tag">TY</span>' : '') + '</div>' +
+          '<div class="lb-name">' + rep.name + lbMoveHtml(moveMap && moveMap[rep.username]) + (isMe ? '<span class="lb-me-tag">TY</span>' : '') + '</div>' +
           '<div class="lb-region">' + rep.region + '</div>' +
         '</div>' +
         '<div class="lb-count lb-count-pct ' + cls + '">' + pctLbl(rep.pct) + '</div>' +
