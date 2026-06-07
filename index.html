@@ -2815,7 +2815,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.25.8';
+var APP_VERSION = '2.25.9';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11121,7 +11121,7 @@ function gynLbRender(el){
   var ranking = reps.filter(function(r){ return cat === 'all' ? true : r.linia === cat; })
     .map(function(r){
       var agg = gynBuildRepAgg(r.login, data);
-      return { username: r.login, name: r.name || r.login, region: r.region || '', color: gynLbColor(r.login), pct: agg.pct };
+      return { username: r.login, name: r.meno || r.login, region: r.region || '', color: gynLbColor(r.login), pct: agg.pct };
     });
   // Zoradenie zostupne podľa pct, reps bez plánu (null) na koniec
   ranking.sort(function(a,b){
