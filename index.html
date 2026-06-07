@@ -700,6 +700,14 @@
   .set-dt-opt-lbl{flex:1;min-width:0}
   .set-dt-opt-check{flex-shrink:0;color:#2563EB;font-weight:800;opacity:0}
   .set-dt-opt.selected .set-dt-opt-check{opacity:1}
+  /* Poradie produktov — presúvateľný zoznam s úchytmi (drag cez pointer-events) */
+  .po-list{display:flex;flex-direction:column;gap:6px;margin-top:10px;touch-action:pan-y}
+  .po-row{display:flex;align-items:center;gap:10px;padding:11px 12px;background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:11px;font-family:var(--font-display);font-size:14px;font-weight:700;color:#0F172A;transition:box-shadow var(--t-base),border-color var(--t-base),background var(--t-base)}
+  .po-row.po-dragging{background:#EFF6FF;border-color:#2563EB;box-shadow:0 10px 24px rgba(37,99,235,.20);opacity:.97}
+  .po-handle{flex-shrink:0;cursor:grab;color:#94A3B8;font-size:17px;line-height:1;touch-action:none;-webkit-tap-highlight-color:transparent;padding:4px 4px;user-select:none}
+  .po-handle:active{cursor:grabbing}
+  .po-num{flex-shrink:0;width:20px;text-align:center;font-size:12px;font-weight:800;color:#94A3B8}
+  .po-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   /* Zdielaný panel-nav pre História / Rebríček / Plnenie */
   .panel-nav{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;background:#fff;border-radius:12px;padding:6px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
   .panel-nav-btn{border:none;background:#F1F5F9;padding:9px 2px;font-size:10px;font-weight:700;color:#64748B;cursor:pointer;border-radius:10px;transition:background .2s ease,color .2s ease,transform .15s ease;font-family:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;-webkit-tap-highlight-color:transparent;white-space:nowrap;overflow:hidden}
@@ -2828,7 +2836,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.26.5';
+var APP_VERSION = '2.27.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5890,6 +5898,7 @@ function renderSettings(s){
       settingsNotifHtml() + '</div>' +
     '<div class="set-card"><div class="set-card-title">Aplikácia</div>' +
       settingsAppHtml(s) + '</div>' +
+    settingsProdOrderCard(s) +
     '<div class="set-card"><button type="button" class="set-logout-btn" onclick="settingsLogout()">Odhlásiť sa</button></div>';
 
   // Avatar (rovnaký pattern ako v hlavičke)
@@ -6004,6 +6013,147 @@ function settingsDefaultTabEdit(open){
   cur.style.display = open ? 'none' : 'flex';
   ed.style.display  = open ? 'flex' : 'none';
   if(open){ try { haptic('selection'); } catch(e){} }
+}
+
+// ── PORADIE PRODUKTOV — vlastné usporiadanie produktových kariet v Plnení ──
+// Funguje pre všetky role aj obe línie. Ukladá sa do userPrefs.prodOrder (sync cez Sheets
+// — Golem cez scriptUrl, Gyn cez gynScriptUrl) → rovnaké po prihlásení na hocijakom zariadení.
+// Kontext (zdroj produktov + ako sa normalizuje kľúč) podľa aktuálnej línie a roly.
+function prodOrderContext(){
+  var s = (typeof getSession === 'function') ? getSession() : null;
+  if(!s) return null;
+  if(s.line === 'gyn'){
+    var gd = (typeof GYN_APP !== 'undefined' && GYN_APP.plCache) ? GYN_APP.plCache[GYN_APP.q] : null;
+    var graw = gd ? (gd.planProducts || []).concat(gd.predajeProducts || []) : [];
+    return { norm: function(p){ return String(p == null ? '' : p).trim().toLowerCase(); },
+             label: function(p){ return String(p); }, raw: graw };
+  }
+  var isMgr = (typeof mgrDetectRole === 'function') && mgrDetectRole(s);
+  var data = isMgr ? (typeof PL_STATE !== 'undefined' && PL_STATE.data) : (typeof REP_PL_STATE !== 'undefined' && REP_PL_STATE.data);
+  var raw = (data && data.planProducts) ? data.planProducts : [];
+  return { norm: plnenieNormalizeKey, label: plnenieDisplayName, raw: raw };
+}
+// Zoznam produktov pre aktuálny kontext, aplikované uložené poradie. → [{key,label}]
+function settingsProdOrderProducts(){
+  var ctx = prodOrderContext();
+  if(!ctx) return [];
+  var seen = {}, items = [];
+  (ctx.raw || []).forEach(function(p){
+    var k = ctx.norm(p);
+    if(!k || seen[k]) return; seen[k] = 1;
+    items.push({ key: k, label: ctx.label(p) });
+  });
+  var ord = userPrefsGet().prodOrder || [];
+  items.sort(function(a, b){
+    var ai = ord.indexOf(a.key), bi = ord.indexOf(b.key);
+    if(ai === -1) ai = 900; if(bi === -1) bi = 900;
+    if(ai !== bi) return ai - bi;
+    return String(a.label).localeCompare(String(b.label), 'sk');
+  });
+  return items;
+}
+function settingsProdOrderCard(s){
+  s = s || getSession(); if(!s) return '';
+  var items = settingsProdOrderProducts();
+  var inner;
+  if(!items.length){
+    inner = '<div class="set-row-desc">Najprv otvor <strong>Plnenie</strong> (nech sa načítajú tvoje produkty) a vráť sa sem — potom si ich vieš usporiadať.</div>';
+  } else {
+    inner = '<div class="set-row-desc">Potiahni za úchyt <strong>☰</strong> a usporiadaj si produkty v poradí, v akom ich chceš mať v Plnení. Uloží sa to aj na iné zariadenie.</div>' +
+      '<div class="po-list" id="po-list">' +
+        items.map(function(it, i){
+          return '<div class="po-row" data-key="' + settingsEsc(it.key) + '">' +
+                   '<span class="po-handle" onpointerdown="poPointerDown(event,this)" aria-label="Presunúť">☰</span>' +
+                   '<span class="po-num">' + (i+1) + '</span>' +
+                   '<span class="po-name">' + settingsEsc(it.label) + '</span>' +
+                 '</div>';
+        }).join('') +
+      '</div>' +
+      '<span class="set-saved" id="po-saved" style="display:block;margin-top:8px">✓ Uložené</span>';
+  }
+  return '<div class="set-card"><div class="set-card-title">Poradie produktov</div>' + inner + '</div>';
+}
+// Drag-reorder cez pointer-events (dotyk aj myš)
+var PO_DRAG = null;
+function poPointerDown(ev, handle){
+  var row = handle.closest ? handle.closest('.po-row') : null;
+  if(!row) return;
+  ev.preventDefault();
+  PO_DRAG = { row: row, list: row.parentNode };
+  row.classList.add('po-dragging');
+  try { handle.setPointerCapture && handle.setPointerCapture(ev.pointerId); } catch(e){}
+  try { haptic('selection'); } catch(e){}
+  document.addEventListener('pointermove', poPointerMove, { passive:false });
+  document.addEventListener('pointerup', poPointerUp);
+  document.addEventListener('pointercancel', poPointerUp);
+}
+function poPointerMove(ev){
+  if(!PO_DRAG) return;
+  ev.preventDefault();
+  var y = ev.clientY;
+  var dragging = PO_DRAG.row, list = PO_DRAG.list;
+  var rows = Array.prototype.slice.call(list.querySelectorAll('.po-row'));
+  for(var i=0; i<rows.length; i++){
+    var r = rows[i];
+    if(r === dragging) continue;
+    var rect = r.getBoundingClientRect();
+    var mid = rect.top + rect.height/2;
+    var pos = dragging.compareDocumentPosition(r);
+    if(y < mid && (pos & Node.DOCUMENT_POSITION_PRECEDING)){
+      list.insertBefore(dragging, r); break;            // ťahám nahor pred r
+    } else if(y > mid && (pos & Node.DOCUMENT_POSITION_FOLLOWING)){
+      list.insertBefore(dragging, r.nextSibling); break; // ťahám nadol za r
+    }
+  }
+}
+function poPointerUp(){
+  if(!PO_DRAG) return;
+  PO_DRAG.row.classList.remove('po-dragging');
+  document.removeEventListener('pointermove', poPointerMove);
+  document.removeEventListener('pointerup', poPointerUp);
+  document.removeEventListener('pointercancel', poPointerUp);
+  PO_DRAG = null;
+  poRenumber();
+  settingsProdOrderSave();
+}
+function poRenumber(){
+  var list = document.getElementById('po-list'); if(!list) return;
+  Array.prototype.forEach.call(list.querySelectorAll('.po-row'), function(r, i){
+    var n = r.querySelector('.po-num'); if(n) n.textContent = (i+1);
+  });
+}
+function settingsProdOrderSave(){
+  var list = document.getElementById('po-list'); if(!list) return;
+  var keys = Array.prototype.map.call(list.querySelectorAll('.po-row'), function(r){ return r.getAttribute('data-key'); });
+  userPrefsSet({ prodOrder: keys });
+  var el = document.getElementById('po-saved');
+  if(el){ el.classList.add('show'); clearTimeout(window._poSavedT); window._poSavedT = setTimeout(function(){ el.classList.remove('show'); }, 2000); }
+  // Premietni nové poradie do otvoreného Plnenia (Golem rep/manažér aj Gyn)
+  try {
+    var s = getSession();
+    if(s && s.line === 'gyn'){
+      if(typeof gynRenderContent === 'function' && GYN_APP.nav === 'plnenie') gynRenderContent(s);
+    } else if(typeof mgrDetectRole === 'function' && mgrDetectRole(s)){
+      if(typeof plnenieRenderAll === 'function' && document.body.classList.contains('mgr-subtab-plnenie')) plnenieRenderAll();
+    } else {
+      var ov = document.getElementById('rep-plnenie-overlay');
+      if(ov && ov.classList.contains('show') && typeof repPlnenieRender === 'function') repPlnenieRender();
+    }
+  } catch(e){}
+}
+// Uložené poradie produktov — Golem (null ak žiadne / gyn línia)
+function plnenieUserProdOrder(){
+  var s = (typeof getSession === 'function') ? getSession() : null;
+  if(!s || s.line === 'gyn') return null;
+  var o = userPrefsGet().prodOrder;
+  return (o && Object.prototype.toString.call(o) === '[object Array]' && o.length) ? o : null;
+}
+// Uložené poradie produktov — Gyn (null ak žiadne / iná línia)
+function gynUserProdOrder(){
+  var s = (typeof getSession === 'function') ? getSession() : null;
+  if(!s || s.line !== 'gyn') return null;
+  var o = userPrefsGet().prodOrder;
+  return (o && Object.prototype.toString.call(o) === '[object Array]' && o.length) ? o : null;
 }
 
 // Zoznam možností úvodnej obrazovky podľa role + línie prihláseného používateľa.
@@ -8402,7 +8552,19 @@ function gynEnhanceProductsForDisplay(products, plan, predajeTotal, linia) {
       });
     }
   });
+  var _uo = (typeof gynUserProdOrder === 'function') ? gynUserProdOrder() : null;
   list.sort(function(a,b){
+    // 1) Vlastné poradie používateľa má prednosť (kľúč = názov produktu malými písmenami)
+    if(_uo){
+      var au = _uo.indexOf(String(a.name || a.key).trim().toLowerCase());
+      var bu = _uo.indexOf(String(b.name || b.key).trim().toLowerCase());
+      if(au !== -1 || bu !== -1){
+        if(au === -1) au = 9999;
+        if(bu === -1) bu = 9999;
+        if(au !== bu) return au - bu;
+      }
+    }
+    // 2) Inak default poradie (vrátane patch-first pravidla)
     var ao = a.order || 0, bo = b.order || 0;
     if(linia === 'patch') {
       ao += gynPatchFirstOrder(a.name || a.key);
@@ -18159,9 +18321,21 @@ var PL_PRODUCT_ORDER = [
 
 function plnenieSortProducts(planProducts) {
   var copy = planProducts.slice();
+  var userOrder = (typeof plnenieUserProdOrder === 'function') ? plnenieUserProdOrder() : null;
   copy.sort(function(a, b) {
-    var ai = PL_PRODUCT_ORDER.indexOf(plnenieNormalizeKey(a));
-    var bi = PL_PRODUCT_ORDER.indexOf(plnenieNormalizeKey(b));
+    var ak = plnenieNormalizeKey(a), bk = plnenieNormalizeKey(b);
+    // 1) Vlastné poradie používateľa má prednosť (čo si nastavil, ide podľa jeho indexu)
+    if(userOrder){
+      var au = userOrder.indexOf(ak), bu = userOrder.indexOf(bk);
+      if(au !== -1 || bu !== -1){
+        if(au === -1) au = 9999;
+        if(bu === -1) bu = 9999;
+        if(au !== bu) return au - bu;
+      }
+    }
+    // 2) Inak default poradie
+    var ai = PL_PRODUCT_ORDER.indexOf(ak);
+    var bi = PL_PRODUCT_ORDER.indexOf(bk);
     if (ai === -1) ai = 999;
     if (bi === -1) bi = 999;
     if (ai !== bi) return ai - bi;
