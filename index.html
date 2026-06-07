@@ -677,6 +677,22 @@
   .set-select:focus{outline:none;border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
   .set-saved{font-size:12px;font-weight:700;color:#047857;opacity:0;transition:opacity .2s;white-space:nowrap;flex-shrink:0}
   .set-saved.show{opacity:1}
+  /* Úvodná obrazovka — zobrazenie aktuálnej hodnoty + ceruzka (Facebook-style), rozbalí zoznam */
+  .set-dt-current{display:flex;align-items:center;gap:10px;margin-top:8px;padding:11px 12px;background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:12px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background var(--t-base),border-color var(--t-base)}
+  .set-dt-current:hover{background:#F1F5F9}
+  .set-dt-current:active{transform:scale(.99)}
+  .set-dt-current-val{flex:1;min-width:0;font-size:14px;font-weight:700;color:#0F172A;font-family:var(--font-display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .set-dt-edit-btn{flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9px;border:none;background:#EFF6FF;color:#1D4ED8;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background var(--t-base)}
+  .set-dt-edit-btn:hover{background:#DBEAFE}
+  .set-dt-edit-btn:active{transform:scale(.95)}
+  .set-dt-editor{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+  .set-dt-opt{display:flex;align-items:center;gap:10px;padding:11px 12px;background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:11px;cursor:pointer;-webkit-tap-highlight-color:transparent;font-family:var(--font-display);font-size:14px;font-weight:700;color:#334155;text-align:left;transition:background var(--t-base),border-color var(--t-base)}
+  .set-dt-opt:hover{background:#F1F5F9}
+  .set-dt-opt:active{transform:scale(.99)}
+  .set-dt-opt.selected{background:#EFF6FF;border-color:#2563EB;color:#0F172A}
+  .set-dt-opt-lbl{flex:1;min-width:0}
+  .set-dt-opt-check{flex-shrink:0;color:#2563EB;font-weight:800;opacity:0}
+  .set-dt-opt.selected .set-dt-opt-check{opacity:1}
   /* Zdielaný panel-nav pre História / Rebríček / Plnenie */
   .panel-nav{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;background:#fff;border-radius:12px;padding:6px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
   .panel-nav-btn{border:none;background:#F1F5F9;padding:9px 2px;font-size:10px;font-weight:700;color:#64748B;cursor:pointer;border-radius:10px;transition:background .2s ease,color .2s ease,transform .15s ease;font-family:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;-webkit-tap-highlight-color:transparent;white-space:nowrap;overflow:hidden}
@@ -2799,7 +2815,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.25.6';
+var APP_VERSION = '2.25.7';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5944,16 +5960,37 @@ function userPrefsSet(patch){
   } catch(e){}
 }
 
-// Predvolená záložka po prihlásení — ulož voľbu (sync cez Sheets) + potvrdenie
+// Predvolená záložka po prihlásení — ulož voľbu (sync cez Sheets) + potvrdenie.
+// Po výbere aktualizuj zobrazenú hodnotu, zlož editor a zvýrazni vybranú možnosť.
 function settingsSetDefaultTab(val){
-  userPrefsSet({ defaultTab: val || 'form' });
+  val = val || 'form';
+  userPrefsSet({ defaultTab: val });
   try { haptic('selection'); } catch(e){}
+  try {
+    var opts = settingsDefaultTabOpts(getSession()).opts;
+    var lbl = (opts.filter(function(o){ return o[0] === val; })[0] || ['', val])[1];
+    var valEl = document.getElementById('set-dt-current-val');
+    if(valEl) valEl.textContent = lbl;
+    document.querySelectorAll('#set-dt-editor .set-dt-opt').forEach(function(b){
+      b.classList.toggle('selected', b.getAttribute('data-val') === val);
+    });
+  } catch(e){}
+  settingsDefaultTabEdit(false);
   var el = document.getElementById('set-defaulttab-saved');
   if(el){
     el.classList.add('show');
     clearTimeout(window._setSavedT);
     window._setSavedT = setTimeout(function(){ el.classList.remove('show'); }, 2200);
   }
+}
+// Rozbaľ / zlož zoznam možností úvodnej obrazovky
+function settingsDefaultTabEdit(open){
+  var cur = document.getElementById('set-dt-current');
+  var ed  = document.getElementById('set-dt-editor');
+  if(!cur || !ed) return;
+  cur.style.display = open ? 'none' : 'flex';
+  ed.style.display  = open ? 'flex' : 'none';
+  if(open){ try { haptic('selection'); } catch(e){} }
 }
 
 // Zoznam možností úvodnej obrazovky podľa role + línie prihláseného používateľa.
@@ -5977,16 +6014,26 @@ function settingsDefaultTabHtml(s){
   var def = userPrefsGet().defaultTab || opts[0][0];
   // Ak uložená hodnota nepatrí do aktuálnej ponuky (zmena role/línie), spadni na prvú
   if(!opts.some(function(o){ return o[0] === def; })) def = opts[0][0];
+  var curLbl = (opts.filter(function(o){ return o[0] === def; })[0] || opts[0])[1];
+  // Rozbaľovací zoznam možností (skrytý, zobrazí sa po kliknutí na ceruzku)
   var optHtml = opts.map(function(o){
-    return '<option value="' + o[0] + '"' + (o[0] === def ? ' selected' : '') + '>' + o[1] + '</option>';
+    var sel = (o[0] === def) ? ' selected' : '';
+    return '<button type="button" class="set-dt-opt' + sel + '" data-val="' + o[0] + '" onclick="settingsSetDefaultTab(\'' + o[0] + '\')">' +
+             '<span class="set-dt-opt-lbl">' + o[1] + '</span>' +
+             '<span class="set-dt-opt-check">✓</span>' +
+           '</button>';
   }).join('');
   return '<div class="set-default-tab">' +
            '<div class="set-row-label" style="margin-bottom:3px">Úvodná obrazovka</div>' +
            '<div class="set-row-desc">Čo sa otvorí hneď po prihlásení. Štandardne <strong>' + settingsEsc(cfg.hint) + '</strong>.</div>' +
-           '<div style="display:flex;align-items:center;gap:10px;margin-top:8px">' +
-             '<select class="set-select" style="flex:1;max-width:none" onchange="settingsSetDefaultTab(this.value)">' + optHtml + '</select>' +
-             '<span class="set-saved" id="set-defaulttab-saved">✓ Uložené</span>' +
+           '<div class="set-dt-current" id="set-dt-current" onclick="settingsDefaultTabEdit(true)">' +
+             '<span class="set-dt-current-val" id="set-dt-current-val">' + curLbl + '</span>' +
+             '<button type="button" class="set-dt-edit-btn" aria-label="Zmeniť úvodnú obrazovku" onclick="event.stopPropagation();settingsDefaultTabEdit(true)">' +
+               '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>' +
+             '</button>' +
            '</div>' +
+           '<div class="set-dt-editor" id="set-dt-editor" style="display:none">' + optHtml + '</div>' +
+           '<span class="set-saved" id="set-defaulttab-saved" style="display:block;margin-top:8px">✓ Uložené</span>' +
          '</div>';
 }
 
