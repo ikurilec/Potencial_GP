@@ -2824,7 +2824,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.26.0';
+var APP_VERSION = '2.26.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11076,9 +11076,16 @@ function gynLbShow(el){
     GYN_LB.qFetched = true;
     fetch(gynScriptUrl('action=getConfig&key=lb_approved_q'), { cache:'no-store' })
       .then(function(r){ return r.json(); })
-      .then(function(d){ var q = parseInt(d && d.value, 10); if(q >= 1 && q <= 4) GYN_LB.approvedQ = q; })
-      .catch(function(){})
-      .then(function(){ if(GYN_APP.nav === 'leaderboard') gynLbRender(); });
+      .then(function(d){
+        var q = parseInt(d && d.value, 10);
+        var newApproved = (q >= 1 && q <= 4) ? q : null;
+        // Re-render LEN ak sa schválený Q naozaj zmenil (inak zbytočný flash/dvojité načítanie)
+        if(newApproved !== GYN_LB.approvedQ){
+          GYN_LB.approvedQ = newApproved;
+          if(GYN_APP.nav === 'leaderboard') gynLbRender();
+        }
+      })
+      .catch(function(){});
   }
   gynLbRender(el);
 }
@@ -11153,8 +11160,9 @@ function gynLbRender(el){
   var moveSt = LB_MOVE_STATE[moveKey];
   var moveMap = (moveSt && moveSt.loaded) ? lbMoveMap(ranking, moveSt.prevPct) : null;
   if(!moveSt || !moveSt.loaded){
-    lbMoveEnsure(gynScriptUrl, moveKey, lastQ, gynPctAll, function(){
-      if(GYN_APP.nav === 'leaderboard') gynLbRender();
+    // Šípky vlož do existujúceho DOM až keď dorazí snapshot (bez re-renderu → bez flashu/konfiet navyše)
+    lbMoveEnsure(gynScriptUrl, moveKey, lastQ, gynPctAll, function(prevPct){
+      if(GYN_APP.nav === 'leaderboard') lbInjectArrows(gynLbBody(), lbMoveMap(ranking, prevPct));
     });
   }
 
@@ -13900,15 +13908,17 @@ function openLeaderboard(){
   }
 }
 
-function lbConfetti() {
+function lbConfetti(_retry) {
+  // Stred avatara 1. miesta — ak ešte nie je vyrenderovaný/zmeraný, skús znova (nech nevystrelí z rohu)
+  var avatarEl = document.querySelector('.lb-p-1 .lb-p-avatar');
+  var ar = avatarEl ? avatarEl.getBoundingClientRect() : null;
+  if (!ar || ar.width === 0 || ar.height === 0) {
+    if (!_retry) setTimeout(function(){ lbConfetti(1); }, 200);
+    return;
+  }
   var existing = document.getElementById('lb-confetti-canvas');
   if (existing) existing.remove();
   var dpr = window.devicePixelRatio || 1;
-
-  // Stred avatara 1. miesta
-  var avatarEl = document.querySelector('.lb-p-1 .lb-p-avatar');
-  if (!avatarEl) return;
-  var ar = avatarEl.getBoundingClientRect();
   var cx = (ar.left + ar.width / 2) * dpr;
   var cy = (ar.top  + ar.height / 2) * dpr;
 
@@ -14407,6 +14417,27 @@ function lbMoveHtml(v){
   if(v < 0) return '<span class="lb-move down">' + LB_ARROW_DOWN + '<span class="lb-move-n">' + (-v) + '</span></span>';
   return '<span class="lb-move same">' + LB_DOT_SAME + '</span>';
 }
+// Vloží badge-y pohybu do UŽ vyrenderovaného rebríčka (bez re-renderu → žiadny flash/konfety navyše).
+// Funguje pre Golem aj Gyn (rovnaké triedy .lb-p-item/.lb-p-avatar/.lb-p-count a .lb-row/.lb-avatar/.lb-name).
+function lbInjectArrows(container, moveMap){
+  if(!container || !moveMap) return;
+  container.querySelectorAll('.lb-p-item').forEach(function(item){
+    var avt = item.querySelector('.lb-p-avatar'); if(!avt) return;
+    var cnt = item.querySelector('.lb-p-count');
+    if(cnt && !cnt.querySelector('.lb-move')){
+      var h = lbMoveHtml(moveMap[avt.getAttribute('data-username')]);
+      if(h) cnt.insertAdjacentHTML('beforeend', h);
+    }
+  });
+  container.querySelectorAll('.lb-row').forEach(function(row){
+    var avt = row.querySelector('.lb-avatar'); if(!avt) return;
+    var nm = row.querySelector('.lb-name');
+    if(nm && !nm.querySelector('.lb-move')){
+      var h = lbMoveHtml(moveMap[avt.getAttribute('data-username')]);
+      if(h){ var tag = nm.querySelector('.lb-me-tag'); if(tag) tag.insertAdjacentHTML('beforebegin', h); else nm.insertAdjacentHTML('beforeend', h); }
+    }
+  });
+}
 
 function lbRenderPlnenie(body) {
   var lastQ = lbLastCompletedQ();
@@ -14472,9 +14503,10 @@ function lbRenderPlnenie(body) {
   var moveSt = LB_MOVE_STATE[moveKey];
   var moveMap = (moveSt && moveSt.loaded) ? lbMoveMap(ranking, moveSt.prevPct) : null;
   if(!moveSt || !moveSt.loaded){
-    lbMoveEnsure(scriptUrl, moveKey, lastQ, pctAll, function(){
+    // Šípky vlož do existujúceho DOM (bez re-renderu → bez flashu/konfiet navyše)
+    lbMoveEnsure(scriptUrl, moveKey, lastQ, pctAll, function(prevPct){
       var b = lbGetBody();
-      if(b && LB_STATE.mode === 'plnenie') lbRenderPlnenie(b);
+      if(b && LB_STATE.mode === 'plnenie') lbInjectArrows(b, lbMoveMap(ranking, prevPct));
     });
   }
 
