@@ -2836,7 +2836,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.27.0';
+var APP_VERSION = '2.27.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6059,7 +6059,9 @@ function settingsProdOrderCard(s){
   if(!items.length){
     inner = '<div class="set-row-desc">Najprv otvor <strong>Plnenie</strong> (nech sa načítajú tvoje produkty) a vráť sa sem — potom si ich vieš usporiadať.</div>';
   } else {
-    inner = '<div class="set-row-desc">Potiahni za úchyt <strong>☰</strong> a usporiadaj si produkty v poradí, v akom ich chceš mať v Plnení. Uloží sa to aj na iné zariadenie.</div>' +
+    var isMgr = (s.line === 'gyn') ? (s.role !== 'gyn-rep') : ((typeof mgrDetectRole === 'function') && !!mgrDetectRole(s));
+    var kde = isMgr ? 'v Plnení u reprezentanta' : 'v Plnení';
+    inner = '<div class="set-row-desc">Potiahni za úchyt <strong>☰</strong> a usporiadaj si produkty v poradí, v akom ich chceš mať ' + kde + '. Uloží sa to aj na iné zariadenie.</div>' +
       '<div class="po-list" id="po-list">' +
         items.map(function(it, i){
           return '<div class="po-row" data-key="' + settingsEsc(it.key) + '">' +
