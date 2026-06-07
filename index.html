@@ -2799,7 +2799,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.25.5';
+var APP_VERSION = '2.25.6';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6099,8 +6099,11 @@ function settingsClearCache(){
     }
   } catch(e){}
   var el = document.getElementById('set-cache-status');
-  if(el) el.textContent = '✓ Vyrovnávacia pamäť vyčistená (' + removed + ' položiek). Dáta sa znova načítajú.';
+  if(el) el.textContent = '✓ Vyrovnávacia pamäť vyčistená (' + removed + ' položiek). Načítavam dáta odznova…';
   try { haptic('success'); } catch(e){}
+  // Soft reload — vynúti čerstvé načítanie dát zo servera. Session ostáva (nie je v cache
+  // prefixoch), takže používateľ zostáva prihlásený. NEpoužívame appReload() — ten odhlasuje.
+  setTimeout(function(){ try { location.reload(); } catch(e){} }, 900);
 }
 
 var _currentDetailIdx = -1;
