@@ -2799,7 +2799,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.25.4';
+var APP_VERSION = '2.25.5';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5956,6 +5956,40 @@ function settingsSetDefaultTab(val){
   }
 }
 
+// Zoznam možností úvodnej obrazovky podľa role + línie prihláseného používateľa.
+// GP rep: Formulár/História/Rebríček/Plnenie/Lekárne.
+// Manažér (GP) a celá Gyn línia (rep aj manažér): Plnenie/Návštevy/Rebríček (+Aktivita admin).
+function settingsDefaultTabOpts(s){
+  if(!s) return { opts: [['form','📝 Formulár GP']], hint: 'Formulár GP' };
+  var isGyn   = s.line === 'gyn';
+  var mgrRole = (typeof mgrDetectRole === 'function') ? mgrDetectRole(s) : null;
+  var isAdmin = (mgrRole === 'admin') || (isGyn && s.role === 'admin');
+  if(isGyn || mgrRole){
+    var opts = [['plnenie','💊 Plnenie'],['visits','📋 Návštevy'],['leaderboard','🏆 Rebríček']];
+    if(isAdmin) opts.push(['activity','📈 Aktivita']);
+    return { opts: opts, hint: 'Plnenie' };
+  }
+  return { opts: [['form','📝 Formulár GP'],['historia','📋 História'],['rebricek','🏆 Rebríček'],['plnenie','💊 Plnenie'],['lekarne','🏪 Lekárne']], hint: 'Formulár GP' };
+}
+function settingsDefaultTabHtml(s){
+  var cfg = settingsDefaultTabOpts(s);
+  var opts = cfg.opts;
+  var def = userPrefsGet().defaultTab || opts[0][0];
+  // Ak uložená hodnota nepatrí do aktuálnej ponuky (zmena role/línie), spadni na prvú
+  if(!opts.some(function(o){ return o[0] === def; })) def = opts[0][0];
+  var optHtml = opts.map(function(o){
+    return '<option value="' + o[0] + '"' + (o[0] === def ? ' selected' : '') + '>' + o[1] + '</option>';
+  }).join('');
+  return '<div class="set-default-tab">' +
+           '<div class="set-row-label" style="margin-bottom:3px">Úvodná obrazovka</div>' +
+           '<div class="set-row-desc">Čo sa otvorí hneď po prihlásení. Štandardne <strong>' + settingsEsc(cfg.hint) + '</strong>.</div>' +
+           '<div style="display:flex;align-items:center;gap:10px;margin-top:8px">' +
+             '<select class="set-select" style="flex:1;max-width:none" onchange="settingsSetDefaultTab(this.value)">' + optHtml + '</select>' +
+             '<span class="set-saved" id="set-defaulttab-saved">✓ Uložené</span>' +
+           '</div>' +
+         '</div>';
+}
+
 // ── Aplikácia — sekcia (dáta, haptika, prepínač línie pre admina, cache) ──
 function settingsAppHtml(s){
   var html = '';
@@ -5970,23 +6004,8 @@ function settingsAppHtml(s){
             '<button type="button" class="set-switch' + (hOn ? ' on' : '') + '" role="switch" aria-checked="' + (hOn ? 'true' : 'false') + '" aria-label="Haptická odozva" onclick="settingsToggleHaptics()"></button>' +
           '</div>';
 
-  // Predvolená záložka po prihlásení — len reprezentant v GP línii
-  var isGpRep = s && s.line !== 'gyn' && (typeof mgrDetectRole !== 'function' || !mgrDetectRole(s));
-  if(isGpRep){
-    var def = userPrefsGet().defaultTab || 'form';
-    var opts = [['form','📝 Formulár GP'],['historia','📋 História'],['rebricek','🏆 Rebríček'],['plnenie','💊 Plnenie'],['lekarne','🏪 Lekárne']];
-    var optHtml = opts.map(function(o){
-      return '<option value="' + o[0] + '"' + (o[0] === def ? ' selected' : '') + '>' + o[1] + '</option>';
-    }).join('');
-    html += '<div class="set-default-tab">' +
-              '<div class="set-row-label" style="margin-bottom:3px">Úvodná obrazovka</div>' +
-              '<div class="set-row-desc">Čo sa otvorí hneď po prihlásení. Štandardne <strong>Formulár GP</strong>.</div>' +
-              '<div style="display:flex;align-items:center;gap:10px;margin-top:8px">' +
-                '<select class="set-select" style="flex:1;max-width:none" onchange="settingsSetDefaultTab(this.value)">' + optHtml + '</select>' +
-                '<span class="set-saved" id="set-defaulttab-saved">✓ Uložené</span>' +
-              '</div>' +
-            '</div>';
-  }
+  // Predvolená (úvodná) obrazovka po prihlásení — reprezentant aj manažér, GP aj Gyn
+  html += settingsDefaultTabHtml(s);
 
   // Prepínač línie — iba admin (rovnaká podmienka ako pôvodne v hlavičke)
   if(typeof mgrShouldShowLineToggle === 'function' && mgrShouldShowLineToggle()){
@@ -8516,6 +8535,7 @@ function gynEnter(user) {
   GYN_APP.year = new Date().getFullYear();
   document.getElementById('gyn-view').classList.add('show');
   gynRenderShell(user);
+  gynApplyDefaultNav(user);   // úvodná obrazovka podľa nastavení používateľa (default = Plnenie)
   gynRenderContent(user);
   setTimeout(function(){ gynLoadRepList(user); }, 600);
   // Satori → WN → milestone cascade (rovnaký pattern ako Golem login)
@@ -8661,6 +8681,22 @@ function gynRenderShell(user) {
   try { hdrAvatarUpdateHint(); } catch(e){}
   // Oslava menín (raz za deň) — aj v gyn línii
   setTimeout(function(){ try { nameDayCelebrate(user); } catch(e){} }, 900);
+}
+
+// Po prihlásení (Gyn línia) nastav úvodný tab podľa uložených nastavení používateľa.
+// Default = 'plnenie'. Volá sa po vyrenderovaní shellu, pred prvým gynRenderContent.
+function gynApplyDefaultNav(user) {
+  try {
+    var def = (userPrefsGet().defaultTab || '').trim();
+    var allowed = ['plnenie','visits','leaderboard'];
+    if (user && user.role === 'admin') allowed.push('activity');
+    if (!def || def === 'plnenie' || allowed.indexOf(def) < 0) return;  // plnenie už je default shellu
+    GYN_APP.nav = def;
+    document.querySelectorAll('#gyn-nav .gyn-nav-btn').forEach(function(b){
+      b.classList.toggle('active', b.getAttribute('data-tab') === def);
+    });
+    usageSectionEnter('Gyn · ' + (def === 'leaderboard' ? 'Rebríček' : def === 'activity' ? 'Aktivita' : def === 'visits' ? 'História' : 'Plnenie'));
+  } catch(e){}
 }
 
 // ── Navigácia medzi tabmi ──
@@ -11078,6 +11114,20 @@ function mgrEnter(roleKey){
   mgrLoadData();
   // Plnenie je default tab — načítaj všetky kvartály hneď pri vstupe
   plnenieLoadAllQuarters();
+  // Úvodná obrazovka podľa nastavení manažéra (ak si zvolil inú ako Plnenie)
+  mgrApplyDefaultSubtab();
+}
+
+// Po vstupe do manažérskeho módu prepni na úvodný sub-tab podľa nastavení používateľa.
+// Default = 'plnenie' (už nastavené v mgrEnter). Aktivita je len pre admina.
+function mgrApplyDefaultSubtab(){
+  try {
+    var def = (userPrefsGet().defaultTab || '').trim();
+    var allowed = ['plnenie','visits','leaderboard'];
+    if (MGR_STATE.role === 'admin') allowed.push('activity');
+    if (!def || def === 'plnenie' || allowed.indexOf(def) < 0) return;
+    mgrSwitchSubtab(def);
+  } catch(e){}
 }
 
 // Paralelný load všetkých histórií cez existujúci getHistory endpoint
