@@ -1067,7 +1067,9 @@
   .tutorial-hero-login-title{font-size:26px;font-weight:800;letter-spacing:-.03em;color:#fff;text-align:center;line-height:1.2}
   /* ── PLNENIE (Predaje vs Plán) — admin sub-view, v2.3.0 ── */
   .mgr-subtabs{display:flex;gap:6px;margin:0 0 10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06);position:sticky;top:0;z-index:100}
-  .mgr-subtab{flex:1;padding:13px 4px;border:none;background:transparent;font-size:12px;font-weight:700;color:#64748B;cursor:pointer;border-radius:9px;font-family:inherit;transition:all .15s;-webkit-tap-highlight-color:transparent}
+  .mgr-subtab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px 2px;border:none;background:transparent;font-size:11px;font-weight:700;color:#64748B;cursor:pointer;border-radius:9px;font-family:inherit;transition:all .15s;-webkit-tap-highlight-color:transparent;line-height:1.1}
+  .mgr-subtab .st-emoji{font-size:17px;line-height:1}
+  .mgr-subtab .st-lbl{font-size:11px;white-space:nowrap}
   .mgr-subtab.active{background:#0C1E35;color:#fff}
   .mgr-plnenie-view{display:none}
   body.mgr-subtab-plnenie .mgr-plnenie-view{display:block}
@@ -1899,7 +1901,9 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .gyn-hdr-nameday.celebrate{color:#FCD34D;font-weight:800;font-size:12px;text-shadow:0 1px 6px rgba(251,191,36,.45)}
   /* GYN NAV TABS */
   .gyn-nav{display:flex;gap:6px;margin:0 0 10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06);position:sticky;top:0;z-index:100}
-  .gyn-nav-btn{flex:1;padding:13px 4px;border:none;border-radius:10px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;background:transparent;color:#64748B;touch-action:manipulation;transition:all .2s ease;-webkit-tap-highlight-color:transparent}
+  .gyn-nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;background:transparent;color:#64748B;touch-action:manipulation;transition:all .2s ease;-webkit-tap-highlight-color:transparent;line-height:1.1}
+  .gyn-nav-btn .st-emoji{font-size:17px;line-height:1}
+  .gyn-nav-btn .st-lbl{font-size:11px;white-space:nowrap}
   .gyn-nav-btn:hover:not(.active){background:#F1F5F9;color:#0F172A}
   .gyn-nav-btn.active{background:linear-gradient(135deg,#0C1E35 0%,#13294B 100%);color:#fff;box-shadow:0 4px 12px rgba(12,30,53,.25),inset 0 1px 0 rgba(255,255,255,.10)}
   /* GYN Q TABS */
@@ -2043,10 +2047,10 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 <div class="mgr-view" id="mgr-view">
   <!-- Sub-tabs — Návštevy / Plnenie (admin Plnenie od v2.3.0) -->
   <div class="mgr-subtabs">
-    <button type="button" class="mgr-subtab active" data-tab="plnenie" onclick="mgrSwitchSubtab('plnenie')">💊 Plnenie</button>
-    <button type="button" class="mgr-subtab" data-tab="visits" onclick="mgrSwitchSubtab('visits')">📋 Návštevy</button>
-    <button type="button" class="mgr-subtab" data-tab="leaderboard" onclick="mgrSwitchSubtab('leaderboard')">🏆 Rebríček</button>
-    <button type="button" class="mgr-subtab" data-tab="activity" id="mgr-subtab-activity-btn" style="display:none" onclick="mgrSwitchSubtab('activity')">📈 Aktivita</button>
+    <button type="button" class="mgr-subtab active" data-tab="plnenie" onclick="mgrSwitchSubtab('plnenie')"><span class="st-emoji">💊</span><span class="st-lbl">Plnenie</span></button>
+    <button type="button" class="mgr-subtab" data-tab="visits" onclick="mgrSwitchSubtab('visits')"><span class="st-emoji">📋</span><span class="st-lbl">Návštevy</span></button>
+    <button type="button" class="mgr-subtab" data-tab="leaderboard" onclick="mgrSwitchSubtab('leaderboard')"><span class="st-emoji">🏆</span><span class="st-lbl">Rebríček</span></button>
+    <button type="button" class="mgr-subtab" data-tab="activity" id="mgr-subtab-activity-btn" style="display:none" onclick="mgrSwitchSubtab('activity')"><span class="st-emoji">📈</span><span class="st-lbl">Aktivita</span></button>
   </div>
 
   <!-- PTR indicator — zdieľaný pre Návštevy aj Plnenie -->
@@ -2824,7 +2828,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.26.2';
+var APP_VERSION = '2.26.5';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8711,10 +8715,10 @@ function gynRenderShell(user) {
         '</div>' +
       '</div>' +
       '<nav class="gyn-nav" id="gyn-nav">' +
-        '<button class="gyn-nav-btn active" data-tab="plnenie"     onclick="gynNavTo(\'plnenie\')">💊 Plnenie</button>' +
-        '<button class="gyn-nav-btn"        data-tab="visits"      onclick="gynNavTo(\'visits\')">📋 Návštevy</button>' +
-        '<button class="gyn-nav-btn"        data-tab="leaderboard" onclick="gynNavTo(\'leaderboard\')">🏆 Rebríček</button>' +
-        (user.role === 'admin' ? '<button class="gyn-nav-btn" data-tab="activity" onclick="gynNavTo(\'activity\')">📈 Aktivita</button>' : '') +
+        '<button class="gyn-nav-btn active" data-tab="plnenie"     onclick="gynNavTo(\'plnenie\')"><span class="st-emoji">💊</span><span class="st-lbl">Plnenie</span></button>' +
+        '<button class="gyn-nav-btn"        data-tab="visits"      onclick="gynNavTo(\'visits\')"><span class="st-emoji">📋</span><span class="st-lbl">Návštevy</span></button>' +
+        '<button class="gyn-nav-btn"        data-tab="leaderboard" onclick="gynNavTo(\'leaderboard\')"><span class="st-emoji">🏆</span><span class="st-lbl">Rebríček</span></button>' +
+        (user.role === 'admin' ? '<button class="gyn-nav-btn" data-tab="activity" onclick="gynNavTo(\'activity\')"><span class="st-emoji">📈</span><span class="st-lbl">Aktivita</span></button>' : '') +
       '</nav>' +
       '<div class="ptr-indicator" id="gyn-ptr-indicator">' +
         '<span class="ptr-arrow" id="gyn-ptr-arrow">↓</span>' +
@@ -11060,7 +11064,7 @@ function gynLbColor(login){
     : 'linear-gradient(135deg,#374151,#6B7280)';
 }
 function gynLbCatTabsHtml(){
-  var cats = [['all','Všetci'],['pill','💊 Pill'],['patch','🩹 Patch']];
+  var cats = [['all','👥 Všetci'],['pill','💊 Pill'],['patch','🩹 Patch']];
   return '<div class="lb-mode-tabs">' + cats.map(function(c){
     return '<button class="lb-mode-tab' + (c[0] === GYN_LB.cat ? ' active' : '') + '" onclick="gynLbSetCat(\'' + c[0] + '\')">' + c[1] + '</button>';
   }).join('') + '</div>';
