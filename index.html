@@ -2836,7 +2836,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.27.1';
+var APP_VERSION = '2.27.2';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6043,6 +6043,11 @@ function settingsProdOrderProducts(){
     if(!k || seen[k]) return; seen[k] = 1;
     items.push({ key: k, label: ctx.label(p) });
   });
+  // Aflamil Family (Golem) — zložená karta je tiež produkt → nech sa dá presúvať
+  if(seen['aflamil_tablety_sacky'] && seen['aflamil_kr'] && !seen['aflamil_family']){
+    seen['aflamil_family'] = 1;
+    items.push({ key: 'aflamil_family', label: 'Aflamil Family' });
+  }
   var ord = userPrefsGet().prodOrder || [];
   items.sort(function(a, b){
     var ai = ord.indexOf(a.key), bi = ord.indexOf(b.key);
@@ -18346,6 +18351,19 @@ function plnenieSortProducts(planProducts) {
   return copy;
 }
 
+// Kam vložiť kartu „Aflamil Family" medzi zoradené produktové karty (kľúč 'aflamil_family').
+// Bez vlastného poradia (alebo ak ju používateľ nepresúval) ostáva navrch (index 0) — pôvodné správanie.
+function plnenieFamilyInsertIndex(sortedRawKeys){
+  var uo = (typeof plnenieUserProdOrder === 'function') ? plnenieUserProdOrder() : null;
+  var fi = uo ? uo.indexOf('aflamil_family') : -1;
+  if(fi === -1) return 0;
+  for(var i = 0; i < sortedRawKeys.length; i++){
+    var ki = uo.indexOf(plnenieNormalizeKey(sortedRawKeys[i]));
+    if(ki === -1 || ki > fi) return i;
+  }
+  return sortedRawKeys.length;
+}
+
 function plnenieRenderDetail() {
   var username = PL_STATE.detailRep;
   if (!username) return;
@@ -18460,7 +18478,8 @@ function plnenieRenderDetail() {
     managerMode: true
   });
 
-  prodsEl.innerHTML = mgrActionHtml + mgrFamHtml + plnenieSortProducts(planProducts).map(function(rawProdKey) {
+  var _mgrSortedKeys = plnenieSortProducts(planProducts);
+  var _mgrCards = _mgrSortedKeys.map(function(rawProdKey) {
     var key = plnenieNormalizeKey(rawProdKey);
     var label = plnenieDisplayName(rawProdKey);
     var dotColor = PL_PROD_DOT_COLORS[key] || '#94A3B8';
@@ -18542,7 +18561,9 @@ function plnenieRenderDetail() {
       msLinkHtml +
       insightHtml +
     '</div>';
-  }).join('');
+  });
+  if(mgrFamHtml){ _mgrCards.splice(plnenieFamilyInsertIndex(_mgrSortedKeys), 0, mgrFamHtml); }
+  prodsEl.innerHTML = mgrActionHtml + _mgrCards.join('');
   animatePlanBars(prodsEl);
 
   plnenieRenderDetailTrend(username);
@@ -19157,7 +19178,8 @@ function repPlnenieRender() {
     managerMode: false
   });
 
-  prodsEl.innerHTML = actionHtml + famHtml + plnenieSortProducts(planProducts).map(function(rawProdKey) {
+  var _sortedKeys = plnenieSortProducts(planProducts);
+  var _cards = _sortedKeys.map(function(rawProdKey) {
     var key = plnenieNormalizeKey(rawProdKey);
     var label = plnenieDisplayName(rawProdKey);
     var dotColor = PL_PROD_DOT_COLORS[key] || '#94A3B8';
@@ -19238,7 +19260,9 @@ function repPlnenieRender() {
       msLinkHtml +
       insightHtml +
     '</div>';
-  }).join('');
+  });
+  if(famHtml){ _cards.splice(plnenieFamilyInsertIndex(_sortedKeys), 0, famHtml); }
+  prodsEl.innerHTML = actionHtml + _cards.join('');
   animatePlanBars(prodsEl);
 
   repPlnenieRenderTrend(username);
