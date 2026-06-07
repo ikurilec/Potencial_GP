@@ -2824,7 +2824,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.26.1';
+var APP_VERSION = '2.26.2';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8763,7 +8763,12 @@ function gynNavTo(tab) {
   // Aktivita (usage analytics) je iba pre admina
   if (tab === 'activity') { var _gs = getSession(); if (!_gs || _gs.role !== 'admin') return; }
   GYN_APP.nav = tab;
-  if(tab === 'leaderboard') GYN_LB.showConfetti = true;
+  if(tab === 'leaderboard'){
+    GYN_LB.showConfetti = true;
+    // Okno na konfety — drž ~2,5 s, nech ich stihne odpáliť aj prípadný SWR re-render po načítaní
+    clearTimeout(GYN_LB._confWinT);
+    GYN_LB._confWinT = setTimeout(function(){ GYN_LB.showConfetti = false; }, 2500);
+  }
   usageSectionEnter('Gyn · ' + (tab === 'plnenie' ? 'Plnenie' : tab === 'leaderboard' ? 'Rebríček' : tab === 'activity' ? 'Aktivita' : 'História'));
   // pri prepnutí na ľubovoľný tab zatvor otvorený rep detail
   GYN_APP.detailLogin = null;
@@ -11042,7 +11047,7 @@ function gynPlnenieRenderMgr(el, user, data) {
 // posledného ukončeného kvartálu (rovnaká logika ako Golem, vrátane admin
 // schválenia Q cez setConfig key lb_approved_q na gyn backende).
 // ═══════════════════════════════════════════════════════════════════
-var GYN_LB = { cat: 'all', approvedQ: null, qFetched: false, showConfetti: false };
+var GYN_LB = { cat: 'all', approvedQ: null, qFetched: false, showConfetti: false, freshFetched: {}, _confT: null, _confWinT: null };
 
 function gynLbLastCompletedQ(){
   if(GYN_LB.approvedQ !== null) return GYN_LB.approvedQ;
@@ -11118,6 +11123,7 @@ function gynLbRender(el){
           gynPreprocessData(d);
           GYN_APP.plCache[lastQ] = d;
           gynCacheWrite(key, d);
+          GYN_LB.freshFetched[lastQ] = true;   // toto je už čerstvý fetch
           if(GYN_APP.nav === 'leaderboard') gynLbRender();
         })
         .catch(function(){
@@ -11127,7 +11133,27 @@ function gynLbRender(el){
     }
     return;
   }
+  GYN_APP.plCache[lastQ] = data;   // zapamätaj (aj keď prišlo z localStorage) — pre SWR porovnanie
   gynPreprocessData(data);
+
+  // SWR — raz za session over čerstvé dáta pre lastQ; prekresli LEN ak sa naozaj zmenili
+  // (inak žiadny flash). Tým sa rebríček spoľahlivo „dorovná" bez nekontrolovaných re-renderov.
+  if(!GYN_LB.freshFetched[lastQ] && !GYN_APP.plLoading[lastQ]){
+    GYN_LB.freshFetched[lastQ] = true;
+    GYN_APP.plLoading[lastQ] = true;
+    fetch(gynScriptUrl('action=getPlnenieAll&rok=' + GYN_APP.year + '&Q=' + lastQ), { cache:'no-store' })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        delete GYN_APP.plLoading[lastQ];
+        if(!d) return;
+        gynPreprocessData(d);
+        var changed = !gynCacheSame(GYN_APP.plCache[lastQ], d);
+        GYN_APP.plCache[lastQ] = d;
+        gynCacheWrite(key, d);
+        if(changed && GYN_APP.nav === 'leaderboard') gynLbRender();
+      })
+      .catch(function(){ delete GYN_APP.plLoading[lastQ]; });
+  }
 
   var reps = GYN_STATE.repList || [];
   if(!reps.length){
@@ -11223,10 +11249,11 @@ function gynLbRender(el){
 
   el.innerHTML = gynLbCard(tabs + headerHtml + podiumHtml + listHtml);
 
-  // Konfety pri prvom otvorení (parita s Golemom)
-  if(GYN_LB.showConfetti){
-    GYN_LB.showConfetti = false;
-    if(typeof lbConfetti === 'function') setTimeout(lbConfetti, 300);
+  // Konfety pri otvorení (parita s Golemom). Debounce + okno (showConfetti drží gynNavTo ~2,5 s):
+  // ak v okne príde ďalší re-render (SWR), konfety sa preplánujú a vyletia až z FINÁLNEHO podia.
+  if(GYN_LB.showConfetti && typeof lbConfetti === 'function'){
+    clearTimeout(GYN_LB._confT);
+    GYN_LB._confT = setTimeout(function(){ if(GYN_APP.nav === 'leaderboard') lbConfetti(); }, 400);
   }
   // Animácia stupienkov
   requestAnimationFrame(function(){
@@ -13908,12 +13935,13 @@ function openLeaderboard(){
   }
 }
 
-function lbConfetti(_retry) {
+function lbConfetti(_try) {
   // Stred avatara 1. miesta — ak ešte nie je vyrenderovaný/zmeraný, skús znova (nech nevystrelí z rohu)
+  _try = _try || 0;
   var avatarEl = document.querySelector('.lb-p-1 .lb-p-avatar');
   var ar = avatarEl ? avatarEl.getBoundingClientRect() : null;
   if (!ar || ar.width === 0 || ar.height === 0) {
-    if (!_retry) setTimeout(function(){ lbConfetti(1); }, 200);
+    if (_try < 12) setTimeout(function(){ lbConfetti(_try + 1); }, 150);
     return;
   }
   var existing = document.getElementById('lb-confetti-canvas');
