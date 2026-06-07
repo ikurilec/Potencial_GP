@@ -2815,7 +2815,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.25.7';
+var APP_VERSION = '2.25.8';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8647,9 +8647,9 @@ function gynLoadRepList(user) {
           }
           USERS_LOCAL[r.login] = { region: r.region, gender: g, avatar: av };
         });
-        // Re-render iba ak repList bol prázdny (manažér potrebuje zoznam repov na prvý render)
+        // Re-render iba ak repList bol prázdny (manažér/rebríček potrebuje zoznam repov na prvý render)
         // Inak stačí refresh avatarov — nespúšťame zbytočnú druhú animáciu
-        if(GYN_APP.nav === 'plnenie' && wasEmpty) gynRenderContent(user);
+        if((GYN_APP.nav === 'plnenie' || GYN_APP.nav === 'leaderboard') && wasEmpty) gynRenderContent(user);
         else if(typeof avatarRefreshAllInDom === 'function') avatarRefreshAllInDom();
       }
     }).catch(function(){});
@@ -8754,6 +8754,7 @@ function gynNavTo(tab) {
   // Aktivita (usage analytics) je iba pre admina
   if (tab === 'activity') { var _gs = getSession(); if (!_gs || _gs.role !== 'admin') return; }
   GYN_APP.nav = tab;
+  if(tab === 'leaderboard') GYN_LB.showConfetti = true;
   usageSectionEnter('Gyn · ' + (tab === 'plnenie' ? 'Plnenie' : tab === 'leaderboard' ? 'Rebríček' : tab === 'activity' ? 'Aktivita' : 'História'));
   // pri prepnutí na ľubovoľný tab zatvor otvorený rep detail
   GYN_APP.detailLogin = null;
@@ -11026,10 +11027,200 @@ function gynPlnenieRenderMgr(el, user, data) {
 }
 
 // ── REBRÍČEK & NÁVŠTEVY — placeholder ──
-function gynLbShow(el) {
-  el.innerHTML = '<div class="gyn-empty"><div class="gyn-empty-icon">🏆</div>' +
-    '<div class="gyn-empty-title">Rebríček</div>' +
-    '<div class="gyn-empty-sub">Príde v najbližšej verzii</div></div>';
+// ═══════════════════════════════════════════════════════════════════
+// GYN REBRÍČEK — dizajn totožný s Golem rebríčkom (podium + zoznam).
+// 3 podkategórie: Všetci (pill+patch spolu) · Pill · Patch. Ráta sa plnenie
+// posledného ukončeného kvartálu (rovnaká logika ako Golem, vrátane admin
+// schválenia Q cez setConfig key lb_approved_q na gyn backende).
+// ═══════════════════════════════════════════════════════════════════
+var GYN_LB = { cat: 'all', approvedQ: null, qFetched: false, showConfetti: false };
+
+function gynLbLastCompletedQ(){
+  if(GYN_LB.approvedQ !== null) return GYN_LB.approvedQ;
+  return Math.max(0, plnenieCurrentQ() - 1);
+}
+function gynLbColor(login){
+  var palette = (typeof LB_COLOR_PALETTE !== 'undefined') ? LB_COLOR_PALETTE : null;
+  return (palette && typeof strHash === 'function')
+    ? palette[strHash(login||'') % palette.length]
+    : 'linear-gradient(135deg,#374151,#6B7280)';
+}
+function gynLbCatTabsHtml(){
+  var cats = [['all','Všetci'],['pill','💊 Pill'],['patch','🩹 Patch']];
+  return '<div class="lb-tabs">' + cats.map(function(c){
+    return '<button class="lb-tab' + (c[0] === GYN_LB.cat ? ' active' : '') + '" onclick="gynLbSetCat(\'' + c[0] + '\')">' + c[1] + '</button>';
+  }).join('') + '</div>';
+}
+function gynLbSetCat(cat){
+  if(GYN_LB.cat === cat) return;
+  GYN_LB.cat = cat;
+  try { haptic('selection'); } catch(e){}
+  gynLbRender();
+}
+function gynLbBody(){ return document.getElementById('gyn-content'); }
+
+function gynLbShow(el){
+  // Admin-schválený Q načítaj raz zo gyn configu, potom prerenderuj
+  if(!GYN_LB.qFetched){
+    GYN_LB.qFetched = true;
+    fetch(gynScriptUrl('action=getConfig&key=lb_approved_q'), { cache:'no-store' })
+      .then(function(r){ return r.json(); })
+      .then(function(d){ var q = parseInt(d && d.value, 10); if(q >= 1 && q <= 4) GYN_LB.approvedQ = q; })
+      .catch(function(){})
+      .then(function(){ if(GYN_APP.nav === 'leaderboard') gynLbRender(); });
+  }
+  gynLbRender(el);
+}
+
+function gynLbRender(el){
+  el = el || gynLbBody();
+  if(!el) return;
+  var user = getSession() || {};
+  var tabs = gynLbCatTabsHtml();
+  var lastQ = gynLbLastCompletedQ();
+  if(lastQ < 1){
+    el.innerHTML = tabs + '<div class="gyn-empty"><div class="gyn-empty-icon">📅</div>' +
+      '<div class="gyn-empty-title">Žiadny ukončený kvartál</div>' +
+      '<div class="gyn-empty-sub">Rebríček bude dostupný po skončení Q1.</div></div>';
+    return;
+  }
+  var qLabel = 'Q' + lastQ + ' ' + GYN_APP.year;
+
+  // Dáta plnenia pre posledný ukončený Q (vlastná cache, nezávislá od zobrazeného Q)
+  var key = gynPlnenieCacheKey(GYN_APP.year, lastQ);
+  var data = GYN_APP.plCache[lastQ] || gynCacheRead(key);
+  if(!data){
+    el.innerHTML = tabs + '<div style="padding:32px 0;text-align:center;color:#64748B;font-size:13px">Načítavam rebríček…</div>';
+    if(!GYN_APP.plLoading[lastQ]){
+      GYN_APP.plLoading[lastQ] = true;
+      fetch(gynScriptUrl('action=getPlnenieAll&rok=' + GYN_APP.year + '&Q=' + lastQ), { cache:'no-store' })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          delete GYN_APP.plLoading[lastQ];
+          gynPreprocessData(d);
+          GYN_APP.plCache[lastQ] = d;
+          gynCacheWrite(key, d);
+          if(GYN_APP.nav === 'leaderboard') gynLbRender();
+        })
+        .catch(function(){
+          delete GYN_APP.plLoading[lastQ];
+          if(GYN_APP.nav === 'leaderboard'){ var e2 = gynLbBody(); if(e2) e2.innerHTML = tabs + '<div style="padding:32px 0;text-align:center;color:#EF4444;font-size:13px">Chyba načítavania. Skús znova.</div>'; }
+        });
+    }
+    return;
+  }
+  gynPreprocessData(data);
+
+  var reps = GYN_STATE.repList || [];
+  if(!reps.length){
+    el.innerHTML = tabs + '<div style="padding:32px 0;text-align:center;color:#64748B;font-size:13px">Načítavam reprezentantov…</div>';
+    return;
+  }
+
+  var cat = GYN_LB.cat;
+  var ranking = reps.filter(function(r){ return cat === 'all' ? true : r.linia === cat; })
+    .map(function(r){
+      var agg = gynBuildRepAgg(r.login, data);
+      return { username: r.login, name: r.name || r.login, region: r.region || '', color: gynLbColor(r.login), pct: agg.pct };
+    });
+  // Zoradenie zostupne podľa pct, reps bez plánu (null) na koniec
+  ranking.sort(function(a,b){
+    if(a.pct === null && b.pct === null) return 0;
+    if(a.pct === null) return 1;
+    if(b.pct === null) return -1;
+    return b.pct - a.pct;
+  });
+
+  var myUsername = user.username || '';
+  function pctCls(pct){ return pct === null ? 'n' : pct >= 100 ? 'g' : pct >= 95 ? 'o' : 'r'; }
+  function pctLbl(pct){ return pct === null ? '—' : pct.toFixed(1).replace('.',',') + ' %'; }
+
+  // Podium (top 3)
+  var top3 = ranking.slice(0,3);
+  var podiumOrder = top3.length >= 3 ? [top3[1],top3[0],top3[2]] : top3.length === 2 ? [top3[1],top3[0]] : [top3[0]];
+  var podiumClasses = ['lb-p-2','lb-p-1','lb-p-3'];
+  var rankNums = [2,1,3];
+  var podiumHtml = '<div class="lb-podium">';
+  podiumOrder.forEach(function(rep, pi){
+    if(!rep) return;
+    var rn = rankNums[pi];
+    var isFirst = rn === 1;
+    var medal = isFirst ? '' : (rn === 2 ? '🥈' : '🥉');
+    var lastName = String(rep.name).split(' ').pop();
+    var cls = pctCls(rep.pct);
+    var av = gynAvatarContent(rep.username, rep.name);
+    podiumHtml +=
+      '<div class="lb-p-item ' + podiumClasses[pi] + '">' +
+        (isFirst ? '<span class="lb-p-crown">👑</span>' : '') +
+        '<div class="lb-p-avatar' + (av.hasAvatar ? ' has-avatar' : '') + '" data-username="' + gynEsc(rep.username) + '" style="background:' + rep.color + '">' + av.html + '</div>' +
+        (medal ? '<span class="lb-p-medal">' + medal + '</span>' : '') +
+        '<div class="lb-p-name">' + gynEsc(lastName) + '</div>' +
+        '<div class="lb-p-count lb-count-pct ' + cls + '">' + pctLbl(rep.pct) + '</div>' +
+        '<div class="lb-p-block"></div>' +
+      '</div>';
+  });
+  podiumHtml += '</div>';
+
+  // Zoznam (4+)
+  var listHtml = '<div class="lb-list">';
+  ranking.forEach(function(rep, idx){
+    var rank = idx + 1;
+    if(rank <= 3) return;
+    var isMe = rep.username === myUsername;
+    var cls = pctCls(rep.pct);
+    var av2 = gynAvatarContent(rep.username, rep.name);
+    listHtml +=
+      '<div class="lb-row' + (isMe ? ' me' : '') + '">' +
+        '<div class="lb-rank">' + rank + '</div>' +
+        '<div class="lb-avatar' + (av2.hasAvatar ? ' has-avatar' : '') + '" data-username="' + gynEsc(rep.username) + '" style="background:' + rep.color + '">' + av2.html + '</div>' +
+        '<div class="lb-info">' +
+          '<div class="lb-name">' + gynEsc(rep.name) + (isMe ? '<span class="lb-me-tag">TY</span>' : '') + '</div>' +
+          '<div class="lb-region">' + gynEsc(rep.region) + '</div>' +
+        '</div>' +
+        '<div class="lb-count lb-count-pct ' + cls + '">' + pctLbl(rep.pct) + '</div>' +
+      '</div>';
+  });
+  listHtml += '</div>';
+
+  // Admin tlačidlo schválenia ďalšieho Q (rovnako ako Golem)
+  var nextQ = lastQ + 1;
+  var approveBtn = '';
+  if(user.role === 'admin' && nextQ <= 4){
+    approveBtn = '<button id="gyn-lb-approve-q-btn" class="lb-approve-q-btn" onclick="gynLbApproveQ(' + nextQ + ')">Schváliť Q' + nextQ + ' v rebríčku</button>';
+  }
+  var headerHtml = '<div class="lb-pl-q-header">Plnenie plánu · ' + qLabel + '</div>' + approveBtn;
+
+  el.innerHTML = tabs + headerHtml + podiumHtml + listHtml;
+
+  // Konfety pri prvom otvorení (parita s Golemom)
+  if(GYN_LB.showConfetti){
+    GYN_LB.showConfetti = false;
+    if(typeof lbConfetti === 'function') setTimeout(lbConfetti, 300);
+  }
+  // Animácia stupienkov
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      el.querySelectorAll('.lb-p-block').forEach(function(b, i){
+        setTimeout(function(){ b.classList.add('grown'); }, i * 80);
+      });
+    });
+  });
+}
+
+// Admin schváli nový Q pre gyn rebríček (zápis cez gyn setConfig)
+function gynLbApproveQ(q){
+  var btn = document.getElementById('gyn-lb-approve-q-btn');
+  if(btn) btn.classList.add('saving');
+  fetch(gynScriptUrl('action=setConfig&key=lb_approved_q&value=' + q))
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d && d.ok){
+        GYN_LB.approvedQ = q;
+        if(GYN_APP.nav === 'leaderboard') gynLbRender();
+      }
+    })
+    .catch(function(){})
+    .then(function(){ if(btn) btn.classList.remove('saving'); });
 }
 function gynHistShow(el) {
   el.innerHTML = '<div class="gyn-empty"><div class="gyn-empty-icon">📋</div>' +
