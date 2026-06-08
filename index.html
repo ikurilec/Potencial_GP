@@ -2837,7 +2837,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.28.1';
+var APP_VERSION = '2.28.2';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10743,6 +10743,9 @@ function gynLkShow(containerId, login, region){
   GYN_LK.search = '';
   GYN_LK.tab = '';
   GYN_LK.detailKey = null;
+  // Manažér (nie gyn-rep) má read-only pohľad — len info, žiadne označovanie.
+  var _s = (typeof getSession === 'function') ? getSession() : null;
+  GYN_LK.readOnly = !!(_s && String(_s.role||'').toLowerCase() !== 'gyn-rep');
   var el = document.getElementById(containerId);
   if(!el) return;
   el.innerHTML = gynLkShellHtml();
@@ -10944,6 +10947,21 @@ function gynLkRender(){
   listEl.innerHTML = shown.map(function(ph,i){ return gynLkItemHtml(ph,i); }).join('');
 }
 
+// Kontakt: u manažéra len info (oslovil / ešte neoslovil), u repa tlačidlo.
+function gynLkContactHtml(pe, markCall){
+  if(GYN_LK.readOnly){
+    return '<div class="lk-contact-status'+(pe.oslovena?' done':'')+'">' +
+      (pe.oslovena
+        ? 'Reprezentant oslovil túto lekáreň'+(pe.oslovenaAt?' dňa '+gynEsc(pe.oslovenaAt):'')
+        : 'Reprezentant ešte neoslovil túto lekáreň') +
+    '</div>';
+  }
+  if(pe.oslovena){
+    return '<button type="button" class="lk-contact-btn done" disabled onclick="event.stopPropagation()">✓ Oslovená lekáreň'+(pe.oslovenaAt?' dňa '+gynEsc(pe.oslovenaAt):'')+'</button>';
+  }
+  return '<button type="button" class="lk-contact-btn" onclick="event.stopPropagation();'+markCall+'">Označiť ako oslovenú</button>';
+}
+
 function gynLkItemHtml(ph, idx){
   var sub = '<b>'+gynEsc(ph.okres)+'</b> · '+gynEsc(ph.mesto);
 
@@ -10969,9 +10987,7 @@ function gynLkItemHtml(ph, idx){
   var twin = (pe.twinOslovena && pe.twinMeno)
     ? '<div class="lk-contact-status">🔁 Dvojička '+gynEsc(pe.twinMeno)+' oslovila'+(pe.twinOslovenaAt?' dňa '+gynEsc(pe.twinOslovenaAt):'')+'</div>'
     : '';
-  var contact = pe.oslovena
-    ? '<button type="button" class="lk-contact-btn done" disabled onclick="event.stopPropagation()">✓ Oslovená lekáreň'+(pe.oslovenaAt?' dňa '+gynEsc(pe.oslovenaAt):'')+'</button>'
-    : '<button type="button" class="lk-contact-btn" onclick="event.stopPropagation();gynLkMark('+idx+')">Označiť ako oslovenú</button>';
+  var contact = gynLkContactHtml(pe, 'gynLkMark('+idx+')');
   return '<div class="lk-item'+(pe.oslovena?' done':'')+'" onclick="gynLkOpenDetail('+idx+')">' +
     '<div class="lk-item-name">'+gynEsc(ph.lekaren)+'</div>' +
     '<div class="lk-item-sub">'+sub+'</div>' +
@@ -10992,9 +11008,7 @@ function gynLkDetailHtml(ph){
     var twin = (pe.twinOslovena && pe.twinMeno)
       ? '<div class="lk-contact-status">🔁 Dvojička '+gynEsc(pe.twinMeno)+' oslovila'+(pe.twinOslovenaAt?' dňa '+gynEsc(pe.twinOslovenaAt):'')+'</div>'
       : '';
-    var contact = pe.oslovena
-      ? '<button type="button" class="lk-contact-btn done" disabled>✓ Oslovená lekáreň'+(pe.oslovenaAt?' dňa '+gynEsc(pe.oslovenaAt):'')+'</button>'
-      : '<button type="button" class="lk-contact-btn" onclick="gynLkMarkDetail(\''+p.replace(/'/g,"\\'")+'\')">Označiť '+gynEsc(p)+' ako oslovenú</button>';
+    var contact = gynLkContactHtml(pe, 'gynLkMarkDetail(\''+p.replace(/'/g,"\\'")+'\')');
     return '<div style="background:#fff;border-radius:12px;padding:12px 14px;margin-top:10px;box-shadow:0 2px 8px rgba(15,23,42,.06)">' +
       '<div class="lk-item-name" style="font-size:13px;margin-bottom:6px">'+gynEsc(p)+'</div>' +
       rowsH + reaChipForDetail(pe) + twin + contact +
