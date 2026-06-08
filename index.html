@@ -2836,7 +2836,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.27.6';
+var APP_VERSION = '2.27.7';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6088,25 +6088,31 @@ var PO = null;        // prebiehajúci drag
 var PO_PRESS = null;  // detekcia long-pressu na tele riadku
 var PO_EASE = 'cubic-bezier(.2,.8,.2,1)';
 
+// Ne-pasívny touchmove blokátor — jediné, čo na iOS spoľahlivo zastaví scroll počas dragu
+// (preventDefault na pointermove iOS ignoruje). Aktívny len keď PO (drag) beží.
+function poGuard(e){ if(PO){ try { e.preventDefault(); } catch(_){} } }
+
 function poRowDown(ev){
   if(ev.button != null && ev.button !== 0) return;          // len ľavé tlačidlo / dotyk
   var row = ev.currentTarget;
+  var pid = ev.pointerId;
+  document.addEventListener('touchmove', poGuard, { passive:false });  // žije počas celej interakcie
   var onHandle = !!(ev.target && ev.target.closest && ev.target.closest('.po-handle'));
-  if(onHandle){ ev.preventDefault(); poBeginDrag(row, ev.clientY); return; }
+  if(onHandle){ ev.preventDefault(); poBeginDrag(row, ev.clientY, pid); return; }
   // Telo riadku → drag až po krátkom podržaní (nech sa dá normálne scrollovať)
   poClearPress();
-  PO_PRESS = { row: row, x: ev.clientX, y: ev.clientY,
-    timer: setTimeout(function(){ var sy = PO_PRESS ? PO_PRESS.y : ev.clientY; poClearPress(); poBeginDrag(row, sy); }, 180) };
+  PO_PRESS = { row: row, x: ev.clientX, y: ev.clientY, pid: pid,
+    timer: setTimeout(function(){ var sy = PO_PRESS ? PO_PRESS.y : ev.clientY, p = PO_PRESS ? PO_PRESS.pid : pid; poClearPress(); poBeginDrag(row, sy, p); }, 160) };
   PO_PRESS.move = function(e){
     if(!PO_PRESS) return;
-    if(Math.abs(e.clientY - PO_PRESS.y) > 9 || Math.abs(e.clientX - PO_PRESS.x) > 9) poClearPress(); // scroll → zruš
+    if(Math.abs(e.clientY - PO_PRESS.y) > 9 || Math.abs(e.clientX - PO_PRESS.x) > 9) poCancelPress(); // scroll → zruš
   };
-  PO_PRESS.up = function(){ poClearPress(); };
+  PO_PRESS.up = function(){ poCancelPress(); };
   document.addEventListener('pointermove', PO_PRESS.move, { passive:true });
   document.addEventListener('pointerup', PO_PRESS.up);
   document.addEventListener('pointercancel', PO_PRESS.up);
 }
-function poClearPress(){
+function poClearPress(){   // odstráni len press listenery (NIE guard — ten beží aj počas dragu)
   if(!PO_PRESS) return;
   clearTimeout(PO_PRESS.timer);
   document.removeEventListener('pointermove', PO_PRESS.move);
@@ -6114,11 +6120,16 @@ function poClearPress(){
   document.removeEventListener('pointercancel', PO_PRESS.up);
   PO_PRESS = null;
 }
-function poBeginDrag(row, clientY){
+function poCancelPress(){  // používateľ scrolluje / pustil bez dragu → uprac aj guard
   poClearPress();
-  PO = { row: row, list: row.parentNode, pointerY: clientY };
+  document.removeEventListener('touchmove', poGuard);
+}
+function poBeginDrag(row, clientY, pid){
+  poClearPress();   // guard zámerne ostáva
+  PO = { row: row, list: row.parentNode, pointerY: clientY, pid: pid };
   row.classList.add('po-dragging');
   row.style.transition = 'none';
+  try { if(pid != null && row.setPointerCapture) row.setPointerCapture(pid); } catch(e){}
   try { haptic('selection'); } catch(e){}
   document.addEventListener('pointermove', poMove, { passive:false });
   document.addEventListener('pointerup', poEnd);
@@ -6170,8 +6181,10 @@ function poReorder(d, refNode, clientY){
   poRenumber();
 }
 function poEnd(){
+  document.removeEventListener('touchmove', poGuard);
   if(!PO) return;
   var d = PO, row = d.row;
+  try { if(d.pid != null && row.releasePointerCapture) row.releasePointerCapture(d.pid); } catch(e){}
   document.removeEventListener('pointermove', poMove);
   document.removeEventListener('pointerup', poEnd);
   document.removeEventListener('pointercancel', poEnd);
