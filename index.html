@@ -701,11 +701,11 @@
   .set-dt-opt-check{flex-shrink:0;color:#2563EB;font-weight:800;opacity:0}
   .set-dt-opt.selected .set-dt-opt-check{opacity:1}
   /* Poradie produktov — presúvateľný zoznam s úchytmi (drag cez pointer-events) */
-  .po-list{display:flex;flex-direction:column;gap:6px;margin-top:10px;touch-action:pan-y}
-  .po-row{display:flex;align-items:center;gap:10px;padding:11px 12px;background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:11px;font-family:var(--font-display);font-size:14px;font-weight:700;color:#0F172A;transition:box-shadow var(--t-base),border-color var(--t-base),background var(--t-base)}
-  .po-row.po-dragging{background:#EFF6FF;border-color:#2563EB;box-shadow:0 10px 24px rgba(37,99,235,.20);opacity:.97}
-  .po-handle{flex-shrink:0;cursor:grab;color:#94A3B8;font-size:17px;line-height:1;touch-action:none;-webkit-tap-highlight-color:transparent;padding:4px 4px;user-select:none}
-  .po-handle:active{cursor:grabbing}
+  .po-list{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+  .po-row{display:flex;align-items:center;gap:10px;padding:12px 12px;background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:11px;font-family:var(--font-display);font-size:14px;font-weight:700;color:#0F172A;cursor:grab;will-change:transform;touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;transition:box-shadow .2s ease,border-color .2s ease,background .2s ease}
+  .po-row.po-dragging{cursor:grabbing;background:#fff;border-color:#2563EB;box-shadow:0 14px 30px rgba(37,99,235,.22),0 4px 10px rgba(15,23,42,.10);position:relative;z-index:5;touch-action:none}
+  .po-handle{flex-shrink:0;color:#94A3B8;font-size:17px;line-height:1;padding:2px 4px;cursor:grab;touch-action:none}
+  .po-row.po-dragging .po-handle{color:#2563EB}
   .po-num{flex-shrink:0;width:20px;text-align:center;font-size:12px;font-weight:800;color:#94A3B8}
   .po-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   /* Zdielaný panel-nav pre História / Rebríček / Plnenie */
@@ -2836,7 +2836,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.27.2';
+var APP_VERSION = '2.27.6';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6065,12 +6065,14 @@ function settingsProdOrderCard(s){
     inner = '<div class="set-row-desc">Najprv otvor <strong>Plnenie</strong> (nech sa načítajú tvoje produkty) a vráť sa sem — potom si ich vieš usporiadať.</div>';
   } else {
     var isMgr = (s.line === 'gyn') ? (s.role !== 'gyn-rep') : ((typeof mgrDetectRole === 'function') && !!mgrDetectRole(s));
-    var kde = isMgr ? 'v Plnení u reprezentanta' : 'v Plnení';
-    inner = '<div class="set-row-desc">Potiahni za úchyt <strong>☰</strong> a usporiadaj si produkty v poradí, v akom ich chceš mať ' + kde + '. Uloží sa to aj na iné zariadenie.</div>' +
+    var desc = isMgr
+      ? 'Potiahni za úchyt <strong>☰</strong> a usporiadaj si produkty v poradí, v akom ich chceš mať na záložke <strong>Plnenie</strong> aj v detaile reprezentanta. Uloží sa to aj na iné zariadenie.'
+      : 'Potiahni za úchyt <strong>☰</strong> a usporiadaj si produkty v poradí, v akom ich chceš mať v <strong>Plnení</strong>. Uloží sa to aj na iné zariadenie.';
+    inner = '<div class="set-row-desc">' + desc + '</div>' +
       '<div class="po-list" id="po-list">' +
         items.map(function(it, i){
-          return '<div class="po-row" data-key="' + settingsEsc(it.key) + '">' +
-                   '<span class="po-handle" onpointerdown="poPointerDown(event,this)" aria-label="Presunúť">☰</span>' +
+          return '<div class="po-row" data-key="' + settingsEsc(it.key) + '" onpointerdown="poRowDown(event)">' +
+                   '<span class="po-handle" aria-hidden="true">☰</span>' +
                    '<span class="po-num">' + (i+1) + '</span>' +
                    '<span class="po-name">' + settingsEsc(it.label) + '</span>' +
                  '</div>';
@@ -6080,46 +6082,103 @@ function settingsProdOrderCard(s){
   }
   return '<div class="set-card"><div class="set-card-title">Poradie produktov</div>' + inner + '</div>';
 }
-// Drag-reorder cez pointer-events (dotyk aj myš)
-var PO_DRAG = null;
-function poPointerDown(ev, handle){
-  var row = handle.closest ? handle.closest('.po-row') : null;
-  if(!row) return;
-  ev.preventDefault();
-  PO_DRAG = { row: row, list: row.parentNode };
-  row.classList.add('po-dragging');
-  try { handle.setPointerCapture && handle.setPointerCapture(ev.pointerId); } catch(e){}
-  try { haptic('selection'); } catch(e){}
-  document.addEventListener('pointermove', poPointerMove, { passive:false });
-  document.addEventListener('pointerup', poPointerUp);
-  document.addEventListener('pointercancel', poPointerUp);
+// Drag-reorder — chytenie za ☰ (okamžite) alebo kdekoľvek v poličku (po podržaní = long-press).
+// Dragovaný riadok ide za prstom, ostatné sa hladko odsúvajú (FLIP animácia).
+var PO = null;        // prebiehajúci drag
+var PO_PRESS = null;  // detekcia long-pressu na tele riadku
+var PO_EASE = 'cubic-bezier(.2,.8,.2,1)';
+
+function poRowDown(ev){
+  if(ev.button != null && ev.button !== 0) return;          // len ľavé tlačidlo / dotyk
+  var row = ev.currentTarget;
+  var onHandle = !!(ev.target && ev.target.closest && ev.target.closest('.po-handle'));
+  if(onHandle){ ev.preventDefault(); poBeginDrag(row, ev.clientY); return; }
+  // Telo riadku → drag až po krátkom podržaní (nech sa dá normálne scrollovať)
+  poClearPress();
+  PO_PRESS = { row: row, x: ev.clientX, y: ev.clientY,
+    timer: setTimeout(function(){ var sy = PO_PRESS ? PO_PRESS.y : ev.clientY; poClearPress(); poBeginDrag(row, sy); }, 180) };
+  PO_PRESS.move = function(e){
+    if(!PO_PRESS) return;
+    if(Math.abs(e.clientY - PO_PRESS.y) > 9 || Math.abs(e.clientX - PO_PRESS.x) > 9) poClearPress(); // scroll → zruš
+  };
+  PO_PRESS.up = function(){ poClearPress(); };
+  document.addEventListener('pointermove', PO_PRESS.move, { passive:true });
+  document.addEventListener('pointerup', PO_PRESS.up);
+  document.addEventListener('pointercancel', PO_PRESS.up);
 }
-function poPointerMove(ev){
-  if(!PO_DRAG) return;
+function poClearPress(){
+  if(!PO_PRESS) return;
+  clearTimeout(PO_PRESS.timer);
+  document.removeEventListener('pointermove', PO_PRESS.move);
+  document.removeEventListener('pointerup', PO_PRESS.up);
+  document.removeEventListener('pointercancel', PO_PRESS.up);
+  PO_PRESS = null;
+}
+function poBeginDrag(row, clientY){
+  poClearPress();
+  PO = { row: row, list: row.parentNode, pointerY: clientY };
+  row.classList.add('po-dragging');
+  row.style.transition = 'none';
+  try { haptic('selection'); } catch(e){}
+  document.addEventListener('pointermove', poMove, { passive:false });
+  document.addEventListener('pointerup', poEnd);
+  document.addEventListener('pointercancel', poEnd);
+}
+function poMove(ev){
+  if(!PO) return;
   ev.preventDefault();
-  var y = ev.clientY;
-  var dragging = PO_DRAG.row, list = PO_DRAG.list;
-  var rows = Array.prototype.slice.call(list.querySelectorAll('.po-row'));
+  var d = PO;
+  var dy = ev.clientY - d.pointerY;
+  d.row.style.transform = 'translateY(' + dy + 'px) scale(1.03)';
+  var rows = Array.prototype.slice.call(d.list.querySelectorAll('.po-row'));
+  var dr = d.row.getBoundingClientRect();
+  var dragMid = dr.top + dr.height/2;
   for(var i=0; i<rows.length; i++){
     var r = rows[i];
-    if(r === dragging) continue;
+    if(r === d.row) continue;
     var rect = r.getBoundingClientRect();
     var mid = rect.top + rect.height/2;
-    var pos = dragging.compareDocumentPosition(r);
-    if(y < mid && (pos & Node.DOCUMENT_POSITION_PRECEDING)){
-      list.insertBefore(dragging, r); break;            // ťahám nahor pred r
-    } else if(y > mid && (pos & Node.DOCUMENT_POSITION_FOLLOWING)){
-      list.insertBefore(dragging, r.nextSibling); break; // ťahám nadol za r
-    }
+    var rBefore = !!(d.row.compareDocumentPosition(r) & Node.DOCUMENT_POSITION_PRECEDING);
+    if(rBefore && dragMid < mid){ poReorder(d, r, ev.clientY); break; }
+    if(!rBefore && dragMid > mid){ poReorder(d, r.nextSibling, ev.clientY); break; }
   }
 }
-function poPointerUp(){
-  if(!PO_DRAG) return;
-  PO_DRAG.row.classList.remove('po-dragging');
-  document.removeEventListener('pointermove', poPointerMove);
-  document.removeEventListener('pointerup', poPointerUp);
-  document.removeEventListener('pointercancel', poPointerUp);
-  PO_DRAG = null;
+// Presun v DOM + FLIP: dragovaný riadok ostane vizuálne pod prstom, ostatné sa plynulo odsunú
+function poReorder(d, refNode, clientY){
+  var rows = Array.prototype.slice.call(d.list.querySelectorAll('.po-row'));
+  var firstTops = rows.map(function(r){ return r.getBoundingClientRect().top; });
+  var dragVisualTop = d.row.getBoundingClientRect().top;
+  d.list.insertBefore(d.row, refNode);
+  // Prepočítaj transform dragovaného riadku, nech vizuálne neposkočí
+  d.row.style.transform = 'none';
+  var dragNaturalTop = d.row.getBoundingClientRect().top;
+  var newDy = dragVisualTop - dragNaturalTop;
+  d.row.style.transform = 'translateY(' + newDy + 'px) scale(1.03)';
+  d.pointerY = clientY - newDy;
+  // FLIP ostatných riadkov
+  rows.forEach(function(r, i){
+    if(r === d.row) return;
+    var delta = firstTops[i] - r.getBoundingClientRect().top;
+    if(!delta) return;
+    r.style.transition = 'none';
+    r.style.transform = 'translateY(' + delta + 'px)';
+    requestAnimationFrame(function(){
+      r.style.transition = 'transform .2s ' + PO_EASE;
+      r.style.transform = '';
+    });
+  });
+  poRenumber();
+}
+function poEnd(){
+  if(!PO) return;
+  var d = PO, row = d.row;
+  document.removeEventListener('pointermove', poMove);
+  document.removeEventListener('pointerup', poEnd);
+  document.removeEventListener('pointercancel', poEnd);
+  PO = null;
+  row.style.transition = 'transform .2s ' + PO_EASE;
+  row.style.transform = '';
+  setTimeout(function(){ row.classList.remove('po-dragging'); row.style.transition = ''; row.style.transform = ''; }, 210);
   poRenumber();
   settingsProdOrderSave();
 }
@@ -11032,11 +11091,21 @@ function gynPlnenieRenderMgr(el, user, data) {
       else otherP.push(p);
     });
     function renderProdCards(list) {
-      list = (list || []).slice().sort(function(a,b){
-        var ao = gynPatchFirstOrder(a.name || a.key), bo = gynPatchFirstOrder(b.name || b.key);
+      var _uo = (typeof gynUserProdOrder === 'function') ? gynUserProdOrder() : null;
+      list = (list || []).slice().map(function(p, i){ return { p:p, i:i }; }).sort(function(a, b){
+        // 1) Vlastné poradie používateľa má prednosť (v rámci sekcie); kľúč = názov malými písmenami
+        if(_uo){
+          var au = _uo.indexOf(String(a.p.name || a.p.key).trim().toLowerCase());
+          var bu = _uo.indexOf(String(b.p.name || b.p.key).trim().toLowerCase());
+          var aIn = au !== -1, bIn = bu !== -1;
+          if(aIn && bIn) return au - bu;
+          if(aIn !== bIn) return aIn ? -1 : 1;
+        }
+        // 2) Inak default (patch-first), so zachovaním pôvodného poradia pri zhode
+        var ao = gynPatchFirstOrder(a.p.name || a.p.key), bo = gynPatchFirstOrder(b.p.name || b.p.key);
         if(ao !== bo) return ao - bo;
-        return 0;
-      });
+        return a.i - b.i;
+      }).map(function(x){ return x.p; });
       var out = '<div class="pl-sum-prods">';
       list.forEach(function(p){
         var pc = gynTempoPlClass(p.pct, p.expectedPct);
@@ -16405,7 +16474,7 @@ function plnenieRenderSummary() {
     if (!agg.products || agg.products.length === 0) {
       prods.innerHTML = '';
     } else {
-      prods.innerHTML = agg.products.map(function(p){
+      prods.innerHTML = plnenieApplyProdOrderArr(agg.products).map(function(p){
         var safeKey = p.key.replace(/'/g, "\\'");
         var safeLbl = p.label.replace(/'/g, "\\'");
         var predPct = plnenieCalcPredikciaSummary(p.planEUR, p.predajeEURDone, PL_STATE.q, PL_STATE.year, p.predPlanEURDone);
@@ -18349,6 +18418,22 @@ function plnenieSortProducts(planProducts) {
     return String(a).localeCompare(String(b), 'sk');
   });
   return copy;
+}
+
+// Zoradí pole produktov {key,...} podľa uloženého poradia používateľa. Produkty mimo
+// nastaveného poradia si ponechajú pôvodné relatívne poradie (stabilné). Pre Golem summary
+// zoznam na hlavnej stránke Plnenia (agg.products) aj iné miesta s hotovým poľom produktov.
+function plnenieApplyProdOrderArr(products){
+  var uo = (typeof plnenieUserProdOrder === 'function') ? plnenieUserProdOrder() : null;
+  if(!uo || !products) return products;
+  return products.map(function(p, i){ return { p:p, i:i }; }).sort(function(a, b){
+    var au = uo.indexOf(plnenieNormalizeKey(a.p.key));
+    var bu = uo.indexOf(plnenieNormalizeKey(b.p.key));
+    var aIn = au !== -1, bIn = bu !== -1;
+    if(aIn && bIn) return au - bu;
+    if(aIn !== bIn) return aIn ? -1 : 1;   // nastavené pred nenastavenými
+    return a.i - b.i;                        // oba nenastavené → pôvodné poradie
+  }).map(function(x){ return x.p; });
 }
 
 // Kam vložiť kartu „Aflamil Family" medzi zoradené produktové karty (kľúč 'aflamil_family').
