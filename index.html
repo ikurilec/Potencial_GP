@@ -2837,7 +2837,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.27.8';
+var APP_VERSION = '2.27.9';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6034,27 +6034,44 @@ function prodOrderContext(){
   var raw = (data && data.planProducts) ? data.planProducts : [];
   return { norm: plnenieNormalizeKey, label: plnenieDisplayName, raw: raw };
 }
+// Default poradie (bez vlastného nastavenia) — rovnaké ako v Plnení danej línie,
+// nech sa do Nastavení pretiahne to isté poradie (napr. Ryeqo prvé v Patchi u Gyn).
+function prodOrderDefaultRank(key, line, rawIndex){
+  if(line === 'gyn'){
+    var pf = (typeof gynPatchFirstOrder === 'function') ? gynPatchFirstOrder(key) : 0; // Ryeqo navrch
+    return [pf, rawIndex];
+  }
+  if(key === 'aflamil_family') return [-1, 0];                  // Golem — Family navrch (ako v Plnení)
+  var pi = (typeof PL_PRODUCT_ORDER !== 'undefined') ? PL_PRODUCT_ORDER.indexOf(key) : -1;
+  return [pi === -1 ? 999 : pi, rawIndex];
+}
 // Zoznam produktov pre aktuálny kontext, aplikované uložené poradie. → [{key,label}]
 function settingsProdOrderProducts(){
   var ctx = prodOrderContext();
   if(!ctx) return [];
+  var s = (typeof getSession === 'function') ? getSession() : null;
+  var line = (s && s.line === 'gyn') ? 'gyn' : 'gp';
   var seen = {}, items = [];
   (ctx.raw || []).forEach(function(p){
     var k = ctx.norm(p);
     if(!k || seen[k]) return; seen[k] = 1;
-    items.push({ key: k, label: ctx.label(p) });
+    items.push({ key: k, label: ctx.label(p), _i: items.length });
   });
   // Aflamil Family (Golem) — zložená karta je tiež produkt → nech sa dá presúvať
-  if(seen['aflamil_tablety_sacky'] && seen['aflamil_kr'] && !seen['aflamil_family']){
+  if(line === 'gp' && seen['aflamil_tablety_sacky'] && seen['aflamil_kr'] && !seen['aflamil_family']){
     seen['aflamil_family'] = 1;
-    items.push({ key: 'aflamil_family', label: 'Aflamil Family' });
+    items.push({ key: 'aflamil_family', label: 'Aflamil Family', _i: items.length });
   }
   var ord = userPrefsGet().prodOrder || [];
   items.sort(function(a, b){
-    var ai = ord.indexOf(a.key), bi = ord.indexOf(b.key);
-    if(ai === -1) ai = 900; if(bi === -1) bi = 900;
-    if(ai !== bi) return ai - bi;
-    return String(a.label).localeCompare(String(b.label), 'sk');
+    var au = ord.indexOf(a.key), bu = ord.indexOf(b.key);
+    var aIn = au !== -1, bIn = bu !== -1;
+    if(aIn && bIn) return au - bu;                 // oba majú vlastné poradie
+    if(aIn !== bIn) return aIn ? -1 : 1;           // nastavené pred nenastavenými
+    var ar = prodOrderDefaultRank(a.key, line, a._i);   // oba default → ako v Plnení
+    var br = prodOrderDefaultRank(b.key, line, b._i);
+    if(ar[0] !== br[0]) return ar[0] - br[0];
+    return ar[1] - br[1];
   });
   return items;
 }
@@ -6075,8 +6092,8 @@ function settingsProdOrderCard(s){
       var pill = [], patch = [], other = [];
       items.forEach(function(it){
         var lin = (typeof GYN_PRODUCT_LINIA !== 'undefined') ? GYN_PRODUCT_LINIA[it.key] : null;
-        if(lin === 'patch') patch.push(it);
-        else if(lin === 'pill' || lin === 'both') pill.push(it);
+        if(lin === 'patch' || lin === 'both') patch.push(it);   // escapelle (both) → Patch, ako v Plnení
+        else if(lin === 'pill') pill.push(it);
         else other.push(it);
       });
       var sect = function(lbl, arr){ return arr.length ? '<div class="po-sect">' + lbl + '</div>' + poListHtml(arr) : ''; };
