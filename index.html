@@ -2837,7 +2837,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.28.5';
+var APP_VERSION = '2.28.6';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9281,9 +9281,15 @@ function gynPlnenieShow(el, user) {
       var changed = !gynCacheSame(GYN_APP.plCache[q], data);
       GYN_APP.plCache[q] = data;
       gynCacheWrite(cacheKey, data);
-      // Vykresli iba pri prvom zobrazení (bez cache). Ak už boli dáta z cache zobrazené,
-      // NEPREKRESĽUJEME — žiadne bliknutie; čerstvé dáta sa ukážu pri ďalšej interakcii (prepnutie Q, návrat).
-      if(GYN_APP.nav === 'plnenie' && GYN_APP.q === q && !cached) gynPlnenieRender(el, user, data);
+      if(GYN_APP.nav === 'plnenie' && GYN_APP.q === q) {
+        if(!cached) gynPlnenieRender(el, user, data);  // prvé zobrazenie — s animáciou
+        else if(changed) setTimeout(function(){        // čerstvé dáta — ticho prepíš čísla (bez animácie/bliknutia)
+          if(GYN_APP.nav==='plnenie' && GYN_APP.q===q){
+            var el2 = document.getElementById('gyn-content');
+            if(el2) plnenieRunSilentRender(function(){ gynPlnenieRender(el2, user, data); });
+          }
+        }, 1000);
+      }
     })
     .catch(function(){
       delete GYN_APP.plLoading[q];
@@ -16751,8 +16757,12 @@ function plnenieLoadAllQuarters() {
           PL_STATE.data = resp;
           PL_STATE.aggregates = agg;
           PL_STATE.loaded = true;
-          // Vykresli iba prvý raz; ak už dáta boli zobrazené, neprekresľujeme (žiadne bliknutie).
-          if (changed && !wasShowingData) plnenieRenderAll();
+          if (changed) {
+            if (!wasShowingData) plnenieRenderAll();  // prvé zobrazenie — s animáciou
+            else setTimeout(function(){               // čerstvé dáta — ticho prepíš čísla (bez animácie/bliknutia)
+              if (PL_STATE.q === q && document.body.classList.contains('mgr-subtab-plnenie')) plnenieRunSilentRender(plnenieRenderAll);
+            }, 1000);
+          }
         }
       })
       .catch(function() {
@@ -19382,8 +19392,10 @@ function repPlnenieLoad() {
           REP_PL_STATE.loaded = true;
           var overlay = document.getElementById('rep-plnenie-overlay');
           if (changed && overlay && overlay.classList.contains('show')) {
-            // Vykresli iba prvý raz; ak už dáta boli zobrazené, neprekresľujeme (žiadne bliknutie).
-            if (!wasShowingData) repPlnenieRender();
+            if (!wasShowingData) repPlnenieRender();  // prvé zobrazenie — s animáciou
+            else setTimeout(function(){               // čerstvé dáta — ticho prepíš čísla (bez animácie/bliknutia)
+              if (REP_PL_STATE.q === q && overlay && overlay.classList.contains('show')) plnenieRunSilentRender(repPlnenieRender);
+            }, 1000);
           }
         }
       })
@@ -21560,7 +21572,8 @@ function animatePlanBars(container) {
   bars.forEach(function(bar, i) {
     var target = bar.getAttribute('data-bar-w');
     if (plnenieSilentAnimationsActive()) {
-      bar.style.transition = 'width .35s ease';
+      // Tichý refresh — nastav šírku okamžite, žiadna animácia ani bliknutie.
+      bar.style.transition = 'none';
       bar.style.width = target + '%';
       return;
     }
