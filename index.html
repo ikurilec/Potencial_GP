@@ -2837,7 +2837,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.28.4';
+var APP_VERSION = '2.28.5';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9281,17 +9281,9 @@ function gynPlnenieShow(el, user) {
       var changed = !gynCacheSame(GYN_APP.plCache[q], data);
       GYN_APP.plCache[q] = data;
       gynCacheWrite(cacheKey, data);
-      if(GYN_APP.nav === 'plnenie' && GYN_APP.q === q && (!cached || changed)) {
-        // Ak už boli dáta z cache zobrazené, nechaj dobehnúť úvodnú animáciu (~1s)
-        // a až potom ticho prekresli — žiadne dvojité count-up ani seknutie.
-        if(cached) setTimeout(function(){
-          if(GYN_APP.nav==='plnenie' && GYN_APP.q===q){
-            var el2 = document.getElementById('gyn-content');
-            if(el2) plnenieRunSilentRender(function(){ gynPlnenieRender(el2, user, data); });
-          }
-        }, 1000);
-        else gynPlnenieRender(el, user, data);
-      }
+      // Vykresli iba pri prvom zobrazení (bez cache). Ak už boli dáta z cache zobrazené,
+      // NEPREKRESĽUJEME — žiadne bliknutie; čerstvé dáta sa ukážu pri ďalšej interakcii (prepnutie Q, návrat).
+      if(GYN_APP.nav === 'plnenie' && GYN_APP.q === q && !cached) gynPlnenieRender(el, user, data);
     })
     .catch(function(){
       delete GYN_APP.plLoading[q];
@@ -10767,8 +10759,9 @@ function gynLkShow(containerId, login, region){
     sticky.style.top = (top > 0 ? top - 1 : 0) + 'px';
     sticky.style.background = gynLkBgColor();
   }
-  var cached = GYN_LK.cache[GYN_LK.login];
-  if(cached){ GYN_LK.rows = cached; gynLkRender(); }
+  // SWR: najprv z cache (in-memory alebo localStorage) — okamžité zobrazenie ako v Goleme.
+  var cached = GYN_LK.cache[GYN_LK.login] || (typeof gynCacheRead === 'function' ? gynCacheRead('lk_' + GYN_LK.login) : null);
+  if(cached){ GYN_LK.cache[GYN_LK.login] = cached; GYN_LK.rows = cached; gynLkRender(); }
   gynLkFetch(GYN_LK.login, function(rows){
     if(GYN_LK.login !== String(login||'').toLowerCase()) return; // medzitým sa prepol
     GYN_LK.rows = rows;
@@ -10795,8 +10788,35 @@ function gynLkFetch(login, cb){
   }
   fetch(gynScriptUrl('action=getGynLekarne&login='+encodeURIComponent(login)+'&osloveneMonth='+encodeURIComponent(gynLkMonthKey())+'&_t='+Date.now()), { cache:'no-store' })
     .then(function(r){ return r.json(); })
-    .then(function(d){ var rows=(d&&d.ok&&d.rows)?d.rows:[]; GYN_LK.cache[login]=rows; if(cb) cb(rows); })
+    .then(function(d){ var rows=(d&&d.ok&&d.rows)?d.rows:[]; GYN_LK.cache[login]=rows; if(typeof gynCacheWrite==='function' && rows.length) gynCacheWrite('lk_'+login, rows); if(cb) cb(rows); })
     .catch(function(){ if(cb) cb(GYN_LK.cache[login]||[]); });
+}
+
+// Mesiace zoskupené po rokoch (najnovší rok hore) — kompaktné chipy do zoznamu.
+function gynLkMonthsChipsHtml(monthList){
+  var byY = {}, years = [];
+  (monthList||[]).forEach(function(m){ if(!byY[m.rok]){ byY[m.rok]=[]; years.push(m.rok); } byY[m.rok].push(m); });
+  years.sort(function(a,b){ return b-a; });
+  return years.map(function(y){
+    var chips = byY[y].slice().sort(function(a,b){ return a.mesiac-b.mesiac; }).map(function(m){
+      return '<span class="lk-prod-chip'+((m.box||0)<=0?' missing':'')+'">'+GYN_LK_MES[m.mesiac]+': '+Math.round(m.box||0)+'</span>';
+    }).join('');
+    return '<div style="margin-top:6px"><div style="font-size:10px;font-weight:800;color:#475569;letter-spacing:.04em;margin:0 0 3px">'+y+'</div><div class="lk-prod-chips">'+chips+'</div></div>';
+  }).join('');
+}
+
+// Mesiace zoskupené po rokoch pre detail (rok hlavička + riadky mesiac → ks).
+function gynLkDetailMonthsHtml(monthList){
+  var byY = {}, years = [];
+  (monthList||[]).forEach(function(m){ if(!byY[m.rok]){ byY[m.rok]=[]; years.push(m.rok); } byY[m.rok].push(m); });
+  years.sort(function(a,b){ return b-a; });
+  var html = years.map(function(y){
+    var rowsH = byY[y].slice().sort(function(a,b){ return b.mesiac-a.mesiac; }).map(function(m){
+      return '<div class="lk-month-row"><span class="lk-month-lbl">'+GYN_LK_MES[m.mesiac]+'</span><div class="lk-month-prods"><span class="lk-month-prod'+((m.box||0)<=0?' ':'')+'">'+Math.round(m.box||0)+' ks</span></div></div>';
+    }).join('');
+    return '<div style="font-size:12px;font-weight:850;color:#0C1E35;margin:10px 0 2px;letter-spacing:.02em">'+y+'</div>'+rowsH;
+  }).join('');
+  return html || '<div class="lk-item-sub" style="padding:6px 0">Žiadne dáta</div>';
 }
 
 // DEV mock — vzorové lekárne pre náhľad bez backendu (len IS_DEV).
@@ -11004,9 +11024,7 @@ function gynLkItemHtml(ph, idx){
   }
 
   var p = GYN_LK.tab, pe = ph.prods[p];
-  var chips = '<div class="lk-prod-chips">' + pe.monthList.map(function(m){
-    return '<span class="lk-prod-chip'+((m.box||0)<=0?' missing':'')+'">'+GYN_LK_MES[m.mesiac]+' '+String(m.rok).slice(2)+': '+Math.round(m.box||0)+'</span>';
-  }).join('') + '</div>';
+  var chips = gynLkMonthsChipsHtml(pe.monthList);
   var reaChip = pe.isReaktivacia
     ? '<div style="margin-top:6px"><span style="background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;border-radius:20px;font-size:10px;font-weight:700;padding:3px 9px">↻ Reaktivácia — starý odber až '+Math.round(pe.maxOld)+' ks/mes.</span></div>'
     : '';
@@ -11026,11 +11044,7 @@ function gynLkDetailHtml(ph){
   var prods = Object.keys(ph.prods).sort(function(a,b){ return gynLkProdRank(a)-gynLkProdRank(b); });
   var body = prods.map(function(p){
     var pe = ph.prods[p];
-    var months = pe.monthList.slice().sort(function(a,b){ return (b.rok*12+b.mesiac)-(a.rok*12+a.mesiac); }); // najnovšie navrch
-    var rowsH = months.map(function(m){
-      return '<div class="lk-month-row"><span class="lk-month-lbl">'+GYN_LK_MES[m.mesiac]+' '+String(m.rok).slice(2)+'</span>' +
-             '<div class="lk-month-prods"><span class="lk-month-prod'+((m.box||0)<=0?'':'')+'">'+Math.round(m.box||0)+' ks</span></div></div>';
-    }).join('') || '<div class="lk-item-sub" style="padding:6px 0">Žiadne dáta</div>';
+    var rowsH = gynLkDetailMonthsHtml(pe.monthList);
     var twin = (pe.twinOslovena && pe.twinMeno)
       ? '<div class="lk-contact-status">🔁 Dvojička '+gynEsc(pe.twinMeno)+' oslovila'+(pe.twinOslovenaAt?' dňa '+gynEsc(pe.twinOslovenaAt):'')+'</div>'
       : '';
@@ -16737,10 +16751,8 @@ function plnenieLoadAllQuarters() {
           PL_STATE.data = resp;
           PL_STATE.aggregates = agg;
           PL_STATE.loaded = true;
-          if (changed) {
-            if (wasShowingData) setTimeout(function(){ if (PL_STATE.q === q && document.body.classList.contains('mgr-subtab-plnenie')) plnenieRunSilentRender(plnenieRenderAll); }, 1000);
-            else plnenieRenderAll();
-          }
+          // Vykresli iba prvý raz; ak už dáta boli zobrazené, neprekresľujeme (žiadne bliknutie).
+          if (changed && !wasShowingData) plnenieRenderAll();
         }
       })
       .catch(function() {
@@ -19370,8 +19382,8 @@ function repPlnenieLoad() {
           REP_PL_STATE.loaded = true;
           var overlay = document.getElementById('rep-plnenie-overlay');
           if (changed && overlay && overlay.classList.contains('show')) {
-            if (wasShowingData) setTimeout(function(){ if (REP_PL_STATE.q === q && overlay && overlay.classList.contains('show')) plnenieRunSilentRender(repPlnenieRender); }, 1000);
-            else repPlnenieRender();
+            // Vykresli iba prvý raz; ak už dáta boli zobrazené, neprekresľujeme (žiadne bliknutie).
+            if (!wasShowingData) repPlnenieRender();
           }
         }
       })
