@@ -2837,7 +2837,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.27.9';
+var APP_VERSION = '2.28.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -3830,6 +3830,24 @@ function devModeInit() {
   banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#FBBF24;color:#1a1a1a;font-size:12px;font-weight:700;text-align:center;padding:4px 8px;letter-spacing:.5px';
   banner.textContent = '⚠️ DEV MODE — mock dáta, žiadne Sheets';
   document.body.appendChild(banner);
+
+  // DEV gyn línia — náhľad gyn appky (vrátane Lekární) bez backendu.
+  //   ?dev=1&role=gyn     → gyn reprezentant (b.sivakova, BAPI)
+  //   ?dev=1&role=gynmgr  → gyn manažér (klik na repa → sub-tab Lekárne)
+  if (DEV_ROLE === 'gyn' || DEV_ROLE === 'gynlek' || DEV_ROLE === 'gynmgr') {
+    var gynUser = (DEV_ROLE === 'gynmgr')
+      ? { username: 'admin', name: 'Manažér (DEV)', role: 'admin', region: '', line: 'gyn' }
+      : { username: 'b.sivakova', name: 'Barbora Siváková (DEV)', role: 'gyn-rep', region: 'BAPI', line: 'gyn' };
+    gynUser.loginTime = Date.now();
+    try {
+      sessionStorage.setItem('potencial_gp_session', JSON.stringify(gynUser));
+      localStorage.setItem('potencial_gp_session', JSON.stringify(gynUser));
+    } catch(e){}
+    var lsG = document.getElementById('login-screen'); if (lsG) lsG.classList.remove('show');
+    try { updateHdrForUser(gynUser); } catch(e){}
+    gynEnter(gynUser);
+    return;
+  }
 
   // Nastav fake session
   var fakeUser = { username: DEV_ROLE === 'rep' ? 'j.bohovic' : 'admin',
@@ -9029,6 +9047,7 @@ function gynRenderShell(user) {
       '</div>' +
       '<nav class="gyn-nav" id="gyn-nav">' +
         '<button class="gyn-nav-btn active" data-tab="plnenie"     onclick="gynNavTo(\'plnenie\')"><span class="st-emoji">💊</span><span class="st-lbl">Plnenie</span></button>' +
+        (user.role === 'gyn-rep' ? '<button class="gyn-nav-btn" data-tab="lekarne" onclick="gynNavTo(\'lekarne\')"><span class="st-emoji">🏪</span><span class="st-lbl">Lekárne</span></button>' : '') +
         '<button class="gyn-nav-btn"        data-tab="visits"      onclick="gynNavTo(\'visits\')"><span class="st-emoji">📋</span><span class="st-lbl">Návštevy</span></button>' +
         '<button class="gyn-nav-btn"        data-tab="leaderboard" onclick="gynNavTo(\'leaderboard\')"><span class="st-emoji">🏆</span><span class="st-lbl">Rebríček</span></button>' +
         (user.role === 'admin' ? '<button class="gyn-nav-btn" data-tab="activity" onclick="gynNavTo(\'activity\')"><span class="st-emoji">📈</span><span class="st-lbl">Aktivita</span></button>' : '') +
@@ -9086,7 +9105,7 @@ function gynNavTo(tab) {
     clearTimeout(GYN_LB._confWinT);
     GYN_LB._confWinT = setTimeout(function(){ GYN_LB.showConfetti = false; }, 2500);
   }
-  usageSectionEnter('Gyn · ' + (tab === 'plnenie' ? 'Plnenie' : tab === 'leaderboard' ? 'Rebríček' : tab === 'activity' ? 'Aktivita' : 'História'));
+  usageSectionEnter('Gyn · ' + (tab === 'plnenie' ? 'Plnenie' : tab === 'lekarne' ? 'Lekárne' : tab === 'leaderboard' ? 'Rebríček' : tab === 'activity' ? 'Aktivita' : 'História'));
   // pri prepnutí na ľubovoľný tab zatvor otvorený rep detail
   GYN_APP.detailLogin = null;
   document.querySelectorAll('#gyn-nav .gyn-nav-btn').forEach(function(b){
@@ -9111,6 +9130,7 @@ function gynRenderContent(user) {
   var el = document.getElementById('gyn-content');
   if(!el || !user) return;
   if(GYN_APP.nav === 'plnenie')      gynPlnenieShow(el, user);
+  else if(GYN_APP.nav === 'lekarne')     gynLkShow('gyn-content', user.username, user.region || '');
   else if(GYN_APP.nav === 'leaderboard') gynLbShow(el);
   else if(GYN_APP.nav === 'activity')    gynActivityShow(el, user);
   else                                gynHistShow(el);
@@ -10704,6 +10724,250 @@ function gynCloseRepDetail() {
   gynRenderContent(getSession());
 }
 
+// ══════════════════════════════════════════════════════════════════
+//   GYN LEKÁRNE — front-end modul (reaktivácia + všetky lekárne)
+//   Dáta: gynScriptUrl('action=getGynLekarne&login=…')  → tab Gyn_Lekarne
+//   Označenie "oslovil": setGynLekarenOslovena (per produkt, dvojičky).
+//   Reuse .lk-* CSS tried z Golem modulu.
+// ══════════════════════════════════════════════════════════════════
+var GYN_LK = { login:'', region:'', containerId:'', rows:null, prod:'', tab:'reaktivacia', search:'', cache:{}, _shown:[] };
+var GYN_LK_MES = ['','Jan','Feb','Mar','Apr','Máj','Jún','Júl','Aug','Sep','Okt','Nov','Dec'];
+
+function gynLkMonthKey(){ var d=new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); }
+
+function gynLkShow(containerId, login, region){
+  GYN_LK.login = String(login||'').toLowerCase();
+  GYN_LK.region = region||'';
+  GYN_LK.containerId = containerId;
+  GYN_LK.search = '';
+  GYN_LK.tab = 'reaktivacia';
+  GYN_LK.prod = '';
+  var el = document.getElementById(containerId);
+  if(!el) return;
+  el.innerHTML = gynLkShellHtml();
+  var cached = GYN_LK.cache[GYN_LK.login];
+  if(cached){ GYN_LK.rows = cached; gynLkRender(); }
+  gynLkFetch(GYN_LK.login, function(rows){
+    if(GYN_LK.login !== String(login||'').toLowerCase()) return; // medzitým sa prepol
+    GYN_LK.rows = rows;
+    if(document.getElementById('gynlk-list')) gynLkRender();
+  });
+}
+
+function gynLkFetch(login, cb){
+  if (typeof IS_DEV !== 'undefined' && IS_DEV) {
+    var mock = GYN_LK.cache[login] || gynLkMockRows(login);
+    GYN_LK.cache[login] = mock;
+    if (cb) cb(mock);
+    return;
+  }
+  fetch(gynScriptUrl('action=getGynLekarne&login='+encodeURIComponent(login)+'&osloveneMonth='+encodeURIComponent(gynLkMonthKey())+'&_t='+Date.now()), { cache:'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){ var rows=(d&&d.ok&&d.rows)?d.rows:[]; GYN_LK.cache[login]=rows; if(cb) cb(rows); })
+    .catch(function(){ if(cb) cb(GYN_LK.cache[login]||[]); });
+}
+
+// DEV mock — vzorové lekárne pre náhľad bez backendu (len IS_DEV).
+function gynLkMockRows(login){
+  var meno = 'Barbora Siváková (DEV)';
+  var defs = [
+    // [lekáreň, mesto, okres, produkt, [m1..m5], oslovena, twinOslovena]
+    ['Dr. Max Senec Diaľničná 5967/2G','Senec','Senec','Escapelle',[8,6,4,0,0],false,false],
+    ['Benu Bratislava Pribylinská 2/A','Bratislava','Bratislava 3','Escapelle',[12,9,3,0,0],false,true],
+    ['Lekáreň Slnečnica Pezinok','Pezinok','Pezinok','Escapelle',[5,4,3,0,0],true,false],
+    ['Lekáreň U Leva Malacky','Malacky','Malacky','Escapelle',[3,2,4,2,1],false,false],
+    ['Benu Bratislava Mlynské Nivy','Bratislava','Bratislava 1','Escapelle',[6,7,5,6,4],false,false],
+    ['Dr. Max Senec SNP','Senec','Senec','Globifer',[40,38,0,0,0],false,false],
+    ['VIOLA Pezinok Holubyho','Pezinok','Pezinok','Globifer',[12,10,9,8,7],false,false],
+    ['Lekáreň Malacky Záhorácka','Malacky','Malacky','Globifer',[5,4,3,0,0],true,false]
+  ];
+  var rows = [];
+  defs.forEach(function(d){
+    var name=d[0], mesto=d[1], okres=d[2], prod=d[3], vals=d[4], oslov=d[5], twin=d[6];
+    var oblast = (prod==='Escapelle') ? 'BAPI' : 'BAPI';
+    for (var i=0;i<vals.length;i++){
+      rows.push({
+        login: login, meno: meno, oblast: oblast, produkt: prod,
+        rok: 2026, mesiac: i+1, okres: okres, mesto: mesto, lekaren: name,
+        box: vals[i], eur: Math.round(vals[i]*17.2*100)/100,
+        oslovena: oslov && i===0, oslovenaAt: (oslov?'3.6.2026 10:15':''),
+        twinLogin: prod==='Escapelle'?'k.basternakova':'', twinMeno: prod==='Escapelle'?'Katarína Bašternáková':'',
+        twinOblast: prod==='Escapelle'?'BAPA':'',
+        twinOslovena: twin && i===0, twinOslovenaAt: (twin?'2.6.2026 14:30':'')
+      });
+    }
+  });
+  return rows;
+}
+
+function gynLkShellHtml(){
+  return '<div class="lk-gyn-wrap">' +
+    '<div class="lk-search-wrap"><span class="lk-search-ico">🔍</span>' +
+      '<input class="lk-search" id="gynlk-search" type="text" placeholder="Hľadaj lekáreň, mesto, okres…" oninput="gynLkSearch(this.value)" autocomplete="off"></div>' +
+    '<div class="lk-tabs" id="gynlk-prodtabs" style="margin-top:8px"></div>' +
+    '<div class="lk-tabs" id="gynlk-tabs" style="margin-top:8px">' +
+      '<button class="lk-tab active" data-gynlk-tab="reaktivacia" onclick="gynLkSwitchTab(\'reaktivacia\',this)">↻ Reaktivácia</button>' +
+      '<button class="lk-tab" data-gynlk-tab="all" onclick="gynLkSwitchTab(\'all\',this)">Všetky lekárne</button>' +
+    '</div>' +
+    '<div id="gynlk-list" style="margin-top:10px"><div class="lk-empty">Načítavam…</div></div>' +
+  '</div>';
+}
+
+// Zoskupí riadky na lekárne (pre vybraný produkt) + vypočíta reaktiváciu.
+function gynLkBuild(rows, prod){
+  var by = {};
+  rows.forEach(function(r){
+    if(prod && r.produkt !== prod) return;
+    var key = r.okres+'|||'+r.mesto+'|||'+r.lekaren;
+    if(!by[key]) by[key] = { key:key, produkt:r.produkt, okres:r.okres, mesto:r.mesto, lekaren:r.lekaren,
+      months:{}, oslovena:false, oslovenaAt:'', twinMeno:'', twinOslovena:false, twinOslovenaAt:'' };
+    var e = by[key];
+    var idx = (parseInt(r.rok)||0)*12 + (parseInt(r.mesiac)||0);
+    e.months[idx] = { rok:parseInt(r.rok)||0, mesiac:parseInt(r.mesiac)||0, box:(parseFloat(r.box)||0) };
+    if(r.oslovena){ e.oslovena=true; e.oslovenaAt=r.oslovenaAt||e.oslovenaAt; }
+    if(r.twinOslovena){ e.twinOslovena=true; e.twinOslovenaAt=r.twinOslovenaAt||e.twinOslovenaAt; }
+    if(r.twinMeno) e.twinMeno=r.twinMeno;
+  });
+  var list = Object.keys(by).map(function(k){ return by[k]; });
+  // anchor = najnovší mesiac v dátach (cez všetky lekárne vybraného produktu)
+  var anchor = 0;
+  list.forEach(function(e){ Object.keys(e.months).forEach(function(i){ i=+i; if(i>anchor) anchor=i; }); });
+  list.forEach(function(e){
+    var idxs = Object.keys(e.months).map(Number).sort(function(a,b){ return a-b; });
+    e.monthList = idxs.map(function(i){ return e.months[i]; });
+    e.total = idxs.reduce(function(s,i){ return s + (e.months[i].box||0); }, 0);
+    var lastBox = e.months[anchor] ? e.months[anchor].box : 0;
+    var prevBox = e.months[anchor-1] ? e.months[anchor-1].box : 0;
+    var maxOld = 0;
+    idxs.forEach(function(i){ if(i < anchor-1){ var b=e.months[i].box||0; if(b>maxOld) maxOld=b; } });
+    e.maxOld = maxOld;
+    e.isReaktivacia = (lastBox<=0 && prevBox<=0 && maxOld>=3);
+  });
+  return list;
+}
+
+function gynLkRender(){
+  var listEl = document.getElementById('gynlk-list');
+  if(!listEl) return;
+  var rows = GYN_LK.rows || [];
+
+  // dostupné produkty
+  var prods = [];
+  rows.forEach(function(r){ if(prods.indexOf(r.produkt)===-1) prods.push(r.produkt); });
+  prods.sort();
+  if(!GYN_LK.prod || prods.indexOf(GYN_LK.prod)===-1) GYN_LK.prod = prods[0] || '';
+
+  // produktové chipy (len ak >1)
+  var ptabs = document.getElementById('gynlk-prodtabs');
+  if(ptabs){
+    ptabs.style.display = prods.length>1 ? 'flex' : 'none';
+    if(prods.length>1){
+      ptabs.innerHTML = prods.map(function(p){
+        return '<button class="lk-tab'+(p===GYN_LK.prod?' active':'')+'" onclick="gynLkSwitchProd(\''+p.replace(/'/g,"\\'")+'\',this)">'+gynEsc(p)+'</button>';
+      }).join('');
+    }
+  }
+
+  var built = gynLkBuild(rows, GYN_LK.prod);
+  var q = (GYN_LK.search||'').toLowerCase();
+  if(q) built = built.filter(function(e){
+    return e.lekaren.toLowerCase().indexOf(q)!==-1 || e.mesto.toLowerCase().indexOf(q)!==-1 || e.okres.toLowerCase().indexOf(q)!==-1;
+  });
+
+  // badge: počet na reaktiváciu (neoslovené)
+  var reaCnt = built.filter(function(e){ return e.isReaktivacia && !e.oslovena; }).length;
+  document.querySelectorAll('#gynlk-tabs .lk-tab').forEach(function(b){
+    var t = b.getAttribute('data-gynlk-tab');
+    var badge = b.querySelector('.lk-tab-badge');
+    var cnt = (t==='reaktivacia') ? reaCnt : (t==='all' ? built.length : undefined);
+    if(cnt!==undefined){
+      if(!badge){ badge=document.createElement('span'); badge.className='lk-tab-badge'; b.appendChild(badge); }
+      badge.textContent = cnt;
+    } else if(badge){ badge.remove(); }
+  });
+
+  var shown = (GYN_LK.tab==='reaktivacia') ? built.filter(function(e){ return e.isReaktivacia; }) : built;
+
+  // zoradenie: oslovené dole; inak reaktivácia podľa maxOld, všetky podľa total
+  shown = shown.slice().sort(function(a,b){
+    if(a.oslovena!==b.oslovena) return a.oslovena?1:-1;
+    return GYN_LK.tab==='reaktivacia' ? (b.maxOld-a.maxOld) : (b.total-a.total);
+  });
+  GYN_LK._shown = shown;
+
+  if(!shown.length){
+    listEl.innerHTML = '<div class="lk-empty">'+(GYN_LK.tab==='reaktivacia'?'Žiadne lekárne na reaktiváciu 👍':'Žiadne lekárne')+'</div>';
+    return;
+  }
+  listEl.innerHTML = shown.map(function(e,i){ return gynLkItemHtml(e,i); }).join('');
+}
+
+function gynLkItemHtml(e, idx){
+  var sub = '<b>'+gynEsc(e.okres)+'</b> · '+gynEsc(e.mesto);
+  var chips = '<div class="lk-prod-chips">' + e.monthList.map(function(m){
+    return '<span class="lk-prod-chip'+((m.box||0)<=0?' missing':'')+'">'+GYN_LK_MES[m.mesiac]+' '+String(m.rok).slice(2)+': '+Math.round(m.box||0)+'</span>';
+  }).join('') + '</div>';
+  var reaChip = (GYN_LK.tab==='reaktivacia' && e.isReaktivacia)
+    ? '<div style="margin-top:6px"><span style="background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;border-radius:20px;font-size:10px;font-weight:700;padding:3px 9px">↻ Reaktivácia — starý odber až '+Math.round(e.maxOld)+' ks/mes.</span></div>'
+    : '';
+  var twin = (e.twinOslovena && e.twinMeno)
+    ? '<div class="lk-contact-status">🔁 Dvojička '+gynEsc(e.twinMeno)+' oslovila'+(e.twinOslovenaAt?' dňa '+gynEsc(e.twinOslovenaAt):'')+'</div>'
+    : '';
+  var contact = e.oslovena
+    ? '<button type="button" class="lk-contact-btn done" disabled onclick="event.stopPropagation()">✓ Oslovená lekáreň'+(e.oslovenaAt?' dňa '+gynEsc(e.oslovenaAt):'')+'</button>'
+    : '<button type="button" class="lk-contact-btn" onclick="event.stopPropagation();gynLkMark('+idx+')">Označiť ako oslovenú</button>';
+  return '<div class="lk-item'+(e.oslovena?' done':'')+'">' +
+    '<div class="lk-item-name">'+gynEsc(e.lekaren)+'</div>' +
+    '<div class="lk-item-sub">'+sub+'</div>' +
+    reaChip + twin + chips + contact +
+  '</div>';
+}
+
+function gynLkSwitchProd(prod, btn){
+  GYN_LK.prod = prod;
+  if(btn && btn.parentNode) btn.parentNode.querySelectorAll('.lk-tab').forEach(function(b){ b.classList.toggle('active', b===btn); });
+  gynLkRender();
+}
+function gynLkSwitchTab(tab, btn){
+  GYN_LK.tab = tab;
+  if(btn && btn.parentNode) btn.parentNode.querySelectorAll('.lk-tab').forEach(function(b){ b.classList.toggle('active', b===btn); });
+  gynLkRender();
+}
+function gynLkSearch(v){ GYN_LK.search = v||''; gynLkRender(); }
+
+function gynLkMark(idx){
+  var e = GYN_LK._shown[idx];
+  if(!e) return;
+  var login = GYN_LK.login, prod = GYN_LK.prod, month = gynLkMonthKey();
+  // optimisticky označ v cache
+  (GYN_LK.cache[login]||[]).forEach(function(r){
+    if(r.produkt===prod && (r.okres+'|||'+r.mesto+'|||'+r.lekaren)===e.key){ r.oslovena=true; if(!r.oslovenaAt) r.oslovenaAt='práve teraz'; }
+  });
+  gynLkRender();
+  if (typeof IS_DEV !== 'undefined' && IS_DEV) return; // dev: bez backendu
+  fetch(gynScriptUrl('action=setGynLekarenOslovena&username='+encodeURIComponent(login)+'&produkt='+encodeURIComponent(prod)+'&key='+encodeURIComponent(e.key)+'&month='+encodeURIComponent(month)+'&value=1'), { cache:'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(){ gynLkFetch(login, function(rows){ if(GYN_LK.login===login){ GYN_LK.rows=rows; if(document.getElementById('gynlk-list')) gynLkRender(); } }); })
+    .catch(function(){});
+}
+
+// Sub-taby v manažérskom detaile reprezentanta (Plnenie / Lekárne)
+function gynRepDetailSubtab(which, btn){
+  var pl = document.getElementById('gyn-rd-plnenie');
+  var lk = document.getElementById('gyn-rd-lekarne');
+  if(!pl || !lk) return;
+  if(btn && btn.parentNode) btn.parentNode.querySelectorAll('.pl-sub-tab').forEach(function(b){ b.classList.toggle('active', b===btn); });
+  if(which==='lekarne'){
+    pl.style.display='none'; lk.style.display='block';
+    if(!lk.getAttribute('data-loaded')){
+      lk.setAttribute('data-loaded','1');
+      gynLkShow('gyn-rd-lekarne', GYN_APP.detailLogin, GYN_APP.detailRegion);
+    }
+  } else {
+    pl.style.display='block'; lk.style.display='none';
+  }
+}
+
 // Detail reprezentanta v gyn manažérskom Plnení — používa rovnakú vizuálnu štruktúru
 // ako Golem (.mgr-plnenie-detail CSS scope) s milestonmi, mesačným rozpisom a predikciou.
 function gynPlnenieRenderRepDetail(el, data) {
@@ -10874,6 +11138,29 @@ function gynPlnenieRenderRepDetail(el, data) {
   html += '</div>'; // .mgr-plnenie-detail
 
   el.innerHTML = html;
+
+  // ── Sub-taby Plnenie / Lekárne (manažérsky detail repa) ──
+  try {
+    var detailRoot = el.querySelector('.mgr-plnenie-detail');
+    var dhdr = detailRoot ? detailRoot.querySelector('.dhdr') : null;
+    if (detailRoot && dhdr) {
+      var after = [];
+      var n = dhdr.nextSibling;
+      while (n) { after.push(n); n = n.nextSibling; }
+      var wrap = document.createElement('div'); wrap.id = 'gyn-rd-plnenie';
+      after.forEach(function(node){ wrap.appendChild(node); });
+      var subBar = document.createElement('div');
+      subBar.className = 'pl-sub-tabs';
+      subBar.innerHTML =
+        '<button class="pl-sub-tab active" onclick="gynRepDetailSubtab(\'plnenie\',this)">💊 Plnenie</button>' +
+        '<button class="pl-sub-tab" onclick="gynRepDetailSubtab(\'lekarne\',this)">🏪 Lekárne</button>';
+      var lekDiv = document.createElement('div'); lekDiv.id = 'gyn-rd-lekarne'; lekDiv.style.display = 'none';
+      detailRoot.appendChild(subBar);
+      detailRoot.appendChild(wrap);
+      detailRoot.appendChild(lekDiv);
+    }
+  } catch(e) {}
+
   animatePlanBars(el);
   gynRenderTrendBars('gyn-detail-trend-' + login, login);
   // Animovaný count-up pre celkové %
