@@ -701,7 +701,8 @@
   .set-dt-opt-check{flex-shrink:0;color:#2563EB;font-weight:800;opacity:0}
   .set-dt-opt.selected .set-dt-opt-check{opacity:1}
   /* Poradie produktov — presúvateľný zoznam s úchytmi (drag cez pointer-events) */
-  .po-list{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+  .po-sect{font-size:11px;font-weight:800;color:#94A3B8;letter-spacing:.04em;margin:14px 0 0;padding-top:2px}
+  .po-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
   .po-row{display:flex;align-items:center;gap:10px;padding:12px 12px;background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:11px;font-family:var(--font-display);font-size:14px;font-weight:700;color:#0F172A;cursor:grab;will-change:transform;touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;transition:box-shadow .2s ease,border-color .2s ease,background .2s ease}
   .po-row.po-dragging{cursor:grabbing;background:#fff;border-color:#2563EB;box-shadow:0 14px 30px rgba(37,99,235,.22),0 4px 10px rgba(15,23,42,.10);position:relative;z-index:5;touch-action:none}
   .po-handle{flex-shrink:0;color:#94A3B8;font-size:17px;line-height:1;padding:2px 4px;cursor:grab;touch-action:none}
@@ -2836,7 +2837,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.27.7';
+var APP_VERSION = '2.27.8';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6068,19 +6069,37 @@ function settingsProdOrderCard(s){
     var desc = isMgr
       ? 'Potiahni za úchyt <strong>☰</strong> a usporiadaj si produkty v poradí, v akom ich chceš mať na záložke <strong>Plnenie</strong> aj v detaile reprezentanta. Uloží sa to aj na iné zariadenie.'
       : 'Potiahni za úchyt <strong>☰</strong> a usporiadaj si produkty v poradí, v akom ich chceš mať v <strong>Plnení</strong>. Uloží sa to aj na iné zariadenie.';
-    inner = '<div class="set-row-desc">' + desc + '</div>' +
-      '<div class="po-list" id="po-list">' +
-        items.map(function(it, i){
-          return '<div class="po-row" data-key="' + settingsEsc(it.key) + '" onpointerdown="poRowDown(event)">' +
-                   '<span class="po-handle" aria-hidden="true">☰</span>' +
-                   '<span class="po-num">' + (i+1) + '</span>' +
-                   '<span class="po-name">' + settingsEsc(it.label) + '</span>' +
-                 '</div>';
-        }).join('') +
-      '</div>' +
+    var listHtml;
+    if(s.line === 'gyn'){
+      // Gyn — rozdelené na Pill / Patch (+ Ostatné), každá sekcia samostatne presúvateľná
+      var pill = [], patch = [], other = [];
+      items.forEach(function(it){
+        var lin = (typeof GYN_PRODUCT_LINIA !== 'undefined') ? GYN_PRODUCT_LINIA[it.key] : null;
+        if(lin === 'patch') patch.push(it);
+        else if(lin === 'pill' || lin === 'both') pill.push(it);
+        else other.push(it);
+      });
+      var sect = function(lbl, arr){ return arr.length ? '<div class="po-sect">' + lbl + '</div>' + poListHtml(arr) : ''; };
+      listHtml = sect('💊 Pill', pill) + sect('🩹 Patch', patch) + sect('Ostatné', other);
+    } else {
+      listHtml = poListHtml(items);
+    }
+    inner = '<div class="set-row-desc">' + desc + '</div>' + listHtml +
       '<span class="set-saved" id="po-saved" style="display:block;margin-top:8px">✓ Uložené</span>';
   }
   return '<div class="set-card"><div class="set-card-title">Poradie produktov</div>' + inner + '</div>';
+}
+// Jeden presúvateľný zoznam (vlastné číslovanie 1..n)
+function poListHtml(items){
+  return '<div class="po-list">' +
+    items.map(function(it, i){
+      return '<div class="po-row" data-key="' + settingsEsc(it.key) + '" onpointerdown="poRowDown(event)">' +
+               '<span class="po-handle" aria-hidden="true">☰</span>' +
+               '<span class="po-num">' + (i+1) + '</span>' +
+               '<span class="po-name">' + settingsEsc(it.label) + '</span>' +
+             '</div>';
+    }).join('') +
+  '</div>';
 }
 // Drag-reorder — chytenie za ☰ (okamžite) alebo kdekoľvek v poličku (po podržaní = long-press).
 // Dragovaný riadok ide za prstom, ostatné sa hladko odsúvajú (FLIP animácia).
@@ -6126,7 +6145,8 @@ function poCancelPress(){  // používateľ scrolluje / pustil bez dragu → upr
 }
 function poBeginDrag(row, clientY, pid){
   poClearPress();   // guard zámerne ostáva
-  PO = { row: row, list: row.parentNode, pointerY: clientY, pid: pid };
+  PO = { row: row, list: row.parentNode, pointerY: clientY, lastY: clientY, pid: pid,
+         scroller: (row.closest && row.closest('.settings-overlay')) || document.scrollingElement, raf: 0 };
   row.classList.add('po-dragging');
   row.style.transition = 'none';
   try { if(pid != null && row.setPointerCapture) row.setPointerCapture(pid); } catch(e){}
@@ -6134,13 +6154,19 @@ function poBeginDrag(row, clientY, pid){
   document.addEventListener('pointermove', poMove, { passive:false });
   document.addEventListener('pointerup', poEnd);
   document.addEventListener('pointercancel', poEnd);
+  PO.raf = requestAnimationFrame(poAutoScrollTick);
 }
 function poMove(ev){
   if(!PO) return;
   ev.preventDefault();
+  PO.lastY = ev.clientY;
+  poApplyDrag();
+}
+// Posun dragovaného riadku za prstom + kontrola prehodenia susedov
+function poApplyDrag(){
+  if(!PO) return;
   var d = PO;
-  var dy = ev.clientY - d.pointerY;
-  d.row.style.transform = 'translateY(' + dy + 'px) scale(1.03)';
+  d.row.style.transform = 'translateY(' + (d.lastY - d.pointerY) + 'px) scale(1.03)';
   var rows = Array.prototype.slice.call(d.list.querySelectorAll('.po-row'));
   var dr = d.row.getBoundingClientRect();
   var dragMid = dr.top + dr.height/2;
@@ -6150,12 +6176,32 @@ function poMove(ev){
     var rect = r.getBoundingClientRect();
     var mid = rect.top + rect.height/2;
     var rBefore = !!(d.row.compareDocumentPosition(r) & Node.DOCUMENT_POSITION_PRECEDING);
-    if(rBefore && dragMid < mid){ poReorder(d, r, ev.clientY); break; }
-    if(!rBefore && dragMid > mid){ poReorder(d, r.nextSibling, ev.clientY); break; }
+    if(rBefore && dragMid < mid){ poReorder(d, r); break; }
+    if(!rBefore && dragMid > mid){ poReorder(d, r.nextSibling); break; }
   }
 }
+// Auto-scroll IBA pri okraji obrazovky (prst pri vrchu/spodku), inak žiaden scroll
+function poAutoScrollTick(){
+  if(!PO){ return; }
+  var d = PO, sc = d.scroller;
+  if(sc){
+    var rect = (sc === document.scrollingElement)
+      ? { top:0, bottom: window.innerHeight }
+      : sc.getBoundingClientRect();
+    var zone = 72, maxSpeed = 13, y = d.lastY, ds = 0;
+    if(y < rect.top + zone)         ds = -maxSpeed * Math.min(1, (rect.top + zone - y) / zone);
+    else if(y > rect.bottom - zone) ds =  maxSpeed * Math.min(1, (y - (rect.bottom - zone)) / zone);
+    if(ds){
+      var before = sc.scrollTop;
+      sc.scrollTop += ds;
+      var actual = sc.scrollTop - before;     // koľko sa naozaj zoscrollovalo
+      if(actual){ d.pointerY -= actual; poApplyDrag(); }   // kompenzuj posun obsahu
+    }
+  }
+  d.raf = requestAnimationFrame(poAutoScrollTick);
+}
 // Presun v DOM + FLIP: dragovaný riadok ostane vizuálne pod prstom, ostatné sa plynulo odsunú
-function poReorder(d, refNode, clientY){
+function poReorder(d, refNode){
   var rows = Array.prototype.slice.call(d.list.querySelectorAll('.po-row'));
   var firstTops = rows.map(function(r){ return r.getBoundingClientRect().top; });
   var dragVisualTop = d.row.getBoundingClientRect().top;
@@ -6165,7 +6211,7 @@ function poReorder(d, refNode, clientY){
   var dragNaturalTop = d.row.getBoundingClientRect().top;
   var newDy = dragVisualTop - dragNaturalTop;
   d.row.style.transform = 'translateY(' + newDy + 'px) scale(1.03)';
-  d.pointerY = clientY - newDy;
+  d.pointerY = d.lastY - newDy;
   // FLIP ostatných riadkov
   rows.forEach(function(r, i){
     if(r === d.row) return;
@@ -6184,6 +6230,7 @@ function poEnd(){
   document.removeEventListener('touchmove', poGuard);
   if(!PO) return;
   var d = PO, row = d.row;
+  if(d.raf) cancelAnimationFrame(d.raf);
   try { if(d.pid != null && row.releasePointerCapture) row.releasePointerCapture(d.pid); } catch(e){}
   document.removeEventListener('pointermove', poMove);
   document.removeEventListener('pointerup', poEnd);
@@ -6196,14 +6243,22 @@ function poEnd(){
   settingsProdOrderSave();
 }
 function poRenumber(){
-  var list = document.getElementById('po-list'); if(!list) return;
-  Array.prototype.forEach.call(list.querySelectorAll('.po-row'), function(r, i){
-    var n = r.querySelector('.po-num'); if(n) n.textContent = (i+1);
+  Array.prototype.forEach.call(document.querySelectorAll('.po-list'), function(list){
+    Array.prototype.forEach.call(list.querySelectorAll('.po-row'), function(r, i){
+      var n = r.querySelector('.po-num'); if(n) n.textContent = (i+1);
+    });
   });
 }
 function settingsProdOrderSave(){
-  var list = document.getElementById('po-list'); if(!list) return;
-  var keys = Array.prototype.map.call(list.querySelectorAll('.po-row'), function(r){ return r.getAttribute('data-key'); });
+  var lists = document.querySelectorAll('.po-list'); if(!lists.length) return;
+  // Pozbieraj kľúče zo všetkých zoznamov (Gyn má Pill/Patch sekcie) v poradí, dedupe
+  var keys = [], seen = {};
+  Array.prototype.forEach.call(lists, function(list){
+    Array.prototype.forEach.call(list.querySelectorAll('.po-row'), function(r){
+      var k = r.getAttribute('data-key');
+      if(k && !seen[k]){ seen[k] = 1; keys.push(k); }
+    });
+  });
   userPrefsSet({ prodOrder: keys });
   var el = document.getElementById('po-saved');
   if(el){ el.classList.add('show'); clearTimeout(window._poSavedT); window._poSavedT = setTimeout(function(){ el.classList.remove('show'); }, 2000); }
