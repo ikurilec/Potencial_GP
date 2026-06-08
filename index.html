@@ -2837,7 +2837,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.28.3';
+var APP_VERSION = '2.28.4';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9282,8 +9282,14 @@ function gynPlnenieShow(el, user) {
       GYN_APP.plCache[q] = data;
       gynCacheWrite(cacheKey, data);
       if(GYN_APP.nav === 'plnenie' && GYN_APP.q === q && (!cached || changed)) {
-        // Ak už boli dáta zobrazené (z cache), re-render bez animácie (žiadne dvojité count-up).
-        if(cached) plnenieRunSilentRender(function(){ gynPlnenieRender(el, user, data); });
+        // Ak už boli dáta z cache zobrazené, nechaj dobehnúť úvodnú animáciu (~1s)
+        // a až potom ticho prekresli — žiadne dvojité count-up ani seknutie.
+        if(cached) setTimeout(function(){
+          if(GYN_APP.nav==='plnenie' && GYN_APP.q===q){
+            var el2 = document.getElementById('gyn-content');
+            if(el2) plnenieRunSilentRender(function(){ gynPlnenieRender(el2, user, data); });
+          }
+        }, 1000);
         else gynPlnenieRender(el, user, data);
       }
     })
@@ -16732,7 +16738,7 @@ function plnenieLoadAllQuarters() {
           PL_STATE.aggregates = agg;
           PL_STATE.loaded = true;
           if (changed) {
-            if (wasShowingData) plnenieRunSilentRender(plnenieRenderAll);
+            if (wasShowingData) setTimeout(function(){ if (PL_STATE.q === q && document.body.classList.contains('mgr-subtab-plnenie')) plnenieRunSilentRender(plnenieRenderAll); }, 1000);
             else plnenieRenderAll();
           }
         }
@@ -19364,7 +19370,7 @@ function repPlnenieLoad() {
           REP_PL_STATE.loaded = true;
           var overlay = document.getElementById('rep-plnenie-overlay');
           if (changed && overlay && overlay.classList.contains('show')) {
-            if (wasShowingData) plnenieRunSilentRender(repPlnenieRender);
+            if (wasShowingData) setTimeout(function(){ if (REP_PL_STATE.q === q && overlay && overlay.classList.contains('show')) plnenieRunSilentRender(repPlnenieRender); }, 1000);
             else repPlnenieRender();
           }
         }
