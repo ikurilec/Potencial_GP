@@ -2854,7 +2854,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.29.2';
+var APP_VERSION = '2.29.3';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9438,6 +9438,24 @@ function gynExit() {
   appReload();
 }
 
+function gynHydrateRepMeta(reps) {
+  (reps || []).forEach(function(r) {
+    var rawG = String(r.pohlavie || r.gender || '').trim().toLowerCase();
+    var g = null;
+    if (rawG === 'm' || rawG === 'muz' || rawG === 'muÅ¾' || rawG === 'male') g = 'male';
+    else if (rawG === 'z' || rawG === 'f' || rawG === 'zena' || rawG === 'Å¾ena' || rawG === 'female') g = 'female';
+    var av = null;
+    var avRaw = String(r.avatar || '').trim();
+    if (avRaw) {
+      try {
+        var parsed = JSON.parse(avRaw);
+        if (parsed && parsed.style && AVATAR_SCHEMAS[parsed.style]) av = parsed;
+      } catch(e){}
+    }
+    USERS_LOCAL[r.login] = { region: r.region, gender: g, avatar: av };
+  });
+}
+
 function gynLoadRepList(user) {
   // Výber konkurentov pre MS graf — najprv localStorage (instant), Sheets prepíše nižšie
   try { gynMsHydrate(localStorage.getItem(gynMsLsKey())); } catch(e){}
@@ -12377,7 +12395,7 @@ function gynPlnenieRenderMgr(el, user, data) {
 // posledného ukončeného kvartálu (rovnaká logika ako Golem, vrátane admin
 // schválenia Q cez setConfig key lb_approved_q na gyn backende).
 // ═══════════════════════════════════════════════════════════════════
-var GYN_LB = { cat: 'all', approvedQ: null, qFetched: false, showConfetti: false, freshFetched: {}, _confT: null, _confWinT: null };
+var GYN_LB = { cat: 'all', approvedQ: null, qFetched: false, showConfetti: false, freshFetched: {}, plCache: {}, plLoading: {}, repList: [], repLoading: false, repFetched: false, _confT: null, _confWinT: null };
 
 function gynLbLastCompletedQ(){
   if(GYN_LB.approvedQ !== null) return GYN_LB.approvedQ;
@@ -12388,6 +12406,28 @@ function gynLbColor(login){
   return (palette && typeof strHash === 'function')
     ? palette[strHash(login||'') % palette.length]
     : 'linear-gradient(135deg,#374151,#6B7280)';
+}
+function gynLbScopeReps(){
+  return (GYN_LB.repList && GYN_LB.repList.length) ? GYN_LB.repList : (GYN_STATE.repList || []);
+}
+function gynLbRepListLoaded(data){
+  if(!(data && data.ok && data.reps)) return;
+  GYN_LB.repList = data.reps;
+  GYN_LB.repFetched = true;
+  try { gynHydrateRepMeta(data.reps); } catch(e){}
+  if(typeof avatarRefreshAllInDom === 'function') avatarRefreshAllInDom();
+}
+function gynLbEnsureRepList(){
+  if((GYN_LB.repList && GYN_LB.repList.length) || GYN_LB.repLoading) return;
+  GYN_LB.repLoading = true;
+  fetch(gynScriptUrl('action=getRepList&fullLine=1'), { cache:'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      GYN_LB.repLoading = false;
+      gynLbRepListLoaded(d);
+      if(GYN_APP.nav === 'leaderboard') gynLbRender();
+    })
+    .catch(function(){ GYN_LB.repLoading = false; });
 }
 function gynLbCatTabsHtml(){
   var cats = [['all','👥 Všetci'],['pill','💊 Pill'],['patch','🩹 Patch']];
@@ -12406,6 +12446,7 @@ function gynLbSetCat(cat){
 function gynLbBody(){ return document.getElementById('gyn-content'); }
 
 function gynLbShow(el){
+  gynLbEnsureRepList();
   // Admin-schválený Q načítaj raz zo gyn configu, potom prerenderuj
   if(!GYN_LB.qFetched){
     GYN_LB.qFetched = true;
@@ -12440,52 +12481,52 @@ function gynLbRender(el){
   var qLabel = 'Q' + lastQ + ' ' + GYN_APP.year;
 
   // Dáta plnenia pre posledný ukončený Q (vlastná cache, nezávislá od zobrazeného Q)
-  var key = gynPlnenieCacheKey(GYN_APP.year, lastQ);
-  var data = GYN_APP.plCache[lastQ] || gynCacheRead(key);
+  var key = gynPlnenieCacheKey(GYN_APP.year, lastQ) + '|lb-fullLine';
+  var data = GYN_LB.plCache[lastQ] || gynCacheRead(key);
   if(!data){
     el.innerHTML = gynLbCard(tabs + '<div style="padding:32px 0;text-align:center;color:#64748B;font-size:13px">Načítavam rebríček…</div>');
-    if(!GYN_APP.plLoading[lastQ]){
-      GYN_APP.plLoading[lastQ] = true;
-      fetch(gynScriptUrl('action=getPlnenieAll&rok=' + GYN_APP.year + '&Q=' + lastQ), { cache:'no-store' })
+    if(!GYN_LB.plLoading[lastQ]){
+      GYN_LB.plLoading[lastQ] = true;
+      fetch(gynScriptUrl('action=getPlnenieAll&rok=' + GYN_APP.year + '&Q=' + lastQ + '&fullLine=1'), { cache:'no-store' })
         .then(function(r){ return r.json(); })
         .then(function(d){
-          delete GYN_APP.plLoading[lastQ];
+          delete GYN_LB.plLoading[lastQ];
           gynPreprocessData(d);
-          GYN_APP.plCache[lastQ] = d;
+          GYN_LB.plCache[lastQ] = d;
           gynCacheWrite(key, d);
           GYN_LB.freshFetched[lastQ] = true;   // toto je už čerstvý fetch
           if(GYN_APP.nav === 'leaderboard') gynLbRender();
         })
         .catch(function(){
-          delete GYN_APP.plLoading[lastQ];
+          delete GYN_LB.plLoading[lastQ];
           if(GYN_APP.nav === 'leaderboard'){ var e2 = gynLbBody(); if(e2) e2.innerHTML = gynLbCard(tabs + '<div style="padding:32px 0;text-align:center;color:#EF4444;font-size:13px">Chyba načítavania. Skús znova.</div>'); }
         });
     }
     return;
   }
-  GYN_APP.plCache[lastQ] = data;   // zapamätaj (aj keď prišlo z localStorage) — pre SWR porovnanie
+  GYN_LB.plCache[lastQ] = data;   // zapamätaj (aj keď prišlo z localStorage) — pre SWR porovnanie
   gynPreprocessData(data);
 
   // SWR — raz za session over čerstvé dáta pre lastQ; prekresli LEN ak sa naozaj zmenili
   // (inak žiadny flash). Tým sa rebríček spoľahlivo „dorovná" bez nekontrolovaných re-renderov.
-  if(!GYN_LB.freshFetched[lastQ] && !GYN_APP.plLoading[lastQ]){
+  if(!GYN_LB.freshFetched[lastQ] && !GYN_LB.plLoading[lastQ]){
     GYN_LB.freshFetched[lastQ] = true;
-    GYN_APP.plLoading[lastQ] = true;
-    fetch(gynScriptUrl('action=getPlnenieAll&rok=' + GYN_APP.year + '&Q=' + lastQ), { cache:'no-store' })
+    GYN_LB.plLoading[lastQ] = true;
+    fetch(gynScriptUrl('action=getPlnenieAll&rok=' + GYN_APP.year + '&Q=' + lastQ + '&fullLine=1'), { cache:'no-store' })
       .then(function(r){ return r.json(); })
       .then(function(d){
-        delete GYN_APP.plLoading[lastQ];
+        delete GYN_LB.plLoading[lastQ];
         if(!d) return;
         gynPreprocessData(d);
-        var changed = !gynCacheSame(GYN_APP.plCache[lastQ], d);
-        GYN_APP.plCache[lastQ] = d;
+        var changed = !gynCacheSame(GYN_LB.plCache[lastQ], d);
+        GYN_LB.plCache[lastQ] = d;
         gynCacheWrite(key, d);
         if(changed && GYN_APP.nav === 'leaderboard') gynLbRender();
       })
-      .catch(function(){ delete GYN_APP.plLoading[lastQ]; });
+      .catch(function(){ delete GYN_LB.plLoading[lastQ]; });
   }
 
-  var reps = GYN_STATE.repList || [];
+  var reps = gynLbScopeReps();
   if(!reps.length){
     el.innerHTML = gynLbCard(tabs + '<div style="padding:32px 0;text-align:center;color:#64748B;font-size:13px">Načítavam reprezentantov…</div>');
     return;
