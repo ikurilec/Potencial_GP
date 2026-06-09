@@ -2854,7 +2854,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.29.5';
+var APP_VERSION = '2.29.6';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -12609,8 +12609,11 @@ function gynLbRender(el){
   }
 
   var reps = gynLbScopeReps();
-  if(!reps.length){
-    el.innerHTML = gynLbCard(tabs + '<div style="padding:32px 0;text-align:center;color:#64748B;font-size:13px">Načítavam reprezentantov…</div>');
+  // Rebríček potrebuje PLNÝ zoznam repov (fullLine). Pri reprezentantovi je GYN_STATE.repList
+  // len jeho vlastný región — kým sa plný zoznam sťahuje, nezobrazuj čiastočný rebríček
+  // (blikne len prihlásený rep), radšej ukáž "Načítavam rebríček…".
+  if((!GYN_LB.repFetched && GYN_LB.repLoading) || !reps.length){
+    el.innerHTML = gynLbCard(tabs + '<div style="padding:32px 0;text-align:center;color:#64748B;font-size:13px">Načítavam rebríček…</div>');
     return;
   }
 
