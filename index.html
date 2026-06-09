@@ -2854,7 +2854,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.29.11';
+var APP_VERSION = '2.29.12';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8133,13 +8133,22 @@ var GYN_PRODUCT_LINIA = {
   'belara':'pill','daylette':'pill','daylla':'pill','drovelis':'pill',
   'evra':'pill','immunocaps':'pill','maitalon':'pill','mistra':'pill',
   'papilocare hgel':'pill',
-  // Patch (azalia presunutá z pill keďže je to patch produkt)
-  'azalia':'patch',
+  // Patch
   'globifer':'patch','lenzetto':'patch','levosert':'patch','levosert shi':'patch','levosert thi':'patch','lidbree':'patch',
   'ovosicare':'patch','ryeqo':'patch',
-  // Both lines
+  // Both lines (azalia: predaje sa presúvajú na patch repa, ale zobrazuje sa v oboch líniách — Plnenie aj poradie v Nastaveniach)
+  'azalia':'both',
   'escapelle':'both'
 };
+// Produkty, ktoré sa reprezentantovi danej línie zobrazia v Plnení AJ keď na ne nemá plán
+// ani predaje (napr. Azalia — patch produkt presunutý z pill; manažér ju vidí, nech ju vidí aj rep).
+var GYN_REP_ALWAYS_SHOW = { 'azalia': 'both' };
+function gynRepAlwaysShowProduct(pk, region){
+  var lin = GYN_REP_ALWAYS_SHOW[String(pk || '').trim().toLowerCase()];
+  if(!lin) return false;
+  var repLine = /^[A-Z]{2}PA$/i.test(String(region || '')) ? 'patch' : 'pill';
+  return lin === 'both' || lin === repLine;
+}
 // Produkty pre ktoré máme IQVIA trhový podiel dáta (klúč = lowercase názov produktu)
 var GYN_PHARMA_PRODUCTS = {
   // Patch
@@ -11910,7 +11919,7 @@ function gynPlnenieRenderRepDetail(el, data) {
   Object.keys(nameByKey).forEach(function(pk){
     var pPlan    = parseFloat(plan[pk]);          if(isNaN(pPlan))    pPlan = 0;
     var pPredaje = gynProductSalesTotalForKeys(predajeTotal, predajeByMonth, q, [pk]);
-    if(pPlan > 0 || pPredaje > 0) {
+    if(pPlan > 0 || pPredaje > 0 || gynRepAlwaysShowProduct(pk, region)) {
       products.push({ key: pk, name: nameByKey[pk], plan: pPlan, predaje: pPredaje });
     }
   });
@@ -12088,7 +12097,7 @@ function gynPlnenieRenderRep(el, user, data) {
   Object.keys(nameByKey).forEach(function(pk){
     var pPlan    = parseFloat(plan[pk]);          if(isNaN(pPlan))    pPlan = 0;
     var pPredaje = gynProductSalesTotalForKeys(predajeTotal, predajeByMonth, q, [pk]);
-    if(pPlan > 0 || pPredaje > 0) {
+    if(pPlan > 0 || pPredaje > 0 || gynRepAlwaysShowProduct(pk, region)) {
       products.push({ key: pk, name: nameByKey[pk], plan: pPlan, predaje: pPredaje });
     }
   });
