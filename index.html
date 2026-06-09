@@ -2854,7 +2854,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.28.8';
+var APP_VERSION = '2.28.9';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -16649,23 +16649,26 @@ function usageRenderRep(data, login) {
       var dd = new Date(day.ts);
       var dateLbl = SK_DAYS[dd.getDay()] + ' · ' + ('0'+dd.getDate()).slice(-2) + '.' + ('0'+(dd.getMonth()+1)).slice(-2) + '.';
       var dayTotal = 0;
-      day.list.forEach(function(s){ dayTotal += Math.max(0, Math.round((s.lastTs - s.startTs) / 1000)); });
+      day.list.forEach(function(s){ dayTotal += usageActiveDur(s); });
       html += '<div class="act-day">';
       html += '<div class="act-day-hdr"><span class="act-day-date">' + dateLbl + '</span>' +
-              '<span class="act-day-meta">' + day.list.length + '× otvoril · ' + usageFmtDur(dayTotal) + '</span></div>';
+              '<span class="act-day-meta">' + day.list.length + '× otvoril · ' + usageFmtDur(dayTotal) + ' aktívne</span></div>';
       // relácie v rámci dňa — najnovšia hore
       day.list.slice().reverse().forEach(function(s){
         var sd = new Date(s.startTs);
+        var ed = new Date(s.lastTs);
         var timeLbl = ('0'+sd.getHours()).slice(-2) + ':' + ('0'+sd.getMinutes()).slice(-2);
-        var totalDur = Math.max(0, Math.round((s.lastTs - s.startTs) / 1000));
+        var endLbl = ('0'+ed.getHours()).slice(-2) + ':' + ('0'+ed.getMinutes()).slice(-2);
+        var openDur = Math.max(0, Math.round((s.lastTs - s.startTs) / 1000)); // hodiny na stene (vrátane nečinnosti)
+        var totalDur = usageActiveDur(s);                                     // aktívny čas v sekciách
         var role = '';
         var m = /rola:\s*([^·]+)/i.exec(s.openDetail || '');
         if (m) role = m[1].trim();
         html += '<div class="act-sess">';
-        html += '<div class="act-sess-hdr"><span style="font-size:12px">🚀</span>' +
+        html += '<div class="act-sess-hdr" title="Appka otvorená ' + timeLbl + '–' + endLbl + ' (' + usageFmtDur(openDur) + ' vrátane nečinnosti)"><span style="font-size:12px">🚀</span>' +
                 '<span class="act-sess-time">' + timeLbl + '</span>' +
                 (role ? '<span class="act-sess-role">' + mgrEscape(role) + '</span>' : '') +
-                '<span class="act-sess-dur">' + usageFmtDur(totalDur) + '</span></div>';
+                '<span class="act-sess-dur">' + usageFmtDur(totalDur) + ' aktívne</span></div>';
         if (!s.steps.length) {
           html += '<div class="act-ses-close" style="color:#CBD5E1">len otvoril, nič nepozeral</div>';
         }
@@ -16723,6 +16726,14 @@ function usageSectionIcon(sec) {
   if (s.indexOf('Manažér') !== -1) return '📊';
   if (s.indexOf('Formulár') !== -1) return '📝';
   return '•';
+}
+
+// Aktívny čas relácie = súčet času stráveného v sledovaných sekciách (nie hodiny na stene).
+// Toto sedí s vypísanými krokmi — na rozdiel od „otvorená od–do", ktoré obsahuje aj nečinnosť.
+function usageActiveDur(s) {
+  var sum = 0;
+  (s && s.steps || []).forEach(function(ev){ if (ev.type === 'section_time' && ev.duration) sum += ev.duration; });
+  return sum;
 }
 
 // Poskladaj eventy do relácií. Nová relácia = otvorenie appky (app_open) alebo > 30 min ticha.
