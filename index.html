@@ -2854,7 +2854,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.29.9';
+var APP_VERSION = '2.29.10';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9888,6 +9888,10 @@ function gynPreloadAllPharma() {
 
 // ── PLNENIE ──
 function gynPlnenieShow(el, user) {
+  // Primárne otvorenie Plnenia (login / prepnutie tabu / zmena Q) → vždy povoľ animáciu barov,
+  // aj keby nejaký background tichý re-render predtým nechal aktívny suppress flag.
+  PL_SUPPRESS_COUNT_ANIM = false;
+  PL_SUPPRESS_COUNT_ANIM_UNTIL = 0;
   var q = GYN_APP.q;
   var cacheKey = gynPlnenieCacheKey(GYN_APP.year, q);
   var cached = GYN_APP.plCache[q] || gynCacheRead(cacheKey);
@@ -9911,11 +9915,8 @@ function gynPlnenieShow(el, user) {
       gynCacheWrite(cacheKey, data);
       if(GYN_APP.nav === 'plnenie' && GYN_APP.q === q) {
         if(!cached) gynPlnenieRender(el, user, data);  // prvé zobrazenie — s animáciou
-        else if(changed) setTimeout(function(){        // čerstvé dáta — ticho prepíš čísla (bez animácie/bliknutia)
-          if(GYN_APP.nav==='plnenie' && GYN_APP.q===q){
-            var el2 = document.getElementById('gyn-content');
-            if(el2) plnenieRunSilentRender(function(){ gynPlnenieRender(el2, user, data); });
-          }
+        else if(changed) setTimeout(function(){        // čerstvé dáta — ticho prepíš čísla (počká kým dobehne animácia)
+          if(GYN_APP.nav==='plnenie' && GYN_APP.q===q) gynPlnenieSilentRerender();
         }, 1000);
       }
     })
@@ -9932,6 +9933,10 @@ function gynPlnenieShow(el, user) {
 // pre dotiahnuté dáta na pozadí (predošlý Q, pharma signály), nech sa animácia neprehráva znova.
 function gynPlnenieSilentRerender() {
   if(GYN_APP.nav !== 'plnenie') return;
+  // Neprerušuj prebiehajúcu animáciu barov z prvého renderu — počkaj kým dobehne,
+  // potom ticho prepíš (trend/pharma signály, čerstvé čísla) bez opätovnej animácie.
+  var now = Date.now();
+  if(now < PL_BAR_ANIM_UNTIL){ setTimeout(gynPlnenieSilentRerender, (PL_BAR_ANIM_UNTIL - now) + 20); return; }
   var el = document.getElementById('gyn-content');
   var session = (typeof getSession === 'function') ? getSession() : null;
   var data = GYN_APP.plCache && GYN_APP.plCache[GYN_APP.q];
@@ -16515,6 +16520,8 @@ function lbRender(){
 
 var PL_SUPPRESS_COUNT_ANIM = false;
 var PL_SUPPRESS_COUNT_ANIM_UNTIL = 0;
+// Dokedy (timestamp) beží animácia barov — background tiché re-rendery počkajú, nech ju nezrušia.
+var PL_BAR_ANIM_UNTIL = 0;
 
 function plnenieSilentAnimationsActive() {
   return PL_SUPPRESS_COUNT_ANIM || Date.now() < PL_SUPPRESS_COUNT_ANIM_UNTIL;
@@ -22373,6 +22380,11 @@ function pharmaRender(code) {
 
 function animatePlanBars(container) {
   var bars = container.querySelectorAll('.bar-fill[data-bar-w]');
+  // Ak teraz reálne animujeme, zapamätaj koniec animácie — background tiché re-rendery
+  // (trend/pharma signály) počkajú, nech prvú animáciu neprerušia.
+  if(!plnenieSilentAnimationsActive() && bars.length){
+    PL_BAR_ANIM_UNTIL = Date.now() + 80 + bars.length * 60 + 1000;
+  }
   bars.forEach(function(bar, i) {
     var target = bar.getAttribute('data-bar-w');
     if (plnenieSilentAnimationsActive()) {
