@@ -2854,7 +2854,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.29.0';
+var APP_VERSION = '2.29.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8940,7 +8940,7 @@ function gynEnsureQuarterData(qq, onReady){
   if(GYN_APP.plCache && GYN_APP.plCache[qq]) return;
   var key = gynPlnenieCacheKey(GYN_APP.year, qq);
   var cached = (typeof gynCacheRead === 'function') ? gynCacheRead(key) : null;
-  if(cached){ gynPreprocessData(cached); GYN_APP.plCache[qq] = cached; if(onReady) onReady(); return; }
+  if(cached){ gynPreprocessData(cached); GYN_APP.plCache[qq] = cached; if(onReady) setTimeout(onReady, 0); return; }
   if(GYN_APP.plLoading[qq]) return;
   GYN_APP.plLoading[qq] = true;
   fetch(gynScriptUrl('action=getPlnenieAll&rok=' + GYN_APP.year + '&Q=' + qq), { cache:'no-store' })
@@ -9270,7 +9270,7 @@ function gynEnsureRepPharma(region, products, onReady){
   var year = GYN_APP.year, q = GYN_APP.q;
   var kvs = [gynPharmaKvartal(year, q)];
   if(q > 1) kvs.push(gynPharmaKvartal(year, q - 1));
-  var tasks = [], hydrated = false;
+  var tasks = [];
   products.forEach(function(p){
     if(p.isVirtual) return;
     var low = String(p.name || '').trim().toLowerCase();
@@ -9281,11 +9281,11 @@ function gynEnsureRepPharma(region, products, onReady){
       var key = prodLabel + '|' + oblast + '|' + kv;
       if(GYN_PHARMA_STATE.cache[key] || GYN_PHARMA_STATE.loading[key]) return;
       var persisted = (typeof gynCacheRead === 'function') ? gynCacheRead(gynPharmaCacheKey(prodLabel, oblast, kv)) : null;
-      if(persisted){ GYN_PHARMA_STATE.cache[key] = persisted; hydrated = true; return; }
+      if(persisted){ GYN_PHARMA_STATE.cache[key] = persisted; return; }  // render číta localStorage sám → netreba re-render
       tasks.push({ key:key, produkt:prodLabel, oblast:oblast, kvartal:kv });
     });
   });
-  if(!tasks.length){ if(hydrated && onReady) onReady(); return; }
+  if(!tasks.length) return;  // všetko už máme (cache/localStorage) — žiadny re-render
   var remaining = tasks.length, any = false;
   tasks.forEach(function(t){
     GYN_PHARMA_STATE.loading[t.key] = true;
@@ -9704,6 +9704,18 @@ function gynPlnenieShow(el, user) {
           '<div style="padding:32px 0;text-align:center;color:#EF4444;font-size:13px">Chyba načítavania. Skús znova.</div>';
       }
     });
+}
+
+// Tichý re-render plnenia z cache (bez ďalšieho fetchu a bez animácie) —
+// pre dotiahnuté dáta na pozadí (predošlý Q, pharma signály), nech sa animácia neprehráva znova.
+function gynPlnenieSilentRerender() {
+  if(GYN_APP.nav !== 'plnenie') return;
+  var el = document.getElementById('gyn-content');
+  var session = (typeof getSession === 'function') ? getSession() : null;
+  var data = GYN_APP.plCache && GYN_APP.plCache[GYN_APP.q];
+  if(!el || !session || !data) return;
+  if(typeof plnenieRunSilentRender === 'function') plnenieRunSilentRender(function(){ gynPlnenieRender(el, session, data); });
+  else gynPlnenieRender(el, session, data);
 }
 
 function gynPlnenieRender(el, user, data) {
@@ -11766,8 +11778,8 @@ function gynPlnenieRenderRepDetail(el, data) {
 
   animatePlanBars(el);
   gynRenderTrendBars('gyn-detail-trend-' + login, login);
-  if(q === plnenieCurrentQ() && q > 1) gynEnsureQuarterData(q - 1, function(){ if(GYN_APP.nav === 'plnenie') gynRenderContent(getSession() || {}); });
-  gynEnsureRepPharma(region, products, function(){ if(GYN_APP.nav === 'plnenie') gynRenderContent(getSession() || {}); });
+  if(q === plnenieCurrentQ() && q > 1) gynEnsureQuarterData(q - 1, gynPlnenieSilentRerender);
+  gynEnsureRepPharma(region, products, gynPlnenieSilentRerender);
   // Animovaný count-up pre celkové %
   if(repPct !== null) {
     var totEl = el.querySelector('.total-card .total-val');
@@ -11934,8 +11946,8 @@ function gynPlnenieRenderRep(el, user, data) {
   el.innerHTML = html;
   animatePlanBars(el);
   gynRenderTrendBars('gyn-rep-trend-' + login, login);
-  if(q === plnenieCurrentQ() && q > 1) gynEnsureQuarterData(q - 1, function(){ if(GYN_APP.nav === 'plnenie') gynRenderContent(getSession() || {}); });
-  gynEnsureRepPharma(region, products, function(){ if(GYN_APP.nav === 'plnenie') gynRenderContent(getSession() || {}); });
+  if(q === plnenieCurrentQ() && q > 1) gynEnsureQuarterData(q - 1, gynPlnenieSilentRerender);
+  gynEnsureRepPharma(region, products, gynPlnenieSilentRerender);
   if(repPct !== null) {
     var totEl = el.querySelector('.total-card .total-val');
     if(totEl && typeof plnenieCountUp === 'function') plnenieCountUp(totEl, repPct);
