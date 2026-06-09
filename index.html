@@ -1154,6 +1154,19 @@
   .act-tl-txt{font-size:12.5px;color:#1E293B;margin-top:1px}
   .act-tl-txt b{color:#0C1E35}
   .act-empty{text-align:center;color:#94A3B8;font-size:13px;padding:32px 16px}
+  /* ── Príbeh relácií ── */
+  .act-ses{border:1px solid #E8EDF3;border-radius:14px;padding:11px 13px;margin:9px 0;background:#fff;box-shadow:0 1px 4px rgba(12,30,53,.04)}
+  .act-ses-hdr{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+  .act-ses-hdr-ico{font-size:14px}
+  .act-ses-when{font-size:12px;color:#0C1E35;font-weight:700}
+  .act-ses-sub{font-size:10.5px;color:#94A3B8;font-weight:600;margin-top:1px}
+  .act-ses-dur{margin-left:auto;font-size:11px;color:#2563EB;font-weight:700;background:#EFF6FF;padding:3px 9px;border-radius:999px;white-space:nowrap}
+  .act-ses-step{display:flex;align-items:baseline;gap:8px;font-size:12.5px;color:#1E293B;padding:4px 0 4px 8px;border-left:2px solid #EEF2F7;margin-left:5px}
+  .act-ses-step b{color:#0C1E35}
+  .act-ses-step .s-det{color:#64748B}
+  .act-ses-step .s-time{margin-left:auto;font-size:11px;color:#64748B;font-weight:600;white-space:nowrap;background:#F1F5F9;padding:1px 7px;border-radius:999px}
+  .act-ses-act{color:#047857}
+  .act-ses-close{font-size:11.5px;color:#94A3B8;padding:6px 0 1px 8px;margin-left:5px;font-weight:600}
   .pl-q-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
   .pl-q-tab{padding:13px 4px;border:none;background:transparent;font-size:12px;font-weight:700;color:#64748B;cursor:pointer;border-radius:8px;font-family:inherit;transition:all .15s;text-align:center;-webkit-tap-highlight-color:transparent;position:relative}
   .pl-q-tab.active{background:#0C1E35;color:#fff}
@@ -2837,7 +2850,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.28.6';
+var APP_VERSION = '2.28.7';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -4066,11 +4079,23 @@ document.addEventListener('click', function(e){
   } catch(err){}
 }, true);
 
+// Koniec relácie — uzavri sekciu, zaznamenaj dôvod odchodu (minimalizácia / zatvorenie / odhlásenie) a flushni.
+// Dedupe: visibilitychange + pagehide sa môžu spustiť tesne po sebe → zapíšeme len jeden app_close.
+function usageMarkClose(reason) {
+  try {
+    if (USAGE._closedAt && (Date.now() - USAGE._closedAt) < 2000) { usageFlush(true); return; }
+    usageSectionClose();
+    usageTrack('app_close', '', reason || '');
+    USAGE._closedAt = Date.now();
+    usageFlush(true);
+  } catch(e){}
+}
 // Flush + uzavretie sekcie pri odchode / prepnutí appky do pozadia.
 window.addEventListener('visibilitychange', function(){
-  if (document.visibilityState === 'hidden') { usageSectionClose(); usageFlush(true); }
+  if (document.visibilityState === 'hidden') usageMarkClose('minimalizoval / prepol appku');
+  else USAGE._closedAt = 0; // vrátil sa späť — povoľ ďalší app_close
 });
-window.addEventListener('pagehide', function(){ usageSectionClose(); usageFlush(true); });
+window.addEventListener('pagehide', function(){ usageMarkClose('zatvoril appku'); });
 
 // Obnov nedoručený buffer z localStorage (appka spadla / zatvorila sa offline).
 (function usageRestoreBuffer(){
@@ -7755,6 +7780,7 @@ function confirmLogout() {
       fetch(url, { cache: 'no-store', keepalive: true }).catch(function(){});
     }
   } catch(e){}
+  try { usageMarkClose('odhlásil sa'); } catch(e){}  // zaznamenaj koniec relácie pred odhlásením
   clearSession();
   appReload();
 }
@@ -16427,6 +16453,18 @@ function usageOpenRepActivity(login) {
   usageStatsLoad(login);
 }
 
+// Šum v štatistike — kliknutia, ktoré nič nehovoria o tom, čo reprezentanta zaujíma:
+// kliknutia do vstupných polí (pole: …), výbery (výber: …) a navigačná „omáčka" (Späť, ×, Zavrieť).
+function usageIsNoiseLabel(label) {
+  var t = String(label || '').replace(/\s+/g, ' ').trim();
+  if (!t) return true;
+  if (/^(pole|výber)\s*:/i.test(t)) return true;                 // kliknutia do polí / výber v <select>
+  var nav = ['späť','← späť','‹ späť','×','✕','✖','x','zavrieť','zatvoriť','zrušiť','naspäť','hľadať'];
+  if (nav.indexOf(t.toLowerCase()) !== -1) return true;          // navigačné / zatváracie tlačidlá
+  if (/^[×✕✖x‹←»«]+$/.test(t)) return true;                      // čisté ikonky šípok / krížikov
+  return false;
+}
+
 // ── PER-REP deep dive ──
 function usageRenderRep(data, login) {
   var body = usageBody();
@@ -16459,7 +16497,7 @@ function usageRenderRep(data, login) {
       }
     }
     if (ev.type === 'drilldown' && ev.detail) { var dd0 = _cleanDetail(ev.detail); if (dd0) drillCount[dd0] = (drillCount[dd0]||0) + 1; }
-    if (ev.type === 'click' && ev.detail) { var cl0 = String(ev.detail).trim(); if (cl0) clickCount[cl0] = (clickCount[cl0]||0) + 1; }
+    if (ev.type === 'click' && ev.detail) { var cl0 = String(ev.detail).trim(); if (cl0 && !usageIsNoiseLabel(cl0)) clickCount[cl0] = (clickCount[cl0]||0) + 1; }
     if (!last || ev.ts > last) last = ev.ts;
     var d = new Date(ev.ts);
     var dow = (d.getDay() + 6) % 7; // pondelok=0
@@ -16557,7 +16595,7 @@ function usageRenderRep(data, login) {
   var clickKeys = Object.keys(clickCount).sort(function(a,b){ return clickCount[b] - clickCount[a]; }).slice(0, 12);
   if (clickKeys.length) {
     var maxC = Math.max.apply(null, clickKeys.map(function(k){ return clickCount[k]; }).concat([1]));
-    html += '<div class="act-section-lbl">👆 Najčastejšie ťukania</div>';
+    html += '<div class="act-section-lbl">👆 Najčastejšie akcie</div>';
     clickKeys.forEach(function(k){
       var w = Math.round((clickCount[k] / maxC) * 100);
       html += '<div class="act-bar-row"><div class="act-bar-lbl">' + mgrEscape(k) + '</div>' +
@@ -16584,17 +16622,47 @@ function usageRenderRep(data, login) {
   }
   html += '</div></div>';
 
-  // timeline poslednej aktivity
-  html += '<div class="act-section-lbl">Posledná aktivita</div>';
-  html += '<div class="act-tl">';
-  var recent = events.slice(-40).reverse();
-  recent.forEach(function(ev){
-    var d = new Date(ev.ts);
-    var when = ('0'+d.getDate()).slice(-2) + '.' + ('0'+(d.getMonth()+1)).slice(-2) + '. ' + ('0'+d.getHours()).slice(-2) + ':' + ('0'+d.getMinutes()).slice(-2);
-    var txt = usageEventText(ev);
-    html += '<div class="act-tl-item"><div class="act-tl-time">' + when + '</div><div class="act-tl-txt">' + txt + '</div></div>';
-  });
-  html += '</div>';
+  // ── Príbeh relácií — čo reprezentant reálne robil, krok po kroku ──
+  // Zoskupíme eventy do relácií (každé otvorenie appky = nová relácia; dlhé ticho tiež).
+  // Z každej relácie poskladáme čitateľný sled: otvoril → bol v sekcii X s → … → odišiel.
+  html += '<div class="act-section-lbl">🧭 Priebeh relácií</div>';
+  var sessions = usageBuildSessions(events);
+  if (!sessions.length) {
+    html += '<div class="act-empty" style="padding:18px 12px">Žiadne zaznamenané relácie za toto obdobie.</div>';
+  } else {
+    sessions.slice(-10).reverse().forEach(function(s){
+      var sd = new Date(s.startTs);
+      var dayLbl = ('0'+sd.getDate()).slice(-2) + '.' + ('0'+(sd.getMonth()+1)).slice(-2) + '.';
+      var timeLbl = ('0'+sd.getHours()).slice(-2) + ':' + ('0'+sd.getMinutes()).slice(-2);
+      var totalDur = Math.max(0, Math.round((s.lastTs - s.startTs) / 1000));
+      var role = '';
+      var m = /rola:\s*([^·]+)/i.exec(s.openDetail || '');
+      if (m) role = m[1].trim();
+      html += '<div class="act-ses">';
+      html += '<div class="act-ses-hdr"><span class="act-ses-hdr-ico">🚀</span>' +
+              '<div><div class="act-ses-when">' + dayLbl + ' ' + timeLbl + '</div>' +
+              (role ? '<div class="act-ses-sub">' + mgrEscape(role) + '</div>' : '') + '</div>' +
+              '<span class="act-ses-dur">' + usageFmtDur(totalDur) + '</span></div>';
+      if (!s.steps.length) {
+        html += '<div class="act-ses-close" style="color:#CBD5E1">len otvoril, nič nepozeral</div>';
+      }
+      s.steps.forEach(function(ev){
+        if (ev.type === 'action') {
+          html += '<div class="act-ses-step act-ses-act">✅ <span>' + mgrEscape(ev.detail || 'akcia') + '</span></div>';
+        } else { // section_time
+          var detTxt = _cleanDetail(ev.detail);
+          html += '<div class="act-ses-step">' + usageSectionIcon(ev.section) +
+                  ' <span><b>' + mgrEscape(ev.section || '—') + '</b>' +
+                  (detTxt ? ' <span class="s-det">· ' + mgrEscape(detTxt) + '</span>' : '') + '</span>' +
+                  '<span class="s-time">' + usageFmtDur(ev.duration) + '</span></div>';
+        }
+      });
+      if (s.close) {
+        html += '<div class="act-ses-close">⏹ ' + mgrEscape(s.close.detail || 'ukončil reláciu') + '</div>';
+      }
+      html += '</div>';
+    });
+  }
 
   body.innerHTML = html;
   // animuj bary + doplň avatar
@@ -16612,8 +16680,47 @@ function usageEventText(ev) {
     case 'drilldown':    return '🔎 <b>' + sec + '</b>' + (det ? ' · ' + det : '');
     case 'action':       return '✅ ' + (det || 'akcia') + (sec ? ' <span style="color:#94A3B8">· ' + sec + '</span>' : '');
     case 'click':        return '👆 ' + (det || 'klik') + (sec ? ' <span style="color:#94A3B8">· ' + sec + '</span>' : '');
+    case 'app_close':    return '⏹ ' + (det || 'ukončil reláciu');
     default:             return mgrEscape(ev.type) + (det ? ' · ' + det : '');
   }
+}
+
+// Ikona pre sekciu — vizuálne odlíši kroky v priebehu relácie.
+function usageSectionIcon(sec) {
+  var s = String(sec || '');
+  if (s.indexOf('Trhový') !== -1)  return '📈';
+  if (s.indexOf('Plnenie') !== -1) return '💊';
+  if (s.indexOf('Rebríček') !== -1) return '🏆';
+  if (s.indexOf('História') !== -1) return '📋';
+  if (s.indexOf('Lekárne') !== -1) return '🏥';
+  if (s.indexOf('Karta') !== -1)   return '👤';
+  if (s.indexOf('Avatar') !== -1)  return '🎭';
+  if (s.indexOf('Manažér') !== -1) return '📊';
+  if (s.indexOf('Formulár') !== -1) return '📝';
+  return '•';
+}
+
+// Poskladaj eventy do relácií. Nová relácia = otvorenie appky (app_open) alebo > 30 min ticha.
+// V každej relácii zbierame len zmysluplné kroky: section_time (sekcia + čas) a action (uložené záznamy).
+function usageBuildSessions(events) {
+  var sessions = [];
+  var cur = null;
+  var GAP = 30 * 60 * 1000; // 30 minút bez aktivity → berieme ako novú reláciu
+  (events || []).forEach(function(ev){
+    var t = Date.parse(ev.ts);
+    if (!isFinite(t)) return;
+    if (ev.type === 'app_open' || !cur || (t - cur.lastTs) > GAP) {
+      cur = { startTs: t, lastTs: t, openDetail: (ev.type === 'app_open' ? ev.detail : ''), steps: [], close: null };
+      sessions.push(cur);
+    }
+    cur.lastTs = t;
+    if (ev.type === 'app_open')  { if (ev.detail) cur.openDetail = ev.detail; return; }
+    if (ev.type === 'app_close') { cur.close = ev; return; }
+    if (ev.type === 'section_time' && ev.duration) { cur.steps.push(ev); return; }
+    if (ev.type === 'action') { cur.steps.push(ev); return; }
+    // section_open / drilldown / click sa do príbehu nedávajú — section_time pokrýva sekcie aj produkt
+  });
+  return sessions;
 }
 
 function _animPlQ(elId, dir) {
