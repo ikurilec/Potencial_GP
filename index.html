@@ -2854,7 +2854,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.29.6';
+var APP_VERSION = '2.29.7';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9521,6 +9521,8 @@ function gynEnter(user) {
   gynApplyDefaultNav(user);   // úvodná obrazovka podľa nastavení používateľa (default = Plnenie)
   gynRenderContent(user);
   setTimeout(function(){ gynLoadRepList(user); }, 600);
+  // Úplne prvý login → potlač WN changelog backlog, nech nový rep vidí len Satori uvítací overlay
+  wnSuppressBacklogForFirstLogin();
   // Satori → WN → milestone cascade (rovnaký pattern ako Golem login)
   var isGynManager = user.role !== 'gyn-rep';
   setTimeout(function(){
@@ -13992,6 +13994,18 @@ function wnGetUnseen(){
   return WN_HISTORY.filter(function(it){
     try { return !localStorage.getItem(it.key); } catch(e){ return true; }
   });
+}
+
+// Pri ÚPLNE prvom prihlásení (nový reprezentant — nikdy nevidel Satori ani žiadnu WN
+// novinku) označí celý doterajší WN changelog ako videný, nech sa mu nezobrazí 5 kariet
+// histórie zmien. Nechá len Satori uvítací overlay. Budúce NOVÉ WN položky (pridané po
+// tomto prvom prihlásení) sa mu už zobrazia normálne, lebo ich kľúče tu nebudú označené.
+function wnSuppressBacklogForFirstLogin(){
+  try {
+    if (localStorage.getItem(SATORI_KEY)) return;                  // už onboardnutý → nie je to prvé prihlásenie
+    if (wnGetUnseen().length !== WN_HISTORY.length) return;        // niečo už videl → existujúci používateľ
+    WN_HISTORY.forEach(function(it){ wnMarkSeen(it.key); });
+  } catch(e){}
 }
 
 function wnShouldShow(){
