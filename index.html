@@ -2854,7 +2854,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.29.7';
+var APP_VERSION = '2.29.8';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9707,8 +9707,12 @@ function gynApplyDefaultNav(user) {
 function gynNavTo(tab) {
   // Aktivita (usage analytics) je iba pre admina
   if (tab === 'activity') { var _gs = getSession(); if (!_gs || _gs.role !== 'admin') return; }
+  var prevNav = GYN_APP.nav;
   GYN_APP.nav = tab;
   if(tab === 'leaderboard'){
+    // Animáciu stupienkov prehraj len pri ČERSTVOM otvorení (z iného tabu) — nie pri
+    // opakovanom kliknutí na už otvorený rebríček ani pri dátových re-renderoch.
+    if(prevNav !== 'leaderboard') GYN_LB._animated = false;
     GYN_LB.showConfetti = true;
     // Okno na konfety — drž ~2,5 s, nech ich stihne odpáliť aj prípadný SWR re-render po načítaní
     clearTimeout(GYN_LB._confWinT);
@@ -12479,7 +12483,7 @@ function gynPlnenieRenderMgr(el, user, data) {
 // posledného ukončeného kvartálu (rovnaká logika ako Golem, vrátane admin
 // schválenia Q cez setConfig key lb_approved_q na gyn backende).
 // ═══════════════════════════════════════════════════════════════════
-var GYN_LB = { cat: 'all', approvedQ: null, qFetched: false, showConfetti: false, freshFetched: {}, plCache: {}, plLoading: {}, repList: [], repLoading: false, repFetched: false, _confT: null, _confWinT: null };
+var GYN_LB = { cat: 'all', approvedQ: null, qFetched: false, showConfetti: false, freshFetched: {}, plCache: {}, plLoading: {}, repList: [], repLoading: false, repFetched: false, _confT: null, _confWinT: null, _animated: false };
 
 function gynLbLastCompletedQ(){
   if(GYN_LB.approvedQ !== null) return GYN_LB.approvedQ;
@@ -12671,7 +12675,7 @@ function gynLbRender(el){
         (medal ? '<span class="lb-p-medal">' + medal + '</span>' : '') +
         '<div class="lb-p-name">' + gynEsc(lastName) + '</div>' +
         '<div class="lb-p-count lb-count-pct ' + cls + '">' + pctLbl(rep.pct) + lbMoveHtml(moveMap && moveMap[rep.username]) + '</div>' +
-        '<div class="lb-p-block"></div>' +
+        '<div class="lb-p-block' + (GYN_LB._animated ? ' grown' : '') + '"></div>' +
       '</div>';
   });
   podiumHtml += '</div>';
@@ -12713,14 +12717,18 @@ function gynLbRender(el){
     clearTimeout(GYN_LB._confT);
     GYN_LB._confT = setTimeout(function(){ if(GYN_APP.nav === 'leaderboard') lbConfetti(); }, 400);
   }
-  // Animácia stupienkov
-  requestAnimationFrame(function(){
+  // Animácia stupienkov — len pri čerstvom otvorení rebríčka. Pri opakovaných
+  // re-renderoch/kliknutiach sú stupienky vykreslené rovno v stave 'grown' (bez animácie).
+  if(!GYN_LB._animated){
+    GYN_LB._animated = true;
     requestAnimationFrame(function(){
-      el.querySelectorAll('.lb-p-block').forEach(function(b, i){
-        setTimeout(function(){ b.classList.add('grown'); }, i * 80);
+      requestAnimationFrame(function(){
+        el.querySelectorAll('.lb-p-block').forEach(function(b, i){
+          setTimeout(function(){ b.classList.add('grown'); }, i * 80);
+        });
       });
     });
-  });
+  }
 }
 
 // Admin schváli nový Q pre gyn rebríček (zápis cez gyn setConfig)
