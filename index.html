@@ -2854,7 +2854,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.29.10';
+var APP_VERSION = '2.29.11';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11401,6 +11401,19 @@ var GYN_LK_MES = ['','Jan','Feb','Mar','Apr','Máj','Jún','Júl','Aug','Sep','O
 
 function gynLkMonthKey(){ var d=new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); }
 function gynLkProdRank(p){ var o={'Escapelle':0,'Globifer':1}; return (p in o)?o[p]:9; }
+// Línia aktuálne zobrazeného repa podľa regiónu (XXPI = pill, XXPA = patch).
+function gynLkRepLine(){
+  var r = String(GYN_LK.region||'').trim().toUpperCase();
+  if(/PA$/.test(r)) return 'patch';
+  if(/PI$/.test(r)) return 'pill';
+  return null;
+}
+// Reťazcová lekáreň (Dr. Max / BENU) sa v produktových sekciách skrýva, vo "Všetky" sa zobrazuje.
+function gynLkIsChainHidden(lekaren, tab){
+  if(tab === 'all') return false;
+  var f = (typeof lkChainNameFlags === 'function') ? lkChainNameFlags(lekaren) : null;
+  return !!(f && (f.drMax || f.benu));
+}
 
 function gynLkShow(containerId, login, region){
   GYN_LK.login = String(login||'').toLowerCase();
@@ -11545,6 +11558,14 @@ function gynLkShellHtml(){
 
 // Zoskupí riadky na lekárne; každá má pod-záznamy per produkt (months, reaktivácia, oslovenie, dvojička).
 function gynLkBuild(rows){
+  // Filter podľa línie repa: pill rep vidí len Escapelle (both), patch rep Globifer (patch) + Escapelle.
+  var repLine = gynLkRepLine();
+  if(repLine){
+    rows = (rows||[]).filter(function(r){
+      var lin = (typeof GYN_PRODUCT_LINIA !== 'undefined') ? GYN_PRODUCT_LINIA[String(r.produkt||'').trim().toLowerCase()] : null;
+      return !lin || lin === 'both' || lin === repLine;
+    });
+  }
   var by = {}, products = [];
   rows.forEach(function(r){
     var prod = r.produkt;
@@ -11603,7 +11624,7 @@ function gynLkRender(){
   // počty: produkt = reaktivácia (neoslovené); všetky = počet lekární
   var counts = {};
   products.forEach(function(p){
-    counts[p] = data.pharmacies.filter(function(ph){ var pe=ph.prods[p]; return pe && pe.isReaktivacia && !pe.oslovena; }).length;
+    counts[p] = data.pharmacies.filter(function(ph){ var pe=ph.prods[p]; return pe && pe.isReaktivacia && !pe.oslovena && !gynLkIsChainHidden(ph.lekaren, p); }).length;
   });
   counts.all = data.pharmacies.length;
 
@@ -11631,7 +11652,7 @@ function gynLkRender(){
     shown = data.pharmacies.slice();
   } else {
     var p = GYN_LK.tab;
-    shown = data.pharmacies.filter(function(ph){ var pe=ph.prods[p]; return pe && pe.isReaktivacia; });
+    shown = data.pharmacies.filter(function(ph){ var pe=ph.prods[p]; return pe && pe.isReaktivacia && !gynLkIsChainHidden(ph.lekaren, p); });
   }
   if(q) shown = shown.filter(function(ph){
     return ph.lekaren.toLowerCase().indexOf(q)!==-1 || ph.mesto.toLowerCase().indexOf(q)!==-1 || ph.okres.toLowerCase().indexOf(q)!==-1;
