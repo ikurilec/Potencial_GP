@@ -2854,7 +2854,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.29.12';
+var APP_VERSION = '2.29.13';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6124,10 +6124,20 @@ function settingsProdOrderProducts(){
   var s = (typeof getSession === 'function') ? getSession() : null;
   var line = (s && s.line === 'gyn') ? 'gyn' : 'gp';
   var lineFilter = (line === 'gyn' && s && s.role === 'gyn-rep') ? gynSettingsProductOrderLine(s) : null;
+  // Plán prihláseného gyn repa (na produkt) — aby default poradie v Nastaveniach sedelo s Plnením,
+  // kde sa produkty BEZ plánu radia na koniec (napr. Azalia).
+  var gynPlanMap = null;
+  if(line === 'gyn' && s && s.username && typeof GYN_APP !== 'undefined' && GYN_APP.plCache){
+    var _gd = GYN_APP.plCache[GYN_APP.q];
+    if(_gd && _gd.plan) gynPlanMap = _gd.plan[s.username] || _gd.plan[String(s.username).toLowerCase()] || null;
+  }
+  function gynItemHasPlan(key){ return !!(gynPlanMap && (parseFloat(gynPlanMap[key]) || 0) > 0); }
   var seen = {}, items = [];
   (ctx.raw || []).forEach(function(p){
     var k = ctx.norm(p);
     if(!k || seen[k]) return; seen[k] = 1;
+    // Skryté produkty (napr. Lenzetto) nezobrazuj ani v Nastaveniach — tak ako v Plnení (gynEnhanceProductsForDisplay).
+    if(line === 'gyn' && typeof GYN_HIDE_PRODUCTS !== 'undefined' && GYN_HIDE_PRODUCTS[k]) return;
     var itemLine = (line === 'gyn' && typeof GYN_PRODUCT_LINIA !== 'undefined') ? GYN_PRODUCT_LINIA[k] : null;
     if(lineFilter && itemLine && itemLine !== lineFilter && itemLine !== 'both') return;
     items.push({ key: k, label: ctx.label(p), _i: items.length });
@@ -6149,9 +6159,14 @@ function settingsProdOrderProducts(){
     var ar = prodOrderDefaultRank(a.key, line, a._i);   // oba default → ako v Plnení
     var br = prodOrderDefaultRank(b.key, line, b._i);
     if(ar[0] !== br[0]) return ar[0] - br[0];
-    // Gyn: v rámci rovnakého tieru radí Plnenie abecedne (gynEnhanceProductsForDisplay),
-    // nech default poradie v Nastaveniach sedí presne s Plnením (až kým si ho user nezmení).
-    if(line === 'gyn') return String(a.label).localeCompare(String(b.label));
+    // Gyn: v rámci rovnakého tieru radí Plnenie najprv produkty S PLÁNOM, potom bez plánu,
+    // a v rámci toho abecedne (gynEnhanceProductsForDisplay) — nech default poradie v
+    // Nastaveniach sedí presne s Plnením (až kým si ho user nezmení). Napr. Azalia bez plánu → dole.
+    if(line === 'gyn'){
+      var ap = gynItemHasPlan(a.key), bp = gynItemHasPlan(b.key);
+      if(ap !== bp) return ap ? -1 : 1;
+      return String(a.label).localeCompare(String(b.label));
+    }
     return ar[1] - br[1];
   });
   return items;
