@@ -2854,7 +2854,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.29.8';
+var APP_VERSION = '2.29.9';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9602,7 +9602,19 @@ function gynLoadRepList(user) {
         });
         // Re-render iba ak repList bol prázdny (manažér/rebríček potrebuje zoznam repov na prvý render)
         // Inak stačí refresh avatarov — nespúšťame zbytočnú druhú animáciu
-        if((GYN_APP.nav === 'plnenie' || GYN_APP.nav === 'leaderboard') && wasEmpty) gynRenderContent(user);
+        if(GYN_APP.nav === 'leaderboard' && wasEmpty) gynRenderContent(user);
+        else if(GYN_APP.nav === 'plnenie' && wasEmpty) {
+          // Ak je Plnenie už vyrenderované s dátami (rep z cache — animácia barov z prvého
+          // renderu práve beží), NEPREKRESĽUJ DOM (zrušilo by/reštartovalo animáciu) — len
+          // osvež avatary in-place. Ak ešte vidno len "Načítavam..." (manažér potreboval
+          // repList), sprav prvý plný render — ten nech animuje normálne.
+          var elP = document.getElementById('gyn-content');
+          if(elP && elP.querySelector('.mgr-plnenie-detail, .pl-sum-big')) {
+            if(typeof avatarRefreshAllInDom === 'function') avatarRefreshAllInDom();
+          } else {
+            gynRenderContent(user);
+          }
+        }
         else if(typeof avatarRefreshAllInDom === 'function') avatarRefreshAllInDom();
       }
     }).catch(function(){});
@@ -9797,12 +9809,15 @@ function gynPreloadAllQuarters() {
         var changed = !gynCacheSame(GYN_APP.plCache[q], data);
         GYN_APP.plCache[q] = data;
         gynCacheWrite(cacheKey, data);
-        // Re-render aktuálneho Q ak ešte nebol vyrenderovaný (loading text vidno)
+        // Re-render aktuálneho Q keď dorazia čerstvé dáta na pozadí.
+        // Ak ešte vidno len "Načítavam..." (nič nevyrenderované) → prvý render s animáciou;
+        // inak prekresli TICHO (len prepíš čísla, bez opätovnej animácie barov).
         if(GYN_APP.q === q && GYN_APP.nav === 'plnenie' && changed) {
           var el = document.getElementById('gyn-content');
           var session = getSession();
-          if(el && session && el.querySelector && !el.querySelector('.pl-sum-big')) {
-            gynPlnenieRender(el, session, data);
+          if(el && session) {
+            if(!el.querySelector('.mgr-plnenie-detail, .pl-sum-big')) gynPlnenieRender(el, session, data);
+            else gynPlnenieSilentRerender();
           }
         }
         // Update všetkých trend grafov (môžu mať nové dáta z práve dohratého Q)
