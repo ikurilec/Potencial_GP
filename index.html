@@ -8134,6 +8134,67 @@ function gynPreferPackHintKeys(productKeys) {
   if(gynIsPackOnlyKeys(keys)) return true;
   return keys.every(function(k){ return k === 'papilocare hgel' || k === 'immunocaps'; });
 }
+var GYN_CUMULATIVE_Q_PRODUCTS = { 'papilocare hgel': 1, 'immunocaps': 1 };
+function gynNormalizeProductKeys(keys) {
+  return (keys || []).map(function(k){ return String(k || '').trim().toLowerCase(); }).filter(Boolean);
+}
+function gynAreCumulativeKeys(keys) {
+  var arr = gynNormalizeProductKeys(keys);
+  return arr.length > 0 && arr.every(function(k){ return GYN_CUMULATIVE_Q_PRODUCTS[k] === 1; });
+}
+function gynRawSumMonthForKeys(predajeByMonth, month, keys) {
+  var md = (predajeByMonth && predajeByMonth[month]) || {};
+  return gynNormalizeProductKeys(keys).reduce(function(sum, pk){ return sum + (parseFloat(md[pk]) || 0); }, 0);
+}
+function gynLatestCumulativeMonth(predajeByMonth, q, keys) {
+  if(!gynAreCumulativeKeys(keys)) return null;
+  var months = plnenieQuarterMonths(q || GYN_APP.q);
+  var latest = null;
+  months.forEach(function(m){
+    if(gynRawSumMonthForKeys(predajeByMonth, m, keys) > 0) latest = m;
+  });
+  return latest;
+}
+function gynCumulativePeriodMonths(q, latestMonth) {
+  if(!latestMonth) return [];
+  return plnenieQuarterMonths(q || GYN_APP.q).filter(function(m){ return m <= latestMonth; });
+}
+function gynCumulativeDisplayMonth(q) {
+  var months = plnenieQuarterMonths(q || GYN_APP.q);
+  return months.length ? months[0] : null;
+}
+function gynCumulativePeriodLabel(q, latestMonth) {
+  var months = gynCumulativePeriodMonths(q, latestMonth);
+  return months.map(function(m){ return PL_MONTH_LABELS[m] || ('M' + m); }).join(' + ');
+}
+function gynCumulativePredictionParts(q, year, predajeByMonth, keys, now) {
+  if(!gynAreCumulativeKeys(keys)) return null;
+  var latest = gynLatestCumulativeMonth(predajeByMonth, q, keys);
+  if(!latest) return [];
+  var d = now || new Date();
+  var curQ = Math.ceil((d.getMonth() + 1) / 3);
+  if(q !== curQ) return [];
+  return gynCumulativePeriodMonths(q, latest).map(function(m){ return { month: m, mode: 'full' }; });
+}
+function gynCumulativeActualForParts(predajeByMonth, q, keys) {
+  if(!gynAreCumulativeKeys(keys)) return null;
+  var latest = gynLatestCumulativeMonth(predajeByMonth, q, keys);
+  return latest ? gynRawSumMonthForKeys(predajeByMonth, latest, keys) : 0;
+}
+function gynProductSalesTotalForKeys(predajeTotal, predajeByMonth, q, keys) {
+  if(gynAreCumulativeKeys(keys)) return gynCumulativeActualForParts(predajeByMonth, q || GYN_APP.q, keys) || 0;
+  return gynNormalizeProductKeys(keys).reduce(function(sum, pk){
+    return sum + (parseFloat(predajeTotal && predajeTotal[pk]) || 0);
+  }, 0);
+}
+function gynCumulativeDisplayPlanForMonth(year, q, qPlanTotal, month, predajeByMonth, keys) {
+  if(!gynAreCumulativeKeys(keys)) return null;
+  var latest = gynLatestCumulativeMonth(predajeByMonth, q, keys);
+  var anchor = gynCumulativeDisplayMonth(q);
+  if(!latest || month !== anchor) return 0;
+  var monthlyPlans = plnenieMonthlyPlans(year, q, qPlanTotal);
+  return gynCumulativePeriodMonths(q, latest).reduce(function(sum, m){ return sum + (monthlyPlans[m] || 0); }, 0);
+}
 // Stav pharma overlayu
 var GYN_PHARMA_STATE = { open: false, produkt: null, oblast: null, kvartal: null, cache: {}, loading: {}, repLogin: null };
 
@@ -8669,7 +8730,11 @@ function gynDistrictActualForKeys(data, login, productKeys, okres) {
 
 function gynPatientCurrentLabelForKeys(predajeByMonth, productKeys, q) {
   var months = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[q] || [];
-  var keys = (productKeys || []).map(function(k){ return String(k || '').trim().toLowerCase(); });
+  var keys = gynNormalizeProductKeys(productKeys);
+  if(gynAreCumulativeKeys(keys)) {
+    var latest = gynLatestCumulativeMonth(predajeByMonth, q, keys);
+    return latest ? gynCumulativePeriodLabel(q, latest) : 'aktuálne';
+  }
   var used = [];
   months.forEach(function(m){
     var total = 0;
@@ -8694,6 +8759,12 @@ function gynSumSalesForKeys(predajeTotal, keys) {
 }
 
 function gynSumMonthForKeys(predajeByMonth, month, keys) {
+  if(gynAreCumulativeKeys(keys)) {
+    var q = Math.ceil((parseInt(month, 10) || 0) / 3);
+    var latest = gynLatestCumulativeMonth(predajeByMonth, q, keys);
+    var anchor = gynCumulativeDisplayMonth(q);
+    return latest && month === anchor ? gynRawSumMonthForKeys(predajeByMonth, latest, keys) : 0;
+  }
   var md = (predajeByMonth && predajeByMonth[month]) || {};
   return (keys || []).reduce(function(sum, pk){ return sum + (parseFloat(md[pk]) || 0); }, 0);
 }
@@ -8732,12 +8803,12 @@ function gynPatchFirstOrder(productName) {
   return 0;
 }
 
-function gynEnhanceProductsForDisplay(products, plan, predajeTotal, linia) {
+function gynEnhanceProductsForDisplay(products, plan, predajeTotal, linia, predajeByMonth, q) {
   var list = (products || []).filter(function(p){ return !GYN_HIDE_PRODUCTS[p.key]; });
   GYN_VIRTUAL_PRODUCTS.forEach(function(vp){
     if(vp.linia && linia && vp.linia !== linia) return;
     var pPlan = gynSumPlanForKeys(plan, vp.products);
-    var pSales = gynSumSalesForKeys(predajeTotal, vp.products);
+    var pSales = gynProductSalesTotalForKeys(predajeTotal, predajeByMonth, q || GYN_APP.q, vp.products);
     if(pPlan > 0 || pSales > 0) {
       list.unshift({
         key: vp.key,
@@ -8871,9 +8942,11 @@ function gynColorClass(pct) {
   if(pct >= 70)  return 'o';
   return 'r';
 }
-function gynBuildRepAgg(username, data) {
+function gynBuildRepAgg(username, data, qOverride) {
   var plan  = (data.plan    && data.plan[username])    || {};
   var pred  = (data.predaje && data.predaje[username]) || { total:{}, byMonth:{} };
+  var byMonth = pred.byMonth || {};
+  var qForSales = qOverride || GYN_APP.q;
   // Zjednotenie produktov z planu a predajov — aby sa predaje rátali aj keď plan je prázdny
   var nameByKey = {};
   (data.planProducts    || []).forEach(function(p){ nameByKey[p.trim().toLowerCase()] = p; });
@@ -8882,7 +8955,7 @@ function gynBuildRepAgg(username, data) {
   Object.keys(nameByKey).forEach(function(pk) {
     var pName = nameByKey[pk];
     var pv  = plan[pk] || 0;
-    var sv  = (pred.total && pred.total[pk]) || 0;
+    var sv  = gynProductSalesTotalForKeys(pred.total || {}, byMonth, qForSales, [pk]);
     // Escapelle/Daylla → nepočítať do totalov, iba zobraziť v per-produkt sekcii
     if(pv > 0 && !GYN_EXCLUDE_FROM_TOTALS[pk]) { totalPlan += pv; totalPred += sv; }
     if(pv > 0 || sv > 0) {
@@ -8909,16 +8982,18 @@ function gynPredictionBasisForRep(login, data, q, year, productKey) {
     : gynPredictionProductKeys(data).filter(function(pk){
         return !GYN_EXCLUDE_FROM_TOTALS[pk] && (parseFloat(plan[pk]) || 0) > 0;
       });
-  var parts = plneniePredictionMonthParts(q, year, byMonth, keys);
   var actual = 0;
   var planBasis = 0;
   keys.forEach(function(pk){
     var pv = parseFloat(plan[pk]) || 0;
     if (pv <= 0) return;
-    actual += plnenieActualForPredictionParts(byMonth, parts, pk);
+    var oneKey = [pk];
+    var parts = plneniePredictionMonthParts(q, year, byMonth, oneKey);
+    var cumActual = gynCumulativeActualForParts(byMonth, q, oneKey);
+    actual += cumActual !== null ? cumActual : plnenieActualForPredictionParts(byMonth, parts, pk);
     planBasis += plneniePlanForPredictionParts(year, q, pv, parts);
   });
-  return { actual: actual, planBasis: planBasis, parts: parts };
+  return { actual: actual, planBasis: planBasis, parts: plneniePredictionMonthParts(q, year, byMonth, keys) };
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -9748,13 +9823,17 @@ function gynRenderTrendBars(elId, login) {
     var byMonth = (cached.predaje && cached.predaje[repLogin] && cached.predaje[repLogin].byMonth) || {};
     var rPlan = (cached.plan && cached.plan[repLogin]) || {};
     var done = 0;
-    doneM.forEach(function(m){
-      var md = byMonth[m] || {};
-      Object.keys(md).forEach(function(pk){
-        if(GYN_EXCLUDE_FROM_TOTALS[pk]) return;
-        if(!(parseFloat(rPlan[pk]) > 0)) return;
-        done += parseFloat(md[pk]) || 0;
-      });
+    Object.keys(rPlan).forEach(function(pk){
+      if(GYN_EXCLUDE_FROM_TOTALS[pk]) return;
+      if(!(parseFloat(rPlan[pk]) > 0)) return;
+      if(gynAreCumulativeKeys([pk])) {
+        done += gynCumulativeActualForParts(byMonth, q, [pk]) || 0;
+      } else {
+        doneM.forEach(function(m){
+          var md = byMonth[m] || {};
+          done += parseFloat(md[pk]) || 0;
+        });
+      }
     });
     return done;
   }
@@ -9766,7 +9845,7 @@ function gynRenderTrendBars(elId, login) {
     if(cached) {
       if(login) {
         // Per-rep
-        var agg = gynBuildRepAgg(login, cached);
+        var agg = gynBuildRepAgg(login, cached, q);
         pct = agg.pct;
         planEUR = agg.totalPlan;
         predajeDone = computeRepDone(cached, login, q);
@@ -9774,7 +9853,7 @@ function gynRenderTrendBars(elId, login) {
         // Slovensko aggregate — sum cez všetkých repov
         var totP = 0, totS = 0, totD = 0;
         (GYN_STATE.repList || []).forEach(function(rep){
-          var ag = gynBuildRepAgg(rep.login, cached);
+          var ag = gynBuildRepAgg(rep.login, cached, q);
           totP += ag.totalPlan;
           totS += ag.totalPred;
           totD += computeRepDone(cached, rep.login, q);
@@ -11649,7 +11728,7 @@ function gynPlnenieRenderRepDetail(el, data) {
   var products = [];
   Object.keys(nameByKey).forEach(function(pk){
     var pPlan    = parseFloat(plan[pk]);          if(isNaN(pPlan))    pPlan = 0;
-    var pPredaje = parseFloat(predajeTotal[pk]);  if(isNaN(pPredaje)) pPredaje = 0;
+    var pPredaje = gynProductSalesTotalForKeys(predajeTotal, predajeByMonth, q, [pk]);
     if(pPlan > 0 || pPredaje > 0) {
       products.push({ key: pk, name: nameByKey[pk], plan: pPlan, predaje: pPredaje });
     }
@@ -11659,7 +11738,7 @@ function gynPlnenieRenderRepDetail(el, data) {
     if((a.plan > 0) !== (b.plan > 0)) return a.plan > 0 ? -1 : 1;
     return a.name.localeCompare(b.name);
   });
-  products = gynEnhanceProductsForDisplay(products, plan, predajeTotal, /^[A-Z]{2}PA$/i.test(region) ? 'patch' : 'pill');
+  products = gynEnhanceProductsForDisplay(products, plan, predajeTotal, /^[A-Z]{2}PA$/i.test(region) ? 'patch' : 'pill', predajeByMonth, q);
 
   // Akčný súhrn ("Na čo sa zamerať") + nadpis sekcie produktov
   var gynActionHtml = gynRepActionSummaryHtml({ login: login, data: data, q: q, year: year, region: region, repName: meno, managerMode: !!GYN_APP.detailLogin, products: products, predajeByMonth: predajeByMonth, totalPlan: repPlan });
@@ -11692,14 +11771,18 @@ function gynPlnenieRenderRepDetail(el, data) {
 
       var monthRowsHtml = qMonths.map(function(m){
         var mVal = gynSumMonthForKeys(predajeByMonth, m, metricKeys);
-        var mPlan = monthlyPlans[m] || 0;
+        var cumPlan = gynCumulativeDisplayPlanForMonth(year, q, p.plan, m, predajeByMonth, metricKeys);
+        var mPlan = cumPlan !== null ? cumPlan : (monthlyPlans[m] || 0);
         var mPct = (mPlan > 0) ? (mVal / mPlan * 100) : null;
         var isFuture = (q === curQ && m > curMonth) || q > curQ;
         var mValCls = isFuture ? 'future' : ((mPlan > 0 && mVal > 0) ? plnenieDetailColorClass(mPct) : 'future');
         var mDisplay = mVal > 0 ? plnenieFormatEUR(mVal) : '—';
         var rowPast = !isFuture ? ' past' : '';
+        var mLabel = (gynAreCumulativeKeys(metricKeys) && mVal > 0)
+          ? gynCumulativePeriodLabel(q, gynLatestCumulativeMonth(predajeByMonth, q, metricKeys))
+          : (PL_MONTH_LABELS[m] || 'M'+m);
         return '<div class="mrow">' +
-          '<div class="mrow-lbl' + rowPast + '">' + (PL_MONTH_LABELS[m] || 'M'+m) + '</div>' +
+          '<div class="mrow-lbl' + rowPast + '">' + gynEsc(mLabel) + '</div>' +
           '<div class="mrow-val ' + mValCls + '">' + mDisplay + '</div>' +
           (mPlan > 0 ? '<div class="mrow-plan' + rowPast + '">plán ' + plnenieFormatEUR(mPlan) + '</div>' : '') +
         '</div>';
@@ -11840,7 +11923,7 @@ function gynPlnenieRenderRep(el, user, data) {
   var products = [];
   Object.keys(nameByKey).forEach(function(pk){
     var pPlan    = parseFloat(plan[pk]);          if(isNaN(pPlan))    pPlan = 0;
-    var pPredaje = parseFloat(predajeTotal[pk]);  if(isNaN(pPredaje)) pPredaje = 0;
+    var pPredaje = gynProductSalesTotalForKeys(predajeTotal, predajeByMonth, q, [pk]);
     if(pPlan > 0 || pPredaje > 0) {
       products.push({ key: pk, name: nameByKey[pk], plan: pPlan, predaje: pPredaje });
     }
@@ -11849,7 +11932,7 @@ function gynPlnenieRenderRep(el, user, data) {
     if((a.plan > 0) !== (b.plan > 0)) return a.plan > 0 ? -1 : 1;
     return a.name.localeCompare(b.name);
   });
-  products = gynEnhanceProductsForDisplay(products, plan, predajeTotal, /^[A-Z]{2}PA$/i.test(region) ? 'patch' : 'pill');
+  products = gynEnhanceProductsForDisplay(products, plan, predajeTotal, /^[A-Z]{2}PA$/i.test(region) ? 'patch' : 'pill', predajeByMonth, q);
 
   // Akčný súhrn ("Na čo sa zamerať") + nadpis sekcie produktov
   var gynActionHtml = gynRepActionSummaryHtml({ login: login, data: data, q: q, year: year, region: region, repName: meno, managerMode: !!GYN_APP.detailLogin, products: products, predajeByMonth: predajeByMonth, totalPlan: repPlan });
@@ -11881,14 +11964,18 @@ function gynPlnenieRenderRep(el, user, data) {
 
       var monthRowsHtml = qMonths.map(function(m){
         var mVal = gynSumMonthForKeys(predajeByMonth, m, metricKeys);
-        var mPlan = monthlyPlans[m] || 0;
+        var cumPlan = gynCumulativeDisplayPlanForMonth(year, q, p.plan, m, predajeByMonth, metricKeys);
+        var mPlan = cumPlan !== null ? cumPlan : (monthlyPlans[m] || 0);
         var mPct = (mPlan > 0) ? (mVal / mPlan * 100) : null;
         var isFuture = (q === curQ && m > curMonth) || q > curQ;
         var mValCls = isFuture ? 'future' : ((mPlan > 0 && mVal > 0) ? plnenieDetailColorClass(mPct) : 'future');
         var mDisplay = mVal > 0 ? plnenieFormatEUR(mVal) : '—';
         var rowPast = !isFuture ? ' past' : '';
+        var mLabel = (gynAreCumulativeKeys(metricKeys) && mVal > 0)
+          ? gynCumulativePeriodLabel(q, gynLatestCumulativeMonth(predajeByMonth, q, metricKeys))
+          : (PL_MONTH_LABELS[m] || 'M'+m);
         return '<div class="mrow">' +
-          '<div class="mrow-lbl' + rowPast + '">' + (PL_MONTH_LABELS[m] || 'M'+m) + '</div>' +
+          '<div class="mrow-lbl' + rowPast + '">' + gynEsc(mLabel) + '</div>' +
           '<div class="mrow-val ' + mValCls + '">' + mDisplay + '</div>' +
           (mPlan > 0 ? '<div class="mrow-plan' + rowPast + '">plán ' + plnenieFormatEUR(mPlan) + '</div>' : '') +
         '</div>';
@@ -12004,10 +12091,14 @@ function gynPlnenieRenderMgr(el, user, data) {
     Object.keys(prodNameByKey).forEach(function(pk){
       var pv = plan[pk] || 0;
       var sumDone = 0;
-      doneMonths.forEach(function(m){
-        var md = byMonth[m] || {};
-        sumDone += parseFloat(md[pk] || 0) || 0;
-      });
+      if(gynAreCumulativeKeys([pk])) {
+        sumDone = gynCumulativeActualForParts(byMonth, q, [pk]) || 0;
+      } else {
+        doneMonths.forEach(function(m){
+          var md = byMonth[m] || {};
+          sumDone += parseFloat(md[pk] || 0) || 0;
+        });
+      }
       prodDone[pk] += sumDone;
       if(pv > 0 && !GYN_EXCLUDE_FROM_TOTALS[pk]) {
         totDone += sumDone;
@@ -12040,8 +12131,8 @@ function gynPlnenieRenderMgr(el, user, data) {
     reps.forEach(function(r){
       var pl=(data.plan&&data.plan[r.login])||{};
       var pr=(data.predaje&&data.predaje[r.login])||{total:{}};
-      pv+=pl[pk]||0; sv+=(pr.total&&pr.total[pk])||0;
       var byMonth = (data.predaje && data.predaje[r.login] && data.predaje[r.login].byMonth) || {};
+      pv+=pl[pk]||0; sv+=gynProductSalesTotalForKeys(pr.total || {}, byMonth, q, [pk]);
       Object.keys(byMonth).forEach(function(m){
         if(!prodByMonth[m]) prodByMonth[m] = {};
         prodByMonth[m][pk] = (parseFloat(prodByMonth[m][pk]) || 0) + (parseFloat(byMonth[m] && byMonth[m][pk]) || 0);
@@ -18741,6 +18832,10 @@ function plnenieMonthHasSales(row, productKeys) {
 }
 
 function plneniePredictionMonthParts(q, year, predajeByMonth, productKeys, now) {
+  if (productKeys && typeof gynCumulativePredictionParts === 'function') {
+    var cumParts = gynCumulativePredictionParts(q, year, predajeByMonth, productKeys, now);
+    if (cumParts !== null) return cumParts;
+  }
   var d = now || new Date();
   var curMonth = d.getMonth() + 1;
   var curQ = Math.ceil(curMonth / 3);
