@@ -2861,7 +2861,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.29.28';
+var APP_VERSION = '2.29.29';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -13982,6 +13982,14 @@ function initEdgeSwipeBack() {
   bind('detail-overlay', function(){ if (typeof closeDetail === 'function') closeDetail(); });
   bind('edit-overlay', function(){ if (typeof closeEditOverlay === 'function') closeEditOverlay(); });
   bind('satori-overlay', function(){ if (typeof satoriClose === 'function') satoriClose(); });
+  // Gyn línia — edge-swipe od ľavej hrany: detail reprezentanta → späť na zoznam,
+  // iný tab → späť na Plnenie (in-place navigácia v #gyn-content, nie overlaye).
+  bind('gyn-view', function(){
+    var gv = document.getElementById('gyn-view');
+    if (!gv || !gv.classList.contains('show')) return;
+    if (typeof GYN_APP !== 'undefined' && GYN_APP && GYN_APP.detailLogin) { gynCloseRepDetail(); return; }
+    if (typeof GYN_APP !== 'undefined' && GYN_APP && GYN_APP.nav && GYN_APP.nav !== 'plnenie') { gynNavTo('plnenie'); }
+  });
   // Swipe-down zatvára modal-y (WN, milestone, detail záznamu — bonus pre tým ktorí preferujú down gesture)
   function bindDown(id, fn) {
     var el = document.getElementById(id);
@@ -14062,6 +14070,10 @@ function _handleAndroidBack() {
   el = document.getElementById('pharma-ms-overlay');
   if (el && (el.classList.contains('show') || el.classList.contains('pl-detail-exit-r'))) { closePharmaMs(); return true; }
 
+  // 4b. Product sheet (spodný panel produktu) — GP aj gyn
+  el = document.getElementById('pl-prod-sheet');
+  if (el && el.classList.contains('show')) { closeProdSheet(); return true; }
+
   // 5. Milestone overlay (celebrácia 200 lekárov)
   el = document.getElementById('milestone-overlay');
   if (el && el.classList.contains('show')) { closeMilestone(); return true; }
@@ -14110,6 +14122,15 @@ function _handleAndroidBack() {
       }
       return true;
     }
+  }
+
+  // 14. Gyn línia — in-place navigácia (gyn nepoužíva .app overlaye, renderuje do #gyn-content)
+  var _gv = document.getElementById('gyn-view');
+  if (_gv && _gv.classList.contains('show')) {
+    // 14a. Detail reprezentanta (manažér) → späť na zoznam
+    if (typeof GYN_APP !== 'undefined' && GYN_APP && GYN_APP.detailLogin) { gynCloseRepDetail(); return true; }
+    // 14b. Iný tab než Plnenie (Návštevy/Rebríček/Lekárne/Aktivita) → späť na Plnenie
+    if (typeof GYN_APP !== 'undefined' && GYN_APP && GYN_APP.nav && GYN_APP.nav !== 'plnenie') { gynNavTo('plnenie'); return true; }
   }
 
   return false;
