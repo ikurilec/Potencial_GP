@@ -2861,7 +2861,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.29.22';
+var APP_VERSION = '2.29.23';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7952,14 +7952,23 @@ function ndayClose(){
 //   NARODENINY (len gyn) — vlastná oslava + tímový prehľad pre manažérov
 //   Dátum v hárku Pouzivatelia, stĺpec "narodeniny", formát "DD.MM."
 // ─────────────────────────────────────────────────────────────
-// Parsuj "DD.MM." → {d, m} alebo null
+// Parsuj "DD.MM." → {d, m} alebo null. Poistka: ak Sheets poslal dátum
+// (napr. "2026-06-10" alebo "Sun Jun 10 2026 ..."), vytiahni deň/mesiac z neho.
 function birthdayParse(s){
   if(!s) return null;
-  var mm = String(s).trim().match(/^(\d{1,2})\s*\.\s*(\d{1,2})\s*\.?/);
-  if(!mm) return null;
-  var d = parseInt(mm[1],10), m = parseInt(mm[2],10);
-  if(!(d>=1 && d<=31 && m>=1 && m<=12)) return null;
-  return { d:d, m:m };
+  var str = String(s).trim();
+  var mm = str.match(/^(\d{1,2})\s*\.\s*(\d{1,2})\s*\.?/);
+  if(mm){
+    var d = parseInt(mm[1],10), m = parseInt(mm[2],10);
+    if(d>=1 && d<=31 && m>=1 && m<=12) return { d:d, m:m };
+  }
+  // ISO "YYYY-MM-DD"
+  var iso = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(iso) return { d: parseInt(iso[3],10), m: parseInt(iso[2],10) };
+  // Dátumový reťazec (Date.toString) — posledná poistka
+  var dt = new Date(str);
+  if(!isNaN(dt.getTime()) && /\d{4}/.test(str)) return { d: dt.getDate(), m: dt.getMonth()+1 };
+  return null;
 }
 // 0 = dnes, 1 = zajtra, inak null
 function birthdayWhen(s, ref){
