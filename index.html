@@ -2861,7 +2861,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.29.23';
+var APP_VERSION = '2.29.24';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8041,13 +8041,16 @@ function gynBirthdayCelebrate(user){
     var u = user || getSession(); if(!u || !u.username) return;
     if(birthdayWhen(gynOwnNarodeniny(u)) !== 0) return;
     var d = new Date();
-    var key = 'gyn_bday_party_' + u.username + '_' + d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
-    try { if(localStorage.getItem(key) === '1') return; localStorage.setItem(key, '1'); } catch(e){}
-    gynBirthdayShowOverlay(u);
+    // 'v2' v kľúči — staré dnešné guardy (z testovania) sa ignorujú
+    var key = 'gyn_bday_party_v2_' + u.username + '_' + d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
+    try { if(localStorage.getItem(key) === '1') return; } catch(e){}
+    var shown = gynBirthdayShowOverlay(u);
+    // Kľúč zapíš až PO úspešnom zobrazení (tiché zlyhanie natrvalo neblokuje)
+    if(shown){ try { localStorage.setItem(key, '1'); } catch(e){} }
   } catch(e){}
 }
 function gynBirthdayShowOverlay(u){
-  var ov = document.getElementById('nday-overlay'); if(!ov) return;
+  var ov = document.getElementById('nday-overlay'); if(!ov) return false;
   var fn = (u && u.name) ? String(u.name).trim().split(/\s+/)[0] : '';
   var nameEl = document.getElementById('nday-name'); if(nameEl) nameEl.textContent = fn;
   var emEl = document.getElementById('nday-emoji'); if(emEl) emEl.textContent = '🎂';
@@ -8060,8 +8063,9 @@ function gynBirthdayShowOverlay(u){
   var cv = document.getElementById('nday-canvas');
   if(cv && typeof startFireworksOnCanvas === 'function'){
     try { if(window._ndayStop) window._ndayStop(); } catch(e){}
-    window._ndayStop = startFireworksOnCanvas(cv);
+    try { window._ndayStop = startFireworksOnCanvas(cv); } catch(e){}
   }
+  return true;
 }
 // Zmeria výšku persistentného topbaru a nastaví CSS premennú (pre odsadenie obsahu)
 function repTopbarSync(){
