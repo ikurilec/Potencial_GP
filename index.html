@@ -2854,7 +2854,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.29.19';
+var APP_VERSION = '2.29.20';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8134,7 +8134,7 @@ function initLogin() {
 //   GYN LINKA — stav a pomocné funkcie
 // ═══════════════════════════════════════════════════════════
 
-var GYN_STATE   = { repList: [] };
+var GYN_STATE   = { repList: [], userList: [] };
 var GYN_APP     = { nav: 'plnenie', q: 1, year: 2026, plCache: {}, plLoading: {},
                     detailLogin: null, detailMeno: '', detailRegion: '' };
 var GYN_LINIA_LABEL = { pill: '💊 Pill', patch: '🩹 Patch' };
@@ -9615,6 +9615,25 @@ function gynLoadRepList(user) {
         } catch(e){}
         var wasEmpty = !GYN_STATE.repList.length;
         GYN_STATE.repList = data.reps;
+        // Plný zoznam používateľov (vrátane manažérov AM/PM/BUM) — pre avatary/mená
+        // v Aktivite. Príde iba adminovi/manažérom (backend gating).
+        if (data.users && data.users.length) {
+          GYN_STATE.userList = data.users;
+          data.users.forEach(function(u) {
+            var rawG = String(u.pohlavie || u.gender || '').trim().toLowerCase();
+            var g = null;
+            if (rawG === 'm' || rawG === 'muz' || rawG === 'muž' || rawG === 'male') g = 'male';
+            else if (rawG === 'z' || rawG === 'f' || rawG === 'zena' || rawG === 'žena' || rawG === 'female') g = 'female';
+            var av = null;
+            var avRaw = String(u.avatar || '').trim();
+            if (avRaw) {
+              try { var pj = JSON.parse(avRaw); if (pj && pj.style && AVATAR_SCHEMAS[pj.style]) av = pj; } catch(e){}
+            }
+            var lk = String(u.login || '').toLowerCase();
+            if (lk && !USERS_LOCAL[lk]) USERS_LOCAL[lk] = { region: u.region, gender: g, avatar: av };
+            else if (lk && av && !USERS_LOCAL[lk].avatar) USERS_LOCAL[lk].avatar = av;
+          });
+        }
         // Naplň USERS_LOCAL — aby avatarGetConfig našiel avatary gyn reprezentantov vo všetkých render miestach
         data.reps.forEach(function(r) {
           var rawG = String(r.pohlavie || r.gender || '').trim().toLowerCase();
@@ -16965,7 +16984,10 @@ function usageRepList() {
 function usageRepName(login) {
   if (USAGE_VIEW.line === 'gyn') {
     var r = ((typeof GYN_STATE !== 'undefined' && GYN_STATE.repList) || []).filter(function(x){ return String(x.login || '').toLowerCase() === login; })[0];
-    return (r && (r.meno || r.login)) || login;
+    if (r) return r.meno || r.login || login;
+    // Manažéri (AM/PM/BUM) nie sú v repList — hľadaj v plnom userList
+    var u = ((typeof GYN_STATE !== 'undefined' && GYN_STATE.userList) || []).filter(function(x){ return String(x.login || '').toLowerCase() === login; })[0];
+    return (u && (u.meno || u.login)) || login;
   }
   if (typeof MGR_REP_NAMES !== 'undefined' && MGR_REP_NAMES[login]) return MGR_REP_NAMES[login];
   if (typeof MGR_STATE !== 'undefined' && MGR_STATE.managers) {
@@ -16983,6 +17005,8 @@ function usageRepRole(login) {
   if (USAGE_VIEW.line === 'gyn') {
     var r = ((typeof GYN_STATE !== 'undefined' && GYN_STATE.repList) || []).filter(function(x){ return String(x.login || '').toLowerCase() === login; })[0];
     if (r && r.rola) return String(r.rola);
+    var u = ((typeof GYN_STATE !== 'undefined' && GYN_STATE.userList) || []).filter(function(x){ return String(x.login || '').toLowerCase() === login; })[0];
+    if (u && u.rola) return String(u.rola);
   }
   return '';
 }
