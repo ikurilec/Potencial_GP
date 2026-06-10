@@ -2861,7 +2861,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.29.24';
+var APP_VERSION = '2.29.25';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7925,6 +7925,8 @@ function nameDayCelebrate(user){
 // Oslavná obrazovka menín — veľký modal + konfety
 function nameDayShowOverlay(u){
   var ov = document.getElementById('nday-overlay'); if(!ov) return;
+  // Presuň overlay do <body> — pri gyn línii je .app (jeho rodič) display:none.
+  try { if(ov.parentNode !== document.body) document.body.appendChild(ov); } catch(e){}
   var nameEl = document.getElementById('nday-name');
   var fn = (u && u.name) ? String(u.name).trim().split(/\s+/)[0] : '';
   if(nameEl) nameEl.textContent = fn;
@@ -8035,6 +8037,19 @@ function gynBirthdayRefresh(){
     el.innerHTML = gynBirthdayBannerHtml(s);
   } catch(e){}
 }
+// DIAGNOSTIKA narodenín — spusti v konzole: testBday()
+// Vynúti zobrazenie oslavnej obrazovky (ignoruje denný guard) a vypíše stav.
+window.testBday = function(){
+  try {
+    var u = getSession();
+    var raw = u ? gynOwnNarodeniny(u) : '(no session)';
+    var when = birthdayWhen(raw);
+    console.log('[bday] session.narodeniny =', u && u.narodeniny, '| gynOwnNarodeniny =', raw, '| birthdayWhen =', when);
+    console.log('[bday] nday-overlay element =', document.getElementById('nday-overlay'));
+    var shown = gynBirthdayShowOverlay(u || {name:'Test'});
+    console.log('[bday] gynBirthdayShowOverlay returned =', shown, '| overlay má .show =', document.getElementById('nday-overlay') && document.getElementById('nday-overlay').classList.contains('show'));
+  } catch(e){ console.error('[bday] testBday error', e); }
+};
 // Oslava vlastných narodenín — raz za deň, celoobrazovkový modal + konfety
 function gynBirthdayCelebrate(user){
   try {
@@ -8051,6 +8066,9 @@ function gynBirthdayCelebrate(user){
 }
 function gynBirthdayShowOverlay(u){
   var ov = document.getElementById('nday-overlay'); if(!ov) return false;
+  // Overlay je v statickom HTML vnútri .app, ktorá je pri gyn línii display:none →
+  // presuň ho do <body>, inak by ostal skrytý spolu s .app.
+  try { if(ov.parentNode !== document.body) document.body.appendChild(ov); } catch(e){}
   var fn = (u && u.name) ? String(u.name).trim().split(/\s+/)[0] : '';
   var nameEl = document.getElementById('nday-name'); if(nameEl) nameEl.textContent = fn;
   var emEl = document.getElementById('nday-emoji'); if(emEl) emEl.textContent = '🎂';
