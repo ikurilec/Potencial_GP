@@ -2854,7 +2854,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.29.18';
+var APP_VERSION = '2.29.19';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8640,7 +8640,7 @@ var GYN_VIRTUAL_PRODUCTS = [
     key: '__oc_bez_drovelis',
     name: 'OC spolu bez Drovelis',
     linia: 'pill',
-    products: ['belara','daylette','daylla','evra','maitalon','mistra'],
+    products: ['belara','daylette','evra','maitalon','mistra'],
     order: -30,
     district: true
   },
@@ -17037,7 +17037,7 @@ function usageStatsLoad(rep, _retry) {
       settled = true;
       // Ak medzitým používateľ prepol líniu/repa/period, zahoď neskorú odpoveď.
       if (_usageLoadToken !== myToken || USAGE_VIEW.line !== line) return;
-      if (!data || !data.ok) { if (USAGE_VIEW.currentRep === (rep || null)) usageRenderError(); return; }
+      if (!data || !data.ok) { if (USAGE_VIEW.currentRep === (rep || null)) usageRenderError(data && data.error); return; }
       cache[cacheKey] = data;
       if (USAGE_VIEW.currentRep === (rep || null)) usageRenderStats(data, rep);
     })
@@ -17048,9 +17048,10 @@ function usageStatsLoad(rep, _retry) {
     });
 }
 
-function usageRenderError() {
+function usageRenderError(detail) {
   var body = usageBody();
-  if (body) body.innerHTML = '<div class="act-empty">Štatistiku sa nepodarilo načítať.<br>Skús to znova alebo skontroluj pripojenie.</div>';
+  if (body) body.innerHTML = '<div class="act-empty">Štatistiku sa nepodarilo načítať.<br>Skús to znova alebo skontroluj pripojenie.' +
+    (detail ? '<br><span style="font-size:11px;opacity:.6">(' + mgrEscape(String(detail)) + ')</span>' : '') + '</div>';
 }
 
 function usageRenderStats(data, rep) {
