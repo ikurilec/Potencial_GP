@@ -2854,7 +2854,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.29.16';
+var APP_VERSION = '2.29.17';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8570,6 +8570,8 @@ function gynMsOpenPicker(produkt, okres) {
   _gynMsPickerOkres = okres || null;
   var resp = GYN_PHARMA_STATE.lastResp;
   var names = okres ? gynMsDistrictCompNames(resp, okres) : gynMsAllCompNames(resp);
+  // Picker zoznam zoradíme podľa abecedy (ľahšie hľadanie konkurenta), nie podľa MS
+  names = names.slice().sort(function(a, b){ return String(a).localeCompare(String(b), 'sk'); });
   var sel = gynMsGetSelection(produkt, okres);
   var selMap = {}; (sel || []).forEach(function(nm){ selMap[nm] = true; });
   var prodEl = document.getElementById('gyn-ms-picker-prod');
@@ -14074,14 +14076,37 @@ var WN_HISTORY = [
         { icon: '🎂', bg: '#F5F3FF', title: 'Pozdrav a meniny v hlavičke', desc: 'Hlavička ťa privíta podľa dennej doby a napíše, kto má dnes meniny.' }
       ]
     }
+  },
+  // ── v2.29.17 — abecedné zoradenie konkurentov v MS pickeri (len gyn línia) ──
+  {
+    key: 'potencial_vl_wn_v2_29_17_ms_picker_abc',
+    line: 'gyn',
+    rep: {
+      icon: '🔤', title: 'Konkurenti podľa abecedy', sub: 'v2.29.17 · Gedeon Richter Slovakia',
+      items: [
+        { icon: '🔤', bg: '#EFF6FF', title: 'Zoradené abecedne', desc: 'V Trhovom podiele po ťuknutí na ceruzku (✎) — pri celom teritóriu aj pri okresoch — sú konkurenti vo výbere zoradení podľa abecedy, takže konkrétneho ľahšie nájdeš a zaškrtneš.' }
+      ]
+    },
+    mgr: {
+      icon: '🔤', title: 'Konkurenti podľa abecedy', sub: 'v2.29.17 · Gedeon Richter Slovakia',
+      items: [
+        { icon: '🔤', bg: '#EFF6FF', title: 'Zoradené abecedne', desc: 'V Trhovom podiele po ťuknutí na ceruzku (✎) — pri celom teritóriu aj pri okresoch — sú konkurenti vo výbere zoradení podľa abecedy. Ľahšie nájdeš a zaškrtneš konkrétneho konkurenta.' }
+      ]
+    }
   }
 ];
 
 // Tracking aktuálne zobrazovaného WN itemu pre wnClose flow
 var WN_IS_MGR = false;
 
+// Položky relevantné pre aktuálnu líniu (it.line === 'gyn'/'gp' → len tá línia; bez line = obe).
+function wnLineItems(){
+  var line = (typeof usageLine === 'function') ? usageLine() : 'gp';
+  return WN_HISTORY.filter(function(it){ return !it.line || it.line === line; });
+}
+
 function wnGetUnseen(){
-  return WN_HISTORY.filter(function(it){
+  return wnLineItems().filter(function(it){
     try { return !localStorage.getItem(it.key); } catch(e){ return true; }
   });
 }
@@ -14093,8 +14118,8 @@ function wnGetUnseen(){
 function wnSuppressBacklogForFirstLogin(){
   try {
     if (localStorage.getItem(SATORI_KEY)) return;                  // už onboardnutý → nie je to prvé prihlásenie
-    if (wnGetUnseen().length !== WN_HISTORY.length) return;        // niečo už videl → existujúci používateľ
-    WN_HISTORY.forEach(function(it){ wnMarkSeen(it.key); });
+    if (wnGetUnseen().length !== wnLineItems().length) return;     // niečo už videl → existujúci používateľ
+    wnLineItems().forEach(function(it){ wnMarkSeen(it.key); });
   } catch(e){}
 }
 
