@@ -1927,7 +1927,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .gyn-hdr-nameday.celebrate{color:#FCD34D;font-weight:800;font-size:12px;text-shadow:0 1px 6px rgba(251,191,36,.45)}
   /* Narodeniny v hlavičke (vlastné + tím pre manažérov) */
   #gyn-bday-banner{margin-top:3px}
-  .gyn-hdr-bday{font-size:11px;margin-top:3px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .gyn-hdr-bday{font-size:11px;margin-top:3px;font-weight:600;line-height:1.35;white-space:normal;overflow-wrap:anywhere}
   .gyn-hdr-bday.own{color:#FCD34D;font-weight:800;font-size:12px;text-shadow:0 1px 6px rgba(251,191,36,.45);animation:ndayGlow 2s ease-in-out infinite}
   .gyn-hdr-bday.today{color:#FBBF77;font-weight:700}
   .gyn-hdr-bday.soon{color:#9DC0DE}
@@ -2861,7 +2861,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.29.21';
+var APP_VERSION = '2.29.22';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7970,6 +7970,18 @@ function birthdayWhen(s, ref){
   if(b.d === t.getDate() && b.m === t.getMonth()+1) return 1;
   return null;
 }
+// Vlastný dátum narodenia — zo session, fallback z rosteru (stará session bez narodeniny)
+function gynOwnNarodeniny(user){
+  if(user && user.narodeniny) return user.narodeniny;
+  try {
+    var login = user ? String(user.username||'').toLowerCase() : '';
+    if(!login) return '';
+    var src = ((typeof GYN_STATE !== 'undefined' && GYN_STATE.userList) || [])
+      .concat((typeof GYN_STATE !== 'undefined' && GYN_STATE.repList) || []);
+    var hit = src.filter(function(u){ return String(u.login||'').toLowerCase() === login; })[0];
+    return (hit && hit.narodeniny) || '';
+  } catch(e){ return ''; }
+}
 // Kolegovia (reprezentanti + manažéri) s narodeninami dnes/zajtra — bez seba.
 // Zdroj: GYN_STATE.userList (manažéri ho majú celý), fallback repList.
 function gynBirthdayOthers(){
@@ -7993,7 +8005,7 @@ function gynBirthdayOthers(){
 // HTML banner pod meninami: vlastné narodeniny (každý) + tím (len manažér)
 function gynBirthdayBannerHtml(user){
   var lines = [];
-  if(user && birthdayWhen(user.narodeniny) === 0){
+  if(user && birthdayWhen(gynOwnNarodeniny(user)) === 0){
     var fn = String(user.name||'').trim().split(/\s+/)[0];
     lines.push('<div class="gyn-hdr-bday own">🎉 Dnes máš narodeniny, ' + gynEsc(fn) + '! 🎂 Všetko najlepšie!</div>');
   }
@@ -8018,7 +8030,7 @@ function gynBirthdayRefresh(){
 function gynBirthdayCelebrate(user){
   try {
     var u = user || getSession(); if(!u || !u.username) return;
-    if(birthdayWhen(u.narodeniny) !== 0) return;
+    if(birthdayWhen(gynOwnNarodeniny(u)) !== 0) return;
     var d = new Date();
     var key = 'gyn_bday_party_' + u.username + '_' + d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
     try { if(localStorage.getItem(key) === '1') return; localStorage.setItem(key, '1'); } catch(e){}
@@ -9618,7 +9630,8 @@ function gynEnsureRepPharma(region, products, onReady){
 
 function gynLoginSuccess(username, data) {
   var user = { username: username, name: data.name, role: data.role,
-               linia: data.linia||'', region: data.region||'', line: 'gyn' };
+               linia: data.linia||'', region: data.region||'', line: 'gyn',
+               narodeniny: data.narodeniny||'' };
   // Pohlavie + avatar zo Sheets (rovnaký pattern ako loginSuccess pre Golem)
   var rawG = String(data.pohlavie || data.gender || '').trim().toLowerCase();
   if (rawG === 'm' || rawG === 'muz' || rawG === 'muž' || rawG === 'male') user.gender = 'male';
@@ -9774,7 +9787,10 @@ function gynLoadRepList(user) {
         }
         else if(typeof avatarRefreshAllInDom === 'function') avatarRefreshAllInDom();
         // Roster (vrátane manažérov) je načítaný — prekresli narodeninový banner
+        // a skús vlastnú oslavu (ak session prišla bez narodenín — fallback z rosteru).
+        // localStorage guard v gynBirthdayCelebrate zabráni dvojitému zobrazeniu.
         try { gynBirthdayRefresh(); } catch(e){}
+        try { gynBirthdayCelebrate(user); } catch(e){}
       }
     }).catch(function(){});
 }
@@ -9859,7 +9875,7 @@ function gynRenderShell(user) {
   // Oslava menín (raz za deň) — aj v gyn línii
   setTimeout(function(){ try {
     // Narodeniny majú prednosť pred meninami (ak by náhodou padli na ten istý deň)
-    if (typeof birthdayWhen === 'function' && birthdayWhen(user && user.narodeniny) === 0) gynBirthdayCelebrate(user);
+    if (typeof gynOwnNarodeniny === 'function' && birthdayWhen(gynOwnNarodeniny(user)) === 0) gynBirthdayCelebrate(user);
     else nameDayCelebrate(user);
   } catch(e){} }, 900);
 }
