@@ -2854,7 +2854,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.29.17';
+var APP_VERSION = '2.29.18';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6416,7 +6416,7 @@ function settingsDefaultTabOpts(s){
   var isAdmin = (mgrRole === 'admin') || (isGyn && s.role === 'admin');
   if(isGyn || mgrRole){
     var opts = [['plnenie','💊 Plnenie'],['visits','📋 Návštevy'],['leaderboard','🏆 Rebríček']];
-    if(isAdmin) opts.push(['activity','📈 Aktivita']);
+    if(isAdmin || (isGyn && typeof gynActivityAllowed === 'function' && gynActivityAllowed(s))) opts.push(['activity','📈 Aktivita']);
     return { opts: opts, hint: 'Plnenie' };
   }
   return { opts: [['form','📝 Formulár GP'],['historia','📋 História'],['rebricek','🏆 Rebríček'],['plnenie','💊 Plnenie'],['lekarne','🏪 Lekárne']], hint: 'Formulár GP' };
@@ -9702,7 +9702,7 @@ function gynRenderShell(user) {
         (user.role === 'gyn-rep' ? '<button class="gyn-nav-btn" data-tab="lekarne" onclick="gynNavTo(\'lekarne\')"><span class="st-emoji">🏪</span><span class="st-lbl">Lekárne</span></button>' : '') +
         '<button class="gyn-nav-btn"        data-tab="visits"      onclick="gynNavTo(\'visits\')"><span class="st-emoji">📋</span><span class="st-lbl">Návštevy</span></button>' +
         '<button class="gyn-nav-btn"        data-tab="leaderboard" onclick="gynNavTo(\'leaderboard\')"><span class="st-emoji">🏆</span><span class="st-lbl">Rebríček</span></button>' +
-        (user.role === 'admin' ? '<button class="gyn-nav-btn" data-tab="activity" onclick="gynNavTo(\'activity\')"><span class="st-emoji">📈</span><span class="st-lbl">Aktivita</span></button>' : '') +
+        (gynActivityAllowed(user) ? '<button class="gyn-nav-btn" data-tab="activity" onclick="gynNavTo(\'activity\')"><span class="st-emoji">📈</span><span class="st-lbl">Aktivita</span></button>' : '') +
       '</nav>' +
       '<div class="ptr-indicator" id="gyn-ptr-indicator">' +
         '<span class="ptr-arrow" id="gyn-ptr-arrow">↓</span>' +
@@ -9736,7 +9736,7 @@ function gynApplyDefaultNav(user) {
   try {
     var def = (userPrefsGet().defaultTab || '').trim();
     var allowed = ['plnenie','visits','leaderboard'];
-    if (user && user.role === 'admin') allowed.push('activity');
+    if (gynActivityAllowed(user)) allowed.push('activity');
     if (!def || def === 'plnenie' || allowed.indexOf(def) < 0) return;  // plnenie už je default shellu
     GYN_APP.nav = def;
     document.querySelectorAll('#gyn-nav .gyn-nav-btn').forEach(function(b){
@@ -9746,10 +9746,16 @@ function gynApplyDefaultNav(user) {
   } catch(e){}
 }
 
+// Aktivita (usage analytics) v gyn línii: admin vidí všetkých používateľov,
+// gyn manažér (AM/PM/BUM) vidí iba reprezentantov (filter v usageRenderTeam).
+function gynActivityAllowed(u) {
+  return !!u && (u.role === 'admin' || u.role === 'gyn-am' || u.role === 'gyn-pm' || u.role === 'gyn-bum');
+}
+
 // ── Navigácia medzi tabmi ──
 function gynNavTo(tab) {
-  // Aktivita (usage analytics) je iba pre admina
-  if (tab === 'activity') { var _gs = getSession(); if (!_gs || _gs.role !== 'admin') return; }
+  // Aktivita (usage analytics) — admin + gyn manažéri
+  if (tab === 'activity') { var _gs = getSession(); if (!gynActivityAllowed(_gs)) return; }
   var prevNav = GYN_APP.nav;
   GYN_APP.nav = tab;
   if(tab === 'leaderboard'){
@@ -17101,6 +17107,23 @@ function usageRenderTeam(data) {
     if (l === _selfLogin) return false;
     return String(usageRepRole(l) || '').toLowerCase().indexOf('admin') === -1;
   });
+  // Gyn manažér (AM/PM/BUM, nie admin) vidí iba reprezentantov — ostatných
+  // manažérov aj logíny mimo rostera skry (rovnaký pohľad ako admin, len bez manažérov)
+  var _gynMgrOnlyReps = false;
+  if (USAGE_VIEW.line === 'gyn') {
+    try { var _vs = getSession(); _gynMgrOnlyReps = !!_vs && _vs.role !== 'admin'; } catch(e){}
+  }
+  if (_gynMgrOnlyReps) {
+    var _rosterRoles = {};
+    ((typeof GYN_STATE !== 'undefined' && GYN_STATE.repList) || []).forEach(function(r){
+      _rosterRoles[String(r.login || '').toLowerCase()] = String(r.rola || '').toLowerCase();
+    });
+    list = list.filter(function(l){
+      if (!(l in _rosterRoles)) return false;          // logíny mimo rostera (test/admin) skry
+      var ro = _rosterRoles[l];
+      return !ro || ro.indexOf('rep') !== -1;          // rep alebo bez roly = reprezentant
+    });
+  }
   // pulz: aktívni dnes / týždeň, spolu otvorení
   var today = 0, week = 0, opens = 0;
   list.forEach(function(l){
@@ -17124,7 +17147,7 @@ function usageRenderTeam(data) {
   html += '<div class="act-pulse-card"><div class="act-pulse-num">' + week + '<span style="font-size:14px;color:#7AABCC">/' + list.length + '</span></div><div class="act-pulse-lbl">Tento týždeň</div></div>';
   html += '<div class="act-pulse-card"><div class="act-pulse-num">' + opens + '</div><div class="act-pulse-lbl">Otvorení appky</div></div>';
   html += '</div>';
-  html += '<div class="act-section-lbl">Používatelia · posledných ' + USAGE_VIEW.dni + ' dní</div>';
+  html += '<div class="act-section-lbl">' + (_gynMgrOnlyReps ? 'Reprezentanti' : 'Používatelia') + ' · posledných ' + USAGE_VIEW.dni + ' dní</div>';
   list.forEach(function(l){
     var r = reps[l] || { opens:0, clicks:0, timeS:0, last:'', sections:{} };
     var name = usageRepName(l);
