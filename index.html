@@ -1925,6 +1925,13 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .gyn-rep-hdr-name{font-size:16px;font-weight:800;color:#fff;margin-top:3px;font-family:var(--font-display);letter-spacing:-.01em;line-height:1.15}
   .gyn-hdr-nameday{font-size:11px;color:#9DC0DE;margin-top:5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .gyn-hdr-nameday.celebrate{color:#FCD34D;font-weight:800;font-size:12px;text-shadow:0 1px 6px rgba(251,191,36,.45)}
+  /* Narodeniny v hlavičke (vlastné + tím pre manažérov) */
+  #gyn-bday-banner{margin-top:3px}
+  .gyn-hdr-bday{font-size:11px;margin-top:3px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .gyn-hdr-bday.own{color:#FCD34D;font-weight:800;font-size:12px;text-shadow:0 1px 6px rgba(251,191,36,.45);animation:ndayGlow 2s ease-in-out infinite}
+  .gyn-hdr-bday.today{color:#FBBF77;font-weight:700}
+  .gyn-hdr-bday.soon{color:#9DC0DE}
+  @media(prefers-reduced-motion:reduce){.gyn-hdr-bday.own{animation:none}}
   /* GYN NAV TABS */
   .gyn-nav{display:flex;gap:6px;margin:0 0 10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06);position:sticky;top:0;z-index:100}
   .gyn-nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;background:transparent;color:#64748B;touch-action:manipulation;transition:all .2s ease;-webkit-tap-highlight-color:transparent;line-height:1.1}
@@ -2493,11 +2500,11 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   <div class="nday-overlay" id="nday-overlay">
     <canvas class="nday-canvas" id="nday-canvas"></canvas>
     <div class="nday-content">
-      <div class="nday-emoji">🎂</div>
-      <div class="nday-title">Všetko najlepšie!</div>
+      <div class="nday-emoji" id="nday-emoji">🎂</div>
+      <div class="nday-title" id="nday-title">Všetko najlepšie!</div>
       <div class="nday-name" id="nday-name"></div>
-      <div class="nday-sub">Dnes máš meniny 🎉</div>
-      <div class="nday-wish">Nech sa Ti darí — aj v teréne aj mimo neho. 💙</div>
+      <div class="nday-sub" id="nday-sub">Dnes máš meniny 🎉</div>
+      <div class="nday-wish" id="nday-wish">Nech sa Ti darí — aj v teréne aj mimo neho. 💙</div>
       <button class="nday-btn" onclick="ndayClose()">Ďakujem 🎉</button>
     </div>
   </div>
@@ -2854,7 +2861,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.29.20';
+var APP_VERSION = '2.29.21';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7921,6 +7928,11 @@ function nameDayShowOverlay(u){
   var nameEl = document.getElementById('nday-name');
   var fn = (u && u.name) ? String(u.name).trim().split(/\s+/)[0] : '';
   if(nameEl) nameEl.textContent = fn;
+  // Reset textov na meniny (overlay zdieľame s narodeninami)
+  var emEl = document.getElementById('nday-emoji'); if(emEl) emEl.textContent = '🎂';
+  var tiEl = document.getElementById('nday-title'); if(tiEl) tiEl.textContent = 'Všetko najlepšie!';
+  var suEl = document.getElementById('nday-sub'); if(suEl) suEl.textContent = 'Dnes máš meniny 🎉';
+  var wiEl = document.getElementById('nday-wish'); if(wiEl) wiEl.textContent = 'Nech sa Ti darí — aj v teréne aj mimo neho. 💙';
   ov.classList.add('show');
   document.body.style.overflow = 'hidden';
   try { haptic('success'); } catch(e){}
@@ -7934,6 +7946,101 @@ function ndayClose(){
   var ov = document.getElementById('nday-overlay'); if(ov) ov.classList.remove('show');
   document.body.style.overflow = '';
   try { if(window._ndayStop){ window._ndayStop(); window._ndayStop = null; } } catch(e){}
+}
+
+// ─────────────────────────────────────────────────────────────
+//   NARODENINY (len gyn) — vlastná oslava + tímový prehľad pre manažérov
+//   Dátum v hárku Pouzivatelia, stĺpec "narodeniny", formát "DD.MM."
+// ─────────────────────────────────────────────────────────────
+// Parsuj "DD.MM." → {d, m} alebo null
+function birthdayParse(s){
+  if(!s) return null;
+  var mm = String(s).trim().match(/^(\d{1,2})\s*\.\s*(\d{1,2})\s*\.?/);
+  if(!mm) return null;
+  var d = parseInt(mm[1],10), m = parseInt(mm[2],10);
+  if(!(d>=1 && d<=31 && m>=1 && m<=12)) return null;
+  return { d:d, m:m };
+}
+// 0 = dnes, 1 = zajtra, inak null
+function birthdayWhen(s, ref){
+  var b = birthdayParse(s); if(!b) return null;
+  ref = ref || new Date();
+  if(b.d === ref.getDate() && b.m === ref.getMonth()+1) return 0;
+  var t = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate()+1);
+  if(b.d === t.getDate() && b.m === t.getMonth()+1) return 1;
+  return null;
+}
+// Kolegovia (reprezentanti + manažéri) s narodeninami dnes/zajtra — bez seba.
+// Zdroj: GYN_STATE.userList (manažéri ho majú celý), fallback repList.
+function gynBirthdayOthers(){
+  try {
+    var s = (typeof getSession === 'function') ? getSession() : null;
+    var self = s ? String(s.username||'').toLowerCase() : '';
+    var src = (typeof GYN_STATE !== 'undefined' && GYN_STATE.userList && GYN_STATE.userList.length)
+      ? GYN_STATE.userList
+      : ((typeof GYN_STATE !== 'undefined' && GYN_STATE.repList) || []);
+    var out = [];
+    src.forEach(function(u){
+      var login = String(u.login||'').toLowerCase();
+      if(!login || login === self) return;
+      var w = birthdayWhen(u.narodeniny);
+      if(w === 0 || w === 1) out.push({ login: login, name: u.meno || u.login, when: w });
+    });
+    out.sort(function(a,b){ return a.when - b.when || String(a.name).localeCompare(String(b.name)); });
+    return out;
+  } catch(e){ return []; }
+}
+// HTML banner pod meninami: vlastné narodeniny (každý) + tím (len manažér)
+function gynBirthdayBannerHtml(user){
+  var lines = [];
+  if(user && birthdayWhen(user.narodeniny) === 0){
+    var fn = String(user.name||'').trim().split(/\s+/)[0];
+    lines.push('<div class="gyn-hdr-bday own">🎉 Dnes máš narodeniny, ' + gynEsc(fn) + '! 🎂 Všetko najlepšie!</div>');
+  }
+  if(user && user.role !== 'gyn-rep'){
+    gynBirthdayOthers().forEach(function(o){
+      if(o.when === 0) lines.push('<div class="gyn-hdr-bday today">🎉 ' + gynEsc(o.name) + ' má dnes narodeniny!</div>');
+      else             lines.push('<div class="gyn-hdr-bday soon">🎂 ' + gynEsc(o.name) + ' má zajtra narodeniny</div>');
+    });
+  }
+  return lines.join('');
+}
+// Prekresli banner (volá sa po načítaní rosteru, keď dorazia ostatní)
+function gynBirthdayRefresh(){
+  try {
+    var el = document.getElementById('gyn-bday-banner');
+    if(!el) return;
+    var s = (typeof getSession === 'function') ? getSession() : null;
+    el.innerHTML = gynBirthdayBannerHtml(s);
+  } catch(e){}
+}
+// Oslava vlastných narodenín — raz za deň, celoobrazovkový modal + konfety
+function gynBirthdayCelebrate(user){
+  try {
+    var u = user || getSession(); if(!u || !u.username) return;
+    if(birthdayWhen(u.narodeniny) !== 0) return;
+    var d = new Date();
+    var key = 'gyn_bday_party_' + u.username + '_' + d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
+    try { if(localStorage.getItem(key) === '1') return; localStorage.setItem(key, '1'); } catch(e){}
+    gynBirthdayShowOverlay(u);
+  } catch(e){}
+}
+function gynBirthdayShowOverlay(u){
+  var ov = document.getElementById('nday-overlay'); if(!ov) return;
+  var fn = (u && u.name) ? String(u.name).trim().split(/\s+/)[0] : '';
+  var nameEl = document.getElementById('nday-name'); if(nameEl) nameEl.textContent = fn;
+  var emEl = document.getElementById('nday-emoji'); if(emEl) emEl.textContent = '🎂';
+  var tiEl = document.getElementById('nday-title'); if(tiEl) tiEl.textContent = 'Všetko najlepšie!';
+  var suEl = document.getElementById('nday-sub'); if(suEl) suEl.textContent = 'Dnes máš narodeniny! 🎂🎉';
+  var wiEl = document.getElementById('nday-wish'); if(wiEl) wiEl.textContent = 'Nech je Tvoj deň plný radosti, smiechu a darčekov. Veľa zdravia, šťastia a úspechov! 🥳💙';
+  ov.classList.add('show');
+  document.body.style.overflow = 'hidden';
+  try { haptic('success'); } catch(e){}
+  var cv = document.getElementById('nday-canvas');
+  if(cv && typeof startFireworksOnCanvas === 'function'){
+    try { if(window._ndayStop) window._ndayStop(); } catch(e){}
+    window._ndayStop = startFireworksOnCanvas(cv);
+  }
 }
 // Zmeria výšku persistentného topbaru a nastaví CSS premennú (pre odsadenie obsahu)
 function repTopbarSync(){
@@ -9666,6 +9773,8 @@ function gynLoadRepList(user) {
           }
         }
         else if(typeof avatarRefreshAllInDom === 'function') avatarRefreshAllInDom();
+        // Roster (vrátane manažérov) je načítaný — prekresli narodeninový banner
+        try { gynBirthdayRefresh(); } catch(e){}
       }
     }).catch(function(){});
 }
@@ -9691,6 +9800,8 @@ function gynRenderShell(user) {
     ? '🎉 Dnes máš meniny, ' + gynEsc(String(user.name||'').trim().split(/\s+/)[0]) + ' — všetko najlepšie!'
     : gynEsc((typeof nameDayLabel === 'function') ? nameDayLabel(new Date()) : '');
   var gynNdayHtml = gynNdayTxt ? '<div class="gyn-hdr-nameday' + (gynNdayCelebrate ? ' celebrate' : '') + '">' + gynNdayTxt + '</div>' : '';
+  // Narodeniny — vlastné (každý) + tím (manažér). Banner sa po načítaní rosteru prekreslí.
+  var gynBdayHtml = '<div id="gyn-bday-banner">' + ((typeof gynBirthdayBannerHtml === 'function') ? gynBirthdayBannerHtml(user) : '') + '</div>';
 
   var gynFirst = String(user.name||'').trim().split(/\s+/)[0];
   var hdrInnerHtml = (isRep
@@ -9698,7 +9809,7 @@ function gynRenderShell(user) {
       '<div class="hdr-greeting">' + gynEsc((typeof greetingForTime === 'function' ? greetingForTime() : 'Dobrý deň') + (gynFirst ? ', ' + gynFirst : '') + ' 👋') + '</div>'
     : '<div class="gyn-mgr-hdr-title">Manažérsky pohľad</div>' +
       '<div class="gyn-mgr-hdr-sub">' + gynEsc((user.name||'') + ' · ' + roleLabel + ' · Gynekológia') + '</div>'
-    ) + gynNdayHtml;
+    ) + gynNdayHtml + gynBdayHtml;
 
   document.getElementById('gyn-view').innerHTML =
     '<div class="gyn-inner">' +
@@ -9746,7 +9857,11 @@ function gynRenderShell(user) {
   // Update header hint (pulse halo + bouncing pencil) hneď po vyrenderovaní headera
   try { hdrAvatarUpdateHint(); } catch(e){}
   // Oslava menín (raz za deň) — aj v gyn línii
-  setTimeout(function(){ try { nameDayCelebrate(user); } catch(e){} }, 900);
+  setTimeout(function(){ try {
+    // Narodeniny majú prednosť pred meninami (ak by náhodou padli na ten istý deň)
+    if (typeof birthdayWhen === 'function' && birthdayWhen(user && user.narodeniny) === 0) gynBirthdayCelebrate(user);
+    else nameDayCelebrate(user);
+  } catch(e){} }, 900);
 }
 
 // Po prihlásení (Gyn línia) nastav úvodný tab podľa uložených nastavení používateľa.
