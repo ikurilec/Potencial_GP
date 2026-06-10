@@ -2861,7 +2861,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.29.26';
+var APP_VERSION = '2.29.27';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8037,19 +8037,6 @@ function gynBirthdayRefresh(){
     el.innerHTML = gynBirthdayBannerHtml(s);
   } catch(e){}
 }
-// DIAGNOSTIKA narodenín — spusti v konzole: testBday()
-// Vynúti zobrazenie oslavnej obrazovky (ignoruje denný guard) a vypíše stav.
-window.testBday = function(){
-  try {
-    var u = getSession();
-    var raw = u ? gynOwnNarodeniny(u) : '(no session)';
-    var when = birthdayWhen(raw);
-    console.log('[bday] session.narodeniny =', u && u.narodeniny, '| gynOwnNarodeniny =', raw, '| birthdayWhen =', when);
-    console.log('[bday] nday-overlay element =', document.getElementById('nday-overlay'));
-    var shown = gynBirthdayShowOverlay(u || {name:'Test'});
-    console.log('[bday] gynBirthdayShowOverlay returned =', shown, '| overlay má .show =', document.getElementById('nday-overlay') && document.getElementById('nday-overlay').classList.contains('show'));
-  } catch(e){ console.error('[bday] testBday error', e); }
-};
 // Oslava vlastných narodenín — raz za deň, celoobrazovkový modal + konfety
 function gynBirthdayCelebrate(user){
   try {
