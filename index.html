@@ -682,6 +682,15 @@
   .set-push-confirm-row{display:flex;gap:8px}
   .set-push-confirm-row .set-action-btn{margin-top:0;flex:1}
   .set-note-ok{font-size:13px;color:#047857;font-weight:700;display:flex;align-items:center;gap:6px}
+  /* reusable potvrdzovací modal */
+  .app-confirm-ov{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:9500;display:none;align-items:center;justify-content:center;padding:24px;animation:emptyFadeIn .18s ease both}
+  .app-confirm-ov.show{display:flex}
+  .app-confirm-box{background:#fff;border-radius:18px;padding:22px 20px 18px;max-width:340px;width:100%;box-shadow:0 20px 60px rgba(10,25,50,.35);animation:avSlideUp .22s ease both}
+  .app-confirm-msg{font-size:15px;font-weight:700;color:#0F172A;line-height:1.45;text-align:center;margin-bottom:18px;font-family:var(--font-display)}
+  .app-confirm-row{display:flex;gap:10px}
+  .app-confirm-btn{flex:1;height:46px;border-radius:12px;border:1.5px solid #E2E8F0;background:#F8FAFC;color:#0F172A;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform var(--t-fast)}
+  .app-confirm-btn:active{transform:scale(.97)}
+  .app-confirm-yes{border:none;background:linear-gradient(180deg,#3B82F6,#2563EB,#1E40AF);color:#fff;box-shadow:0 4px 12px rgba(37,99,235,.3)}
   .set-card-sub{font-size:11px;font-weight:700;color:#94A3B8;letter-spacing:.04em;text-transform:uppercase;margin:2px 0 2px}
   .set-switch{position:relative;width:46px;height:28px;border-radius:14px;border:none;background:#CBD5E1;cursor:pointer;transition:background .2s;flex-shrink:0;padding:0;-webkit-tap-highlight-color:transparent}
   .set-switch.on{background:#2563EB}
@@ -3103,7 +3112,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.30.1';
+var APP_VERSION = '2.30.2';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -17319,8 +17328,34 @@ function lbApproveQ(q) {
 //   ADMIN NOTIFIKÁCIE — tlačidlá pod West/East + rep bannery
 // ══════════════════════════════════════════════════════════════
 
-// Admin klikne na tlačidlo → zapíše aktuálny timestamp do Config Sheets
+// Malý reusable potvrdzovací modal (Áno / Nie).
+function appConfirm(message, onYes){
+  var ov = document.getElementById('app-confirm-ov');
+  if(!ov){
+    ov = document.createElement('div'); ov.id = 'app-confirm-ov'; ov.className = 'app-confirm-ov';
+    ov.innerHTML = '<div class="app-confirm-box"><div class="app-confirm-msg" id="app-confirm-msg"></div>' +
+      '<div class="app-confirm-row">' +
+        '<button type="button" class="app-confirm-btn" id="app-confirm-no">Nie</button>' +
+        '<button type="button" class="app-confirm-btn app-confirm-yes" id="app-confirm-yes">Áno</button>' +
+      '</div></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function(e){ if(e.target === ov) appConfirmClose(); });
+  }
+  document.getElementById('app-confirm-msg').textContent = message;
+  document.getElementById('app-confirm-yes').onclick = function(){ appConfirmClose(); try { if(onYes) onYes(); } catch(e){} };
+  document.getElementById('app-confirm-no').onclick  = function(){ appConfirmClose(); };
+  ov.classList.add('show');
+  try { haptic('warning'); } catch(e){}
+}
+function appConfirmClose(){ var ov = document.getElementById('app-confirm-ov'); if(ov) ov.classList.remove('show'); }
+
+// Admin klikne → najprv potvrdenie, potom odoslanie.
 function plnenieSetNotif(type) {
+  var s = getSession() || {};
+  var lineLbl = (s.line === 'gyn') ? 'Gyn' : 'Golem';
+  appConfirm('Naozaj odoslať toto upozornenie všetkým v línii ' + lineLbl + '?', function(){ plnenieDoSetNotif(type); });
+}
+function plnenieDoSetNotif(type) {
   var s = getSession() || {};
   var isGyn = s.line === 'gyn';
   var pfx = isGyn ? 'gyn-pl-notif' : 'pl-notif';
