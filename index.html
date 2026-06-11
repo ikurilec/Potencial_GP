@@ -670,6 +670,17 @@
   .set-action-primary{border:none;background:linear-gradient(180deg,#3B82F6 0%,#2563EB 50%,#1E40AF 100%);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 4px 12px rgba(37,99,235,.28)}
   .set-action-primary:hover{background:linear-gradient(180deg,#3B82F6 0%,#2563EB 60%,#1E40AF 100%)}
   .set-row-desc{font-size:12.5px;color:#64748B;line-height:1.5}
+  /* admin push kompozér */
+  .set-push-input{width:100%;box-sizing:border-box;margin-top:10px;padding:10px 12px;border:1.5px solid #E2E8F0;border-radius:10px;font-size:14px;font-family:inherit;color:#1A2A3A;outline:none;transition:border-color var(--t-fast),box-shadow var(--t-fast)}
+  .set-push-area{resize:none;line-height:1.4}
+  .set-push-input:focus{border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  .set-push-result{margin-top:10px;font-size:13px;font-weight:600;border-radius:10px;padding:10px 12px;line-height:1.4}
+  .set-push-result.ok{background:#D1FAE5;color:#065F46}
+  .set-push-result.err{background:#FEE2E2;color:#991B1B}
+  .set-push-result.confirm{background:#FEF3C7;color:#92400E}
+  .set-push-q{margin-bottom:8px}
+  .set-push-confirm-row{display:flex;gap:8px}
+  .set-push-confirm-row .set-action-btn{margin-top:0;flex:1}
   .set-note-ok{font-size:13px;color:#047857;font-weight:700;display:flex;align-items:center;gap:6px}
   .set-card-sub{font-size:11px;font-weight:700;color:#94A3B8;letter-spacing:.04em;text-transform:uppercase;margin:2px 0 2px}
   .set-switch{position:relative;width:46px;height:28px;border-radius:14px;border:none;background:#CBD5E1;cursor:pointer;transition:background .2s;flex-shrink:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -3092,7 +3103,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.30.0';
+var APP_VERSION = '2.30.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6185,6 +6196,7 @@ function renderSettings(s){
     '<div class="set-card"><div class="set-card-title">Aplikácia</div>' +
       settingsAppHtml(s) + '</div>' +
     settingsProdOrderCard(s) +
+    settingsAdminPushCard(s) +
     '<div class="set-card"><button type="button" class="set-logout-btn" onclick="settingsLogout()">Odhlásiť sa</button></div>';
 
   // Avatar (rovnaký pattern ako v hlavičke)
@@ -6233,6 +6245,62 @@ function settingsNotifEnable(){
 function settingsNotifHelp(){
   if(typeof pushShowDeniedHelp === 'function') pushShowDeniedHelp();
 }
+
+// ── Admin: odoslanie vlastného push upozornenia (podľa aktuálnej línie) ──
+function settingsAdminPushCard(s){
+  if(!s || s.role !== 'admin') return '';
+  var lineLbl = (s.line === 'gyn') ? 'Gyn' : 'Golem';
+  return '<div class="set-card"><div class="set-card-title">📣 Odoslať upozornenie</div>' +
+    '<div class="set-row-desc">Pošle natívne push upozornenie používateľom v línii <b>' + settingsEsc(lineLbl) + '</b> (podľa toho, kde si prepnutý). Najprv otestuj „len mne", potom odošli všetkým.</div>' +
+    '<input id="set-push-title" class="set-push-input" type="text" placeholder="Nadpis" maxlength="60" value="Gedeon Richter Slovakia">' +
+    '<textarea id="set-push-body" class="set-push-input set-push-area" placeholder="Text upozornenia…" maxlength="180" rows="3"></textarea>' +
+    '<div id="set-push-result" class="set-push-result" style="display:none"></div>' +
+    '<button type="button" class="set-action-btn" onclick="settingsPushTest()">📲 Poslať test (len mne)</button>' +
+    '<button type="button" class="set-action-btn set-action-primary" onclick="settingsPushSendAll()">📣 Odoslať všetkým</button>' +
+  '</div>';
+}
+function settingsPushCurUrlFn(){
+  var s = getSession();
+  return (s && s.line === 'gyn' && typeof gynScriptUrl === 'function') ? gynScriptUrl : scriptUrl;
+}
+function settingsPushDoSend(onlyMe){
+  var title = ((document.getElementById('set-push-title')||{}).value || '').trim();
+  var body  = ((document.getElementById('set-push-body') ||{}).value || '').trim();
+  var resEl = document.getElementById('set-push-result');
+  if(!body){ if(resEl){ resEl.style.display='block'; resEl.className='set-push-result err'; resEl.textContent='Najprv napíš text upozornenia.'; } return; }
+  if(resEl){ resEl.style.display='block'; resEl.className='set-push-result'; resEl.textContent='Odosielam…'; }
+  if(typeof IS_DEV !== 'undefined' && IS_DEV){ if(resEl){ resEl.className='set-push-result err'; resEl.textContent='DEV mód — push sa neodosiela.'; } return; }
+  var url = settingsPushCurUrlFn()('action=sendPushCustom&title=' + encodeURIComponent(title) + '&body=' + encodeURIComponent(body) + (onlyMe ? '&onlyMe=1' : ''));
+  fetch(url, { cache:'no-store' }).then(function(r){ return r.json(); }).then(function(d){
+    if(!resEl) return;
+    if(d && d.ok){
+      resEl.className='set-push-result ok';
+      resEl.textContent = onlyMe ? ('✅ Test odoslaný (' + d.sent + '/' + d.total + ').')
+                                 : ('✅ Odoslané ' + d.sent + ' z ' + d.total + ' používateľom.');
+    } else {
+      resEl.className='set-push-result err';
+      resEl.textContent='❌ ' + ((d && d.error) || 'Nepodarilo sa odoslať.');
+    }
+  }).catch(function(){ if(resEl){ resEl.className='set-push-result err'; resEl.textContent='❌ Chyba siete.'; } });
+}
+function settingsPushTest(){ settingsPushDoSend(true); }
+function settingsPushSendAll(){
+  var body = ((document.getElementById('set-push-body')||{}).value || '').trim();
+  var resEl = document.getElementById('set-push-result');
+  if(!body){ if(resEl){ resEl.style.display='block'; resEl.className='set-push-result err'; resEl.textContent='Najprv napíš text upozornenia.'; } return; }
+  var s = getSession(); var lineLbl = (s && s.line === 'gyn') ? 'Gyn' : 'Golem';
+  if(resEl){
+    resEl.style.display='block'; resEl.className='set-push-result confirm';
+    resEl.innerHTML = '<div class="set-push-q">Naozaj odoslať upozornenie <b>všetkým</b> v línii <b>' + settingsEsc(lineLbl) + '</b>?</div>' +
+      '<div class="set-push-confirm-row">' +
+        '<button type="button" class="set-action-btn" onclick="settingsPushConfirmNo()">Nie</button>' +
+        '<button type="button" class="set-action-btn set-action-primary" onclick="settingsPushConfirmYes()">Áno, odoslať</button>' +
+      '</div>';
+  }
+  try { haptic('warning'); } catch(e){}
+}
+function settingsPushConfirmNo(){ var r=document.getElementById('set-push-result'); if(r){ r.style.display='none'; r.innerHTML=''; } }
+function settingsPushConfirmYes(){ settingsPushDoSend(false); }
 
 // ── Osobné nastavenia používateľa (synchronizované cez Sheets stĺpec "nastavenia") ──
 function userPrefsGet(){
