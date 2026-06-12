@@ -692,6 +692,7 @@
   .app-confirm-btn:active{transform:scale(.97)}
   .app-confirm-yes{border:none;background:linear-gradient(180deg,#3B82F6,#2563EB,#1E40AF);color:#fff;box-shadow:0 4px 12px rgba(37,99,235,.3)}
   /* settings toggle riadok (kalendár upozornenia) */
+  .set-calnotif-sep{height:1px;background:#EEF2F7;margin:14px 0 12px}
   .set-toggle-row{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:4px}
   .set-toggle-info{flex:1;min-width:0}
   .set-toggle-lbl{font-size:13.5px;font-weight:700;color:#0F172A;margin-bottom:3px}
@@ -3116,7 +3117,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.30.3';
+var APP_VERSION = '2.30.4';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6205,8 +6206,7 @@ function renderSettings(s){
       '<button type="button" class="set-action-btn' + (hasAvatar ? '' : ' set-action-primary set-action-pulse') + '" onclick="settingsOpenAvatar()">🎨 ' + (hasAvatar ? 'Upraviť avatar' : 'Vytvoriť avatar') + '</button>' +
     '</div>' +
     '<div class="set-card"><div class="set-card-title">Notifikácie</div>' +
-      settingsNotifHtml() + '</div>' +
-    settingsCalNotifHtml(s) +
+      settingsNotifHtml() + settingsCalNotifHtml(s) + '</div>' +
     '<div class="set-card"><div class="set-card-title">Aplikácia</div>' +
       settingsAppHtml(s) + '</div>' +
     settingsProdOrderCard(s) +
@@ -6271,12 +6271,11 @@ function settingsCalNotifHtml(s){
   if(isAm){ key='calNotifApprovals'; label='Žiadosti o schválenie absencií'; desc='Dostaneš push, keď reprezentant požiada o dovolenku alebo administratívu.'; }
   else    { key='calNotifMine';      label='Rozhodnutia o mojich absenciách'; desc='Dostaneš push, keď AM schváli alebo zamietne tvoju dovolenku/administratívu.'; }
   var on = prefs[key] !== false;   // default zapnuté
-  return '<div class="set-card"><div class="set-card-title">📅 Kalendár — upozornenia</div>' +
+  return '<div class="set-calnotif-sep"></div>' +
     '<div class="set-toggle-row">' +
-      '<div class="set-toggle-info"><div class="set-toggle-lbl">' + settingsEsc(label) + '</div><div class="set-row-desc">' + settingsEsc(desc) + '</div></div>' +
+      '<div class="set-toggle-info"><div class="set-toggle-lbl">📅 ' + settingsEsc(label) + '</div><div class="set-row-desc">' + settingsEsc(desc) + '</div></div>' +
       '<button type="button" id="set-calnotif-sw" class="gyn-cal-switch' + (on ? ' on' : '') + '" role="switch" aria-checked="' + (on ? 'true' : 'false') + '" onclick="settingsToggleCalNotif(\'' + key + '\')"><span class="gyn-cal-switch-kn"></span></button>' +
-    '</div>' +
-  '</div>';
+    '</div>';
 }
 function settingsToggleCalNotif(key){
   var prefs = userPrefsGet();
