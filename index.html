@@ -1963,6 +1963,10 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .gyn-nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;background:transparent;color:#64748B;touch-action:manipulation;transition:all .2s ease;-webkit-tap-highlight-color:transparent;line-height:1.1}
   .gyn-nav-btn .st-emoji{font-size:17px;line-height:1}
   .gyn-nav-btn .st-lbl{font-size:11px;white-space:nowrap}
+  /* Dynamická ikonka kalendára v záložke — vykresľuje dnešné číslo dňa */
+  .gyn-cal-navico{display:inline-flex;flex-direction:column;width:17px;height:17px;border-radius:4px;overflow:hidden;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.14);line-height:1}
+  .gyn-cal-navico .gci-top{height:5px;background:#EF4444;flex-shrink:0}
+  .gyn-cal-navico .gci-day{flex:1;display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:800;color:#0C1E35;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
   .gyn-nav-btn:hover:not(.active){background:#F1F5F9;color:#0F172A}
   .gyn-nav-btn.active{background:linear-gradient(135deg,#0C1E35 0%,#13294B 100%);color:#fff;box-shadow:0 4px 12px rgba(12,30,53,.25),inset 0 1px 0 rgba(255,255,255,.10)}
   /* GYN Q TABS */
@@ -3118,7 +3122,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.30.8';
+var APP_VERSION = '2.30.9';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10247,7 +10251,7 @@ function gynRenderShell(user) {
       '</div>' +
       '<nav class="gyn-nav" id="gyn-nav">' +
         '<button class="gyn-nav-btn active" data-tab="plnenie"     onclick="gynNavTo(\'plnenie\')"><span class="st-emoji">💊</span><span class="st-lbl">Plnenie</span></button>' +
-        '<button class="gyn-nav-btn"        data-tab="kalendar"    onclick="gynNavTo(\'kalendar\')"><span class="st-emoji">📅</span><span class="st-lbl">Kalendár</span></button>' +
+        '<button class="gyn-nav-btn"        data-tab="kalendar"    onclick="gynNavTo(\'kalendar\')"><span class="st-emoji gyn-cal-navico"><span class="gci-top"></span><span class="gci-day">' + (new Date()).getDate() + '</span></span><span class="st-lbl">Kalendár</span></button>' +
         (user.role === 'gyn-rep' ? '<button class="gyn-nav-btn" data-tab="lekarne" onclick="gynNavTo(\'lekarne\')"><span class="st-emoji">🏪</span><span class="st-lbl">Lekárne</span></button>' : '') +
         '<button class="gyn-nav-btn"        data-tab="visits"      onclick="gynNavTo(\'visits\')"><span class="st-emoji">📋</span><span class="st-lbl">Návštevy</span></button>' +
         '<button class="gyn-nav-btn"        data-tab="leaderboard" onclick="gynNavTo(\'leaderboard\')"><span class="st-emoji">🏆</span><span class="st-lbl">Rebríček</span></button>' +
