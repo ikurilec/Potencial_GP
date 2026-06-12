@@ -1286,6 +1286,10 @@
   .pl-rep-name{font-size:13.5px;font-weight:700;color:#0F172A}
   .pl-rep-meta{font-size:10.5px;color:#94A3B8;margin-top:2px;letter-spacing:.02em}
   .pl-rep-pct{font-size:17px;font-weight:800;flex-shrink:0}
+  /* Pravý stĺpec: percento + predikcia konca Q (ako v gyn) */
+  .pl-rep-right{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:2px;flex-shrink:0}
+  .pl-rep-pred{font-size:9.5px;color:#94A3B8;font-weight:500;letter-spacing:.01em;white-space:nowrap;line-height:1.2}
+  .pl-rep-pred span{color:#475569;font-weight:600}
   .pl-rep-pct.pl-g{color:#059669}
   .pl-rep-pct.pl-o{color:#D97706}
   .pl-rep-pct.pl-r{color:#DC2626}
@@ -3122,7 +3126,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.30.9';
+var APP_VERSION = '2.30.10';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -20315,6 +20319,12 @@ function plnenieRenderRepList() {
     var extraClass = clickable ? ' pl-rep-clickable' : '';
     var chevronHtml = clickable ? '<div class="pl-rep-chev">›</div>' : '';
 
+    // Predikcia konca Q pre tohto repa (rovnaká logika ako v gyn) — iba aktuálny kvartál
+    var repPredikcia = plnenieCalcPredikciaSummary(r.planEUR, r.predajeEURDone, PL_STATE.q, PL_STATE.year, r.predPlanEURDone);
+    var predHtml = (repPredikcia !== null)
+      ? '<div class="pl-rep-pred">predikcia konca Q' + PL_STATE.q + ' <span>' + plnenieFormatPct(repPredikcia) + '</span></div>'
+      : '';
+
     var avPl = lbAvatarContent(r.username, info.name, 38);
     return '<div class="pl-rep-card' + extraClass + '"' + clickAttr + '>' +
       medalHtml +
@@ -20323,7 +20333,10 @@ function plnenieRenderRepList() {
         '<div class="pl-rep-name">' + mgrEscape(info.name) + '</div>' +
         '<div class="pl-rep-meta">' + mgrEscape(meta) + '</div>' +
       '</div>' +
-      '<div class="pl-rep-pct ' + plnenieColorClass(r.pct) + '" data-pct="' + (r.pct !== null && !isNaN(r.pct) ? r.pct : '') + '">' + (r.pct !== null && !isNaN(r.pct) ? '0,00%' : '—') + '</div>' +
+      '<div class="pl-rep-right">' +
+        '<div class="pl-rep-pct ' + plnenieColorClass(r.pct) + '" data-pct="' + (r.pct !== null && !isNaN(r.pct) ? r.pct : '') + '">' + (r.pct !== null && !isNaN(r.pct) ? '0,00%' : '—') + '</div>' +
+        predHtml +
+      '</div>' +
       chevronHtml +
     '</div>';
   }).join('');
