@@ -10310,7 +10310,11 @@ function gynActivityAllowed(u) {
 function gynNavTo(tab) {
   // Aktivita (usage analytics) — admin + gyn manažéri
   if (tab === 'activity') { var _gs = getSession(); if (!gynActivityAllowed(_gs)) return; }
-  if (tab === 'kalendar') { try { gynCalSync(); } catch(e){} }   // refresh zo Sheets pri vstupe
+  if (tab === 'kalendar') {
+    // Klik na záložku Kalendár vždy vráti zobrazenie na aktuálny mesiac
+    try { var _tNow=new Date(); GYN_CAL.y=_tNow.getFullYear(); GYN_CAL.m=_tNow.getMonth(); } catch(e){}
+    try { gynCalSync(); } catch(e){}   // refresh zo Sheets pri vstupe
+  }
   var prevNav = GYN_APP.nav;
   GYN_APP.nav = tab;
   if(tab === 'leaderboard'){
