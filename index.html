@@ -3126,7 +3126,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.30.11';
+var APP_VERSION = '2.30.12';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -13831,15 +13831,12 @@ function gynCalDevSeedOverlap(){
   try { console.log('✓ Overlap '+ds+'–'+de+': 3 schválené + 1 pending. Otvor pending dovolenku a daj Schváliť → uvidíš varovanie.'); } catch(e){}
 }
 
-function gynKalShow(el, user) {
-  if(!el) return;
-  if(!GYN_CAL._init){ var t=new Date(); GYN_CAL.y=t.getFullYear(); GYN_CAL.m=t.getMonth(); GYN_CAL._init=true; gynCalLoadLocal(); }
-  if(!GYN_CAL._synced){ GYN_CAL._synced=true; gynCalSync(); }   // prvé otvorenie → načítaj zo Sheets
-  var y=GYN_CAL.y, m=GYN_CAL.m;
+// Vygeneruje vnútorný HTML mriežky pre daný mesiac (y, m) — zdieľané medzi
+// hlavným renderom a peek panelmi pri swipe.
+function gynCalGridHtml(y, m){
   var now=new Date(), tY=now.getFullYear(), tM=now.getMonth(), tD=now.getDate();
   var startWd=(new Date(y,m,1).getDay()+6)%7;     // pondelok = 0
   var daysInMonth=new Date(y,m+1,0).getDate();
-
   var grid='';
   for(var i=0;i<7;i++) grid+='<div class="gyn-cal-wd">'+GYN_CAL_WD[i]+'</div>';
   for(var e=0;e<startWd;e++) grid+='<div class="gyn-cal-cell empty"></div>';
@@ -13862,6 +13859,25 @@ function gynKalShow(el, user) {
     }
     grid+='<div class="'+cls+'"'+(hol?' title="'+gynEsc(hol)+'"':'')+' onclick="gynCalDayClick(\''+dk+'\')">'+d+dots+'</div>';
   }
+  return grid;
+}
+
+// Posun (y,m) o delta mesiacov → { y, m }
+function gynCalShiftYM(y, m, delta){
+  m += delta;
+  while(m < 0){ m += 12; y--; }
+  while(m > 11){ m -= 12; y++; }
+  return { y:y, m:m };
+}
+
+function gynKalShow(el, user) {
+  if(!el) return;
+  if(!GYN_CAL._init){ var t=new Date(); GYN_CAL.y=t.getFullYear(); GYN_CAL.m=t.getMonth(); GYN_CAL._init=true; gynCalLoadLocal(); }
+  if(!GYN_CAL._synced){ GYN_CAL._synced=true; gynCalSync(); }   // prvé otvorenie → načítaj zo Sheets
+  var y=GYN_CAL.y, m=GYN_CAL.m;
+  var now=new Date(), tY=now.getFullYear(), tM=now.getMonth(), tD=now.getDate();
+
+  var grid=gynCalGridHtml(y,m);
 
   // ── agenda: jeden riadok na udalosť (od–do), nie po dňoch ──
   var monthFirst=gynCalDateKey(y,m,1);
@@ -13936,7 +13952,39 @@ function gynKalShow(el, user) {
     var sz=elx.classList.contains('gyn-cal-team-av')?24:18;
     try { avatarFillElement(elx, { username:elx.getAttribute('data-username'), name:elx.getAttribute('data-name'), size:sz, color:gynCalAvatarColor(elx.getAttribute('data-username')) }); } catch(e){}
   });
+  try { gynCalInitSwipe(); } catch(e){}
   gynCalUpdateBadge();
+}
+
+// Swipe medzi mesiacmi — mriežka ide pod prstom + susedné mesiace v peek paneloch.
+// Ťah doľava → ďalší mesiac, ťah doprava → predošlý (zhodne so šípkami ‹ › aj Plnením).
+function gynCalInitSwipe() {
+  var grid = document.querySelector('#gyn-content .gyn-cal-grid');
+  if(!grid) return;
+  var carousel = buildCarouselPeeks(grid);
+  if(!carousel) return;
+  [carousel.peekPrev, carousel.peekNext].forEach(function(p){
+    p.style.display='block'; p.style.padding='0'; p.style.overflow='hidden'; p.style.alignItems='';
+  });
+  attachDragSwitcher(grid, {
+    transformTarget: carousel.wrap,
+    threshold: 0.22,
+    canPrev: function(){ return true; },
+    canNext: function(){ return true; },
+    onDragStart: function(){
+      var pm=gynCalShiftYM(GYN_CAL.y,GYN_CAL.m,-1), nm=gynCalShiftYM(GYN_CAL.y,GYN_CAL.m,1);
+      carousel.peekPrev.innerHTML='<div class="gyn-cal-grid">'+gynCalGridHtml(pm.y,pm.m)+'</div>';
+      carousel.peekNext.innerHTML='<div class="gyn-cal-grid">'+gynCalGridHtml(nm.y,nm.m)+'</div>';
+      carousel.peekPrev.classList.add('show');
+      carousel.peekNext.classList.add('show');
+    },
+    onDragEnd: function(){
+      carousel.peekPrev.classList.remove('show');
+      carousel.peekNext.classList.remove('show');
+    },
+    onPrev: function(){ gynCalShift(-1); },
+    onNext: function(){ gynCalShift(1); }
+  });
 }
 
 function gynCalShift(delta) {
