@@ -3134,7 +3134,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.30.17';
+var APP_VERSION = '2.30.18';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11033,22 +11033,22 @@ function gynPharmaLoadingHtml(produkt) {
     '<div style="font-size:12.5px;line-height:1.4">Produkt ' + gynEsc(produkt || '') + ' · prosím chvíľu počkaj.</div>' +
   '</div>';
 }
-// Kruh sa plynule plní modrou 0 → 100 % (ease-out ~1,8 s) a na 100 % zostane,
-// kým dáta nedorazia a obsah ho nenahradí. Self-terminate keď element zmizne z DOM.
+// Kruh sa plynule a pomaly plní modrou — asymptoticky sa blíži k ~95 %, ale tam
+// nezostane visieť (žiadne "100 % a čakáme"). Keď dáta dorazia, obsah ho rovno
+// nahradí. Self-terminate keď element zmizne z DOM.
 function gynPharmaAnimateLoading() {
   if(GYN_PHARMA_STATE._progTimer){ clearInterval(GYN_PHARMA_STATE._progTimer); GYN_PHARMA_STATE._progTimer = null; }
   if(!document.getElementById('gyn-ph-prog-ring')) return;
-  var C = GYN_PHARMA_PROG_C, dur = 1.8, start = Date.now();
+  var C = GYN_PHARMA_PROG_C, cap = 95, tau = 3.2, start = Date.now();
   GYN_PHARMA_STATE._progTimer = setInterval(function(){
     var ring = document.getElementById('gyn-ph-prog-ring');
     var num  = document.getElementById('gyn-ph-prog-num');
     if(!ring || !num){ clearInterval(GYN_PHARMA_STATE._progTimer); GYN_PHARMA_STATE._progTimer = null; return; }
-    var x = Math.min((Date.now()-start)/1000 / dur, 1);
-    var p = 100 * (1 - Math.pow(1 - x, 2));   // ease-out quad
+    var t = (Date.now()-start)/1000;
+    var p = cap * (1 - Math.exp(-t / tau));   // pomalý asymptotický nábeh k ~95 %
     ring.setAttribute('stroke-dashoffset', (C * (1 - p/100)).toFixed(2));
     num.textContent = Math.round(p) + '%';
-    if(x >= 1){ clearInterval(GYN_PHARMA_STATE._progTimer); GYN_PHARMA_STATE._progTimer = null; }
-  }, 60);
+  }, 80);
 }
 
 function gynPharmaKvartal(year, q) {
