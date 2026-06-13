@@ -1286,14 +1286,22 @@
   .pl-rep-name{font-size:13.5px;font-weight:700;color:#0F172A}
   .pl-rep-meta{font-size:10.5px;color:#94A3B8;margin-top:2px;letter-spacing:.02em}
   .pl-rep-pct{font-size:17px;font-weight:800;flex-shrink:0}
-  /* Pravý stĺpec: percento + predikcia konca Q (ako v gyn) */
-  .pl-rep-right{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:2px;flex-shrink:0}
+  /* Pravý stĺpec: percento (hore, k menu) + predikcia konca Q (dole, k meta) */
+  .pl-rep-right{display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:2px;flex-shrink:0;align-self:stretch}
   .pl-rep-pred{font-size:9.5px;color:#94A3B8;font-weight:500;letter-spacing:.01em;white-space:nowrap;line-height:1.2}
   .pl-rep-pred span{color:#475569;font-weight:600}
   .pl-rep-pct.pl-g{color:#059669}
   .pl-rep-pct.pl-o{color:#D97706}
   .pl-rep-pct.pl-r{color:#DC2626}
   .pl-rep-pct.pl-none{color:#94A3B8}
+  /* Golem (manažér) — kompaktné rep karty ako v gyn: meno/meta na jeden riadok,
+     menšie medzery, aby text zbytočne nezalamoval a nevznikali veľké medzery. */
+  .mgr-plnenie-view .pl-rep-card{gap:8px;padding:11px 12px}
+  .mgr-plnenie-view .pl-rep-medal{width:28px}
+  .mgr-plnenie-view .pl-rep-body{min-width:0;padding-right:2px}
+  .mgr-plnenie-view .pl-rep-meta{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mgr-plnenie-view .pl-rep-pct{margin-left:2px}
+  .mgr-plnenie-view .pl-rep-chev{margin-left:4px;width:22px;height:22px;font-size:20px}
   .pl-loading{padding:30px 14px;text-align:center;color:#64748B;font-size:13px}
   .pl-loading .mgr-spinner{margin:0 auto 10px}
   .pl-error{padding:30px 14px;text-align:center;color:#DC2626;font-size:13px}
@@ -3126,7 +3134,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.30.14';
+var APP_VERSION = '2.30.15';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
