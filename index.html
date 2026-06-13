@@ -195,7 +195,6 @@
   body.manager-mode .submit-wrap,
   body.manager-mode .thankyou,
   body.manager-mode #hdr-badge-wrap,
-  body.manager-mode .offline-bar,
   body.manager-mode .send-bar,
   body.manager-mode .footer{display:none !important}
   body.manager-mode .app > .hist-overlay.show,
@@ -2312,7 +2311,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 
 
 
-<div class="offline-bar" id="offline-bar">&#9888; Bez pripojenia na internet &#8212; d&#225;ta sa neodo&#353;l&#250;</div>
+<div class="offline-bar" id="offline-bar">&#9888; Si offline &#8212; skontroluj pripojenie</div>
 <div class="update-bar" id="update-bar" onclick="applyUpdate()" role="button" tabindex="0">
   <span class="update-bar-icon">&#127881;</span>Dostupn&#225; nov&#225; verzia apky &#8212; <strong>&#357;ukni pre aktualiz&#225;ciu</strong>
 </div>
@@ -3141,7 +3140,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.30.23';
+var APP_VERSION = '2.30.24';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7582,13 +7581,9 @@ updateSubmitBtn();
 // ── offline ──
 function updateOnline(){
   var b=document.getElementById('offline-bar');
-  if(!navigator.onLine){
-    b.textContent='\u26a0 Bez pripojenia na internet \u2014 d\u00e1ta sa neodo\u0161l\u00fa';
-    b.className='offline-bar show';
-  } else {
-    b.textContent='\u26a0 Bez pripojenia na internet \u2014 d\u00e1ta sa neodo\u0161l\u00fa';
-    b.className='offline-bar';
-  }
+  if(!b) return;
+  b.textContent='\u26a0 Si offline \u2014 skontroluj pripojenie';
+  b.className = navigator.onLine ? 'offline-bar' : 'offline-bar show';
 }
 window.addEventListener('online',updateOnline);
 window.addEventListener('offline',updateOnline);
