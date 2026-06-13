@@ -763,6 +763,13 @@
   @keyframes emptyIconIn{0%{opacity:0;transform:scale(.5) translateY(12px)}60%{transform:scale(1.06) translateY(-2px)}100%{opacity:1;transform:scale(1) translateY(0)}}
   @keyframes emptyTextIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
   @media(prefers-reduced-motion:reduce){.empty-state,.empty-state svg,.empty-state-title,.empty-state-sub{animation:none}}
+  /* Jednotná chybová karta s „Skúsiť znova" (odolné načítanie) */
+  .app-err-card{text-align:center;padding:46px 22px;color:#64748B;animation:emptyFadeIn .35s ease both}
+  .app-err-ic{width:74px;height:74px;margin:0 auto 16px;border-radius:50%;background:#FEF2F2;display:flex;align-items:center;justify-content:center;font-size:32px}
+  .app-err-title{font-family:var(--font-display);font-weight:850;color:#0C1E35;font-size:16px;margin-bottom:5px}
+  .app-err-desc{font-size:12.5px;line-height:1.45;margin-bottom:18px;max-width:300px;margin-left:auto;margin-right:auto}
+  .app-err-btn{display:inline-flex;align-items:center;gap:7px;background:linear-gradient(135deg,#0C1E35 0%,#13294B 100%);color:#fff;border:none;border-radius:24px;padding:12px 24px;font-size:14px;font-weight:700;font-family:var(--font-display);cursor:pointer;box-shadow:0 4px 14px rgba(12,30,53,.28),inset 0 1px 0 rgba(255,255,255,.10);-webkit-tap-highlight-color:transparent;transition:transform .15s}
+  .app-err-btn:active{transform:scale(.97)}
   .hist-search-wrap{padding:10px;border-radius:14px;background:#fff;position:sticky;top:0;z-index:6;box-shadow:0 2px 8px rgba(15,23,42,.06);margin-bottom:10px}
   .hist-search{width:100%;height:40px;padding:0 12px 0 36px;border-radius:10px;border:1.5px solid #E2E8F0;background:#F8FAFC;font-size:14px;font-family:inherit;color:#1A2A3A;outline:none;box-sizing:border-box;transition:border-color var(--t-base),background var(--t-base),box-shadow var(--t-base)}
   .hist-search:focus{border-color:var(--color-primary);background:#fff;box-shadow:0 0 0 4px rgba(37,99,235,.14),inset 0 1px 2px rgba(37,99,235,.04)}
@@ -3134,7 +3141,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.30.22';
+var APP_VERSION = '2.30.23';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -3568,6 +3575,67 @@ var GYN_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwOZxhmwH9jwGTQroa
 var GYN_API_TOKEN  = 'gr-gyn-2026';
 function gynScriptUrl(params) {
   return GYN_SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(GYN_API_TOKEN) + authSessionParams('gyn');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//   ODOLNÉ NAČÍTANIE — fetch s timeoutom + jednotná chybová karta s „Skúsiť znova"
+//   Použitie: pri zlyhaní načítania (timeout / sieť / chybná odpoveď) vykresli
+//   appErrorCardHtml(...) do kontajnera a zaregistruj retry, ktorý znova spustí
+//   pôvodný loader. Text karty vždy prispôsob konkrétnemu miestu (rebríček, plnenie…).
+// ═══════════════════════════════════════════════════════════════════════════
+var APP_FETCH_TIMEOUT_MS = 16000;   // koľko čakať na Sheets/Apps Script (môže byť pomalé pri „studenom" volaní)
+
+// fetch + JSON s tvrdým timeoutom (AbortController). Reject pri timeoute, sieti aj nevalidnom JSON.
+function appFetchJson(url, opts, timeoutMs) {
+  opts = opts || { cache: 'no-store' };
+  timeoutMs = timeoutMs || APP_FETCH_TIMEOUT_MS;
+  return new Promise(function(resolve, reject){
+    var settled = false;
+    var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    if (ctrl) opts.signal = ctrl.signal;
+    var timer = setTimeout(function(){
+      if (settled) return;
+      settled = true;
+      if (ctrl) { try { ctrl.abort(); } catch(e){} }
+      reject(new Error('timeout'));
+    }, timeoutMs);
+    fetch(url, opts)
+      .then(function(r){ return r.json(); })
+      .then(function(j){ if (settled) return; settled = true; clearTimeout(timer); resolve(j); })
+      .catch(function(e){ if (settled) return; settled = true; clearTimeout(timer); reject(e); });
+  });
+}
+
+// Registry retry callbackov — tlačidlo v karte volá appRetry('<id>').
+var _appRetryRegistry = {};
+function appRegisterRetry(id, fn){ if (id) _appRetryRegistry[id] = fn; }
+function appRetry(id){
+  var fn = _appRetryRegistry[id];
+  if (typeof fn === 'function') { try { haptic('selection'); } catch(e){} fn(); }
+}
+
+// Jednotná chybová karta. opts: { id, title, desc, retryLabel }
+// title/desc VŽDY prispôsob miestu (napr. „Nepodarilo sa načítať rebríček").
+function appErrorCardHtml(opts){
+  opts = opts || {};
+  var esc = (typeof gynEsc === 'function') ? gynEsc : function(s){ return String(s == null ? '' : s); };
+  var id = opts.id || '';
+  var title = esc(opts.title || 'Načítanie zlyhalo');
+  var desc  = esc(opts.desc  || 'Skús to znova.');
+  var retryLabel = esc(opts.retryLabel || 'Skúsiť znova');
+  return '<div class="app-err-card">' +
+    '<div class="app-err-ic">⚠️</div>' +
+    '<div class="app-err-title">' + title + '</div>' +
+    '<div class="app-err-desc">' + desc + '</div>' +
+    '<button type="button" class="app-err-btn" onclick="appRetry(\'' + id + '\')">↻ ' + retryLabel + '</button>' +
+  '</div>';
+}
+// Pohodlný shortcut: vykreslí kartu do kontajnera + zaregistruje retry.
+function appShowErrorCard(container, opts, retryFn){
+  var el = (typeof container === 'string') ? document.getElementById(container) : container;
+  if (!el) return;
+  if (opts && opts.id && typeof retryFn === 'function') appRegisterRetry(opts.id, retryFn);
+  el.innerHTML = appErrorCardHtml(opts);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -10531,8 +10599,7 @@ function gynPlnenieShow(el, user) {
   }
   if(GYN_APP.plLoading[q]) return;
   GYN_APP.plLoading[q] = true;
-  fetch(gynScriptUrl('action=getPlnenieAll&rok='+GYN_APP.year+'&Q='+q), {cache:'no-store'})
-    .then(function(r){ return r.json(); })
+  appFetchJson(gynScriptUrl('action=getPlnenieAll&rok='+GYN_APP.year+'&Q='+q))
     .then(function(data){
       delete GYN_APP.plLoading[q];
       gynPreprocessData(data);
@@ -10549,8 +10616,13 @@ function gynPlnenieShow(el, user) {
     .catch(function(){
       delete GYN_APP.plLoading[q];
       if(!cached) {
-        el.innerHTML = gynQTabsHtml() +
-          '<div style="padding:32px 0;text-align:center;color:#EF4444;font-size:13px">Chyba načítavania. Skús znova.</div>';
+        appRegisterRetry('gyn-plnenie', function(){ gynPlnenieShow(el, user); });
+        el.innerHTML = gynQTabsHtml() + appErrorCardHtml({
+          id: 'gyn-plnenie',
+          title: 'Nepodarilo sa načítať plnenie',
+          desc: 'Dáta plnenia sa nepodarilo načítať. Skús to znova.',
+          retryLabel: 'Načítať znova'
+        });
       }
     });
 }
@@ -11053,12 +11125,12 @@ function gynPharmaAnimateLoading() {
 
 // Chybový stav s tlačidlom na opätovné načítanie (niekedy Sheets na 1. raz nevráti dáta).
 function gynPharmaErrorHtml(produkt) {
-  return '<div class="gyn-pharma-loading" style="padding:52px 22px;text-align:center;color:#64748B">' +
-    '<div style="width:74px;height:74px;margin:0 auto 16px;border-radius:50%;background:#FEF2F2;display:flex;align-items:center;justify-content:center;font-size:32px">⚠️</div>' +
-    '<div style="font-family:var(--font-display);font-weight:850;color:#0C1E35;font-size:16px;margin-bottom:5px">Dáta sa nepodarilo načítať</div>' +
-    '<div style="font-size:12.5px;line-height:1.45;margin-bottom:18px">Občas to na prvý raz nevyjde.' + (produkt ? ' Produkt ' + gynEsc(produkt) + '.' : '') + '</div>' +
-    '<button onclick="gynPharmaRetry()" style="display:inline-flex;align-items:center;gap:7px;background:linear-gradient(135deg,#0C1E35 0%,#13294B 100%);color:#fff;border:none;border-radius:24px;padding:12px 24px;font-size:14px;font-weight:700;font-family:var(--font-display);cursor:pointer;box-shadow:0 4px 14px rgba(12,30,53,.28),inset 0 1px 0 rgba(255,255,255,.10);-webkit-tap-highlight-color:transparent">↻ Skúsiť znova</button>' +
-  '</div>';
+  return appErrorCardHtml({
+    id: 'pharma',
+    title: 'Nepodarilo sa načítať trhové dáta',
+    desc: 'Občas to na prvý raz nevyjde.' + (produkt ? ' Produkt ' + produkt + '.' : '') + ' Skús to znova.',
+    retryLabel: 'Skúsiť znova'
+  });
 }
 // Watchdog — ak sa do ~16 s nič nenačíta, ukáž chybu + retry. (Sheets/Apps Script
 // vie reálne trvať aj 10–15 s, najmä pri prvom „studenom" volaní — radšej rezerva.)
@@ -11076,7 +11148,10 @@ function gynPharmaShowError() {
   if(GYN_PHARMA_STATE._watchdog){ clearTimeout(GYN_PHARMA_STATE._watchdog); GYN_PHARMA_STATE._watchdog = null; }
   if(GYN_PHARMA_STATE._progTimer){ clearInterval(GYN_PHARMA_STATE._progTimer); GYN_PHARMA_STATE._progTimer = null; }
   var bodyEl = document.getElementById('pharma-ms-body');
-  if(bodyEl && GYN_PHARMA_STATE.open) bodyEl.innerHTML = gynPharmaErrorHtml(GYN_PHARMA_STATE.produkt);
+  if(bodyEl && GYN_PHARMA_STATE.open) {
+    appRegisterRetry('pharma', gynPharmaRetry);
+    bodyEl.innerHTML = gynPharmaErrorHtml(GYN_PHARMA_STATE.produkt);
+  }
 }
 // Retry — vyčisti loading flag a skús stiahnuť dáta zo Sheets odznova.
 function gynPharmaRetry() {
@@ -13354,8 +13429,7 @@ function gynLbShow(el){
 function gynLbEnsureData(q, key){
   if(GYN_LB.dataReady[q] || GYN_LB.plLoading[q]) return;
   GYN_LB.plLoading[q] = true;
-  fetch(gynScriptUrl('action=getPlnenieAll&rok=' + GYN_APP.year + '&Q=' + q + '&fullLine=1'), { cache:'no-store' })
-    .then(function(r){ return r.json(); })
+  appFetchJson(gynScriptUrl('action=getPlnenieAll&rok=' + GYN_APP.year + '&Q=' + q + '&fullLine=1'))
     .then(function(d){
       delete GYN_LB.plLoading[q];
       if(!d) return;
@@ -13369,7 +13443,15 @@ function gynLbEnsureData(q, key){
       delete GYN_LB.plLoading[q];
       if(GYN_APP.nav === 'leaderboard'){
         var e2 = gynLbBody();
-        if(e2) e2.innerHTML = gynLbCard(gynLbCatTabsHtml() + '<div style="padding:32px 0;text-align:center;color:#EF4444;font-size:13px">Chyba načítavania. Skús znova.</div>');
+        if(e2){
+          appRegisterRetry('gyn-lb', function(){ gynLbEnsureData(q, key); gynLbRender(); });
+          e2.innerHTML = gynLbCard(gynLbCatTabsHtml() + appErrorCardHtml({
+            id: 'gyn-lb',
+            title: 'Nepodarilo sa načítať rebríček',
+            desc: 'Dáta plnenia sa nepodarilo načítať. Skús to znova.',
+            retryLabel: 'Načítať znova'
+          }));
+        }
       }
     });
 }
@@ -14905,12 +14987,17 @@ function mgrLoadData(){
 
 function mgrFetchWithRetry(url, retries){
   retries = retries === undefined ? 3 : retries;
-  return fetch(url, { cache: 'no-store' })
+  // Tvrdý timeout na pokus — zaseknutý request (bez odpovede) inak nikdy nezlyhá a load „visí".
+  var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  var to = setTimeout(function(){ if(ctrl){ try { ctrl.abort(); } catch(e){} } }, APP_FETCH_TIMEOUT_MS);
+  return fetch(url, ctrl ? { cache: 'no-store', signal: ctrl.signal } : { cache: 'no-store' })
     .then(function(r){
+      clearTimeout(to);
       if(!r.ok) throw new Error('HTTP ' + r.status);
       return r.json();
     })
     .catch(function(err){
+      clearTimeout(to);
       if(retries > 0){
         var delay = (4 - retries) * 1500; // 1.5s, 3s, 4.5s
         return new Promise(function(resolve, reject){
@@ -18040,7 +18127,17 @@ function lbRenderPlnenie(body) {
   var cached = LB_PLNENIE_CACHE;
   if (!cached) {
     if (LB_STATE._plLoadAttempted && !LB_PLNENIE_LOADING) {
-      body.innerHTML = mkEmpty('podium', 'Dáta nedostupné', 'Plnenie ' + qLabel + ' sa nepodarilo načítať. Skontroluj pripojenie.');
+      appRegisterRetry('lb-plnenie', function(){
+        LB_STATE._plLoadAttempted = false;
+        var b = lbGetBody();
+        if (b && LB_STATE.mode === 'plnenie') lbRenderPlnenie(b);
+      });
+      body.innerHTML = appErrorCardHtml({
+        id: 'lb-plnenie',
+        title: 'Nepodarilo sa načítať plnenie',
+        desc: 'Plnenie ' + qLabel + ' sa nepodarilo načítať. Skús to znova.',
+        retryLabel: 'Načítať znova'
+      });
       return;
     }
     body.innerHTML = skelLb();
@@ -18245,7 +18342,15 @@ function lbLoadData(force){
     var repOpen = (function(){ var ov = document.getElementById('lb-overlay'); return ov && ov.classList.contains('show'); })();
     if (mgrOpen || repOpen) {
       var body = lbGetBody();
-      if (body) body.innerHTML = mkEmpty('warning', 'Rebríček sa nenačítal', 'Dáta prišli neúplné. Skús rebríček otvoriť znova.');
+      if (body) {
+        appRegisterRetry('lb', function(){ var b = lbGetBody(); if(b) b.innerHTML = skelLb(); lbLoadData(true); });
+        body.innerHTML = appErrorCardHtml({
+          id: 'lb',
+          title: 'Nepodarilo sa načítať rebríček',
+          desc: 'Dáta prišli neúplné alebo sa nenačítali. Skús to znova.',
+          retryLabel: 'Načítať znova'
+        });
+      }
     }
   }
 
@@ -18257,8 +18362,7 @@ function lbLoadData(force){
     var remaining = scope.length;
     scope.forEach(function(username){
       function tryFetch(attempt) {
-        fetch(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username) + '&_t=' + Date.now()), { cache: 'no-store' })
-          .then(function(r){ return r.ok ? r.json() : []; })
+        appFetchJson(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username) + '&_t=' + Date.now()))
           .then(function(rows){
             if (Array.isArray(rows)) {
               results[username] = rows;
@@ -18288,8 +18392,7 @@ function lbLoadData(force){
 
   // Cache buster — vždy fetchni čerstvé
   function fetchAllHistoryAttempt(attempt) {
-    fetch(scriptUrl('action=getAllHistory&_t=' + Date.now()), { cache: 'no-store' })
-    .then(function(r){ return r.ok ? r.json() : null; })
+    appFetchJson(scriptUrl('action=getAllHistory&_t=' + Date.now()))
     .then(function(allHist){
       if(allHist && allHist.ok !== false && typeof allHist === 'object' && !Array.isArray(allHist)){
         if(window.console) console.log('[lb-debug] getAllHistory keys:', Object.keys(allHist), '| LB_ALL_REPS:', LB_ALL_REPS);
@@ -20586,8 +20689,19 @@ function plnenieRenderAll() {
   if (!PL_STATE.aggregates) {
     plnenieRenderSummaryEmpty();
     var listEl = document.getElementById('pl-rep-list');
-    var qLbl = plnenieQLabel(PL_STATE.q, PL_STATE.year);
-    if (listEl) listEl.innerHTML = mkEmpty('podium', 'Žiadne dáta pre ' + qLbl, 'Potiahni dole pre refresh.');
+    if (listEl) {
+      if (PL_STATE.loading) {
+        listEl.innerHTML = skelPl();   // ešte sa načítava
+      } else {
+        appRegisterRetry('golem-plnenie', function(){ plnenieLoadAllQuarters(); });
+        listEl.innerHTML = appErrorCardHtml({
+          id: 'golem-plnenie',
+          title: 'Nepodarilo sa načítať plnenie',
+          desc: 'Dáta plnenia sa nepodarilo načítať. Skús to znova alebo potiahni dole pre obnovenie.',
+          retryLabel: 'Načítať znova'
+        });
+      }
+    }
     if (PL_STATE.detailRep) plnenieRenderDetailError();
     return;
   }
