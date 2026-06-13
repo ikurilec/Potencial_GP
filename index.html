@@ -3134,7 +3134,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.30.21';
+var APP_VERSION = '2.30.22';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11060,7 +11060,8 @@ function gynPharmaErrorHtml(produkt) {
     '<button onclick="gynPharmaRetry()" style="display:inline-flex;align-items:center;gap:7px;background:linear-gradient(135deg,#0C1E35 0%,#13294B 100%);color:#fff;border:none;border-radius:24px;padding:12px 24px;font-size:14px;font-weight:700;font-family:var(--font-display);cursor:pointer;box-shadow:0 4px 14px rgba(12,30,53,.28),inset 0 1px 0 rgba(255,255,255,.10);-webkit-tap-highlight-color:transparent">↻ Skúsiť znova</button>' +
   '</div>';
 }
-// Watchdog — ak sa do ~12 s (progress je pri ~95 %) nič nenačíta, ukáž chybu + retry.
+// Watchdog — ak sa do ~16 s nič nenačíta, ukáž chybu + retry. (Sheets/Apps Script
+// vie reálne trvať aj 10–15 s, najmä pri prvom „studenom" volaní — radšej rezerva.)
 function gynPharmaStartWatchdog() {
   if(GYN_PHARMA_STATE._watchdog){ clearTimeout(GYN_PHARMA_STATE._watchdog); }
   GYN_PHARMA_STATE._watchdog = setTimeout(function(){
@@ -11069,7 +11070,7 @@ function gynPharmaStartWatchdog() {
     if(GYN_PHARMA_STATE.open && document.getElementById('gyn-ph-prog-ring')) {
       gynPharmaShowError();
     }
-  }, 12000);
+  }, 16000);
 }
 function gynPharmaShowError() {
   if(GYN_PHARMA_STATE._watchdog){ clearTimeout(GYN_PHARMA_STATE._watchdog); GYN_PHARMA_STATE._watchdog = null; }
