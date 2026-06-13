@@ -3134,7 +3134,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.30.18';
+var APP_VERSION = '2.30.19';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11656,16 +11656,17 @@ function gynPharmaRender(resp) {
         '</div>' +
         '<div class="pharma-ms-trend-row">' +
           (function(){
-            var html2 = '';
-            qYymms.forEach(function(yy, idx){
-              var m = summary.filter(function(s){ return parseInt(s.mesiac) === yy; })[0];
+            // Posledný mesiac s pharma dátami + dva pred ním (rovnako ako tabuľka/graf dole),
+            // nie mesiace kvartálu — tie by ukazovali "—" pre ešte nenačítané mesiace.
+            var msMonths = summary.filter(function(s){ return (parseFloat(s.terit_ms)||0) > 0 || (parseFloat(s.sk_ms)||0) > 0; });
+            var mini = msMonths.slice(-3);
+            return mini.map(function(m){
               var v = m && m.terit_ms ? _gynPharmaPct(m.terit_ms) : '—';
-              html2 += '<div class="pharma-ms-trend-m">' +
+              return '<div class="pharma-ms-trend-m">' +
                 '<div class="pharma-ms-trend-val">'+v+'</div>' +
-                '<div class="pharma-ms-trend-lbl">'+_gynMonthLabel(yy)+'</div>' +
+                '<div class="pharma-ms-trend-lbl">'+_gynMonthLabel(m.mesiac)+'</div>' +
               '</div>';
-            });
-            return html2;
+            }).join('');
           })() +
         '</div>' +
       '</div>';
