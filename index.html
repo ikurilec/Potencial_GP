@@ -3126,7 +3126,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.30.13';
+var APP_VERSION = '2.30.14';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -14000,6 +14000,7 @@ function gynCalEnsureSheet(){
   if(document.getElementById('gyn-cal-sheet')) return;
   var bd=document.createElement('div'); bd.id='gyn-cal-sheet-bd';
   bd.addEventListener('click', gynCalSheetClose);
+  bd.addEventListener('touchmove', function(e){ if(e.cancelable) e.preventDefault(); }, { passive:false });
   var sh=document.createElement('div'); sh.id='gyn-cal-sheet';
   document.body.appendChild(bd); document.body.appendChild(sh);
   gynCalAttachSheetDrag(sh);
@@ -14034,6 +14035,9 @@ function gynCalAttachSheetDrag(sh){
       if(!fromHeader){ dragging=false; sh.style.transition=''; sh.style.transform=''; return; } // skrolovanie nahor v tele
       ddy=ddy*0.22;   // ťah nahor za grip — jemný odpor
     }
+    // Drag sheetu — zastav natívny scroll/pull-to-refresh aj custom PTR na pozadí
+    if(e.cancelable) e.preventDefault();
+    e.stopPropagation();
     dy=ddy;
     sh.style.transform='translateY('+Math.max(dy,0)+'px)';
   }
@@ -14050,13 +14054,14 @@ function gynCalAttachSheetDrag(sh){
     }
   }
   sh.addEventListener('touchstart', onStart, { passive:true });
-  sh.addEventListener('touchmove', onMove, { passive:true });
+  sh.addEventListener('touchmove', onMove, { passive:false });
   sh.addEventListener('touchend', onEnd, { passive:true });
   sh.addEventListener('touchcancel', onEnd, { passive:true });
 }
 function gynCalSheetOpen(){
   var bd=document.getElementById('gyn-cal-sheet-bd'), sh=document.getElementById('gyn-cal-sheet');
   bd.classList.add('show');
+  document.body.style.overflow='hidden';            // zamkni scroll pozadia (žiadny PTR za sheetom)
   sh.style.transition=''; sh.style.transform='';   // vyčisti zvyšky po prípadnom drag-u
   sh.classList.remove('show'); void sh.offsetWidth; sh.classList.add('show');
 }
@@ -14064,6 +14069,7 @@ function gynCalSheetClose(){
   var bd=document.getElementById('gyn-cal-sheet-bd'), sh=document.getElementById('gyn-cal-sheet');
   if(sh) sh.classList.remove('show');
   if(bd) bd.classList.remove('show');
+  document.body.style.overflow='';                  // obnov scroll pozadia
 }
 function gynCalRefreshBehind(){
   var el=document.getElementById('gyn-content');
