@@ -3126,7 +3126,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.30.10';
+var APP_VERSION = '2.30.11';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -12835,7 +12835,7 @@ function gynPlnenieRenderMgr(el, user, data) {
     repPredBasisMap[a.rep.login] = gynPredictionBasisForRep(a.rep.login, data, q, year);
   });
 
-  // ── Predajje len z DOKONČENÝCH mesiacov (pre predikciu konca Q) ──
+  // ── Predaje len z DOKONČENÝCH mesiacov (pre predikciu konca Q) ──
   var qMonthsArr = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[q] || [];
   var curQNow    = plnenieCurrentQ();
   var curMonNow  = (new Date()).getMonth() + 1;
@@ -19690,7 +19690,7 @@ function plnenieRenderSummary() {
   if (notice2) {
     if (sk.planEUR === 0) {
       notice2.style.display = '';
-      notice2.textContent = 'Udúje sa aktualizújú po schválení teritoriálnych plánov na Q' + PL_STATE.q;
+      notice2.textContent = 'Údaje sa aktualizujú po schválení teritoriálnych plánov na Q' + PL_STATE.q;
     } else {
       notice2.style.display = 'none';
     }
