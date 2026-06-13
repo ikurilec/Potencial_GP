@@ -3134,7 +3134,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.30.20';
+var APP_VERSION = '2.30.21';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11051,6 +11051,44 @@ function gynPharmaAnimateLoading() {
   }, 80);
 }
 
+// Chybový stav s tlačidlom na opätovné načítanie (niekedy Sheets na 1. raz nevráti dáta).
+function gynPharmaErrorHtml(produkt) {
+  return '<div class="gyn-pharma-loading" style="padding:52px 22px;text-align:center;color:#64748B">' +
+    '<div style="width:74px;height:74px;margin:0 auto 16px;border-radius:50%;background:#FEF2F2;display:flex;align-items:center;justify-content:center;font-size:32px">⚠️</div>' +
+    '<div style="font-family:var(--font-display);font-weight:850;color:#0C1E35;font-size:16px;margin-bottom:5px">Dáta sa nepodarilo načítať</div>' +
+    '<div style="font-size:12.5px;line-height:1.45;margin-bottom:18px">Občas to na prvý raz nevyjde.' + (produkt ? ' Produkt ' + gynEsc(produkt) + '.' : '') + '</div>' +
+    '<button onclick="gynPharmaRetry()" style="display:inline-flex;align-items:center;gap:7px;background:linear-gradient(135deg,#0C1E35 0%,#13294B 100%);color:#fff;border:none;border-radius:24px;padding:12px 24px;font-size:14px;font-weight:700;font-family:var(--font-display);cursor:pointer;box-shadow:0 4px 14px rgba(12,30,53,.28),inset 0 1px 0 rgba(255,255,255,.10);-webkit-tap-highlight-color:transparent">↻ Skúsiť znova</button>' +
+  '</div>';
+}
+// Watchdog — ak sa do ~12 s (progress je pri ~95 %) nič nenačíta, ukáž chybu + retry.
+function gynPharmaStartWatchdog() {
+  if(GYN_PHARMA_STATE._watchdog){ clearTimeout(GYN_PHARMA_STATE._watchdog); }
+  GYN_PHARMA_STATE._watchdog = setTimeout(function(){
+    GYN_PHARMA_STATE._watchdog = null;
+    // Stále visí progress kruh (obsah sa nenahradil grafom) → považuj za neúspech.
+    if(GYN_PHARMA_STATE.open && document.getElementById('gyn-ph-prog-ring')) {
+      gynPharmaShowError();
+    }
+  }, 12000);
+}
+function gynPharmaShowError() {
+  if(GYN_PHARMA_STATE._watchdog){ clearTimeout(GYN_PHARMA_STATE._watchdog); GYN_PHARMA_STATE._watchdog = null; }
+  if(GYN_PHARMA_STATE._progTimer){ clearInterval(GYN_PHARMA_STATE._progTimer); GYN_PHARMA_STATE._progTimer = null; }
+  var bodyEl = document.getElementById('pharma-ms-body');
+  if(bodyEl && GYN_PHARMA_STATE.open) bodyEl.innerHTML = gynPharmaErrorHtml(GYN_PHARMA_STATE.produkt);
+}
+// Retry — vyčisti loading flag a skús stiahnuť dáta zo Sheets odznova.
+function gynPharmaRetry() {
+  var key = GYN_PHARMA_STATE.produkt + '|' + GYN_PHARMA_STATE.oblast + '|' + GYN_PHARMA_STATE.kvartal;
+  delete GYN_PHARMA_STATE.loading[key];
+  try { haptic('selection'); } catch(e){}
+  var bodyEl = document.getElementById('pharma-ms-body');
+  if(bodyEl) bodyEl.innerHTML = gynPharmaLoadingHtml(GYN_PHARMA_STATE.produkt);
+  gynPharmaAnimateLoading();
+  gynPharmaStartWatchdog();
+  gynPharmaLoad();
+}
+
 function gynPharmaKvartal(year, q) {
   var yy = year - 2000;
   return (yy < 10 ? '0'+yy : ''+yy) + '0' + q;
@@ -11091,6 +11129,7 @@ function gynOpenPharma(productName, oblast, repLogin) {
   overlay.classList.add('panel-anim-r');
   setTimeout(function(){ overlay.classList.remove('panel-anim-r'); }, 300);
 
+  gynPharmaStartWatchdog();
   gynPharmaLoad();
 }
 
@@ -11098,6 +11137,8 @@ function gynClosePharma() {
   usageSectionClose();
   GYN_PHARMA_STATE.open = false;
   GYN_PHARMA_STATE.repLogin = null;
+  if(GYN_PHARMA_STATE._watchdog){ clearTimeout(GYN_PHARMA_STATE._watchdog); GYN_PHARMA_STATE._watchdog = null; }
+  if(GYN_PHARMA_STATE._progTimer){ clearInterval(GYN_PHARMA_STATE._progTimer); GYN_PHARMA_STATE._progTimer = null; }
   var overlay = document.getElementById('pharma-ms-overlay');
   if(overlay){
     overlay.classList.add('pl-detail-exit-r');
@@ -11514,10 +11555,9 @@ function gynPharmaLoad() {
       ), { cache:'no-store' }).then(function(r){ return r.json(); });
 
   fetchCurrent.then(function(resp){
-    var bodyEl = document.getElementById('pharma-ms-body');
     if(!resp || !resp.ok) {
       delete GYN_PHARMA_STATE.loading[key];
-      if(bodyEl) bodyEl.innerHTML = '<div class="pharma-ms-loading">Chyba načítavania.</div>';
+      gynPharmaShowError();
       return;
     }
     var neededKvartals = resp.metric === 'packs' ? [GYN_PHARMA_STATE.kvartal] : gynPharmaTrendKvartals(resp.summary);
@@ -11566,8 +11606,7 @@ function gynPharmaLoad() {
     });
   }).catch(function(){
     delete GYN_PHARMA_STATE.loading[key];
-    var bodyEl = document.getElementById('pharma-ms-body');
-    if(bodyEl) bodyEl.innerHTML = '<div class="pharma-ms-loading">Chyba siete.</div>';
+    gynPharmaShowError();
   });
 }
 
@@ -11585,6 +11624,9 @@ function _gynMonthLabel(yymm) {
 }
 
 function gynPharmaRender(resp) {
+  // Úspech — zruš watchdog aj progress animáciu.
+  if(GYN_PHARMA_STATE._watchdog){ clearTimeout(GYN_PHARMA_STATE._watchdog); GYN_PHARMA_STATE._watchdog = null; }
+  if(GYN_PHARMA_STATE._progTimer){ clearInterval(GYN_PHARMA_STATE._progTimer); GYN_PHARMA_STATE._progTimer = null; }
   GYN_PHARMA_STATE.lastResp = resp;
   var summary = (resp.summary || []).slice();
   var okresy  = resp.okresy  || [];
