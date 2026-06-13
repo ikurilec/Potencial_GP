@@ -3126,7 +3126,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.30.12';
+var APP_VERSION = '2.30.13';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -14002,10 +14002,62 @@ function gynCalEnsureSheet(){
   bd.addEventListener('click', gynCalSheetClose);
   var sh=document.createElement('div'); sh.id='gyn-cal-sheet';
   document.body.appendChild(bd); document.body.appendChild(sh);
+  gynCalAttachSheetDrag(sh);
+}
+// Drag-to-dismiss: ťah za grip/hlavičku (alebo telo odskrolované hore) smerom dole
+// → sheet ide pod prstom a po prahu sa plynulo zatvorí; inak snap späť.
+function gynCalAttachSheetDrag(sh){
+  if(!sh || sh._dragAttached) return;
+  sh._dragAttached = true;
+  var startY=0, startX=0, dy=0, dragging=false, locked=false, axis=null, fromHeader=false;
+  function onStart(e){
+    if(!e.touches || e.touches.length!==1) return;
+    var tgt=e.target;
+    var onHeader = !!(tgt.closest && (tgt.closest('.gyn-cal-sheet-grip') || tgt.closest('.gyn-cal-sheet-hdr')));
+    var body = tgt.closest && tgt.closest('.gyn-cal-sheet-body');
+    var bodyAtTop = !body || body.scrollTop<=0;
+    if(!onHeader && !bodyAtTop) return;   // používateľ skroluje obsah → necháme native scroll
+    fromHeader=onHeader;
+    startY=e.touches[0].clientY; startX=e.touches[0].clientX;
+    dy=0; dragging=true; locked=false; axis=null;
+  }
+  function onMove(e){
+    if(!dragging || !e.touches || e.touches.length!==1) return;
+    var ddy=e.touches[0].clientY-startY, ddx=e.touches[0].clientX-startX;
+    if(!locked){
+      if(Math.abs(ddy)>6 && Math.abs(ddy)>=Math.abs(ddx)){ locked=true; axis='v'; sh.style.transition='none'; }
+      else if(Math.abs(ddx)>6){ locked=true; axis='h'; dragging=false; return; }
+      else return;
+    }
+    if(axis!=='v') return;
+    if(ddy<0){
+      if(!fromHeader){ dragging=false; sh.style.transition=''; sh.style.transform=''; return; } // skrolovanie nahor v tele
+      ddy=ddy*0.22;   // ťah nahor za grip — jemný odpor
+    }
+    dy=ddy;
+    sh.style.transform='translateY('+Math.max(dy,0)+'px)';
+  }
+  function onEnd(){
+    if(!dragging) return;
+    dragging=false;
+    if(axis!=='v'){ return; }
+    sh.style.transition='';            // späť na plynulú CSS transition
+    sh.style.transform='';             // → CSS prevezme cieľovú pozíciu
+    var h=sh.offsetHeight||400;
+    if(dy > Math.min(h*0.28, 130)){    // prah → zatvor
+      try { haptic('selection'); } catch(e){}
+      gynCalSheetClose();
+    }
+  }
+  sh.addEventListener('touchstart', onStart, { passive:true });
+  sh.addEventListener('touchmove', onMove, { passive:true });
+  sh.addEventListener('touchend', onEnd, { passive:true });
+  sh.addEventListener('touchcancel', onEnd, { passive:true });
 }
 function gynCalSheetOpen(){
   var bd=document.getElementById('gyn-cal-sheet-bd'), sh=document.getElementById('gyn-cal-sheet');
   bd.classList.add('show');
+  sh.style.transition=''; sh.style.transform='';   // vyčisti zvyšky po prípadnom drag-u
   sh.classList.remove('show'); void sh.offsetWidth; sh.classList.add('show');
 }
 function gynCalSheetClose(){
