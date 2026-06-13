@@ -3134,7 +3134,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.30.15';
+var APP_VERSION = '2.30.16';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10708,10 +10708,12 @@ function gynOpenProdSheet(prodLabel) {
     var pctPart = pct !== null
       ? '<span class="pl-ps-sub-pct ' + plnenieColorClass(pct) + '">' + plnenieFormatPct(pct) + '</span> plnenia · ' + plnenieQLabel(q, year)
       : plnenieQLabel(q, year);
+    if(totPlan > 0) pctPart += ' · plán Q' + q + ': <strong>' + plnenieFormatEUR(totPlan) + '</strong>';
     subEl.innerHTML = pctPart;
   }
 
   gynProdSheetRenderRepList(prodLabel, data);
+  gynProdSheetUpdateSkMsHeader(prodLabel);   // SK MS — ak sú dáta už v cache (inak doplní polling)
 
   // Triggernúť pharma fetche pre všetky regióny repov × aktuálny + prev kvartal
   if(GYN_PHARMA_PRODUCTS[pkeyLow]) {
@@ -10956,6 +10958,49 @@ function gynProdSheetUpdateMsCells() {
       }
     }
   });
+
+  gynProdSheetUpdateSkMsHeader(prodLabel);   // doplň SK MS do hlavičky keď dáta dorazia
+}
+
+// Priemerný národný trhový podiel (SK MS) pre produkt za aktuálny kvartál — z gyn pharma cache.
+// sk_ms je národné číslo (rovnaké naprieč oblasťami), stačí prvá oblasť s dátami. Vracia zlomok 0–1.
+function gynProdSheetProductSkMs(prodLabel){
+  var pkeyLow = (prodLabel || '').trim().toLowerCase();
+  if(!GYN_PHARMA_PRODUCTS[pkeyLow] || pkeyLow === 'ryeqo') return null;   // ryeqo = balenia, nie MS %
+  var kv = gynPharmaKvartal(GYN_APP.year, GYN_APP.q);
+  var kvPrev = pharmaKvartalPrev(kv);
+  var qMonths = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[GYN_APP.q] || [];
+  var qYymms = qMonths.map(function(m){ return (GYN_APP.year - 2000) * 100 + m; });
+  function avgSk(kvartal){
+    var found = null;
+    Object.keys(GYN_PHARMA_STATE.cache).forEach(function(ck){
+      if(found !== null) return;
+      var parts = ck.split('|');
+      if(parts.length < 3 || parts[0] !== prodLabel || parts[parts.length-1] !== kvartal) return;
+      var d = GYN_PHARMA_STATE.cache[ck];
+      if(!d || !d.summary) return;
+      var vals = [];
+      d.summary.forEach(function(s){
+        if(qYymms.indexOf(parseInt(s.mesiac)) !== -1){
+          var v = parseFloat(s.sk_ms);
+          if(!isNaN(v) && v > 0) vals.push(v);
+        }
+      });
+      if(vals.length) found = vals.reduce(function(a,b){return a+b;},0) / vals.length;
+    });
+    return found;
+  }
+  var sk = avgSk(kv);
+  if(sk === null) sk = avgSk(kvPrev);
+  return sk;
+}
+function gynProdSheetUpdateSkMsHeader(prodLabel){
+  var subEl = document.getElementById('pl-ps-sub');
+  if(!subEl || subEl.innerHTML.indexOf('SK MS') !== -1) return;
+  var sk = gynProdSheetProductSkMs(prodLabel);
+  if(sk !== null){
+    subEl.innerHTML += ' <span style="color:#94A3B8">·</span> SK MS: <strong>' + _gynPharmaPct(sk) + '</strong>';
+  }
 }
 
 // Klik na rep v prod sheet → otvorí Trhový podiel pre tohto repa
