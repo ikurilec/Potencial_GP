@@ -3134,7 +3134,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.30.19';
+var APP_VERSION = '2.30.20';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11274,12 +11274,13 @@ function gynPharmaResetLines() {
   }
   var body = document.getElementById('pharma-ms-body');
   if(!body) return;
-  body.querySelectorAll('.gpharma-line').forEach(function(l){
+  var mainChart = body.querySelector('.pharma-ms-trend-chart') || body;   // len hlavný graf
+  mainChart.querySelectorAll('.gpharma-line').forEach(function(l){
     l.style.transition = 'opacity 0.3s';
     l.style.opacity = '';
     l.style.strokeWidth = '';
   });
-  body.querySelectorAll('.pharma-ms-trend-chart-legend-item').forEach(function(el){
+  mainChart.querySelectorAll('.pharma-ms-trend-chart-legend-item').forEach(function(el){
     el.classList.remove('pharma-ms-trend-chart-legend-item--active');
   });
   var wrap = document.getElementById('gyn-pharma-reset-wrap');
@@ -11290,6 +11291,9 @@ function gynPharmaResetLines() {
 function gynPharmaToggleLine(key) {
   var body = document.getElementById('pharma-ms-body');
   if(!body) return;
+  // Scope len na hlavný (teritoriálny) graf — okresné grafy majú vlastné nezávislé
+  // označovanie (gynMsDistrictToggleLine), nesmie sa to krížiť cez celé body.
+  var mainChart = body.querySelector('.pharma-ms-trend-chart') || body;
   var was = !!_gynPharmaSelectedKeys[key];
   if(was) delete _gynPharmaSelectedKeys[key];
   else _gynPharmaSelectedKeys[key] = true;
@@ -11323,7 +11327,7 @@ function gynPharmaToggleLine(key) {
   var sel = Object.keys(_gynPharmaSelectedKeys);
   if(sel.length === 0) { gynPharmaResetLines(); return; }
 
-  body.querySelectorAll('.gpharma-line').forEach(function(l){
+  mainChart.querySelectorAll('.gpharma-line').forEach(function(l){
     var lk = l.getAttribute('data-line-key');
     l.style.transition = 'opacity 0.25s';
     if(_gynPharmaSelectedKeys[lk]) {
@@ -11337,7 +11341,7 @@ function gynPharmaToggleLine(key) {
 
   // Draw animácia pre novo pridanú čiaru
   if(!was) {
-    var line = body.querySelector('.gpharma-line[data-line-key="'+key+'"]');
+    var line = mainChart.querySelector('.gpharma-line[data-line-key="'+key+'"]');
     if(line) {
       try {
         var len = line.getTotalLength();
@@ -11354,7 +11358,7 @@ function gynPharmaToggleLine(key) {
     }
   }
 
-  body.querySelectorAll('.pharma-ms-trend-chart-legend-item').forEach(function(el){
+  mainChart.querySelectorAll('.pharma-ms-trend-chart-legend-item').forEach(function(el){
     var k = el.getAttribute('data-line-key');
     if(_gynPharmaSelectedKeys[k]) el.classList.add('pharma-ms-trend-chart-legend-item--active');
     else el.classList.remove('pharma-ms-trend-chart-legend-item--active');
