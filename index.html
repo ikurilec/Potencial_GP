@@ -3140,7 +3140,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.30.26';
+var APP_VERSION = '2.30.27';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8101,7 +8101,7 @@ var USERS_LOCAL = {
   'j.krkoska':    { region: 'MT'   },
   'i.kozakova':   { region: 'NR'   },
   'k.czidor':     { region: 'LV'   },
-  'o.rad':        { region: 'RS'   },
+  'r.fekiacova':  { region: 'RS'   },
   'l.macakova':   { region: 'PP'   },
   'z.lapsan':     { region: 'PO'   },
   'm.sabol':      { region: 'MI'   },
@@ -20294,7 +20294,10 @@ function prodSheetRenderRepList() {
       name: MGR_REP_NAMES[r.username] || r.username,
       color: 'linear-gradient(135deg,#64748B,#475569)'
     };
-    var oblast  = (USERS_LOCAL[r.username] && USERS_LOCAL[r.username].region) || '';
+    // Teritórium — primárne z USERS_LOCAL, fallback na LB_REP_INFO (oba sa plnia zo Sheets;
+    // statický USERS_LOCAL nemusí mať každého repa, kým LB_REP_INFO/roster áno).
+    var oblast  = (USERS_LOCAL[r.username] && USERS_LOCAL[r.username].region) ||
+                  (LB_REP_INFO[r.username] && LB_REP_INFO[r.username].region) || '';
     var teritMs = getTeritMs(oblast);
     var msFetching = (function() {
       if (teritMs !== null || !oblast) return false;
@@ -20371,7 +20374,8 @@ function prodSheetOpenPharmaForRep(repUsername) {
   if (!PL_PROD_SHEET_STATE.open || !PL_PROD_SHEET_STATE.prodKey) return;
   var prodKey = PL_PROD_SHEET_STATE.prodKey;
   if (!PHARMA_CODES[prodKey]) return;
-  var oblast = (USERS_LOCAL[repUsername] && USERS_LOCAL[repUsername].region) || '';
+  var oblast = (USERS_LOCAL[repUsername] && USERS_LOCAL[repUsername].region) ||
+               (LB_REP_INFO[repUsername] && LB_REP_INFO[repUsername].region) || '';
   if (!oblast) return;
   var label = PL_PROD_SHEET_STATE.prodLabel || prodKey;
   closeProdSheet();
