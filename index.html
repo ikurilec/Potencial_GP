@@ -1601,7 +1601,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .mgr-lk-wrap{padding:4px 0}
   .mgr-lk-rep-lbl{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#2563EB;margin-bottom:8px;padding-left:2px}
   /* ── PHARMA MS OVERLAY — trhový podiel po kliknutí na produkt ── */
-  .pharma-ms-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:3002;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  .pharma-ms-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:3000;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   .pharma-ms-overlay.show{display:block}
   .pharma-ms-inner{max-width:480px;margin:0 auto;padding:16px 16px 40px}
   .pharma-ms-hdr{display:flex;align-items:center;gap:10px;margin-bottom:16px}
@@ -3140,7 +3140,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.30.25';
+var APP_VERSION = '2.30.26';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -20365,8 +20365,8 @@ function prodSheetRenderRepList() {
 }
 
 // Manažér: klik na reprezentanta v produktovom rebríčku → trhový podiel daného
-// produktu scope-nutý na jeho teritórium. Produktový sheet necháme otvorený pod
-// overlayom, takže „Späť" z trhového podielu vráti práve sem (o krok naspäť).
+// produktu scope-nutý na jeho teritórium. Rovnako ako v gyn: rebríček zatvoríme a
+// otvoríme trhový podiel, takže „Späť" z trhového podielu vráti na prehľad produktov.
 function prodSheetOpenPharmaForRep(repUsername) {
   if (!PL_PROD_SHEET_STATE.open || !PL_PROD_SHEET_STATE.prodKey) return;
   var prodKey = PL_PROD_SHEET_STATE.prodKey;
@@ -20374,7 +20374,8 @@ function prodSheetOpenPharmaForRep(repUsername) {
   var oblast = (USERS_LOCAL[repUsername] && USERS_LOCAL[repUsername].region) || '';
   if (!oblast) return;
   var label = PL_PROD_SHEET_STATE.prodLabel || prodKey;
-  openPharmaMs(prodKey, label, oblast);
+  closeProdSheet();
+  setTimeout(function(){ openPharmaMs(prodKey, label, oblast); }, 200);
 }
 
 function prodSheetInitSwipe() {
