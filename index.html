@@ -3144,7 +3144,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.30.29';
+var APP_VERSION = '2.30.30';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8249,10 +8249,14 @@ function doLogin() {
   btn.textContent = 'Prihlasujem...';
 
   var loginParams = '?action=login&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password) + '&device_id=' + encodeURIComponent(authDeviceId());
-  var gpFetch  = fetch(SCRIPT_URL     + loginParams).then(function(r){ return r.json(); }).catch(function(){ return {ok:false}; });
-  var gynFetch = fetch(GYN_SCRIPT_URL + loginParams).then(function(r){ return r.json(); }).catch(function(){ return {ok:false}; });
+  // appFetchJson má tvrdý timeout (AbortController, ~16s) — keď Apps Script „visí",
+  // request sa ukončí, tlačidlo sa vráti a prihlasovanie nikdy nezostane zaseknuté
+  // na „Prihlasujem…". Per-fetch catch → Promise.all sa vždy dokončí v rámci timeoutu.
+  function loginFetch(url){
+    return appFetchJson(url + loginParams).catch(function(){ return { ok:false, _failed:true }; });
+  }
 
-  Promise.all([gpFetch, gynFetch]).then(function(results) {
+  Promise.all([loginFetch(SCRIPT_URL), loginFetch(GYN_SCRIPT_URL)]).then(function(results) {
     btn.disabled = false;
     btn.textContent = 'Prihlásiť sa →';
     var gpData  = results[0];
@@ -8264,7 +8268,13 @@ function doLogin() {
       loginSuccess(username, gpData.name, gpData.role, gpData.region, gpData);
     } else if(gynData.ok) {
       gynLoginSuccess(username, gynData);
+    } else if(gpData._failed && gynData._failed) {
+      // Oba zlyhali kvôli sieti/timeoutu (nie zlé heslo) → zrozumiteľná hláška, dá sa skúsiť znova
+      errEl.textContent = 'Spojenie sa nepodarilo — server neodpovedal včas. Skontroluj sieť a skús znova.';
+      errEl.classList.add('show');
+      haptic('error');
     } else {
+      errEl.textContent = 'Nesprávne meno alebo heslo. Skús znova.';
       errEl.classList.add('show');
       userEl.classList.add('err');
       passEl.classList.add('err');
