@@ -1271,6 +1271,10 @@
   .pl-ps-pct{font-size:14px;font-weight:800;line-height:1.2}
   .pl-ps-pct.pl-g{color:#059669}.pl-ps-pct.pl-o{color:#D97706}.pl-ps-pct.pl-r{color:#DC2626}.pl-ps-pct.pl-none{color:#94A3B8}
   .pl-ps-eur{font-size:11px;color:#64748B;margin-top:2px;white-space:nowrap}
+  .pl-ps-pred{font-size:10.5px;color:#94A3B8;margin-top:2px;white-space:nowrap;font-weight:600}
+  .pl-ps-pred span{font-weight:800}
+  .pl-ps-pred span.pl-g{color:#059669}.pl-ps-pred span.pl-o{color:#D97706}.pl-ps-pred span.pl-r{color:#DC2626}.pl-ps-pred span.pl-none{color:#94A3B8}
+  .pl-ps-sub strong.pl-g{color:#059669}.pl-ps-sub strong.pl-o{color:#D97706}.pl-ps-sub strong.pl-r{color:#DC2626}
   .pl-regions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
   .pl-region-card{background:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 2px 8px rgba(0,0,0,.06);text-align:center}
   .pl-region-lbl{font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
@@ -3140,7 +3144,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.30.27';
+var APP_VERSION = '2.30.28';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -20100,6 +20104,10 @@ function prodSheetUpdateHeader() {
       ? '<span class="pl-ps-sub-pct ' + plnenieColorClass(prodSummary.pct) + '">' + plnenieFormatPct(prodSummary.pct) + '</span> plnenia · ' + plnenieQLabel(q, year)
       : plnenieQLabel(q, year);
     if (planTotal > 0) pctPart += ' · plán Q' + q + ': <strong>' + plnenieFormatEUR(planTotal) + '</strong>';
+    // Predikcia celého produktu do konca Q (z predpočítaných agregátov — actual/plán dokončených častí)
+    var prodPredik = (plnenieCurrentQ() === q && prodSummary && prodSummary.predPlanEURDone > 0)
+      ? (prodSummary.predajeEURDone / prodSummary.predPlanEURDone * 100) : null;
+    if (prodPredik !== null) pctPart += ' · predikcia Q: <strong class="' + plnenieColorClass(prodPredik) + '">' + plnenieFormatPct(prodPredik) + '</strong>';
     subEl.innerHTML = pctPart;
   }
 }
@@ -20334,6 +20342,14 @@ function prodSheetRenderRepList() {
         : '— / ' + plnenieFormatEUR(r.planEUR);
     }
 
+    // Predikcia tohto repa do konca Q pri tomto produkte (len aktuálny Q; rovnaká
+    // metóda ako produktové karty v detaile repa — z mesačných predajov).
+    var rByMonthPred = (predaje[r.username] && predaje[r.username].byMonth) || {};
+    var rPredikcia = plnenieCalcPredikcia(PL_STATE.q, PL_STATE.year, r.planEUR, rByMonthPred, planKey);
+    var predHtml = (rPredikcia !== null)
+      ? '<div class="pl-ps-pred">predikcia Q <span class="' + plnenieColorClass(rPredikcia) + '">' + plnenieFormatPct(rPredikcia) + '</span></div>'
+      : '';
+
     // Klikateľnosť — len keď má produkt pharma dáta a rep má teritórium.
     // Klik otvorí trhový podiel produktu pre teritórium tohto reprezentanta.
     var clickable = !!pharmaCode && !!oblast;
@@ -20353,6 +20369,7 @@ function prodSheetRenderRepList() {
       '<div class="pl-ps-right">' +
         '<div class="pl-ps-pct ' + plnenieColorClass(r.pct) + '" data-pct="' + r.pct.toFixed(4) + '">0,00%</div>' +
         '<div class="pl-ps-eur">' + mgrEscape(eurHtml) + '</div>' +
+        predHtml +
       '</div>' +
       chevron +
     '</div>';
