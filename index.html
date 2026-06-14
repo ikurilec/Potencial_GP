@@ -1601,7 +1601,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .mgr-lk-wrap{padding:4px 0}
   .mgr-lk-rep-lbl{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#2563EB;margin-bottom:8px;padding-left:2px}
   /* ── PHARMA MS OVERLAY — trhový podiel po kliknutí na produkt ── */
-  .pharma-ms-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:3000;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  .pharma-ms-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:3002;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   .pharma-ms-overlay.show{display:block}
   .pharma-ms-inner{max-width:480px;margin:0 auto;padding:16px 16px 40px}
   .pharma-ms-hdr{display:flex;align-items:center;gap:10px;margin-bottom:16px}
@@ -3140,7 +3140,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.30.24';
+var APP_VERSION = '2.30.25';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -20331,8 +20331,16 @@ function prodSheetRenderRepList() {
         : '— / ' + plnenieFormatEUR(r.planEUR);
     }
 
+    // Klikateľnosť — len keď má produkt pharma dáta a rep má teritórium.
+    // Klik otvorí trhový podiel produktu pre teritórium tohto reprezentanta.
+    var clickable = !!pharmaCode && !!oblast;
+    var clickAttr = clickable
+      ? ' onclick="prodSheetOpenPharmaForRep(\'' + r.username.replace(/'/g, "\\'") + '\')" style="cursor:pointer"'
+      : '';
+    var chevron = clickable ? '<div class="gyn-ps-chev">›</div>' : '';
+
     var avPs = lbAvatarContent(r.username, info.name, 34);
-    return '<div class="pl-ps-rep" data-username="' + mgrEscape(r.username) + '">' +
+    return '<div class="pl-ps-rep" data-username="' + mgrEscape(r.username) + '"' + clickAttr + '>' +
       medalHtml +
       '<div class="pl-ps-avatar' + (avPs.hasAvatar ? ' has-avatar' : '') + '" data-username="' + mgrEscape(r.username) + '" style="background:' + info.color + '">' + avPs.html + '</div>' +
       '<div class="pl-ps-info">' +
@@ -20343,6 +20351,7 @@ function prodSheetRenderRepList() {
         '<div class="pl-ps-pct ' + plnenieColorClass(r.pct) + '" data-pct="' + r.pct.toFixed(4) + '">0,00%</div>' +
         '<div class="pl-ps-eur">' + mgrEscape(eurHtml) + '</div>' +
       '</div>' +
+      chevron +
     '</div>';
   }).join('');
 
@@ -20353,6 +20362,19 @@ function prodSheetRenderRepList() {
   });
 
   bodyEl.scrollTop = 0;
+}
+
+// Manažér: klik na reprezentanta v produktovom rebríčku → trhový podiel daného
+// produktu scope-nutý na jeho teritórium. Produktový sheet necháme otvorený pod
+// overlayom, takže „Späť" z trhového podielu vráti práve sem (o krok naspäť).
+function prodSheetOpenPharmaForRep(repUsername) {
+  if (!PL_PROD_SHEET_STATE.open || !PL_PROD_SHEET_STATE.prodKey) return;
+  var prodKey = PL_PROD_SHEET_STATE.prodKey;
+  if (!PHARMA_CODES[prodKey]) return;
+  var oblast = (USERS_LOCAL[repUsername] && USERS_LOCAL[repUsername].region) || '';
+  if (!oblast) return;
+  var label = PL_PROD_SHEET_STATE.prodLabel || prodKey;
+  openPharmaMs(prodKey, label, oblast);
 }
 
 function prodSheetInitSwipe() {
@@ -23304,13 +23326,15 @@ function pharmaGetOblast() {
   return (USERS_LOCAL[session.username] && USERS_LOCAL[session.username].region) || session.region || '';
 }
 
-function openPharmaMs(prodKey, label) {
+function openPharmaMs(prodKey, label, oblastOverride) {
   var codes = PHARMA_CODES[prodKey];
   if (!codes || !codes.length) return;
   usageSectionEnter('Trhový podiel', 'produkt: ' + (label || prodKey));
   var session = getSession();
   if (!session) return;
-  var oblast = pharmaGetOblast();
+  // oblastOverride — keď sa trhový podiel otvára klikom na konkrétneho reprezentanta
+  // z produktového rebríčka (scope na jeho teritórium), inak sa odvodí zo scope-u.
+  var oblast = oblastOverride || pharmaGetOblast();
   if (!oblast) return;
 
   var repOverlayOpen = document.getElementById('rep-plnenie-overlay') && document.getElementById('rep-plnenie-overlay').classList.contains('show');
