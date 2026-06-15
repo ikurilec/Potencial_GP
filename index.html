@@ -3181,7 +3181,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.31.0';
+var APP_VERSION = '2.31.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6972,8 +6972,20 @@ function gynUserProdOrder(){
 function settingsDefaultTabOpts(s){
   if(!s) return { opts: [['form','📝 Formulár GP']], hint: 'Formulár GP' };
   var isGyn   = s.line === 'gyn';
+  var isReagila = s.line === 'reagila';
   var mgrRole = (typeof mgrDetectRole === 'function') ? mgrDetectRole(s) : null;
   var isAdmin = (mgrRole === 'admin') || (isGyn && s.role === 'admin');
+  // Reagila línia má vlastné záložky (žiadny Formulár/Návštevy/História)
+  if(isReagila){
+    if(mgrRole){
+      // Manažér/admin: Plnenie · Rebríček (+ Aktivita pre admina) — kľúče mgr subtabov
+      var ro = [['plnenie','💊 Plnenie'],['leaderboard','🏆 Rebríček']];
+      if(isAdmin) ro.push(['activity','📈 Aktivita']);
+      return { opts: ro, hint: 'Plnenie' };
+    }
+    // KAM reprezentant: Plnenie · Lekárne · Rebríček — kľúče rep záložiek
+    return { opts: [['plnenie','💊 Plnenie'],['lekarne','🏪 Lekárne'],['rebricek','🏆 Rebríček']], hint: 'Plnenie' };
+  }
   if(isGyn || mgrRole){
     var opts = [['plnenie','💊 Plnenie'],['visits','📋 Návštevy'],['leaderboard','🏆 Rebríček']];
     if(isAdmin || (isGyn && typeof gynActivityAllowed === 'function' && gynActivityAllowed(s))) opts.push(['activity','📈 Aktivita']);
