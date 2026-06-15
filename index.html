@@ -1469,6 +1469,18 @@
   .mgr-plnenie-detail .prod-pack-detail{font-size:10px;font-weight:650;color:#64748B;margin-top:3px}
   .mgr-plnenie-detail .prod-pred{font-size:11px;color:#94A3B8;margin-bottom:8px;text-align:center}
   .mgr-plnenie-detail .prod-pred span{font-weight:700;margin-left:4px}
+  /* Tempo riadok „aktuálne má byť X%" v produktovej karte — farba podľa tempa (ako gyn) */
+  .mgr-plnenie-detail .prod-tempo, .rep-pl-inner .prod-tempo{font-size:11px;margin:-4px 0 8px;text-align:center;color:#94A3B8;font-weight:600}
+  .mgr-plnenie-detail .prod-tempo span, .rep-pl-inner .prod-tempo span{font-weight:800;margin-left:4px}
+  .mgr-plnenie-detail .prod-tempo.g, .rep-pl-inner .prod-tempo.g{color:#047857}
+  .mgr-plnenie-detail .prod-tempo.o, .rep-pl-inner .prod-tempo.o{color:#92400E}
+  .mgr-plnenie-detail .prod-tempo.r, .rep-pl-inner .prod-tempo.r{color:#B91C1C}
+  /* Tempo riadok v manažérskom sumári produktov (hlavná appka, nie len gyn) */
+  .pl-sum-prod-tempo{font-size:11px;line-height:1.25;font-weight:650;white-space:normal;color:#64748B}
+  .pl-sum-prod-tempo strong{font-size:11px!important;font-weight:850!important}
+  .pl-sum-prod-tempo.g{color:#047857}
+  .pl-sum-prod-tempo.o{color:#92400E}
+  .pl-sum-prod-tempo.r{color:#B91C1C}
   /* Mesačné riadky */
   .mgr-plnenie-detail .month-rows{display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:0.5px solid #F1F5F9}
   .mgr-plnenie-detail .mrow{flex:1;text-align:center}
@@ -3181,7 +3193,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.31.2';
+var APP_VERSION = '2.31.3';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -20291,6 +20303,20 @@ function plnenieBuildAggregates(resp, q, scopeReps) {
   // Reagila: navyše ukáž aj produkty bez plánu, ktoré majú predaje (napr. Fingolimod —
   // plán na teritóriá ešte nie je, ale € predaja zobrazíme; % = „—").
   var _plReagila = (function(){ var s=(typeof getSession==='function')?getSession():null; return !!(s && s.line==='reagila'); })();
+  // Kombinovaný byMonth naprieč aktívnymi repmi — pre výpočet očakávaného tempa (rovnaká logika ako gyn)
+  var combinedByMonth = {};
+  activeReps.forEach(function(rep){
+    var bm = (predaje[rep] && predaje[rep].byMonth) || {};
+    Object.keys(bm).forEach(function(m){
+      combinedByMonth[m] = combinedByMonth[m] || {};
+      var md = bm[m] || {};
+      Object.keys(md).forEach(function(k){ combinedByMonth[m][k] = (combinedByMonth[m][k]||0) + (parseFloat(md[k])||0); });
+    });
+  });
+  function _prodTempo(keys, pct){
+    var exp = plnenieExpectedProgressPct(aggYear, q, null, combinedByMonth, keys);
+    return { expectedPct: exp, tempoPct: (pct !== null && exp > 0) ? (pct / exp * 100) : null };
+  }
   var productsToShow = [];
   allProdKeys.forEach(function(key){
     var pSum = 0, sSum = 0, sSumDone = 0, sPredPlanDone = 0, sSalesNoPlan = 0;
@@ -20309,6 +20335,8 @@ function plnenieBuildAggregates(resp, q, scopeReps) {
       }
     });
     if (pSum > 0) {
+      var _pPct = sSum / pSum * 100;
+      var _t = _prodTempo([key], _pPct);
       productsToShow.push({
         key: key,
         label: plnenieDisplayName(allProdsMap[key]),
@@ -20316,7 +20344,9 @@ function plnenieBuildAggregates(resp, q, scopeReps) {
         predajeEUR: sSum,
         predajeEURDone: sSumDone,
         predPlanEURDone: sPredPlanDone,
-        pct: sSum / pSum * 100
+        pct: _pPct,
+        expectedPct: _t.expectedPct,
+        tempoPct: _t.tempoPct
       });
     } else if (_plReagila && sSalesNoPlan > 0) {
       productsToShow.push({
@@ -20348,6 +20378,8 @@ function plnenieBuildAggregates(resp, q, scopeReps) {
     var famPlan = aflKr.planEUR + aflTbl.planEUR;
     var famSales = aflKr.predajeEUR + aflTbl.predajeEUR;
     var famDone = aflKr.predajeEURDone + aflTbl.predajeEURDone;
+    var famPct = famPlan > 0 ? (famSales / famPlan * 100) : null;
+    var famT = _prodTempo(['aflamil_kr','aflamil_tablety_sacky'], famPct);
     productsToShow.unshift({
       key: 'aflamil_family',
       label: 'Aflamil family',
@@ -20355,7 +20387,9 @@ function plnenieBuildAggregates(resp, q, scopeReps) {
       predajeEUR: famSales,
       predajeEURDone: famDone,
       predPlanEURDone: (aflKr.predPlanEURDone || 0) + (aflTbl.predPlanEURDone || 0),
-      pct: famPlan > 0 ? (famSales / famPlan * 100) : null
+      pct: famPct,
+      expectedPct: famT.expectedPct,
+      tempoPct: famT.tempoPct
     });
   }
 
@@ -20463,13 +20497,20 @@ function plnenieRenderSummary() {
         var famClass = (p.key === 'aflamil_family') ? ' pl-sum-prod-c--family' : '';
         // Produkt bez plánu (Reagila — napr. Fingolimod): namiesto % ukáž € predaja za Q.
         var noPlan = (p.pct === null || p.pct === undefined);
+        // Farba % podľa TEMPA (actual vs očakávané) — rovnaká logika ako v gyn
+        var tempoCls = gynTempoPlClass(p.pct, p.expectedPct);
         var valHtml = noPlan
           ? '<strong style="flex-shrink:0;color:#334155;white-space:nowrap">' + plnenieFormatEUR(p.predajeEUR) + '</strong>'
-          : '<strong class="' + plnenieColorClass(p.pct) + '" data-pct="' + (isNaN(p.pct) ? '' : p.pct) + '" style="flex-shrink:0">0,00%</strong>';
+          : '<strong class="' + tempoCls + '" data-pct="' + (isNaN(p.pct) ? '' : p.pct) + '" style="flex-shrink:0">0,00%</strong>';
+        // Riadok „aktuálne má byť X%" — farba podľa tempa (zhodné s gyn)
+        var tempoHtml = (!noPlan && p.tempoPct !== null && p.tempoPct !== undefined && p.expectedPct > 0)
+          ? '<span class="pl-sum-prod-tempo ' + tempoCls.replace('pl-', '') + '">aktuálne má byť <strong>' + plnenieFormatPct(p.expectedPct) + '</strong></span>'
+          : '';
         return '<div class="pl-sum-prod pl-sum-prod-c' + famClass + '" onclick="openProdSheet(\'' + safeKey + '\',\'' + safeLbl + '\')">' +
                '<div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px">' +
                  '<span class="pl-sum-prod-name">' + mgrEscape(p.label) + '</span>' +
                  predHtml +
+                 tempoHtml +
                '</div>' +
                valHtml +
                '<span class="pl-sum-prod-chev" style="flex-shrink:0">›</span>' +
@@ -22637,7 +22678,10 @@ function plnenieRenderDetail() {
     var pPlan = parseFloat(plan[key]); if (isNaN(pPlan)) pPlan = 0;
     var pPredaje = parseFloat(predajeTotal[key]); if (isNaN(pPredaje)) pPredaje = 0;
     var pPct = (pPlan > 0) ? (pPredaje / pPlan * 100) : null;
-    var prodColorCls = plnenieDetailColorClass(pPct);
+    // Farba podľa TEMPA (actual vs očakávané v čase) — rovnaká logika ako v gyn
+    var pExpectedPct = plnenieExpectedProgressPct(PL_STATE.year, PL_STATE.q, null, predajeByMonth, [key]);
+    var pTempoPct = (pPct !== null && pExpectedPct > 0) ? (pPct / pExpectedPct * 100) : null;
+    var prodColorCls = gynTempoDetailClass(pPct, pExpectedPct);
     var barWidth = (pPct === null || isNaN(pPct)) ? 0 : Math.min(pPct, 100);
 
     var monthlyPlans = plnenieMonthlyPlans(PL_STATE.year, PL_STATE.q, pPlan);
@@ -22679,6 +22723,10 @@ function plnenieRenderDetail() {
     var prodPredHtml = (pPredikcia !== null && pPlan > 0)
       ? '<div class="prod-pred">predikcia konca kvartálu <span>' + plnenieFormatPct(pPredikcia) + '</span></div>'
       : '';
+    // Tempo riadok „aktuálne má byť X%" — farba podľa tempa (zhodné s gyn)
+    if (pTempoPct !== null && pExpectedPct > 0) {
+      prodPredHtml += '<div class="prod-tempo ' + prodColorCls + '">aktuálne má byť <span>' + plnenieFormatPct(pExpectedPct) + '</span></div>';
+    }
 
     var msLinkHtml = PHARMA_CODES[key]
       ? '<button type="button" class="prod-ms-link" onclick="openPharmaMs(\'' + key.replace(/'/g,"\\'") + '\',\'' + label.replace(/'/g,"\\'") + '\')">📊 Trhový podiel</button>'
@@ -23339,7 +23387,10 @@ function repPlnenieRender() {
     var pPlan = parseFloat(plan[key]); if (isNaN(pPlan)) pPlan = 0;
     var pPredaje = parseFloat(predajeTotal[key]); if (isNaN(pPredaje)) pPredaje = 0;
     var pPct = (pPlan > 0) ? (pPredaje / pPlan * 100) : null;
-    var prodColorCls = plnenieDetailColorClass(pPct);
+    // Farba podľa TEMPA (actual vs očakávané v čase) — rovnaká logika ako v gyn
+    var pExpectedPct = plnenieExpectedProgressPct(REP_PL_STATE.year, REP_PL_STATE.q, null, predajeByMonth, [key]);
+    var pTempoPct = (pPct !== null && pExpectedPct > 0) ? (pPct / pExpectedPct * 100) : null;
+    var prodColorCls = gynTempoDetailClass(pPct, pExpectedPct);
     var barWidth = (pPct === null || isNaN(pPct)) ? 0 : Math.min(pPct, 100);
     var monthlyPlans = plnenieMonthlyPlans(REP_PL_STATE.year, REP_PL_STATE.q, pPlan);
     var pPredikcia = plnenieCalcPredikcia(REP_PL_STATE.q, REP_PL_STATE.year, pPlan, predajeByMonth, key);
@@ -23380,6 +23431,10 @@ function repPlnenieRender() {
     var prodPredHtml = (pPredikcia !== null && pPlan > 0)
       ? '<div class="prod-pred">predikcia konca kvartálu <span>' + plnenieFormatPct(pPredikcia) + '</span></div>'
       : '';
+    // Tempo riadok „aktuálne má byť X%" — farba podľa tempa (zhodné s gyn)
+    if (pTempoPct !== null && pExpectedPct > 0) {
+      prodPredHtml += '<div class="prod-tempo ' + prodColorCls + '">aktuálne má byť <span>' + plnenieFormatPct(pExpectedPct) + '</span></div>';
+    }
 
     var msLinkHtml = PHARMA_CODES[key]
       ? '<button type="button" class="prod-ms-link" onclick="openPharmaMs(\'' + key.replace(/'/g,"\\'") + '\',\'' + label.replace(/'/g,"\\'") + '\')">📊 Trhový podiel</button>'
