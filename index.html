@@ -3193,7 +3193,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.31.7';
+var APP_VERSION = '2.31.8';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -20650,7 +20650,7 @@ function openProdSheet(prodKey, prodLabel) {
   var activeReps = plnenieGetActiveReps();
   var q = PL_STATE.q, year = PL_STATE.year;
   var kvartal = pharmaKvartalCode(year, q);
-  var pharmaCodes = PHARMA_CODES[prodKey] || [];
+  var pharmaCodes = prodSheetPharmaCodesFor(prodKey);
   var pharmaCode  = pharmaCodes.length ? pharmaCodes[0] : null;
   PL_PROD_SHEET_STATE.activePharmaCode = pharmaCode;
   PL_PROD_SHEET_STATE.predajeSubKey = PHARMA_PREDAJE_KEY[pharmaCode] || null;
@@ -23615,6 +23615,25 @@ var PHARMA_PREDAJE_KEY = {
   'AFLtbl':  'aflamiltb',
   'AFLsach': 'aflamilsa'
 };
+
+// Pharma kódy pre produkt v Plnení — tolerantné na tvar kľúča.
+// Produkt môže prísť ako kanonický sheet kľúč ('aflamil_tablety_sacky') alebo ako
+// display názov ('Aflamil tbl a sáčky'). Bez tolerancie subtaby (Tablety/Sáčky)
+// v Golem produktovom sheete zmiznú, keď kľúč nesedí 1:1 s PHARMA_CODES.
+function prodSheetPharmaCodesFor(prodKey) {
+  if (!prodKey) return [];
+  if (PHARMA_CODES[prodKey]) return PHARMA_CODES[prodKey];
+  var norm = (typeof plnenieNormalizeKey === 'function') ? plnenieNormalizeKey(prodKey) : String(prodKey).toLowerCase().trim();
+  if (PHARMA_CODES[norm]) return PHARMA_CODES[norm];
+  // Skús cez display názov → kanonický kľúč (PL_PRODUCT_LABELS)
+  var labels = (typeof PL_PRODUCT_LABELS !== 'undefined') ? PL_PRODUCT_LABELS : {};
+  for (var canon in labels) {
+    if (plnenieNormalizeKey(labels[canon]) === norm && PHARMA_CODES[canon]) {
+      return PHARMA_CODES[canon];
+    }
+  }
+  return [];
+}
 
 // ── REAGILA: pharma mapovanie nanovo (Golem kódy CAV/AFLcrm… nesedia s Reagila dátami) ──
 // V Reagila PharmaData taboch je produkt = názov ('Reagila','Cavinton'…), oblasť = BA/SE/ST/VY.
