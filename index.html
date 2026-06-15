@@ -3193,7 +3193,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.31.4';
+var APP_VERSION = '2.31.5';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -17943,12 +17943,16 @@ function loadInitData(username, _attempt) {
 
 function openLeaderboard(){
   if(!document.getElementById('lb-overlay')) return;
+  var _reagLb = document.body.classList.contains('reagila-line');
   // Reagila nemá návštevy lekárov → rebríček je vždy v móde Plnenie (mód „Návštevy" je skrytý).
-  if(document.body.classList.contains('reagila-line')) LB_STATE.mode = 'plnenie';
+  if(_reagLb) LB_STATE.mode = 'plnenie';
   usageSectionEnter('Rebríček');
   _panelShow('lb-overlay');
   LB_STATE.showConfetti = true;
   lbSyncTabs();
+  // Reagila: rovno renderuj Plnenie rebríček — neťahaj históriu návštev (getHistory × N repov).
+  // lbRenderPlnenie si dáta dotiahne sám cez lbPreloadPlnenie, ak chýbajú.
+  if(_reagLb){ lbRender(); return; }
   if (LB_STATE.loading) {
     var body = lbGetBody();
     if (body) body.innerHTML = skelLb();
@@ -18691,6 +18695,8 @@ function lbDataHasVisits() {
 }
 
 function lbLoadData(force){
+  // Reagila nemá rebríček návštev — históriu repov (getHistory × N) neťahaj, je to zbytočné a pomalé.
+  if(document.body.classList.contains('reagila-line')) return;
   if(LB_STATE.loading) return;
   if(LB_STATE.data && !force) return;
   LB_STATE.loading = true;
