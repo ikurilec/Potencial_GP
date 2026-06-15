@@ -3193,7 +3193,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.31.3';
+var APP_VERSION = '2.31.4';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6335,10 +6335,14 @@ function settingsRoleLabel(s){
       default:      return 'Key Account Manager';  // KAM (rola 'rep west' = preložená KAM)
     }
   }
-  switch(s.role){
+  switch(String(s.role||'').toLowerCase().trim()){
     case 'admin': return 'Admin';
     case 'pm':    return 'Produktový manažér';
     case 'bum':   return 'Business Unit Manager';
+    case 'am west':
+    case 'amwest': return 'Area Manager West';
+    case 'am east':
+    case 'ameast': return 'Area Manager East';
     case 'am':    return 'Area Manager';
     case 'boss':  return 'Vedenie';
     default:      return 'Medicínsky reprezentant';
