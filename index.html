@@ -3193,7 +3193,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.31.5';
+var APP_VERSION = '2.31.6';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8588,11 +8588,18 @@ function doLogin() {
   // appFetchJson má tvrdý timeout (AbortController, ~16s) — keď Apps Script „visí",
   // request sa ukončí, tlačidlo sa vráti a prihlasovanie nikdy nezostane zaseknuté
   // na „Prihlasujem…". Per-fetch catch → Promise.all sa vždy dokončí v rámci timeoutu.
-  function loginFetch(url){
-    return appFetchJson(url + loginParams).catch(function(){ return { ok:false, _failed:true }; });
+  function loginFetch(url, tmo){
+    return appFetchJson(url + loginParams, undefined, tmo).catch(function(){ return { ok:false, _failed:true }; });
+  }
+  // Golem je kľúčový pre detekciu admina — ak prvý pokus vyprší (cold start Apps Scriptu),
+  // skús ešte raz s dlhším timeoutom, nech admin nepríde o Golem (a tým o admin pohľad).
+  function loginFetchGolem(){
+    return loginFetch(SCRIPT_URL, 20000).then(function(d){
+      return (d && d._failed) ? loginFetch(SCRIPT_URL, 25000) : d;
+    });
   }
 
-  Promise.all([loginFetch(SCRIPT_URL), loginFetch(GYN_SCRIPT_URL), loginFetch(REAGILA_SCRIPT_URL)]).then(function(results) {
+  Promise.all([loginFetchGolem(), loginFetch(GYN_SCRIPT_URL), loginFetch(REAGILA_SCRIPT_URL)]).then(function(results) {
     btn.disabled = false;
     btn.textContent = 'Prihlásiť sa →';
     var gpData  = results[0];
@@ -8625,22 +8632,26 @@ function doLogin() {
       return;
     }
 
-    // Admin → vstup rovno do Golemu (zachované správanie). Ostatní s 2+ líniami → výber rozhrania.
+    // Admin → vstup rovno do Golemu (zachované správanie), zapamätaná voľba ho neovplyvňuje.
     var _isAdmin = false;
     try { _isAdmin = gpData.ok && mgrDetectRole(mgrBuildGpUser(username, gpData)) === 'admin'; } catch(e){}
-    // Zapamätaná voľba (Sheet má prednosť pred localStorage) → vstup rovno, bez pýtania (aj pre admina)
+    if(_isAdmin) {
+      enterLineFromLogin(username, 'gp', dataMap);   // admin vždy Golem
+      return;
+    }
+    // Zapamätaná voľba (Sheet má prednosť pred localStorage) → vstup rovno, bez pýtania
     var _pref = lineReadPrefFromLogin(dataMap) || lineGetPref(username);
     if(_pref && avail.indexOf(_pref) !== -1) {
       lineSetPref(username, _pref);   // zrkadli do localStorage pre rýchle/offline čítanie
       enterLineFromLogin(username, _pref, dataMap);
       return;
     }
-    // Bez zapamätania: ne-admin s 2+ líniami → výber rozhrania
-    if(avail.length >= 2 && !_isAdmin) {
+    // Ne-admin s 2+ líniami → výber rozhrania
+    if(avail.length >= 2) {
       showLineChooser(username, avail, dataMap);
       return;
     }
-    // Jedna línia (alebo admin bez zapamätania) → vstup priamo, priorita gp > gyn > reagila
+    // Jedna línia → vstup priamo, priorita gp > gyn > reagila
     enterLineFromLogin(username, avail[0], dataMap);
   }).catch(function() {
     btn.disabled = false;
@@ -16311,6 +16322,22 @@ function _handleAndroidBack() {
     _mgrPrevSubtab = null;
     mgrSwitchSubtab(backTab);
     return true;
+  }
+
+  // Reagila (KAM reprezentant): domov = Plnenie, NIE Golem formulár.
+  // Back z Lekární/Rebríčka → Plnenie; back z Plnenia → nič (neodkrývaj formulár pod ním).
+  if (document.body.classList.contains('reagila-line') && !document.body.classList.contains('manager-mode')) {
+    var _rPl = document.getElementById('rep-plnenie-overlay');
+    var _rLk = document.getElementById('lk-overlay');
+    var _rLb = document.getElementById('lb-overlay');
+    var _rHi = document.getElementById('hist-overlay');
+    var _rLkDetail = document.getElementById('lk-detail');
+    if (_rLkDetail && _rLkDetail.classList.contains('show')) { closeLkarneDetail(); return true; }
+    if ((_rLk && _rLk.classList.contains('show')) || (_rLb && _rLb.classList.contains('show')) || (_rHi && _rHi.classList.contains('show'))) {
+      try { openRepPlnenie(); } catch(e){}     // späť na domovské Plnenie
+      return true;
+    }
+    if (_rPl && _rPl.classList.contains('show')) { return true; }  // Plnenie je domov — back nič
   }
 
   // 12. Lekárne overlay
