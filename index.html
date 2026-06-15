@@ -979,6 +979,18 @@
   @keyframes wave{0%,100%{transform:rotate(0deg)}20%{transform:rotate(18deg)}40%{transform:rotate(-8deg)}60%{transform:rotate(14deg)}80%{transform:rotate(-4deg)}}
   .login-wave{display:inline-block;transform-origin:70% 70%;animation:wave 2s ease-in-out 0.5s 1}
   .login-card-sub{font-size:12px;color:#94A3B8;margin-bottom:22px;font-weight:500;text-align:center}
+  /* Výber línie po prihlásení (multi-line používatelia) */
+  .line-choose-list{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+  .line-choose-btn{display:flex;align-items:center;gap:14px;width:100%;padding:16px 16px;border:1.5px solid #E2E8F0;background:#F8FAFC;border-radius:14px;cursor:pointer;font-family:inherit;text-align:left;transition:border-color .15s,background .15s,transform .1s;-webkit-tap-highlight-color:transparent}
+  .line-choose-btn:hover{border-color:#2563EB;background:#fff}
+  .line-choose-btn:active{transform:scale(.985)}
+  .line-choose-emoji{font-size:26px;line-height:1;flex-shrink:0}
+  .line-choose-txt{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+  .line-choose-lbl{font-size:15px;font-weight:800;color:#0C1E35;letter-spacing:-.01em}
+  .line-choose-desc{font-size:11px;color:#94A3B8;font-weight:600}
+  .line-choose-arrow{font-size:18px;color:#94A3B8;flex-shrink:0;font-weight:700}
+  .line-remember{display:flex;align-items:center;gap:9px;margin-top:16px;padding:2px;cursor:pointer;font-size:12px;color:#475569;font-weight:600;line-height:1.3}
+  .line-remember input{width:18px;height:18px;flex-shrink:0;accent-color:#2563EB;cursor:pointer}
   .login-field{margin-bottom:14px}
   .login-label{font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;display:block}
   .login-input{width:100%;height:50px;border-radius:12px;border:1.5px solid #E2E8F0;background:#F8FAFC;color:#0F172A;font-size:16px;font-family:inherit;padding:0 16px;outline:none;transition:border-color .2s,background .2s,box-shadow .2s;font-weight:500}
@@ -1126,6 +1138,31 @@
   body.mgr-subtab-activity .mgr-detail,
   body.mgr-subtab-activity .mgr-plnenie-view,
   body.mgr-subtab-activity .mgr-leaderboard-view{display:none !important}
+  /* ═══ REAGILA línia — skry Golem-only veci (návštevy lekárov, west/east) ═══ */
+  body.reagila-line #rep-nav-form-btn,
+  body.reagila-line #rep-nav-hist-btn,
+  body.reagila-line .mgr-subtab[data-tab="visits"]{ display:none !important; }
+  /* „Aktivita" subtab NEskrývame — JS ho zobrazí len adminovi (mgrEnter: roleKey==='admin').
+     Reagila admin tak vidí: Plnenie · Rebríček · Aktivita */
+  /* Reagila nemá west/east split — skry regionálne karty (Slovensko sumár ostáva) */
+  body.reagila-line .pl-regions{ display:none !important; }
+  /* Golem-špecifická hláška o schvaľovaní teritoriálnych plánov — pre Reagilu skry */
+  body.reagila-line #pl-no-plan-notice{ display:none !important; }
+  /* Rebríček — Reagila nemá návštevy lekárov, skry „Návštevy" mód (ostáva len Plnenie) */
+  body.reagila-line #mgr-lb-mode-nav,
+  body.reagila-line #rep-lb-mode-nav{ display:none !important; }
+  /* Lekárne — Reagila: skry Krém (reaktivacia) a Dobropis (priority); poradie Všetky → Spiace → Nové */
+  body.reagila-line .lk-tabs{ display:flex; }
+  body.reagila-line .lk-tab[data-lk-tab="reaktivacia"],
+  body.reagila-line .lk-tab[data-lk-tab="priority"]{ display:none !important; }
+  body.reagila-line .lk-tab[data-lk-tab="all"]{ order:-1; }
+  /* Reagila rep navigácia — 3 záložky: Plnenie | Lekárne | Rebríček (vyplnia šírku, väčší text) */
+  body.reagila-line #spn-form, body.reagila-line #spn-hist{ display:none !important; }
+  body.reagila-line .rep-nav,
+  body.reagila-line .panel-nav{ grid-template-columns:repeat(3,1fr); }
+  body.reagila-line #rep-nav-plnenie-btn, body.reagila-line #spn-pl{ order:1; }
+  body.reagila-line #rep-nav-lekarne-btn, body.reagila-line #spn-lk{ order:2; }
+  body.reagila-line #rep-nav-lb-btn,      body.reagila-line #spn-lb{ order:3; }
   .act-period{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:12px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
   .act-period-btn{padding:11px 4px;border:none;background:transparent;font-size:12px;font-weight:700;color:#64748B;cursor:pointer;border-radius:8px;font-family:inherit;transition:all .15s;-webkit-tap-highlight-color:transparent}
   .act-period-btn.active{background:#0C1E35;color:#fff}
@@ -3144,7 +3181,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.30.30';
+var APP_VERSION = '2.31.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -3450,6 +3487,16 @@ function _applySwUpdate(){
 }
 
 if('serviceWorker' in navigator){
+  var _isLocalDev = (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+  if (_isLocalDev) {
+    // LOKÁLNY VÝVOJ — žiadny service worker cache. Odregistruj existujúci SW a zmaž
+    // cache, nech testovanie na localhoste vždy ukáže čerstvú verziu (bez „Golem flash"
+    // zo starého cachovaného HTML). Na produkcii (GitHub Pages) SW beží normálne.
+    try {
+      navigator.serviceWorker.getRegistrations().then(function(rs){ rs.forEach(function(r){ r.unregister(); }); }).catch(function(){});
+      if (window.caches && caches.keys) caches.keys().then(function(ks){ ks.forEach(function(k){ caches.delete(k); }); }).catch(function(){});
+    } catch(e){}
+  } else {
   try {
     navigator.serviceWorker.register('./sw.js').catch(function(){});
     // POZN.: zámerne NEreloadujeme z controllerchange. Aktualizáciu rieši VÝHRADNE
@@ -3457,6 +3504,7 @@ if('serviceWorker' in navigator){
     // strata zelenej hlášky a sivá obrazovka (SW chytený v polovici aktivácie).
     // Nový SW prevezme kontrolu ticho; čerstvú HTML appka dostane pri reloade z checkForUpdate.
   } catch(e){}
+  }
 }
 
 // Ak update čaká a reprezentant medzitým zatvoril formulár → reloadni
@@ -3570,6 +3618,12 @@ function authSessionParams() {
 }
 
 function scriptUrl(params) {
+  // Golem render používa scriptUrl(...) priamo. Pre Reagila líniu (session.line==='reagila')
+  // presmeruj všetky tieto volania na Reagila backend — tým sa Golem pohľad recykluje 1:1.
+  var _s = (typeof getSession === 'function') ? getSession() : null;
+  if (_s && _s.line === 'reagila' && typeof REAGILA_SCRIPT_URL === 'string') {
+    return REAGILA_SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(REAGILA_API_TOKEN) + authSessionParams('reagila');
+  }
   return SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(API_TOKEN) + authSessionParams('gp');
 }
 
@@ -3578,6 +3632,13 @@ var GYN_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwOZxhmwH9jwGTQroa
 var GYN_API_TOKEN  = 'gr-gyn-2026';
 function gynScriptUrl(params) {
   return GYN_SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(GYN_API_TOKEN) + authSessionParams('gyn');
+}
+
+// ── REAGILA LINKA (tretia línia) ──
+var REAGILA_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyxFneKum7D0NLWtIQZHochosWtXeWjCZxr9AH_f0TmesIDqe1_jetga_RwDjNWF1-W/exec';
+var REAGILA_API_TOKEN  = 'gr-reagila-2026';
+function reagilaScriptUrl(params) {
+  return REAGILA_SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(REAGILA_API_TOKEN) + authSessionParams('reagila');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -6252,6 +6313,16 @@ function settingsRoleLabel(s){
   if(s.line === 'gyn'){
     return (typeof GYN_ROLE_LABEL !== 'undefined' && GYN_ROLE_LABEL[s.role]) || s.role || '';
   }
+  if(s.line === 'reagila'){
+    switch(s.role){
+      case 'admin': return 'Admin';
+      case 'pm':    return 'Produktový manažér';
+      case 'bum':   return 'Business Unit Manager';
+      case 'am':    return 'Area Manager';
+      case 'boss':  return 'Vedenie';
+      default:      return 'Key Account Manager';  // KAM (rola 'rep west' = preložená KAM)
+    }
+  }
   switch(s.role){
     case 'admin': return 'Admin';
     case 'pm':    return 'Produktový manažér';
@@ -6261,7 +6332,19 @@ function settingsRoleLabel(s){
     default:      return 'Medicínsky reprezentant';
   }
 }
-function settingsLineLabel(s){ return (s && s.line === 'gyn') ? 'Gynekológia' : 'Golem'; }
+function settingsLineLabel(s){ return (s && s.line === 'gyn') ? 'Gynekológia' : (s && s.line === 'reagila') ? 'Reagila' : 'Golem'; }
+// Pre používateľov s prístupom do viacerých línií ukáž v Nastaveniach všetky (a označ aktuálnu)
+function settingsLinesLabel(s){
+  var cur = settingsLineLabel(s);
+  var d = (typeof mgrGetDual === 'function') ? mgrGetDual() : null;
+  if(!d) return cur;
+  var labels = [];
+  if(d.gp)      labels.push('Golem');
+  if(d.gyn)     labels.push('Gynekológia');
+  if(d.reagila) labels.push('Reagila');
+  if(labels.length < 2) return cur;
+  return labels.join(' · ') + ' (aktuálne: ' + cur + ')';
+}
 
 function settingsRow(label, val){
   if(val == null || val === '') return '';
@@ -6298,7 +6381,7 @@ function renderSettings(s){
   var body = document.getElementById('settings-body');
   if(!body) return;
   var roleLbl = settingsRoleLabel(s);
-  var lineLbl = settingsLineLabel(s);
+  var lineLbl = settingsLinesLabel(s);
   var hasAvatar = (typeof userHasAvatar === 'function') ? userHasAvatar() : true;
 
   var rows = '';
@@ -6420,7 +6503,7 @@ function settingsToggleCalNotif(key){
 // ── Admin: odoslanie vlastného push upozornenia (podľa aktuálnej línie) ──
 function settingsAdminPushCard(s){
   if(!s || s.role !== 'admin') return '';
-  var lineLbl = (s.line === 'gyn') ? 'Gyn' : 'Golem';
+  var lineLbl = (s.line === 'gyn') ? 'Gyn' : (s.line === 'reagila') ? 'Reagila' : 'Golem';
   return '<div class="set-card"><div class="set-card-title">📣 Odoslať upozornenie</div>' +
     '<div class="set-row-desc">Pošle natívne push upozornenie používateľom v línii <b>' + settingsEsc(lineLbl) + '</b> (podľa toho, kde si prepnutý). Najprv otestuj „len mne", potom odošli všetkým.</div>' +
     '<input id="set-push-title" class="set-push-input" type="text" placeholder="Nadpis" maxlength="60" value="Gedeon Richter Slovakia">' +
@@ -6459,7 +6542,7 @@ function settingsPushSendAll(){
   var body = ((document.getElementById('set-push-body')||{}).value || '').trim();
   var resEl = document.getElementById('set-push-result');
   if(!body){ if(resEl){ resEl.style.display='block'; resEl.className='set-push-result err'; resEl.textContent='Najprv napíš text upozornenia.'; } return; }
-  var s = getSession(); var lineLbl = (s && s.line === 'gyn') ? 'Gyn' : 'Golem';
+  var s = getSession(); var lineLbl = (s && s.line === 'gyn') ? 'Gyn' : (s && s.line === 'reagila') ? 'Reagila' : 'Golem';
   if(resEl){
     resEl.style.display='block'; resEl.className='set-push-result confirm';
     resEl.innerHTML = '<div class="set-push-q">Naozaj odoslať upozornenie <b>všetkým</b> v línii <b>' + settingsEsc(lineLbl) + '</b>?</div>' +
@@ -6944,13 +7027,29 @@ function settingsAppHtml(s){
   // Predvolená (úvodná) obrazovka po prihlásení — reprezentant aj manažér, GP aj Gyn
   html += settingsDefaultTabHtml(s);
 
-  // Prepínač línie — iba admin (rovnaká podmienka ako pôvodne v hlavičke)
+  // Prepínač línie — iba admin. Tlačidlo pre každú ďalšiu líniu (Golem / Gynekológia / Reagila).
   if(typeof mgrShouldShowLineToggle === 'function' && mgrShouldShowLineToggle()){
-    var inGyn = !!(s && s.line === 'gyn');
-    var targetLbl = inGyn ? 'Golem' : 'Gynekológia';
-    html += '<div class="set-row"><div class="set-row-label">Prepnúť líniu (admin)</div>' +
-              '<button type="button" class="set-mini-btn" onclick="settingsSwitchLine()">→ ' + settingsEsc(targetLbl) + '</button>' +
-            '</div>';
+    var _tgts = (typeof mgrLineTargets === 'function') ? mgrLineTargets() : [];
+    if(_tgts.length){
+      html += '<div class="set-row"><div class="set-row-label">Prepnúť líniu</div>' +
+                '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">' +
+                _tgts.map(function(t){ return '<button type="button" class="set-mini-btn" onclick="settingsSwitchLineTo(\'' + t.line + '\')">→ ' + settingsEsc(t.label) + '</button>'; }).join('') +
+              '</div></div>';
+    }
+    // Zapamätanie úvodnej línie po prihlásení
+    var _uname = (s && s.username) || '';
+    var _pref = (typeof lineGetPref === 'function') ? lineGetPref(_uname) : '';
+    if(_pref){
+      var _plbl = lineChooserMeta(_pref).label;
+      html += '<div class="set-row"><div class="set-row-label">Po prihlásení otvárať<br>' +
+                '<span style="font-weight:600;color:#64748B">' + settingsEsc(_plbl) + '</span></div>' +
+                '<button type="button" class="set-mini-btn" onclick="settingsClearLinePref()">Zrušiť</button></div>';
+    } else {
+      var _curLbl = lineChooserMeta(mgrCurrentLine()).label;
+      html += '<div class="set-row"><div class="set-row-label">Po prihlásení<br>' +
+                '<span style="font-weight:600;color:#64748B">vždy sa opýtať</span></div>' +
+                '<button type="button" class="set-mini-btn" onclick="settingsRememberLine()">Zapamätať ' + settingsEsc(_curLbl) + '</button></div>';
+    }
   }
 
   // Čistenie vyrovnávacej pamäte
@@ -7020,10 +7119,27 @@ function settingsToggleHaptics(){
   var s = getSession(); if(s) renderSettings(s);
 }
 
-// Prepínač línie (admin) — zatvor Nastavenia a prepni
+// Prepínač línie (admin) — zatvor Nastavenia a prepni na konkrétnu líniu
+function settingsSwitchLineTo(line){
+  closeSettings();
+  if(typeof mgrSwitchLine === 'function') mgrSwitchLine(line);
+}
+// Spätná kompatibilita — pôvodný jednotlačidlový prepínač
 function settingsSwitchLine(){
   closeSettings();
   if(typeof mgrToggleLine === 'function') mgrToggleLine();
+}
+// Zruš zapamätanú úvodnú líniu (localStorage + Sheet) → pri ďalšom prihlásení sa znova opýta
+function settingsClearLinePref(){
+  var s = getSession(); if(s) lineForgetAllLines(s.username);
+  try { haptic('selection'); } catch(e){}
+  try { renderSettings(); } catch(e){}
+}
+// Zapamätaj aktuálnu líniu ako úvodnú (localStorage + Sheet) → pri ďalšom prihlásení rovno otvorí
+function settingsRememberLine(){
+  var s = getSession(); if(s) lineRememberAllLines(s.username, mgrCurrentLine());
+  try { haptic('success'); } catch(e){}
+  try { renderSettings(); } catch(e){}
 }
 
 // Vymazať vyrovnávaciu pamäť (re-fetchovateľné cache; session ostáva)
@@ -7934,6 +8050,11 @@ function mgrBuildGpUser(username, data){
 function mgrBuildGynUser(username, data){
   return mgrParseLoginExtras({ username: username, name: data.name, role: data.role, linia: data.linia || '', region: data.region || '', line: 'gyn' }, data);
 }
+function mgrBuildReagilaUser(username, data){
+  return mgrParseLoginExtras({ username: username, name: data.name, role: data.role, region: data.region || '', line: 'reagila' }, data);
+}
+// Aktuálna línia podľa živej session ('gp' = Golem, 'gyn', 'reagila')
+function mgrCurrentLine(){ var s = getSession(); return (s && s.line) ? s.line : 'gp'; }
 
 // Dual session držíme primárne v PAMÄTI — localStorage na iPhone býva plný (cache) a setItem
 // ticho zlyhá. Pamäť prežije in-place prepínanie (nereloadujeme), localStorage je len záloha.
@@ -7954,19 +8075,33 @@ function mgrGetDual(){
 // Ulož dual-line session iba ak je používateľ admin a má platný účet v oboch linkách.
 // Admin detekujeme cez mgrDetectRole — tú istú kanonickú funkciu, ktorou appka rozhoduje
 // o manažérskom pohľade (rieši medzery, veľkosť písmen aj fallback podľa username 'admin').
-function mgrStoreDualIfEligible(username, gpData, gynData){
-  if(!(gpData && gpData.ok && gynData && gynData.ok)) return;
-  var gpUser = mgrBuildGpUser(username, gpData);
-  if(mgrDetectRole(gpUser) !== 'admin') return; // iba admin
-  mgrSetDual({ username: username, gp: gpUser, gyn: mgrBuildGynUser(username, gynData) });
+// Ulož dostupné línie do dual session — pre KAŽDÉHO používateľa, čo má účet (rovnaké
+// meno+heslo) v 2+ líniách. Vďaka tomu vidí prepínač v Nastaveniach aj PM/BUM, nielen admin.
+function mgrStoreDualIfEligible(username, gpData, gynData, reagilaData){
+  var obj = { username: username };
+  if(gpData && gpData.ok)           obj.gp      = mgrBuildGpUser(username, gpData);
+  if(gynData && gynData.ok)         obj.gyn     = mgrBuildGynUser(username, gynData);
+  if(reagilaData && reagilaData.ok) obj.reagila = mgrBuildReagilaUser(username, reagilaData);
+  var lineCount = (obj.gp ? 1 : 0) + (obj.gyn ? 1 : 0) + (obj.reagila ? 1 : 0);
+  if(lineCount < 2) return;   // jedna línia → žiadny prepínač
+  mgrSetDual(obj);
 }
+// Prepínač línie je dostupný, ak má používateľ v dual session 2+ línie.
 function mgrLineSwitchAvailable(){
   var d = mgrGetDual();
-  if(!(d && d.gp && d.gyn)) return false;
-  if(mgrDetectRole(d.gp) === 'admin') return true;
-  // Poistka — ak by stored gp rola nebola admin, akceptuj živú Golem admin session
-  try { var s = getSession(); if(s && s.line !== 'gyn' && mgrDetectRole(s) === 'admin') return true; } catch(e){}
-  return false;
+  if(!d) return false;
+  var n = (d.gp ? 1 : 0) + (d.gyn ? 1 : 0) + (d.reagila ? 1 : 0);
+  return n >= 2;
+}
+// Zoznam línií, do ktorých sa dá prepnúť (všetky v dual okrem aktuálnej)
+function mgrLineTargets(){
+  var d = mgrGetDual(); if(!d) return [];
+  var cur = mgrCurrentLine();
+  return [
+    { line:'gp',      label:'Golem',        short:'Gol', has: !!d.gp },
+    { line:'gyn',     label:'Gynekológia',  short:'Gyn', has: !!d.gyn },
+    { line:'reagila', label:'Reagila',      short:'Rea', has: !!d.reagila }
+  ].filter(function(t){ return t.has && t.line !== cur; });
 }
 // ── DOČASNÁ diagnostika prepínača línie (odstrániť po vyriešení) ──
 var MGR_LS_DIAG_KEY = 'potencial_gp_ls_diag';
@@ -8035,58 +8170,69 @@ function mgrEnableLineSwitch(targetLine){
     else { mgrRenderLineSwitch(); }
   }).catch(function(){ alert('Chyba siete pri prihlasovaní.'); });
 }
-// Či zobraziť toggle tlačidlo: v Goleme pre admina vždy; v Gyne len ak tam admin prišiel cez switch (máme dual)
+// Či zobraziť prepínač línie: admin, ktorý má v dual session aspoň jednu ďalšiu líniu.
 function mgrShouldShowLineToggle(){
-  var s = getSession(); if(!s) return false;
-  if(s.line === 'gyn') return mgrLineSwitchAvailable();
-  try { return mgrDetectRole(s) === 'admin'; } catch(e){ return false; }
+  return mgrLineSwitchAvailable();
 }
-// JEDNO tlačidlo vedľa Odhlásiť — v Goleme "Gyn", v Gyne "Golem"
+// Tlačidlá vedľa Odhlásiť — pre KAŽDÚ ďalšiu líniu jedno (Gol / Gyn / Rea)
 function mgrRenderLineSwitch(){
-  var s = getSession();
-  var inGyn = !!(s && s.line === 'gyn');
   var html = '';
   if(mgrShouldShowLineToggle()){
-    var label = inGyn ? 'Gol' : 'Gyn';
-    html = '<button class="line-toggle-btn" onclick="mgrToggleLine()">' + label + '</button>';
+    html = mgrLineTargets().map(function(t){
+      return '<button class="line-toggle-btn" onclick="mgrSwitchLine(\'' + t.line + '\')">' + t.short + '</button>';
+    }).join('');
   }
   ['line-switch-slot', 'gyn-line-switch-slot'].forEach(function(id){
     var el = document.getElementById(id);
     if(el) el.innerHTML = html;
   });
 }
-// Klik na toggle: ak máme tokeny druhej línie → prepni in-place; inak najprv re-auth (heslo) a potom prepni
+// Spätná kompatibilita — pôvodný toggle (Golem ↔ Gyn). Už ho UI priamo nevolá.
 function mgrToggleLine(){
-  var s = getSession();
-  var cur = (s && s.line === 'gyn') ? 'gyn' : 'gp';
-  var target = (cur === 'gyn') ? 'gp' : 'gyn';
-  if(mgrLineSwitchAvailable()) mgrSwitchLine(target);
-  else mgrEnableLineSwitch(target);
+  var t = mgrLineTargets()[0];
+  if(t) mgrSwitchLine(t.line);
 }
+// Prepnutie línie IN-PLACE bez reloadu (iOS PWA reload = biela obrazovka).
+// Golem aj Reagila bežia v .app (líšia sa body.reagila-line + dátami), Gyn má #gyn-view.
 function mgrSwitchLine(target){
-  var s = getSession();
-  var cur = (s && s.line === 'gyn') ? 'gyn' : 'gp';
+  var cur = mgrCurrentLine();
   if(target === cur) return;
   var d = mgrGetDual();
   if(!d) return;
-  var u = (target === 'gyn') ? d.gyn : d.gp;
+  var u = (target === 'gyn') ? d.gyn : (target === 'reagila') ? d.reagila : d.gp;
   if(!u) return;
   try { haptic('selection'); } catch(e){}
   setSession(u);            // dual store ostáva v localStorage
-  // IN-PLACE prepnutie BEZ reloadu — iOS PWA standalone reload/replace = biela obrazovka.
-  // Golem (.app) aj Gyn (#gyn-view) sú v tom istom dokumente, len prepneme ktorý je viditeľný.
   try {
     if(target === 'gyn'){
-      document.body.classList.remove('manager-mode','mgr-subtab-plnenie','mgr-subtab-visits','mgr-subtab-leaderboard');
+      document.body.classList.remove('manager-mode','mgr-subtab-plnenie','mgr-subtab-visits','mgr-subtab-leaderboard','reagila-line','gp-rep');
       var appEl = document.querySelector('.app'); if(appEl) appEl.style.display = 'none';
       gynEnter(u);
     } else {
+      // Golem alebo Reagila → .app
       var gynV = document.getElementById('gyn-view'); if(gynV) gynV.classList.remove('show');
       var appEl2 = document.querySelector('.app'); if(appEl2){ appEl2.style.display = ''; appEl2.style.visibility = 'visible'; }
-      updateHdrForUser(u);
       var role = mgrDetectRole(u);
-      if(role) mgrEnter(role);
+      if(target === 'reagila'){
+        document.body.classList.add('reagila-line');
+        if(!role) document.body.classList.add('gp-rep');
+        reagilaClearGolemStatics();
+      } else {
+        document.body.classList.remove('reagila-line');
+      }
+      updateHdrForUser(u);
+      // (Re)načítaj dáta cieľovej línie — scriptUrl() už smeruje podľa session.line.
+      // Reagila dáta sa pri pôvodnom logine nenačítali (Golem login mal prednosť), preto load tu.
+      try { loadInitData(u.username); } catch(e){}
+      if(role){ mgrEnter(role); }
+      else if(target === 'reagila'){ try { openRepPlnenie(); } catch(e){} }
+      if(target === 'reagila'){
+        setTimeout(function(){ try { lbFetchApprovedQ(function(){ lbLoadData(); lbPreloadPlnenie(); }); } catch(e){} }, 600);
+        setTimeout(function(){ try { preloadAllPharmaData(); } catch(e){} }, 800);
+        setTimeout(function(){ try { lkPreload(); } catch(e){} }, 300);
+      }
     }
+    try { mgrRenderLineSwitch(); } catch(e){}   // prekresli tlačidlá pre novú aktuálnu líniu
     window.scrollTo(0, 0);
   } catch(e){
     // Fallback — keby in-place zlyhalo, skús čistú navigáciu
@@ -8112,8 +8258,50 @@ var USERS_LOCAL = {
   'a.makis':      { region: 'KE'   }
 };
 
+// ── Reagila gate-and-reveal ──────────────────────────────────────────────
+// Appka (.app) ostáva skrytá, kým nedobehne prvá Reagila obrazovka, až potom
+// sa odkryje — rovnaký pocit ako gyn, žiadny záblesk Golemu po prihlásení/refreshi.
+function reagilaClearGolemStatics(){
+  try {
+    MGR_REP_NAMES = {}; LB_REP_INFO = {}; USERS_LOCAL = {};
+    MGR_AM_WEST = []; MGR_AM_EAST = []; MGR_ALL = []; LB_ALL_REPS = [];
+    ['bum','admin','boss','pm','am'].forEach(function(k){ if(MGR_ROLE_CFG[k]) MGR_ROLE_CFG[k].reps = []; });
+    try { reagilaApplyPharmaMaps_(); } catch(e){}
+    try { LB_STATE.mode = 'plnenie'; } catch(e){}
+    try { PL_PRODUCT_ORDER = ['reagila','cavinton','boxarid','fingolimod','dmf','yaxwer','pazopanib','lunaldin']; } catch(e){}
+  } catch(e){}
+}
+function reagilaRevealApp(){
+  var el = document.querySelector('.app');
+  if(!el) return;
+  if(el.style.visibility === 'visible') return;
+  el.style.visibility = 'visible';
+  el.classList.add('app-enter');
+  setTimeout(function(){ el.classList.remove('app-enter'); }, 500);
+}
+// Odkry appku až po vykreslení prvej Reagila obrazovky (2× rAF = po nátere),
+// plus poistka, aby appka nikdy neostala skrytá natrvalo.
+function reagilaRevealAfterPaint(){
+  try { requestAnimationFrame(function(){ requestAnimationFrame(reagilaRevealApp); }); } catch(e){ reagilaRevealApp(); }
+  setTimeout(reagilaRevealApp, 1500);
+}
+
 function loginSuccess(username, name, role, region, extra) {
   var user = { username: username, name: name, role: role, region: region || '' };
+  // Reagila líniu označ (gp ostáva bez line). Golem render beží rovnako (kontroly sú !== 'gyn'),
+  // len scriptUrl() podľa session.line presmeruje na Reagila backend.
+  if (extra && extra.line) user.line = extra.line;
+  // Žiadny „Golem flash" po prihlásení do Reagily — vyprázdni statické Golem zoznamy
+  // reprezentantov, kým nedobehne Reagila getRepList/getPlnenieAll (loading namiesto Golem mien).
+  if (user.line === 'reagila') {
+    try {
+      MGR_REP_NAMES = {}; LB_REP_INFO = {}; USERS_LOCAL = {};
+      MGR_AM_WEST = []; MGR_AM_EAST = []; MGR_ALL = []; LB_ALL_REPS = [];
+      // cfg.reps držia VLASTNÉ referencie na starý Golem zoznam — vyprázdni ich tiež,
+      // inak mgrEnter načíta Golem repov. buildRepData ich potom naplní Reagila rostrom.
+      ['bum','admin','boss','pm','am'].forEach(function(k){ if(MGR_ROLE_CFG[k]) MGR_ROLE_CFG[k].reps = []; }); try { reagilaApplyPharmaMaps_(); } catch(e){} try { LB_STATE.mode = 'plnenie'; } catch(e){} try { PL_PRODUCT_ORDER = ['reagila','cavinton','boxarid','fingolimod','dmf','yaxwer','pazopanib','lunaldin']; } catch(e){}
+    } catch(e){}
+  }
   // Extra dáta z login response (pohlavie + avatar)
   if (extra && typeof extra === 'object') {
     // Pohlavie — normalizácia M/Z/zena/muz/...
@@ -8141,8 +8329,10 @@ function loginSuccess(username, name, role, region, extra) {
   try { userPrefsApplyMirror(user); } catch(e){}
   usageTrack('app_open', '', 'prihlásenie · rola: ' + (role || ''));
   haptic('success');
+  var _isReagila = (user.line === 'reagila');
   var _appEl = document.querySelector('.app');
-  if (_appEl) { _appEl.style.visibility = 'visible'; _appEl.classList.add('app-enter'); setTimeout(function(){ _appEl.classList.remove('app-enter'); }, 500); }
+  // Reagila: appku NEodkrývaj hneď — odkryje sa až po vykreslení prvej obrazovky (gate-and-reveal)
+  if (_appEl && !_isReagila) { _appEl.style.visibility = 'visible'; _appEl.classList.add('app-enter'); setTimeout(function(){ _appEl.classList.remove('app-enter'); }, 500); }
   document.getElementById('login-screen').classList.remove('show');
   try { mgrDedupUnique(); } catch(e){}
   updateHdrForUser(user);
@@ -8155,13 +8345,18 @@ function loginSuccess(username, name, role, region, extra) {
   document.body.style.overflow = '';
   document.body.style.width = '';
   var mgrRole = mgrDetectRole(user);
+  // Reagila línia → body classa pre line-aware CSS (skryje Golem-only veci: west/east, návštevy…)
+  if(user.line === 'reagila'){ document.body.classList.add('reagila-line'); reagilaClearGolemStatics(); }
   // GP reprezentant → persistentný header + záložky (fixný topbar)
   if(!mgrRole && user.line !== 'gyn'){
     document.body.classList.add('gp-rep');
     try { repTopbarSync(); setTimeout(repTopbarSync, 120); } catch(e){}
+    // Reagila KAM → default záložka Plnenie (synchrónne, kým je .app skrytá), potom odkry
+    if(user.line === 'reagila'){ try { openRepPlnenie(); } catch(e){} reagilaRevealAfterPaint(); }
   }
   if(mgrRole){
     mgrEnter(mgrRole);
+    if(_isReagila) reagilaRevealAfterPaint();
     try { mgrDedupUnique(); } catch(e){}
     setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(true);}else{checkMilestone();} }, 600);
     setTimeout(function(){
@@ -8227,6 +8422,119 @@ function loginSuccess(username, name, role, region, extra) {
   try { applyDefaultTabIfRep(); } catch(e){}
 }
 
+// ── Výber línie po prihlásení (používatelia s účtom vo viacerých líniách) ──
+function lineChooserEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+// Zapamätaná úvodná línia (per používateľ) — prežije odhlásenie (nie je v session/dual store).
+function lineGetPref(username){ try { return localStorage.getItem('line_pref_' + String(username||'').toLowerCase()) || ''; } catch(e){ return ''; } }
+function lineSetPref(username, line){ try { if(line) localStorage.setItem('line_pref_' + String(username||'').toLowerCase(), line); } catch(e){} }
+function lineClearPref(username){ try { localStorage.removeItem('line_pref_' + String(username||'').toLowerCase()); } catch(e){} }
+// Báza URL + API token pre danú líniu
+function lineBackend(line){
+  if(line === 'gyn')     return { base: GYN_SCRIPT_URL,     token: GYN_API_TOKEN };
+  if(line === 'reagila') return { base: REAGILA_SCRIPT_URL, token: REAGILA_API_TOKEN };
+  return { base: SCRIPT_URL, token: API_TOKEN };
+}
+// Zapíš celé "nastavenia" pre konkrétnu líniu do jej Sheetu (autorizácia jej session tokenom z dual session)
+function lineWritePrefsRemote(line, userObj, prefsObj){
+  try {
+    if(!userObj || !userObj.session_token) return;        // bez tokenu sa nedá autorizovať
+    if(typeof IS_DEV !== 'undefined' && IS_DEV) return;
+    var be = lineBackend(line);
+    var dev = userObj.device_id || authDeviceId();
+    var url = be.base + '?action=setUserPref' +
+              '&username=' + encodeURIComponent(userObj.username || '') +
+              '&prefs=' + encodeURIComponent(JSON.stringify(prefsObj || {})) +
+              '&token=' + encodeURIComponent(be.token) +
+              '&device_id=' + encodeURIComponent(dev) +
+              '&session_token=' + encodeURIComponent(userObj.session_token);
+    fetch(url, { cache:'no-store' }).catch(function(){});
+  } catch(e){}
+}
+// Zapamätaj úvodnú líniu — localStorage (rýchle) + Sheet vo VŠETKÝCH líniách používateľa
+// (rovnaká hodnota všade = žiadny konflikt pri čítaní na inom zariadení).
+function lineRememberAllLines(username, line){
+  lineSetPref(username, line);
+  var d = (typeof mgrGetDual === 'function') ? mgrGetDual() : null;
+  if(!d) return;
+  ['gp','gyn','reagila'].forEach(function(L){
+    var u = d[L]; if(!u) return;
+    var pf = (u.prefs && typeof u.prefs === 'object') ? u.prefs : {};
+    pf.startLine = line; u.prefs = pf;
+    lineWritePrefsRemote(L, u, pf);
+  });
+  try { mgrSetDual(d); } catch(e){}
+}
+// Zruš zapamätanie — localStorage + Sheet vo všetkých líniách
+function lineForgetAllLines(username){
+  lineClearPref(username);
+  var d = (typeof mgrGetDual === 'function') ? mgrGetDual() : null;
+  if(!d) return;
+  ['gp','gyn','reagila'].forEach(function(L){
+    var u = d[L]; if(!u) return;
+    var pf = (u.prefs && typeof u.prefs === 'object') ? u.prefs : {};
+    if('startLine' in pf) delete pf.startLine;
+    u.prefs = pf;
+    lineWritePrefsRemote(L, u, pf);
+  });
+  try { mgrSetDual(d); } catch(e){}
+}
+// Prečítaj zapamätanú líniu z login odpovedí (stĺpec nastavenia) — naprieč líniami konzistentné
+function lineReadPrefFromLogin(dataMap){
+  var order = ['gp','gyn','reagila'];
+  for(var i=0;i<order.length;i++){
+    var dd = dataMap[order[i]];
+    if(dd && dd.ok && dd.nastavenia){
+      try { var p = JSON.parse(dd.nastavenia); if(p && p.startLine) return String(p.startLine); } catch(e){}
+    }
+  }
+  return '';
+}
+function lineChooserMeta(line){
+  if(line === 'gyn')     return { label:'Gynekológia', emoji:'🌸', desc:'Gynekologická línia' };
+  if(line === 'reagila') return { label:'Reagila',     emoji:'💊', desc:'Reagila línia' };
+  return { label:'Golem', emoji:'🩺', desc:'Všeobecní lekári (GP)' };
+}
+var _lineChooserCtx = null;
+function showLineChooser(username, lines, dataMap){
+  _lineChooserCtx = { username: username, data: dataMap };
+  var ls = document.getElementById('login-screen'); if(ls) ls.classList.remove('show');
+  var ov = document.getElementById('line-chooser-screen');
+  if(!ov){ ov = document.createElement('div'); ov.id = 'line-chooser-screen'; ov.className = 'login-screen'; document.body.appendChild(ov); }
+  var nm = (dataMap.gp && dataMap.gp.name) || (dataMap.gyn && dataMap.gyn.name) || (dataMap.reagila && dataMap.reagila.name) || username;
+  var btns = lines.map(function(ln){
+    var m = lineChooserMeta(ln);
+    return '<button type="button" class="line-choose-btn" onclick="pickLine(\'' + ln + '\')">' +
+             '<span class="line-choose-emoji">' + m.emoji + '</span>' +
+             '<span class="line-choose-txt"><span class="line-choose-lbl">' + lineChooserEsc(m.label) + '</span>' +
+             '<span class="line-choose-desc">' + lineChooserEsc(m.desc) + '</span></span>' +
+             '<span class="line-choose-arrow">→</span>' +
+           '</button>';
+  }).join('');
+  ov.innerHTML =
+    '<div class="login-card" style="margin-top:auto;margin-bottom:auto">' +
+      '<div class="login-card-title">Vitaj, ' + lineChooserEsc(nm) + ' <span class="login-wave">👋</span></div>' +
+      '<div class="login-card-sub">Máš prístup do viacerých rozhraní — ktoré chceš zobraziť?</div>' +
+      '<div class="line-choose-list">' + btns + '</div>' +
+      '<label class="line-remember"><input type="checkbox" id="line-remember-cb"><span>Zapamätať a nabudúce otvárať rovno toto rozhranie</span></label>' +
+      '<div class="login-help" style="margin-top:14px">Voľbu kedykoľvek zmeníš v Nastaveniach.</div>' +
+    '</div>';
+  ov.classList.add('show');
+}
+function pickLine(line){
+  var ctx = _lineChooserCtx; if(!ctx) return;
+  var cb = document.getElementById('line-remember-cb');
+  if(cb && cb.checked) lineRememberAllLines(ctx.username, line);
+  var ov = document.getElementById('line-chooser-screen'); if(ov) ov.classList.remove('show');
+  enterLineFromLogin(ctx.username, line, ctx.data);
+  _lineChooserCtx = null;
+}
+// Vstup do konkrétnej línie z login response (priorita gp > gyn > reagila pri priamom vstupe)
+function enterLineFromLogin(username, line, data){
+  if(line === 'gyn'){ gynLoginSuccess(username, data.gyn); }
+  else if(line === 'reagila'){ var rd = data.reagila; rd.line = 'reagila'; loginSuccess(username, rd.name, rd.role, rd.region, rd); }
+  else { loginSuccess(username, data.gp.name, data.gp.role, data.gp.region, data.gp); }
+}
+
 function doLogin() {
   var userEl = document.getElementById('login-user');
   var passEl = document.getElementById('login-pass');
@@ -8256,30 +8564,56 @@ function doLogin() {
     return appFetchJson(url + loginParams).catch(function(){ return { ok:false, _failed:true }; });
   }
 
-  Promise.all([loginFetch(SCRIPT_URL), loginFetch(GYN_SCRIPT_URL)]).then(function(results) {
+  Promise.all([loginFetch(SCRIPT_URL), loginFetch(GYN_SCRIPT_URL), loginFetch(REAGILA_SCRIPT_URL)]).then(function(results) {
     btn.disabled = false;
     btn.textContent = 'Prihlásiť sa →';
     var gpData  = results[0];
     var gynData = results[1];
-    // Admin v oboch linkách → ulož dual session pre prepínač Golem ↔ Gyn (inak no-op)
+    var reagilaData = results[2];
+    // Ulož dostupné línie pre prepínač (ak ich má používateľ 2+)
     try { mgrCaptureLineDiag(username, gpData, gynData); } catch(e){}
-    mgrStoreDualIfEligible(username, gpData, gynData);
-    if(gpData.ok) {
-      loginSuccess(username, gpData.name, gpData.role, gpData.region, gpData);
-    } else if(gynData.ok) {
-      gynLoginSuccess(username, gynData);
-    } else if(gpData._failed && gynData._failed) {
-      // Oba zlyhali kvôli sieti/timeoutu (nie zlé heslo) → zrozumiteľná hláška, dá sa skúsiť znova
-      errEl.textContent = 'Spojenie sa nepodarilo — server neodpovedal včas. Skontroluj sieť a skús znova.';
-      errEl.classList.add('show');
-      haptic('error');
-    } else {
-      errEl.textContent = 'Nesprávne meno alebo heslo. Skús znova.';
-      errEl.classList.add('show');
-      userEl.classList.add('err');
-      passEl.classList.add('err');
-      haptic('error');
+    mgrStoreDualIfEligible(username, gpData, gynData, reagilaData);
+
+    // Ktoré línie má používateľ k dispozícii (rovnaké meno+heslo v danom Sheete)
+    var avail = [];
+    if(gpData.ok)      avail.push('gp');
+    if(gynData.ok)     avail.push('gyn');
+    if(reagilaData.ok) avail.push('reagila');
+    var dataMap = { gp: gpData, gyn: gynData, reagila: reagilaData };
+
+    if(avail.length === 0) {
+      if(gpData._failed && gynData._failed && reagilaData._failed) {
+        // Všetky zlyhali kvôli sieti/timeoutu (nie zlé heslo) → zrozumiteľná hláška
+        errEl.textContent = 'Spojenie sa nepodarilo — server neodpovedal včas. Skontroluj sieť a skús znova.';
+        errEl.classList.add('show');
+        haptic('error');
+      } else {
+        errEl.textContent = 'Nesprávne meno alebo heslo. Skús znova.';
+        errEl.classList.add('show');
+        userEl.classList.add('err');
+        passEl.classList.add('err');
+        haptic('error');
+      }
+      return;
     }
+
+    // Admin → vstup rovno do Golemu (zachované správanie). Ostatní s 2+ líniami → výber rozhrania.
+    var _isAdmin = false;
+    try { _isAdmin = gpData.ok && mgrDetectRole(mgrBuildGpUser(username, gpData)) === 'admin'; } catch(e){}
+    // Zapamätaná voľba (Sheet má prednosť pred localStorage) → vstup rovno, bez pýtania (aj pre admina)
+    var _pref = lineReadPrefFromLogin(dataMap) || lineGetPref(username);
+    if(_pref && avail.indexOf(_pref) !== -1) {
+      lineSetPref(username, _pref);   // zrkadli do localStorage pre rýchle/offline čítanie
+      enterLineFromLogin(username, _pref, dataMap);
+      return;
+    }
+    // Bez zapamätania: ne-admin s 2+ líniami → výber rozhrania
+    if(avail.length >= 2 && !_isAdmin) {
+      showLineChooser(username, avail, dataMap);
+      return;
+    }
+    // Jedna línia (alebo admin bez zapamätania) → vstup priamo, priorita gp > gyn > reagila
+    enterLineFromLogin(username, avail[0], dataMap);
   }).catch(function() {
     btn.disabled = false;
     btn.textContent = 'Prihlásiť sa →';
@@ -8564,7 +8898,7 @@ try { window.addEventListener('orientationchange', function(){ setTimeout(repTop
 function updateHdrForUser(user) {
   // Názov línie ako titul
   var lineEl = document.getElementById('hdr-line-name');
-  if(lineEl) lineEl.textContent = (user && user.line === 'gyn') ? 'Gynekológia' : 'Golem';
+  if(lineEl) lineEl.textContent = (user && user.line === 'gyn') ? 'Gynekológia' : (user && user.line === 'reagila') ? 'Reagila' : 'Golem';
   // Pozdrav podľa dennej doby + krstné meno
   var grEl = document.getElementById('hdr-greeting');
   if(grEl){
@@ -8676,16 +9010,22 @@ function initLogin() {
     return;
   }
   if(session && session.username) {
+    var _isReagilaR = (session.line === 'reagila');
     var appEl = document.querySelector('.app');
-    if(appEl) appEl.style.visibility = 'visible';
+    // Reagila: appku NEodkrývaj hneď (gate-and-reveal) — odkryje sa až po prvej obrazovke
+    if(appEl && !_isReagilaR) appEl.style.visibility = 'visible';
     if(!session.region && USERS_LOCAL[session.username]) {
       session.region = USERS_LOCAL[session.username].region || '';
       setSession(session);
     }
     try { userPrefsApplyMirror(session); } catch(e){}
     var mgrRole = mgrDetectRole(session);
+    // Reagila línia → body classa pre line-aware CSS + vyprázdnenie statických Golem zoznamov
+    if(_isReagilaR){ document.body.classList.add('reagila-line'); reagilaClearGolemStatics(); }
     // GP reprezentant → persistentný header + záložky (fixný topbar) — pred renderom hlavičky
     if(!mgrRole && session.line !== 'gyn'){ document.body.classList.add('gp-rep'); }
+    // Reagila KAM → default záložka Plnenie synchrónne (kým je .app skrytá), potom odkry
+    if(!mgrRole && _isReagilaR){ try { openRepPlnenie(); } catch(e){} reagilaRevealAfterPaint(); }
     updateHdrForUser(session);
     setTimeout(function(){ try { nameDayCelebrate(session); } catch(e){} }, 1500);
     pingLogin(session.username);
@@ -8693,6 +9033,7 @@ function initLogin() {
     try { repTopbarSync(); setTimeout(repTopbarSync, 120); } catch(e){}
     if(mgrRole){
       mgrEnter(mgrRole);
+      if(_isReagilaR) reagilaRevealAfterPaint();
       setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(true);}else{checkMilestone();} }, 400);
       setTimeout(function(){
         lbFetchApprovedQ(function(){ lbLoadData(); lbPreloadPlnenie(); });
@@ -14865,7 +15206,8 @@ var MGR_ROLE_CFG = {
   boss:   { label:'BOSS',    title:'Všetci reprezentanti',      reps:MGR_ALL },
   pm:     { label:'PM',      title:'Všetci reprezentanti',      reps:MGR_ALL },
   amwest: { label:'AM WEST', title:'Reprezentanti West',        reps:MGR_AM_WEST },
-  ameast: { label:'AM EAST', title:'Reprezentanti East',        reps:MGR_AM_EAST }
+  ameast: { label:'AM EAST', title:'Reprezentanti East',        reps:MGR_AM_EAST },
+  am:     { label:'AREA MANAGER', title:'Všetci reprezentanti', reps:MGR_ALL }  // Reagila — AM nad všetkými KAM
 };
 
 var MGR_SEG_LBL = { top:'Platinum', udrzat:'Gold', zvysit3:'Silver A', zvysit:'Silver B', frekvencia:'Bronze', vyradit:'Inactive' };
@@ -14900,7 +15242,7 @@ function mgrDetectRole(user){
   if(r === 'am east')       return 'ameast';
   if(r === 'amwest')        return 'amwest';
   if(r === 'ameast')        return 'ameast';
-  if(r === 'am')            return 'admin';
+  if(r === 'am')            return 'am';  // Reagila: Area Manager (vidí všetkých KAM, NIE admin)
   // Fallback — hardcódovaný zoznam (pre staré účty)
   return MGR_USERS[u] || null;
 }
@@ -15024,6 +15366,9 @@ function mgrDelay(ms){
 }
 
 function mgrLoadReps(repList){
+  // Roster ešte nedorazil (prázdny zoznam) → ukáž loading, NEnastavuj repsLoaded.
+  // buildRepData zavolá mgrLoadReps znova s naplneným rostrom.
+  if (!repList || !repList.length) { MGR_STATE.repsLoaded = false; mgrRenderList(); return; }
   // DEV MODE — použij prázdne mock histórie, žiadne Sheets fetche
   if (IS_DEV) {
     MGR_STATE.lastLogins = {};
@@ -15407,7 +15752,17 @@ function mgrRenderList(){
     '</div>';
   }).join('');
 
-  document.getElementById('mgr-list').innerHTML = html || mkEmpty('people', 'Žiadni reprezentanti', '');
+  var _mgrListEl = document.getElementById('mgr-list');
+  if (html) {
+    _mgrListEl.innerHTML = html;
+  } else if (!MGR_STATE.repsLoaded || !REP_LIST_STATE.loaded) {
+    // Dáta sa ešte načítavajú → loading (nie prázdne „Žiadni reprezentanti")
+    _mgrListEl.innerHTML = '<div style="text-align:center;padding:44px 16px;color:#94A3B8">' +
+      '<div style="width:30px;height:30px;border:3px solid #E2E8F0;border-top-color:#0C1E35;border-radius:50%;animation:gynCalSpin .8s linear infinite;margin:0 auto 12px"></div>' +
+      '<div style="font-size:14px;font-weight:600">Načítavam reprezentantov…</div></div>';
+  } else {
+    _mgrListEl.innerHTML = mkEmpty('people', 'Žiadni reprezentanti', '');
+  }
 
   // Manažéri — len pre admin
   var mgrSection = document.getElementById('mgr-managers-section');
@@ -17144,7 +17499,11 @@ function buildRepData(reps) {
   var west = reps.filter(function(r){ return r.rola === 'rep west'; });
   var east = reps.filter(function(r){ return r.rola === 'rep east'; });
   var all = west.concat(east);
-  var isFullRoster = all.length >= LB_STATIC_REPS.length;
+  // Reagila: server vracia celý roster (4 KAM) — neporovnávaj s Golem statickým počtom (12),
+  // inak by padlo do Golem fallbacku. Pre reagilu ber dáta zo servera vždy ako plné.
+  var _brs = (typeof getSession === 'function') ? getSession() : null;
+  var _brReagila = !!(_brs && _brs.line === 'reagila');
+  var isFullRoster = _brReagila || all.length >= LB_STATIC_REPS.length;
 
   MGR_AM_WEST = west.map(function(r){ return r.login.trim().toLowerCase(); });
   MGR_AM_EAST = east.map(function(r){ return r.login.trim().toLowerCase(); });
@@ -17191,12 +17550,16 @@ function buildRepData(reps) {
   MGR_ROLE_CFG.admin.reps  = MGR_ALL;
   MGR_ROLE_CFG.boss.reps   = MGR_ALL;
   MGR_ROLE_CFG.pm.reps     = MGR_ALL;
+  MGR_ROLE_CFG.am.reps     = MGR_ALL;
   MGR_ROLE_CFG.amwest.reps = MGR_AM_WEST;
   MGR_ROLE_CFG.ameast.reps = MGR_AM_EAST;
 
-  // Ak je manažér práve prihlásený, prekreslí zoznam reprezentantov a predloaduje pharma dáta
-  if (document.body.classList.contains('manager-mode') && typeof mgrRenderReps === 'function') {
-    mgrRenderReps();
+  // Ak je manažér práve prihlásený a roster práve dorazil/zmenil sa → načítaj históriu pre
+  // správnych repov a prekresli dashboard. (mgrRenderReps neexistuje — to bol no-op; treba
+  // mgrLoadReps, inak po neskorom dobehnutí rostera dashboard ostal prázdny.)
+  if (document.body.classList.contains('manager-mode')) {
+    if (MGR_ALL.length && typeof mgrLoadReps === 'function') mgrLoadReps(MGR_ALL.slice());
+    else if (typeof mgrRenderList === 'function') mgrRenderList();
     preloadAllPharmaData();
   }
 
@@ -17552,6 +17915,8 @@ function loadInitData(username, _attempt) {
 
 function openLeaderboard(){
   if(!document.getElementById('lb-overlay')) return;
+  // Reagila nemá návštevy lekárov → rebríček je vždy v móde Plnenie (mód „Návštevy" je skrytý).
+  if(document.body.classList.contains('reagila-line')) LB_STATE.mode = 'plnenie';
   usageSectionEnter('Rebríček');
   _panelShow('lb-overlay');
   LB_STATE.showConfetti = true;
@@ -17768,7 +18133,7 @@ function appConfirmClose(){ var ov = document.getElementById('app-confirm-ov'); 
 // Admin klikne → najprv potvrdenie, potom odoslanie.
 function plnenieSetNotif(type) {
   var s = getSession() || {};
-  var lineLbl = (s.line === 'gyn') ? 'Gyn' : 'Golem';
+  var lineLbl = (s.line === 'gyn') ? 'Gyn' : (s.line === 'reagila') ? 'Reagila' : 'Golem';
   appConfirm('Naozaj odoslať toto upozornenie všetkým v línii ' + lineLbl + '?', function(){ plnenieDoSetNotif(type); });
 }
 function plnenieDoSetNotif(type) {
@@ -18793,7 +19158,15 @@ var PL_PRODUCT_LABELS = {
   'suprax':                'Suprax',
   'telexer':               'Telexer',
   'terrosa':               'Terrosa',
-  'vidonorm':              'Vidonorm'
+  'vidonorm':              'Vidonorm',
+  // ── Reagila línia ──
+  'reagila':               'Reagila',
+  'boxarid':               'Boxarid',
+  'fingolimod':            'Fingolimod',
+  'dmf':                   'DMF',
+  'yaxwer':                'Yaxwer',
+  'pazopanib':             'Pazopanib',
+  'lunaldin':              'Lunaldin'
 };
 
 var PL_PACK_PRICES = {
@@ -18823,8 +19196,11 @@ function plnenieNormalizeKey(s) {
 
 // ── Plnenie localStorage SWR ──────────────────────────────────────
 var _PL_LS_V = 'v1';
-function _plLsKey(year, q) { return 'pl_c_' + _PL_LS_V + '_' + year + '_' + q; }
-function _plRepLsKey(uname, year, q) { return 'pl_rc_' + _PL_LS_V + '_' + (uname || '_') + '_' + year + '_' + q; }
+// Cache kľúče MUSIA obsahovať líniu — inak Golem a Reagila zdieľajú plnenie cache
+// a appka ukáže dáta z inej línie (bug: rebríček ťahal Golem čísla).
+function _plLineTag() { var s = (typeof getSession==='function') ? getSession() : null; return (s && s.line) ? s.line : 'gp'; }
+function _plLsKey(year, q) { return 'pl_c_' + _PL_LS_V + '_' + _plLineTag() + '_' + year + '_' + q; }
+function _plRepLsKey(uname, year, q) { return 'pl_rc_' + _PL_LS_V + '_' + _plLineTag() + '_' + (uname || '_') + '_' + year + '_' + q; }
 function _plHashData(data) {
   try { return JSON.stringify(data || null); }
   catch(e) { return String(Date.now()); }
@@ -19895,19 +20271,25 @@ function plnenieBuildAggregates(resp, q, scopeReps) {
     };
   });
 
-  // Per-produkt summary — iba produkty, kde aspoň jeden aktívny rep má plán > 0.
+  // Per-produkt summary — produkty, kde aspoň jeden aktívny rep má plán > 0.
+  // Reagila: navyše ukáž aj produkty bez plánu, ktoré majú predaje (napr. Fingolimod —
+  // plán na teritóriá ešte nie je, ale € predaja zobrazíme; % = „—").
+  var _plReagila = (function(){ var s=(typeof getSession==='function')?getSession():null; return !!(s && s.line==='reagila'); })();
   var productsToShow = [];
   allProdKeys.forEach(function(key){
-    var pSum = 0, sSum = 0, sSumDone = 0, sPredPlanDone = 0;
+    var pSum = 0, sSum = 0, sSumDone = 0, sPredPlanDone = 0, sSalesNoPlan = 0;
     activeReps.forEach(function(rep){
+      var rTot = (predaje[rep] && predaje[rep].total) || {};
       var p = prodVal(plan[rep], key);
       if (p > 0) {
         pSum += p;
-        sSum += prodVal((predaje[rep] && predaje[rep].total) || {}, key);
+        sSum += prodVal(rTot, key);
         var rByMonth = (predaje[rep] && predaje[rep].byMonth) || {};
         var predParts = repPredictionParts[rep] || [];
         sSumDone += predActualForProduct(rByMonth, predParts, key);
         sPredPlanDone += predBasisForProduct(p, predParts);
+      } else if (_plReagila) {
+        sSalesNoPlan += prodVal(rTot, key);
       }
     });
     if (pSum > 0) {
@@ -19919,6 +20301,16 @@ function plnenieBuildAggregates(resp, q, scopeReps) {
         predajeEURDone: sSumDone,
         predPlanEURDone: sPredPlanDone,
         pct: sSum / pSum * 100
+      });
+    } else if (_plReagila && sSalesNoPlan > 0) {
+      productsToShow.push({
+        key: key,
+        label: plnenieDisplayName(allProdsMap[key]),
+        planEUR: 0,
+        predajeEUR: sSalesNoPlan,
+        predajeEURDone: sSalesNoPlan,
+        predPlanEURDone: 0,
+        pct: null  // bez plánu → render ukáže „—" a € v detaile
       });
     }
   });
@@ -20053,12 +20445,17 @@ function plnenieRenderSummary() {
           ? '<span style="font-size:11.5px;color:#64748B;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;min-width:0">predikcia <strong style="color:#334155;font-weight:700;font-size:11.5px">' + plnenieFormatPct(predPct) + '</strong></span>'
           : '';
         var famClass = (p.key === 'aflamil_family') ? ' pl-sum-prod-c--family' : '';
+        // Produkt bez plánu (Reagila — napr. Fingolimod): namiesto % ukáž € predaja za Q.
+        var noPlan = (p.pct === null || p.pct === undefined);
+        var valHtml = noPlan
+          ? '<strong style="flex-shrink:0;color:#334155;white-space:nowrap">' + plnenieFormatEUR(p.predajeEUR) + '</strong>'
+          : '<strong class="' + plnenieColorClass(p.pct) + '" data-pct="' + (isNaN(p.pct) ? '' : p.pct) + '" style="flex-shrink:0">0,00%</strong>';
         return '<div class="pl-sum-prod pl-sum-prod-c' + famClass + '" onclick="openProdSheet(\'' + safeKey + '\',\'' + safeLbl + '\')">' +
                '<div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px">' +
                  '<span class="pl-sum-prod-name">' + mgrEscape(p.label) + '</span>' +
                  predHtml +
                '</div>' +
-               '<strong class="' + plnenieColorClass(p.pct) + '" data-pct="' + (isNaN(p.pct) ? '' : p.pct) + '" style="flex-shrink:0">0,00%</strong>' +
+               valHtml +
                '<span class="pl-sum-prod-chev" style="flex-shrink:0">›</span>' +
                '</div>';
       }).join('');
@@ -20671,7 +21068,14 @@ function plnenieRenderRepList() {
   if (!listEl) return;
   var reps = (PL_STATE.aggregates && PL_STATE.aggregates.reps) || [];
   if (reps.length === 0) {
-    listEl.innerHTML = mkEmpty('people', 'Žiadni reprezentanti', '');
+    // Dáta (plnenie alebo roster) sa ešte načítavajú → loading namiesto „Žiadni reprezentanti".
+    if (!PL_STATE.loaded || !MGR_STATE.repsLoaded) {
+      listEl.innerHTML = '<div style="text-align:center;padding:44px 16px;color:#94A3B8">' +
+        '<div style="width:30px;height:30px;border:3px solid #E2E8F0;border-top-color:#0C1E35;border-radius:50%;animation:gynCalSpin .8s linear infinite;margin:0 auto 12px"></div>' +
+        '<div style="font-size:14px;font-weight:600">Načítavam reprezentantov…</div></div>';
+    } else {
+      listEl.innerHTML = mkEmpty('people', 'Žiadni reprezentanti', '');
+    }
     return;
   }
   // Rank počítadlo — iba reps s pct !== null
@@ -20683,9 +21087,10 @@ function plnenieRenderRepList() {
       color: 'linear-gradient(135deg,#64748B,#475569)'
     };
     var initials = mgrInitials(info.name);
-    var regionLbl = (MGR_AM_WEST.indexOf(r.username) !== -1) ? 'West'
+    var regionLbl = document.body.classList.contains('reagila-line') ? ''
+                  : (MGR_AM_WEST.indexOf(r.username) !== -1) ? 'West'
                   : (MGR_AM_EAST.indexOf(r.username) !== -1) ? 'East' : '';
-    var meta = regionLbl + (info.region ? (' · ' + info.region) : '');
+    var meta = (regionLbl ? regionLbl + (info.region ? ' · ' + info.region : '') : (info.region || ''));
 
     var medalHtml;
     if (r.pct === null) {
@@ -22020,7 +22425,15 @@ var PL_PROD_DOT_COLORS = {
   'kogavant':            '#2DD4BF',
   'lonelix':             '#F472B6',
   'ossica':              '#4ADE80',
-  'terrosa':             '#E879F9'
+  'terrosa':             '#E879F9',
+  // ── Reagila línia ──
+  'reagila':             '#6366F1',
+  'boxarid':             '#FB923C',
+  'fingolimod':          '#22D3EE',
+  'dmf':                 '#34D399',
+  'yaxwer':              '#EC4899',
+  'pazopanib':           '#A78BFA',
+  'lunaldin':            '#2DD4BF'
 };
 
 // Preferované poradie produktov — Aflamil skupina pohromade, zvyšok abecedne
@@ -22096,9 +22509,11 @@ function plnenieRenderDetail() {
     region: '',
     color: 'linear-gradient(135deg,#64748B,#475569)'
   };
-  var regionLbl = (MGR_AM_WEST.indexOf(username) !== -1) ? 'West'
+  // Reagila nemá west/east → ukáž len región (bez team labelu)
+  var regionLbl = document.body.classList.contains('reagila-line') ? ''
+                : (MGR_AM_WEST.indexOf(username) !== -1) ? 'West'
                 : (MGR_AM_EAST.indexOf(username) !== -1) ? 'East' : '';
-  var sub = regionLbl + (info.region ? (' · ' + info.region) : '') + ' · @' + username;
+  var sub = (regionLbl ? regionLbl + (info.region ? ' · ' + info.region : '') : (info.region || '')) + ' · @' + username;
 
   // Header
   var avatarEl = document.getElementById('pl-detail-avatar');
@@ -22428,7 +22843,7 @@ function repPlnenieLoad() {
   qs.forEach(function(q) {
     var cached = _plLsLoad(_plRepLsKey(uname, year, q));
     if (cached) {
-      REP_PL_STATE.qCache[q] = { data: cached.data, aggregates: plnenieBuildAggregates(cached.data, q), hash: cached.hash };
+      REP_PL_STATE.qCache[q] = { data: cached.data, aggregates: plnenieBuildAggregates(cached.data, q, [uname]), hash: cached.hash };
       if (q === REP_PL_STATE.q) {
         REP_PL_STATE.data = cached.data;
         REP_PL_STATE.aggregates = REP_PL_STATE.qCache[q].aggregates;
@@ -22448,7 +22863,7 @@ function repPlnenieLoad() {
     mgrFetchWithRetry(url, 3)
       .then(function(resp) {
         if (!resp || !resp.ok) throw new Error('No data Q' + q);
-        var agg = plnenieBuildAggregates(resp, q);
+        var agg = plnenieBuildAggregates(resp, q, [uname]);
         var hash = _plHashData(resp);
         var prev = REP_PL_STATE.qCache[q];
         var changed = !prev || prev.hash !== hash;
@@ -22882,7 +23297,7 @@ function repPlnenieRender() {
   var hasKr  = planProducts.some(function(p){ return plnenieNormalizeKey(p) === 'aflamil_kr'; });
   var tblPlanCheck = parseFloat(plan['aflamil_tablety_sacky']); if (isNaN(tblPlanCheck)) tblPlanCheck = 0;
   var krPlanCheck  = parseFloat(plan['aflamil_kr']);            if (isNaN(krPlanCheck))  krPlanCheck  = 0;
-  var repOblast = (USERS_LOCAL[username] && USERS_LOCAL[username].region) || '';
+  var repOblast = (USERS_LOCAL[username] && USERS_LOCAL[username].region) || (session && session.region) || '';
   plneniePreloadProductInsights(repOblast, REP_PL_STATE.q, REP_PL_STATE.year, planProducts, true);
   var famHtml = (hasTbl && hasKr && tblPlanCheck > 0 && krPlanCheck > 0)
     ? aflamilFamilyHtml(plan, predajeTotal, predajeByMonth, qMonths, milestonesHtml, msLabelsHtml, username, repOblast, REP_PL_STATE.year, REP_PL_STATE.q)
@@ -23068,6 +23483,23 @@ var PHARMA_PREDAJE_KEY = {
   'AFLtbl':  'aflamiltb',
   'AFLsach': 'aflamilsa'
 };
+
+// ── REAGILA: pharma mapovanie nanovo (Golem kódy CAV/AFLcrm… nesedia s Reagila dátami) ──
+// V Reagila PharmaData taboch je produkt = názov ('Reagila','Cavinton'…), oblasť = BA/SE/ST/VY.
+// Pri reagila logine prepíšeme PHARMA_CODES/PHARMA_PROD_LABEL → kód = názov produktu,
+// takže getPharmaData(produkt=<názov>) sa napáruje a celý Golem pharma render funguje.
+function reagilaApplyPharmaMaps_() {
+  PHARMA_CODES = {
+    'reagila':['Reagila'], 'cavinton':['Cavinton'], 'boxarid':['Boxarid'],
+    'fingolimod':['Fingolimod'], 'dmf':['DMF'], 'yaxwer':['Yaxwer'],
+    'pazopanib':['Pazopanib'], 'lunaldin':['Lunaldin']
+  };
+  PHARMA_PROD_LABEL = {
+    'Reagila':'Reagila','Cavinton':'Cavinton','Boxarid':'Boxarid','Fingolimod':'Fingolimod',
+    'DMF':'DMF','Yaxwer':'Yaxwer','Pazopanib':'Pazopanib','Lunaldin':'Lunaldin'
+  };
+  PHARMA_PREDAJE_KEY = {};
+}
 
 var PHARMA_MONTH_SK = ['','Jan','Feb','Mar','Apr','Máj','Jún','Júl','Aug','Sep','Okt','Nov','Dec'];
 
@@ -27091,8 +27523,15 @@ var LK_PROD_DISPLAY = {
   cavinton:'Cavinton', cavinton_fo:'CAV Forte', cavinton_ij:'CAV inj.', cavinton_tb:'CAV tbl.',
   globifer:'Globifer', junod:'Junod', kogavant:'Kogavant', lonelix:'Lonelix', ossica:'Ossica',
   suprax:'Suprax', suprax_dt:'Suprax DSP', suprax_tb:'Suprax tbl.',
-  telexer:'Telexer', terrosa:'Terrosa', vidonorm:'Vidonorm'
+  telexer:'Telexer', terrosa:'Terrosa', vidonorm:'Vidonorm',
+  // Reagila línia (kľúče z Lekarne tabu Reagila konvertora)
+  reagila:'Reagila', boxarid:'Boxarid', fingolimod:'Fingolimod', dmf:'DMF',
+  yaxwer:'Yaxwer', pazopanib:'Pazopanib', lunaldin:'Lunaldin'
 };
+
+// Reagila portfólio pre Lekárne (zhoduje sa s PROD_COLS v reagila_lekarne_konverter.html)
+var LK_REAGILA_PRODS = ['reagila','cavinton','boxarid','fingolimod','dmf','yaxwer','pazopanib','lunaldin'];
+function lkIsReagila(){ try { return document.body.classList.contains('reagila-line'); } catch(e){ return false; } }
 
 // Aktuálny mesiac pre "spiace" detekciu
 function lkCurrentYearMonth() {
@@ -27168,6 +27607,7 @@ function lkChainNameFlags(lekaren) {
 }
 
 function lkIsChainHiddenInTab(l, tab) {
+  if (lkIsReagila()) return false;   // Reagila: žiadne skrývanie reťazcov (DrMax/Benu je Golem pravidlo)
   var flags = lkChainNameFlags(l && l.lekaren);
   if (flags.drMax && tab !== 'new' && tab !== 'all') return true;
   if (flags.benu && tab === 'priority') return true;
@@ -27256,7 +27696,57 @@ function lkPriorityLabel(priority) {
   return 'Nízka';
 }
 
+// Odporúčania pre Reagila — výhradne o Reagila produktoch (žiadny AFL krém/dobropis)
+function lkRecommendationReagila(l, tab) {
+  l = l || {};
+  tab = tab || 'all';
+  var disp = function(p){ return LK_PROD_DISPLAY[p] || p; };
+  var buys = (l.buys || []).map(disp);
+  var missing = (l.missing || []);
+  var total = buys.length + missing.length;
+  var ago = parseInt(l.monthsAgo, 10) || 0;
+
+  if (tab === 'sleeping' || l.isSleeping) {
+    var sp = ago >= 12 ? 'high' : 'medium';
+    return {
+      priority: sp, label: lkPriorityLabel(sp),
+      reason: 'Reagila produkty nekúpili ' + ago + ' ' + lkMonthsWord(ago) + ', no v minulosti brali (' + (buys.slice(0,3).join(', ') || '—') + ').',
+      action: 'Osloviť lekáreň a skúsiť obnoviť odber Reagila portfólia — pripomenúť predchádzajúci nákup.'
+    };
+  }
+  if (tab === 'new') {
+    return {
+      priority: 'medium', label: lkPriorityLabel('medium'),
+      reason: 'Nová lekáreň — prvé nákupy Reagila produktov sú čerstvé.',
+      action: 'Upevniť vzťah a rozšíriť odber o ďalšie produkty z Reagila portfólia.'
+    };
+  }
+  // „Všetky" — odporúčanie podľa trendu / chýbajúcich Reagila produktov
+  if (l.trend === 'dn') {
+    return {
+      priority: 'medium', label: lkPriorityLabel('medium'),
+      reason: 'Klesajúci trend Reagila produktov za posledné 3 mesiace.',
+      action: 'Overiť výpadok a obnoviť objednávku produktov, ktoré brali naposledy (' + (buys.slice(0,2).join(', ') || '—') + ').'
+    };
+  }
+  if (missing.length > 0) {
+    var miss2 = missing.slice(0, 2).map(disp).join(', ');
+    var pr = missing.length >= 4 ? 'medium' : 'low';
+    return {
+      priority: pr, label: lkPriorityLabel(pr),
+      reason: 'Z Reagila portfólia berie ' + buys.length + ' z ' + total + ' produktov.',
+      action: 'Otvoriť tému chýbajúcich produktov: ' + miss2 + '.'
+    };
+  }
+  return {
+    priority: 'low', label: lkPriorityLabel('low'),
+    reason: 'Aktívne berie väčšinu Reagila portfólia.',
+    action: 'Udržať odber a sledovať príležitosti pri ďalších produktoch.'
+  };
+}
+
 function lkRecommendation(l, tab) {
+  if (lkIsReagila()) return lkRecommendationReagila(l, tab);
   l = l || {};
   tab = tab || 'all';
   var priority = 'low';
@@ -27713,21 +28203,23 @@ function lkBuildLekarne(rows) {
     Object.keys(allProds).forEach(function(p) { sumLast3 += allProds[p].last3; sumPrev3 += allProds[p].prev3; });
     var trend = sumPrev3 === 0 ? 'eq' : (sumLast3 > sumPrev3 * 1.05 ? 'up' : (sumLast3 < sumPrev3 * 0.95 ? 'dn' : 'eq'));
 
-    // Produkty nakupované a nenakupované (z GOL portfolia)
-    var GOL_PRODS = ['aflamil_tb','aflamil_kr','suprax','vidonorm','cavinton_fo','globifer','kogavant'];
+    // Produkty nakupované a nenakupované — portfólio podľa línie
+    var _reag = lkIsReagila();
+    var PORTFOLIO = _reag ? LK_REAGILA_PRODS : ['aflamil_tb','aflamil_kr','suprax','vidonorm','cavinton_fo','globifer','kogavant'];
     var buysSet = {};
-    info.months.forEach(function(m) { Object.keys(m.prods).forEach(function(p){ buysSet[p] = true; }); });
-    var buys = GOL_PRODS.filter(function(p){ return buysSet[p]; });
-    var missing = GOL_PRODS.filter(function(p){ return !buysSet[p]; });
-    var opportunities = lkOpportunityProducts(info, now, GOL_PRODS);
+    info.months.forEach(function(m) { Object.keys(m.prods).forEach(function(p){ if((parseFloat(m.prods[p])||0) > 0) buysSet[p] = true; }); });
+    var buys = PORTFOLIO.filter(function(p){ return buysSet[p]; });
+    var missing = PORTFOLIO.filter(function(p){ return !buysSet[p]; });
+    var opportunities = lkOpportunityProducts(info, now, PORTFOLIO);
     var krmLast3 = lkCreamLast3(info, now);
 
-    // Klasifikácia
+    // Klasifikácia — Reagila: spiaca = 6+ mesiacov bez nákupu Reagila produktov (v minulosti brala)
     var isNew = false, isSleeping = false;
     var firstM = info.months[0];
     var firstDiff = (now.rok * 12 + now.mesiac) - (firstM.rok * 12 + firstM.mesiac);
+    var sleepThresh = _reag ? 6 : 2;
     if (firstDiff <= 3 && info.months.length <= 3) isNew = true;
-    if (!isNew && monthsAgo >= 2) isSleeping = true;
+    if (!isNew && monthsAgo >= sleepThresh) isSleeping = true;
 
     // Reaktivácia AFL krém: kupovala AFL krém v minulosti, ale posledné 2+ mesiace nie
     var krmMonths = info.months.filter(function(m){ return m.prods['aflamil_kr']; });
@@ -27776,7 +28268,9 @@ function lkBuildLekarne(rows) {
 function openLekarne() {
   usageSectionEnter('Lekárne');
   LK_STATE.open = true;
-  LK_STATE.activeTab = 'reaktivacia';
+  // Reagila nemá Krém/Dobropis → default tab je „Všetky"
+  var _lkDefTab = document.body.classList.contains('reagila-line') ? 'all' : 'reaktivacia';
+  LK_STATE.activeTab = _lkDefTab;
   LK_STATE.searchQ = '';
   _panelShow('lk-overlay');
   var searchEl = document.getElementById('lk-search');
@@ -27796,7 +28290,7 @@ function openLekarne() {
       lkRender();
     });
   }
-  lkSwitchTab('reaktivacia', null);
+  lkSwitchTab(_lkDefTab, null);
   if (!cachedRows || cachedRows.length === 0) {
     document.getElementById('lk-list').innerHTML = lkSkelHtml();
   }
@@ -28171,7 +28665,7 @@ function lkMgrLoadForRep(login) {
   if (!body) return;
   var searchEl = document.getElementById('mgr-lk-search');
   if (searchEl) searchEl.value = '';
-  LK_MGR_STATE.activeTab = 'reaktivacia';
+  LK_MGR_STATE.activeTab = document.body.classList.contains('reagila-line') ? 'all' : 'reaktivacia';
   LK_MGR_STATE.searchQ = '';
   LK_MGR_ALL = [];
   LK_MGR_LOGIN = login || null;
