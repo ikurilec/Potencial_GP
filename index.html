@@ -3181,7 +3181,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.31.1';
+var APP_VERSION = '2.31.2';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7077,7 +7077,7 @@ function settingsAppHtml(s){
 // Dátum aktualizácie dát — riadok. Posledný známy dátum sa zobrazí OKAMŽITE
 // (z localStorage, funguje aj offline), na pozadí sa obnoví zo servera.
 function settingsDateLsKey(key){
-  return 'notif_date_' + ((typeof notifIsGyn === 'function' && notifIsGyn()) ? 'gyn_' : '') + key;
+  return 'notif_date_' + ((typeof notifLineTag === 'function') ? notifLineTag() : '') + key;
 }
 function settingsDataDateRow(label, key){
   var fmt = (typeof formatNotifDate === 'function') ? formatNotifDate : function(x){ return x || ''; };
@@ -7089,7 +7089,7 @@ function settingsDataDateRow(label, key){
 }
 function settingsLoadDataDates(){
   var dev = (typeof IS_DEV !== 'undefined' && IS_DEV);
-  var gyn = (typeof notifIsGyn === 'function') && notifIsGyn();
+  var usePrefetch = (typeof notifUsesPrefetch === 'function') ? notifUsesPrefetch() : true;  // len Golem
   var cache = (typeof NOTIF_PREFETCH_CACHE !== 'undefined') ? NOTIF_PREFETCH_CACHE : {};
   var fmt = (typeof formatNotifDate === 'function') ? formatNotifDate : function(x){ return x || ''; };
   ['predaje','pharma'].forEach(function(key){
@@ -7103,15 +7103,15 @@ function settingsLoadDataDates(){
       var ls = lastKnown();                 // server nič nevrátil → ponechaj posledný známy
       el.textContent = ls ? fmt(ls) : '—';
     }
-    // GP môže použiť prefetch cache; Gyn vždy fetchne fresh cez gyn backend
-    if(!gyn && (key in cache)){ show(cache[key]); return; }
+    // GP môže použiť prefetch cache; Gyn aj Reagila vždy fetchnú fresh cez svoj backend
+    if(usePrefetch && (key in cache)){ show(cache[key]); return; }
     if(dev || typeof notifUrl !== 'function'){ show(null); return; }
     try {
       fetch(notifUrl('action=getConfig&key=' + encodeURIComponent('notif_' + key)))
         .then(function(r){ return r.json(); })
         .then(function(d){
           var ts = (d && d.ok && d.value) ? d.value : null;
-          if(!gyn){ try { cache[key] = ts; } catch(e){} }
+          if(usePrefetch){ try { cache[key] = ts; } catch(e){} }   // golemovskú prefetch cache aktualizuj len v Goleme
           show(ts);
         })
         .catch(function(){ show(null); });   // fail → posledný známy z localStorage
@@ -18202,10 +18202,14 @@ var NOTIF_TYPES = [
 // Cache prefetchnutých výsledkov — { key: serverTs } alebo null kým nepríde odpoveď
 var NOTIF_PREFETCH_CACHE = {};
 
-// ── Line-aware helpery (notifikácie fungujú pre GP aj Gyn podľa aktívnej línie) ──
+// ── Line-aware helpery (notifikácie fungujú pre GP, Gyn aj Reagila podľa aktívnej línie) ──
 function notifIsGyn(){ var s = getSession(); return !!(s && s.line === 'gyn'); }
+// Prefix pre namespacing localStorage kľúčov podľa línie ('' = Golem, 'gyn_', 'reagila_')
+function notifLineTag(){ var s = getSession(); return (s && s.line === 'gyn') ? 'gyn_' : (s && s.line === 'reagila') ? 'reagila_' : ''; }
+// Prefetch cache (predprihlasovacia) je golemovská — pre Gyn aj Reagila fetchujeme fresh cez ich backend
+function notifUsesPrefetch(){ return !notifLineTag(); }
 function notifUrl(params){ return (notifIsGyn() && typeof gynScriptUrl === 'function') ? gynScriptUrl(params) : scriptUrl(params); }
-function notifSeenKey(key){ return notifIsGyn() ? ('seen_notif_gyn_' + key) : ('seen_notif_' + key); }
+function notifSeenKey(key){ return 'seen_notif_' + notifLineTag() + key; }
 
 // Spustí sa hneď pri načítaní stránky (ešte pred prihlásením) — výsledky čakajú v cache
 function prefetchNotifications() {
@@ -18227,10 +18231,10 @@ function prefetchNotifications() {
 // Po prihlásení — GP použije prefetch cache (rýchle), Gyn fetchne fresh cez gyn backend
 function checkNotifications() {
   if (IS_DEV) return;
-  var gyn = notifIsGyn();
+  var usePrefetch = notifUsesPrefetch();   // len Golem; Gyn aj Reagila fetchujú fresh
   NOTIF_TYPES.forEach(function(n) {
     var lsKey = notifSeenKey(n.key);
-    if (!gyn && (n.key in NOTIF_PREFETCH_CACHE)) {
+    if (usePrefetch && (n.key in NOTIF_PREFETCH_CACHE)) {
       var serverTs = NOTIF_PREFETCH_CACHE[n.key];
       if (serverTs && serverTs !== (localStorage.getItem(lsKey) || '')) {
         showNotifBanner(n.icon, n.text, lsKey, serverTs);
