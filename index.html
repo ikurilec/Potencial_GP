@@ -3193,7 +3193,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.31.6';
+var APP_VERSION = '2.31.7';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -14024,6 +14024,7 @@ var GYN_CAL_TYPES = [
   { id:'dovolenka',  label:'Dovolenka',     icon:'🏖️', color:'#F59E0B', cat:'absencia', roles:['rep','mgr','admin'], time:true,  loc:false, approval:true },
   { id:'paragraf',   label:'Paragraf',      icon:'🩺', color:'#0891B2', cat:'absencia', roles:['rep','mgr','admin'], time:true,  loc:false, approval:false },
   { id:'administrativa', label:'Administratíva', icon:'🗂️', color:'#10B981', cat:'absencia', roles:['rep','mgr','admin'], time:true,  loc:false, approval:true },
+  { id:'nahradne_volno', label:'Náhradné voľno', icon:'🔁', color:'#14B8A6', cat:'absencia', roles:['rep','mgr','admin'], time:true,  loc:false, approval:true, comp:true },
   { id:'ocr',        label:'OČR / rodinné', icon:'👨‍👩‍👧', color:'#8B5CF6', cat:'absencia', roles:['rep','mgr','admin'], time:true,  loc:false, approval:false },
   { id:'kongres',    label:'Kongres',       icon:'🎤', color:'#2563EB', cat:'firemne',  roles:['rep','mgr','admin'], time:true,  loc:true  },
   { id:'uzavierka',  label:'Uzávierka',     icon:'⏰', color:'#D97706', cat:'firemne',  roles:['rep','mgr','admin'], time:true,  loc:false },
@@ -14753,7 +14754,8 @@ function gynCalOpenDetail(dk, id){
   var time=ev.allDay?'Celý deň':((ev.timeStart||'')+(ev.timeEnd?'–'+ev.timeEnd:''));
   var range=(ev.dateStart!==ev.dateEnd)?gynCalFmtRange(ev.dateStart,ev.dateEnd):gynCalFmtDMY(ev.dateStart);
   function row(ic,val){ return val?'<div class="gyn-cal-det-row"><span class="gyn-cal-det-ic">'+ic+'</span><span>'+gynEsc(val)+'</span></div>':''; }
-  var rows=row('🗓️', range)+row('🕐', time)+row('📍', ev.location)+row('🗒️', ev.note);
+  var compTxt = ev.compFor ? ('Náhradné voľno za: ' + ev.compFor + (ev.compDate ? ' (' + gynCalFmtDMY(ev.compDate) + ')' : '')) : '';
+  var rows=row('🗓️', range)+row('🕐', time)+row('📍', ev.location)+row('🔁', compTxt)+row('🗒️', ev.note);
   var who=ev.ownerName||ev.owner||'', roleLb=GYN_CAL_ROLE_LABELS[ev.ownerRole]||'';
   var canAppr=(ev.status==='pending' && gynCalIsApprover(getSession()));
   var statusBanner = ev.status==='pending' ? '<div class="gyn-cal-status pending">⏳ Čaká na schválenie AM</div>'
@@ -14846,6 +14848,7 @@ function gynCalOpenForm(dk, editId){
   GYN_CAL._formDs=ev?ev.dateStart:dk; GYN_CAL._formDe=ev?ev.dateEnd:dk; GYN_CAL._dpOpen=null;
   GYN_CAL._formTs=(ev&&ev.timeStart)?ev.timeStart:'09:00'; GYN_CAL._formTe=(ev&&ev.timeEnd)?ev.timeEnd:'10:00'; GYN_CAL._tpOpen=null;
   var loc=ev?(ev.location||''):'', note=ev?(ev.note||''):'', title=ev?(ev.title||''):'';
+  var compFor=ev?(ev.compFor||''):'', compDate=ev?(ev.compDate||''):'';
   var timeHidden=GYN_CAL._formAllDay?' style="display:none"':'';
 
   sh.innerHTML=
@@ -14866,6 +14869,13 @@ function gynCalOpenForm(dk, editId){
       '<div id="gyn-cal-f-dates"></div>'+
       '<div id="gyn-cal-f-timerow"'+timeHidden+'></div>'+
       '<div id="gyn-cal-f-loc-wrap"><input id="gyn-cal-f-loc" class="gyn-cal-sheet-input" type="text" placeholder="Miesto (nepovinné)" maxlength="80" value="'+gynEsc(loc)+'"></div>'+
+      '<div id="gyn-cal-f-comp-wrap" style="display:none">'+
+        '<div class="gyn-cal-sheet-label">Náhradné voľno za</div>'+
+        '<input id="gyn-cal-f-comp-for" class="gyn-cal-sheet-input" type="text" placeholder="Za akú akciu (napr. kongres, víkendová akcia)" maxlength="100" value="'+gynEsc(compFor)+'">'+
+        '<div class="gyn-cal-f-field" style="margin-top:8px"><span class="gyn-cal-f-lbl">Dátum akcie</span>'+
+          '<input id="gyn-cal-f-comp-date" class="gyn-cal-sheet-input" type="date" value="'+gynEsc(compDate)+'">'+
+        '</div>'+
+      '</div>'+
       '<textarea id="gyn-cal-f-note" class="gyn-cal-sheet-input gyn-cal-sheet-area" placeholder="Poznámka (nepovinné)" maxlength="300" rows="2">'+gynEsc(note)+'</textarea>'+
       '<div id="gyn-cal-f-vis"></div>'+
       (editId?'<button class="gyn-cal-del-btn" onclick="gynCalDeleteEvent(\''+editId+'\')">Zmazať udalosť</button>':'')+
@@ -15125,6 +15135,9 @@ function gynCalApplyTypeFields(){
   if(sw){ sw.classList.toggle('on', GYN_CAL._formAllDay); sw.setAttribute('aria-checked', GYN_CAL._formAllDay?'true':'false'); }
   if(timeRow) timeRow.style.display = (showTime && !GYN_CAL._formAllDay) ? '' : 'none';
   if(locWrap) locWrap.style.display = showLoc ? '' : 'none';
+  // Náhradné voľno — polia „za akú akciu" + „dátum akcie"
+  var compWrap=document.getElementById('gyn-cal-f-comp-wrap');
+  if(compWrap) compWrap.style.display = (t && t.comp) ? '' : 'none';
 }
 function gynCalFormToggleAllDay(){
   GYN_CAL._formAllDay=!GYN_CAL._formAllDay;
@@ -15155,6 +15168,15 @@ function gynCalFormSave(){
     return;
   }
   var title=titleRaw||t.label;
+  // Náhradné voľno — „za akú akciu" je povinné
+  var compForVal=(gynCalFormVal('gyn-cal-f-comp-for')||'').trim();
+  var compDateVal=(gynCalFormVal('gyn-cal-f-comp-date')||'').trim();
+  if(t.comp && !compForVal){
+    var shc=document.getElementById('gyn-cal-sheet'), cin=shc&&shc.querySelector('#gyn-cal-f-comp-for');
+    if(cin){ cin.classList.remove('shake'); void cin.offsetWidth; cin.classList.add('shake'); try{ cin.focus(); }catch(e){} }
+    try { haptic('warning'); } catch(e){}
+    return;
+  }
   var needAud=gynCalNeedsAudience(GYN_CAL._formType, group);
   var aud=GYN_CAL._formAud||{all:true,picked:[]};
   var vis, recipients=null;
@@ -15173,6 +15195,8 @@ function gynCalFormSave(){
     timeEnd: allDay?'':GYN_CAL._formTe,
     location: (gynCalFormVal('gyn-cal-f-loc')||'').trim(),
     note: (gynCalFormVal('gyn-cal-f-note')||'').trim(),
+    compFor: t.comp ? compForVal : '',
+    compDate: t.comp ? compDateVal : '',
     owner: user.username||'', ownerRole: group,
     ownerName: (user.name||user.meno||user.username||''), ownerRoleRaw: (user.role||''),
     status: status,
