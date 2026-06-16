@@ -3226,7 +3226,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.32.6';
+var APP_VERSION = '2.32.7';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -14296,7 +14296,17 @@ function gynCalNormEvent(ev){
   return ev;
 }
 function gynCalLoadLocal(){
-  try { var raw=localStorage.getItem(gynCalLsKey()); if(raw){ var a=JSON.parse(raw); if(Array.isArray(a)) GYN_CAL.events=a.map(gynCalNormEvent); } } catch(e){}
+  try {
+    var key=gynCalLsKey();
+    var raw=localStorage.getItem(key);
+    if(!raw){
+      // Migrácia zo starého globálneho kľúča (pred v2.32.6) → priraď aktuálnemu používateľovi,
+      // nech sú eventy v kalendári HNEĎ aj po prvom prihlásení po update (kým dobehne sync).
+      var old=localStorage.getItem('gyn_cal_events_v2');
+      if(old){ raw=old; try { localStorage.setItem(key, old); } catch(e){} }
+    }
+    if(raw){ var a=JSON.parse(raw); if(Array.isArray(a)) GYN_CAL.events=a.map(gynCalNormEvent); }
+  } catch(e){}
 }
 function gynCalPersist(){
   try { localStorage.setItem(gynCalLsKey(), JSON.stringify(GYN_CAL.events)); } catch(e){}
