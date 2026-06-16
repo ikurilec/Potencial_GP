@@ -3226,7 +3226,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.32.4';
+var APP_VERSION = '2.32.5';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -3337,6 +3337,8 @@ function pushInit(){
   try {
     if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(PUSH_CFG);
     _fcmMessaging = firebase.messaging();
+    // Push prišiel kým je appka v popredí → hneď obnov kalendár (odznak naskočí okamžite).
+    try { _fcmMessaging.onMessage(function(){ try { if (typeof gynCalLiveSync === 'function') gynCalLiveSync(); } catch(e){} }); } catch(e){}
     return true;
   } catch(e){ return false; }
 }
@@ -8435,6 +8437,10 @@ function loginSuccess(username, name, role, region, extra) {
   }
   setSession(user);
   try { userPrefsApplyMirror(user); } catch(e){}
+  // Kalendár (Golem) — spusti načítanie udalostí HNEĎ pri prihlásení, paralelne s init dátami,
+  // nech sú udalosti pripravené ešte pred prvým otvorením (nie až po kliknutí na Kalendár).
+  // Reagila kalendár nemá; gyn má vlastný prefetch v gynEnter. _synced guard chráni pred dvojitým fetchom.
+  try { if ((user.line || 'gp') === 'gp' && typeof gynCalPrefetch === 'function') gynCalPrefetch(); } catch(e){}
   usageTrack('app_open', '', 'prihlásenie · rola: ' + (role || ''));
   haptic('success');
   var _isReagila = (user.line === 'reagila');
@@ -14340,6 +14346,31 @@ function gynCalPrefetch(){
   if(!GYN_CAL._synced){ GYN_CAL._synced=true; gynCalSync(); }
   gynCalUpdateBadge();
 }
+// ── Živé obnovenie kalendára (odznak + udalosti) bez nutnosti otvoriť Kalendár ──
+// Tri spúšťače: (1) FCM push v popredí → onMessage, (2) návrat do appky → visibilitychange,
+// (3) jemný polling kým je appka otvorená. gynCalSync má _syncing guard (žiadne stacky)
+// a po fetchi sám aktualizuje odznak + re-renderuje kalendár, ak je práve otvorený.
+function gynCalLiveOn(){
+  if(typeof IS_DEV!=='undefined' && IS_DEV) return false;
+  var s=(typeof getSession==='function')?getSession():null;
+  if(!s || !s.username) return false;
+  if((s.line||'gp')==='reagila') return false;   // Reagila kalendár nemá
+  return true;
+}
+function gynCalLiveSync(){ if(gynCalLiveOn()){ try { gynCalSync(); } catch(e){} } }
+var GYN_CAL_POLL=null;
+function gynCalLivePollStart(){
+  if(GYN_CAL_POLL) return;
+  GYN_CAL_POLL=setInterval(function(){
+    if(document.visibilityState!=='visible') return;   // na pozadí nepolluj (push to pokryje)
+    gynCalLiveSync();
+  }, 60000);   // každých 60 s kým je appka v popredí
+}
+function gynCalLivePollStop(){ if(GYN_CAL_POLL){ clearInterval(GYN_CAL_POLL); GYN_CAL_POLL=null; } }
+// Návrat do appky z pozadia → okamžitý sync (odznak naskočí hneď)
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState==='visible') gynCalLiveSync();
+}, { passive:true });
 function gynCalEventById(id){ for(var i=0;i<GYN_CAL.events.length;i++){ if(GYN_CAL.events[i].id===id) return GYN_CAL.events[i]; } return null; }
 // Eventy, ktoré sa dotýkajú daného dňa (vrátane viacdňových rozsahov), zoradené.
 function gynCalEventsForDay(dk){
@@ -16401,6 +16432,7 @@ document.addEventListener('visibilitychange', function(){
 
 document.addEventListener('DOMContentLoaded', function(){
   try { golemCalRefreshNavDay(); } catch(e){}
+  try { gynCalLivePollStart(); } catch(e){}   // živé obnovenie odznaku kalendára kým je appka otvorená
   // ── Kontrola verzie appky (po aktualizácii logout + info) ──
   // KRITICKÉ: všetky zápisy cez lsSafeSet — keď je localStorage plný (admin preload
   // PharmaData), surový setItem by vyhodil QuotaExceededError a zhodil celý štart
