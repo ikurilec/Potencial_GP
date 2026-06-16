@@ -3195,7 +3195,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.32.1';
+var APP_VERSION = '2.32.2';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -3639,6 +3639,15 @@ function scriptUrl(params) {
     return REAGILA_SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(REAGILA_API_TOKEN) + authSessionParams('reagila');
   }
   return SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(API_TOKEN) + authSessionParams('gp');
+}
+
+function appLineTag() {
+  try {
+    var s = (typeof getSession === 'function') ? getSession() : null;
+    return (s && s.line) ? String(s.line) : 'gp';
+  } catch(e) {
+    return 'gp';
+  }
 }
 
 // ── GYN LINKA ──
@@ -15485,8 +15494,12 @@ function mgrLoadReps(repList){
 
     if(allHist && typeof allHist === 'object' && !Array.isArray(allHist)){
       // Úspešné načítanie všetkých naraz
+      var allHistByLower = {};
+      Object.keys(allHist).forEach(function(k){
+        allHistByLower[String(k || '').trim().toLowerCase()] = allHist[k];
+      });
       repList.forEach(function(username){
-        var rows = allHist[username] || [];
+        var rows = allHistByLower[String(username || '').trim().toLowerCase()] || [];
         MGR_STATE.reps[username] = { visits: mgrNormalizeVisits(rows), error: false };
       });
       MGR_STATE.repsLoaded = true;
@@ -16750,12 +16763,29 @@ function satoriVote(vote) {
   fetch(url).catch(function(){});
 }
 
-var LB_STATE = { period: 'all', mode: 'navstevy', data: null, loading: false, showConfetti: false };
+var LB_STATE = { period: 'all', mode: 'navstevy', data: null, loading: false, showConfetti: false, line: 'gp' };
 var LB_PLNENIE_CACHE = null;
 var LB_PLNENIE_LOADING = false;
 var LB_APPROVED_Q = null; // admin schvaleny Q pre rebricek plnenie, null = auto (currentQ-1)
 
+function lbCurrentLine() {
+  return (typeof appLineTag === 'function') ? appLineTag() : 'gp';
+}
+
+function lbEnsureLineState() {
+  var line = lbCurrentLine();
+  if (LB_STATE.line === line) return;
+  LB_STATE.line = line;
+  LB_STATE.data = null;
+  LB_STATE.loading = false;
+  LB_STATE.period = 'all';
+  LB_STATE.mode = (line === 'reagila') ? 'plnenie' : 'navstevy';
+  LB_PLNENIE_CACHE = null;
+  LB_PLNENIE_LOADING = false;
+}
+
 function lbScopeReps() {
+  lbEnsureLineState();
   if (Array.isArray(LB_ALL_REPS) && LB_ALL_REPS.length) return LB_ALL_REPS.slice();
   if (Array.isArray(MGR_ALL) && MGR_ALL.length) return MGR_ALL.slice();
   return [];
@@ -17997,6 +18027,7 @@ function loadInitData(username, _attempt) {
 
 function openLeaderboard(){
   if(!document.getElementById('lb-overlay')) return;
+  lbEnsureLineState();
   var _reagLb = document.body.classList.contains('reagila-line');
   // Reagila nemá návštevy lekárov → rebríček je vždy v móde Plnenie (mód „Návštevy" je skrytý).
   if(_reagLb) LB_STATE.mode = 'plnenie';
@@ -18412,6 +18443,7 @@ function dismissNotifBanner(id, lsKey, serverTs) {
 }
 
 function lbPreloadPlnenie() {
+  lbEnsureLineState();
   var lastQ = lbLastCompletedQ();
   if (lastQ < 1) return;
   if (LB_PLNENIE_LOADING || LB_PLNENIE_CACHE) return;
@@ -18435,6 +18467,7 @@ function lbPreloadPlnenie() {
 }
 
 function lbSetMode(mode, el) {
+  lbEnsureLineState();
   LB_STATE.mode = mode;
   LB_STATE.period = 'all';
   // Sync aktívny stav oboch setov mode tabs (mgr + rep)
@@ -18455,6 +18488,7 @@ function lbSetMode(mode, el) {
 }
 
 function lbSyncTabs() {
+  lbEnsureLineState();
   var p = LB_STATE.period;
   document.querySelectorAll('.lb-tab').forEach(function(t) {
     var onclick = t.getAttribute('onclick') || '';
@@ -18738,6 +18772,7 @@ function lbRenderPlnenie(body) {
 }
 
 function lbDataHasVisits() {
+  lbEnsureLineState();
   if (!LB_STATE.data) return false;
   var scope = lbScopeReps();
   if (!scope.length) scope = Object.keys(LB_STATE.data || {});
@@ -18749,6 +18784,7 @@ function lbDataHasVisits() {
 }
 
 function lbLoadData(force){
+  lbEnsureLineState();
   // Reagila nemá rebríček návštev — históriu repov (getHistory × N) neťahaj, je to zbytočné a pomalé.
   if(document.body.classList.contains('reagila-line')) return;
   if(LB_STATE.loading) return;
@@ -19024,6 +19060,7 @@ function lbGetBody(){
 }
 
 function lbRender(){
+  lbEnsureLineState();
   var body = lbGetBody();
   if(!body) return;
   lbSyncTabs();
@@ -23680,7 +23717,7 @@ var PHARMA_OKRES_STATE = { cache: {}, loading: {}, current: null };
 
 // ── Leaderboard history localStorage SWR ─────────────────────────
 var _LB_LS_V = 'v1';
-function _lbHsKey() { return 'lb_allhist_' + _LB_LS_V; }
+function _lbHsKey() { return 'lb_allhist_' + _LB_LS_V + '_' + ((typeof appLineTag === 'function') ? appLineTag() : 'gp'); }
 function _lbHsSave(data) {
   try { localStorage.setItem(_lbHsKey(), JSON.stringify({ data: data, ts: Date.now() })); } catch(e) {}
 }
@@ -23693,7 +23730,7 @@ function _lbHsLoad() {
 
 // ── Per-rep history localStorage SWR ──────────────────────────────
 var _HIST_LS_V = 'v1';
-function _histLsKey(username) { return 'hist_' + _HIST_LS_V + '_' + (username || '').toLowerCase(); }
+function _histLsKey(username) { return 'hist_' + _HIST_LS_V + '_' + ((typeof appLineTag === 'function') ? appLineTag() : 'gp') + '_' + (username || '').toLowerCase(); }
 function _histLsSave(username, items) {
   try { localStorage.setItem(_histLsKey(username), JSON.stringify({ items: items, ts: Date.now() })); } catch(e) {}
 }
