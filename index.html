@@ -3195,7 +3195,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.31.9';
+var APP_VERSION = '2.32.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -20773,7 +20773,7 @@ function prodSheetRenderRepList() {
   function getTeritMs(oblast) {
     if (!pharmaCode || !oblast) return null;
     // Skús aktuálny Q, ak null fallback na predchádzajúci Q (Q2 IQVIA dáta často chýbajú)
-    var qList = [kvartal, pharmaKvartalPrev(kvartal)];
+    var qList = pharmaKvartalChainBack(kvartal, 5);
     for (var qi = 0; qi < qList.length; qi++) {
       var qk = qList[qi];
       var d = PHARMA_STATE.cache[pharmaCode + '_' + oblast + '_' + qk];
@@ -21037,7 +21037,7 @@ function prodSheetUpdateMsCells() {
   function getTeritMs(oblast) {
     if (!oblast) return null;
     // Skús aktuálny Q, ak null fallback na predchádzajúci Q
-    var qList = [kvartal, pharmaKvartalPrev(kvartal)];
+    var qList = pharmaKvartalChainBack(kvartal, 5);
     for (var qi = 0; qi < qList.length; qi++) {
       var qk = qList[qi];
       var d = PHARMA_STATE.cache[pharmaCode + '_' + oblast + '_' + qk];
@@ -23791,6 +23791,13 @@ function pharmaKvartalPrev(kvartal) {
   if (qq === 1) { yy -= 1; qq = 4; } else { qq -= 1; }
   return (yy < 10 ? '0' + yy : '' + yy) + (qq < 10 ? '0' + qq : '' + qq);
 }
+// Reťazec kvartálov dozadu [aktuálny, prev, prev-1, …] — pre hľadanie najnovších dostupných
+// trhových dát (IQVIA často mešká aj >1 kvartál; getTeritMs tak nájde dáta konzistentne s drill-downom).
+function pharmaKvartalChainBack(kvartal, n) {
+  var out = [kvartal], k = kvartal;
+  for (var i = 0; i < (n || 4); i++) { k = pharmaKvartalPrev(k); out.push(k); }
+  return out;
+}
 
 function pharmaQuarterMonths(kvartal) {
   var yy   = kvartal.slice(0, 2);
@@ -24012,11 +24019,24 @@ function openPharmaMs(prodKey, label, oblastOverride) {
   loadPharmaData(codes[0], oblast, kvartal);
 }
 
+// Stale-while-revalidate: cache je kľúčovaná kvartálom, takže nový mesiac v rámci Q
+// (napr. máj pribudne k Q2) by sa inak neprejavil. Raz za session dotiahni čerstvé dáta
+// na pozadí — loadPharmaDataNetwork prepíše cache a re-renderne ak sa zmenilo.
+function pharmaRevalidate(code, oblast, kvartal) {
+  if (typeof IS_DEV !== 'undefined' && IS_DEV) return;
+  var rk = code + '_' + oblast + '_' + kvartal;
+  PHARMA_STATE.revalidated = PHARMA_STATE.revalidated || {};
+  if (PHARMA_STATE.revalidated[rk] || PHARMA_STATE.loading[rk]) return;
+  PHARMA_STATE.revalidated[rk] = true;
+  loadPharmaDataNetwork(code, oblast, kvartal);
+}
+
 function loadPharmaData(code, oblast, kvartal) {
   var cacheKey = code + '_' + oblast + '_' + kvartal;
   if (PHARMA_STATE.cache[cacheKey]) {
     // Zobraz okamžite s tým čo máme — prev Q dotiahni ticho na pozadí
     pharmaRender(code);
+    pharmaRevalidate(code, oblast, kvartal);   // SWR — dotiahni čerstvé (nový mesiac v Q)
     if(pharmaNeedsPrevDistrictFetch(PHARMA_STATE.cache[cacheKey], kvartal)) {
       pharmaAttachPrevDistrictsForCurrent(code, oblast, kvartal, PHARMA_STATE.cache[cacheKey], function(enrichedResp){
         PHARMA_STATE.cache[cacheKey] = enrichedResp;
@@ -24044,7 +24064,9 @@ function loadPharmaData(code, oblast, kvartal) {
     } else if (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal) {
       pharmaRender(code);
     }
-    // Nepokračuj ďalej — background fetch sa spustí cez preload alebo pri ďalšom otvorení
+    // SWR — localStorage cache je kľúčovaná kvartálom; dotiahni čerstvé dáta na pozadí
+    // (inak by sa nový mesiac v rámci Q, napr. máj v Q2, nikdy neprejavil).
+    pharmaRevalidate(code, oblast, kvartal);
     return;
   }
   if (_phIdbSupported()) {
@@ -24066,6 +24088,7 @@ function loadPharmaData(code, oblast, kvartal) {
         } else if (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal) {
           pharmaRender(code);
         }
+        pharmaRevalidate(code, oblast, kvartal);   // SWR — dotiahni čerstvé (nový mesiac v Q)
         return;
       }
       delete PHARMA_STATE.loading[cacheKey];
