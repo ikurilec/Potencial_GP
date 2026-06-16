@@ -3226,7 +3226,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.32.3';
+var APP_VERSION = '2.32.4';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6537,29 +6537,60 @@ function settingsTogglePushSub(){
   var s = getSession(); if(s) renderSettings(s);
 }
 
-// ── Kalendár — upozornenia approval flow (rep / AM), opt-in cez user-prefs ──
+// ── Kalendár — upozornenia approval flow (rep / schvaľovateľ), opt-in cez user-prefs ──
+// Gyn: jeden AM pre všetkých. Golem: per-osoba podľa stĺpca „Schvaľovateľ" (Reagila kalendár nemá).
+// Golem: som schvaľovateľom aspoň jednej osoby? (z rostra — hodnota v stĺpci „Schvaľovateľ")
+function golemSettingsIsApprover(){
+  try {
+    var me = String(((getSession()||{}).username)||'').toLowerCase(); if(!me) return false;
+    if(typeof GYN_CAL_APPROVERS !== 'undefined'){
+      for(var k in GYN_CAL_APPROVERS){ if(Object.prototype.hasOwnProperty.call(GYN_CAL_APPROVERS,k) && String(GYN_CAL_APPROVERS[k]||'').toLowerCase()===me) return true; }
+    }
+    if(typeof LB_REP_INFO !== 'undefined'){
+      for(var u in LB_REP_INFO){ if(Object.prototype.hasOwnProperty.call(LB_REP_INFO,u) && LB_REP_INFO[u] && String(LB_REP_INFO[u].schvalovatel||'').toLowerCase()===me) return true; }
+    }
+  } catch(e){}
+  return false;
+}
+// Golem: mám prideleného schvaľovateľa? (moje absencie idú niekomu na schválenie)
+function golemSettingsHasApprover(){
+  try {
+    var me = String(((getSession()||{}).username)||'').toLowerCase(); if(!me) return false;
+    if(typeof gynCalApproverLogin === 'function') return !!gynCalApproverLogin(me);
+  } catch(e){}
+  return false;
+}
 function settingsCalNotifHtml(s){
-  if(!s || s.line !== 'gyn') return '';
-  var isAm  = (s.role === 'gyn-am' || s.role === 'admin');
-  var isRep = (s.role === 'gyn-rep');
-  if(!isAm && !isRep) return '';   // pm/bum nemajú approval upozornenia
+  if(!s) return '';
+  var rows = [];   // [{key,label,desc}]
+  if(s.line === 'gyn'){
+    var isAm  = (s.role === 'gyn-am' || s.role === 'admin');
+    var isRep = (s.role === 'gyn-rep');
+    if(isAm)       rows.push({ key:'calNotifApprovals', label:'Žiadosti o schválenie absencií', desc:'Dostaneš push, keď reprezentant požiada o dovolenku alebo administratívu.' });
+    else if(isRep) rows.push({ key:'calNotifMine',      label:'Rozhodnutia o mojich absenciách', desc:'Dostaneš push, keď AM schváli alebo zamietne tvoju dovolenku/administratívu.' });
+  } else if((typeof gynCalLine === 'function' ? gynCalLine() : (s.line||'gp')) === 'gp'){
+    // Golem (Reagila kalendár nemá → žiadne prepínače)
+    if(golemSettingsIsApprover()) rows.push({ key:'calNotifApprovals', label:'Žiadosti o schválenie absencií', desc:'Dostaneš push, keď ti niekto z tímu pošle žiadosť o dovolenku, administratívu alebo náhradné voľno na schválenie.' });
+    if(golemSettingsHasApprover()) rows.push({ key:'calNotifMine',      label:'Rozhodnutia o mojich absenciách', desc:'Dostaneš push, keď schvaľovateľ schváli alebo zamietne tvoju dovolenku, administratívu alebo náhradné voľno.' });
+  }
+  if(!rows.length) return '';
   var prefs = userPrefsGet();
-  var key, label, desc;
-  if(isAm){ key='calNotifApprovals'; label='Žiadosti o schválenie absencií'; desc='Dostaneš push, keď reprezentant požiada o dovolenku alebo administratívu.'; }
-  else    { key='calNotifMine';      label='Rozhodnutia o mojich absenciách'; desc='Dostaneš push, keď AM schváli alebo zamietne tvoju dovolenku/administratívu.'; }
-  var on = prefs[key] !== false;   // default zapnuté
-  return '<div class="set-calnotif-sep"></div>' +
-    '<div class="set-toggle-row">' +
-      '<div class="set-toggle-info"><div class="set-toggle-lbl">📅 ' + settingsEsc(label) + '</div><div class="set-row-desc">' + settingsEsc(desc) + '</div></div>' +
-      '<button type="button" id="set-calnotif-sw" class="gyn-cal-switch' + (on ? ' on' : '') + '" role="switch" aria-checked="' + (on ? 'true' : 'false') + '" onclick="settingsToggleCalNotif(\'' + key + '\')"><span class="gyn-cal-switch-kn"></span></button>' +
-    '</div>';
+  var html = '<div class="set-calnotif-sep"></div>';
+  rows.forEach(function(r){
+    var on = prefs[r.key] !== false;   // default zapnuté
+    html += '<div class="set-toggle-row">' +
+        '<div class="set-toggle-info"><div class="set-toggle-lbl">📅 ' + settingsEsc(r.label) + '</div><div class="set-row-desc">' + settingsEsc(r.desc) + '</div></div>' +
+        '<button type="button" id="set-calnotif-sw-' + r.key + '" class="gyn-cal-switch' + (on ? ' on' : '') + '" role="switch" aria-checked="' + (on ? 'true' : 'false') + '" onclick="settingsToggleCalNotif(\'' + r.key + '\')"><span class="gyn-cal-switch-kn"></span></button>' +
+      '</div>';
+  });
+  return html;
 }
 function settingsToggleCalNotif(key){
   var prefs = userPrefsGet();
   var nv = !(prefs[key] !== false);   // toggle (default ON → prvý klik vypne)
   var patch = {}; patch[key] = nv;
   if(typeof userPrefsSet === 'function') userPrefsSet(patch);
-  var sw = document.getElementById('set-calnotif-sw');
+  var sw = document.getElementById('set-calnotif-sw-' + key) || document.getElementById('set-calnotif-sw');
   if(sw){ sw.classList.toggle('on', nv); sw.setAttribute('aria-checked', nv ? 'true' : 'false'); }
   try { haptic('selection'); } catch(e){}
 }
