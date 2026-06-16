@@ -734,7 +734,7 @@
   .po-num{flex-shrink:0;width:20px;text-align:center;font-size:12px;font-weight:800;color:#94A3B8}
   .po-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   /* Zdielaný panel-nav pre História / Rebríček / Plnenie */
-  .panel-nav{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;background:#fff;border-radius:12px;padding:6px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  .panel-nav{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;background:#fff;border-radius:12px;padding:6px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
   .panel-nav-btn{border:none;background:#F1F5F9;padding:9px 2px;font-size:10px;font-weight:700;color:#64748B;cursor:pointer;border-radius:10px;transition:background .2s ease,color .2s ease,transform .15s ease;font-family:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;-webkit-tap-highlight-color:transparent;white-space:nowrap;overflow:hidden}
   .panel-nav-btn .rn-ico{font-size:17px;line-height:1}
   .panel-nav-btn .rn-lbl{font-size:10px;line-height:1}
@@ -1131,6 +1131,13 @@
   body.mgr-subtab-leaderboard .mgr-leaderboard-view{display:block}
   body.mgr-subtab-leaderboard .mgr-list-wrap,
   body.mgr-subtab-leaderboard .mgr-detail{display:none !important}
+  .mgr-calendar-view{display:none;background:#fff;border-radius:14px;overflow:hidden;margin-top:4px;padding:14px 14px 18px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  body.mgr-subtab-kalendar .mgr-calendar-view{display:block}
+  body.mgr-subtab-kalendar .mgr-list-wrap,
+  body.mgr-subtab-kalendar .mgr-detail,
+  body.mgr-subtab-kalendar .mgr-plnenie-view,
+  body.mgr-subtab-kalendar .mgr-leaderboard-view,
+  body.mgr-subtab-kalendar .mgr-activity-view{display:none !important}
   /* ── Aktivita (usage analytics) view ── */
   .mgr-activity-view{display:none}
   body.mgr-subtab-activity .mgr-activity-view{display:block}
@@ -1514,7 +1521,7 @@
   .mgr-plnenie-detail .trend-ms{position:absolute;left:-5px;right:-5px;height:3px;background:#0F172A;z-index:2;pointer-events:none}
   .mgr-plnenie-detail .trend-ms-lbl{position:absolute;left:50%;transform:translateX(-50%);font-size:11px;font-weight:600;color:#94A3B8;white-space:nowrap;z-index:3;pointer-events:none;line-height:1}
   /* ═══ REP NAV BAR (História / Rebríček / Plnenie) ═══ */
-  .rep-nav{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:0;position:sticky;top:0;z-index:1400;background:#EAECF2;padding-top:12px;padding-bottom:4px}
+  .rep-nav{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:0;position:sticky;top:0;z-index:1400;background:#EAECF2;padding-top:12px;padding-bottom:4px}
   .rep-nav-btn{background:#fff;border:1px solid rgba(0,0,0,.07);border-radius:12px;padding:9px 2px;font-size:10px;font-weight:700;color:#1A2A3A;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(0,0,0,.06),0 1px 3px rgba(0,0,0,.04);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:opacity .15s,transform .15s,background .2s;-webkit-tap-highlight-color:transparent;white-space:nowrap;overflow:hidden;position:relative}
   .rep-nav-btn:active{opacity:.82;transform:scale(.96)}
   .rep-nav-btn .rn-ico{font-size:17px;line-height:1}
@@ -1569,6 +1576,16 @@
   /* ═══ LEKÁRNE OVERLAY (rep + manažér detail) ═══ */
   .lk-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:2000;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   .lk-overlay.show{display:block}
+  /* ── Golem/Reagila Kalendár — zdieľaný overlay (engine prevzatý z gyn) ── */
+  .golem-cal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#EAECF2;z-index:2000;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  .golem-cal-overlay.show{display:block}
+  body.manager-mode .golem-cal-overlay.show{display:block !important}
+  .golem-cal-inner{max-width:628px;margin:0 auto;padding:18px 16px 48px}
+  body.gp-rep .golem-cal-inner{padding-top:var(--rep-top-h,150px)}
+  body.manager-mode .golem-cal-inner{padding-top:18px}
+  /* Reagila zatiaľ bez kalendára v navigácii (pridá sa neskôr) */
+  body.reagila-line #rep-nav-kal-btn,
+  body.reagila-line #spn-kal{display:none !important}
   .lk-inner{padding:82px 16px 48px}
 .lk-floating-back{width:100%;border:0;border-radius:12px;background:#fff;color:#2563EB;font-size:13px;font-weight:800;font-family:inherit;padding:11px 16px;box-shadow:0 5px 16px rgba(15,23,42,.10),0 0 0 1px rgba(15,23,42,.06);cursor:pointer;-webkit-tap-highlight-color:transparent;display:inline-flex;align-items:center;justify-content:center;gap:6px;margin:8px 0 0}
 .lk-floating-back:active{transform:scale(.98);box-shadow:0 3px 12px rgba(15,23,42,.12),0 0 0 1px rgba(15,23,42,.06)}
@@ -2406,6 +2423,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   <button type="button" class="rep-nav-btn" id="rep-nav-lb-btn" onclick="openLeaderboard()"><span class="rn-ico">🏆</span><span class="rn-lbl">Rebríček</span></button>
   <button type="button" class="rep-nav-btn" id="rep-nav-plnenie-btn" onclick="openRepPlnenie()"><span class="rn-ico">💊</span><span class="rn-lbl">Plnenie</span></button>
   <button type="button" class="rep-nav-btn" id="rep-nav-lekarne-btn" onclick="openLekarne()"><span class="rn-ico">🏪</span><span class="rn-lbl">Lekárne</span></button>
+  <button type="button" class="rep-nav-btn" id="rep-nav-kal-btn" onclick="openGolemKalendar()"><span class="rn-ico gyn-cal-navico"><span class="gci-top"></span><span class="gci-day js-cal-nav-day">16</span></span><span class="rn-lbl">Kalendár</span></button>
 </div>
 
 </div></div><!-- /rt-inner /rep-topbar -->
@@ -2417,6 +2435,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     <button type="button" class="mgr-subtab active" data-tab="plnenie" onclick="mgrSwitchSubtab('plnenie')"><span class="st-emoji">💊</span><span class="st-lbl">Plnenie</span></button>
     <button type="button" class="mgr-subtab" data-tab="visits" onclick="mgrSwitchSubtab('visits')"><span class="st-emoji">📋</span><span class="st-lbl">Návštevy</span></button>
     <button type="button" class="mgr-subtab" data-tab="leaderboard" onclick="mgrSwitchSubtab('leaderboard')"><span class="st-emoji">🏆</span><span class="st-lbl">Rebríček</span></button>
+    <button type="button" class="mgr-subtab" id="mgr-subtab-kal-btn" data-tab="kalendar" onclick="mgrSwitchSubtab('kalendar')"><span class="st-emoji gyn-cal-navico"><span class="gci-top"></span><span class="gci-day js-cal-nav-day">16</span></span><span class="st-lbl">Kalendár</span></button>
     <button type="button" class="mgr-subtab" data-tab="activity" id="mgr-subtab-activity-btn" style="display:none" onclick="mgrSwitchSubtab('activity')"><span class="st-emoji">📈</span><span class="st-lbl">Aktivita</span></button>
   </div>
 
@@ -2621,6 +2640,10 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     <div class="lb-body" id="mgr-lb-body">
       <div class="skel-wrap" style="padding:12px 12px 0"><div style="display:flex;align-items:flex-end;justify-content:center;gap:8px;margin-bottom:20px"><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div class="skel skel-avatar"></div><div class="skel" style="height:55px;width:100%;border-radius:8px 8px 0 0"></div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div class="skel skel-avatar"></div><div class="skel" style="height:80px;width:100%;border-radius:8px 8px 0 0"></div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div class="skel skel-avatar"></div><div class="skel" style="height:40px;width:100%;border-radius:8px 8px 0 0"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:60%"></div><div class="skel skel-line" style="width:35%"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:55%"></div><div class="skel skel-line" style="width:40%"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:65%"></div><div class="skel skel-line" style="width:30%"></div></div></div></div>
     </div>
+  </div>
+
+  <div class="mgr-calendar-view" id="mgr-calendar-view">
+    <div id="mgr-cal-content"></div>
   </div>
 
   <!-- Aktivita view (manažér) — štatistika používania appky (v2.24.0) -->
@@ -2851,6 +2874,14 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
       <button class="panel-nav-btn" id="spn-lb" onclick="openLeaderboard()"><span class="rn-ico">🏆</span><span class="rn-lbl">Rebríček</span></button>
       <button class="panel-nav-btn" id="spn-pl" onclick="openRepPlnenie()"><span class="rn-ico">💊</span><span class="rn-lbl">Plnenie</span></button>
       <button class="panel-nav-btn" id="spn-lk" onclick="openLekarne()"><span class="rn-ico">🏪</span><span class="rn-lbl">Lekárne</span></button>
+      <button class="panel-nav-btn" id="spn-kal" onclick="openGolemKalendar()"><span class="rn-ico gyn-cal-navico"><span class="gci-top"></span><span class="gci-day js-cal-nav-day">16</span></span><span class="rn-lbl">Kalendár</span></button>
+    </div>
+  </div>
+
+  <!-- ── GOLEM/REAGILA KALENDÁR — zdieľaný overlay (render engine z gyn) ── -->
+  <div class="golem-cal-overlay" id="golem-cal-overlay">
+    <div class="golem-cal-inner">
+      <div id="golem-cal-content"></div>
     </div>
   </div>
 
@@ -3195,7 +3226,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.32.2';
+var APP_VERSION = '2.32.3';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -4343,6 +4374,8 @@ function devModeInit() {
   // Skry login screen, zavolaj loginSuccess flow
   var ls = document.getElementById('login-screen');
   if (ls) ls.classList.remove('show');
+  var app = document.querySelector('.app');
+  if (app) app.style.visibility = 'visible';
   updateHdrForUser(fakeUser);
   var mgrRole = mgrDetectRole(fakeUser);
   if (mgrRole) {
@@ -4512,6 +4545,7 @@ function usageCurrentSection() {
   try {
     if (shown('pharma-okres-overlay')) return 'Trhový podiel · graf okresu';
     if (shown('pharma-ms-overlay'))    return 'Trhový podiel';
+    if (shown('golem-cal-overlay'))    return 'Kalendár';
     if (shown('lk-overlay') || (typeof LK_STATE !== 'undefined' && LK_STATE.open)) return 'Lekárne';
     if (shown('rep-plnenie-overlay'))  return 'Plnenie';
     if (shown('hist-overlay'))         return 'História';
@@ -4519,6 +4553,7 @@ function usageCurrentSection() {
     if (shown('detail-overlay'))       return 'Karta lekára';
     if (shown('av-overlay'))           return 'Avatar';
     if (document.body.classList.contains('manager-mode')) {
+      if (document.body.classList.contains('mgr-subtab-kalendar'))    return 'Manažér · Kalendár';
       if (document.body.classList.contains('mgr-subtab-leaderboard')) return 'Manažér · Rebríček';
       if (document.body.classList.contains('mgr-subtab-activity'))    return 'Manažér · Aktivita';
       if (document.body.classList.contains('mgr-subtab-plnenie'))     return 'Manažér · Plnenie';
@@ -4526,7 +4561,7 @@ function usageCurrentSection() {
     }
     if (document.getElementById('gyn-view') && getComputedStyle(document.getElementById('gyn-view')).display !== 'none') {
       var nav = (typeof GYN_APP !== 'undefined' && GYN_APP.nav) ? GYN_APP.nav : '';
-      return 'Gyn · ' + (nav === 'plnenie' ? 'Plnenie' : nav === 'leaderboard' ? 'Rebríček' : 'História');
+      return 'Gyn · ' + (nav === 'plnenie' ? 'Plnenie' : nav === 'leaderboard' ? 'Rebríček' : nav === 'kalendar' ? 'Kalendár' : 'História');
     }
     return 'Formulár';
   } catch(e){ return ''; }
@@ -6178,7 +6213,7 @@ function filterHistory() {
 
 var _panelCurrent = null;
 var _panelStack = []; // navigačný stack — pamätá odkiaľ sme prišli (pre Android back button)
-var _PANEL_ORDER = { 'hist-overlay': 0, 'lb-overlay': 1, 'rep-plnenie-overlay': 2, 'lk-overlay': 3 };
+var _PANEL_ORDER = { 'hist-overlay': 0, 'lb-overlay': 1, 'rep-plnenie-overlay': 2, 'lk-overlay': 3, 'golem-cal-overlay': 4 };
 
 function _panelShow(newId, isBack) {
   // Ak je ten istý panel už otvorený — nerob nič (ochrana pred dvojitým kliknutím)
@@ -6229,7 +6264,7 @@ function _panelShow(newId, isBack) {
 }
 
 function closeAllPanels() {
-  ['hist-overlay','lb-overlay','rep-plnenie-overlay','lk-overlay','lk-detail','pharma-ms-overlay','pharma-okres-overlay'].forEach(function(id){
+  ['hist-overlay','lb-overlay','rep-plnenie-overlay','lk-overlay','golem-cal-overlay','lk-detail','pharma-ms-overlay','pharma-okres-overlay'].forEach(function(id){
     var el = document.getElementById(id);
     if(el) el.classList.remove('show');
   });
@@ -6247,10 +6282,11 @@ function repNavSetActive(panelId){
     'hist-overlay':'rep-nav-hist-btn',
     'lb-overlay':'rep-nav-lb-btn',
     'rep-plnenie-overlay':'rep-nav-plnenie-btn',
-    'lk-overlay':'rep-nav-lekarne-btn'
+    'lk-overlay':'rep-nav-lekarne-btn',
+    'golem-cal-overlay':'rep-nav-kal-btn'
   };
   var activeId = (panelId && map[panelId]) ? map[panelId] : 'rep-nav-form-btn';
-  ['rep-nav-form-btn','rep-nav-hist-btn','rep-nav-lb-btn','rep-nav-plnenie-btn','rep-nav-lekarne-btn'].forEach(function(id){
+  ['rep-nav-form-btn','rep-nav-hist-btn','rep-nav-lb-btn','rep-nav-plnenie-btn','rep-nav-lekarne-btn','rep-nav-kal-btn'].forEach(function(id){
     var b = document.getElementById(id);
     if(b) b.classList.toggle('active', id === activeId);
   });
@@ -6286,7 +6322,8 @@ function applyDefaultTabIfRep() {
       historia: (typeof openHistory === 'function') ? openHistory : null,
       rebricek: (typeof openLeaderboard === 'function') ? openLeaderboard : null,
       plnenie:  (typeof openRepPlnenie === 'function') ? openRepPlnenie : null,
-      lekarne:  (typeof openLekarne === 'function') ? openLekarne : null
+      lekarne:  (typeof openLekarne === 'function') ? openLekarne : null,
+      kalendar: (typeof openGolemKalendar === 'function') ? openGolemKalendar : null
     };
     var fn = openers[def];
     if(typeof fn === 'function'){ setTimeout(function(){ try { fn(); } catch(e){} }, 350); }
@@ -7005,20 +7042,20 @@ function settingsDefaultTabOpts(s){
   // Reagila línia má vlastné záložky (žiadny Formulár/Návštevy/História)
   if(isReagila){
     if(mgrRole){
-      // Manažér/admin: Plnenie · Rebríček (+ Aktivita pre admina) — kľúče mgr subtabov
-      var ro = [['plnenie','💊 Plnenie'],['leaderboard','🏆 Rebríček']];
+      // Manažér/admin: Plnenie · Kalendár · Rebríček (+ Aktivita pre admina) — kľúče mgr subtabov
+      var ro = [['plnenie','💊 Plnenie'],['kalendar','📅 Kalendár'],['leaderboard','🏆 Rebríček']];
       if(isAdmin) ro.push(['activity','📈 Aktivita']);
       return { opts: ro, hint: 'Plnenie' };
     }
-    // KAM reprezentant: Plnenie · Lekárne · Rebríček — kľúče rep záložiek
-    return { opts: [['plnenie','💊 Plnenie'],['lekarne','🏪 Lekárne'],['rebricek','🏆 Rebríček']], hint: 'Plnenie' };
+    // KAM reprezentant: Plnenie · Kalendár · Lekárne · Rebríček — kľúče rep záložiek
+    return { opts: [['plnenie','💊 Plnenie'],['kalendar','📅 Kalendár'],['lekarne','🏪 Lekárne'],['rebricek','🏆 Rebríček']], hint: 'Plnenie' };
   }
   if(isGyn || mgrRole){
-    var opts = [['plnenie','💊 Plnenie'],['visits','📋 Návštevy'],['leaderboard','🏆 Rebríček']];
+    var opts = [['plnenie','💊 Plnenie'],['kalendar','📅 Kalendár'],['visits','📋 Návštevy'],['leaderboard','🏆 Rebríček']];
     if(isAdmin || (isGyn && typeof gynActivityAllowed === 'function' && gynActivityAllowed(s))) opts.push(['activity','📈 Aktivita']);
     return { opts: opts, hint: 'Plnenie' };
   }
-  return { opts: [['form','📝 Formulár GP'],['historia','📋 História'],['rebricek','🏆 Rebríček'],['plnenie','💊 Plnenie'],['lekarne','🏪 Lekárne']], hint: 'Formulár GP' };
+  return { opts: [['form','📝 Formulár GP'],['historia','📋 História'],['rebricek','🏆 Rebríček'],['plnenie','💊 Plnenie'],['lekarne','🏪 Lekárne'],['kalendar','📅 Kalendár']], hint: 'Formulár GP' };
 }
 function settingsDefaultTabHtml(s){
   var cfg = settingsDefaultTabOpts(s);
@@ -8244,7 +8281,7 @@ function mgrSwitchLine(target){
   setSession(u);            // dual store ostáva v localStorage
   try {
     if(target === 'gyn'){
-      document.body.classList.remove('manager-mode','mgr-subtab-plnenie','mgr-subtab-visits','mgr-subtab-leaderboard','reagila-line','gp-rep');
+      document.body.classList.remove('manager-mode','mgr-subtab-plnenie','mgr-subtab-visits','mgr-subtab-leaderboard','mgr-subtab-kalendar','mgr-subtab-activity','reagila-line','gp-rep');
       var appEl = document.querySelector('.app'); if(appEl) appEl.style.display = 'none';
       gynEnter(u);
     } else {
@@ -10774,14 +10811,14 @@ function gynApplyDefaultNav(user) {
   try { gynCalUpdateBadge(); } catch(e){}
   try {
     var def = (userPrefsGet().defaultTab || '').trim();
-    var allowed = ['plnenie','visits','leaderboard'];
+    var allowed = ['plnenie','kalendar','visits','leaderboard'];
     if (gynActivityAllowed(user)) allowed.push('activity');
     if (!def || def === 'plnenie' || allowed.indexOf(def) < 0) return;  // plnenie už je default shellu
     GYN_APP.nav = def;
     document.querySelectorAll('#gyn-nav .gyn-nav-btn').forEach(function(b){
       b.classList.toggle('active', b.getAttribute('data-tab') === def);
     });
-    usageSectionEnter('Gyn · ' + (def === 'leaderboard' ? 'Rebríček' : def === 'activity' ? 'Aktivita' : def === 'visits' ? 'História' : 'Plnenie'));
+    usageSectionEnter('Gyn · ' + (def === 'leaderboard' ? 'Rebríček' : def === 'activity' ? 'Aktivita' : def === 'visits' ? 'História' : def === 'kalendar' ? 'Kalendár' : 'Plnenie'));
   } catch(e){}
 }
 
@@ -14047,15 +14084,91 @@ var GYN_CAL_TYPES = [
 ];
 function gynCalTypeById(id){ for(var i=0;i<GYN_CAL_TYPES.length;i++){ if(GYN_CAL_TYPES[i].id===id) return GYN_CAL_TYPES[i]; } return null; }
 function gynCalRoleGroup(user){
-  var r = user && user.role;
+  var r = String((user && user.role) || '').toLowerCase();
   if(r==='admin') return 'admin';
+  // Gyn manažéri + Golem/Reagila manažéri (am west/east, bum, pm, boss, kam-manažér).
   if(r==='gyn-am' || r==='gyn-pm' || r==='gyn-bum') return 'mgr';
+  if(r==='bum' || r==='pm' || r==='boss' || r==='am' ||
+     r==='am west' || r==='amwest' || r==='am east' || r==='ameast') return 'mgr';
   return 'rep';
 }
 function gynCalTypesForRole(group){
   return GYN_CAL_TYPES.filter(function(t){ return t.roles.indexOf(group) >= 0; });
 }
 var GYN_CAL_ROLE_LABELS = { rep:'Reprezentant', mgr:'Manažér', admin:'Admin' };
+
+// ════════════════════════════════════════════════════════════════════════
+//  Per-line adaptér kalendára (krok „zdieľaný engine")
+//  Engine je spoločný pre Gyn / Golem / Reagila. Líši sa len: backend URL,
+//  kontajner do ktorého sa renderuje, zdroj rostera a smerovanie schvaľovania.
+//    • Gyn     → gynScriptUrl, #gyn-content, GYN_STATE, jeden AM (gynCalIsApprover).
+//    • Golem   → scriptUrl,    #golem-cal-content, LB_REP_INFO, per-osoba „Schvaľovateľ".
+//    • Reagila → reagilaScriptUrl, #golem-cal-content (zdieľaný overlay), to isté ako Golem.
+// ════════════════════════════════════════════════════════════════════════
+function gynCalLine(){ var s=(typeof getSession==='function'&&getSession())||{}; return s.line||'gp'; }
+function gynCalIsGyn(){ return gynCalLine()==='gyn'; }
+// Správna backend URL podľa línie (Gyn vs Golem vs Reagila).
+function gynCalScriptUrl(params){
+  var l=gynCalLine();
+  if(l==='gyn'     && typeof gynScriptUrl    ==='function') return gynScriptUrl(params);
+  if(l==='reagila' && typeof reagilaScriptUrl==='function') return reagilaScriptUrl(params);
+  return scriptUrl(params);   // Golem (gp)
+}
+// Aktívny kontajner kalendára pre danú líniu (alebo null keď kalendár nie je na obrazovke).
+function gynCalHost(){
+  if(gynCalIsGyn()){
+    return (typeof GYN_APP!=='undefined' && GYN_APP.nav==='kalendar')
+      ? document.getElementById('gyn-content') : null;
+  }
+  if(document.body.classList.contains('manager-mode') && document.body.classList.contains('mgr-subtab-kalendar')){
+    return document.getElementById('mgr-cal-content');
+  }
+  var ov=document.getElementById('golem-cal-overlay');
+  return (ov && ov.classList.contains('show')) ? document.getElementById('golem-cal-content') : null;
+}
+// Login schvaľovateľa pre danú osobu (Golem/Reagila). Číta sa zo stĺpca „Schvaľovateľ"
+// rostera (cez buildRepData → LB_REP_INFO/USERS_LOCAL). Prázdne = bez schvaľovania.
+function gynCalApproverLogin(login){
+  login=String(login||'').toLowerCase();
+  if(!login) return '';
+  try {
+    var info=(typeof LB_REP_INFO!=='undefined' && LB_REP_INFO[login])
+          || (typeof USERS_LOCAL!=='undefined' && USERS_LOCAL[login]) || null;
+    var ap=info && (info.schvalovatel || info.approver);
+    if(ap) return String(ap).toLowerCase();
+    if(typeof GYN_CAL_APPROVERS!=='undefined' && GYN_CAL_APPROVERS[login]) return String(GYN_CAL_APPROVERS[login]).toLowerCase();
+  } catch(e){}
+  return '';
+}
+// Mapa login→schvaľovateľ pre osoby mimo rep-rostera (manažéri) — doplní backend/roster.
+var GYN_CAL_APPROVERS = {};
+// Je `s` schvaľovateľom udalosti `ev`? Gyn = jeden AM; Golem/Reagila = menovaný v stĺpci.
+function gynCalIsApproverOf(s, ev){
+  s=s||(typeof getSession==='function'&&getSession())||{};
+  if(gynCalRoleGroup(s)==='admin') return true;        // admin schvaľuje všade
+  if(gynCalIsGyn()) return gynCalIsApprover(s);          // gyn: jeden AM
+  if(!ev) return false;
+  var ap=gynCalApproverLogin(ev.owner);
+  return !!ap && String(s.username||'').toLowerCase()===ap;
+}
+// Má absencia tohto vlastníka ísť na schválenie? Gyn = len rep; Golem/Reagila = ak má prideleného schvaľovateľa.
+function gynCalNeedsApprovalFor(ownerLogin, group){
+  if(gynCalIsGyn()) return group==='rep';
+  return !!gynCalApproverLogin(ownerLogin);
+}
+// Meno osoby podľa loginu (Golem/Reagila roster). Fallback = login.
+function gynCalPersonName(login){
+  login=String(login||'').toLowerCase();
+  try {
+    if(typeof LB_REP_INFO!=='undefined' && LB_REP_INFO[login] && LB_REP_INFO[login].name) return LB_REP_INFO[login].name;
+    if(typeof MGR_REP_NAMES!=='undefined' && MGR_REP_NAMES[login]) return MGR_REP_NAMES[login];
+    if(typeof MGR_STATE!=='undefined' && MGR_STATE.managers && MGR_STATE.managers.length){
+      var mgr = MGR_STATE.managers.filter(function(x){ return String(x.username || '').trim().toLowerCase() === login; })[0];
+      if(mgr && (mgr.name || mgr.username)) return mgr.name || mgr.username;
+    }
+  } catch(e){}
+  return login;
+}
 // Farba pre fallback-iniciály avatara — konzistentná s rebríčkom (hash z username).
 function gynCalAvatarColor(username){
   try {
@@ -14155,7 +14268,7 @@ function gynCalSig(arr){
 function gynCalSync(){
   if(!gynCalRemoteOn() || GYN_CAL._syncing) return;
   GYN_CAL._syncing=true;
-  fetch(gynScriptUrl('action=getCalEvents&_t='+Date.now()), { cache:'no-store' })
+  fetch(gynCalScriptUrl('action=getCalEvents&_t='+Date.now()), { cache:'no-store' })
     .then(function(r){ return r.json(); })
     .then(function(d){
       if(d && d.ok===true && Array.isArray(d.events)){
@@ -14164,8 +14277,8 @@ function gynCalSync(){
         if(gynCalSig(fresh) !== gynCalSig(GYN_CAL.events)){
           GYN_CAL.events=fresh;
           gynCalPersist();                                // obnov zrkadlo
-          var el=document.getElementById('gyn-content');
-          if(el && GYN_APP.nav==='kalendar') gynKalShow(el, getSession());
+          var el=gynCalHost();
+          if(el) gynKalShow(el, getSession());
           gynCalUpdateBadge();
         }
       }
@@ -14181,12 +14294,12 @@ function gynCalManualSync(btn){
 }
 function gynCalPushEvent(ev){
   if(!gynCalRemoteOn() || !ev) return;
-  try { fetch(gynScriptUrl('action=upsertCalEvent&event='+encodeURIComponent(JSON.stringify(ev))), { cache:'no-store' })
+  try { fetch(gynCalScriptUrl('action=upsertCalEvent&event='+encodeURIComponent(JSON.stringify(ev))), { cache:'no-store' })
     .then(function(r){ return r.json(); }).catch(function(){}); } catch(e){}
 }
 function gynCalPushDelete(id){
   if(!gynCalRemoteOn() || !id) return;
-  try { fetch(gynScriptUrl('action=deleteCalEvent&id='+encodeURIComponent(id)), { cache:'no-store' })
+  try { fetch(gynCalScriptUrl('action=deleteCalEvent&id='+encodeURIComponent(id)), { cache:'no-store' })
     .then(function(r){ return r.json(); }).catch(function(){}); } catch(e){}
 }
 // Prednačítanie hneď po prihlásení — lokálne zrkadlo + odznak okamžite, Sheets na pozadí.
@@ -14223,7 +14336,7 @@ function gynCalMonthEvents(y,m){
 // ── Absencie tímu (krok 2d) — manažérsky pohľad po osobách ──
 function gynCalSetAgendaView(v){
   GYN_CAL._agendaView=v;
-  var el=document.getElementById('gyn-content');
+  var el=gynCalHost();
   if(el) gynKalShow(el, getSession());
   try { haptic('selection'); } catch(e){}
 }
@@ -14296,7 +14409,7 @@ function gynCalVisibleToMe(ev){
   var s=getSession()||{}, me=String(s.username||'').toLowerCase(), grp=gynCalRoleGroup(s);
   if(grp==='admin') return true;                                  // admin vidí všetko
   if(String(ev.owner||'').toLowerCase()===me) return true;        // autor vždy vidí svoje
-  if(ev.status==='pending')  return gynCalIsApprover(s);          // pending vidí len autor + AM
+  if(ev.status==='pending')  return gynCalIsApproverOf(s, ev);    // pending vidí len autor + jeho schvaľovateľ
   if(ev.status==='rejected') return false;                        // zamietnuté vidí len autor
   var t=gynCalTypeById(ev.type)||{};
   if(t.cat==='absencia') return true;                             // schválené absencie vidí tím
@@ -14381,17 +14494,37 @@ function gynCalRevert(id){
   try { haptic('selection'); } catch(e){}
 }
 function gynCalPendingForMe(){
-  if(!gynCalIsApprover(getSession())) return 0;
-  return GYN_CAL.events.filter(function(e){ return e.status==='pending'; }).length;
+  var s=(typeof getSession==='function'&&getSession())||{};
+  if(gynCalIsGyn()){
+    if(!gynCalIsApprover(s)) return 0;
+    return GYN_CAL.events.filter(function(e){ return e.status==='pending'; }).length;
+  }
+  // Golem/Reagila: počítaj len žiadosti, ktoré schvaľujem ja (alebo admin = všetky).
+  return GYN_CAL.events.filter(function(e){ return e.status==='pending' && gynCalIsApproverOf(s, e); }).length;
 }
 function gynCalUpdateBadge(){
   if(!GYN_CAL._init){ var t=new Date(); GYN_CAL.y=t.getFullYear(); GYN_CAL.m=t.getMonth(); GYN_CAL._init=true; gynCalLoadLocal(); }
-  var btn=document.querySelector('#gyn-nav .gyn-nav-btn[data-tab="kalendar"]'); if(!btn) return;
-  var n=gynCalPendingForMe(), b=btn.querySelector('.gyn-cal-navbadge');
-  if(n>0){
-    if(!b){ b=document.createElement('span'); b.className='gyn-cal-navbadge'; btn.appendChild(b); }
-    b.textContent = n>9 ? '9+' : String(n);
-  } else if(b && b.parentNode){ b.parentNode.removeChild(b); }
+  var n=gynCalPendingForMe();
+  // Gyn: jediná nav záložka. Golem/Reagila: rep-nav + shared-panel-nav + manažérsky subtab.
+  var btns = gynCalIsGyn()
+    ? [document.querySelector('#gyn-nav .gyn-nav-btn[data-tab="kalendar"]')]
+    : [document.getElementById('rep-nav-kal-btn'),
+       document.getElementById('spn-kal'),
+       document.getElementById('mgr-subtab-kal-btn')];
+  btns.forEach(function(btn){
+    if(!btn) return;
+    var b=btn.querySelector('.gyn-cal-navbadge');
+    if(n>0){
+      if(!b){ b=document.createElement('span'); b.className='gyn-cal-navbadge'; btn.appendChild(b); }
+      b.textContent = n>9 ? '9+' : String(n);
+    } else if(b && b.parentNode){ b.parentNode.removeChild(b); }
+  });
+}
+function golemCalRefreshNavDay(){
+  var day = String((new Date()).getDate());
+  document.querySelectorAll('.js-cal-nav-day').forEach(function(el){
+    el.textContent = day;
+  });
 }
 // DEV pomôcka: v konzole napíš gynCalDevSeedPending() — vytvorí ukážkovú pending dovolenku „od repa".
 function gynCalDevSeedPending(){
@@ -14570,7 +14703,8 @@ function gynKalShow(el, user) {
 // Swipe medzi mesiacmi — mriežka ide pod prstom + susedné mesiace v peek paneloch.
 // Ťah doľava → ďalší mesiac, ťah doprava → predošlý (zhodne so šípkami ‹ › aj Plnením).
 function gynCalInitSwipe() {
-  var grid = document.querySelector('#gyn-content .gyn-cal-grid');
+  var host = gynCalHost();
+  var grid = host && host.querySelector('.gyn-cal-grid');
   if(!grid) return;
   var carousel = buildCarouselPeeks(grid);
   if(!carousel) return;
@@ -14602,7 +14736,7 @@ function gynCalShift(delta) {
   GYN_CAL.m+=delta;
   if(GYN_CAL.m<0){ GYN_CAL.m=11; GYN_CAL.y--; }
   else if(GYN_CAL.m>11){ GYN_CAL.m=0; GYN_CAL.y++; }
-  var el=document.getElementById('gyn-content');
+  var el=gynCalHost();
   if(el) gynKalShow(el, getSession());
 }
 
@@ -14683,8 +14817,8 @@ function gynCalSheetClose(){
   document.body.style.overflow='';                  // obnov scroll pozadia
 }
 function gynCalRefreshBehind(){
-  var el=document.getElementById('gyn-content');
-  if(el && GYN_APP.nav==='kalendar') gynKalShow(el, getSession());
+  var el=gynCalHost();
+  if(el) gynKalShow(el, getSession());
 }
 function gynCalDayClick(dateKey){
   var user=getSession(); if(!user) return;
@@ -14769,8 +14903,12 @@ function gynCalOpenDetail(dk, id){
   var compTxt = ev.compFor ? ('Náhradné voľno za: ' + ev.compFor + (ev.compDate ? ' (' + gynCalFmtDMY(ev.compDate) + ')' : '')) : '';
   var rows=row('🗓️', range)+row('🕐', time)+row('📍', ev.location)+row('🔁', compTxt)+row('🗒️', ev.note);
   var who=ev.ownerName||ev.owner||'', roleLb=GYN_CAL_ROLE_LABELS[ev.ownerRole]||'';
-  var canAppr=(ev.status==='pending' && gynCalIsApprover(getSession()));
-  var statusBanner = ev.status==='pending' ? '<div class="gyn-cal-status pending">⏳ Čaká na schválenie AM</div>'
+  var canAppr=(ev.status==='pending' && gynCalIsApproverOf(getSession(), ev));
+  var _apprLogin = gynCalIsGyn() ? '' : gynCalApproverLogin(ev.owner);
+  var _apprName  = _apprLogin ? (gynCalPersonName(_apprLogin)||_apprLogin) : '';
+  var _pendTxt   = gynCalIsGyn() ? '⏳ Čaká na schválenie AM'
+                                 : ('⏳ Čaká na schválenie'+(_apprName?' — '+gynEsc(_apprName):''));
+  var statusBanner = ev.status==='pending' ? '<div class="gyn-cal-status pending">'+_pendTxt+'</div>'
     : ev.status==='rejected' ? '<div class="gyn-cal-status rejected">❌ Zamietnuté</div>'+(ev.rejectReason?'<div class="gyn-cal-reason"><b>Dôvod:</b> '+gynEsc(ev.rejectReason)+'</div>':'')
     : ((gynCalTypeById(ev.type)||{}).cat==='absencia' && ev.approvedBy) ? '<div class="gyn-cal-status approved">✅ Schválené</div>' : '';
   var apprActions='';
@@ -14794,10 +14932,10 @@ function gynCalOpenDetail(dk, id){
   }
   var delBtn = (ev.status==='rejected' && gynCalCanEdit(ev)) ? '<button class="gyn-cal-del-btn" onclick="gynCalDeleteEvent(\''+id+'\')">Zmazať z kalendára</button>' : '';
   // Upozornenie na prekryv dovoleniek (len pre schvaľovateľa).
-  var vacConf = gynCalIsApprover(getSession()) ? gynCalVacationConflict(ev) : null;
+  var vacConf = gynCalIsApproverOf(getSession(), ev) ? gynCalVacationConflict(ev) : null;
   var warnBanner = vacConf ? '<div class="gyn-cal-warn">⚠️ '+gynCalFmtDM(vacConf.dk)+' by malo dovolenku <b>'+vacConf.count+' reprezentantov</b> — zváž pokrytie územia.</div>' : '';
   // Zamietnutá + schvaľovateľ → možnosť opraviť omyl (obnoviť alebo predsa schváliť).
-  var fixActions = (ev.status==='rejected' && gynCalIsApprover(getSession()))
+  var fixActions = (ev.status==='rejected' && gynCalIsApproverOf(getSession(), ev))
     ? '<div class="gyn-cal-approve-row">'+
         '<button class="gyn-cal-reject-btn" onclick="gynCalRevert(\''+id+'\')">Obnoviť (čaká)</button>'+
         '<button class="gyn-cal-approve-btn" onclick="gynCalApprove(\''+id+'\')">Predsa schváliť</button>'+
@@ -15042,8 +15180,34 @@ function gynCalNeedsAudience(typeId, group){
 // Skupiny príjemcov ŽIVO z rosteru (Sheets) — nič nie je hardcoded.
 // Reprezentanti = GYN_STATE.repList; Manažéri = userList mimo repList. Bez seba.
 function gynCalRosterGroups(){
-  var reps=[], mgrs=[], repLogins={};
   var self=String(((typeof getSession==='function'&&getSession())||{}).username||'').toLowerCase();
+  // Golem/Reagila: reprezentanti z MGR_ALL, manažéri/ostatné roly z getManagers() + fallback whitelist.
+  if(!gynCalIsGyn()){
+    var gReps=[], gMgrs=[], seenMgrs={};
+    try {
+      var all=(typeof MGR_ALL!=='undefined' && MGR_ALL)||[];
+      all.forEach(function(l){ l=String(l||'').toLowerCase(); if(!l||l===self) return; gReps.push({login:l, name:gynCalPersonName(l)}); });
+      var mgrs=(typeof MGR_STATE!=='undefined' && MGR_STATE.managers)||[];
+      mgrs.forEach(function(m){
+        var l=String((m&&m.username)||'').trim().toLowerCase();
+        if(!l || l===self || seenMgrs[l]) return;
+        seenMgrs[l]=1;
+        gMgrs.push({login:l, name:m.name || gynCalPersonName(l)});
+      });
+      if(typeof MGR_USERS!=='undefined'){
+        Object.keys(MGR_USERS).forEach(function(l){
+          l=String(l||'').trim().toLowerCase();
+          if(!l || l===self || seenMgrs[l]) return;
+          seenMgrs[l]=1;
+          gMgrs.push({login:l, name:gynCalPersonName(l)});
+        });
+      }
+    } catch(e){}
+    var byName=function(a,b){ return String(a.name).localeCompare(String(b.name),'sk'); };
+    gReps.sort(byName); gMgrs.sort(byName);
+    return { managers:gMgrs, reps:gReps };
+  }
+  var reps=[], mgrs=[], repLogins={};
   var repList=(typeof GYN_STATE!=='undefined'&&GYN_STATE.repList)||[];
   var userList=(typeof GYN_STATE!=='undefined'&&GYN_STATE.userList)||[];
   repList.forEach(function(r){ var l=String(r.login||'').toLowerCase(); if(!l) return; repLogins[l]=1; if(l!==self) reps.push({login:l,name:r.meno||r.login}); });
@@ -15197,8 +15361,9 @@ function gynCalFormSave(){
   else if(!aud.picked.length){ vis='private'; }
   else { vis='custom'; recipients=aud.picked.slice(); }
   var isAbsence=(t.cat==='absencia');
-  // Na schválenie ide len absencia od repa, ktorá to vyžaduje (dovolenka, administratíva).
-  var status=(isAbsence && group==='rep' && t.approval) ? 'pending' : 'approved';
+  // Na schválenie ide absencia, ktorá to vyžaduje (dovolenka, administratíva, náhradné voľno).
+  // Gyn: len od repa. Golem/Reagila: ak má vlastník prideleného „Schvaľovateľa".
+  var status=(isAbsence && t.approval && gynCalNeedsApprovalFor(user.username||'', group)) ? 'pending' : 'approved';
   var rec={
     id: GYN_CAL._formEditId || ('e_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7)),
     type: GYN_CAL._formType, title: title, allDay: allDay,
@@ -15269,7 +15434,14 @@ var MGR_REP_NAMES = {
   'l.macakova':   'Lenka Mačáková',
   'z.lapsan':     'Zuzana Lapšanská',
   'm.sabol':      'Michal Sabol',
-  'a.makis':      'Andrej Makiš'
+  'a.makis':      'Andrej Makiš',
+  'e.starostova': 'Eva Starostová',
+  'z.halasz':     'Zoltán Halász',
+  'd.kosc':       'Dionýz Košč',
+  'p.holansky':   'Peter Holanský',
+  'v.dzurilla':   'Viktor Dzurilla',
+  'am.west':      'AM West',
+  'am.east':      'AM East'
 };
 var MGR_AM_WEST = ['j.bohovic','v.hatinova','v.hromadkova','z.lescis','j.krkoska','i.kozakova'];
 var MGR_AM_EAST = ['k.czidor','r.fekiacova','l.macakova','z.lapsan','m.sabol','a.makis'];
@@ -15378,7 +15550,7 @@ function mgrEnter(roleKey){
 function mgrApplyDefaultSubtab(){
   try {
     var def = (userPrefsGet().defaultTab || '').trim();
-    var allowed = ['plnenie','visits','leaderboard'];
+    var allowed = ['plnenie','kalendar','visits','leaderboard'];
     if (MGR_STATE.role === 'admin') allowed.push('activity');
     if (!def || def === 'plnenie' || allowed.indexOf(def) < 0) return;
     mgrSwitchSubtab(def);
@@ -15447,7 +15619,16 @@ function mgrLoadReps(repList){
   // DEV MODE — použij prázdne mock histórie, žiadne Sheets fetche
   if (IS_DEV) {
     MGR_STATE.lastLogins = {};
-    MGR_STATE.managers = [];
+    MGR_STATE.managers = Object.keys(MGR_USERS || {}).map(function(username) {
+      return {
+        username: username,
+        name: MGR_REP_NAMES[username] || username,
+        role: MGR_USERS[username] || '',
+        posledny_login: '',
+        pohlavie: '',
+        avatar: ''
+      };
+    });
     repList.forEach(function(username) {
       MGR_STATE.reps[username] = { visits: [], error: false };
     });
@@ -15456,7 +15637,7 @@ function mgrLoadReps(repList){
     return;
   }
 
-  var managersPromise = (MGR_STATE.role === 'admin')
+  var managersPromise = (MGR_STATE.role)
     ? mgrFetchWithRetry(scriptUrl('action=getManagers')).catch(function(){ return []; })
     : Promise.resolve([]);
 
@@ -15468,6 +15649,16 @@ function mgrLoadReps(repList){
   Promise.all([loginPromise, managersPromise, allHistPromise]).then(function(meta){
     MGR_STATE.lastLogins = meta[0] || {};
     MGR_STATE.managers = meta[1] || [];
+    (function(){
+      var mgrs = MGR_STATE.managers;
+      if(!mgrs || !mgrs.length) return;
+      mgrs.forEach(function(mgr){
+        var mgrUsername = String((mgr && mgr.username) || '').trim().toLowerCase();
+        if(!mgrUsername) return;
+        var mgrName = String((mgr && mgr.name) || '').trim();
+        if(mgrName) MGR_REP_NAMES[mgrUsername] = mgrName;
+      });
+    })();
     // Sync avatar configov manažérov do localStorage — aby avatarGetConfig() ich vedel nájsť
     // (USERS_LOCAL obsahuje len reps; manažéri sú v separátnom MGR_STATE.managers poli)
     (function(){
@@ -16178,6 +16369,7 @@ document.addEventListener('visibilitychange', function(){
 });
 
 document.addEventListener('DOMContentLoaded', function(){
+  try { golemCalRefreshNavDay(); } catch(e){}
   // ── Kontrola verzie appky (po aktualizácii logout + info) ──
   // KRITICKÉ: všetky zápisy cez lsSafeSet — keď je localStorage plný (admin preload
   // PharmaData), surový setItem by vyhodil QuotaExceededError a zhodil celý štart
@@ -16219,6 +16411,7 @@ function initEdgeSwipeBack() {
   bind('lb-overlay', function(){ if (typeof closeAllPanels === 'function') closeAllPanels(); });
   bind('rep-plnenie-overlay', function(){ if (typeof closeAllPanels === 'function') closeAllPanels(); });
   bind('lk-overlay', function(){ if (typeof closeLekarne === 'function') closeLekarne(); });
+  bind('golem-cal-overlay', function(){ if (typeof closeGolemKalendar === 'function') closeGolemKalendar(); });
   bind('mgr-detail', function(){ if (typeof mgrCloseRep === 'function') mgrCloseRep(); });
   bind('mgr-plnenie-detail', function(){ if (typeof plnenieCloseDetail === 'function') plnenieCloseDetail(); });
   var lkDetail = document.getElementById('lk-detail');
@@ -16356,7 +16549,11 @@ function _handleAndroidBack() {
   el = document.getElementById('mgr-detail');
   if (el && el.classList.contains('show')) { mgrCloseRep(); return true; }
 
-  // 11. Manager subtab — Návštevy / Rebríček → späť na predchádzajúci tab (alebo Plnenie)
+  // 11. Zdieľaný Golem/Reagila kalendár overlay
+  el = document.getElementById('golem-cal-overlay');
+  if (el && el.classList.contains('show')) { closeGolemKalendar(); return true; }
+
+  // 12. Manager subtab — Návštevy / Rebríček / Aktivita → späť na predchádzajúci tab (alebo Plnenie)
   if (document.body.classList.contains('manager-mode') && MGR_STATE.subtab && MGR_STATE.subtab !== 'plnenie') {
     var backTab = _mgrPrevSubtab || 'plnenie';
     _mgrPrevSubtab = null;
@@ -16373,19 +16570,20 @@ function _handleAndroidBack() {
     var _rHi = document.getElementById('hist-overlay');
     var _rLkDetail = document.getElementById('lk-detail');
     if (_rLkDetail && _rLkDetail.classList.contains('show')) { closeLkarneDetail(); return true; }
-    if ((_rLk && _rLk.classList.contains('show')) || (_rLb && _rLb.classList.contains('show')) || (_rHi && _rHi.classList.contains('show'))) {
+    var _rCal = document.getElementById('golem-cal-overlay');
+    if ((_rLk && _rLk.classList.contains('show')) || (_rLb && _rLb.classList.contains('show')) || (_rHi && _rHi.classList.contains('show')) || (_rCal && _rCal.classList.contains('show'))) {
       try { openRepPlnenie(); } catch(e){}     // späť na domovské Plnenie
       return true;
     }
     if (_rPl && _rPl.classList.contains('show')) { return true; }  // Plnenie je domov — back nič
   }
 
-  // 12. Lekárne overlay
+  // 13. Lekárne overlay
   el = document.getElementById('lk-overlay');
   if (el && el.classList.contains('show')) { closeLekarne(); return true; }
 
-  // 13. Panely — História / Rebríček / Plnenie (reprezentant)
-  var panels = ['hist-overlay', 'lb-overlay', 'rep-plnenie-overlay'];
+  // 14. Panely — História / Rebríček / Plnenie / Kalendár (reprezentant)
+  var panels = ['hist-overlay', 'lb-overlay', 'rep-plnenie-overlay', 'golem-cal-overlay'];
   for (var i = 0; i < panels.length; i++) {
     el = document.getElementById(panels[i]);
     if (el && el.classList.contains('show')) {
@@ -16399,7 +16597,7 @@ function _handleAndroidBack() {
     }
   }
 
-  // 14. Gyn línia — in-place navigácia (gyn nepoužíva .app overlaye, renderuje do #gyn-content)
+  // 15. Gyn línia — in-place navigácia (gyn nepoužíva .app overlaye, renderuje do #gyn-content)
   var _gv = document.getElementById('gyn-view');
   if (_gv && _gv.classList.contains('show')) {
     // 14a. Detail reprezentanta (manažér) → späť na zoznam
@@ -16564,28 +16762,28 @@ var WN_HISTORY = [
       ]
     }
   },
-  // ── v2.30 — Kalendár (gyn) ──
+  // ── v2.30 — Kalendár (golem) ──
   {
     key: 'potencial_vl_wn_v2_30_kalendar',
-    line: 'gyn',
+    line: 'gp',
     rep: {
       icon: '📅', title: 'Nový Kalendár', sub: 'v2.30 · Gedeon Richter Slovakia',
       items: [
-        { icon: '📅', bg: '#EFF6FF', title: 'Tímový kalendár', desc: 'Pridaj si dovolenku, paragraf, OČR, administratívu aj vlastné poznámky. Klikni na deň → Pridať udalosť.' },
-        { icon: '🏖️', bg: '#FFF7ED', title: 'Dovolenku schvaľuje Area Manager', desc: 'Keď zadáš dovolenku alebo administratívu, žiadosť ide tvojmu Area Managerovi na schválenie. Kým neschváli, svieti ako „čaká"; po schválení ju vidí celý tím. Paragraf a OČR schválenie nepotrebujú. Schvaľovanie emailom stále platí a je nadradené aplikácii.' },
-        { icon: '🎤', bg: '#F0FDF4', title: 'Firemné akcie od manažérov', desc: 'Manažéri ti do kalendára pridajú aj kongresy, mítingy, tréningy, webináre, cycle meetingy a uzávierky — uvidíš ich priamo v kalendári podľa toho, čo zdieľajú tímu.' },
-        { icon: '⏰', bg: '#F5F3FF', title: 'Od kedy – do kedy', desc: 'Pri jednodňovej absencii vieš zadať aj presný čas; viacdňová je automaticky celý deň.' },
+        { icon: '📅', bg: '#EFF6FF', title: 'Tímový kalendár', desc: 'Pridaj si dovolenku, paragraf, OČR, administratívu, náhradné voľno aj vlastné poznámky. Klikni na deň → Pridať udalosť.' },
+        { icon: '🏖️', bg: '#FFF7ED', title: 'Schvaľovanie absencií', desc: 'Keď zadáš dovolenku, administratívu alebo náhradné voľno, žiadosť ide tvojej priradenej schvaľujúcej osobe na schválenie. Kým ju neschváli, svieti ako „čaká"; po schválení ju vidí celý tím. Paragraf a OČR schválenie nepotrebujú. Schvaľovanie emailom stále platí a je nadradené aplikácii.' },
+        { icon: '🎤', bg: '#F0FDF4', title: 'Firemné akcie od manažérov', desc: 'Manažéri ti do kalendára môžu pridať aj kongresy, mítingy, tréningy, webináre, cycle meetingy, uzávierky a ďalšie tímové udalosti — uvidíš ich priamo v kalendári podľa toho, komu budú zdieľané.' },
+        { icon: '⏰', bg: '#F5F3FF', title: 'Od kedy – do kedy', desc: 'Pri jednodňovej udalosti vieš zadať aj presný čas; viacdňová udalosť je automaticky celý deň.' },
         { icon: '🇸🇰', bg: '#FEF2F2', title: 'Sviatky', desc: 'Štátne sviatky a dni pracovného pokoja sú v kalendári automaticky vyznačené.' },
-        { icon: '📝', bg: '#FEF3C7', title: 'Poznámky a zdieľanie', desc: 'Vlastná poznámka je defaultne len pre teba. Ak chceš, vyberieš konkrétnych ľudí alebo celý tím. Poznámku, ktorú ti niekto pošle, si vieš odobrať zo svojho kalendára.' }
+        { icon: '📝', bg: '#FEF3C7', title: 'Poznámky a zdieľanie', desc: 'Vlastná poznámka je defaultne len pre teba. Ak chceš, môžeš ju zdieľať konkrétnym ľuďom alebo celému tímu. Poznámku, ktorú ti niekto pošle, si vieš zo svojho kalendára odobrať.' }
       ]
     },
     mgr: {
       icon: '📅', title: 'Kalendár + schvaľovanie', sub: 'v2.30 · Gedeon Richter Slovakia',
       items: [
-        { icon: '📅', bg: '#EFF6FF', title: 'Tímový kalendár', desc: 'Kongres, míting, tréning, webinár, cycle meeting, uzávierka aj poznámky. Pri zakladaní zvolíš, kto to uvidí — konkrétni ľudia alebo celý tím.' },
-        { icon: '✅', bg: '#F0FDF4', title: 'Absencie schvaľuje Area Manager', desc: 'Žiadosti o dovolenku a administratívu od reprezentantov schvaľuje Area Manager (Schváliť / Zamietnuť s dôvodom, omyl vie vrátiť). Produktoví manažéri a BUM kalendár vidia, ale neschvaľujú. Paragraf a OČR sa neschvaľujú. Schvaľovanie emailom stále platí a je nadradené aplikácii.' },
+        { icon: '📅', bg: '#EFF6FF', title: 'Tímový kalendár', desc: 'Kongres, míting, tréning, webinár, cycle meeting, uzávierka, poznámka aj absencie tímu na jednom mieste. Pri zakladaní udalosti zvolíš, kto ju uvidí — konkrétni ľudia alebo celý tím.' },
+        { icon: '✅', bg: '#F0FDF4', title: 'Schvaľovanie absencií', desc: 'Žiadosti o dovolenku, administratívu a náhradné voľno od reprezentantov schvaľuje priradená schvaľujúca osoba podľa nastavenia v systéme. Paragraf a OČR sa neschvaľujú. Schvaľovanie emailom stále platí a je nadradené aplikácii.' },
         { icon: '🔢', bg: '#F5F3FF', title: 'Odznak žiadostí', desc: 'Pri záložke Kalendár vidíš počet čakajúcich žiadostí — aj keď si na inej obrazovke.' },
-        { icon: '⚠️', bg: '#FEF3C7', title: 'Upozornenie na prekryv', desc: 'Pri schvaľovaní dovolenky ťa appka upozorní, ak by v tom termíne bolo preč 4+ reprezentantov.' },
+        { icon: '⚠️', bg: '#FEF3C7', title: 'Upozornenie na prekryv', desc: 'Pri schvaľovaní dovolenky ťa aplikácia upozorní, ak by v tom termíne bolo preč viac ľudí naraz.' },
         { icon: '👥', bg: '#FFF7ED', title: 'Absencie tímu', desc: 'Prepínač pod kalendárom — po osobách vidíš, kto je kedy preč a či sa termíny neprekrývajú.' }
       ]
     }
@@ -17649,9 +17847,12 @@ function buildRepData(reps) {
         }
       } catch(e) { /* invalid JSON — ignoruj, ostanú iniciály */ }
     }
+    // „Schvaľovateľ" zo Sheetu — login toho, kto danej osobe schvaľuje absencie (kalendár).
+    var schval = String(r.schvalovatel || r.approver || r['Schvaľovateľ'] || '').trim().toLowerCase();
     MGR_REP_NAMES[u] = r.meno;
-    LB_REP_INFO[u]   = { name: r.meno, region: r.region, color: color, gender: gender, avatar: avatarConfig };
-    USERS_LOCAL[u]   = { region: r.region, gender: gender, avatar: avatarConfig };
+    LB_REP_INFO[u]   = { name: r.meno, region: r.region, color: color, gender: gender, avatar: avatarConfig, schvalovatel: schval };
+    USERS_LOCAL[u]   = { region: r.region, gender: gender, avatar: avatarConfig, schvalovatel: schval };
+    if (schval) GYN_CAL_APPROVERS[u] = schval;
     try {
       if (avatarConfig) localStorage.setItem('avatar_cfg_' + u, JSON.stringify(avatarConfig));
       else localStorage.removeItem('avatar_cfg_' + u);
@@ -17712,6 +17913,9 @@ function buildRepData(reps) {
   if (!isFullRoster && !REP_LIST_STATE.fullRosterRequested) {
     setTimeout(function(){ loadRepList(true); }, 0);
   }
+  // Kalendár (Golem/Reagila) — keď je roster pripravený, prednačítaj udalosti a odznak
+  // čakajúcich žiadostí (schvaľovateľ ich uvidí aj bez otvorenia kalendára).
+  try { if (typeof gynCalIsGyn === 'function' && !gynCalIsGyn()) gynCalPrefetch(); } catch(e){}
   return isFullRoster;
 }
 
@@ -17760,7 +17964,7 @@ function hdrAvatarShowTipIfNeeded(_stableTicks) {
     var blockingIds = ['wn-overlay','satori-overlay','milestone-overlay','av-overlay',
                        'av-confirm-overlay','logout-overlay','send-popup','confirm-overlay',
                        'detail-overlay','edit-overlay','restore-overlay','hist-overlay',
-                       'lb-overlay','rep-plnenie-overlay','lk-overlay','lk-detail',
+                       'lb-overlay','rep-plnenie-overlay','lk-overlay','golem-cal-overlay','lk-detail',
                        'pharma-ms-overlay','pharma-okres-overlay',
                        'tutorial-overlay','session-expired-overlay','rpt-progress-overlay','thankyou'];
     var isBlocked = false;
@@ -19469,13 +19673,14 @@ function plnenieQLabel(q, year) {
   return 'Q' + q + ' ' + year;
 }
 
-var MGR_TAB_ORDER = { plnenie: 0, visits: 1, leaderboard: 2, activity: 3 };
+var MGR_TAB_ORDER = { plnenie: 0, visits: 1, leaderboard: 2, kalendar: 3, activity: 4 };
 var _mgrPrevSubtab = null; // pamätá predchádzajúci subtab pre Android back button
 
 function mgrAnimateSubtab(tab, dir) {
   var elMap = {
     plnenie:     document.querySelector('.mgr-plnenie-view'),
     leaderboard: document.querySelector('.mgr-leaderboard-view'),
+    kalendar:    document.querySelector('.mgr-calendar-view'),
     visits:      document.querySelector('.mgr-list-wrap'),
     activity:    document.querySelector('.mgr-activity-view')
   };
@@ -19497,9 +19702,10 @@ function mgrSwitchSubtab(tab) {
   var dir = (MGR_TAB_ORDER[tab] || 0) > (MGR_TAB_ORDER[prevTab] || 0) ? 'r' : 'l';
   MGR_STATE.subtab = tab;
   // Trackuj čas strávený v každom manažérskom tabe
-  var _mgrTabLabels = { plnenie: 'Plnenie', visits: 'Návštevy', leaderboard: 'Rebríček', activity: 'Aktivita' };
+  var _mgrTabLabels = { plnenie: 'Plnenie', visits: 'Návštevy', leaderboard: 'Rebríček', kalendar: 'Kalendár', activity: 'Aktivita' };
   usageSectionEnter('Manažér · ' + (_mgrTabLabels[tab] || tab));
   document.body.classList.toggle('mgr-subtab-plnenie', tab === 'plnenie');
+  document.body.classList.toggle('mgr-subtab-kalendar', tab === 'kalendar');
   document.body.classList.toggle('mgr-subtab-leaderboard', tab === 'leaderboard');
   document.body.classList.toggle('mgr-subtab-activity', tab === 'activity');
   document.querySelectorAll('.mgr-subtab').forEach(function(btn){
@@ -19523,6 +19729,9 @@ function mgrSwitchSubtab(tab) {
       // Dáta sú null alebo prázdne (fetch zlyhal) — vynútiť znovu načítanie
       lbLoadData(true);
     }
+  }
+  if (tab === 'kalendar') {
+    mgrRenderCalendarView(true);
   }
   if (tab === 'activity') {
     USAGE_VIEW.line = 'gp';
@@ -28531,6 +28740,61 @@ function closeLekarne() {
   usageSectionClose();
   LK_STATE.open = false;
   closeAllPanels();
+}
+
+function mgrRenderCalendarView(resetMonth) {
+  try { golemCalRefreshNavDay(); } catch(e){}
+  try { gynCalEnsureSheet(); } catch(e){}
+  if (resetMonth) {
+    var t = new Date();
+    GYN_CAL.y = t.getFullYear();
+    GYN_CAL.m = t.getMonth();
+    GYN_CAL._init = true;
+  }
+  if (!GYN_CAL._loadedLocalGolem) {
+    try { gynCalLoadLocal(); } catch(e){}
+    GYN_CAL._loadedLocalGolem = true;
+  }
+  var host = document.getElementById('mgr-cal-content');
+  if (host) gynKalShow(host, getSession());
+  try { gynCalSync(); } catch(e){}
+  gynCalUpdateBadge();
+}
+
+// ── Golem/Reagila Kalendár — otvor zdieľaný overlay a vyrenderuj engine (z gyn) ──
+function openGolemKalendar() {
+  if (document.body.classList.contains('manager-mode')) {
+    mgrSwitchSubtab('kalendar');
+    return;
+  }
+  usageSectionEnter('Kalendár');
+  try { golemCalRefreshNavDay(); } catch(e){}
+  try { gynCalEnsureSheet(); } catch(e){}          // spodný panel (náhľad dňa + formulár)
+  // Otvor vždy na aktuálnom mesiaci (ako klik na záložku v gyn).
+  var t = new Date();
+  GYN_CAL.y = t.getFullYear(); GYN_CAL.m = t.getMonth(); GYN_CAL._init = true;
+  if (!GYN_CAL._loadedLocalGolem) { try { gynCalLoadLocal(); } catch(e){} GYN_CAL._loadedLocalGolem = true; }
+  _panelShow('golem-cal-overlay');
+  if (document.body.classList.contains('manager-mode')) {
+    // V manažérskom režime zvýrazni subtab Kalendár (rep-nav je skrytý).
+    document.querySelectorAll('.mgr-subtab').forEach(function(b){ b.classList.toggle('active', b.id === 'mgr-subtab-kal-btn'); });
+  }
+  var host = document.getElementById('golem-cal-content');
+  if (host) gynKalShow(host, getSession());
+  try { gynCalSync(); } catch(e){}                  // načítaj zo Sheets (ak Golem backend beží)
+  gynCalUpdateBadge();
+}
+function closeGolemKalendar() {
+  usageSectionClose();
+  closeAllPanels();
+  if (document.body.classList.contains('manager-mode')) {
+    // Vráť zvýraznenie na predtým aktívny manažérsky subtab.
+    var active = document.querySelector('.mgr-subtabs .mgr-subtab[data-tab="' + (
+      document.body.classList.contains('mgr-subtab-leaderboard') ? 'leaderboard' :
+      document.body.classList.contains('mgr-subtab-activity') ? 'activity' :
+      document.body.classList.contains('mgr-subtab-plnenie') ? 'plnenie' : 'visits') + '"]');
+    document.querySelectorAll('.mgr-subtab').forEach(function(b){ b.classList.toggle('active', b === active); });
+  }
 }
 
 function closeLkarneDetail() {
