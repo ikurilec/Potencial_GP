@@ -3234,7 +3234,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.33.3';
+var APP_VERSION = '2.34.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -15743,6 +15743,19 @@ function mgrDetectRole(user){
   return MGR_USERS[u] || null;
 }
 
+// Role, ktoré v Golem línii vidia záložku Aktivita.
+//  • admin            → všetci používatelia (reprezentanti aj manažéri)
+//  • boss / bum / pm  → všetci reprezentanti (West aj East)
+//  • amwest / ameast  → len reprezentanti svojho regiónu (rieši plnenieGetActiveReps)
+// Manažéri (na rozdiel od admina) nevidia ostatných manažérov, iba reprezentantov.
+var GOLEM_ACTIVITY_ROLES = ['boss','bum','pm','amwest','ameast'];
+function golemActivityAllowed(roleKey){
+  if (roleKey === 'admin') return true;                       // admin vidí Aktivitu vo všetkých líniách (ako doteraz)
+  if (GOLEM_ACTIVITY_ROLES.indexOf(roleKey) < 0) return false;
+  try { var s = getSession(); if (s && s.line === 'reagila') return false; } catch(e){}  // nové role len v Golem línii
+  return true;
+}
+
 // Vstup do manažérskeho módu
 function mgrEnter(roleKey){
   var cfg = MGR_ROLE_CFG[roleKey];
@@ -15783,9 +15796,9 @@ function mgrEnter(roleKey){
   var rptWrap = document.getElementById('pl-rpt-btn-wrap');
   if (rptWrap) rptWrap.style.display = 'none';
 
-  // Záložka Aktivita (usage analytics) — iba pre admina
+  // Záložka Aktivita (usage analytics) — admin + Golem manažéri (boss/bum/pm/AM West/AM East)
   var actBtn = document.getElementById('mgr-subtab-activity-btn');
-  if (actBtn) actBtn.style.display = (roleKey === 'admin') ? '' : 'none';
+  if (actBtn) actBtn.style.display = golemActivityAllowed(roleKey) ? '' : 'none';
 
   mgrLoadData();
   // Plnenie je default tab — načítaj všetky kvartály hneď pri vstupe
@@ -15800,7 +15813,7 @@ function mgrApplyDefaultSubtab(){
   try {
     var def = (userPrefsGet().defaultTab || '').trim();
     var allowed = ['plnenie','kalendar','visits','leaderboard'];
-    if (MGR_STATE.role === 'admin') allowed.push('activity');
+    if (golemActivityAllowed(MGR_STATE.role)) allowed.push('activity');
     if (!def || def === 'plnenie' || allowed.indexOf(def) < 0) return;
     mgrSwitchSubtab(def);
   } catch(e){}
@@ -19945,8 +19958,8 @@ function mgrAnimateSubtab(tab, dir) {
 
 // Sub-tab switch medzi "Návštevy" a "Plnenie"
 function mgrSwitchSubtab(tab) {
-  // Aktivita (usage analytics) je iba pre admina
-  if (tab === 'activity' && MGR_STATE.role !== 'admin') return;
+  // Aktivita (usage analytics) — admin + Golem manažéri (pozri golemActivityAllowed)
+  if (tab === 'activity' && !golemActivityAllowed(MGR_STATE.role)) return;
   var prevTab = MGR_STATE.subtab;
   if (prevTab && prevTab !== tab) _mgrPrevSubtab = prevTab; // zapamätaj odkiaľ si prišiel
   var dir = (MGR_TAB_ORDER[tab] || 0) > (MGR_TAB_ORDER[prevTab] || 0) ? 'r' : 'l';
@@ -20001,9 +20014,12 @@ var USAGE_VIEW = { dni: 30, currentRep: null, loading: false, line: 'gp', bodyId
 function usageBody() { return document.getElementById(USAGE_VIEW.bodyId || 'act-body'); }
 function usageRepList() {
   if (USAGE_VIEW.line === 'gyn') return ((typeof GYN_STATE !== 'undefined' && GYN_STATE.repList) || []).map(function(r){ return String(r.login || '').toLowerCase(); }).filter(Boolean);
-  // GP admin: reprezentanti + všetci ostatní manažéri (PM, BUM, AM)
+  // GP reprezentanti — plnenieGetActiveReps už vracia správny rozsah podľa role
+  // (amwest → len West, ameast → len East, ostatní → všetci reprezentanti).
   var out = (typeof plnenieGetActiveReps === 'function') ? plnenieGetActiveReps().slice() : [];
-  if (typeof MGR_STATE !== 'undefined' && MGR_STATE.managers) {
+  // Manažérov (PM/BUM/AM…) do zoznamu pridá IBA admin. Ostatné manažérske role
+  // vidia výhradne reprezentantov, nie seba navzájom.
+  if (typeof MGR_STATE !== 'undefined' && MGR_STATE.role === 'admin' && MGR_STATE.managers) {
     MGR_STATE.managers.forEach(function(m){ var u = String(m.username || '').trim().toLowerCase(); if (u && out.indexOf(u) === -1) out.push(u); });
   }
   return out;
@@ -20176,6 +20192,10 @@ function usageRenderTeam(data) {
       return !ro || ro.indexOf('rep') !== -1;          // rep alebo bez roly = reprezentant
     });
   }
+  // Golem manažér (nie admin) tiež vidí iba reprezentantov — usageRepList už manažérov
+  // nepridáva, takže stačí prepnúť nadpis zoznamu na „Reprezentanti".
+  var _gpMgrOnlyReps = (USAGE_VIEW.line !== 'gyn') && (typeof MGR_STATE !== 'undefined' && !!MGR_STATE.role && MGR_STATE.role !== 'admin');
+  var _onlyReps = _gynMgrOnlyReps || _gpMgrOnlyReps;
   // pulz: aktívni dnes / týždeň, spolu otvorení
   var today = 0, week = 0, opens = 0;
   list.forEach(function(l){
@@ -20199,7 +20219,7 @@ function usageRenderTeam(data) {
   html += '<div class="act-pulse-card"><div class="act-pulse-num">' + week + '<span style="font-size:14px;color:#7AABCC">/' + list.length + '</span></div><div class="act-pulse-lbl">Tento týždeň</div></div>';
   html += '<div class="act-pulse-card"><div class="act-pulse-num">' + opens + '</div><div class="act-pulse-lbl">Otvorení appky</div></div>';
   html += '</div>';
-  html += '<div class="act-section-lbl">' + (_gynMgrOnlyReps ? 'Reprezentanti' : 'Používatelia') + ' · posledných ' + USAGE_VIEW.dni + ' dní</div>';
+  html += '<div class="act-section-lbl">' + (_onlyReps ? 'Reprezentanti' : 'Používatelia') + ' · posledných ' + USAGE_VIEW.dni + ' dní</div>';
   list.forEach(function(l){
     var r = reps[l] || { opens:0, clicks:0, timeS:0, last:'', sections:{} };
     var name = usageRepName(l);
