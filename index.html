@@ -2220,7 +2220,9 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .gyn-cal-pend-badge{font-size:9.5px;font-weight:800;color:#D97706;background:#FEF3C7;border-radius:999px;padding:2px 7px;text-transform:uppercase;letter-spacing:.03em;vertical-align:middle}
   .gyn-cal-rej-badge{font-size:9.5px;font-weight:800;color:#DC2626;background:#FEF2F2;border-radius:999px;padding:2px 7px;text-transform:uppercase;letter-spacing:.03em;vertical-align:middle}
   /* odznak počtu žiadostí na nav tlačidle */
-  .gyn-nav-btn{position:relative}
+  /* Kotva pre absolútne umiestnený odznak — musí byť na všetkých nav tlačidlách,
+     kam sa odznak vešia: gyn nav, rep nav, zdieľaný panel aj manažérske subtaby. */
+  .gyn-nav-btn,.rep-nav-btn,.panel-nav-btn,.mgr-subtab{position:relative}
   .gyn-cal-navbadge{position:absolute;top:4px;right:calc(50% - 22px);min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:#DC2626;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(220,38,38,.5);line-height:1}
   /* spodný panel — pridávanie eventu */
   #gyn-cal-sheet-bd{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;animation:emptyFadeIn .2s ease both}
@@ -3226,7 +3228,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.32.7';
+var APP_VERSION = '2.32.8';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
