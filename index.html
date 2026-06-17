@@ -3230,7 +3230,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.32.9';
+var APP_VERSION = '2.32.10';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -14102,7 +14102,7 @@ function gynHistShow(el) {
 // events: plochý zoznam. Event = { id,type,title,allDay,dateStart,dateEnd,timeStart,
 //   timeEnd,location,note,owner,ownerRole,status('approved'|'pending'),
 //   visibility('private'|'managers'|'all'),approvedBy,createdAt }
-var GYN_CAL = { y:0, m:0, _init:false, events:[], _sheetDate:null, _formEditId:null, _formType:null, _formAllDay:true, _formAud:null, _formAudForType:null, _formDs:'', _formDe:'', _dpOpen:null, _dpY:0, _dpM:0, _formTs:'', _formTe:'', _tpOpen:null, _rejecting:null, _agendaView:'prehlad', _approveWarn:null, _syncing:false, _synced:false, _firstSyncDone:false };
+var GYN_CAL = { y:0, m:0, _init:false, events:[], _sheetDate:null, _formEditId:null, _formType:null, _formAllDay:true, _formAud:null, _formAudForType:null, _formDs:'', _formDe:'', _dpOpen:null, _dpY:0, _dpM:0, _formTs:'', _formTe:'', _tpOpen:null, _rejecting:null, _agendaView:'prehlad', _approveWarn:null, _syncing:false, _synced:false, _everSyncedOk:false };
 var GYN_CAL_MONTHS = ['Január','Február','Marec','Apríl','Máj','Jún','Júl','August','September','Október','November','December'];
 var GYN_CAL_WD = ['Po','Ut','St','Št','Pi','So','Ne'];
 var GYN_CAL_WD_FULL = ['Pondelok','Utorok','Streda','Štvrtok','Piatok','Sobota','Nedeľa'];
@@ -14332,26 +14332,23 @@ function gynCalSync(){
     .then(function(d){
       if(d && d.ok===true && Array.isArray(d.events)){
         var fresh=d.events.map(gynCalNormEvent);          // normalizuj ISO dátumy zo Sheets
-        // Prekresli LEN keď sa obsah naozaj zmenil — inak žiadny preblik.
+        var wasFirstOk=!GYN_CAL._everSyncedOk;
+        GYN_CAL._everSyncedOk=true;                        // ÚSPEŠNÝ sync → už nikdy „Načítavam…"
+        // Prekresli keď sa obsah zmenil, ALEBO pri prvom úspešnom synci (zruš loading aj pri 0 eventoch).
         if(gynCalSig(fresh) !== gynCalSig(GYN_CAL.events)){
           GYN_CAL.events=fresh;
           gynCalPersist();                                // obnov zrkadlo
           var el=gynCalHost();
           if(el) gynKalShow(el, getSession());
           gynCalUpdateBadge();
+        } else if(wasFirstOk){
+          var el0=gynCalHost();
+          if(el0) gynKalShow(el0, getSession());
         }
       }
     })
     .catch(function(){})                                   // offline / backend nenasadený → lokál ostáva
-    .then(function(){
-      GYN_CAL._syncing=false;
-      // Prvý sync dobehol → zruš prípadný „Načítavam…" stav (aj keď neprišli žiadne eventy).
-      if(!GYN_CAL._firstSyncDone){
-        GYN_CAL._firstSyncDone=true;
-        var el=gynCalHost();
-        if(el) gynKalShow(el, getSession());
-      }
-    });
+    .then(function(){ GYN_CAL._syncing=false; });
 }
 // Manuálny sync — ↻ tlačidlo v hlavičke. Krátka animácia + načítanie zo Sheets.
 function gynCalManualSync(btn){
@@ -14709,7 +14706,9 @@ function gynCalShiftYM(y, m, delta){
 function gynKalShow(el, user) {
   if(!el) return;
   if(!GYN_CAL._init){ var t=new Date(); GYN_CAL.y=t.getFullYear(); GYN_CAL.m=t.getMonth(); GYN_CAL._init=true; gynCalLoadLocal(); }
-  if(!GYN_CAL._synced){ GYN_CAL._synced=true; gynCalSync(); }   // prvé otvorenie → načítaj zo Sheets
+  // Spusti sync vždy, kým nemáme ani jeden úspešný (a žiadny práve nebeží) → loading sa rozsvieti
+  // pri každom otvorení prázdneho kalendára, nielen pri úplne prvom (príznak sa „nespotrebuje").
+  if(gynCalRemoteOn() && !GYN_CAL._syncing && (!GYN_CAL._synced || !GYN_CAL._everSyncedOk)){ GYN_CAL._synced=true; gynCalSync(); }
   var y=GYN_CAL.y, m=GYN_CAL.m;
   var now=new Date(), tY=now.getFullYear(), tM=now.getMonth(), tD=now.getDate();
 
@@ -14721,7 +14720,7 @@ function gynKalShow(el, user) {
   var evList=gynCalMonthEvents(y,m), agenda='';
   // Loading stav LEN pri úplne prázdnej cache a kým prvý sync nedobehol (prvé prihlásenie / nové
   // zariadenie). Keď je už niečo v cache, nič sa nezobrazuje — nové udalosti sa ticho dosynchronizujú.
-  var firstLoading = (GYN_CAL.events.length===0 && !GYN_CAL._firstSyncDone && gynCalRemoteOn());
+  var firstLoading = (GYN_CAL.events.length===0 && gynCalRemoteOn() && !GYN_CAL._everSyncedOk);
   if(firstLoading){
     agenda='<div class="gyn-cal-agenda-empty"><span class="gyn-cal-loadspin"></span>Načítavam udalosti…</div>';
   } else if(!evList.length){
