@@ -3234,7 +3234,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.33.0';
+var APP_VERSION = '2.33.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -15433,6 +15433,9 @@ function gynCalRosterGroups(){
     try {
       var all=(typeof MGR_ALL!=='undefined' && MGR_ALL)||[];
       all.forEach(function(l){ l=String(l||'').toLowerCase(); if(!l||l===self) return; gReps.push({login:l, name:gynCalPersonName(l)}); });
+      // Manažéri LEN zo živého roster-a (getManagers → Sheet). Hardcode MGR_USERS sa tu
+      // zámerne nepoužíva — inak by premenované/zrušené účty (napr. starý am.east) viseli
+      // ako „duchovia" aj po premenovaní v Sheete. Rename v Sheete sa tak prejaví automaticky.
       var mgrs=(typeof MGR_STATE!=='undefined' && MGR_STATE.managers)||[];
       mgrs.forEach(function(m){
         var l=String((m&&m.username)||'').trim().toLowerCase();
@@ -15440,14 +15443,6 @@ function gynCalRosterGroups(){
         seenMgrs[l]=1;
         gMgrs.push({login:l, name:m.name || gynCalPersonName(l)});
       });
-      if(typeof MGR_USERS!=='undefined'){
-        Object.keys(MGR_USERS).forEach(function(l){
-          l=String(l||'').trim().toLowerCase();
-          if(!l || l===self || seenMgrs[l]) return;
-          seenMgrs[l]=1;
-          gMgrs.push({login:l, name:gynCalPersonName(l)});
-        });
-      }
     } catch(e){}
     var byName=function(a,b){ return String(a.name).localeCompare(String(b.name),'sk'); };
     gReps.sort(byName); gMgrs.sort(byName);
@@ -15686,8 +15681,7 @@ var MGR_REP_NAMES = {
   'd.kosc':       'Dionýz Košč',
   'p.holansky':   'Peter Holanský',
   'v.dzurilla':   'Viktor Dzurilla',
-  'am.west':      'AM West',
-  'am.east':      'AM East'
+  'am.west':      'AM West'
 };
 var MGR_AM_WEST = ['j.bohovic','v.hatinova','v.hromadkova','z.lescis','j.krkoska','i.kozakova'];
 var MGR_AM_EAST = ['k.czidor','r.fekiacova','l.macakova','z.lapsan','m.sabol','a.makis'];
@@ -15717,8 +15711,9 @@ var MGR_USERS = {
   'd.kosc':       'boss',    // Dionýz Košč — boss, vidí všetkých
   'p.holansky':   'pm',      // Peter Holanský — PM, vidí všetkých
   'v.dzurilla':   'pm',      // Viktor Dzurilla — PM, vidí všetkých
-  'am.west':      'amwest',  // AM West — vidí len reps West
-  'am.east':      'ameast'   // AM East — vidí len reps East
+  'am.west':      'amwest'   // AM West — vidí len reps West
+  // 'am.east' odstránený — premenovaný v Sheete na osobný login (l.faber, rola „am east"),
+  // ten sa deteguje zo Sheetu cez mgrDetectRole. Hardcode už netreba.
 };
 
 // Detekcia manažérskej role — jednoduchý lookup, žiadne heuristiky
