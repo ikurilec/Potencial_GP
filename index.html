@@ -3230,7 +3230,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.32.10';
+var APP_VERSION = '2.32.11';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10072,6 +10072,19 @@ function gynPreprocessData(data) {
   var _pillToPatch = gynGetPillToPatch();
   var _mapKey = Object.keys(_pillToPatch).sort().join(',');
   if(data._preprocessedMapKey === _mapKey) return data; // už spracované s rovnakou mapou
+  // IDEMPOTENCIA: drž surový (nezpatchovaný) snapshot a pred KAŽDÝM spracovaním z neho resetuj.
+  // Bez toho sa pri zmene pill→patch mapy (predaje dorazia pred plným rostrom, alebo re-preprocess
+  // perzistovanej cache) both-line predaje (Escapelle) aditívne ZDVOJNÁSOBILI → plnenie >100 %.
+  // Snapshot sa berie RAZ — pri prvom spracovaní (vtedy sú dáta ešte surové, hneď po fetchi).
+  if(!data._rawSnap){
+    data._rawSnap = {
+      predaje: JSON.parse(JSON.stringify(data.predaje || {})),
+      plan:    JSON.parse(JSON.stringify(data.plan || {}))
+    };
+  } else {
+    data.predaje = JSON.parse(JSON.stringify(data._rawSnap.predaje));
+    data.plan    = JSON.parse(JSON.stringify(data._rawSnap.plan));
+  }
   data._preprocessedMapKey = _mapKey;
   // 1) Reassign — produkty ako Azalia presunúť z pill repa na patch repa
   GYN_REASSIGN_TO_PATCH.forEach(function(prod){
