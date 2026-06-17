@@ -3230,7 +3230,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.32.11';
+var APP_VERSION = '2.32.12';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -14434,6 +14434,16 @@ function gynCalMonthEvents(y,m){
   });
   return out;
 }
+// Pre ZOZNAM (Prehľad / Absencie tímu) v AKTUÁLNOM mesiaci skry už ukončené udalosti
+// (koncový deň < dnes) — nech sa Prehľad nepratá tým, čo je za nami. Viacdňové ostávajú,
+// kým neskončia (koncový deň ≥ dnes). Iný mesiac (minulý/budúci) → ponechaj všetky.
+// Mriežka dní sa NEFILTRUJE — na minulú udalosť sa stále dá dostať kliknutím na deň.
+function gynCalHidePastList(list, y, m){
+  var now=new Date();
+  if(y!==now.getFullYear() || m!==now.getMonth()) return list;   // filtruj len aktuálny mesiac
+  var todayK=gynCalDateKey(now.getFullYear(), now.getMonth(), now.getDate());
+  return (list||[]).filter(function(e){ return String(e.dateEnd||e.dateStart) >= todayK; });
+}
 
 // ── Absencie tímu (krok 2d) — manažérsky pohľad po osobách ──
 function gynCalSetAgendaView(v){
@@ -14456,6 +14466,7 @@ function gynCalTeamAbsences(y,m){
     var t=gynCalTypeById(e.type)||{};
     return t.cat==='absencia' && e.status!=='rejected' && e.dateStart<=last && e.dateEnd>=first && gynCalVisibleToMe(e);
   });
+  evs=gynCalHidePastList(evs, y, m);          // v aktuálnom mesiaci skry už ukončené absencie
   var byOwner={};
   evs.forEach(function(e){
     var k=String(e.owner||'').toLowerCase();
@@ -14730,14 +14741,17 @@ function gynKalShow(el, user) {
   // ── agenda: jeden riadok na udalosť (od–do), nie po dňoch ──
   var monthFirst=gynCalDateKey(y,m,1);
   var grp=gynCalRoleGroup(getSession());
-  var evList=gynCalMonthEvents(y,m), agenda='';
+  var evAll=gynCalMonthEvents(y,m);
+  var evList=gynCalHidePastList(evAll, y, m), agenda='';   // skry ukončené v aktuálnom mesiaci
   // Loading stav LEN pri úplne prázdnej cache a kým prvý sync nedobehol (prvé prihlásenie / nové
   // zariadenie). Keď je už niečo v cache, nič sa nezobrazuje — nové udalosti sa ticho dosynchronizujú.
   var firstLoading = (GYN_CAL.events.length===0 && gynCalRemoteOn() && !GYN_CAL._everSyncedOk);
   if(firstLoading){
     agenda='<div class="gyn-cal-agenda-empty"><span class="gyn-cal-loadspin"></span>Načítavam udalosti…</div>';
   } else if(!evList.length){
-    agenda='<div class="gyn-cal-agenda-empty"><span class="gyn-cal-agenda-empty-icon">🗓️</span>Tento mesiac zatiaľ nič naplánované</div>';
+    agenda = (evAll.length > evList.length)
+      ? '<div class="gyn-cal-agenda-empty"><span class="gyn-cal-agenda-empty-icon">✅</span>Žiadne nadchádzajúce udalosti — staršie nájdeš kliknutím na deň</div>'
+      : '<div class="gyn-cal-agenda-empty"><span class="gyn-cal-agenda-empty-icon">🗓️</span>Tento mesiac zatiaľ nič naplánované</div>';
   } else {
     evList.forEach(function(ev){
       var tt=gynCalTypeById(ev.type)||{color:'#2563EB'};
