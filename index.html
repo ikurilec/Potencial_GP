@@ -2191,6 +2191,8 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .gyn-cal-abs-chip.pending{background:#fff;border:1.5px dashed #CBD5E1;color:#94A3B8}
   .gyn-cal-abs-chip-ic{font-size:12px}
   .gyn-cal-agenda-empty-icon{font-size:26px;display:block;margin-bottom:7px;filter:drop-shadow(0 3px 8px rgba(15,23,42,.08))}
+  .gyn-cal-loadspin{display:block;width:22px;height:22px;margin:0 auto 9px;border:2.5px solid #E2E8F0;border-top-color:#2563EB;border-radius:50%;animation:gynCalSpin .7s linear infinite}
+  @media(prefers-reduced-motion:reduce){.gyn-cal-loadspin{animation:none}}
   .gyn-cal-day{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--color-border-light)}
   .gyn-cal-day:last-child{border-bottom:none}
   .gyn-cal-day-chip{flex-shrink:0;width:42px;text-align:center}
@@ -14100,7 +14102,7 @@ function gynHistShow(el) {
 // events: plochý zoznam. Event = { id,type,title,allDay,dateStart,dateEnd,timeStart,
 //   timeEnd,location,note,owner,ownerRole,status('approved'|'pending'),
 //   visibility('private'|'managers'|'all'),approvedBy,createdAt }
-var GYN_CAL = { y:0, m:0, _init:false, events:[], _sheetDate:null, _formEditId:null, _formType:null, _formAllDay:true, _formAud:null, _formAudForType:null, _formDs:'', _formDe:'', _dpOpen:null, _dpY:0, _dpM:0, _formTs:'', _formTe:'', _tpOpen:null, _rejecting:null, _agendaView:'prehlad', _approveWarn:null, _syncing:false, _synced:false };
+var GYN_CAL = { y:0, m:0, _init:false, events:[], _sheetDate:null, _formEditId:null, _formType:null, _formAllDay:true, _formAud:null, _formAudForType:null, _formDs:'', _formDe:'', _dpOpen:null, _dpY:0, _dpM:0, _formTs:'', _formTe:'', _tpOpen:null, _rejecting:null, _agendaView:'prehlad', _approveWarn:null, _syncing:false, _synced:false, _firstSyncDone:false };
 var GYN_CAL_MONTHS = ['Január','Február','Marec','Apríl','Máj','Jún','Júl','August','September','Október','November','December'];
 var GYN_CAL_WD = ['Po','Ut','St','Št','Pi','So','Ne'];
 var GYN_CAL_WD_FULL = ['Pondelok','Utorok','Streda','Štvrtok','Piatok','Sobota','Nedeľa'];
@@ -14341,7 +14343,15 @@ function gynCalSync(){
       }
     })
     .catch(function(){})                                   // offline / backend nenasadený → lokál ostáva
-    .then(function(){ GYN_CAL._syncing=false; });
+    .then(function(){
+      GYN_CAL._syncing=false;
+      // Prvý sync dobehol → zruš prípadný „Načítavam…" stav (aj keď neprišli žiadne eventy).
+      if(!GYN_CAL._firstSyncDone){
+        GYN_CAL._firstSyncDone=true;
+        var el=gynCalHost();
+        if(el) gynKalShow(el, getSession());
+      }
+    });
 }
 // Manuálny sync — ↻ tlačidlo v hlavičke. Krátka animácia + načítanie zo Sheets.
 function gynCalManualSync(btn){
@@ -14709,7 +14719,12 @@ function gynKalShow(el, user) {
   var monthFirst=gynCalDateKey(y,m,1);
   var grp=gynCalRoleGroup(getSession());
   var evList=gynCalMonthEvents(y,m), agenda='';
-  if(!evList.length){
+  // Loading stav LEN pri úplne prázdnej cache a kým prvý sync nedobehol (prvé prihlásenie / nové
+  // zariadenie). Keď je už niečo v cache, nič sa nezobrazuje — nové udalosti sa ticho dosynchronizujú.
+  var firstLoading = (GYN_CAL.events.length===0 && !GYN_CAL._firstSyncDone && gynCalRemoteOn());
+  if(firstLoading){
+    agenda='<div class="gyn-cal-agenda-empty"><span class="gyn-cal-loadspin"></span>Načítavam udalosti…</div>';
+  } else if(!evList.length){
     agenda='<div class="gyn-cal-agenda-empty"><span class="gyn-cal-agenda-empty-icon">🗓️</span>Tento mesiac zatiaľ nič naplánované</div>';
   } else {
     evList.forEach(function(ev){
