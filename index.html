@@ -2181,6 +2181,10 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .gyn-cal-team-row{display:flex;flex-direction:column;gap:8px;padding:11px 8px;margin:0 -8px;border-radius:10px;border-bottom:1px solid var(--color-border-light);cursor:pointer;transition:background var(--t-fast)}
   .gyn-cal-team-row:last-child{border-bottom:none}
   .gyn-cal-team-row:active{background:#F8FAFC}
+  .gyn-cal-team-row.past{opacity:.5}
+  .gyn-cal-abs-chip.past{opacity:.55;filter:grayscale(.3)}
+  .gyn-cal-team-divider{display:flex;align-items:center;gap:8px;margin:12px 0 6px;color:#94A3B8;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+  .gyn-cal-team-divider::before,.gyn-cal-team-divider::after{content:"";flex:1;height:1px;background:var(--color-border-light)}
   .gyn-cal-team-person{display:flex;align-items:center;gap:9px;min-width:0}
   .gyn-cal-team-av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:700;color:#fff;font-family:var(--font-display);flex-shrink:0;overflow:hidden;letter-spacing:.02em}
   .gyn-cal-team-av.has-avatar{padding:0;background:transparent!important}
@@ -3230,7 +3234,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.32.12';
+var APP_VERSION = '2.32.13';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -14466,7 +14470,6 @@ function gynCalTeamAbsences(y,m){
     var t=gynCalTypeById(e.type)||{};
     return t.cat==='absencia' && e.status!=='rejected' && e.dateStart<=last && e.dateEnd>=first && gynCalVisibleToMe(e);
   });
-  evs=gynCalHidePastList(evs, y, m);          // v aktuálnom mesiaci skry už ukončené absencie
   var byOwner={};
   evs.forEach(function(e){
     var k=String(e.owner||'').toLowerCase();
@@ -14482,22 +14485,48 @@ function gynCalTeamHtml(y,m){
   var rows=gynCalTeamAbsences(y,m);
   if(!rows.length) return '<div class="gyn-cal-agenda-empty"><span class="gyn-cal-agenda-empty-icon">🏖️</span>Tento mesiac nikto z tímu nehlási absenciu</div>';
   var monthFirst=gynCalDateKey(y,m,1);
-  return rows.map(function(o){
+  var now=new Date(), todayK=gynCalDateKey(now.getFullYear(),now.getMonth(),now.getDate());
+  var isCurrentMonth=(y===now.getFullYear() && m===now.getMonth());
+  // Vyrenderuj jeden riadok osoby. rowPast = celá osoba je minulá (sivá); minulé čipy aj
+  // u aktuálnej osoby sa stmavia samostatne (.past).
+  function renderRow(o, rowPast){
     var first=o.items[0];
     var firstOpen=(first.dateStart<monthFirst?monthFirst:first.dateStart);
     var chips=o.items.map(function(e){
       var t=gynCalTypeById(e.type)||{icon:'•',color:'#64748B'};
       var pend=e.status==='pending';
+      var chipPast=isCurrentMonth && String(e.dateEnd||e.dateStart)<todayK;
       var open=(e.dateStart<monthFirst?monthFirst:e.dateStart);
-      return '<span class="gyn-cal-abs-chip'+(pend?' pending':'')+'"'+(pend?'':' style="background:'+t.color+'1A;color:'+t.color+'"')+
+      return '<span class="gyn-cal-abs-chip'+(pend?' pending':'')+(chipPast?' past':'')+'"'+(pend?'':' style="background:'+t.color+'1A;color:'+t.color+'"')+
         ' onclick="event.stopPropagation();gynCalOpenEvent(\''+open+'\',\''+e.id+'\')">'+
         '<span class="gyn-cal-abs-chip-ic">'+t.icon+'</span>'+gynCalAbsChipLabel(e)+(pend?' ⏳':'')+'</span>';
     }).join('');
-    return '<div class="gyn-cal-team-row" onclick="gynCalOpenEvent(\''+firstOpen+'\',\''+first.id+'\')">'+
+    return '<div class="gyn-cal-team-row'+(rowPast?' past':'')+'" onclick="gynCalOpenEvent(\''+firstOpen+'\',\''+first.id+'\')">'+
       '<div class="gyn-cal-team-person"><span class="gyn-cal-team-av avatar-fallback" data-username="'+gynEsc(o.login)+'" data-name="'+gynEsc(o.name)+'"></span><span class="gyn-cal-team-name">'+gynEsc(o.name)+'</span></div>'+
       '<div class="gyn-cal-team-chips">'+chips+'</div>'+
     '</div>';
-  }).join('');
+  }
+  // Iný mesiac (minulý/budúci) → bez delenia, len chronologicky podľa prvej absencie.
+  if(!isCurrentMonth){
+    rows.sort(function(a,b){ return (a.items[0].dateStart||'')<(b.items[0].dateStart||'')?-1:1; });
+    return rows.map(function(o){ return renderRow(o,false); }).join('');
+  }
+  // Aktuálny mesiac → rozdeľ: hore osoby s prebiehajúcou/nadchádzajúcou absenciou (najbližšie
+  // dnešku navrchu), čiara, pod ňou už ukončené (sivé, najnovšie hore).
+  var upcoming=[], past=[];
+  rows.forEach(function(o){
+    var upc=o.items.filter(function(e){ return String(e.dateEnd||e.dateStart)>=todayK; });
+    if(upc.length){ o._key=upc[0].dateStart||''; upcoming.push(o); }
+    else { o._key=(o.items[o.items.length-1].dateEnd||o.items[o.items.length-1].dateStart||''); past.push(o); }
+  });
+  upcoming.sort(function(a,b){ return a._key<b._key?-1:a._key>b._key?1:0; });   // najbližšie dnešku hore
+  past.sort(function(a,b){ return a._key>b._key?-1:a._key<b._key?1:0; });        // najnovšie minulé hore
+  var html=upcoming.map(function(o){ return renderRow(o,false); }).join('');
+  if(past.length){
+    html+='<div class="gyn-cal-team-divider"><span>Minulé</span></div>';
+    html+=past.map(function(o){ return renderRow(o,true); }).join('');
+  }
+  return html;
 }
 
 // ── Viditeľnosť + schvaľovanie absencií (krok 2b, zatiaľ lokálne) ──
