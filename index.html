@@ -3234,7 +3234,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.33.2';
+var APP_VERSION = '2.33.3';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -20379,7 +20379,6 @@ function usageRenderRep(data, login) {
   function _cleanDetail(d){ return String(d||'').replace(/^produkt:\s*/i,'').replace(/^produkt sheet:\s*/i,'').trim(); }
   var hm = []; for (var i=0;i<7*24;i++) hm.push(0); // deň(0=Po..6=Ne) × hodina
   events.forEach(function(ev){
-    if (ev.type === 'app_open') opens++;
     if (ev.type === 'click') clicks++;
     if (ev.type === 'section_time' && ev.duration) { timeS += ev.duration; sectionTime[ev.section] = (sectionTime[ev.section]||0) + ev.duration; }
     if (ev.type === 'section_open') sectionCount[ev.section] = (sectionCount[ev.section]||0) + 1;
@@ -20400,6 +20399,10 @@ function usageRenderRep(data, login) {
     var dow = (d.getDay() + 6) % 7; // pondelok=0
     hm[dow*24 + d.getHours()]++;
   });
+  // Relácie poskladáme raz a použijeme ich aj ako počet „otvorení" — zlúčené iOS cold-reloady
+  // (pozri usageBuildSessions) tak nenafúknu štatistiku oproti tomu, čo vidno v Priebehu relácií.
+  var sessions = usageBuildSessions(events);
+  opens = sessions.length;
   var avgSession = opens ? Math.round(timeS / opens) : 0;
 
   var html = '';
@@ -20537,7 +20540,6 @@ function usageRenderRep(data, login) {
   // Zoskupíme eventy do relácií (každé otvorenie appky = nová relácia; dlhé ticho tiež).
   // Z každej relácie poskladáme čitateľný sled: otvoril → bol v sekcii X s → … → odišiel.
   html += '<div class="act-section-lbl">🧭 Priebeh relácií</div>';
-  var sessions = usageBuildSessions(events);
   if (!sessions.length) {
     html += '<div class="act-empty" style="padding:18px 12px">Žiadne zaznamenané relácie za toto obdobie.</div>';
   } else {
@@ -20652,11 +20654,17 @@ function usageActiveDur(s) {
 function usageBuildSessions(events) {
   var sessions = [];
   var cur = null;
-  var GAP = 30 * 60 * 1000; // 30 minút bez aktivity → berieme ako novú reláciu
+  var GAP = 30 * 60 * 1000;   // 30 minút bez aktivity → berieme ako novú reláciu
+  var REOPEN = 2 * 60 * 1000; // app_open do 2 min po poslednej aktivite NEzakladá novú reláciu.
+                              // iOS appku na ploche (PWA) v pozadí zabíja a pri návrate načíta
+                              // odznova → každý cold-reload = ďalší app_open. Bez tohto by jedno
+                              // reálne pozretie vyšlo ako N otvorení („5× otvoril · 0 s aktívne").
   (events || []).forEach(function(ev){
     var t = Date.parse(ev.ts);
     if (!isFinite(t)) return;
-    if (ev.type === 'app_open' || !cur || (t - cur.lastTs) > GAP) {
+    var startNew = !cur || (t - cur.lastTs) > GAP ||
+                   (ev.type === 'app_open' && (t - cur.lastTs) > REOPEN);
+    if (startNew) {
       cur = { startTs: t, lastTs: t, openDetail: (ev.type === 'app_open' ? ev.detail : ''), steps: [], close: null };
       sessions.push(cur);
     }
