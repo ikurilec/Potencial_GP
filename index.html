@@ -3234,7 +3234,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.34.0';
+var APP_VERSION = '2.34.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -20356,9 +20356,25 @@ function usageRenderTeam(data) {
   });
 }
 
+// Sekcia Aktivity podľa práve zobrazenej línie (kanonizuje sa na „Aktivita").
+function usageActivitySection(){ return (USAGE_VIEW.line === 'gyn' ? 'Gyn · ' : 'Manažér · ') + 'Aktivita'; }
+
 function usageOpenRepActivity(login) {
   window.scrollTo(0, 0);
+  // Zaznamenaj, koho aktivitu si manažér otvoril → v jeho Priebehu relácií sa potom
+  // ukáže „Aktivita · <meno reprezentanta>" (inak by tam bolo len „Aktivita" bez kontextu).
+  try {
+    var who = (typeof usageRepName === 'function') ? usageRepName(login) : login;
+    usageSectionEnter(usageActivitySection(), who || login);
+  } catch(e){}
   usageStatsLoad(login);
+}
+
+// Návrat na tímový prehľad — znovu otvor čistú sekciu „Aktivita" (bez mena repa),
+// aby sa čas strávený späť v zozname nepripísal poslednému prezeranému reprezentantovi.
+function usageBackToTeam() {
+  try { usageSectionEnter(usageActivitySection()); } catch(e){}
+  usageStatsLoad();
 }
 
 // Šum v štatistike — kliknutia, ktoré nič nehovoria o tom, čo reprezentanta zaujíma:
@@ -20426,7 +20442,7 @@ function usageRenderRep(data, login) {
   var avgSession = opens ? Math.round(timeS / opens) : 0;
 
   var html = '';
-  html += '<button class="act-back" onclick="usageStatsLoad()">&larr; Späť na tím</button>';
+  html += '<button class="act-back" onclick="usageBackToTeam()">&larr; Späť na tím</button>';
   html += '<div class="act-dhdr"><div class="act-dhdr-avatar" data-username="' + login + '" style="background:' + color + '">' + (typeof mgrInitials==='function'?mgrInitials(name):'') + '</div>' +
           '<div><div class="act-dhdr-name">' + mgrEscape(name) + '</div><div class="act-dhdr-sub">naposledy ' + usageAgo(last) + ' · posledných ' + USAGE_VIEW.dni + ' dní</div></div></div>';
 
@@ -20656,6 +20672,7 @@ function usageSectionIcon(sec) {
   if (s.indexOf('Kalendár') !== -1) return '📅';
   if (s.indexOf('Nastaven') !== -1) return '⚙️';
   if (s.indexOf('Avatar') !== -1)  return '🎭';
+  if (s.indexOf('Aktivita') !== -1) return '📊';
   if (s.indexOf('Manažér') !== -1) return '📊';
   if (s.indexOf('Formulár') !== -1) return '📝';
   return '•';
