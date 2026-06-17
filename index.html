@@ -3234,7 +3234,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.32.13';
+var APP_VERSION = '2.33.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -4431,6 +4431,73 @@ function usageLine() {
   try { var s = getSession(); return (s && s.line === 'gyn') ? 'gyn' : 'gp'; } catch(e){ return 'gp'; }
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// Aktivita — kanonický model sekcií (Sekcia › cesta pod-položiek)
+// Spec: docs/superpowers/specs/2026-06-17-aktivita-usage-tracking-redesign-design.md
+// ══════════════════════════════════════════════════════════════════════
+
+// Oddeľovač pod-cesty v poli `detail` (bez zmeny schémy Sheetu).
+var USAGE_PATH_SEP = ' ▸ ';
+
+// Render-normalizácia: starý / variantný názov sekcie → kanonický.
+// Upace AJ staré dáta pri zobrazení. Volá sa pri zbere aj pri agregácii.
+function usageCanonSection(raw){
+  var s = String(raw == null ? '' : raw).trim();
+  if (!s) return '';
+  s = s.replace(/^Manažér\s*·\s*/i, '').replace(/^Gyn\s*·\s*/i, '');   // zhoď prefixy variantov
+  var map = {
+    'Formulár': 'Hľadanie lekára',
+    'História': 'História návštev',                  // Golem hist-overlay + starý gyn 'visits'
+    'Trhový podiel · graf okresu': 'Trhový podiel'    // okres ide do cesty, nie do názvu
+  };
+  return map[s] || s;
+}
+
+// Poskladaj pole `detail` z cesty pod-položiek: ['Escapelle','Senica'] → 'Escapelle ▸ Senica'.
+function usagePathFmt(path){
+  if (!path) return '';
+  if (typeof path === 'string') return path.trim();
+  if (!Array.isArray(path)) return String(path);
+  return path.filter(function(x){ return x != null && String(x).trim() !== ''; })
+             .map(function(x){ return String(x).trim(); }).join(USAGE_PATH_SEP);
+}
+
+// Rozparsuj `detail` späť na pole krokov — tolerantne k STARÝM formátom:
+// 'Escapelle ▸ Senica', 'produkt: Escapelle', 'okres graf: Senica (Escapelle)',
+// 'sub-produkt: X', 'produkt sheet: X'. Vráti [] keď je to len šum / prázdne.
+function usagePathParse(detail){
+  var d = String(detail == null ? '' : detail).trim();
+  if (!d) return [];
+  if (d.indexOf(USAGE_PATH_SEP) !== -1) {
+    return d.split(USAGE_PATH_SEP).map(function(x){ return x.trim(); }).filter(Boolean);
+  }
+  // staré prefixované formáty → jeden zmysluplný krok
+  var m = d.match(/^(?:produkt(?:\s*sheet)?|sub-produkt)\s*:\s*(.+)$/i);
+  if (m) return [m[1].trim()];
+  m = d.match(/^okres\s*graf\s*:\s*(.+?)(?:\s*\(.*\))?$/i);
+  if (m) return [m[1].trim()];
+  return [d];
+}
+
+// Health štítok podľa sviežosti (prahy: Aktívny ≤1 deň · Vlažný 2–4 dni · Spí >4 · Nikdy).
+function usageHealth(iso){
+  if (!iso) return { key:'nikdy', label:'Nikdy', cls:'n' };
+  var t = Date.parse(iso);
+  if (!isFinite(t)) return { key:'nikdy', label:'Nikdy', cls:'n' };
+  var dni = (Date.now() - t) / (24*60*60*1000);
+  if (dni <= 1) return { key:'aktivny', label:'Aktívny', cls:'g' };
+  if (dni <= 4) return { key:'vlazny',  label:'Vlažný',  cls:'o' };
+  return { key:'spi', label:'Spí', cls:'r' };
+}
+
+// Whitelist kľúčových akcií — len tieto sa zobrazia v paneli „Kľúčové akcie".
+// (Inštrumentácia ich posiela cez usageAction; render filtruje podľa tejto sady.)
+var USAGE_KEY_ACTIONS = [
+  'Zalogoval návštevu', 'Otvoril kartu lekára', 'Pridal/upravil poznámku',
+  'Označil lekáreň (oslovená)', 'Pridal udalosť do kalendára', 'Požiadal o absenciu',
+  'Schválil/zamietol absenciu', 'Pozrel produkt (Trhový podiel)', 'Zmena avatara'
+];
+
 // Hlavná funkcia — zaznamenaj jeden event do buffera.
 function usageTrack(type, section, detail, durationS) {
   try {
@@ -4481,6 +4548,19 @@ function usageSectionClose() {
 function usageDrill(section, detail) { usageTrack('drilldown', section, detail); }
 // Akcia — submit záznamu, označenie lekárne, zmena avatara…
 function usageAction(detail, section) { usageTrack('action', section || (USAGE.active && USAGE.active.section) || '', detail); }
+
+// Golem rep úvodná obrazovka (hľadanie lekára) NIE je overlay → bez tohto by sa čas
+// na nej nezaznamenal a relácia by vyšla „0 s · nič nepozeral". Volaj po prihlásení.
+// Self-guard: gyn/reagila majú vlastné landing sekcie, manažér rieši mgrEnter, admin sa netrackuje.
+function usageEnterGolemHome(session){
+  try {
+    var s = session || getSession(); if (!s || !s.username) return;
+    if (s.role === 'admin') return;
+    if ((s.line || 'gp') !== 'gp') return;
+    if (typeof mgrDetectRole === 'function' && mgrDetectRole(s)) return;
+    usageSectionEnter('Hľadanie lekára');
+  } catch(e){}
+}
 
 // Pošli buffer na backend v dávke. useBeacon=true pri odchode zo stránky.
 function usageFlush(useBeacon) {
@@ -4540,7 +4620,17 @@ function usageLabelFor(target) {
       var ph = el.getAttribute('placeholder') || el.getAttribute('name') || el.id || 'pole';
       return 'pole: ' + ph;
     }
-    var txt = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    // Čistý label: preferuj textový sub-label (.st-lbl), inak zhoď odznaky/ikony/čísla dní,
+    // aby nevznikali zlepené nezmysly ako „Všetky226" (tab + badge) či „17Kalendár" (deň + nav).
+    var txt = '';
+    var lblEl = el.querySelector('.st-lbl');
+    if (lblEl) {
+      txt = (lblEl.textContent || '').replace(/\s+/g, ' ').trim();
+    } else {
+      var clone = el.cloneNode(true);
+      try { clone.querySelectorAll('.lk-tab-badge,.lb-tab-badge,.st-emoji,.gci-day,.gci-top,.gyn-cal-navico,.badge,.count,sup').forEach(function(n){ n.remove(); }); } catch(e){}
+      txt = (clone.textContent || '').replace(/\s+/g, ' ').trim();
+    }
     if (txt) return txt.slice(0, 48);
     var aria = el.getAttribute('aria-label') || el.getAttribute('title');
     if (aria) return aria.slice(0, 48);
@@ -4558,7 +4648,7 @@ function usageCurrentSection() {
     if (shown('golem-cal-overlay'))    return 'Kalendár';
     if (shown('lk-overlay') || (typeof LK_STATE !== 'undefined' && LK_STATE.open)) return 'Lekárne';
     if (shown('rep-plnenie-overlay'))  return 'Plnenie';
-    if (shown('hist-overlay'))         return 'História';
+    if (shown('hist-overlay'))         return 'História návštev';
     if (shown('lb-overlay'))           return 'Rebríček';
     if (shown('detail-overlay'))       return 'Karta lekára';
     if (shown('av-overlay'))           return 'Avatar';
@@ -4571,9 +4661,10 @@ function usageCurrentSection() {
     }
     if (document.getElementById('gyn-view') && getComputedStyle(document.getElementById('gyn-view')).display !== 'none') {
       var nav = (typeof GYN_APP !== 'undefined' && GYN_APP.nav) ? GYN_APP.nav : '';
-      return 'Gyn · ' + (nav === 'plnenie' ? 'Plnenie' : nav === 'leaderboard' ? 'Rebríček' : nav === 'kalendar' ? 'Kalendár' : 'História');
+      var gmap = { plnenie:'Plnenie', leaderboard:'Rebríček', kalendar:'Kalendár', visits:'Návštevy', lekarne:'Lekárne', activity:'Aktivita' };
+      return 'Gyn · ' + (gmap[nav] || 'Plnenie');
     }
-    return 'Formulár';
+    return 'Hľadanie lekára';   // Golem rep úvodná obrazovka (predtým 'Formulár')
   } catch(e){ return ''; }
 }
 
@@ -4899,7 +4990,7 @@ function potvrdit(){
   // scenario: kapitacia < 1500 AND total < 3700 → red, vyradit
   var scenario = (kapitacia < 1501 && total < 3700) ? 'vyradit' : (kapitacia < 1501 && total >= 3700) ? 'frekvencia' : (kapitacia >= 1501 && kapitacia <= 1999 && total < 3700) ? 'zvysit' : (kapitacia >= 1501 && kapitacia <= 1999 && total >= 3700) ? 'udrzat' : (kapitacia >= 2000 && total < 3700) ? 'zvysit3' : (kapitacia >= 2000 && total >= 3700) ? 'top' : 'ok';
 
-  usageAction('zadanie záznamu lekára · ' + (scenario || ''), 'Formulár');
+  usageAction('Zalogoval návštevu', 'Hľadanie lekára');   // kľúčová akcia (whitelist)
   // show send popup + scroll to top
   var bar=document.getElementById('send-bar');
   var sendPopup2 = document.getElementById('send-popup');
@@ -6007,6 +6098,7 @@ function saveNoteClick() {
   if(btn){ btn.textContent = 'Ukladám...'; btn.disabled = true; }
   // Aktualizuj item.poznamka aby sa zobrazila hneď
   wrap._item.poznamka = text.trim();
+  if(text.trim()) { try { usageAction('Pridal/upravil poznámku', 'História návštev'); } catch(e){} }   // kľúčová akcia (whitelist)
   saveNote(wrap._item, text, function(){
     renderNoteSection(wrap._item);
   });
@@ -8507,6 +8599,7 @@ function loginSuccess(username, name, role, region, extra) {
   if(localStorage.getItem(TUTORIAL_KEY)){
     setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(false);}else{checkMilestone();} }, 600);
   }
+  usageEnterGolemHome(user);   // zaznamenaj úvodnú obrazovku (fix „0 s · nič nepozeral")
   initTutorial();
   // refreshBadgeFromSheets je nahradená loadInitData() vyššie — história sa načíta cez getInitData
   // Skontroluj notifikácie od admina — výsledky sú pravdepodobne už v cache z prefetchu
@@ -9180,6 +9273,7 @@ function initLogin() {
       setTimeout(function(){ try { hdrAvatarShowTipIfNeeded(); } catch(e){} }, 1500);
       return;
     }
+    usageEnterGolemHome(session);   // zaznamenaj úvodnú obrazovku (fix „0 s · nič nepozeral")
     setTimeout(function(){ updateHdrForUser(session); }, 300);
     setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(false);}else{checkMilestone();} }, 600);
     // refreshBadgeFromSheets nahradená loadInitData() vyššie
@@ -20109,21 +20203,79 @@ function usageRenderTeam(data) {
     var roleRaw = usageRepRole(l).toLowerCase();
     var isRep = !roleRaw || roleRaw.indexOf('rep') !== -1;
     var roleChip = (!isRep && roleRaw) ? '<span class="act-role">' + mgrEscape(usageRepRole(l).toUpperCase()) + '</span>' : '';
+    // Kanonizuj sekcie (zlúč duplikáty) a nájdi najpoužívanejšiu.
+    var canonSecs = {};
+    Object.keys(r.sections || {}).forEach(function(s){ var c = usageCanonSection(s); if (c) canonSecs[c] = (canonSecs[c]||0) + r.sections[s]; });
     var topSec = '';
     var maxC = 0;
-    Object.keys(r.sections || {}).forEach(function(s){ if (r.sections[s] > maxC) { maxC = r.sections[s]; topSec = s; } });
+    Object.keys(canonSecs).forEach(function(s){ if (canonSecs[s] > maxC) { maxC = canonSecs[s]; topSec = s; } });
     var st = usageStatusClass(r.last);
     var color = (typeof strHash === 'function') ? ('hsl(' + (strHash(l) % 360) + ',55%,45%)') : '#0C1E35';
     var meta = r.last ? ('<b>' + (r.opens||0) + '</b> otvorení · ' + usageFmtDur(r.timeS) + (topSec ? ' · ' + topSec : '')) : 'zatiaľ žiadna aktivita';
     var hasPush = !!pushMap[l];
     var pushChip = '<span class="act-push ' + (hasPush ? 'on' : 'off') + '" title="' +
       (hasPush ? 'Notifikácie zapnuté' : 'Notifikácie vypnuté') + '">' + (hasPush ? '🔔' : '🔕') + '</span>';
+    // Health štítok (Aktívny ≤1 deň / Vlažný 2–4 / Spí >4 / Nikdy).
+    var hp = usageHealth(r.last);
+    var hcolor = { g:'#16A34A', o:'#D97706', r:'#DC2626', n:'#94A3B8' }[hp.cls] || '#94A3B8';
+    var healthChip = '<span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:700;color:' + hcolor + ';background:' + hcolor + '1A">' + hp.label + '</span>';
     html += '<div class="act-rep" onclick="usageOpenRepActivity(\'' + l + '\')">' +
       '<div class="act-rep-avatar" data-username="' + l + '" style="background:' + color + '">' + (typeof mgrInitials==='function'?mgrInitials(name):'') + '</div>' +
-      '<div class="act-rep-main"><div class="act-rep-name"><span class="act-rep-nametxt">' + mgrEscape(name) + '</span>' + roleChip + pushChip + '</div><div class="act-rep-meta">' + meta + '</div></div>' +
+      '<div class="act-rep-main"><div class="act-rep-name"><span class="act-rep-nametxt">' + mgrEscape(name) + '</span>' + roleChip + healthChip + pushChip + '</div><div class="act-rep-meta">' + meta + '</div></div>' +
       '<div class="act-rep-status"><span class="act-dot ' + st + '"></span><span class="act-ago">' + usageAgo(r.last) + '</span></div>' +
     '</div>';
   });
+
+  // ── Agreguj kanonické sekcie naprieč tímom: čas (ak backend posiela sectionsTime),
+  //    počet otvorení a koľko ľudí sekciu vôbec otvorilo. ──
+  var secOpens = {}, secTime = {}, secUsers = {}, hasTime = false;
+  list.forEach(function(l){
+    var rr = reps[l]; if (!rr) return;
+    var seen = {};
+    Object.keys(rr.sections || {}).forEach(function(s){
+      var c = usageCanonSection(s); if (!c) return;
+      secOpens[c] = (secOpens[c] || 0) + rr.sections[s];
+      seen[c] = 1;
+    });
+    Object.keys(rr.sectionsTime || {}).forEach(function(s){
+      var c = usageCanonSection(s); if (!c) return;
+      secTime[c] = (secTime[c] || 0) + (rr.sectionsTime[s] || 0);
+      seen[c] = 1; hasTime = true;
+    });
+    Object.keys(seen).forEach(function(c){ secUsers[c] = (secUsers[c] || 0) + 1; });
+  });
+
+  // ── Kam ide pozornosť tímu — sekcie podľa času (fallback: počet otvorení) ──
+  var byTime = hasTime;
+  var metric = byTime ? secTime : secOpens;
+  var mKeys = Object.keys(metric).sort(function(a,b){ return metric[b] - metric[a]; });
+  if (mKeys.length) {
+    var maxM = Math.max.apply(null, mKeys.map(function(k){ return metric[k]; }).concat([1]));
+    html += '<div class="act-section-lbl">🗂️ Kam ide pozornosť tímu — sekcie (' + (byTime ? 'čas' : 'počet otvorení') + ')</div>';
+    mKeys.forEach(function(k){
+      var w = Math.round((metric[k] / maxM) * 100);
+      var val = byTime ? usageFmtDur(metric[k]) : (metric[k] + '×');
+      html += '<div class="act-bar-row"><div class="act-bar-lbl">' + usageSectionIcon(k) + ' ' + mgrEscape(k) + '</div>' +
+              '<div class="act-bar-track"><div class="act-bar-fill" style="width:0%" data-w="' + w + '%"></div></div>' +
+              '<div class="act-bar-val">' + val + '</div></div>';
+    });
+  }
+
+  // ── Adopcia funkcií — koľko ľudí danú sekciu vôbec otvorilo ──
+  var total = list.length;
+  var suKeys = Object.keys(secUsers).sort(function(a,b){ return secUsers[b] - secUsers[a]; });
+  if (suKeys.length && total) {
+    html += '<div class="act-section-lbl">🧩 Adopcia funkcií — koľko ľudí ju použilo</div>';
+    suKeys.forEach(function(k){
+      var u = secUsers[k];
+      var w = Math.round((u / total) * 100);
+      var low = (u / total) < 0.5;   // menej než polovica tímu → upozornenie (príležitosť)
+      var col = low ? '#D97706' : '#2563EB';
+      html += '<div class="act-bar-row"><div class="act-bar-lbl">' + usageSectionIcon(k) + ' ' + mgrEscape(k) + '</div>' +
+              '<div class="act-bar-track"><div class="act-bar-fill" style="width:0%;background:' + col + '" data-w="' + w + '%"></div></div>' +
+              '<div class="act-bar-val">' + u + '/' + total + '</div></div>';
+    });
+  }
 
   // ── Trend používania v čase (denne: aktívni reprezentanti + otvorenia) ──
   var team = data.team || {};
@@ -20192,9 +20344,13 @@ function usageIsNoiseLabel(label) {
   var t = String(label || '').replace(/\s+/g, ' ').trim();
   if (!t) return true;
   if (/^(pole|výber)\s*:/i.test(t)) return true;                 // kliknutia do polí / výber v <select>
-  var nav = ['späť','← späť','‹ späť','×','✕','✖','x','zavrieť','zatvoriť','zrušiť','naspäť','hľadať'];
-  if (nav.indexOf(t.toLowerCase()) !== -1) return true;          // navigačné / zatváracie tlačidlá
-  if (/^[×✕✖x‹←»«]+$/.test(t)) return true;                      // čisté ikonky šípok / krížikov
+  var nav = ['späť','← späť','‹ späť','×','✕','✖','x','zavrieť','zatvoriť','zrušiť','naspäť','hľadať',
+             'označiť ako oslovená','označiť ako oslovené','označiť ako oslovenú','označiť ako oslovené…'];
+  if (nav.indexOf(t.toLowerCase()) !== -1) return true;          // navigačné / zatváracie / opakujúce sa tlačidlá
+  if (/^[×✕✖x‹›«»←→↑↓⟨⟩<>]+$/.test(t)) return true;              // čisté ikonky šípok / krížikov
+  if (/^\d+$/.test(t)) return true;                              // holé číslo (napr. číslo dňa v ikonke kalendára)
+  // Zlepené nezmysly bez medzery zo starých dát: „Všetky226" (text+badge), „17Kalendár" (deň+nav).
+  if (/^\S+$/.test(t) && /[A-Za-zÀ-ž]/.test(t) && /\d{2,}/.test(t)) return true;
   return false;
 }
 
@@ -20203,6 +20359,9 @@ function usageRenderRep(data, login) {
   var body = usageBody();
   if (!body) return;
   var events = (data.events || []).slice().sort(function(a,b){ return Date.parse(a.ts) - Date.parse(b.ts); });
+  // Render-normalizácia: zjednoť názvy sekcií na kanonické (zlúči duplikáty „Lekárne",
+  // „Plnenie", „História"/„Formulár" → „Hľadanie lekára" atď.) — upace aj STARÉ dáta.
+  events.forEach(function(ev){ ev.section = usageCanonSection(ev.section); });
   var name = usageRepName(login);
   var color = (typeof strHash === 'function') ? ('hsl(' + (strHash(login) % 360) + ',55%,45%)') : '#0C1E35';
 
@@ -20213,6 +20372,7 @@ function usageRenderRep(data, login) {
   var prodCount = {}, prodTime = {};   // Trhový podiel — produkt: počet otvorení + čas
   var drillCount = {};                  // drilldowny (produkt sheet, okres, sub-produkt…)
   var clickCount = {};                  // konkrétne kliknutia (label)
+  var actionCount = {};                 // kľúčové akcie (whitelist) — type 'action'
   function _cleanDetail(d){ return String(d||'').replace(/^produkt:\s*/i,'').replace(/^produkt sheet:\s*/i,'').trim(); }
   var hm = []; for (var i=0;i<7*24;i++) hm.push(0); // deň(0=Po..6=Ne) × hodina
   events.forEach(function(ev){
@@ -20231,6 +20391,7 @@ function usageRenderRep(data, login) {
     }
     if (ev.type === 'drilldown' && ev.detail) { var dd0 = _cleanDetail(ev.detail); if (dd0) drillCount[dd0] = (drillCount[dd0]||0) + 1; }
     if (ev.type === 'click' && ev.detail) { var cl0 = String(ev.detail).trim(); if (cl0 && !usageIsNoiseLabel(cl0)) clickCount[cl0] = (clickCount[cl0]||0) + 1; }
+    if (ev.type === 'action' && ev.detail) { var ac0 = String(ev.detail).trim(); if (ac0) actionCount[ac0] = (actionCount[ac0]||0) + 1; }
     if (!last || ev.ts > last) last = ev.ts;
     var d = new Date(ev.ts);
     var dow = (d.getDay() + 6) % 7; // pondelok=0
@@ -20324,16 +20485,30 @@ function usageRenderRep(data, login) {
     });
   }
 
-  // ── Najklikanejšie akcie/tlačidlá (na čo najviac ťuká) ──
-  var clickKeys = Object.keys(clickCount).sort(function(a,b){ return clickCount[b] - clickCount[a]; }).slice(0, 12);
-  if (clickKeys.length) {
-    var maxC = Math.max.apply(null, clickKeys.map(function(k){ return clickCount[k]; }).concat([1]));
-    html += '<div class="act-section-lbl">👆 Najčastejšie akcie</div>';
-    clickKeys.forEach(function(k){
-      var w = Math.round((clickCount[k] / maxC) * 100);
-      html += '<div class="act-bar-row"><div class="act-bar-lbl">' + mgrEscape(k) + '</div>' +
+  // ── Kľúčové akcie — najprv whitelist akcie (type 'action'), doplnené očistenými klikmi. ──
+  // Zjednoť kľúč: akcie z whitelistu majú prednosť a vlastnú ikonu; kliky sú doplnok.
+  var keyActs = {};
+  Object.keys(actionCount).forEach(function(k){
+    var inWl = USAGE_KEY_ACTIONS.indexOf(k) !== -1;
+    keyActs[k] = { n: actionCount[k], wl: inWl };
+  });
+  Object.keys(clickCount).forEach(function(k){
+    if (keyActs[k]) { keyActs[k].n += clickCount[k]; }
+    else keyActs[k] = { n: clickCount[k], wl: false };
+  });
+  var kaKeys = Object.keys(keyActs).sort(function(a,b){
+    if (keyActs[b].wl !== keyActs[a].wl) return keyActs[b].wl - keyActs[a].wl;   // whitelist akcie hore
+    return keyActs[b].n - keyActs[a].n;
+  }).slice(0, 12);
+  if (kaKeys.length) {
+    var maxC = Math.max.apply(null, kaKeys.map(function(k){ return keyActs[k].n; }).concat([1]));
+    html += '<div class="act-section-lbl">⭐ Kľúčové akcie</div>';
+    kaKeys.forEach(function(k){
+      var w = Math.round((keyActs[k].n / maxC) * 100);
+      var ic = keyActs[k].wl ? '✅ ' : '';
+      html += '<div class="act-bar-row"><div class="act-bar-lbl">' + ic + mgrEscape(k) + '</div>' +
               '<div class="act-bar-track"><div class="act-bar-fill" style="width:0%" data-w="' + w + '%"></div></div>' +
-              '<div class="act-bar-val">' + clickCount[k] + '×</div></div>';
+              '<div class="act-bar-val">' + keyActs[k].n + '×</div></div>';
     });
   }
 
@@ -20405,7 +20580,7 @@ function usageRenderRep(data, login) {
           if (ev.type === 'action') {
             html += '<div class="act-ses-step act-ses-act">✅ <span>' + mgrEscape(ev.detail || 'akcia') + '</span></div>';
           } else { // section_time
-            var detTxt = _cleanDetail(ev.detail);
+            var detTxt = usagePathParse(ev.detail).join(' › ');
             html += '<div class="act-ses-step">' + usageSectionIcon(ev.section) +
                     ' <span><b>' + mgrEscape(ev.section || '—') + '</b>' +
                     (detTxt ? ' <span class="s-det">· ' + mgrEscape(detTxt) + '</span>' : '') + '</span>' +
@@ -20448,9 +20623,13 @@ function usageSectionIcon(sec) {
   if (s.indexOf('Trhový') !== -1)  return '📈';
   if (s.indexOf('Plnenie') !== -1) return '💊';
   if (s.indexOf('Rebríček') !== -1) return '🏆';
+  if (s.indexOf('Návštev') !== -1) return '📋';
   if (s.indexOf('História') !== -1) return '📋';
   if (s.indexOf('Lekárne') !== -1) return '🏥';
+  if (s.indexOf('Hľadanie') !== -1) return '🔍';
   if (s.indexOf('Karta') !== -1)   return '👤';
+  if (s.indexOf('Kalendár') !== -1) return '📅';
+  if (s.indexOf('Nastaven') !== -1) return '⚙️';
   if (s.indexOf('Avatar') !== -1)  return '🎭';
   if (s.indexOf('Manažér') !== -1) return '📊';
   if (s.indexOf('Formulár') !== -1) return '📝';
@@ -20481,7 +20660,16 @@ function usageBuildSessions(events) {
     cur.lastTs = t;
     if (ev.type === 'app_open')  { if (ev.detail) cur.openDetail = ev.detail; return; }
     if (ev.type === 'app_close') { cur.close = ev; return; }
-    if (ev.type === 'section_time' && ev.duration) { cur.steps.push(ev); return; }
+    if (ev.type === 'section_time' && ev.duration) {
+      // Zlúč susedné rovnaké kroky (tá istá sekcia + cesta za sebou): „Lekárne 3 s + 16 s" = „19 s".
+      var prev = cur.steps[cur.steps.length - 1];
+      if (prev && prev.type === 'section_time' && prev.section === ev.section && (prev.detail || '') === (ev.detail || '')) {
+        prev.duration = (prev.duration || 0) + ev.duration;
+      } else {
+        cur.steps.push({ type:'section_time', section:ev.section, detail:ev.detail, duration:ev.duration, ts:ev.ts });
+      }
+      return;
+    }
     if (ev.type === 'action') { cur.steps.push(ev); return; }
     // section_open / drilldown / click sa do príbehu nedávajú — section_time pokrýva sekcie aj produkt
   });
@@ -28487,6 +28675,7 @@ function lkMarkCreamContacted(key, ev) {
     ev.stopPropagation();
   }
   if (!key) return;
+  try { usageAction('Označil lekáreň (oslovená)', 'Lekárne'); } catch(e){}   // kľúčová akcia (whitelist)
   try {
     localStorage.setItem(lkCreamContactedKey(null, key), '1');
     localStorage.setItem(lkCreamContactedAtKey(null, key), new Date().toISOString());
@@ -28957,6 +29146,8 @@ function closeLkarneDetail() {
 
 function lkSwitchTab(tab, btn) {
   LK_STATE.activeTab = tab;
+  // Sleduj pod-tab Lekární ako pod-cestu (Lekárne › Krém/Dobropis/Spiace/Nové/Všetky).
+  try { usageSectionEnter('Lekárne', ({ reaktivacia:'Krém', priority:'Dobropis', sleeping:'Spiace', 'new':'Nové', all:'Všetky' }[tab] || tab)); } catch(e){}
   document.querySelectorAll('.lk-tab').forEach(function(b) {
     b.classList.toggle('active', b.getAttribute('data-lk-tab') === tab);
   });
