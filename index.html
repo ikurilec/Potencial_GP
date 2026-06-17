@@ -3234,7 +3234,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.33.1';
+var APP_VERSION = '2.33.2';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10961,16 +10961,24 @@ function gynRenderShell(user) {
 // Default = 'plnenie'. Volá sa po vyrenderovaní shellu, pred prvým gynRenderContent.
 function gynApplyDefaultNav(user) {
   try { gynCalUpdateBadge(); } catch(e){}
+  var nav = 'plnenie';   // default shellu
   try {
     var def = (userPrefsGet().defaultTab || '').trim();
     var allowed = ['plnenie','kalendar','visits','leaderboard'];
     if (gynActivityAllowed(user)) allowed.push('activity');
-    if (!def || def === 'plnenie' || allowed.indexOf(def) < 0) return;  // plnenie už je default shellu
-    GYN_APP.nav = def;
-    document.querySelectorAll('#gyn-nav .gyn-nav-btn').forEach(function(b){
-      b.classList.toggle('active', b.getAttribute('data-tab') === def);
-    });
-    usageSectionEnter('Gyn · ' + (def === 'leaderboard' ? 'Rebríček' : def === 'activity' ? 'Aktivita' : def === 'visits' ? 'História' : def === 'kalendar' ? 'Kalendár' : 'Plnenie'));
+    if (def && def !== 'plnenie' && allowed.indexOf(def) >= 0) {
+      nav = def;
+      GYN_APP.nav = def;
+      document.querySelectorAll('#gyn-nav .gyn-nav-btn').forEach(function(b){
+        b.classList.toggle('active', b.getAttribute('data-tab') === def);
+      });
+    }
+  } catch(e){}
+  // Zaznamenaj úvodnú obrazovku do usage trackingu — AJ pri default Plnenie. Bez tohto
+  // by gyn relácia, kde rep len pozrie plnenie a odíde, vyšla „0 s · nič nepozeral"
+  // (rovnaký landing-fix ako usageEnterGolemHome pre GP úvodnú obrazovku).
+  try {
+    usageSectionEnter('Gyn · ' + (nav === 'leaderboard' ? 'Rebríček' : nav === 'activity' ? 'Aktivita' : nav === 'visits' ? 'História' : nav === 'kalendar' ? 'Kalendár' : 'Plnenie'));
   } catch(e){}
 }
 
