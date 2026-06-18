@@ -3234,7 +3234,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.35.0';
+var APP_VERSION = '2.36.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7261,6 +7261,20 @@ function settingsAppHtml(s){
     }
   }
 
+  // Záchrana chýbajúcej Golem línie — ak Golem login pri štarte zlyhal (cold start / pomalé
+  // pripojenie / druhé zariadenie), admin uviazne v Gyn/Reagile bez Golemu a prepínač ho
+  // neukáže. Tu ho vie načítať cez heslo bez odhlásenia. Podmienka: má 2+ línie (dual),
+  // nie je práve v Goleme a Golem v dual chýba.
+  var _dualNow = (typeof mgrGetDual === 'function') ? mgrGetDual() : null;
+  if(_dualNow && !_dualNow.gp && typeof mgrCurrentLine === 'function' && mgrCurrentLine() !== 'gp'){
+    html += '<div style="border-top:1px solid #F1F5F9;margin-top:6px;padding-top:14px">' +
+              '<div class="set-card-sub">Chýba ti Golem línia?</div>' +
+              '<div class="set-row-desc">Ak sa Golem pri prihlásení nenačítal (cold start servera, pomalé pripojenie alebo druhé zariadenie), môžeš ho doplniť <strong>bez odhlásenia</strong>. Zadáš heslo, appka načíta Golem líniu a prepne sa do nej.</div>' +
+              '<button type="button" class="set-action-btn" onclick="settingsLoadGolemLine()">⬇️ Načítať Golem líniu</button>' +
+              '<div style="margin-top:8px"><button type="button" class="set-mini-btn" onclick="mgrShowLineDiag()">Diagnostika prihlásenia línií</button></div>' +
+            '</div>';
+  }
+
   // Čistenie vyrovnávacej pamäte
   html += '<div style="border-top:1px solid #F1F5F9;margin-top:6px;padding-top:14px">' +
             '<div class="set-card-sub">Riešenie problémov</div>' +
@@ -7349,6 +7363,41 @@ function settingsRememberLine(){
   var s = getSession(); if(s) lineRememberAllLines(s.username, mgrCurrentLine());
   try { haptic('success'); } catch(e){}
   try { renderSettings(); } catch(e){}
+}
+
+// Načítaj chýbajúcu Golem líniu cez heslo (bez odhlásenia) a prepni do nej.
+// Rieši stav, keď Golem login pri štarte zlyhal (cold start Apps Scriptu / pomalá sieť /
+// druhé zariadenie) a admin uviazol v Gyn/Reagile bez Golemu. Golem skúsime dvakrát.
+function settingsLoadGolemLine(){
+  var s = (typeof getSession === 'function') ? getSession() : null;
+  if(!s || !s.username){ alert('Nie si prihlásený.'); return; }
+  var pwd = prompt('Zadaj svoje heslo pre načítanie Golem línie:');
+  if(pwd === null) return;                 // zrušené
+  if(!pwd){ alert('Heslo je prázdne.'); return; }
+  var lp = '?action=login&username=' + encodeURIComponent(s.username) +
+           '&password=' + encodeURIComponent(pwd) +
+           '&device_id=' + encodeURIComponent(authDeviceId());
+  function tryGolem(tmo){
+    return appFetchJson(SCRIPT_URL + lp, undefined, tmo).catch(function(){ return { ok:false, _failed:true }; });
+  }
+  tryGolem(20000).then(function(gp){
+    return (gp && gp._failed) ? tryGolem(25000) : gp;   // cold start → druhý pokus
+  }).then(function(gp){
+    if(!gp || !gp.ok){
+      alert((gp && gp._failed)
+        ? 'Golem server neodpovedal včas. Skús to znova o chvíľu.'
+        : 'Golem prihlásenie zlyhalo — nesprávne heslo alebo nemáš Golem účet (rovnaké meno + heslo v Golem Sheets).');
+      return;
+    }
+    var gpUser = mgrBuildGpUser(s.username, gp);
+    var d = (typeof mgrGetDual === 'function' && mgrGetDual()) || { username: s.username };
+    d.username = d.username || s.username;
+    d.gp = gpUser;
+    mgrSetDual(d);
+    try { mgrRenderLineSwitch(); } catch(e){}
+    if(typeof closeSettings === 'function') closeSettings();
+    try { mgrSwitchLine('gp'); } catch(e){}
+  });
 }
 
 // Vymazať vyrovnávaciu pamäť (re-fetchovateľné cache; session ostáva)
