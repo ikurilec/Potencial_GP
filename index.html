@@ -7266,7 +7266,16 @@ function settingsAppHtml(s){
   // neukáže. Tu ho vie načítať cez heslo bez odhlásenia. Podmienka: má 2+ línie (dual),
   // nie je práve v Goleme a Golem v dual chýba.
   var _dualNow = (typeof mgrGetDual === 'function') ? mgrGetDual() : null;
-  if(_dualNow && !_dualNow.gp && typeof mgrCurrentLine === 'function' && mgrCurrentLine() !== 'gp'){
+  // Len admin. Rolu admin nevieme čítať z Golemu (ten práve chýba), preto ju hľadáme
+  // v aktuálnej session aj v ktorejkoľvek línii dual-session (admin býva admin vo viacerých).
+  var _isAdminNow = false;
+  try {
+    if(typeof mgrDetectRole === 'function'){
+      if(mgrDetectRole(s) === 'admin') _isAdminNow = true;
+      else if(_dualNow){ ['gp','gyn','reagila'].forEach(function(L){ if(_dualNow[L] && mgrDetectRole(_dualNow[L]) === 'admin') _isAdminNow = true; }); }
+    }
+  } catch(e){}
+  if(_isAdminNow && _dualNow && !_dualNow.gp && typeof mgrCurrentLine === 'function' && mgrCurrentLine() !== 'gp'){
     html += '<div style="border-top:1px solid #F1F5F9;margin-top:6px;padding-top:14px">' +
               '<div class="set-card-sub">Chýba ti Golem línia?</div>' +
               '<div class="set-row-desc">Ak sa Golem pri prihlásení nenačítal (cold start servera, pomalé pripojenie alebo druhé zariadenie), môžeš ho doplniť <strong>bez odhlásenia</strong>. Zadáš heslo, appka načíta Golem líniu a prepne sa do nej.</div>' +
