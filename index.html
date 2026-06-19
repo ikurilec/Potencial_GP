@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="sk">
 <head>
 <meta charset="UTF-8">
@@ -2604,7 +2604,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     <div id="pl-detail-lekarne" style="display:none">
       <div class="lk-sticky-controls" style="margin:0 0 10px">
         <div class="lk-search-wrap" style="margin:0 0 8px">
-          <input class="lk-search" id="mgr-lk-search" type="text" placeholder="🔍 Hľadaj lekáreň…" oninput="lkMgrFilterSearch(this.value)" autocomplete="off">
+          <input class="lk-search" id="mgr-lk-search" type="text" placeholder="🔍 Hľadaj lekáreň, mesto alebo produkt…" oninput="lkMgrFilterSearch(this.value)" autocomplete="off">
         </div>
         <div class="lk-tabs" id="mgr-lk-tabs">
           <button class="lk-tab active" data-lk-tab="reaktivacia" onclick="lkMgrSwitchTab('reaktivacia',this)">
@@ -3234,7 +3234,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.36.0';
+var APP_VERSION = '2.37.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -17190,6 +17190,27 @@ var WN_HISTORY = [
         { icon: '👥', bg: '#FFF7ED', title: 'Absencie tímu', desc: 'Prepínač pod kalendárom — po osobách vidíš, kto je kedy preč a či sa termíny neprekrývajú.' }
       ]
     }
+  },
+  // ── v2.37 — lepšie hľadanie v Lekárňach (golem) ──
+  {
+    key: 'potencial_vl_wn_v2_37_lekarne_hladanie',
+    line: 'gp',
+    rep: {
+      icon: '🔍', title: 'Lepšie hľadanie v Lekárňach', sub: 'v2.37 · Gedeon Richter Slovakia',
+      items: [
+        { icon: '💊', bg: '#EFF6FF', title: 'Hľadaj aj podľa produktu', desc: 'V záložke Lekárne stačí napísať produkt — napr. „vido" — a appka ti vypíše všetky lekárne, kde išiel predaj daného produktu (Vidonorm). Funguje pre celé portfólio.' },
+        { icon: '✨', bg: '#F0FDF4', title: 'Bez diakritiky', desc: 'Nemusíš riešiť mäkčene a dĺžne. Napíšeš „dunajska" a nájde aj „Dunajská", „kosice" nájde „Košice".' },
+        { icon: '🏙️', bg: '#FFF7ED', title: 'Lekáreň, mesto aj okres', desc: 'Vyhľadávanie prehľadáva názov lekárne, mesto, okres aj nakúpené produkty naraz.' }
+      ]
+    },
+    mgr: {
+      icon: '🔍', title: 'Lepšie hľadanie v Lekárňach', sub: 'v2.37 · Gedeon Richter Slovakia',
+      items: [
+        { icon: '💊', bg: '#EFF6FF', title: 'Hľadaj aj podľa produktu', desc: 'V Lekárňach reprezentanta stačí napísať produkt — napr. „vido" — a vypíšu sa všetky lekárne, kde išiel predaj daného produktu (Vidonorm). Funguje pre celé portfólio.' },
+        { icon: '✨', bg: '#F0FDF4', title: 'Bez diakritiky', desc: 'Mäkčene a dĺžne netreba riešiť — „dunajska" nájde „Dunajská", „kosice" nájde „Košice".' },
+        { icon: '🏙️', bg: '#FFF7ED', title: 'Lekáreň, mesto aj okres', desc: 'Hľadanie naraz prehľadáva názov lekárne, mesto, okres aj nakúpené produkty.' }
+      ]
+    }
   }
 ];
 
@@ -28496,6 +28517,13 @@ var LK_PROD_DISPLAY = {
 var LK_REAGILA_PRODS = ['reagila','cavinton','boxarid','fingolimod','dmf','yaxwer','pazopanib','lunaldin'];
 function lkIsReagila(){ try { return document.body.classList.contains('reagila-line'); } catch(e){ return false; } }
 
+// Normalizácia pre vyhľadávanie — malé písmená + bez diakritiky (dunajska == Dunajská)
+function lkNorm(s) {
+  s = String(s == null ? '' : s).toLowerCase();
+  try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch(e) {}
+  return s;
+}
+
 // Aktuálny mesiac pre "spiace" detekciu
 function lkCurrentYearMonth() {
   var d = new Date();
@@ -29208,8 +29236,13 @@ function lkBuildLekarne(rows) {
     var dobropisMeta = lkDobropisMeta(info, now);
     var isPriority = dobropisMeta.count > 0;
 
+    // Vyhľadávací blob — názov + mesto + okres + všetky produkty čo lekáreň reálne kúpila
+    // (názvy aj kľúče), normalizované bez diakritiky pre fulltext hľadanie.
+    var searchBlob = lkNorm(info.lekaren + ' ' + info.mesto + ' ' + info.okres + ' ' +
+      Object.keys(buysSet).map(function(p){ return (LK_PROD_DISPLAY[p] || '') + ' ' + p; }).join(' '));
+
     lekarne.push({
-      key: key, login: info.login, okres: info.okres, mesto: info.mesto, lekaren: info.lekaren,
+      key: key, login: info.login, okres: info.okres, mesto: info.mesto, lekaren: info.lekaren, searchBlob: searchBlob,
       months: info.months, lastM: lastM, monthsAgo: monthsAgo,
       trend: trend, buys: buys, missing: missing, opportunities: opportunities,
       creamContacted: !!info.creamContacted, creamContactedAt: info.creamContactedAt || '',
@@ -29343,7 +29376,7 @@ function lkSwitchTab(tab, btn) {
 }
 
 function lkFilterSearch(val) {
-  LK_STATE.searchQ = (val || '').toLowerCase().trim();
+  LK_STATE.searchQ = lkNorm(val).trim();
   lkRender();
 }
 
@@ -29356,9 +29389,7 @@ function lkRender() {
 
   // Filter podľa search
   var filtered = q ? all.filter(function(l) {
-    return l.lekaren.toLowerCase().indexOf(q) !== -1 ||
-           l.mesto.toLowerCase().indexOf(q) !== -1 ||
-           l.okres.toLowerCase().indexOf(q) !== -1;
+    return (l.searchBlob || '').indexOf(q) !== -1;
   }) : all;
 
   // Filter podľa tabu
@@ -29581,8 +29612,8 @@ function lkEscAttr(s) {
 var LK_MGR_STATE = { activeTab: 'reaktivacia', searchQ: '', loading: false };
 
 function lkMgrVisibleList(lekarne, searchQ, tab) {
-  var q = (searchQ || '').toLowerCase().trim();
-  var list = q ? lekarne.filter(function(l){ return l.lekaren.toLowerCase().indexOf(q) >= 0 || l.mesto.toLowerCase().indexOf(q) >= 0; }) : lekarne;
+  var q = lkNorm(searchQ).trim();
+  var list = q ? lekarne.filter(function(l){ return (l.searchBlob || '').indexOf(q) >= 0; }) : lekarne;
   var shown;
   if      (tab === 'sleeping')    shown = list.filter(function(l){ return l.isSleeping && !lkIsChainHiddenInTab(l, tab); });
   else if (tab === 'new')         shown = list.filter(function(l){ return l.isNew && !lkIsChainHiddenInTab(l, tab); });
@@ -29652,7 +29683,7 @@ function lkMgrSwitchTab(tab, btn) {
 function lkMgrRenderBody(lekarne, searchQ) {
   var body = document.getElementById('pl-detail-lekarne-body');
   if (!body) return;
-  if (searchQ !== undefined) LK_MGR_STATE.searchQ = (searchQ || '').toLowerCase().trim();
+  if (searchQ !== undefined) LK_MGR_STATE.searchQ = lkNorm(searchQ).trim();
   var tab = LK_MGR_STATE.activeTab;
   var shown = lkMgrVisibleList(lekarne, LK_MGR_STATE.searchQ, tab);
   if (!body.__lkBound) {
@@ -29677,7 +29708,7 @@ function lkMgrRenderBody(lekarne, searchQ) {
 }
 
 function lkMgrFilterSearch(val) {
-  LK_MGR_STATE.searchQ = (val || '').toLowerCase().trim();
+  LK_MGR_STATE.searchQ = lkNorm(val).trim();
   lkMgrRenderBody(LK_MGR_ALL, LK_MGR_STATE.searchQ);
 }
 
@@ -29823,7 +29854,7 @@ function lkMgrItem(l, tab) {
     <div class="lk-sticky-controls">
       <div class="lk-search-wrap">
         <span class="lk-search-ico">🔍</span>
-        <input class="lk-search" id="lk-search" type="text" placeholder="Hľadaj lekáreň…" oninput="lkFilterSearch(this.value)" autocomplete="off">
+        <input class="lk-search" id="lk-search" type="text" placeholder="Hľadaj lekáreň, mesto alebo produkt…" oninput="lkFilterSearch(this.value)" autocomplete="off">
       </div>
       <div class="lk-tabs" id="lk-tabs">
         <button class="lk-tab active" data-lk-tab="reaktivacia" onclick="lkSwitchTab('reaktivacia',this)">
