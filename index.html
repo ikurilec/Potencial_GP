@@ -3234,7 +3234,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.37.0';
+var APP_VERSION = '2.37.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -17223,8 +17223,15 @@ function wnLineItems(){
   return WN_HISTORY.filter(function(it){ return !it.line || it.line === line; });
 }
 
+// Pamäťový fallback pre prípad, že localStorage zápis zlyhá (zablokované/plné úložisko —
+// napr. Samsung Internet s blokovaním úložiska, súkromné okno, quota exceeded). Bez tohto
+// by sa po kliknutí na „Rozumiem" prekresľovala stále tá istá karta (klik vyzerá nefunkčne)
+// a modal by sa po reštarte stále zobrazoval, lebo sa nič neuložilo.
+var WN_SEEN_MEM = {};
+
 function wnGetUnseen(){
   return wnLineItems().filter(function(it){
+    if (WN_SEEN_MEM[it.key]) return false;
     try { return !localStorage.getItem(it.key); } catch(e){ return true; }
   });
 }
@@ -17248,6 +17255,7 @@ function wnShouldShow(){
 
 function wnMarkSeen(key){
   if (!key) return;
+  WN_SEEN_MEM[key] = 1; // pamäťový fallback — platí aj keď localStorage zápis zlyhá
   try { localStorage.setItem(key, '1'); } catch(e){}
 }
 
