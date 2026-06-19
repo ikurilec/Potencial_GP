@@ -17255,7 +17255,10 @@ function wnShouldShow(){
 
 function wnMarkSeen(key){
   if (!key) return;
-  WN_SEEN_MEM[key] = 1; // pamäťový fallback — platí aj keď localStorage zápis zlyhá
+  WN_SEEN_MEM[key] = 1; // pamäťový fallback — platí aj keď localStorage zápis zlyhá (per-session)
+  // lsSafeSet pri plnom úložisku (QuotaExceededError) uvoľní cache a skúsi znova —
+  // vďaka tomu sa príznak „videné" uloží natrvalo aj keď je localStorage takmer plný.
+  if (typeof lsSafeSet === 'function') { lsSafeSet(key, '1'); return; }
   try { localStorage.setItem(key, '1'); } catch(e){}
 }
 
