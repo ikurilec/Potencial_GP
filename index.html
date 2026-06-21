@@ -330,6 +330,11 @@
   .av-confirm-ok{background:linear-gradient(180deg,#EF4444,#DC2626);color:#fff;box-shadow:0 4px 12px rgba(239,68,68,.30),inset 0 1px 0 rgba(255,255,255,.18)}
   .av-confirm-ok:hover{background:linear-gradient(180deg,#DC2626,#B91C1C)}
   .av-confirm-ok:active{transform:scale(.97);box-shadow:0 2px 6px rgba(239,68,68,.25)}
+  .lk-prompt-input{width:100%;border:1.5px solid #BFDBFE;border-radius:11px;background:#fff;padding:12px 14px;font-size:15px;color:#0F172A;font-family:var(--font-body);outline:none;box-sizing:border-box;transition:border-color .15s,box-shadow .15s}
+  .lk-prompt-input:focus{border-color:#2563EB;box-shadow:0 0 0 4px rgba(37,99,235,.12)}
+  .lk-prompt-ok{background:linear-gradient(180deg,#3B82F6,#2563EB,#1E40AF);color:#fff;box-shadow:0 4px 12px rgba(37,99,235,.30),inset 0 1px 0 rgba(255,255,255,.18)}
+  .lk-prompt-ok:hover{filter:brightness(1.06)}
+  .lk-prompt-ok:active{transform:scale(.97)}
   .wn-box{background:#fff;border-radius:22px;width:100%;max-width:370px;overflow:hidden;animation:slideUp .3s cubic-bezier(.16,1,.3,1);max-height:calc(100vh - 40px);display:flex;flex-direction:column}
   .wn-hdr{background:linear-gradient(135deg,#0C1E35,#1A3A5C);padding:24px 22px 20px;text-align:center;position:relative;flex-shrink:0}
   .wn-icon-wrap{width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:30px;animation:wnBounce 1s cubic-bezier(.36,.07,.19,.97) .4s both}
@@ -1190,6 +1195,9 @@
   .act-rep-name{font-size:14.5px;font-weight:700;color:#0F172A;letter-spacing:-.005em;display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px;min-width:0}
   .act-rep-nametxt{min-width:0}
   .act-role{flex-shrink:0;display:inline-block;padding:1px 7px;border-radius:10px;background:#EFF6FF;color:#1D4ED8;font-size:9px;font-weight:800;letter-spacing:.05em}
+  .act-rep-filters-list{display:flex;flex-wrap:wrap;gap:7px}
+  .act-rep-filter{display:inline-flex;flex-direction:column;gap:1px;background:#EEF2FF;border:1px solid #C7D2FE;color:#3730A3;border-radius:10px;padding:6px 11px;font-size:12px;font-weight:700}
+  .act-rep-filter-sub{font-size:9.5px;font-weight:600;color:#6366F1;opacity:.85}
   .act-push{flex-shrink:0;display:inline-block;font-size:12px}
   .act-push.off{opacity:.4;filter:grayscale(1)}
   .act-rep-meta{font-size:11px;color:#64748B;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1629,6 +1637,55 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .lk-trend-up{color:#10B981;font-weight:700}
   .lk-trend-dn{color:#EF4444;font-weight:700}
   .lk-trend-eq{color:#94A3B8;font-weight:600}
+  /* ── Filter lekární — tlačidlo + bottom-sheet ── */
+  .lk-search-row{display:flex;gap:8px;align-items:stretch}
+  .lk-search-row .lk-search-wrap{flex:1;min-width:0}
+  .lk-filter-btn{position:relative;flex-shrink:0;display:inline-flex;align-items:center;gap:6px;border:1.5px solid #BFDBFE;border-radius:10px;background:#fff;color:#1E40AF;font-size:13px;font-weight:800;font-family:var(--font-display);padding:0 13px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .15s,border-color .15s}
+  .lk-filter-btn:active{background:#EFF6FF}
+  .lk-filter-btn.has-active{background:#2563EB;border-color:#2563EB;color:#fff}
+  .lk-filter-badge{position:absolute;top:-7px;right:-7px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#EF4444;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+  #lk-filter-bd{display:none;position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:5200;opacity:0;transition:opacity .2s}
+  #lk-filter-bd.show{display:block;opacity:1}
+  #lk-filter-sheet{display:flex;flex-direction:column;position:fixed;left:0;right:0;bottom:0;max-height:90vh;background:#F8FAFC;z-index:5210;border-radius:18px 18px 0 0;transform:translateY(100%);transition:transform .26s cubic-bezier(.16,1,.3,1);box-shadow:0 -8px 30px rgba(15,23,42,.22)}
+  #lk-filter-sheet.show{transform:translateY(0)}
+  #lk-filter-sheet{font-family:var(--font-body);color:var(--color-text)}
+  .lkf-chip,.lkf-mode,.lkf-adv-toggle,.lkf-preset,.lkf-save,.lkf-hdr-clear,.lkf-min-input,.lkf-empty-note button{font-family:var(--font-body)}
+  .lkf-sec-lbl,.lkf-hdr-title,.lkf-prodrow-name{font-family:var(--font-display)}
+  .lkf-handle{width:40px;height:4px;border-radius:3px;background:#CBD5E1;margin:8px auto 2px;flex-shrink:0;touch-action:none}
+  #lk-filter-sheet.dragging{transition:none}
+  .lkf-hdr{display:flex;align-items:center;justify-content:space-between;padding:6px 16px 10px;flex-shrink:0;border-bottom:1px solid #E2E8F0}
+  .lkf-hdr-title{font-size:16px;font-weight:800;color:#0C1E35;font-family:var(--font-display)}
+  .lkf-hdr-clear{border:none;background:none;color:#2563EB;font-size:13px;font-weight:700;cursor:pointer;padding:6px 8px}
+  .lkf-hdr-clear:disabled{color:#CBD5E1}
+  .lkf-body{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px 4px;flex:1;min-height:0}
+  .lkf-sec{margin-bottom:14px}
+  .lkf-sec-lbl{font-size:11px;font-weight:800;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px}
+  .lkf-chips{display:flex;flex-wrap:wrap;gap:6px}
+  .lkf-chip{font-size:12.5px;font-weight:700;padding:6px 12px;border-radius:20px;background:#fff;color:#334155;border:1.5px solid #E2E8F0;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .12s,border-color .12s,color .12s}
+  .lkf-chip:active{background:#F1F5F9}
+  .lkf-chip.on{background:#2563EB;border-color:#2563EB;color:#fff}
+  .lkf-chip.on.no{background:#DC2626;border-color:#DC2626}
+  .lkf-prodrow{margin-top:6px;background:#fff;border:1.5px solid #BFDBFE;border-radius:12px;padding:8px 10px}
+  .lkf-prodrow-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .lkf-prodrow-name{font-size:13px;font-weight:800;color:#1E40AF}
+  .lkf-min-wrap{display:flex;align-items:center;gap:8px;margin-top:8px}
+  .lkf-min-input{width:64px;border:1.5px solid #CBD5E1;border-radius:8px;padding:6px 8px;font-size:14px;font-family:inherit;color:#0F172A;outline:none}
+  .lkf-min-input:focus{border-color:#2563EB}
+  .lkf-min-lbl{font-size:11px;color:#64748B;font-weight:600}
+  .lkf-modes{display:flex;gap:6px;margin-top:8px}
+  .lkf-mode{flex:1;font-size:11px;font-weight:700;padding:7px 6px;border-radius:8px;border:1.5px solid #E2E8F0;background:#fff;color:#475569;cursor:pointer;text-align:center;line-height:1.2}
+  .lkf-mode.on{background:#EFF6FF;border-color:#2563EB;color:#1E40AF}
+  .lkf-adv-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;background:#fff;border:1.5px solid #E2E8F0;border-radius:12px;padding:11px 14px;font-size:13.5px;font-weight:800;color:#334155;cursor:pointer;margin-bottom:14px}
+  .lkf-adv-toggle .lkf-adv-caret{transition:transform .2s}
+  .lkf-adv-toggle.open .lkf-adv-caret{transform:rotate(180deg)}
+  .lkf-presets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+  .lkf-preset{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;padding:6px 8px 6px 12px;border-radius:20px;background:#EEF2FF;color:#3730A3;border:1.5px solid #C7D2FE;cursor:pointer}
+  .lkf-preset-x{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:rgba(55,48,163,.12);font-size:12px;line-height:1}
+  .lkf-foot{flex-shrink:0;display:flex;gap:8px;padding:10px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid #E2E8F0;background:#F8FAFC}
+  .lkf-save{flex-shrink:0;border:1.5px solid #2563EB;background:#fff;color:#1E40AF;font-size:13.5px;font-weight:800;border-radius:12px;padding:0 16px;cursor:pointer}
+  .lkf-apply{flex:1;border:none;background:linear-gradient(180deg,#3B82F6,#1E40AF);color:#fff;font-size:14.5px;font-weight:800;border-radius:12px;padding:13px;cursor:pointer;font-family:var(--font-display)}
+  .lkf-empty-note{font-size:12px;color:#92400E;background:#FEF3C7;border:1px solid #FCD34D;border-radius:10px;padding:8px 10px;margin-top:6px;line-height:1.35}
+  .lkf-empty-note button{margin-top:6px;border:none;background:#D97706;color:#fff;font-size:11.5px;font-weight:700;border-radius:8px;padding:6px 10px;cursor:pointer}
   .lk-prod-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
   .lk-prod-chip{font-size:10px;font-weight:700;padding:2px 7px;border-radius:12px;background:#EFF6FF;color:#1E40AF;border:1px solid #BFDBFE}
   .lk-prod-chip.missing{background:#FEF2F2;color:#991B1B;border-color:#FECACA}
@@ -1664,11 +1721,26 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .lk-detail-hdr{background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
   .lk-detail-name{font-size:16px;font-weight:800;color:#0F172A;font-family:var(--font-display);letter-spacing:-.01em}
   .lk-detail-sub{font-size:11px;color:#64748B;margin-top:3px}
-  .lk-month-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #F1F5F9}
+  .lk-month-row{display:block;padding:11px 0 13px;border-bottom:1px solid #E2E8F0}
   .lk-month-row:last-child{border-bottom:none}
-  .lk-month-lbl{font-size:11px;font-weight:700;color:#475569;width:50px;flex-shrink:0}
-  .lk-month-prods{flex:1;display:flex;flex-wrap:wrap;gap:4px}
-  .lk-month-prod{font-size:10px;padding:2px 7px;border-radius:10px;background:#EFF6FF;color:#1E40AF;font-weight:700}
+  .lk-month-row:last-child{border-bottom:none}
+  .lk-month-lbl{display:block;font-size:12.5px;font-weight:800;color:#0C1E35;font-family:var(--font-display);margin-bottom:7px;letter-spacing:-.01em}
+  .lk-month-prods{display:flex;flex-wrap:wrap;gap:4px}
+  .lk-month-prod{font-size:10.5px;padding:3px 8px;border-radius:10px;background:#EFF6FF;color:#1E40AF;font-weight:700}
+  .lk-month-vars-lbl{font-size:9px;font-weight:800;color:#94A3B8;text-transform:uppercase;letter-spacing:.05em;margin:9px 0 5px}
+  .lk-month-vars{display:flex;flex-wrap:wrap;gap:4px}
+  .lk-month-var{font-size:10px;font-weight:600;padding:3px 8px;border-radius:10px;background:#F8FAFC;color:#475569;border:1px solid #E2E8F0}
+  /* Zvýraznenie produktu/variantu zvoleného vo filtri */
+  .lk-month-prod.hl{background:#1D4ED8;color:#fff;box-shadow:0 0 0 2px rgba(37,99,235,.30)}
+  .lk-month-var.hl{background:#EFF6FF;border-color:#93C5FD;color:#1E40AF;font-weight:700}
+  .lk-month-var.hl-strong{background:#FEF3C7;border-color:#FCD34D;color:#92400E;font-weight:800}
+  .lk-month-missing{font-size:10.5px;font-weight:700;color:#DC2626;margin:-2px 0 7px;display:flex;align-items:center;gap:5px}
+  .lk-month-missing::before{content:'';width:6px;height:6px;border-radius:50%;background:#DC2626;flex-shrink:0}
+  .lk-detail-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:34px 16px;text-align:center}
+  .lk-detail-spin{width:30px;height:30px;border-radius:50%;border:3px solid #E2E8F0;border-top-color:#2563EB;animation:lkSpin .8s linear infinite;margin-bottom:12px}
+  @keyframes lkSpin{to{transform:rotate(360deg)}}
+  .lk-detail-loading-t{font-size:14px;font-weight:800;color:#0C1E35;font-family:var(--font-display)}
+  .lk-detail-loading-s{font-size:11.5px;color:#94A3B8;font-weight:500;margin-top:4px}
   /* Manažér — lekárne tab v detaile predstav. */
   .mgr-lk-wrap{padding:4px 0}
   .mgr-lk-rep-lbl{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#2563EB;margin-bottom:8px;padding-left:2px}
@@ -2603,8 +2675,11 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     <!-- Sub-tab: Lekárne -->
     <div id="pl-detail-lekarne" style="display:none">
       <div class="lk-sticky-controls" style="margin:0 0 10px">
-        <div class="lk-search-wrap" style="margin:0 0 8px">
-          <input class="lk-search" id="mgr-lk-search" type="text" placeholder="🔍 Hľadaj lekáreň, mesto alebo produkt…" oninput="lkMgrFilterSearch(this.value)" autocomplete="off">
+        <div class="lk-search-row" style="margin:0 0 8px">
+          <div class="lk-search-wrap" style="margin:0">
+            <input class="lk-search" id="mgr-lk-search" type="text" placeholder="🔍 Hľadaj lekáreň, mesto alebo produkt…" oninput="lkMgrFilterSearch(this.value)" autocomplete="off">
+          </div>
+          <button type="button" class="lk-filter-btn" id="mgr-lk-filter-btn" onclick="lkFilterOpen('mgr')">⚙︎ Filtre<span class="lk-filter-badge" id="mgr-lk-filter-badge" style="display:none">0</span></button>
         </div>
         <div class="lk-tabs" id="mgr-lk-tabs">
           <button class="lk-tab active" data-lk-tab="reaktivacia" onclick="lkMgrSwitchTab('reaktivacia',this)">
@@ -3234,7 +3309,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.37.2';
+var APP_VERSION = '2.40.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -17211,6 +17286,31 @@ var WN_HISTORY = [
         { icon: '🏙️', bg: '#FFF7ED', title: 'Lekáreň, mesto aj okres', desc: 'Hľadanie naraz prehľadáva názov lekárne, mesto, okres aj nakúpené produkty.' }
       ]
     }
+  },
+  // ── v2.40 — filtre v Lekárňach + sily/balenia ──
+  {
+    key: 'potencial_vl_wn_v2_40_lekarne_filter',
+    line: 'gp',
+    rep: {
+      icon: '⚙️', title: 'Filtre v Lekárňach', sub: 'v2.40 · Gedeon Richter Slovakia',
+      items: [
+        { icon: '⚙️', bg: '#EFF6FF', title: 'Filtre v Lekárňach', desc: 'Vedľa hľadania pribudlo tlačidlo Filtre. Lekárne si prefiltruješ naraz podľa okresu, mesta, produktov, stavu a ďalších kritérií.' },
+        { icon: '💊', bg: '#F0FDF4', title: 'Podľa produktu a počtu', desc: 'Navolíš si, ktorý produkt lekáreň odoberá či neodoberá a koľko kusov — priemer za 3 mesiace, alebo aspoň raz za 2 roky.' },
+        { icon: '📦', bg: '#FFF7ED', title: 'Sily a balenia', desc: 'Pri produkte vyberieš konkrétnu silu/veľkosť balenia. V detaile lekárne vidíš po mesiacoch, ktoré balenia a koľko kusov brala.' },
+        { icon: '🎯', bg: '#F5F3FF', title: 'Zvýraznenie pri filtri', desc: 'Keď filtruješ produkt, v detaile lekárne sa pri každom mesiaci zvýrazní; ak ho v mesiaci nekúpila, ukáže sa to červeným.' },
+        { icon: '💾', bg: '#FEF3C7', title: 'Uložené filtre', desc: 'Často používaný filter si ulož pod vlastným názvom a aplikuj ho jedným ťuknutím.' }
+      ]
+    },
+    mgr: {
+      icon: '⚙️', title: 'Filtre v Lekárňach', sub: 'v2.40 · Gedeon Richter Slovakia',
+      items: [
+        { icon: '⚙️', bg: '#EFF6FF', title: 'Filtre v Lekárňach repa', desc: 'V detaile reprezentanta → Lekárne pribudlo tlačidlo Filtre — lekárne repa prefiltruješ podľa okresu, mesta, produktov, trendu a ďalších.' },
+        { icon: '💊', bg: '#F0FDF4', title: 'Produkt a počet kusov', desc: 'Vyfiltruješ lekárne podľa toho, čo odoberajú či neodoberajú a v akom množstve (priemer 3 mes. alebo aspoň raz za 2 roky).' },
+        { icon: '📦', bg: '#FFF7ED', title: 'Sily a balenia po mesiacoch', desc: 'Pri produkte vyberieš konkrétnu silu/balenie; v detaile lekárne vidíš mesačný rozpad — koľko ktorého balenia kúpili.' },
+        { icon: '🎯', bg: '#F5F3FF', title: 'Prehľadné zvýraznenie', desc: 'Filtrovaný produkt sa v detaile lekárne zvýrazní pri každom mesiaci; chýbajúci nákup v mesiaci je červeno označený.' },
+        { icon: '💾', bg: '#FEF3C7', title: 'Uložené filtre', desc: 'Vlastné filtre si uložíš pod názvom a kedykoľvek znova použiješ.' }
+      ]
+    }
   }
 ];
 
@@ -20653,6 +20753,9 @@ function usageRenderRep(data, login) {
   html += '<div class="act-pulse-card"><div class="act-pulse-num">' + clicks + '</div><div class="act-pulse-lbl">Kliknutí</div></div>';
   html += '</div>';
 
+  // Uložené filtre lekární (read-only) — naplní sa async cez lkRenderRepFilters
+  html += '<div id="act-rep-filters"></div>';
+
   // najpoužívanejšie sekcie (podľa času + počtu otvorení)
   var secKeys = Object.keys(sectionTime);
   Object.keys(sectionCount).forEach(function(s){ if (secKeys.indexOf(s) === -1) secKeys.push(s); });
@@ -20834,6 +20937,47 @@ function usageRenderRep(data, login) {
   // animuj bary + doplň avatar
   body.querySelectorAll('.act-bar-fill[data-w]').forEach(function(el){ setTimeout(function(){ el.style.width = el.getAttribute('data-w'); }, 60); });
   body.querySelectorAll('.act-dhdr-avatar[data-username]').forEach(function(el){ try { avatarFillElement(el, { username: login, name: name, size: 54, color: el.style.background }); } catch(e){} });
+  lkRenderRepFilters(login);   // uložené filtre lekární (read-only)
+}
+
+// Read-only zobrazenie uložených filtrov lekární repa v Aktivite (manažér/admin).
+function lkRenderRepFilters(login) {
+  var host = document.getElementById('act-rep-filters');
+  if (!host) return;
+  var render = function(arr) {
+    if (!arr || !arr.length) { host.innerHTML = ''; return; }
+    host.innerHTML = '<div class="act-section-lbl">🏪 Uložené filtre lekární</div>' +
+      '<div class="act-rep-filters-list">' +
+      arr.map(function(p) { return '<span class="act-rep-filter">' + mgrEscape(p.name || '—') + lkFilterSummaryChips(p.filter) + '</span>'; }).join('') +
+      '</div>';
+  };
+  if (typeof IS_DEV !== 'undefined' && IS_DEV) {
+    // dev: vlastné lokálne presety (mock nemá per-repa dáta)
+    var local = [];
+    try { local = JSON.parse(localStorage.getItem('lekarne_filter_presets_' + String(login||'').toLowerCase()) || '[]') || []; } catch(e) {}
+    render(local);
+    return;
+  }
+  fetch(scriptUrl('action=getLekarneFilters&login=' + encodeURIComponent(login || '') + '&_t=' + Date.now()), { cache: 'no-store' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (!d || !d.ok || !Array.isArray(d.rows)) { render([]); return; }
+      render(d.rows.map(function(r) { var f = {}; try { f = JSON.parse(r.filter); } catch(e) {} return { name: r.nazov, filter: f }; }));
+    })
+    .catch(function() { render([]); });
+}
+
+// Krátky textový popis filtra (počet kritérií) ako jemný podtitul chipu
+function lkFilterSummaryChips(f) {
+  if (!f || typeof f !== 'object') return '';
+  var parts = [];
+  if ((f.okres || []).length) parts.push((f.okres || []).length + '× okres');
+  if ((f.buys || []).length) parts.push((f.buys || []).length + '× produkt');
+  if ((f.notBuys || []).length) parts.push('neodoberá');
+  if ((f.stav || []).length) parts.push('stav');
+  if ((f.trend || []).length) parts.push('trend');
+  if (!parts.length) return '';
+  return '<span class="act-rep-filter-sub">' + mgrEscape(parts.join(' · ')) + '</span>';
 }
 
 function usageEventText(ev) {
@@ -29098,7 +29242,46 @@ function lkPrimeCacheFromRows(rows, persist) {
 }
 
 // Fetch dát pre login (rep alebo manažér pre konkrétneho repa)
+// DEV mock — vzorové Golem lekárne pre náhľad filtra bez backendu (len IS_DEV).
+function lkDevMockRows() {
+  var okresy = ['Komárno', 'Nové Zámky', 'Šaľa', 'Dunajská Streda'];
+  var mestaByOkres = {
+    'Komárno': ['Komárno', 'Hurbanovo'],
+    'Nové Zámky': ['Nové Zámky', 'Šurany', 'Štúrovo'],
+    'Šaľa': ['Šaľa', 'Močenok'],
+    'Dunajská Streda': ['Dunajská Streda', 'Veľký Meder']
+  };
+  var prods = ['aflamil_tb', 'aflamil_kr', 'aflamil_sa', 'suprax', 'vidonorm', 'cavinton_fo', 'globifer', 'kogavant', 'telexer'];
+  var now = lkCurrentYearMonth(), nowIdx = now.rok * 12 + now.mesiac;
+  var seed = 7;
+  function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+  var rows = [];
+  okresy.forEach(function(okr) {
+    var mesta = mestaByOkres[okr];
+    var nLek = 5 + Math.floor(rnd() * 4);
+    for (var i = 0; i < nLek; i++) {
+      var mesto = mesta[Math.floor(rnd() * mesta.length)];
+      var name = 'Lekáreň ' + okr.split(' ')[0] + ' ' + (i + 1);
+      var port = prods.filter(function() { return rnd() < 0.45; });
+      if (!port.length) port = ['suprax'];
+      var startBack = 6 + Math.floor(rnd() * 18), endBack = Math.floor(rnd() * 2);
+      if (rnd() < 0.22) endBack = 3 + Math.floor(rnd() * 3);   // spiace
+      if (rnd() < 0.15) { startBack = 2; endBack = 0; }         // nové
+      for (var b = startBack; b >= endBack; b--) {
+        var idx = nowIdx - b, rok = Math.floor((idx - 1) / 12), mes = idx - rok * 12;
+        var pr = {};
+        port.forEach(function(p) { if (rnd() < 0.7) pr[p] = Math.round(2 + rnd() * 30); });
+        if (port.indexOf('aflamil_kr') >= 0 && b < 2 && rnd() < 0.5) delete pr['aflamil_kr'];
+        if (!Object.keys(pr).length) pr[port[0]] = Math.round(2 + rnd() * 10);
+        rows.push({ login: 'dev', okres: okr, mesto: mesto, lekaren: name, rok: rok, mesiac: mes, prods: pr, creamContacted: false, creamContactedAt: '' });
+      }
+    }
+  });
+  return rows;
+}
+
 function lkFetch(login, cb) {
+  if (typeof IS_DEV !== 'undefined' && IS_DEV) { try { cb(lkDevMockRows()); } catch(e) {} return; }
   var cacheKey = lkCacheKey(login);
   var cachedRows = lkGetCachedRows(cacheKey);
   var servedCached = false;
@@ -29301,6 +29484,7 @@ function openLekarne() {
   var _lkDefTab = document.body.classList.contains('reagila-line') ? 'all' : 'reaktivacia';
   LK_STATE.activeTab = _lkDefTab;
   LK_STATE.searchQ = '';
+  lkFilterReset(); LK_FILTER._ctx = 'rep'; lkFilterUpdateBadges();
   _panelShow('lk-overlay');
   var searchEl = document.getElementById('lk-search');
   if (searchEl) searchEl.value = '';
@@ -29328,6 +29512,7 @@ function openLekarne() {
     if (!LK_STATE.open || lkCacheKey(currentLogin) !== lkCacheKey(login)) return;
     LK_STATE._rows = lkBuildLekarne(rows);
     lkRender();
+    lkLoadVariants(login, LK_STATE._rows);
   });
 }
 
@@ -29393,6 +29578,7 @@ function closeGolemKalendar() {
 }
 
 function closeLkarneDetail() {
+  LK_DETAIL_OPEN_KEY = null;
   var d = document.getElementById('lk-detail');
   if (d) d.classList.remove('show');
 }
@@ -29412,10 +29598,659 @@ function lkFilterSearch(val) {
   lkRender();
 }
 
+// ════════════════════════════════════════════════════════════════════
+//  FILTER LEKÁRNÍ — zdieľaný pre rep aj manažéra
+//  Fáza 1: kompletný filter + uložené presety LOKÁLNE (lsSafeSet).
+//  Sync presetov do Sheetu + zobrazenie v Aktivita/Používatelia = Fáza 2.
+// ════════════════════════════════════════════════════════════════════
+function lkFilterDefault() {
+  return {
+    okres: [], mesto: [], buys: [], buysOr: false,
+    prodMin: {},          // produkt → { x:Number, mode:'avg3'|'once' }
+    prodVariants: {},     // produkt → [vybrané sily/balenia] (Lekarne_Detail)
+    notBuys: [], stav: [], trend: [], action: [], pril: [],
+    portfolio: '',        // '' | '1' (len 1) | '2' (≥2) | '3' (≥3)
+    _ctx: 'rep', _advOpen: false
+  };
+}
+var LK_FILTER = lkFilterDefault();
+
+// Dataset podľa kontextu (rep = vlastné lekárne, mgr = lekárne otvoreného repa)
+function lkFilterDataset() {
+  return (LK_FILTER._ctx === 'mgr' ? LK_MGR_ALL : LK_STATE._rows) || [];
+}
+
+// Všetky reálne odoberané produkty lekárne (vrátane mimo hlavného portfólia, napr. Telexer)
+function lkBuysAll(l) {
+  return l && l.allProds ? Object.keys(l.allProds) : ((l && l.buys) || []);
+}
+
+// Zoznam produktov do filtra — pevné portfólio línie + čokoľvek reálne odoberané v datasete.
+// Zaručí, že v ponuke sú aj Vidonorm, Telexer atď. (nielen to, čo je v orezanom buys).
+function lkFilterProducts() {
+  var order = lkIsReagila()
+    ? LK_REAGILA_PRODS.slice()
+    : ['aflamil_tb', 'aflamil_sa', 'aflamil_kr', 'suprax', 'vidonorm', 'cavinton_fo', 'telexer', 'globifer', 'kogavant'];
+  var seen = {};
+  order.forEach(function(p) { seen[p] = 1; });
+  lkFilterDataset().forEach(function(l) {
+    lkBuysAll(l).forEach(function(p) { if (!seen[p]) { seen[p] = 1; order.push(p); } });
+  });
+  return order.sort(function(a, b) {
+    return (LK_PROD_DISPLAY[a] || a).localeCompare(LK_PROD_DISPLAY[b] || b, 'sk');
+  });
+}
+
+// ── Detail: sila + balenie (Lekarne_Detail) ──────────────────────────
+var LK_VARIANT_INDEX = {};      // pharmaKey → { produkt → { variant → true } }  (membership pre filter)
+var LK_VARIANTS_BY_PROD = {};   // produkt → { variant → true }
+var LK_VARIANT_SERIES = {};     // pharmaKey → { produkt → { variant → { 'YYYYMM': ks } } } (detail po mesiacoch)
+var LK_VARIANT_LOADED = false;  // detail (sila/balenie) dokončil načítanie?
+var LK_DETAIL_OPEN_KEY = null;  // kľúč práve otvorenej lekárne v detaile
+
+function lkVariantsReset() { LK_VARIANT_INDEX = {}; LK_VARIANTS_BY_PROD = {}; LK_VARIANT_SERIES = {}; LK_VARIANT_LOADED = false; }
+
+// Rozbalí "YYYYMM:ks;YYYYMM:ks;…" → { '202502': 5, '202503': 15 }
+function lkParseMesiace(str) {
+  var out = {};
+  String(str || '').split(';').forEach(function(p) {
+    var ix = p.indexOf(':'); if (ix < 0) return;
+    var ym = p.slice(0, ix).trim(), v = parseFloat(p.slice(ix + 1)) || 0;
+    if (ym && v) out[ym] = v;
+  });
+  return out;
+}
+
+function lkIngestDetail(rows) {
+  (rows || []).forEach(function(r) {
+    var okres, mesto, lekaren, prod, variant, mesiace;
+    if (Array.isArray(r)) { okres = r[6]; mesto = r[7]; lekaren = r[8]; prod = r[9]; variant = r[10]; mesiace = r[11]; }
+    else { okres = r.okres; mesto = r.mesto; lekaren = r.lekaren; prod = r.produkt || r.prod; variant = r.variant; mesiace = r.mesiace; }
+    if (!prod || !variant) return;
+    var key = okres + '|||' + mesto + '|||' + lekaren;
+    if (!LK_VARIANT_INDEX[key]) LK_VARIANT_INDEX[key] = {};
+    if (!LK_VARIANT_INDEX[key][prod]) LK_VARIANT_INDEX[key][prod] = {};
+    LK_VARIANT_INDEX[key][prod][variant] = true;
+    if (!LK_VARIANTS_BY_PROD[prod]) LK_VARIANTS_BY_PROD[prod] = {};
+    LK_VARIANTS_BY_PROD[prod][variant] = true;
+    var ser = (typeof mesiace === 'object' && mesiace) ? mesiace : lkParseMesiace(mesiace);
+    if (ser && Object.keys(ser).length) {
+      if (!LK_VARIANT_SERIES[key]) LK_VARIANT_SERIES[key] = {};
+      if (!LK_VARIANT_SERIES[key][prod]) LK_VARIANT_SERIES[key][prod] = {};
+      LK_VARIANT_SERIES[key][prod][variant] = ser;
+    }
+  });
+}
+
+// Pre danú lekáreň + mesiac (YYYYMM) vráť rozpad podľa variantu: [{prod, variant, ks}]
+function lkVariantsForMonth(key, ym) {
+  var out = [];
+  var byProd = LK_VARIANT_SERIES[key];
+  if (!byProd) return out;
+  Object.keys(byProd).forEach(function(prod) {
+    var byVar = byProd[prod];
+    Object.keys(byVar).forEach(function(variant) {
+      var ks = byVar[variant][ym];
+      if (ks) out.push({ prod: prod, variant: variant, ks: ks });
+    });
+  });
+  out.sort(function(a, b) {
+    return (LK_PROD_DISPLAY[a.prod] || a.prod).localeCompare(LK_PROD_DISPLAY[b.prod] || b.prod, 'sk') ||
+           a.variant.localeCompare(b.variant, 'sk');
+  });
+  return out;
+}
+
+// DEV — varianty pre náhľad (reálne štítky), priradené deterministicky podľa názvu lekárne
+var LK_DEMO_VARIANTS = {
+  aflamil_tb: ['tbl 30×100mg', 'tbl 60×100mg'], aflamil_kr: ['crm 1×60g 1,5%'], aflamil_sa: ['sach 20×100mg'],
+  suprax: ['dsp 400mg', 'tbl flm 10×200mg'], cavinton_fo: ['Forte 30×10mg', 'Forte 90×10mg'],
+  telexer: ['cps 110mg ×60', 'cps 110mg ×180', 'cps 150mg ×60', 'cps 150mg ×180'],
+  vidonorm: ['tbl 30×4/5mg', 'tbl 30×8/10mg', 'tbl 90×8/5mg'], globifer: ['tbl 40×18mg'], kogavant: ['tbl flm 56×90mg']
+};
+function lkBuildDevVariants(list) {
+  (list || []).forEach(function(l) {
+    var h = 0; for (var i = 0; i < l.lekaren.length; i++) h = (h * 31 + l.lekaren.charCodeAt(i)) >>> 0;
+    lkBuysAll(l).forEach(function(p) {
+      var vs = LK_DEMO_VARIANTS[p]; if (!vs) return;
+      var n = vs.length === 1 ? 1 : (1 + (h % vs.length));
+      var chosen = [];
+      for (var k = 0; k < n && k < vs.length; k++) chosen.push(vs[(h + k) % vs.length]);
+      var series = {}; chosen.forEach(function(v) { series[v] = {}; });
+      (l.months || []).forEach(function(m, mi) {
+        var qty = m.prods && m.prods[p] ? Math.round(m.prods[p]) : 0;
+        if (!qty) return;
+        var v = chosen[(mi + h) % chosen.length];   // striedaj varianty po mesiacoch
+        var ym = '' + m.rok + (m.mesiac < 10 ? '0' + m.mesiac : m.mesiac);
+        series[v][ym] = (series[v][ym] || 0) + qty;
+      });
+      chosen.forEach(function(v) {
+        lkIngestDetail([{ okres: l.okres, mesto: l.mesto, lekaren: l.lekaren, produkt: p, variant: v, mesiace: series[v] }]);
+      });
+    });
+  });
+}
+
+function lkLoadVariants(login, dataset) {
+  lkVariantsReset();
+  var done = function() {
+    LK_VARIANT_LOADED = true;
+    var sh = document.getElementById('lk-filter-sheet');
+    if (sh && sh.classList.contains('show')) lkFilterRenderSheet();
+    lkFilterUpdateBadges();
+    // Ak je práve otvorený detail lekárne, prekresli ho (už s baleniami/kusmi)
+    var d = document.getElementById('lk-detail');
+    if (d && d.classList.contains('show') && LK_DETAIL_OPEN_KEY) lkOpenDetail(LK_DETAIL_OPEN_KEY, true);
+  };
+  if (typeof IS_DEV !== 'undefined' && IS_DEV) { lkBuildDevVariants(dataset); done(); return; }
+  fetch(scriptUrl('action=getLekarneDetail&login=' + encodeURIComponent(login || '') + '&_t=' + Date.now()), { cache: 'no-store' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) { if (d && d.ok && d.rows) lkIngestDetail(d.rows); done(); })
+    .catch(function() { done(); });
+}
+
+function lkFilterToggleVariant(p, v) {
+  if (!LK_FILTER.prodVariants[p]) LK_FILTER.prodVariants[p] = [];
+  var arr = LK_FILTER.prodVariants[p], i = arr.indexOf(v);
+  if (i >= 0) arr.splice(i, 1); else arr.push(v);
+  if (!arr.length) delete LK_FILTER.prodVariants[p];
+  lkFilterRenderSheet();
+  lkFilterLiveUpdate();
+  try { haptic('selection'); } catch(e) {}
+}
+
+// Priemer za posledné 3 mes. / „aspoň raz" za posledné 2 roky pre daný produkt
+function lkProdQtyMatch(l, p, x, mode) {
+  if (!(x > 0)) return true;
+  if (mode === 'once') {
+    var now = lkCurrentYearMonth(), nowM = now.rok * 12 + now.mesiac;
+    var months = l.months || [];
+    for (var i = 0; i < months.length; i++) {
+      var m = months[i];
+      if (nowM - (m.rok * 12 + m.mesiac) > 24) continue;
+      if ((parseFloat(m.prods[p]) || 0) >= x) return true;
+    }
+    return false;
+  }
+  var ap = l.allProds && l.allProds[p];          // last3 = súčet za posledné 3 mes.
+  return (ap ? ap.last3 / 3 : 0) >= x;
+}
+
+// Hlavný predikát — true ak lekáreň prejde všetkými aktívnymi podmienkami (AND)
+function lkFilterMatch(l) {
+  var F = LK_FILTER;
+  if (F.okres.length && F.okres.indexOf(l.okres) < 0) return false;
+  if (F.mesto.length && F.mesto.indexOf(l.mesto) < 0) return false;
+  if (F.buys.length || F.notBuys.length) {
+    var bought = lkBuysAll(l);
+    if (F.buys.length) {
+      var has = function(p) { return bought.indexOf(p) >= 0; };
+      if (F.buysOr) { if (!F.buys.some(has)) return false; }
+      else if (!F.buys.every(has)) return false;
+    }
+    for (var n = 0; n < F.notBuys.length; n++) {
+      if (bought.indexOf(F.notBuys[n]) >= 0) return false;
+    }
+  }
+  var pk = Object.keys(F.prodMin);
+  for (var j = 0; j < pk.length; j++) {
+    var cfg = F.prodMin[pk[j]];
+    if (cfg && cfg.x > 0 && !lkProdQtyMatch(l, pk[j], cfg.x, cfg.mode)) return false;
+  }
+  var pv = Object.keys(F.prodVariants);
+  for (var w = 0; w < pv.length; w++) {
+    var sel = F.prodVariants[pv[w]];
+    if (!sel || !sel.length) continue;
+    var have = LK_VARIANT_INDEX[l.key] && LK_VARIANT_INDEX[l.key][pv[w]];
+    if (!have || !sel.some(function(v) { return have[v]; })) return false;
+  }
+  if (F.stav.length) {
+    var st = l.isSleeping ? 'sleeping' : (l.isNew ? 'new' : 'active');
+    if (F.stav.indexOf(st) < 0) return false;
+  }
+  if (F.trend.length && F.trend.indexOf(l.trend) < 0) return false;
+  if (F.action.length) {
+    var okA = (F.action.indexOf('cream') >= 0 && lkIsCreamCandidate(l)) ||
+              (F.action.indexOf('dobropis') >= 0 && l.isPriority);
+    if (!okA) return false;
+  }
+  if (F.pril.length) {
+    var opp = l.opportunities || [];
+    var okP = (F.pril.indexOf('opp') >= 0 && opp.length > 0) ||
+              (F.pril.indexOf('stopped') >= 0 && opp.some(function(o) { return o.type !== 'never'; }));
+    if (!okP) return false;
+  }
+  if (F.portfolio === '1' && l.buys.length !== 1) return false;
+  if (F.portfolio === '2' && l.buys.length < 2) return false;
+  if (F.portfolio === '3' && l.buys.length < 3) return false;
+  return true;
+}
+
+function lkFilterActiveCount() {
+  var F = LK_FILTER, n = 0;
+  ['okres', 'mesto', 'buys', 'notBuys', 'stav', 'trend', 'action', 'pril'].forEach(function(k) {
+    if (F[k].length) n++;
+  });
+  if (F.portfolio) n++;
+  Object.keys(F.prodMin).forEach(function(p) { if (F.prodMin[p] && F.prodMin[p].x > 0) n++; });
+  Object.keys(F.prodVariants).forEach(function(p) { if (F.prodVariants[p] && F.prodVariants[p].length) n++; });
+  return n;
+}
+
+// Aktualizuj badge na oboch filter tlačidlách
+function lkFilterUpdateBadges() {
+  var c = lkFilterActiveCount();
+  [['lk-filter-btn', 'lk-filter-badge'], ['mgr-lk-filter-btn', 'mgr-lk-filter-badge']].forEach(function(pair) {
+    var btn = document.getElementById(pair[0]), badge = document.getElementById(pair[1]);
+    if (btn) btn.classList.toggle('has-active', c > 0);
+    if (badge) { badge.textContent = c; badge.style.display = c > 0 ? '' : 'none'; }
+  });
+}
+
+// Prerender aktívneho zoznamu (rep alebo mgr) po zmene filtra
+function lkFilterLiveUpdate() {
+  lkFilterUpdateBadges();
+  if (LK_FILTER._ctx === 'mgr') lkMgrRenderBody(LK_MGR_ALL, LK_MGR_STATE.searchQ);
+  else lkRender();
+}
+
+function lkFilterReset() {
+  var ctx = LK_FILTER._ctx;
+  LK_FILTER = lkFilterDefault();
+  LK_FILTER._ctx = ctx;
+  lkFilterUpdateBadges();
+}
+
+function lkFilterClear() {
+  var adv = LK_FILTER._advOpen;
+  lkFilterReset();
+  LK_FILTER._advOpen = adv;
+  lkFilterRenderSheet();
+  lkFilterLiveUpdate();
+}
+
+function lkFilterOpen(ctx) {
+  LK_FILTER._ctx = ctx || 'rep';
+  lkFilterRenderSheet();
+  lkPresetSync();          // dotiahni uložené filtre zo Sheetu (cross-device)
+  lkFilterBindDrag();
+  var bd = document.getElementById('lk-filter-bd'), sh = document.getElementById('lk-filter-sheet');
+  if (bd) bd.classList.add('show');
+  if (sh) { sh.style.transform = ''; sh.classList.add('show'); var b = document.getElementById('lkf-body'); if (b) b.scrollTop = 0; }
+  try { haptic('selection'); } catch(e) {}
+}
+
+function lkFilterClose() {
+  var bd = document.getElementById('lk-filter-bd'), sh = document.getElementById('lk-filter-sheet');
+  if (bd) bd.classList.remove('show');
+  if (sh) sh.classList.remove('show');
+}
+
+// Zatiahnutie sheetu za čiarku/hlavičku smerom dole = zavrieť (ako ostatné bottom-sheety)
+var _lkfDrag = null;
+function lkFilterBindDrag() {
+  var sh = document.getElementById('lk-filter-sheet');
+  if (!sh || sh.__dragBound) return;
+  sh.__dragBound = true;
+  var fromGrip = function(t) { return t && t.closest && (t.closest('.lkf-handle') || t.closest('.lkf-hdr')); };
+  sh.addEventListener('touchstart', function(e) {
+    if (!e.touches || e.touches.length !== 1 || !fromGrip(e.target)) return;
+    _lkfDrag = { startY: e.touches[0].clientY, dy: 0 };
+    sh.classList.add('dragging');
+  }, { passive: true });
+  sh.addEventListener('touchmove', function(e) {
+    if (!_lkfDrag || !e.touches || !e.touches.length) return;
+    var dy = e.touches[0].clientY - _lkfDrag.startY;
+    _lkfDrag.dy = dy > 0 ? dy : 0;
+    sh.style.transform = 'translateY(' + _lkfDrag.dy + 'px)';
+  }, { passive: true });
+  var endDrag = function() {
+    if (!_lkfDrag) return;
+    var dy = _lkfDrag.dy; _lkfDrag = null;
+    sh.classList.remove('dragging');
+    sh.style.transform = '';
+    if (dy > 110) lkFilterClose();
+  };
+  sh.addEventListener('touchend', endDrag);
+  sh.addEventListener('touchcancel', endDrag);
+}
+
+// ── Toggly jednotlivých polí ──
+function lkFilterToggle(field, val) {
+  var arr = LK_FILTER[field], i = arr.indexOf(val);
+  if (i >= 0) arr.splice(i, 1); else arr.push(val);
+  if (field === 'buys') {
+    if (i >= 0) { delete LK_FILTER.prodMin[val]; delete LK_FILTER.prodVariants[val]; }
+    else if (!LK_FILTER.prodMin[val]) LK_FILTER.prodMin[val] = { x: 0, mode: 'avg3' };
+    LK_FILTER.buysOr = false;   // pri zmene výberu sa vráť na AND
+  }
+  if (field === 'okres') {
+    // Mestá mimo vybraných okresov odznač
+    var ds = lkFilterDataset();
+    LK_FILTER.mesto = LK_FILTER.mesto.filter(function(mst) {
+      return !LK_FILTER.okres.length || ds.some(function(l) { return l.mesto === mst && LK_FILTER.okres.indexOf(l.okres) >= 0; });
+    });
+  }
+  lkFilterRenderSheet();
+  lkFilterLiveUpdate();
+  try { haptic('selection'); } catch(e) {}
+}
+
+function lkFilterSetPortfolio(v) {
+  LK_FILTER.portfolio = (LK_FILTER.portfolio === v ? '' : v);
+  lkFilterRenderSheet();
+  lkFilterLiveUpdate();
+}
+
+function lkFilterSetMin(p, val) {
+  if (!LK_FILTER.prodMin[p]) LK_FILTER.prodMin[p] = { x: 0, mode: 'avg3' };
+  LK_FILTER.prodMin[p].x = Math.max(0, parseFloat(val) || 0);
+  lkFilterUpdateBadges();
+  lkFilterLiveUpdate();   // bez re-renderu sheetu, aby input neztratil fokus
+}
+
+function lkFilterSetMode(p, mode) {
+  if (!LK_FILTER.prodMin[p]) LK_FILTER.prodMin[p] = { x: 0, mode: 'avg3' };
+  LK_FILTER.prodMin[p].mode = mode;
+  lkFilterRenderSheet();
+  lkFilterLiveUpdate();
+}
+
+function lkFilterToggleAdv() {
+  LK_FILTER._advOpen = !LK_FILTER._advOpen;
+  lkFilterRenderSheet();
+}
+
+function lkFilterApplyBuysOr() {
+  LK_FILTER.buysOr = true;
+  lkFilterRenderSheet();
+  lkFilterLiveUpdate();
+}
+
+// ── Uložené presety (lokálne) ──
+function lkPresetKey() { return 'lekarne_filter_presets_' + String(lkSessionUsername() || '').toLowerCase(); }
+function lkPresetLoad() { try { return JSON.parse(localStorage.getItem(lkPresetKey()) || '[]') || []; } catch(e) { return []; } }
+function lkPresetSaveAll(arr) { lsSafeSet(lkPresetKey(), JSON.stringify(arr)); }
+
+// Sync presetov so Sheetom (Lekarne_Filtre). Lokálny cache = rýchlosť/offline, Sheet = zdroj pravdy.
+function lkPresetSync() {
+  if (typeof IS_DEV !== 'undefined' && IS_DEV) return;
+  var login = String(lkSessionUsername() || '');
+  if (!login) return;
+  fetch(scriptUrl('action=getLekarneFilters&login=' + encodeURIComponent(login) + '&_t=' + Date.now()), { cache: 'no-store' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (!d || !d.ok || !Array.isArray(d.rows)) return;
+      var arr = d.rows.map(function(row) { try { return { name: row.nazov, filter: JSON.parse(row.filter) }; } catch(e) { return null; } }).filter(Boolean);
+      lkPresetSaveAll(arr);
+      var sh = document.getElementById('lk-filter-sheet');
+      if (sh && sh.classList.contains('show')) lkFilterRenderSheet();
+    })
+    .catch(function() {});
+}
+function lkPresetPushRemote(name, snap) {
+  if (typeof IS_DEV !== 'undefined' && IS_DEV) return;
+  fetch(scriptUrl('action=setLekarneFilter&username=' + encodeURIComponent(lkSessionUsername() || '') +
+    '&nazov=' + encodeURIComponent(name) + '&filter=' + encodeURIComponent(JSON.stringify(snap)) + '&_t=' + Date.now()), { cache: 'no-store' }).catch(function() {});
+}
+function lkPresetDeleteRemote(name) {
+  if (typeof IS_DEV !== 'undefined' && IS_DEV) return;
+  fetch(scriptUrl('action=deleteLekarneFilter&username=' + encodeURIComponent(lkSessionUsername() || '') +
+    '&nazov=' + encodeURIComponent(name) + '&_t=' + Date.now()), { cache: 'no-store' }).catch(function() {});
+}
+
+function lkFilterSnapshot() {
+  var F = LK_FILTER;
+  return {
+    okres: F.okres.slice(), mesto: F.mesto.slice(), buys: F.buys.slice(), buysOr: F.buysOr,
+    prodMin: JSON.parse(JSON.stringify(F.prodMin)),
+    prodVariants: JSON.parse(JSON.stringify(F.prodVariants)),
+    notBuys: F.notBuys.slice(), stav: F.stav.slice(), trend: F.trend.slice(),
+    action: F.action.slice(), pril: F.pril.slice(), portfolio: F.portfolio
+  };
+}
+
+// Generický input-modal v štýle appky (namiesto prompt())
+var _lkPromptCb = null;
+function lkPrompt(title, sub, placeholder, prefill, onOk) {
+  _lkPromptCb = onOk || null;
+  var t = document.getElementById('lk-prompt-title'); if (t) t.textContent = title || '';
+  var s = document.getElementById('lk-prompt-sub');   if (s) s.textContent = sub || '';
+  var inp = document.getElementById('lk-prompt-input');
+  if (inp) { inp.value = prefill || ''; inp.placeholder = placeholder || ''; }
+  var ov = document.getElementById('lk-prompt-overlay'); if (ov) ov.classList.add('show');
+  setTimeout(function() { if (inp) { inp.focus(); inp.select(); } }, 80);
+}
+function lkPromptClose() {
+  var ov = document.getElementById('lk-prompt-overlay'); if (ov) ov.classList.remove('show');
+  _lkPromptCb = null;
+}
+function lkPromptOk() {
+  var inp = document.getElementById('lk-prompt-input');
+  var v = inp ? String(inp.value || '').trim() : '';
+  if (!v) { if (inp) inp.focus(); return; }
+  var cb = _lkPromptCb;
+  lkPromptClose();
+  if (cb) cb(v);
+}
+
+function lkFilterSavePreset() {
+  if (lkFilterActiveCount() === 0) { alert('Najprv navoľ aspoň jedno kritérium, potom ho môžeš uložiť.'); return; }
+  lkPrompt('Uložiť filter', 'Zadaj názov, pod ktorým si filter uložíš.', 'Napr. Komárno – ponuka krému', '', function(name) {
+    var snap = lkFilterSnapshot();
+    var arr = lkPresetLoad().filter(function(p) { return p.name !== name; });
+    arr.push({ name: name, filter: snap });
+    lkPresetSaveAll(arr);
+    lkPresetPushRemote(name, snap);   // sync do Sheetu
+    lkFilterRenderSheet();
+    try { haptic('success'); } catch(e) {}
+  });
+}
+
+function lkFilterApplyPreset(name) {
+  var p = lkPresetLoad().filter(function(x) { return x.name === name; })[0];
+  if (!p) return;
+  var s = p.filter, def = lkFilterDefault();
+  LK_FILTER.okres = (s.okres || []).slice();
+  LK_FILTER.mesto = (s.mesto || []).slice();
+  LK_FILTER.buys = (s.buys || []).slice();
+  LK_FILTER.buysOr = !!s.buysOr;
+  LK_FILTER.prodMin = s.prodMin ? JSON.parse(JSON.stringify(s.prodMin)) : {};
+  LK_FILTER.prodVariants = s.prodVariants ? JSON.parse(JSON.stringify(s.prodVariants)) : {};
+  LK_FILTER.notBuys = (s.notBuys || []).slice();
+  LK_FILTER.stav = (s.stav || []).slice();
+  LK_FILTER.trend = (s.trend || []).slice();
+  LK_FILTER.action = (s.action || []).slice();
+  LK_FILTER.pril = (s.pril || []).slice();
+  LK_FILTER.portfolio = s.portfolio || '';
+  void def;
+  lkFilterRenderSheet();
+  lkFilterLiveUpdate();
+  try { haptic('selection'); } catch(e) {}
+}
+
+// Generické potvrdzovacie okno v štýle appky (rovnaké .av-confirm-* triedy a font)
+var _lkConfirmCb = null;
+function lkConfirm(title, sub, okLabel, onOk) {
+  _lkConfirmCb = onOk || null;
+  var t = document.getElementById('lk-confirm-title'); if (t) t.textContent = title || 'Naozaj?';
+  var s = document.getElementById('lk-confirm-sub');   if (s) s.textContent = sub || '';
+  var ov = document.getElementById('lk-confirm-overlay'); if (ov) ov.classList.add('show');
+  try { haptic('warning'); } catch(e) {}
+}
+function lkConfirmClose() {
+  var ov = document.getElementById('lk-confirm-overlay'); if (ov) ov.classList.remove('show');
+  _lkConfirmCb = null;
+}
+function lkConfirmOk() {
+  var cb = _lkConfirmCb;
+  lkConfirmClose();
+  if (cb) cb();
+}
+
+function lkFilterDeletePreset(name, ev) {
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+  lkConfirm('Zmazať filter?', 'Filter „' + name + '" sa natrvalo odstráni.', 'Zmazať', function() {
+    lkPresetSaveAll(lkPresetLoad().filter(function(p) { return p.name !== name; }));
+    lkPresetDeleteRemote(name);   // sync do Sheetu
+    lkFilterRenderSheet();
+    try { haptic('success'); } catch(e) {}
+  });
+}
+
+// ── Render obsahu sheetu ──
+function lkfChip(label, active, onclick, extraCls) {
+  return '<button type="button" class="lkf-chip' + (active ? ' on' : '') + (extraCls ? ' ' + extraCls : '') +
+    '" onclick="' + onclick + '">' + lkEsc(label) + '</button>';
+}
+
+function lkFilterRenderSheet() {
+  var body = document.getElementById('lkf-body');
+  if (!body) return;
+  var F = LK_FILTER, ds = lkFilterDataset();
+
+  // Zber možností z datasetu
+  var okresSet = {}, mestoSet = {};
+  ds.forEach(function(l) {
+    if (l.okres) okresSet[l.okres] = 1;
+    if (l.mesto && (!F.okres.length || F.okres.indexOf(l.okres) >= 0)) mestoSet[l.mesto] = 1;
+  });
+  var okresy = Object.keys(okresSet).sort(function(a, b) { return a.localeCompare(b, 'sk'); });
+  var mesta = Object.keys(mestoSet).sort(function(a, b) { return a.localeCompare(b, 'sk'); });
+  var prody = lkFilterProducts();   // pevné portfólio + reálne odoberané (vrátane Telexer, Vidonorm…)
+
+  var html = '';
+
+  // Uložené presety
+  var presets = lkPresetLoad();
+  if (presets.length) {
+    html += '<div class="lkf-sec"><div class="lkf-sec-lbl">Uložené filtre</div><div class="lkf-presets">' +
+      presets.map(function(p) {
+        return '<span class="lkf-preset" onclick="lkFilterApplyPreset(\'' + lkEscAttr(p.name) + '\')">' +
+          lkEsc(p.name) + '<span class="lkf-preset-x" onclick="lkFilterDeletePreset(\'' + lkEscAttr(p.name) + '\',event)">×</span></span>';
+      }).join('') + '</div></div>';
+  }
+
+  // Okres
+  if (okresy.length) {
+    html += '<div class="lkf-sec"><div class="lkf-sec-lbl">Okres</div><div class="lkf-chips">' +
+      okresy.map(function(o) { return lkfChip(o, F.okres.indexOf(o) >= 0, "lkFilterToggle('okres','" + lkEscAttr(o) + "')"); }).join('') +
+      '</div></div>';
+  }
+
+  // Mesto
+  if (mesta.length) {
+    html += '<div class="lkf-sec"><div class="lkf-sec-lbl">Mesto' + (F.okres.length ? ' (vo vybraných okresoch)' : '') + '</div><div class="lkf-chips">' +
+      mesta.map(function(m) { return lkfChip(m, F.mesto.indexOf(m) >= 0, "lkFilterToggle('mesto','" + lkEscAttr(m) + "')"); }).join('') +
+      '</div></div>';
+  }
+
+  // Odoberá produkt + počet pri vybranom
+  if (prody.length) {
+    html += '<div class="lkf-sec"><div class="lkf-sec-lbl">Odoberá produkt</div><div class="lkf-chips">' +
+      prody.map(function(p) { return lkfChip(LK_PROD_DISPLAY[p] || p, F.buys.indexOf(p) >= 0, "lkFilterToggle('buys','" + lkEscAttr(p) + "')"); }).join('') +
+      '</div>';
+
+    // Hláška ak žiadna lekáreň neberie všetky vybrané (a nie je zapnutý OR fallback)
+    if (F.buys.length > 1 && !F.buysOr) {
+      var allCnt = ds.filter(function(l) { var bb = lkBuysAll(l); return F.buys.every(function(p) { return bb.indexOf(p) >= 0; }); }).length;
+      if (allCnt === 0) {
+        var orCnt = ds.filter(function(l) { var bb = lkBuysAll(l); return F.buys.some(function(p) { return bb.indexOf(p) >= 0; }); }).length;
+        html += '<div class="lkf-empty-note">Žiadna lekáreň neodoberá všetky vybrané produkty. ' +
+          (orCnt > 0 ? 'Existuje však ' + orCnt + ' lekární, ktoré odoberajú aspoň jeden z nich.' : '') +
+          (orCnt > 0 ? '<br><button type="button" onclick="lkFilterApplyBuysOr()">Zobraziť aj tie (aspoň jeden)</button>' : '') +
+          '</div>';
+      }
+    }
+    if (F.buysOr && F.buys.length > 1) {
+      html += '<div class="lkf-empty-note" style="background:#EFF6FF;border-color:#BFDBFE;color:#1E40AF">Zobrazujú sa lekárne, ktoré odoberajú <b>aspoň jeden</b> z vybraných produktov.</div>';
+    }
+
+    // Počet ks pri každom vybranom produkte
+    F.buys.forEach(function(p) {
+      var cfg = F.prodMin[p] || { x: 0, mode: 'avg3' };
+      html += '<div class="lkf-prodrow">' +
+        '<div class="lkf-prodrow-top"><span class="lkf-prodrow-name">' + lkEsc(LK_PROD_DISPLAY[p] || p) + '</span></div>' +
+        '<div class="lkf-min-wrap"><span class="lkf-min-lbl">Min. ks:</span>' +
+          '<input class="lkf-min-input" type="number" min="0" inputmode="numeric" value="' + (cfg.x || '') + '" ' +
+            'oninput="lkFilterSetMin(\'' + lkEscAttr(p) + '\',this.value)" placeholder="0"></div>' +
+        '<div class="lkf-modes">' +
+          '<button type="button" class="lkf-mode' + (cfg.mode === 'avg3' ? ' on' : '') + '" onclick="lkFilterSetMode(\'' + lkEscAttr(p) + '\',\'avg3\')">Priemer za 3 mes. ≥ X</button>' +
+          '<button type="button" class="lkf-mode' + (cfg.mode === 'once' ? ' on' : '') + '" onclick="lkFilterSetMode(\'' + lkEscAttr(p) + '\',\'once\')">Aspoň raz ≥ X (2 roky)</button>' +
+        '</div>';
+      // Sila / balenie (Lekarne_Detail) — len ak má produkt viac variantov
+      var vmap = LK_VARIANTS_BY_PROD[p];
+      var vars = vmap ? Object.keys(vmap).sort(function(a, b) { return a.localeCompare(b, 'sk'); }) : [];
+      if (vars.length > 1) {
+        var selv = F.prodVariants[p] || [];
+        html += '<div class="lkf-min-lbl" style="margin-top:9px;margin-bottom:5px">Sila / balenie:</div>' +
+          '<div class="lkf-chips">' +
+          vars.map(function(v) { return lkfChip(v, selv.indexOf(v) >= 0, "lkFilterToggleVariant('" + lkEscAttr(p) + "','" + lkEscAttr(v) + "')"); }).join('') +
+          '</div>';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Stav
+  html += '<div class="lkf-sec"><div class="lkf-sec-lbl">Stav</div><div class="lkf-chips">' +
+    lkfChip('Aktívna', F.stav.indexOf('active') >= 0, "lkFilterToggle('stav','active')") +
+    lkfChip('Spiaca', F.stav.indexOf('sleeping') >= 0, "lkFilterToggle('stav','sleeping')") +
+    lkfChip('Nová', F.stav.indexOf('new') >= 0, "lkFilterToggle('stav','new')") +
+    '</div></div>';
+
+  // ── Pokročilé ──
+  html += '<button type="button" class="lkf-adv-toggle' + (F._advOpen ? ' open' : '') + '" onclick="lkFilterToggleAdv()">' +
+    '<span>Pokročilé filtre</span><span class="lkf-adv-caret">▾</span></button>';
+
+  if (F._advOpen) {
+    // Neodoberá
+    if (prody.length) {
+      html += '<div class="lkf-sec"><div class="lkf-sec-lbl">Neodoberá produkt</div><div class="lkf-chips">' +
+        prody.map(function(p) { return lkfChip(LK_PROD_DISPLAY[p] || p, F.notBuys.indexOf(p) >= 0, "lkFilterToggle('notBuys','" + lkEscAttr(p) + "')", 'no'); }).join('') +
+        '</div></div>';
+    }
+    // Trend
+    html += '<div class="lkf-sec"><div class="lkf-sec-lbl">Trend</div><div class="lkf-chips">' +
+      lkfChip('↑ Rastie', F.trend.indexOf('up') >= 0, "lkFilterToggle('trend','up')") +
+      lkfChip('↓ Klesá', F.trend.indexOf('dn') >= 0, "lkFilterToggle('trend','dn')") +
+      lkfChip('Stabilný', F.trend.indexOf('eq') >= 0, "lkFilterToggle('trend','eq')") +
+      '</div></div>';
+    // Akčné
+    html += '<div class="lkf-sec"><div class="lkf-sec-lbl">Akčné</div><div class="lkf-chips">' +
+      lkfChip('Krém', F.action.indexOf('cream') >= 0, "lkFilterToggle('action','cream')") +
+      lkfChip('Dobropis', F.action.indexOf('dobropis') >= 0, "lkFilterToggle('action','dobropis')") +
+      '</div></div>';
+    // Príležitosti
+    html += '<div class="lkf-sec"><div class="lkf-sec-lbl">Príležitosti</div><div class="lkf-chips">' +
+      lkfChip('Má nevyužitý produkt', F.pril.indexOf('opp') >= 0, "lkFilterToggle('pril','opp')") +
+      lkfChip('Prestala brať produkt', F.pril.indexOf('stopped') >= 0, "lkFilterToggle('pril','stopped')") +
+      '</div></div>';
+    // Šírka portfólia
+    html += '<div class="lkf-sec"><div class="lkf-sec-lbl">Šírka portfólia</div><div class="lkf-chips">' +
+      lkfChip('Berie len 1 produkt', F.portfolio === '1', "lkFilterSetPortfolio('1')") +
+      lkfChip('Berie 2+ produkty', F.portfolio === '2', "lkFilterSetPortfolio('2')") +
+      lkfChip('Berie 3+ produkty', F.portfolio === '3', "lkFilterSetPortfolio('3')") +
+      '</div></div>';
+  }
+
+  body.innerHTML = html;
+
+  // Header „Vymazať" + počet výsledkov v apply tlačidle
+  var clearBtn = document.getElementById('lkf-clear-btn');
+  if (clearBtn) clearBtn.disabled = lkFilterActiveCount() === 0;
+  var applyBtn = document.getElementById('lkf-apply-btn');
+  if (applyBtn) {
+    var cnt = ds.filter(lkFilterMatch).length;
+    applyBtn.textContent = 'Zobraziť výsledky (' + cnt + ')';
+  }
+}
+
 function lkRender() {
   var list = document.getElementById('lk-list');
   if (!list) return;
-  var all = LK_STATE._rows || [];
+  var all = (LK_STATE._rows || []).filter(lkFilterMatch);
   var tab = LK_STATE.activeTab;
   var q = LK_STATE.searchQ;
 
@@ -29510,7 +30345,7 @@ function lkRender() {
   }).join('');
 }
 
-function lkOpenDetail(key) {
+function lkOpenDetail(key, isRefresh) {
   var lekarne = [];
   if (Array.isArray(LK_STATE._rows) && LK_STATE._rows.length) lekarne = lekarne.concat(LK_STATE._rows);
   if (Array.isArray(LK_MGR_ALL) && LK_MGR_ALL.length) {
@@ -29521,6 +30356,7 @@ function lkOpenDetail(key) {
   var l = null;
   for (var i = 0; i < lekarne.length; i++) { if (lekarne[i].key === key) { l = lekarne[i]; break; } }
   if (!l) return;
+  LK_DETAIL_OPEN_KEY = key;
 
   var titleEl = document.getElementById('lk-detail-title');
   if (titleEl) titleEl.textContent = l.lekaren;
@@ -29529,15 +30365,39 @@ function lkOpenDetail(key) {
   if (!body) return;
 
   // Zostav história mesiacov
+  // Produkty zvolené vo filtri → zvýrazniť v súhrne aj v rozpade (aby bolo jasné)
+  var hlProds = {};
+  (LK_FILTER.buys || []).forEach(function(p) { hlProds[p] = true; });
+  Object.keys(LK_FILTER.prodMin || {}).forEach(function(p) { if (LK_FILTER.prodMin[p] && LK_FILTER.prodMin[p].x > 0) hlProds[p] = true; });
+  Object.keys(LK_FILTER.prodVariants || {}).forEach(function(p) { if ((LK_FILTER.prodVariants[p] || []).length) hlProds[p] = true; });
+
   var monthsHtml = '';
   var allMonths = Array.isArray(l.months) ? l.months.slice().reverse() : []; // najnovšie navrch
   allMonths.forEach(function(m) {
     var prodChips = Object.keys(m.prods).map(function(p) {
-      return '<span class="lk-month-prod">' + (LK_PROD_DISPLAY[p]||p) + ': ' + Math.round(m.prods[p]) + '</span>';
+      return '<span class="lk-month-prod' + (hlProds[p] ? ' hl' : '') + '">' + (LK_PROD_DISPLAY[p]||p) + ': ' + Math.round(m.prods[p]) + '</span>';
     }).join('');
+    // Rozpad podľa sily/balenia pre tento mesiac (Lekarne_Detail)
+    var ymStr = '' + m.rok + (m.mesiac < 10 ? '0' + m.mesiac : m.mesiac);
+    var vlist = lkVariantsForMonth(l.key, ymStr);
+    var varChips = vlist.length ? '<div class="lk-month-vars-lbl">Podľa sily / balenia</div>' +
+      '<div class="lk-month-vars">' + vlist.map(function(x) {
+        var selVars = (LK_FILTER.prodVariants || {})[x.prod] || [];
+        var vcls = 'lk-month-var' + (selVars.indexOf(x.variant) >= 0 ? ' hl-strong' : (hlProds[x.prod] ? ' hl' : ''));
+        return '<span class="' + vcls + '">' + lkEsc((LK_PROD_DISPLAY[x.prod] || x.prod) + ' · ' + x.variant) + ': ' + Math.round(x.ks) + '</span>';
+      }).join('') + '</div>' : '';
+    // Filtrované produkty, ktoré v tomto mesiaci NEboli nakúpené → červená poznámka
+    var missHtml = '';
+    var missing = Object.keys(hlProds).filter(function(p) { return !(m.prods && m.prods[p]); });
+    if (missing.length) {
+      var names = missing.map(function(p) { return LK_PROD_DISPLAY[p] || p; }).join(', ');
+      missHtml = '<div class="lk-month-missing">' + lkEsc(names) + ' — v tomto mesiaci nebol nakúpený</div>';
+    }
     monthsHtml += '<div class="lk-month-row">' +
-      '<span class="lk-month-lbl">' + LK_MES_NAMES[m.mesiac] + ' ' + String(m.rok).slice(2) + '</span>' +
-      '<div class="lk-month-prods">' + prodChips + '</div></div>';
+      '<div class="lk-month-lbl">' + LK_MES_NAMES[m.mesiac] + ' ' + String(m.rok).slice(2) + '</div>' +
+      missHtml +
+      '<div class="lk-month-prods">' + prodChips + '</div>' + varChips +
+      '</div>';
   });
 
   // Príležitosti: produkty nikdy nekúpené alebo bez nákupu 3+ mesiace
@@ -29576,13 +30436,18 @@ function lkOpenDetail(key) {
     missingHtml +
     '<div class="lk-section-lbl">História nákupov</div>' +
     '<div style="background:#fff;border-radius:12px;padding:8px 14px;box-shadow:0 2px 8px rgba(15,23,42,.06)">' +
-      monthsHtml +
+      (LK_VARIANT_LOADED ? monthsHtml :
+        '<div class="lk-detail-loading">' +
+          '<div class="lk-detail-spin"></div>' +
+          '<div class="lk-detail-loading-t">Načítavam dáta<span class="lk-loading-dots"></span></div>' +
+          '<div class="lk-detail-loading-s">vrátane balení a počtu kusov — chvíľku počkajte…</div>' +
+        '</div>') +
     '</div>';
 
   var d = document.getElementById('lk-detail');
   if (d) {
     d.classList.add('show');
-    d.scrollTop = 0;
+    if (!isRefresh) d.scrollTop = 0;
   }
 }
 
@@ -29644,6 +30509,7 @@ function lkEscAttr(s) {
 var LK_MGR_STATE = { activeTab: 'reaktivacia', searchQ: '', loading: false };
 
 function lkMgrVisibleList(lekarne, searchQ, tab) {
+  lekarne = (lekarne || []).filter(lkFilterMatch);
   var q = lkNorm(searchQ).trim();
   var list = q ? lekarne.filter(function(l){ return (l.searchBlob || '').indexOf(q) >= 0; }) : lekarne;
   var shown;
@@ -29664,6 +30530,7 @@ function lkMgrVisibleList(lekarne, searchQ, tab) {
 }
 
 function lkMgrTabCounts(lekarne) {
+  lekarne = (lekarne || []).filter(lkFilterMatch);
   return {
     sleeping: lekarne.filter(function(l){ return l.isSleeping && !lkIsChainHiddenInTab(l, 'sleeping'); }).length,
     reaktivacia: lekarne.filter(function(l){ return lkIsCreamCandidate(l) && !lkIsChainHiddenInTab(l, 'reaktivacia') && !lkIsCreamContacted(null, l.key); }).length,
@@ -29753,6 +30620,7 @@ function lkMgrLoadForRep(login) {
   LK_MGR_STATE.searchQ = '';
   LK_MGR_ALL = [];
   LK_MGR_LOGIN = login || null;
+  lkFilterReset(); LK_FILTER._ctx = 'mgr'; lkFilterUpdateBadges();
   lkMgrSyncTabs();
 
   // SWR — zobraziť cache okamžite (len ak má reálne dáta), na pozadí dotiahni čerstvé dáta
@@ -29781,6 +30649,7 @@ function lkMgrLoadForRep(login) {
     LK_MGR_STATE.loading = false;
     LK_MGR_ALL = lkBuildLekarne(rows || []);
     lkMgrRenderBody(LK_MGR_ALL, '');
+    lkLoadVariants(login, LK_MGR_ALL);
   });
 
   // Background refresh všetkých repov (žiadny re-render — iba naplní cache pre ostatných)
@@ -29884,9 +30753,12 @@ function lkMgrItem(l, tab) {
 <div class="lk-overlay" id="lk-overlay">
   <div class="lk-inner">
     <div class="lk-sticky-controls">
-      <div class="lk-search-wrap">
-        <span class="lk-search-ico">🔍</span>
-        <input class="lk-search" id="lk-search" type="text" placeholder="Hľadaj lekáreň, mesto alebo produkt…" oninput="lkFilterSearch(this.value)" autocomplete="off">
+      <div class="lk-search-row">
+        <div class="lk-search-wrap">
+          <span class="lk-search-ico">🔍</span>
+          <input class="lk-search" id="lk-search" type="text" placeholder="Hľadaj lekáreň, mesto alebo produkt…" oninput="lkFilterSearch(this.value)" autocomplete="off">
+        </div>
+        <button type="button" class="lk-filter-btn" id="lk-filter-btn" onclick="lkFilterOpen('rep')">⚙︎ Filtre<span class="lk-filter-badge" id="lk-filter-badge" style="display:none">0</span></button>
       </div>
       <div class="lk-tabs" id="lk-tabs">
         <button class="lk-tab active" data-lk-tab="reaktivacia" onclick="lkSwitchTab('reaktivacia',this)">
@@ -29908,6 +30780,49 @@ function lkMgrItem(l, tab) {
       </div>
     </div>
     <div id="lk-list"></div>
+  </div>
+</div>
+
+<!-- ── FILTER LEKÁRNÍ — bottom sheet (zdieľaný rep + manažér) ── -->
+<div id="lk-filter-bd" onclick="lkFilterClose()"></div>
+<div id="lk-filter-sheet" role="dialog" aria-label="Filtre lekární">
+  <div class="lkf-handle"></div>
+  <div class="lkf-hdr">
+    <span class="lkf-hdr-title">Filtre lekární</span>
+    <button type="button" class="lkf-hdr-clear" id="lkf-clear-btn" onclick="lkFilterClear()">Vymazať</button>
+  </div>
+  <div class="lkf-body" id="lkf-body"></div>
+  <div class="lkf-foot">
+    <button type="button" class="lkf-save" onclick="lkFilterSavePreset()">💾 Uložiť</button>
+    <button type="button" class="lkf-apply" id="lkf-apply-btn" onclick="lkFilterClose()">Zobraziť výsledky</button>
+  </div>
+</div>
+
+<!-- ── Potvrdenie zmazania filtra (štýl appky) ── -->
+<div class="av-confirm-overlay" id="lk-confirm-overlay" style="z-index:6100" onclick="if(event.target===this)lkConfirmClose()">
+  <div class="av-confirm-box">
+    <div class="av-confirm-icon">🗑️</div>
+    <div class="av-confirm-title" id="lk-confirm-title">Zmazať filter?</div>
+    <div class="av-confirm-sub" id="lk-confirm-sub"></div>
+    <div class="av-confirm-btns">
+      <button type="button" class="av-confirm-btn av-confirm-cancel" onclick="lkConfirmClose()">Zrušiť</button>
+      <button type="button" class="av-confirm-btn av-confirm-ok" onclick="lkConfirmOk()">Zmazať</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Zadanie názvu filtra (štýl appky) ── -->
+<div class="av-confirm-overlay" id="lk-prompt-overlay" style="z-index:6100" onclick="if(event.target===this)lkPromptClose()">
+  <div class="av-confirm-box">
+    <div class="av-confirm-icon" style="background:linear-gradient(180deg,#DBEAFE,#BFDBFE)">💾</div>
+    <div class="av-confirm-title" id="lk-prompt-title">Uložiť filter</div>
+    <div class="av-confirm-sub" id="lk-prompt-sub">Zadaj názov, pod ktorým si filter uložíš.</div>
+    <input type="text" id="lk-prompt-input" class="lk-prompt-input" autocomplete="off" spellcheck="false"
+           onkeydown="if(event.key==='Enter')lkPromptOk()" placeholder="Napr. Komárno – ponuka krému">
+    <div class="av-confirm-btns" style="margin-top:18px">
+      <button type="button" class="av-confirm-btn av-confirm-cancel" onclick="lkPromptClose()">Zrušiť</button>
+      <button type="button" class="av-confirm-btn lk-prompt-ok" onclick="lkPromptOk()">Uložiť</button>
+    </div>
   </div>
 </div>
 
