@@ -3234,7 +3234,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.37.1';
+var APP_VERSION = '2.37.2';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -18343,6 +18343,12 @@ function buildRepData(reps) {
   try {
     if (typeof LB_STATE !== 'undefined' && LB_STATE.data && !LB_STATE.loading) {
       lbRender();
+    } else if (typeof LB_STATE !== 'undefined' && !LB_STATE.loading && LB_STATE.mode === 'plnenie') {
+      // Plnenie rebríček (Reagila) nemá LB_STATE.data — prekresli, ak je práve viditeľný,
+      // aby sa po dobehnutí rostera doplnili reprezentanti (inak ostane prázdny).
+      var _ov = document.getElementById('lb-overlay');
+      var _lbVis = (_ov && _ov.classList.contains('show')) || document.body.classList.contains('mgr-subtab-leaderboard');
+      if (_lbVis) lbRender();
     }
   } catch(e){}
   if (!isFullRoster && !REP_LIST_STATE.fullRosterRequested) {
@@ -19290,8 +19296,18 @@ function lbRenderPlnenie(body) {
   }
   LB_STATE._plLoadAttempted = false;
 
-  // plnenieBuildAggregates vracia .reps (array)
-  var repsList = (cached.aggregates && cached.aggregates.reps) ? cached.aggregates.reps : [];
+  // plnenieBuildAggregates vracia .reps (array). Prepočítaj zo scope-u v čase renderu:
+  // pri Reagile sa LB_PLNENIE_CACHE môže naplniť skôr, než dobehne roster (MGR_ALL/
+  // LB_ALL_REPS sa pri reagila logine vyprázdnia), takže pôvodné aggregates by mali
+  // prázdny scope → prázdny rebríček. Prepočet z cached.data podľa aktuálneho
+  // lbScopeReps() vždy zodpovedá načítanému rosteru (a je no-op pre už správny cache).
+  var _scopeNow = lbScopeReps();
+  var repsList;
+  if (cached.data && _scopeNow.length) {
+    repsList = plnenieBuildAggregates(cached.data, lastQ, _scopeNow).reps || [];
+  } else {
+    repsList = (cached.aggregates && cached.aggregates.reps) ? cached.aggregates.reps : [];
+  }
   var repAggLookup = {};
   repsList.forEach(function(r){ repAggLookup[r.username] = r; });
 
@@ -20155,7 +20171,12 @@ function mgrSwitchSubtab(tab) {
   if (tab === 'leaderboard') {
     LB_STATE.showConfetti = true;
     lbSyncTabs();
-    if (LB_STATE.loading) {
+    if (document.body.classList.contains('reagila-line')) {
+      // Reagila nemá rebríček návštev → render rovno Plnenie. lbLoadData je pre
+      // reagilu no-op, takže bez tejto vetvy by sa rebríček nikdy nevykreslil.
+      LB_STATE.mode = 'plnenie';
+      lbRender();
+    } else if (LB_STATE.loading) {
       var body = lbGetBody();
       if (body) body.innerHTML = skelLb();
     } else if (LB_STATE.data && lbDataHasVisits()) {
