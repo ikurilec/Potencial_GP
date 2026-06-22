@@ -3309,7 +3309,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.40.0';
+var APP_VERSION = '2.41.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6720,11 +6720,12 @@ function settingsTogglePushSub(){
 function golemSettingsIsApprover(){
   try {
     var me = String(((getSession()||{}).username)||'').toLowerCase(); if(!me) return false;
+    var _inList=function(raw){ return String(raw||'').split(/[,;]+/).map(function(x){return x.trim().toLowerCase();}).indexOf(me)>=0; };
     if(typeof GYN_CAL_APPROVERS !== 'undefined'){
-      for(var k in GYN_CAL_APPROVERS){ if(Object.prototype.hasOwnProperty.call(GYN_CAL_APPROVERS,k) && String(GYN_CAL_APPROVERS[k]||'').toLowerCase()===me) return true; }
+      for(var k in GYN_CAL_APPROVERS){ if(Object.prototype.hasOwnProperty.call(GYN_CAL_APPROVERS,k) && _inList(GYN_CAL_APPROVERS[k])) return true; }
     }
     if(typeof LB_REP_INFO !== 'undefined'){
-      for(var u in LB_REP_INFO){ if(Object.prototype.hasOwnProperty.call(LB_REP_INFO,u) && LB_REP_INFO[u] && String(LB_REP_INFO[u].schvalovatel||'').toLowerCase()===me) return true; }
+      for(var u in LB_REP_INFO){ if(Object.prototype.hasOwnProperty.call(LB_REP_INFO,u) && LB_REP_INFO[u] && _inList(LB_REP_INFO[u].schvalovatel)) return true; }
     }
   } catch(e){}
   return false;
@@ -14503,18 +14504,22 @@ function gynCalHost(){
 }
 // Login schvaľovateľa pre danú osobu (Golem/Reagila). Číta sa zo stĺpca „Schvaľovateľ"
 // rostera (cez buildRepData → LB_REP_INFO/USERS_LOCAL). Prázdne = bez schvaľovania.
-function gynCalApproverLogin(login){
+// Zoznam schvaľovateľov osoby (Golem/Reagila). Stĺpec „Schvaľovateľ" môže mať
+// viacerých oddelených čiarkou/bodkočiarkou — schváliť môže ktorýkoľvek z nich.
+function gynCalApproverLogins(login){
   login=String(login||'').toLowerCase();
-  if(!login) return '';
+  if(!login) return [];
+  var raw='';
   try {
     var info=(typeof LB_REP_INFO!=='undefined' && LB_REP_INFO[login])
           || (typeof USERS_LOCAL!=='undefined' && USERS_LOCAL[login]) || null;
-    var ap=info && (info.schvalovatel || info.approver);
-    if(ap) return String(ap).toLowerCase();
-    if(typeof GYN_CAL_APPROVERS!=='undefined' && GYN_CAL_APPROVERS[login]) return String(GYN_CAL_APPROVERS[login]).toLowerCase();
+    raw=(info && (info.schvalovatel || info.approver)) || '';
+    if(!raw && typeof GYN_CAL_APPROVERS!=='undefined' && GYN_CAL_APPROVERS[login]) raw=GYN_CAL_APPROVERS[login];
   } catch(e){}
-  return '';
+  return String(raw||'').split(/[,;]+/).map(function(x){return x.trim().toLowerCase();}).filter(Boolean);
 }
+// Prvý schvaľovateľ (spätná kompatibilita).
+function gynCalApproverLogin(login){ return gynCalApproverLogins(login)[0] || ''; }
 // Mapa login→schvaľovateľ pre osoby mimo rep-rostera (manažéri) — doplní backend/roster.
 var GYN_CAL_APPROVERS = {};
 // Je `s` schvaľovateľom udalosti `ev`? Gyn = jeden AM; Golem/Reagila = menovaný v stĺpci.
@@ -14523,13 +14528,12 @@ function gynCalIsApproverOf(s, ev){
   if(gynCalRoleGroup(s)==='admin') return true;        // admin schvaľuje všade
   if(gynCalIsGyn()) return gynCalIsApprover(s);          // gyn: jeden AM
   if(!ev) return false;
-  var ap=gynCalApproverLogin(ev.owner);
-  return !!ap && String(s.username||'').toLowerCase()===ap;
+  return gynCalApproverLogins(ev.owner).indexOf(String(s.username||'').toLowerCase())>=0;
 }
 // Má absencia tohto vlastníka ísť na schválenie? Gyn = len rep; Golem/Reagila = ak má prideleného schvaľovateľa.
 function gynCalNeedsApprovalFor(ownerLogin, group){
   if(gynCalIsGyn()) return group==='rep';
-  return !!gynCalApproverLogin(ownerLogin);
+  return gynCalApproverLogins(ownerLogin).length>0;
 }
 // Meno osoby podľa loginu (Golem/Reagila roster). Fallback = login.
 function gynCalPersonName(login){
@@ -15373,13 +15377,13 @@ function gynCalOpenDetail(dk, id){
   var rows=row('🗓️', range)+row('🕐', time)+row('📍', ev.location)+row('🔁', compTxt)+row('🗒️', ev.note);
   var who=ev.ownerName||ev.owner||'', roleLb=GYN_CAL_ROLE_LABELS[ev.ownerRole]||'';
   var canAppr=(ev.status==='pending' && gynCalIsApproverOf(getSession(), ev));
-  var _apprLogin = gynCalIsGyn() ? '' : gynCalApproverLogin(ev.owner);
-  var _apprName  = _apprLogin ? (gynCalPersonName(_apprLogin)||_apprLogin) : '';
+  var _apprName  = gynCalIsGyn() ? '' : gynCalApproverLogins(ev.owner).map(function(x){ return gynCalPersonName(x)||x; }).join(', ');
   var _pendTxt   = gynCalIsGyn() ? '⏳ Čaká na schválenie AM'
                                  : ('⏳ Čaká na schválenie'+(_apprName?' — '+gynEsc(_apprName):''));
+  var _approvedByName = ev.approvedBy ? (gynCalPersonName(ev.approvedBy)||ev.approvedBy) : '';
   var statusBanner = ev.status==='pending' ? '<div class="gyn-cal-status pending">'+_pendTxt+'</div>'
-    : ev.status==='rejected' ? '<div class="gyn-cal-status rejected">❌ Zamietnuté</div>'+(ev.rejectReason?'<div class="gyn-cal-reason"><b>Dôvod:</b> '+gynEsc(ev.rejectReason)+'</div>':'')
-    : ((gynCalTypeById(ev.type)||{}).cat==='absencia' && ev.approvedBy) ? '<div class="gyn-cal-status approved">✅ Schválené</div>' : '';
+    : ev.status==='rejected' ? '<div class="gyn-cal-status rejected">❌ Zamietnuté'+(_approvedByName?' — '+gynEsc(_approvedByName):'')+'</div>'+(ev.rejectReason?'<div class="gyn-cal-reason"><b>Dôvod:</b> '+gynEsc(ev.rejectReason)+'</div>':'')
+    : ((gynCalTypeById(ev.type)||{}).cat==='absencia' && ev.approvedBy) ? '<div class="gyn-cal-status approved">✅ Schválené'+(_approvedByName?' — '+gynEsc(_approvedByName):'')+'</div>' : '';
   var apprActions='';
   if(canAppr){
     if(GYN_CAL._rejecting===id){
