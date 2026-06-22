@@ -3309,7 +3309,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.41.0';
+var APP_VERSION = '2.41.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -15377,7 +15377,9 @@ function gynCalOpenDetail(dk, id){
   var rows=row('🗓️', range)+row('🕐', time)+row('📍', ev.location)+row('🔁', compTxt)+row('🗒️', ev.note);
   var who=ev.ownerName||ev.owner||'', roleLb=GYN_CAL_ROLE_LABELS[ev.ownerRole]||'';
   var canAppr=(ev.status==='pending' && gynCalIsApproverOf(getSession(), ev));
-  var _apprName  = gynCalIsGyn() ? '' : gynCalApproverLogins(ev.owner).map(function(x){ return gynCalPersonName(x)||x; }).join(', ');
+  var _apprNames = gynCalIsGyn() ? [] : gynCalApproverLogins(ev.owner).map(function(x){ return gynCalPersonName(x)||x; });
+  var _apprName  = _apprNames.length <= 1 ? (_apprNames[0]||'')
+                   : (_apprNames.slice(0,-1).join(', ') + ' alebo ' + _apprNames[_apprNames.length-1]);
   var _pendTxt   = gynCalIsGyn() ? '⏳ Čaká na schválenie AM'
                                  : ('⏳ Čaká na schválenie'+(_apprName?' — '+gynEsc(_apprName):''));
   var _approvedByName = ev.approvedBy ? (gynCalPersonName(ev.approvedBy)||ev.approvedBy) : '';
