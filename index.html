@@ -3309,7 +3309,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.41.2';
+var APP_VERSION = '2.42.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9576,7 +9576,7 @@ function gynCumulativePredictionParts(q, year, predajeByMonth, keys, now, korekc
     if(!isCorr && !hasRaw) return;
     if(isCorr) parts.push({ month: m, mode: 'full' });              // korigovaný = hotový
     else if(m < curMonth) parts.push({ month: m, mode: 'full' });   // uzavretý kalendárny mesiac
-    else if(m === curMonth) parts.push({ month: m, mode: 'half' }); // prebiehajúci mesiac
+    else if(m === curMonth) parts.push({ month: m, mode: plnenieCurMonthMode(q, m, d) }); // prebiehajúci mesiac (k 15. / k 22.)
     // budúce mesiace preskoč
   });
   return parts.length ? parts : null;
@@ -22728,6 +22728,14 @@ var PL_WORKING_DAYS_HALF_MAP = {
           7: 11, 8: 10, 9: 9, 10: 11, 11: 10, 12: 11 }
 };
 
+// Pracovné dni od 1. do 22. dňa vrátane (Po-Pi mínus SK sviatky) — len koncové mesiace
+// kvartálov (3, 6, 9, 12). Posledný mesiac Q: po 22. dni sa predaje nahrávajú k 22.,
+// preto sa základ predikcie prepne z polmesačného (k 15.) na tento. Odvodené z
+// PL_WORKING_DAYS_MAP mínus pracovné dni 23.–koniec (kvôli zhode so zvyškom appky).
+var PL_WORKING_DAYS_D22_MAP = {
+  2026: { 3: 15, 6: 16, 9: 15, 12: 16 }
+};
+
 function plnenieWorkingDays(year, month) {
   if (PL_WORKING_DAYS_MAP[year] && PL_WORKING_DAYS_MAP[year][month] !== undefined) {
     return PL_WORKING_DAYS_MAP[year][month];
@@ -22753,6 +22761,36 @@ function plnenieWorkingDaysHalf(year, month) {
     if (wd !== 0 && wd !== 6) count++;
   }
   return Math.min(count, plnenieWorkingDays(year, month));
+}
+
+function plnenieWorkingDaysToDay22(year, month) {
+  if (PL_WORKING_DAYS_D22_MAP[year] && PL_WORKING_DAYS_D22_MAP[year][month] !== undefined) {
+    return PL_WORKING_DAYS_D22_MAP[year][month];
+  }
+  var last = Math.min(22, new Date(year, month, 0).getDate());
+  var count = 0;
+  for (var d = 1; d <= last; d++) {
+    var wd = new Date(year, month - 1, d).getDay();
+    if (wd !== 0 && wd !== 6) count++;
+  }
+  return Math.min(count, plnenieWorkingDays(year, month));
+}
+
+// Režim prebiehajúceho mesiaca v predikcii. Bežne 'half' (predaje k 15.). V poslednom
+// mesiaci kvartálu sa od 22. dňa (vrátane) prepne na 'd22' (predaje k 22.) — vtedy
+// chodia novšie predaje. Posun je tak viditeľný aj v rebríčku (šípky) pri nahratí.
+function plnenieCurMonthMode(q, month, d) {
+  var qMonths = plnenieQuarterMonths(q);
+  var isLastMonthOfQ = qMonths.length && month === qMonths[qMonths.length - 1];
+  if (isLastMonthOfQ && (d || new Date()).getDate() >= 22) return 'd22';
+  return 'half';
+}
+
+// Pracovné dni pre jednu "part" podľa jej režimu (full / half=k 15. / d22=k 22.).
+function plneniePartWorkingDays(year, p) {
+  if (p.mode === 'half') return plnenieWorkingDaysHalf(year, p.month);
+  if (p.mode === 'd22')  return plnenieWorkingDaysToDay22(year, p.month);
+  return plnenieWorkingDays(year, p.month);
 }
 
 // Rozdelí Q plán na mesiace proporcionálne podľa pracovných dní.
@@ -22798,7 +22836,7 @@ function plneniePredictionMonthParts(q, year, predajeByMonth, productKeys, now, 
     var row = predajeByMonth && predajeByMonth[m] ? predajeByMonth[m] : null;
     if (!plnenieMonthHasSales(row, productKeys)) return;
     if (m < curMonth) parts.push({ month: m, mode: 'full' });
-    else if (m === curMonth) parts.push({ month: m, mode: 'half' });
+    else if (m === curMonth) parts.push({ month: m, mode: plnenieCurMonthMode(q, m, d) });
   });
   return parts;
 }
@@ -22809,9 +22847,7 @@ function plneniePlanForPredictionParts(year, q, qPlanTotal, parts) {
   var totalWd = plnenieWorkingDaysForMonths(year, qMonths);
   if (totalWd <= 0) return 0;
   return parts.reduce(function(sum, p) {
-    var wd = p.mode === 'half'
-      ? plnenieWorkingDaysHalf(year, p.month)
-      : plnenieWorkingDays(year, p.month);
+    var wd = plneniePartWorkingDays(year, p);
     return sum + (qPlanTotal * wd / totalWd);
   }, 0);
 }
@@ -23023,7 +23059,7 @@ function plnenieInsightSalesDataLabel(q, year, predajeByMonth, key) {
   if (!parts.length) return 'Predaje: bez dát';
   var txt = parts.map(function(p) {
     var lbl = PL_MONTH_LABELS[p.month] || ('M' + p.month);
-    return p.mode === 'half' ? ('k 15. ' + lbl) : lbl;
+    return p.mode === 'half' ? ('k 15. ' + lbl) : p.mode === 'd22' ? ('k 22. ' + lbl) : lbl;
   }).join(' + ');
   return 'Predaje: ' + txt;
 }
@@ -23180,7 +23216,7 @@ function plnenieComparableMonths(q, year, asOfMonth) {
 
 function plnenieWorkingDaysForParts(year, parts) {
   return (parts || []).reduce(function(sum, p) {
-    return sum + (p.mode === 'half' ? plnenieWorkingDaysHalf(year, p.month) : plnenieWorkingDays(year, p.month));
+    return sum + plneniePartWorkingDays(year, p);
   }, 0);
 }
 
@@ -23222,7 +23258,7 @@ function plneniePeriodDataLabel(q, year, asOfMonth, predajeByMonth, productKeys)
     if (parts.length) {
       var partText = parts.map(function(p) {
         var lbl = PL_MONTH_LABELS[p.month] || ('M' + p.month);
-        return p.mode === 'half' ? (lbl + ' do 15.') : lbl;
+        return p.mode === 'half' ? (lbl + ' do 15.') : p.mode === 'd22' ? (lbl + ' do 22.') : lbl;
       }).join(' + ');
       return plnenieQLabel(q, year) + ' · ' + partText;
     }
