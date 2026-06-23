@@ -3309,7 +3309,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.42.0';
+var APP_VERSION = '2.42.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -19298,6 +19298,17 @@ function lbSyncTabs() {
 var LB_MOVE_STATE = {};   // key -> { loaded, loading, prevPct }
 
 function lbMoveConfigKey(q){ return 'lb_move_q' + q; }
+// Prechod 15→22 v poslednom mesiaci Q zmení predikciu BEZ nahratia predajov (teda
+// bez zmeny notif_predaje). Aby sa snapshot poradia prerolloval aj pri tomto prechode
+// (prev = stav k 15., cur = stav k 22.), pridáme do verzie príznak '_d22'. Po prepnutí
+// je verzia stabilná → šípky ukážu len tých, čo sa reálne posunuli, ostatní bodku.
+function lbMoveVersionSuffix(q){
+  var d = new Date();
+  if(q !== Math.ceil((d.getMonth() + 1) / 3)) return '';   // len aktuálny Q
+  var qMonths = plnenieQuarterMonths(q);
+  var lastM = qMonths[qMonths.length - 1];
+  return ((d.getMonth() + 1) === lastM && d.getDate() >= 22) ? '_d22' : '';
+}
 // Zaokrúhli pct mapu na 1 desatinu — menší payload do Sheetu (na poradie úplne stačí)
 function lbMoveRound(m){
   var o = {};
@@ -19316,6 +19327,7 @@ function lbMoveEnsure(urlFn, key, q, curPct, cb){
     fetch(urlFn('action=getConfig&key=' + lbMoveConfigKey(q)), {cache:'no-store'}).then(function(r){return r.json();}).catch(function(){return null;})
   ]).then(function(res){
     var curTs = (res[0] && res[0].ok && res[0].value) ? String(res[0].value) : '';
+    if(curTs) curTs += lbMoveVersionSuffix(q);   // prechod k 22. prerolluje snapshot
     var snap = null;
     try { if(res[1] && res[1].ok && res[1].value) snap = JSON.parse(res[1].value); } catch(e){}
     if(!snap || typeof snap !== 'object') snap = { ts:'', cur:null, prev:null };
