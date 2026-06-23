@@ -3309,7 +3309,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.41.1';
+var APP_VERSION = '2.41.2';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -15852,7 +15852,27 @@ function gynCalFormSave(){
   };
   if(GYN_CAL._formEditId){
     var old=gynCalEventById(GYN_CAL._formEditId), replaced=false;
-    if(old){ rec.createdAt=old.createdAt; }
+    if(old){
+      // Úprava udalosti (aj cudzej — admin/manažér) NEMENÍ vlastníka ani čas vzniku.
+      rec.createdAt=old.createdAt;
+      rec.owner=old.owner||rec.owner;
+      rec.ownerName=old.ownerName||rec.ownerName;
+      rec.ownerRole=old.ownerRole||rec.ownerRole;
+      rec.ownerRoleRaw=(old.ownerRoleRaw!=null?old.ownerRoleRaw:'');
+      // Schválenie sa počíta podľa PÔVODNÉHO vlastníka, nie podľa toho, kto upravuje.
+      var _og=old.ownerRole||group;
+      var _needAppr=(isAbsence && t.approval && gynCalNeedsApprovalFor(old.owner||'', _og));
+      if(!_needAppr){
+        // Nový typ schválenie nepotrebuje (napr. paragraf/OČR) → rovno schválené.
+        rec.status='approved'; rec.approvedBy=''; rec.approvedAt=0; rec.rejectReason='';
+      } else if(old.type===rec.type && (old.status==='approved'||old.status==='rejected')){
+        // Typ sa nezmenil → ponechaj pôvodné rozhodnutie schvaľovateľa.
+        rec.status=old.status; rec.approvedBy=old.approvedBy||''; rec.approvedAt=old.approvedAt||0; rec.rejectReason=old.rejectReason||'';
+      } else {
+        // Zmena typu vyžaduje nové schválenie pôvodného vlastníka → späť na „čaká".
+        rec.status='pending'; rec.approvedBy=''; rec.approvedAt=0; rec.rejectReason='';
+      }
+    }
     for(var i=0;i<GYN_CAL.events.length;i++){ if(GYN_CAL.events[i].id===GYN_CAL._formEditId){ GYN_CAL.events[i]=rec; replaced=true; break; } }
     if(!replaced) GYN_CAL.events.push(rec);
   } else {
