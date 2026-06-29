@@ -3309,7 +3309,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.42.1';
+var APP_VERSION = '2.43.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7337,13 +7337,12 @@ function settingsAppHtml(s){
     }
   }
 
-  // Záchrana chýbajúcej Golem línie — ak Golem login pri štarte zlyhal (cold start / pomalé
-  // pripojenie / druhé zariadenie), admin uviazne v Gyn/Reagile bez Golemu a prepínač ho
-  // neukáže. Tu ho vie načítať cez heslo bez odhlásenia. Podmienka: má 2+ línie (dual),
-  // nie je práve v Goleme a Golem v dual chýba.
+  // Záchrana chýbajúcej línie — ak niektorý login pri štarte zlyhal (cold start servera,
+  // pomalé pripojenie, druhé zariadenie, alebo účet bol pridaný do Gyn/Reagila Sheets až
+  // neskôr), admin nemusí vidieť prepínač línie vôbec, alebo len čiastočne. Tu vie chýbajúcu
+  // líniu doplniť cez heslo bez odhlásenia. Len admin (rolu admin nevieme čítať z línie,
+  // ktorá práve chýba, preto ju hľadáme aj v ktorejkoľvek dostupnej dual línii).
   var _dualNow = (typeof mgrGetDual === 'function') ? mgrGetDual() : null;
-  // Len admin. Rolu admin nevieme čítať z Golemu (ten práve chýba), preto ju hľadáme
-  // v aktuálnej session aj v ktorejkoľvek línii dual-session (admin býva admin vo viacerých).
   var _isAdminNow = false;
   try {
     if(typeof mgrDetectRole === 'function'){
@@ -7351,13 +7350,20 @@ function settingsAppHtml(s){
       else if(_dualNow){ ['gp','gyn','reagila'].forEach(function(L){ if(_dualNow[L] && mgrDetectRole(_dualNow[L]) === 'admin') _isAdminNow = true; }); }
     }
   } catch(e){}
-  if(_isAdminNow && _dualNow && !_dualNow.gp && typeof mgrCurrentLine === 'function' && mgrCurrentLine() !== 'gp'){
-    html += '<div style="border-top:1px solid #F1F5F9;margin-top:6px;padding-top:14px">' +
-              '<div class="set-card-sub">Chýba ti Golem línia?</div>' +
-              '<div class="set-row-desc">Ak sa Golem pri prihlásení nenačítal (cold start servera, pomalé pripojenie alebo druhé zariadenie), môžeš ho doplniť <strong>bez odhlásenia</strong>. Zadáš heslo, appka načíta Golem líniu a prepne sa do nej.</div>' +
-              '<button type="button" class="set-action-btn" onclick="settingsLoadGolemLine()">⬇️ Načítať Golem líniu</button>' +
-              '<div style="margin-top:8px"><button type="button" class="set-mini-btn" onclick="mgrShowLineDiag()">Diagnostika prihlásenia línií</button></div>' +
-            '</div>';
+  if(_isAdminNow){
+    var _curLine = (typeof mgrCurrentLine === 'function') ? mgrCurrentLine() : 'gp';
+    var _missing = ['gp','gyn','reagila'].filter(function(L){ return L !== _curLine && !(_dualNow && _dualNow[L]); });
+    if(_missing.length){
+      html += '<div style="border-top:1px solid #F1F5F9;margin-top:6px;padding-top:14px">' +
+                '<div class="set-card-sub">Chýba ti niektorá línia?</div>' +
+                '<div class="set-row-desc">Ak sa pri prihlásení niektorá línia nenačítala (cold start servera, pomalé pripojenie, druhé zariadenie, alebo účet bol do Sheets doplnený neskôr), môžeš ju doplniť <strong>bez odhlásenia</strong>. Zadáš heslo, appka líniu načíta a sprístupní v prepínači.</div>' +
+                _missing.map(function(L){
+                  var lbl = lineChooserMeta(L).label;
+                  return '<button type="button" class="set-action-btn" onclick="settingsLoadLine(\'' + L + '\')">⬇️ Načítať ' + settingsEsc(lbl) + ' líniu</button>';
+                }).join('') +
+                '<div style="margin-top:8px"><button type="button" class="set-mini-btn" onclick="mgrShowLineDiag()">Diagnostika prihlásenia línií</button></div>' +
+              '</div>';
+    }
   }
 
   // Čistenie vyrovnávacej pamäte
@@ -7450,38 +7456,42 @@ function settingsRememberLine(){
   try { renderSettings(); } catch(e){}
 }
 
-// Načítaj chýbajúcu Golem líniu cez heslo (bez odhlásenia) a prepni do nej.
-// Rieši stav, keď Golem login pri štarte zlyhal (cold start Apps Scriptu / pomalá sieť /
-// druhé zariadenie) a admin uviazol v Gyn/Reagile bez Golemu. Golem skúsime dvakrát.
-function settingsLoadGolemLine(){
+// Doplnenie chýbajúcej línie (Golem/Gyn/Reagila) do dual session bez odhlásenia.
+// Použité v rescue sekcii Nastavení, keď login pri štarte niektorú líniu nezískal
+// (cold start servera, pomalé pripojenie, druhé zariadenie) a admin tak nevidí prepínač.
+function settingsLoadLine(line){
   var s = (typeof getSession === 'function') ? getSession() : null;
   if(!s || !s.username){ alert('Nie si prihlásený.'); return; }
-  var pwd = prompt('Zadaj svoje heslo pre načítanie Golem línie:');
+  var meta = lineChooserMeta(line);
+  var pwd = prompt('Zadaj svoje heslo pre načítanie ' + meta.label + ' línie:');
   if(pwd === null) return;                 // zrušené
   if(!pwd){ alert('Heslo je prázdne.'); return; }
+  var be = lineBackend(line);
   var lp = '?action=login&username=' + encodeURIComponent(s.username) +
            '&password=' + encodeURIComponent(pwd) +
            '&device_id=' + encodeURIComponent(authDeviceId());
-  function tryGolem(tmo){
-    return appFetchJson(SCRIPT_URL + lp, undefined, tmo).catch(function(){ return { ok:false, _failed:true }; });
+  function tryLine(tmo){
+    return appFetchJson(be.base + lp, undefined, tmo).catch(function(){ return { ok:false, _failed:true }; });
   }
-  tryGolem(20000).then(function(gp){
-    return (gp && gp._failed) ? tryGolem(25000) : gp;   // cold start → druhý pokus
-  }).then(function(gp){
-    if(!gp || !gp.ok){
-      alert((gp && gp._failed)
-        ? 'Golem server neodpovedal včas. Skús to znova o chvíľu.'
-        : 'Golem prihlásenie zlyhalo — nesprávne heslo alebo nemáš Golem účet (rovnaké meno + heslo v Golem Sheets).');
+  tryLine(20000).then(function(d){
+    return (d && d._failed) ? tryLine(25000) : d;   // cold start → druhý pokus
+  }).then(function(d){
+    if(!d || !d.ok){
+      alert((d && d._failed)
+        ? (meta.label + ' server neodpovedal včas. Skús to znova o chvíľu.')
+        : (meta.label + ' prihlásenie zlyhalo — nesprávne heslo alebo nemáš ' + meta.label + ' účet (rovnaké meno + heslo v ' + meta.label + ' Sheets).'));
       return;
     }
-    var gpUser = mgrBuildGpUser(s.username, gp);
-    var d = (typeof mgrGetDual === 'function' && mgrGetDual()) || { username: s.username };
-    d.username = d.username || s.username;
-    d.gp = gpUser;
-    mgrSetDual(d);
+    var built = (line === 'gyn') ? mgrBuildGynUser(s.username, d) :
+                (line === 'reagila') ? mgrBuildReagilaUser(s.username, d) :
+                mgrBuildGpUser(s.username, d);
+    var dual = (typeof mgrGetDual === 'function' && mgrGetDual()) || { username: s.username };
+    dual.username = dual.username || s.username;
+    dual[line] = built;
+    mgrSetDual(dual);
     try { mgrRenderLineSwitch(); } catch(e){}
     if(typeof closeSettings === 'function') closeSettings();
-    try { mgrSwitchLine('gp'); } catch(e){}
+    try { mgrSwitchLine(line); } catch(e){}
   });
 }
 
@@ -8448,7 +8458,7 @@ function mgrLineTargets(){
 }
 // ── DOČASNÁ diagnostika prepínača línie (odstrániť po vyriešení) ──
 var MGR_LS_DIAG_KEY = 'potencial_gp_ls_diag';
-function mgrCaptureLineDiag(username, gpData, gynData){
+function mgrCaptureLineDiag(username, gpData, gynData, reagilaData){
   var detected = false;
   try { detected = mgrDetectRole(mgrBuildGpUser(username, gpData)) === 'admin'; } catch(e){}
   try {
@@ -8456,6 +8466,7 @@ function mgrCaptureLineDiag(username, gpData, gynData){
       ts: Date.now(), user: username,
       gpOk:  !!(gpData  && gpData.ok),  gpRole:  (gpData  && gpData.role)  || '',
       gynOk: !!(gynData && gynData.ok), gynRole: (gynData && gynData.role) || '',
+      reaOk: !!(reagilaData && reagilaData.ok), reaRole: (reagilaData && reagilaData.role) || '',
       detectedAdmin: detected
     }));
   } catch(e){}
@@ -8467,11 +8478,13 @@ function mgrShowLineDiag(){
   if(!d){
     msg += '\nŽiadny záznam z posledného prihlásenia.\nOdhlás sa a znova prihlás (fresh login).';
   } else {
-    msg += '\nGolem login: ' + (d.gpOk ? 'OK' : 'ZLYHAL') + '  (role: "' + d.gpRole + '")';
-    msg += '\nGyn login: '   + (d.gynOk ? 'OK' : 'ZLYHAL') + '  (role: "' + d.gynRole + '")';
+    msg += '\nGolem login: '   + (d.gpOk  ? 'OK' : 'ZLYHAL') + '  (role: "' + d.gpRole  + '")';
+    msg += '\nGyn login: '     + (d.gynOk ? 'OK' : 'ZLYHAL') + '  (role: "' + d.gynRole + '")';
+    msg += '\nReagila login: ' + (d.reaOk ? 'OK' : 'ZLYHAL') + '  (role: "' + d.reaRole + '")';
     msg += '\nDetekovaný admin: ' + (d.detectedAdmin ? 'áno' : 'nie');
   }
   msg += '\nDual session uložená: ' + (dual ? 'áno' : 'nie');
+  if(dual) msg += ' (' + ['gp','gyn','reagila'].filter(function(L){ return !!dual[L]; }).join(', ') + ')';
   alert(msg);
 }
 // Aktivuj prepínač línie BEZ odhlásenia — re-auth oba backendy na pozadí (obchádza biely-screen logout).
@@ -8927,7 +8940,7 @@ function doLogin() {
     var gynData = results[1];
     var reagilaData = results[2];
     // Ulož dostupné línie pre prepínač (ak ich má používateľ 2+)
-    try { mgrCaptureLineDiag(username, gpData, gynData); } catch(e){}
+    try { mgrCaptureLineDiag(username, gpData, gynData, reagilaData); } catch(e){}
     mgrStoreDualIfEligible(username, gpData, gynData, reagilaData);
 
     // Ktoré línie má používateľ k dispozícii (rovnaké meno+heslo v danom Sheete)
