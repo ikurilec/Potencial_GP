@@ -3309,7 +3309,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.42.1';
+var APP_VERSION = '2.43.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -4996,7 +4996,7 @@ function potvrdit(){
   var lekarValid = lekar && lekarRealWords.length >= 2;
   // Región nie je povinný pre PM, BUM, AM, admin
   var session = getSession();
-  var roleNoRegion = session && ['pm','bum','am','admin'].indexOf(session.role) !== -1;
+  var roleNoRegion = session && ['pm','bum','am','admin','asistent'].indexOf(session.role) !== -1;
   var repValid = !!rep || roleNoRegion;
 
   if(!lekarValid || !repValid || !mestoValid) {
@@ -6557,6 +6557,7 @@ function settingsRoleLabel(s){
       case 'bum':   return 'Business Unit Manager';
       case 'am':    return 'Area Manager';
       case 'boss':  return 'Vedenie';
+      case 'asistent': return 'Asistent';
       default:      return 'Key Account Manager';  // KAM (rola 'rep west' = preložená KAM)
     }
   }
@@ -6570,6 +6571,7 @@ function settingsRoleLabel(s){
     case 'ameast': return 'Area Manager East';
     case 'am':    return 'Area Manager';
     case 'boss':  return 'Vedenie';
+    case 'asistent': return 'Asistent';
     default:      return 'Medicínsky reprezentant';
   }
 }
@@ -6719,6 +6721,7 @@ function settingsTogglePushSub(){
 // Golem: som schvaľovateľom aspoň jednej osoby? (z rostra — hodnota v stĺpci „Schvaľovateľ")
 function golemSettingsIsApprover(){
   try {
+    if(calIsAssistant(getSession())) return false;     // asistentka neschvaľuje → žiadny prepínač „Žiadosti o schválenie"
     var me = String(((getSession()||{}).username)||'').toLowerCase(); if(!me) return false;
     var _inList=function(raw){ return String(raw||'').split(/[,;]+/).map(function(x){return x.trim().toLowerCase();}).indexOf(me)>=0; };
     if(typeof GYN_CAL_APPROVERS !== 'undefined'){
@@ -8283,7 +8286,7 @@ function tutorialSkip() {
   window.scrollTo(0, 0);
   // Zobraziť What's New po dokončení tutoriálu (pre nových používateľov)
   var session = getSession();
-  var isManager = session && (['admin','bum','boss','pm','am'].indexOf(session.role) !== -1);
+  var isManager = session && (['admin','bum','boss','pm','am','asistent'].indexOf(session.role) !== -1);
   setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(isManager);}else{checkMilestone();} }, 400);
 }
 
@@ -8609,7 +8612,7 @@ function reagilaClearGolemStatics(){
   try {
     MGR_REP_NAMES = {}; LB_REP_INFO = {}; USERS_LOCAL = {};
     MGR_AM_WEST = []; MGR_AM_EAST = []; MGR_ALL = []; LB_ALL_REPS = [];
-    ['bum','admin','boss','pm','am'].forEach(function(k){ if(MGR_ROLE_CFG[k]) MGR_ROLE_CFG[k].reps = []; });
+    ['bum','admin','boss','pm','am','asistent'].forEach(function(k){ if(MGR_ROLE_CFG[k]) MGR_ROLE_CFG[k].reps = []; });
     try { reagilaApplyPharmaMaps_(); } catch(e){}
     try { LB_STATE.mode = 'plnenie'; } catch(e){}
     try { PL_PRODUCT_ORDER = ['reagila','cavinton','boxarid','fingolimod','dmf','yaxwer','pazopanib','lunaldin']; } catch(e){}
@@ -8643,7 +8646,7 @@ function loginSuccess(username, name, role, region, extra) {
       MGR_AM_WEST = []; MGR_AM_EAST = []; MGR_ALL = []; LB_ALL_REPS = [];
       // cfg.reps držia VLASTNÉ referencie na starý Golem zoznam — vyprázdni ich tiež,
       // inak mgrEnter načíta Golem repov. buildRepData ich potom naplní Reagila rostrom.
-      ['bum','admin','boss','pm','am'].forEach(function(k){ if(MGR_ROLE_CFG[k]) MGR_ROLE_CFG[k].reps = []; }); try { reagilaApplyPharmaMaps_(); } catch(e){} try { LB_STATE.mode = 'plnenie'; } catch(e){} try { PL_PRODUCT_ORDER = ['reagila','cavinton','boxarid','fingolimod','dmf','yaxwer','pazopanib','lunaldin']; } catch(e){}
+      ['bum','admin','boss','pm','am','asistent'].forEach(function(k){ if(MGR_ROLE_CFG[k]) MGR_ROLE_CFG[k].reps = []; }); try { reagilaApplyPharmaMaps_(); } catch(e){} try { LB_STATE.mode = 'plnenie'; } catch(e){} try { PL_PRODUCT_ORDER = ['reagila','cavinton','boxarid','fingolimod','dmf','yaxwer','pazopanib','lunaldin']; } catch(e){}
     } catch(e){}
   }
   // Extra dáta z login response (pohlavie + avatar)
@@ -9453,7 +9456,7 @@ var GYN_STATE   = { repList: [], userList: [] };
 var GYN_APP     = { nav: 'plnenie', q: 1, year: 2026, plCache: {}, plLoading: {},
                     detailLogin: null, detailMeno: '', detailRegion: '' };
 var GYN_LINIA_LABEL = { pill: '💊 Pill', patch: '🩹 Patch' };
-var GYN_ROLE_LABEL  = { 'gyn-rep':'Reprezentant', 'gyn-am':'Area Manager', 'gyn-pm':'Produktový manažér', 'gyn-bum':'Business Unit Manager' };
+var GYN_ROLE_LABEL  = { 'gyn-rep':'Reprezentant', 'gyn-am':'Area Manager', 'gyn-pm':'Produktový manažér', 'gyn-bum':'Business Unit Manager', 'gyn-asistent':'Asistent' };
 // Mapovanie produkt → línia (kľúč = lowercase názov produktu zo Sheets)
 // 'both' = produkt patrí do Pill aj Patch (zobrazí sa v oboch sekciách)
 // Produkty vyňaté z výpočtu celkového plnenia (sumár, PILL/PATCH karty) — zobrazia sa len v per-produkt sekcii
@@ -14462,11 +14465,19 @@ function gynCalTypeById(id){ for(var i=0;i<GYN_CAL_TYPES.length;i++){ if(GYN_CAL
 function gynCalRoleGroup(user){
   var r = String((user && user.role) || '').toLowerCase();
   if(r==='admin') return 'admin';
+  // Asistentka (Golem = 'asistent', Gyn = 'gyn-asistent') — manažérska skupina:
+  // smie zakladať všetky typy udalostí (firemné aj vlastné absencie), no NIKDY neschvaľuje (pozri calIsAssistant).
+  if(r==='asistent' || r==='gyn-asistent') return 'mgr';
   // Gyn manažéri + Golem/Reagila manažéri (am west/east, bum, pm, boss, kam-manažér).
   if(r==='gyn-am' || r==='gyn-pm' || r==='gyn-bum') return 'mgr';
   if(r==='bum' || r==='pm' || r==='boss' || r==='am' ||
      r==='am west' || r==='amwest' || r==='am east' || r==='ameast') return 'mgr';
   return 'rep';
+}
+// Je relácia asistentka? Asistentka má manažérsky pohľad + zakladá udalosti, ale nesmie schvaľovať absencie.
+function calIsAssistant(s){
+  var r = String((s && s.role) || '').toLowerCase();
+  return r === 'asistent' || r === 'gyn-asistent';
 }
 function gynCalTypesForRole(group){
   return GYN_CAL_TYPES.filter(function(t){ return t.roles.indexOf(group) >= 0; });
@@ -14525,6 +14536,7 @@ var GYN_CAL_APPROVERS = {};
 // Je `s` schvaľovateľom udalosti `ev`? Gyn = jeden AM; Golem/Reagila = menovaný v stĺpci.
 function gynCalIsApproverOf(s, ev){
   s=s||(typeof getSession==='function'&&getSession())||{};
+  if(calIsAssistant(s)) return false;                  // asistentka NIKDY neschvaľuje (poistka aj keby bola omylom v stĺpci „Schvaľovateľ")
   if(gynCalRoleGroup(s)==='admin') return true;        // admin schvaľuje všade
   if(gynCalIsGyn()) return gynCalIsApprover(s);          // gyn: jeden AM
   if(!ev) return false;
@@ -15943,7 +15955,8 @@ var MGR_ROLE_CFG = {
   pm:     { label:'PM',      title:'Všetci reprezentanti',      reps:MGR_ALL },
   amwest: { label:'AM WEST', title:'Reprezentanti West',        reps:MGR_AM_WEST },
   ameast: { label:'AM EAST', title:'Reprezentanti East',        reps:MGR_AM_EAST },
-  am:     { label:'AREA MANAGER', title:'Všetci reprezentanti', reps:MGR_ALL }  // Reagila — AM nad všetkými KAM
+  am:     { label:'AREA MANAGER', title:'Všetci reprezentanti', reps:MGR_ALL },  // Reagila — AM nad všetkými KAM
+  asistent: { label:'ASISTENT', title:'Všetci reprezentanti', reps:MGR_ALL }   // Asistent — manažérsky pohľad, zakladá udalosti
 };
 
 var MGR_SEG_LBL = { top:'Platinum', udrzat:'Gold', zvysit3:'Silver A', zvysit:'Silver B', frekvencia:'Bronze', vyradit:'Inactive' };
@@ -15980,6 +15993,7 @@ function mgrDetectRole(user){
   if(r === 'amwest')        return 'amwest';
   if(r === 'ameast')        return 'ameast';
   if(r === 'am')            return 'am';  // Reagila: Area Manager (vidí všetkých KAM, NIE admin)
+  if(r === 'asistent')      return 'asistent';  // Golem/Reagila asistentka — manažérsky pohľad, neschvaľuje
   // Fallback — hardcódovaný zoznam (pre staré účty)
   return MGR_USERS[u] || null;
 }
@@ -18425,6 +18439,7 @@ function buildRepData(reps) {
   MGR_ROLE_CFG.boss.reps   = MGR_ALL;
   MGR_ROLE_CFG.pm.reps     = MGR_ALL;
   MGR_ROLE_CFG.am.reps     = MGR_ALL;
+  MGR_ROLE_CFG.asistent.reps = MGR_ALL;
   MGR_ROLE_CFG.amwest.reps = MGR_AM_WEST;
   MGR_ROLE_CFG.ameast.reps = MGR_AM_EAST;
 
