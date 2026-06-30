@@ -1162,9 +1162,9 @@
   body.reagila-line #pl-no-plan-notice{ display:none !important; }
   /* PDF mesačné reporty sú Golem-only (AM West/East, Golem produkty) — v Reagile skry */
   body.reagila-line #pl-rpt-btn-wrap{ display:none !important; }
-  /* Rebríček — Reagila nemá návštevy lekárov, skry „Návštevy" mód (ostáva len Plnenie) */
-  body.reagila-line #mgr-lb-mode-nav,
-  body.reagila-line #rep-lb-mode-nav{ display:none !important; }
+  /* Rebríček — mód „Návštevy" je odstránený (Golem aj Reagila), ostáva len Plnenie pre všetky role */
+  #mgr-lb-mode-nav,
+  #rep-lb-mode-nav{ display:none !important; }
   /* Lekárne — Reagila: skry Krém (reaktivacia) a Dobropis (priority); poradie Všetky → Spiace → Nové */
   body.reagila-line .lk-tabs{ display:flex; }
   body.reagila-line .lk-tab[data-lk-tab="reaktivacia"],
@@ -3309,7 +3309,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.43.0';
+var APP_VERSION = '2.44.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8717,8 +8717,7 @@ function loginSuccess(username, name, role, region, extra) {
       });
     }, 2000);
     setTimeout(function(){
-      REP_PL_STATE.year = REP_PL_STATE.year || (new Date()).getFullYear();
-      REP_PL_STATE.q    = REP_PL_STATE.q    || plnenieCurrentQ();
+      plnenieApplyDefaultPeriod(REP_PL_STATE);
       preloadAllPharmaData();
     }, 2500);
     setTimeout(lkPreload, 300);
@@ -8750,15 +8749,13 @@ function loginSuccess(username, name, role, region, extra) {
       lbPreloadPlnenie();
     });
     if (!REP_PL_STATE.loading && !REP_PL_STATE.loaded) {
-      REP_PL_STATE.year = (new Date()).getFullYear();
-      REP_PL_STATE.q = plnenieCurrentQ();
+      plnenieApplyDefaultPeriod(REP_PL_STATE, true);
       repPlnenieLoad();
     }
   }, 2000);
   // Pharma preload na pozadí — hneď po prihlásení
   setTimeout(function(){
-    REP_PL_STATE.year = REP_PL_STATE.year || (new Date()).getFullYear();
-    REP_PL_STATE.q    = REP_PL_STATE.q    || plnenieCurrentQ();
+    plnenieApplyDefaultPeriod(REP_PL_STATE);
     preloadAllPharmaData();
   }, 1500);
   setTimeout(lkPreload, 300);
@@ -9348,8 +9345,7 @@ document.addEventListener('visibilitychange', function() {
       refreshSession();
       // Doplniť pharma cache ak bola vyčistená (napr. OS vyhodil tab)
       if(Object.keys(PHARMA_STATE.cache).length === 0) {
-        REP_PL_STATE.year = REP_PL_STATE.year || (new Date()).getFullYear();
-        REP_PL_STATE.q    = REP_PL_STATE.q    || plnenieCurrentQ();
+        plnenieApplyDefaultPeriod(REP_PL_STATE);
         preloadAllPharmaData();
       }
     }
@@ -9402,8 +9398,7 @@ function initLogin() {
         lbFetchApprovedQ(function(){ lbLoadData(); lbPreloadPlnenie(); });
       }, 2000);
       setTimeout(function(){
-        REP_PL_STATE.year = REP_PL_STATE.year || (new Date()).getFullYear();
-        REP_PL_STATE.q    = REP_PL_STATE.q    || plnenieCurrentQ();
+        plnenieApplyDefaultPeriod(REP_PL_STATE);
         preloadAllPharmaData();
       }, 2500);
       // One-time onboarding tip pre avatar — 4s delay aby modal-y stihli skončiť
@@ -9421,14 +9416,12 @@ function initLogin() {
         lbPreloadPlnenie();
       });
       if (!REP_PL_STATE.loading && !REP_PL_STATE.loaded) {
-        REP_PL_STATE.year = (new Date()).getFullYear();
-        REP_PL_STATE.q = plnenieCurrentQ();
+        plnenieApplyDefaultPeriod(REP_PL_STATE, true);
         repPlnenieLoad();
       }
     }, 2000);
     setTimeout(function(){
-      REP_PL_STATE.year = REP_PL_STATE.year || (new Date()).getFullYear();
-      REP_PL_STATE.q    = REP_PL_STATE.q    || plnenieCurrentQ();
+      plnenieApplyDefaultPeriod(REP_PL_STATE);
       preloadAllPharmaData();
     }, 1500);
     setTimeout(lkPreload, 300);
@@ -10943,8 +10936,7 @@ function gynLoginSuccess(username, data) {
 function gynEnter(user) {
   var appEl = document.querySelector('.app');
   if(appEl) appEl.style.display = 'none';
-  GYN_APP.q = plnenieCurrentQ();
-  GYN_APP.year = new Date().getFullYear();
+  plnenieApplyDefaultPeriod(GYN_APP, true);
   document.getElementById('gyn-view').classList.add('show');
   gynRenderShell(user);
   gynApplyDefaultNav(user);   // úvodná obrazovka podľa nastavení používateľa (default = Plnenie)
@@ -16020,7 +16012,7 @@ function mgrEnter(roleKey){
   MGR_STATE.subtab = 'plnenie';
   document.body.classList.add('mgr-subtab-plnenie');
   usageSectionEnter('Manažér · Plnenie');
-  PL_STATE.q = plnenieCurrentQ();
+  plnenieApplyDefaultPeriod(PL_STATE, true);
   PL_STATE.loaded = false;
   PL_STATE.loading = false;
   PL_STATE.data = null;
@@ -17536,7 +17528,7 @@ function satoriVote(vote) {
   fetch(url).catch(function(){});
 }
 
-var LB_STATE = { period: 'all', mode: 'navstevy', data: null, loading: false, showConfetti: false, line: 'gp' };
+var LB_STATE = { period: 'all', mode: 'plnenie', data: null, loading: false, showConfetti: false, line: 'gp' };
 var LB_PLNENIE_CACHE = null;
 var LB_PLNENIE_LOADING = false;
 var LB_APPROVED_Q = null; // admin schvaleny Q pre rebricek plnenie, null = auto (currentQ-1)
@@ -17552,7 +17544,7 @@ function lbEnsureLineState() {
   LB_STATE.data = null;
   LB_STATE.loading = false;
   LB_STATE.period = 'all';
-  LB_STATE.mode = (line === 'reagila') ? 'plnenie' : 'navstevy';
+  LB_STATE.mode = 'plnenie';   // mód „Návštevy" odstránený (Golem aj Reagila) — rebríček je vždy Plnenie
   LB_PLNENIE_CACHE = null;
   LB_PLNENIE_LOADING = false;
 }
@@ -18814,24 +18806,15 @@ function loadInitData(username, _attempt) {
 function openLeaderboard(){
   if(!document.getElementById('lb-overlay')) return;
   lbEnsureLineState();
-  var _reagLb = document.body.classList.contains('reagila-line');
-  // Reagila nemá návštevy lekárov → rebríček je vždy v móde Plnenie (mód „Návštevy" je skrytý).
-  if(_reagLb) LB_STATE.mode = 'plnenie';
+  // Rebríček je vždy v móde Plnenie (mód „Návštevy" odstránený pre Golem aj Reagilu).
+  LB_STATE.mode = 'plnenie';
   usageSectionEnter('Rebríček');
   _panelShow('lb-overlay');
   LB_STATE.showConfetti = true;
   lbSyncTabs();
-  // Reagila: rovno renderuj Plnenie rebríček — neťahaj históriu návštev (getHistory × N repov).
+  // Rovno renderuj Plnenie rebríček — neťahaj históriu návštev (getHistory × N repov).
   // lbRenderPlnenie si dáta dotiahne sám cez lbPreloadPlnenie, ak chýbajú.
-  if(_reagLb){ lbRender(); return; }
-  if (LB_STATE.loading) {
-    var body = lbGetBody();
-    if (body) body.innerHTML = skelLb();
-  } else if (LB_STATE.data && lbDataHasVisits()) {
-    lbRender();
-  } else {
-    lbLoadData(true);
-  }
+  lbRender();
 }
 
 function lbConfetti(_try) {
@@ -19127,6 +19110,8 @@ function checkNotifications() {
     var lsKey = notifSeenKey(n.key);
     if (usePrefetch && (n.key in NOTIF_PREFETCH_CACHE)) {
       var serverTs = NOTIF_PREFETCH_CACHE[n.key];
+      // Zapamätaj dátum dát do localStorage (per línia) — používa ho plnenieDefaultPeriod
+      try { if (serverTs) localStorage.setItem(settingsDateLsKey(n.key), serverTs); } catch(e){}
       if (serverTs && serverTs !== (localStorage.getItem(lsKey) || '')) {
         showNotifBanner(n.icon, n.text, lsKey, serverTs);
       }
@@ -19136,6 +19121,8 @@ function checkNotifications() {
       .then(function(r){ return r.json(); })
       .then(function(d){
         var serverTs = (d && d.ok && d.value) ? d.value : null;
+        // Zapamätaj dátum dát do localStorage (per línia) — používa ho plnenieDefaultPeriod
+        try { if (serverTs) localStorage.setItem(settingsDateLsKey(n.key), serverTs); } catch(e){}
         if (serverTs && serverTs !== (localStorage.getItem(lsKey) || '')) {
           showNotifBanner(n.icon, n.text, lsKey, serverTs);
         }
@@ -19254,6 +19241,7 @@ function lbPreloadPlnenie() {
 
 function lbSetMode(mode, el) {
   lbEnsureLineState();
+  mode = 'plnenie';   // mód „Návštevy" odstránený — rebríček je vždy Plnenie
   LB_STATE.mode = mode;
   LB_STATE.period = 'all';
   // Sync aktívny stav oboch setov mode tabs (mgr + rep)
@@ -20161,6 +20149,50 @@ function plnenieDisplayName(rawKey) {
 function plnenieCurrentQ() {
   var m = new Date().getMonth() + 1;
   return Math.ceil(m / 3);
+}
+
+// ── Default ZOBRAZENÝ kvartál + rok (nie kalendárny) ─────────────────────────────
+// Pri prelome kvartálu (napr. 1.7.) sa nemá automaticky skočiť na nový Q, kým doň ešte
+// nepribudli predaje. Riadime sa dátumom poslednej notifikácie „predaje boli aktualizované"
+// (per línia). Z dátumu odvodíme posledný mesiac s dátami — rovnaká logika ako predikcia:
+// deň < 15 = nahral CELÝ predošlý mesiac, deň >= 15 = priebežný mesiac (k 15., resp. k 22.
+// v poslednom mesiaci Q to dorieši plnenieCurMonthMode). Kým posledné dáta patria do staršieho
+// Q, default zostane na ňom; na nový Q sa prepne, až keď pribudnú jeho predaje.
+// Bez známeho dátumu → kalendárny Q (pôvodné správanie, poistka).
+function plnenieLastPredajeTs() {
+  var ts = '';
+  try { ts = localStorage.getItem(settingsDateLsKey('predaje')) || ''; } catch(e){}
+  // Golem má predprihlasovaciu prefetch cache (gyn/reagila NIE — tá by držala golemovský dátum).
+  if (!ts && typeof notifUsesPrefetch === 'function' && notifUsesPrefetch()
+        && typeof NOTIF_PREFETCH_CACHE !== 'undefined' && NOTIF_PREFETCH_CACHE.predaje) {
+    ts = NOTIF_PREFETCH_CACHE.predaje;
+  }
+  return ts;
+}
+function plnenieDefaultPeriod() {
+  var now = new Date();
+  var def = { q: plnenieCurrentQ(), year: now.getFullYear() };
+  var ts = plnenieLastPredajeTs();
+  if (!ts) return def;
+  var up = new Date(ts);
+  if (isNaN(up.getTime())) return def;
+  var y = up.getFullYear();
+  var m = up.getMonth() + 1;                                          // mesiac notifikácie (1..12)
+  if (up.getDate() < 15) { m -= 1; if (m < 1) { m = 12; y -= 1; } }   // < 15. = nahral predošlý CELÝ mesiac
+  var dataQ = Math.ceil(m / 3);
+  // Nikdy nepredbehni kalendár; ak posledné dáta patria do staršieho Q, zostaň na ňom
+  if (y > def.year || (y === def.year && dataQ >= def.q)) return def;
+  return { q: dataQ, year: y };
+}
+function plnenieDefaultQ() { return plnenieDefaultPeriod().q; }
+// Nastav default obdobie (Q + rok) do state objektu (REP_PL_STATE / PL_STATE / GYN_APP).
+// Bez force prepíše len ak Q ešte nie je zvolené (zachová voľbu používateľa).
+function plnenieApplyDefaultPeriod(state, force) {
+  if (!state) return;
+  if (!force && state.q) return;
+  var dp = plnenieDefaultPeriod();
+  state.q = dp.q;
+  state.year = dp.year;
 }
 
 
