@@ -3309,7 +3309,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.44.0';
+var APP_VERSION = '2.44.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10712,7 +10712,7 @@ function gynRepActionSummaryHtml(opts){
   if(!products.length || totalPlan <= 0) return '';
 
   var planLabel = plnenieRepPlanLabel(managerMode, repName);
-  var isClosedQ = q < plnenieCurrentQ();
+  var isClosedQ = plnenieIsClosedQ(q, year);
   var title = isClosedQ ? 'Vyhodnotenie kvartálu' : (managerMode ? 'Na čo sa zamerať s reprezentantom' : 'Akčný súhrn');
   var allKeys = [];
   products.forEach(function(p){ gynProductKeysForMetric(p).forEach(function(k){ if(allKeys.indexOf(k) < 0) allKeys.push(k); }); });
@@ -20195,6 +20195,32 @@ function plnenieApplyDefaultPeriod(state, force) {
   state.year = dp.year;
 }
 
+// ── „Kde sme s dátami" podľa notif_predaje (nie podľa kalendára) ──────────────────
+// Posledný mesiac Q sa nahráva 3×: k 15., k 22. a za CELÝ mesiac. Predikcia (má byť X %)
+// sa má riadiť tým, čo je reálne nahraté:
+//   • deň notif >= 15  → priebežný mesiac (up.month) je rozrobený (k 15./k 22.), plné sú mesiace pred ním
+//   • deň notif < 15   → nahral CELÝ predošlý mesiac, žiadny rozrobený
+// Vracia { fullY, fullM, partY, partM, partDate } alebo null (bez signálu → fallback na kalendár).
+function plnenieDataSignal() {
+  var ts = plnenieLastPredajeTs();
+  if (!ts) return null;
+  var up = new Date(ts);
+  if (isNaN(up.getTime())) return null;
+  var prev = new Date(up.getFullYear(), up.getMonth() - 1, 1);   // posledný NAHRATÝ celý mesiac
+  var sig = { fullY: prev.getFullYear(), fullM: prev.getMonth() + 1, partY: 0, partM: 0, partDate: null };
+  if (up.getDate() >= 15) { sig.partY = up.getFullYear(); sig.partM = up.getMonth() + 1; sig.partDate = up; }
+  return sig;
+}
+// Je kvartál uzavretý z pohľadu DÁT (posledný mesiac nahratý celý), nie podľa kalendára?
+function plnenieIsClosedQ(q, year) {
+  year = year || (new Date()).getFullYear();
+  var sig = plnenieDataSignal();
+  if (!sig) return q < plnenieCurrentQ();                        // bez signálu → kalendár
+  var months = plnenieQuarterMonths(q);
+  var last = months[months.length - 1];
+  return (year < sig.fullY) || (year === sig.fullY && last <= sig.fullM);
+}
+
 
 // Farebné prahy v zozname / Slovensko / regions:
 // ≥ 95% zelená (splnený, bonus), < 95% červená. Binary model — admin vidí bonus áno/nie.
@@ -23340,7 +23366,28 @@ function plnenieWorkingDaysElapsedInMonth(year, month) {
   return Math.min(count, plnenieWorkingDays(year, month));
 }
 
+// „Aktuálne má byť X %" — očakávaný postup kvartálu. Riadi sa REÁLNE nahratými dátami
+// (notif_predaje), nie kalendárom: uzavretý kvartál = 100 % len keď je posledný mesiac
+// nahratý CELÝ; pri k 15./k 22./chýbajúcom mesiaci je to menej (podľa pracovných dní).
 function plnenieExpectedProgressPct(year, q, asOfMonth, predajeByMonth, productKeys, korekcieByMonth) {
+  var sig = plnenieDataSignal();
+  if (!sig) return plnenieExpectedProgressCalendar(year, q, asOfMonth, predajeByMonth, productKeys, korekcieByMonth);
+  var months = plnenieQuarterMonths(q);
+  var qWd = plnenieWorkingDaysForMonths(year, months);
+  if (qWd <= 0) return 0;
+  var elapsed = 0, any = false;
+  months.forEach(function(m) {
+    if (year < sig.fullY || (year === sig.fullY && m <= sig.fullM)) {           // mesiac nahratý celý
+      elapsed += plnenieWorkingDays(year, m); any = true;
+    } else if (sig.partM && year === sig.partY && m === sig.partM) {            // rozrobený mesiac (k 15./k 22.)
+      elapsed += plneniePartWorkingDays(year, { month: m, mode: plnenieCurMonthMode(q, m, sig.partDate) }); any = true;
+    }
+  });
+  if (!any) return 0;                                                          // v tomto Q ešte žiadne dáta
+  return Math.min(100, Math.max(0, elapsed / qWd * 100));
+}
+// Pôvodná kalendárna logika — fallback keď nepoznáme dátum notifikácie predajov.
+function plnenieExpectedProgressCalendar(year, q, asOfMonth, predajeByMonth, productKeys, korekcieByMonth) {
   var months = plnenieQuarterMonths(q);
   var curQ = plnenieCurrentQ();
   if (q < curQ) return 100;
@@ -23413,7 +23460,7 @@ function plnenieRepActionSummaryHtml(opts) {
   var managerMode = !!opts.managerMode;
   var repName = opts.repName || '';
   var planLabel = plnenieRepPlanLabel(managerMode, repName);
-  var isClosedQ = q < plnenieCurrentQ();
+  var isClosedQ = plnenieIsClosedQ(q, year);
   var title = isClosedQ ? 'Vyhodnotenie kvartálu' : (managerMode ? 'Na čo sa zamerať s reprezentantom' : 'Akčný súhrn');
   var products = planProducts.map(function(p){ return plnenieNormalizeKey(p); })
     .filter(function(key, idx, arr){ return arr.indexOf(key) === idx && (parseFloat(plan[key]) || 0) > 0; });
@@ -23432,7 +23479,7 @@ function plnenieRepActionSummaryHtml(opts) {
     var tempoGap = pct === null ? 0 : Math.max(0, expectedPct - pct);
     var impactScore = gap * (0.65 + Math.min(weight, 45) / 45) * (1 + Math.min(tempoGap, 40) / 100);
     return { key:key, label:plnenieDisplayName(key), plan:pPlan, sales:pSales, pct:pct, gap:gap, weight:weight, tempoGap:tempoGap, impactScore:impactScore };
-  }).filter(function(p){ return p.pct !== null && p.gap > 0 && (q < plnenieCurrentQ() ? p.pct < 100 : p.tempoGap >= 4); });
+  }).filter(function(p){ return p.pct !== null && p.gap > 0 && (isClosedQ ? p.pct < 100 : p.tempoGap >= 4); });
 
   risks.sort(function(a, b) {
     var aSmall = a.weight < 5;
