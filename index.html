@@ -3309,7 +3309,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.44.1';
+var APP_VERSION = '2.44.2';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9560,7 +9560,7 @@ function gynCumulativePeriodLabel(q, latestMonth) {
 }
 function gynCumulativePredictionParts(q, year, predajeByMonth, keys, now, korekcieByMonth) {
   if(!gynAreCumulativeKeys(keys)) return null;
-  var d = now || new Date();
+  var d = now || (typeof plneniePredictionNow === 'function' ? plneniePredictionNow() : new Date());
   var curQ = Math.ceil((d.getMonth() + 1) / 3);
   if(q !== curQ) return [];
   var curMonth = d.getMonth() + 1;
@@ -10560,7 +10560,7 @@ function gynEnsureQuarterData(qq, onReady){
 
 // Predošlá predikcia produktovej skupiny (na zobrazenie pohybu „posunula sa z … na …").
 function gynProdPrevPredikcia(login, data, q, year, keys){
-  if(plnenieCurrentQ() !== q) return null;
+  if(plnenieDataCurrentQ() !== q) return null;
   var plan    = (data.plan    && data.plan[login])    || {};
   var byMonth = (data.predaje && data.predaje[login] && data.predaje[login].byMonth) || {};
   var parts = plneniePredictionMonthParts(q, year, byMonth, keys);
@@ -13644,7 +13644,7 @@ function gynPlnenieRenderRepDetail(el, data) {
 
   animatePlanBars(el);
   gynRenderTrendBars('gyn-detail-trend-' + login, login);
-  if(q === plnenieCurrentQ() && q > 1) gynEnsureQuarterData(q - 1, gynPlnenieSilentRerender);
+  if(q === plnenieDataCurrentQ() && q > 1) gynEnsureQuarterData(q - 1, gynPlnenieSilentRerender);
   gynEnsureRepPharma(region, products, gynPlnenieSilentRerender);
   // Animovaný count-up pre celkové %
   if(repPct !== null) {
@@ -13800,7 +13800,7 @@ function gynPlnenieRenderRep(el, user, data) {
   el.innerHTML = html;
   animatePlanBars(el);
   gynRenderTrendBars('gyn-rep-trend-' + login, login);
-  if(q === plnenieCurrentQ() && q > 1) gynEnsureQuarterData(q - 1, gynPlnenieSilentRerender);
+  if(q === plnenieDataCurrentQ() && q > 1) gynEnsureQuarterData(q - 1, gynPlnenieSilentRerender);
   gynEnsureRepPharma(region, products, gynPlnenieSilentRerender);
   if(repPct !== null) {
     var totEl = el.querySelector('.total-card .total-val');
@@ -20159,7 +20159,31 @@ function plnenieCurrentQ() {
 // v poslednom mesiaci Q to dorieši plnenieCurMonthMode). Kým posledné dáta patria do staršieho
 // Q, default zostane na ňom; na nový Q sa prepne, až keď pribudnú jeho predaje.
 // Bez známeho dátumu → kalendárny Q (pôvodné správanie, poistka).
+var PLNENIE_DATA_TS = {};   // notifLineTag() → ISO ts z Google Sheet configu (posledné „predaje nahraté")
+// Autoritatívny zdroj = Google Sheet config (notif_predaje), NIE prefetch/localStorage cache
+// (tá je z času načítania stránky — keď admin odošle notifikáciu neskôr, je stará). Načíta sa
+// čerstvo z configu (per línia), uloží do PLNENIE_DATA_TS + localStorage a vráti či sa zmenil.
+function plnenieDataTsFetch(cb) {
+  if (typeof IS_DEV !== 'undefined' && IS_DEV) { if (cb) cb(false); return; }
+  if (typeof notifUrl !== 'function') { if (cb) cb(false); return; }
+  var tag = (typeof notifLineTag === 'function') ? notifLineTag() : '';
+  fetch(notifUrl('action=getConfig&key=notif_predaje'))
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var ts = (d && d.ok && d.value) ? String(d.value) : '';
+      var prev = PLNENIE_DATA_TS[tag] || '';
+      if (!prev) { try { prev = localStorage.getItem(settingsDateLsKey('predaje')) || ''; } catch(e){} }
+      if (ts) {
+        PLNENIE_DATA_TS[tag] = ts;
+        try { localStorage.setItem(settingsDateLsKey('predaje'), ts); } catch(e){}
+      }
+      if (cb) cb(!!ts && ts !== prev);
+    })
+    .catch(function(){ if (cb) cb(false); });
+}
 function plnenieLastPredajeTs() {
+  var tag = (typeof notifLineTag === 'function') ? notifLineTag() : '';
+  if (PLNENIE_DATA_TS[tag]) return PLNENIE_DATA_TS[tag];   // čerstvé z configu má prednosť
   var ts = '';
   try { ts = localStorage.getItem(settingsDateLsKey('predaje')) || ''; } catch(e){}
   // Golem má predprihlasovaciu prefetch cache (gyn/reagila NIE — tá by držala golemovský dátum).
@@ -20193,6 +20217,33 @@ function plnenieApplyDefaultPeriod(state, force) {
   var dp = plnenieDefaultPeriod();
   state.q = dp.q;
   state.year = dp.year;
+  // Pri prvom nastavení (force) dotiahni ČERSTVÝ dátum z Google Sheet configu a ak sa tým
+  // zmení default kvartál, prekresli otvorené Plnenie (config je autoritatívny, cache môže byť stará).
+  if (force && typeof plnenieRefreshDataTsAndRerender === 'function') {
+    setTimeout(plnenieRefreshDataTsAndRerender, 50);
+  }
+}
+// Dotiahni čerstvý dátum „predaje nahraté" z configu; ak posunie default kvartál, prekresli
+// aktuálne otvorené Plnenie (manažér / gyn). Rep otvára Plnenie na dopyt — dovtedy je už dotiahnuté.
+function plnenieRefreshDataTsAndRerender() {
+  plnenieDataTsFetch(function(changed){
+    if (!changed) return;
+    var dp = plnenieDefaultPeriod();
+    // Gyn
+    if (typeof GYN_APP !== 'undefined') {
+      var gv = document.getElementById('gyn-view');
+      if (gv && gv.classList.contains('show')) {
+        if (GYN_APP.year !== dp.year) GYN_APP.year = dp.year;
+        if (GYN_APP.q !== dp.q && typeof gynSwitchQ === 'function') { try { gynSwitchQ(dp.q); } catch(e){} }
+        return;
+      }
+    }
+    // Manažér (Golem/Reagila)
+    if (document.body.classList.contains('manager-mode') && typeof PL_STATE !== 'undefined' && !PL_STATE.detailRep) {
+      if (PL_STATE.year !== dp.year) PL_STATE.year = dp.year;
+      if (PL_STATE.q !== dp.q && typeof plnenieSwitchQ === 'function') { try { plnenieSwitchQ(dp.q); } catch(e){} }
+    }
+  });
 }
 
 // ── „Kde sme s dátami" podľa notif_predaje (nie podľa kalendára) ──────────────────
@@ -20219,6 +20270,24 @@ function plnenieIsClosedQ(q, year) {
   var months = plnenieQuarterMonths(q);
   var last = months[months.length - 1];
   return (year < sig.fullY) || (year === sig.fullY && last <= sig.fullM);
+}
+// „Teraz" pre PREDIKCIU = posledný bod s reálnymi dátami (dátum notif_predaje), nie kalendár.
+// Vďaka tomu predikčný engine považuje za aktuálny ten kvartál, za ktorý máme rozrobené dáta
+// (napr. Q2 s rozrobeným júnom), nie kalendárny (Q3) — inak by pre Q2 vrátil prázdne „parts"
+// a predikcia by sa nikde nezobrazila. Po nahratí celého posledného mesiaca sa kvartál stane
+// uzavretým (parts prázdne) → predikcia zmizne a ostane len „má byť 100 %". Bez signálu → kalendár.
+function plneniePredictionNow() {
+  var ts = plnenieLastPredajeTs();
+  if (!ts) return new Date();
+  var d = new Date(ts);
+  return isNaN(d.getTime()) ? new Date() : d;
+}
+// Kvartál, ktorý predikcia považuje za AKTUÁLNY (podľa dát, nie kalendára). Používa sa v bránach
+// „predikcia len pre aktuálny Q" — inak by sa pri prelome Q (Q2 zobrazené, kalendárne Q3) predikcia
+// nezobrazila. Navigačné limity (dokedy sa dá listovať) ostávajú na kalendárnom plnenieCurrentQ().
+function plnenieDataCurrentQ() {
+  var d = plneniePredictionNow();
+  return Math.ceil((d.getMonth() + 1) / 3);
 }
 
 
@@ -21716,7 +21785,7 @@ function prodSheetUpdateHeader() {
       : plnenieQLabel(q, year);
     if (planTotal > 0) pctPart += ' · plán Q' + q + ': <strong>' + plnenieFormatEUR(planTotal) + '</strong>';
     // Predikcia celého produktu do konca Q (z predpočítaných agregátov — actual/plán dokončených častí)
-    var prodPredik = (plnenieCurrentQ() === q && prodSummary && prodSummary.predPlanEURDone > 0)
+    var prodPredik = (plnenieDataCurrentQ() === q && prodSummary && prodSummary.predPlanEURDone > 0)
       ? (prodSummary.predajeEURDone / prodSummary.predPlanEURDone * 100) : null;
     if (prodPredik !== null) pctPart += ' · predikcia Q: <strong class="' + plnenieColorClass(prodPredik) + '">' + plnenieFormatPct(prodPredik) + '</strong>';
     subEl.innerHTML = pctPart;
@@ -22907,11 +22976,11 @@ function plnenieMonthHasSales(row, productKeys) {
 }
 
 function plneniePredictionMonthParts(q, year, predajeByMonth, productKeys, now, korekcieByMonth) {
+  var d = now || plneniePredictionNow();
   if (productKeys && typeof gynCumulativePredictionParts === 'function') {
-    var cumParts = gynCumulativePredictionParts(q, year, predajeByMonth, productKeys, now, korekcieByMonth);
+    var cumParts = gynCumulativePredictionParts(q, year, predajeByMonth, productKeys, d, korekcieByMonth);
     if (cumParts !== null) return cumParts;
   }
-  var d = now || new Date();
   var curMonth = d.getMonth() + 1;
   var curQ = Math.ceil(curMonth / 3);
   if (q !== curQ) return [];
@@ -22964,7 +23033,7 @@ function plnenieActualForPredictionParts(predajeByMonth, parts, productKey) {
 // Delí súčtom mesačných plánov pre dokončené mesiace.
 function plnenieCalcPredikciaSummary(qPlanTotal, predajeEUR, q, year) {
   var predPlanBasis = arguments.length >= 5 ? arguments[4] : null;
-  if (plnenieCurrentQ() !== q) return null;
+  if (plnenieDataCurrentQ() !== q) return null;
   if (!qPlanTotal || qPlanTotal <= 0) return null;
   if (predPlanBasis !== null && predPlanBasis !== undefined) {
     predPlanBasis = parseFloat(predPlanBasis) || 0;
@@ -22983,7 +23052,7 @@ function plnenieCalcPredikciaSummary(qPlanTotal, predajeEUR, q, year) {
 }
 
 function plnenieCalcPredikcia(q, year, qPlanTotal, predajeByMonth, productKey) {
-  if (plnenieCurrentQ() !== q) return null; // len aktuálny Q
+  if (plnenieDataCurrentQ() !== q) return null; // len aktuálny Q (podľa dát)
   if (!qPlanTotal || qPlanTotal <= 0) return null;
   var parts = plneniePredictionMonthParts(q, year, predajeByMonth, null);
   var sumActual = plnenieActualForPredictionParts(predajeByMonth, parts, productKey);
@@ -22993,7 +23062,7 @@ function plnenieCalcPredikcia(q, year, qPlanTotal, predajeByMonth, productKey) {
 }
 
 function plnenieProdPrevPredikcia(q, year, qPlanTotal, predajeByMonth, productKey) {
-  if (plnenieCurrentQ() !== q) return null;
+  if (plnenieDataCurrentQ() !== q) return null;
   if (!qPlanTotal || qPlanTotal <= 0) return null;
   var parts = plneniePredictionMonthParts(q, year, predajeByMonth, null);
   if (!parts || parts.length < 2) return null;
