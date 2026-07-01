@@ -739,7 +739,8 @@
   .po-num{flex-shrink:0;width:20px;text-align:center;font-size:12px;font-weight:800;color:#94A3B8}
   .po-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   /* Zdielaný panel-nav pre História / Rebríček / Plnenie */
-  .panel-nav{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;background:#fff;border-radius:12px;padding:6px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  .panel-nav{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;background:#fff;border-radius:12px;padding:6px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  .panel-nav-btn{flex:0 0 calc((100% - (var(--cols,4) - 1) * 6px) / var(--cols,4) - 0.5px)}
   .panel-nav-btn{border:none;background:#F1F5F9;padding:9px 2px;font-size:10px;font-weight:700;color:#64748B;cursor:pointer;border-radius:10px;transition:background .2s ease,color .2s ease,transform .15s ease;font-family:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;-webkit-tap-highlight-color:transparent;white-space:nowrap;overflow:hidden}
   .panel-nav-btn .rn-ico{font-size:17px;line-height:1}
   .panel-nav-btn .rn-lbl{font-size:10px;line-height:1}
@@ -1172,6 +1173,9 @@
   body.reagila-line .lk-tab[data-lk-tab="all"]{ order:-1; }
   /* Reagila rep navigácia — 3 záložky: Plnenie | Lekárne | Rebríček (vyplnia šírku, väčší text) */
   body.reagila-line #spn-form, body.reagila-line #spn-hist{ display:none !important; }
+  /* Okresy záložka je len pre Golem GP líniu (Reagila má vlastnú 3-tab navigáciu) */
+  body.reagila-line #rep-nav-okresy-btn,
+  body.reagila-line #spn-okresy{ display:none !important; }
   body.reagila-line .rep-nav,
   body.reagila-line .panel-nav{ grid-template-columns:repeat(3,1fr); }
   body.reagila-line #rep-nav-plnenie-btn, body.reagila-line #spn-pl{ order:1; }
@@ -1529,8 +1533,10 @@
   .mgr-plnenie-detail .trend-ms{position:absolute;left:-5px;right:-5px;height:3px;background:#0F172A;z-index:2;pointer-events:none}
   .mgr-plnenie-detail .trend-ms-lbl{position:absolute;left:50%;transform:translateX(-50%);font-size:11px;font-weight:600;color:#94A3B8;white-space:nowrap;z-index:3;pointer-events:none;line-height:1}
   /* ═══ REP NAV BAR (História / Rebríček / Plnenie) ═══ */
-  .rep-nav{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:0;position:sticky;top:0;z-index:1400;background:#EAECF2;padding-top:12px;padding-bottom:4px}
-  .rep-nav-btn{background:#fff;border:1px solid rgba(0,0,0,.07);border-radius:12px;padding:9px 2px;font-size:10px;font-weight:700;color:#1A2A3A;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(0,0,0,.06),0 1px 3px rgba(0,0,0,.04);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:opacity .15s,transform .15s,background .2s;-webkit-tap-highlight-color:transparent;white-space:nowrap;overflow:hidden;position:relative}
+  /* Flex + zalomenie do vyvážených riadkov; šírku tlačidla určuje --cols (nastavuje repNavLayout()
+     podľa počtu viditeľných tabov → nikdy nie „všetky v 1. riadku okrem jedného"). */
+  .rep-nav{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-bottom:0;position:sticky;top:0;z-index:1400;background:#EAECF2;padding-top:12px;padding-bottom:4px}
+  .rep-nav-btn{flex:0 0 calc((100% - (var(--cols,4) - 1) * 6px) / var(--cols,4) - 0.5px);background:#fff;border:1px solid rgba(0,0,0,.07);border-radius:12px;padding:9px 2px;font-size:10px;font-weight:700;color:#1A2A3A;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(0,0,0,.06),0 1px 3px rgba(0,0,0,.04);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:opacity .15s,transform .15s,background .2s;-webkit-tap-highlight-color:transparent;white-space:nowrap;overflow:hidden;position:relative}
   .rep-nav-btn:active{opacity:.82;transform:scale(.96)}
   .rep-nav-btn .rn-ico{font-size:17px;line-height:1}
   .rep-nav-btn .rn-lbl{font-size:10px;line-height:1}
@@ -1876,6 +1882,43 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .pharma-okres-legend-val{font-size:9.5px;font-weight:700;color:#0F172A;white-space:nowrap;flex-shrink:0}
   .pharma-legend-reset-btn{display:none;align-items:center;gap:4px;padding:4px 10px;background:#FEF2F2;border:1px solid #FECACA;border-radius:20px;color:#DC2626;font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;-webkit-tap-highlight-color:transparent;transition:background .15s}
   .pharma-legend-reset-btn.visible{display:flex}
+  /* ═══ OKRESY — záložka (accordion okres → všetky produkty) ═══ */
+  .okr-intro{font-size:12px;color:#64748B;line-height:1.4;margin:0 2px 10px;padding:0 2px}
+  .okr-list{display:flex;flex-direction:column;gap:8px}
+  .okr-item{background:#fff;border:1px solid #E2E8F0;border-radius:14px;overflow:hidden;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+  .okr-item.open{border-color:#BFDBFE;box-shadow:0 4px 14px rgba(37,99,235,.10)}
+  .okr-hdr{display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
+  .okr-hdr:active{background:#F8FAFC}
+  .okr-hdr-ico{width:30px;height:30px;border-radius:9px;background:linear-gradient(180deg,#EFF6FF,#DBEAFE);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+  .okr-hdr-txt{flex:1;min-width:0}
+  .okr-hdr-name{font-size:14px;font-weight:800;color:#0C1E35;font-family:var(--font-display);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .okr-hdr-meta{font-size:10.5px;color:#94A3B8;margin-top:2px;font-weight:600}
+  .okr-chevron{width:18px;height:18px;flex-shrink:0;color:#94A3B8;transition:transform var(--t-fast)}
+  .okr-item.open .okr-chevron{transform:rotate(180deg);color:#2563EB}
+  .okr-body{display:none;padding:0 8px 8px}
+  .okr-item.open .okr-body{display:block}
+  .okr-prod{display:flex;align-items:center;gap:10px;padding:10px 10px;border-top:1px solid #F1F5F9;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background var(--t-fast)}
+  .okr-prod:active{background:#F1F5F9}
+  .okr-prod-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+  .okr-prod-main{flex:1;min-width:0}
+  .okr-prod-name{font-size:12.5px;font-weight:750;color:#0F172A;font-family:var(--font-display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .okr-prod-sub{font-size:10px;color:#94A3B8;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .okr-prod-sub b{color:#64748B;font-weight:700}
+  .okr-prod-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+  .okr-prod-msbox{text-align:right;min-width:52px}
+  .okr-ms{font-size:14px;font-weight:850;color:#0C1E35;font-family:var(--font-display);line-height:1}
+  .okr-ms.none{color:#CBD5E1}
+  .okr-ms-lbl{font-size:8.5px;color:#94A3B8;font-weight:700;text-transform:uppercase;letter-spacing:.03em;margin-top:2px}
+  .okr-trend{font-size:11px;font-weight:800;display:flex;align-items:center;gap:1px;min-width:20px;justify-content:flex-end}
+  .okr-trend.up{color:#10B981}
+  .okr-trend.down{color:#EF4444}
+  .okr-trend.flat{color:#94A3B8}
+  .okr-prod-graf{width:26px;height:26px;border-radius:8px;background:#EFF6FF;color:#2563EB;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .okr-prod-na{font-size:10.5px;color:#B6C2D2;font-weight:600;font-style:italic}
+  .okr-empty,.okr-loading{text-align:center;color:#94A3B8;font-size:12.5px;padding:26px 12px;font-weight:600}
+  .okr-back{display:inline-flex;align-items:center;gap:7px;padding:9px 14px 9px 11px;margin:0 0 10px;background:#fff;border:1px solid #E2E8F0;border-radius:10px;color:#2563EB;font-size:12.5px;font-weight:750;font-family:var(--font-display);cursor:pointer;-webkit-tap-highlight-color:transparent;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+  .okr-back:active{background:#F1F5F9}
+  .okr-detail-title{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;color:#0C1E35;font-family:var(--font-display);margin:0 2px 10px;padding:0 2px}
   /* Tabuľka mesiacov */
   .pharma-ms-tbl{width:calc(100% - 20px);margin:4px 10px 0;border-collapse:separate;border-spacing:0 4px;table-layout:fixed}
   .pharma-ms-tbl th{font-size:10px;font-weight:850;color:#94A3B8;text-transform:uppercase;letter-spacing:.04em;padding:2px 6px 4px;text-align:right;font-family:var(--font-display)}
@@ -2503,6 +2546,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   <button type="button" class="rep-nav-btn" id="rep-nav-lb-btn" onclick="openLeaderboard()"><span class="rn-ico">🏆</span><span class="rn-lbl">Rebríček</span></button>
   <button type="button" class="rep-nav-btn" id="rep-nav-plnenie-btn" onclick="openRepPlnenie()"><span class="rn-ico">💊</span><span class="rn-lbl">Plnenie</span></button>
   <button type="button" class="rep-nav-btn" id="rep-nav-lekarne-btn" onclick="openLekarne()"><span class="rn-ico">🏪</span><span class="rn-lbl">Lekárne</span></button>
+  <button type="button" class="rep-nav-btn" id="rep-nav-okresy-btn" onclick="openOkresy()"><span class="rn-ico">📍</span><span class="rn-lbl">Okresy</span></button>
   <button type="button" class="rep-nav-btn" id="rep-nav-kal-btn" onclick="openGolemKalendar()"><span class="rn-ico gyn-cal-navico"><span class="gci-top"></span><span class="gci-day js-cal-nav-day">16</span></span><span class="rn-lbl">Kalendár</span></button>
 </div>
 
@@ -2647,6 +2691,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     <div class="pl-sub-tabs">
       <button class="pl-sub-tab active" data-subtab="predaje" onclick="plnenieDetailSwitchSubtab('predaje',this)">💊 Plnenie</button>
       <button class="pl-sub-tab" data-subtab="lekarne" onclick="plnenieDetailSwitchSubtab('lekarne',this)">🏪 Lekárne</button>
+      <button class="pl-sub-tab" data-subtab="okresy" onclick="plnenieDetailSwitchSubtab('okresy',this)">📍 Okresy</button>
     </div>
 
     <!-- Sub-tab: Predaje -->
@@ -2703,6 +2748,13 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
       </div>
       <div class="mgr-lk-wrap" id="pl-detail-lekarne-body">
         <div class="lk-empty">Načítavam…</div>
+      </div>
+    </div>
+
+    <!-- Sub-tab: Okresy -->
+    <div id="pl-detail-okresy" style="display:none">
+      <div id="pl-detail-okresy-body">
+        <div class="okr-loading">Načítavam…</div>
       </div>
     </div>
 
@@ -2957,6 +3009,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
       <button class="panel-nav-btn" id="spn-lb" onclick="openLeaderboard()"><span class="rn-ico">🏆</span><span class="rn-lbl">Rebríček</span></button>
       <button class="panel-nav-btn" id="spn-pl" onclick="openRepPlnenie()"><span class="rn-ico">💊</span><span class="rn-lbl">Plnenie</span></button>
       <button class="panel-nav-btn" id="spn-lk" onclick="openLekarne()"><span class="rn-ico">🏪</span><span class="rn-lbl">Lekárne</span></button>
+      <button class="panel-nav-btn" id="spn-okresy" onclick="openOkresy()"><span class="rn-ico">📍</span><span class="rn-lbl">Okresy</span></button>
       <button class="panel-nav-btn" id="spn-kal" onclick="openGolemKalendar()"><span class="rn-ico gyn-cal-navico"><span class="gci-top"></span><span class="gci-day js-cal-nav-day">16</span></span><span class="rn-lbl">Kalendár</span></button>
     </div>
   </div>
@@ -3309,7 +3362,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.44.2';
+var APP_VERSION = '2.45.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -4722,6 +4775,7 @@ function usageCurrentSection() {
     if (shown('pharma-ms-overlay'))    return 'Trhový podiel';
     if (shown('golem-cal-overlay'))    return 'Kalendár';
     if (shown('lk-overlay') || (typeof LK_STATE !== 'undefined' && LK_STATE.open)) return 'Lekárne';
+    if (shown('okresy-overlay') || (typeof OKRESY_STATE !== 'undefined' && OKRESY_STATE.open && OKRESY_STATE.ctx === 'rep')) return 'Okresy';
     if (shown('rep-plnenie-overlay'))  return 'Plnenie';
     if (shown('hist-overlay'))         return 'História návštev';
     if (shown('lb-overlay'))           return 'Rebríček';
@@ -6390,7 +6444,7 @@ function filterHistory() {
 
 var _panelCurrent = null;
 var _panelStack = []; // navigačný stack — pamätá odkiaľ sme prišli (pre Android back button)
-var _PANEL_ORDER = { 'hist-overlay': 0, 'lb-overlay': 1, 'rep-plnenie-overlay': 2, 'lk-overlay': 3, 'golem-cal-overlay': 4 };
+var _PANEL_ORDER = { 'hist-overlay': 0, 'lb-overlay': 1, 'rep-plnenie-overlay': 2, 'lk-overlay': 3, 'okresy-overlay': 4, 'golem-cal-overlay': 5 };
 
 function _panelShow(newId, isBack) {
   // Ak je ten istý panel už otvorený — nerob nič (ochrana pred dvojitým kliknutím)
@@ -6441,7 +6495,7 @@ function _panelShow(newId, isBack) {
 }
 
 function closeAllPanels() {
-  ['hist-overlay','lb-overlay','rep-plnenie-overlay','lk-overlay','golem-cal-overlay','lk-detail','pharma-ms-overlay','pharma-okres-overlay'].forEach(function(id){
+  ['hist-overlay','lb-overlay','rep-plnenie-overlay','lk-overlay','okresy-overlay','golem-cal-overlay','lk-detail','pharma-ms-overlay','pharma-okres-overlay'].forEach(function(id){
     var el = document.getElementById(id);
     if(el) el.classList.remove('show');
   });
@@ -6460,13 +6514,38 @@ function repNavSetActive(panelId){
     'lb-overlay':'rep-nav-lb-btn',
     'rep-plnenie-overlay':'rep-nav-plnenie-btn',
     'lk-overlay':'rep-nav-lekarne-btn',
+    'okresy-overlay':'rep-nav-okresy-btn',
     'golem-cal-overlay':'rep-nav-kal-btn'
   };
   var activeId = (panelId && map[panelId]) ? map[panelId] : 'rep-nav-form-btn';
-  ['rep-nav-form-btn','rep-nav-hist-btn','rep-nav-lb-btn','rep-nav-plnenie-btn','rep-nav-lekarne-btn','rep-nav-kal-btn'].forEach(function(id){
+  ['rep-nav-form-btn','rep-nav-hist-btn','rep-nav-lb-btn','rep-nav-plnenie-btn','rep-nav-lekarne-btn','rep-nav-okresy-btn','rep-nav-kal-btn'].forEach(function(id){
     var b = document.getElementById(id);
     if(b) b.classList.toggle('active', id === activeId);
   });
+  repNavLayout();
+}
+
+// Vyváži rep-nav do 2 riadkov podľa počtu VIDITEĽNÝCH tabov (nie natvrdo 6 stĺpcov).
+// cols = n pre n<=4 (jeden riadok), inak ceil(n/2) → dva vyvážené riadky (7 → 4+3, 8 → 4+4).
+// Škáluje sa samo pri pribudnutí tabu aj pri rôznej šírke mobilu (flex-basis počíta z --cols).
+function repNavBalance(nav, btnSel) {
+  if (!nav) return;
+  var n = 0;
+  Array.prototype.forEach.call(nav.querySelectorAll(btnSel), function(b) {
+    if (getComputedStyle(b).display !== 'none') n++;
+  });
+  if (!n) return;
+  var cols = (n <= 4) ? n : Math.ceil(n / 2);
+  nav.style.setProperty('--cols', cols);
+}
+function repNavLayout() {
+  repNavBalance(document.getElementById('rep-nav'), '.rep-nav-btn');
+  var snav = document.getElementById('shared-panel-nav');
+  if (snav) repNavBalance(snav.querySelector('.panel-nav'), '.panel-nav-btn');
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('resize', function() { try { repNavLayout(); } catch(e){} });
+  document.addEventListener('DOMContentLoaded', function() { try { repNavLayout(); } catch(e){} });
 }
 
 // Záložka „Formulár GP" — zatvor všetky panely a vráť sa na formulár (základná vrstva)
@@ -6500,6 +6579,7 @@ function applyDefaultTabIfRep() {
       rebricek: (typeof openLeaderboard === 'function') ? openLeaderboard : null,
       plnenie:  (typeof openRepPlnenie === 'function') ? openRepPlnenie : null,
       lekarne:  (typeof openLekarne === 'function') ? openLekarne : null,
+      okresy:   (typeof openOkresy === 'function') ? openOkresy : null,
       kalendar: (typeof openGolemKalendar === 'function') ? openGolemKalendar : null
     };
     var fn = openers[def];
@@ -7267,7 +7347,7 @@ function settingsDefaultTabOpts(s){
     if(isAdmin || (isGyn && typeof gynActivityAllowed === 'function' && gynActivityAllowed(s))) opts.push(['activity','📈 Aktivita']);
     return { opts: opts, hint: 'Plnenie' };
   }
-  return { opts: [['form','📝 Formulár GP'],['historia','📋 História'],['rebricek','🏆 Rebríček'],['plnenie','💊 Plnenie'],['lekarne','🏪 Lekárne'],['kalendar','📅 Kalendár']], hint: 'Formulár GP' };
+  return { opts: [['form','📝 Formulár GP'],['historia','📋 História'],['rebricek','🏆 Rebríček'],['plnenie','💊 Plnenie'],['lekarne','🏪 Lekárne'],['okresy','📍 Okresy'],['kalendar','📅 Kalendár']], hint: 'Formulár GP' };
 }
 function settingsDefaultTabHtml(s){
   var cfg = settingsDefaultTabOpts(s);
@@ -17343,6 +17423,30 @@ var WN_HISTORY = [
         { icon: '💾', bg: '#FEF3C7', title: 'Uložené filtre', desc: 'Vlastné filtre si uložíš pod názvom a kedykoľvek znova použiješ.' }
       ]
     }
+  },
+  // ── v2.45 — záložka Okresy (len Golem GP línia) ──
+  {
+    key: 'potencial_vl_wn_v2_45_okresy',
+    line: 'gp',
+    golemOnly: true,
+    rep: {
+      icon: '📍', title: 'Nová záložka Okresy', sub: 'v2.45 · Gedeon Richter Slovakia',
+      items: [
+        { icon: '📍', bg: '#EFF6FF', title: 'Celý okres na jednom mieste', desc: 'Pribudla záložka Okresy — ťukni na okres a rozbalí sa so všetkými produktami naraz. Už sa nemusíš vracať späť pri každom produkte.' },
+        { icon: '📊', bg: '#F0FDF4', title: 'Ako sa ti darí', desc: 'Pri každom produkte hneď vidíš svoj trhový podiel, trend (▲/▼), počty pacientov (tvoji/celkovo) aj top konkurenta v okrese.' },
+        { icon: '📈', bg: '#FFF7ED', title: 'Detail a graf', desc: 'Ťuk na produkt otvorí tabuľku okresu (ty vs. konkurenti po mesiacoch); tlačidlom Graf si zobrazíš vývoj.' },
+        { icon: '⚡', bg: '#F5F3FF', title: 'Rýchle a bez čakania', desc: 'Načíta sa raz a nabudúce naskočí okamžite z pamäte — čerstvé dáta sa dotiahnu len keď pribudnú nové PharmaData.' }
+      ]
+    },
+    mgr: {
+      icon: '📍', title: 'Okresy v detaile reprezentanta', sub: 'v2.45 · Gedeon Richter Slovakia',
+      items: [
+        { icon: '📍', bg: '#EFF6FF', title: 'Nový sub-tab Okresy', desc: 'V detaile reprezentanta pribudol sub-tab Okresy — vidíš, ako sa mu darí po okresoch naprieč všetkými produktami, na jednom mieste.' },
+        { icon: '📊', bg: '#F0FDF4', title: 'Prehľad po okresoch', desc: 'Pri každom produkte trhový podiel, trend, pacienti (jeho/celkovo) aj top konkurent v danom okrese.' },
+        { icon: '📈', bg: '#FFF7ED', title: 'Detail a graf', desc: 'Ťuk na produkt otvorí tabuľku okresu (reprezentant vs. konkurenti po mesiacoch); tlačidlo Graf ukáže vývoj.' },
+        { icon: '⚡', bg: '#F5F3FF', title: 'Bez čakania', desc: 'Dáta sa cachujú — po prvom načítaní naskočia okamžite a obnovia sa len pri zmene PharmaData.' }
+      ]
+    }
   }
 ];
 
@@ -17350,9 +17454,17 @@ var WN_HISTORY = [
 var WN_IS_MGR = false;
 
 // Položky relevantné pre aktuálnu líniu (it.line === 'gyn'/'gp' → len tá línia; bez line = obe).
+// it.golemOnly === true → len Golem GP línia (nie Reagila, nie Gyn) — usageLine() vracia 'gp'
+// aj pre Reagilu, preto Reagilu rozlíšime cez session.line.
 function wnLineItems(){
   var line = (typeof usageLine === 'function') ? usageLine() : 'gp';
-  return WN_HISTORY.filter(function(it){ return !it.line || it.line === line; });
+  var isReagila = false;
+  try { var s = getSession(); isReagila = !!(s && s.line === 'reagila'); } catch(e){}
+  return WN_HISTORY.filter(function(it){
+    if (it.line && it.line !== line) return false;
+    if (it.golemOnly && (line === 'gyn' || isReagila)) return false;
+    return true;
+  });
 }
 
 // Pamäťový fallback pre prípad, že localStorage zápis zlyhá (zablokované/plné úložisko —
@@ -20242,6 +20354,17 @@ function plnenieRefreshDataTsAndRerender() {
     if (document.body.classList.contains('manager-mode') && typeof PL_STATE !== 'undefined' && !PL_STATE.detailRep) {
       if (PL_STATE.year !== dp.year) PL_STATE.year = dp.year;
       if (PL_STATE.q !== dp.q && typeof plnenieSwitchQ === 'function') { try { plnenieSwitchQ(dp.q); } catch(e){} }
+      return;
+    }
+    // Reprezentant (Golem/Reagila)
+    if (typeof REP_PL_STATE !== 'undefined') {
+      REP_PL_STATE.year = dp.year;
+      var repOv = document.getElementById('rep-plnenie-overlay');
+      var repOpen = repOv && repOv.classList.contains('show');
+      if (REP_PL_STATE.q !== dp.q) {
+        if (repOpen && typeof repPlnenieSwitchQ === 'function') { try { repPlnenieSwitchQ(dp.q); } catch(e){} }
+        else { REP_PL_STATE.q = dp.q; if (typeof repPlnenieUpdateQTabs === 'function') { try { repPlnenieUpdateQTabs(); } catch(e){} } }
+      }
     }
   });
 }
@@ -23732,10 +23855,15 @@ function plnenieDetailSwitchSubtab(tab, btn) {
   });
   var predajeEl = document.getElementById('pl-detail-predaje');
   var lekarneEl = document.getElementById('pl-detail-lekarne');
+  var okresyEl  = document.getElementById('pl-detail-okresy');
   if (predajeEl) predajeEl.style.display = (tab === 'predaje') ? '' : 'none';
   if (lekarneEl) lekarneEl.style.display = (tab === 'lekarne') ? '' : 'none';
+  if (okresyEl)  okresyEl.style.display  = (tab === 'okresy')  ? '' : 'none';
   if (tab === 'lekarne' && PL_STATE.detailRep) {
     lkMgrLoadForRep(PL_STATE.detailRep);
+  }
+  if (tab === 'okresy' && PL_STATE.detailRep) {
+    okresyOpen('mgr', 'pl-detail-okresy-body');
   }
 }
 
@@ -24137,13 +24265,17 @@ function openRepPlnenie() {
   if (!session || !session.username) return;
   usageSectionEnter('Plnenie');
   _panelShow('rep-plnenie-overlay');
-  // Default: aktuálny kvartál
-  var curQ = plnenieCurrentQ();
-  REP_PL_STATE.year = (new Date()).getFullYear();
-  if (!REP_PL_STATE.loaded || REP_PL_STATE.q !== curQ) {
-    REP_PL_STATE.q = curQ;
+  // Default: DÁTOVÝ kvartál (podľa notif_predaje), nie kalendárny — pri prelome Q sa nemá
+  // skočiť na nový Q, kým doň nepribudli predaje (rovnaká logika ako manažér/gyn).
+  var dp = plnenieDefaultPeriod();
+  REP_PL_STATE.year = dp.year;
+  if (!REP_PL_STATE.loaded || REP_PL_STATE.q !== dp.q) {
+    REP_PL_STATE.q = dp.q;
   }
   repPlnenieUpdateQTabs();
+  // Config je autoritatívny (cache môže byť stará) — dotiahni čerstvý dátum a ak posunie
+  // default Q, prekresli otvorené rep Plnenie.
+  if (typeof plnenieRefreshDataTsAndRerender === 'function') setTimeout(plnenieRefreshDataTsAndRerender, 50);
   // Ak máme data v cache — hneď render, inak načítaj
   if (REP_PL_STATE.qCache[REP_PL_STATE.q]) {
     REP_PL_STATE.data = REP_PL_STATE.qCache[REP_PL_STATE.q].data;
@@ -26250,6 +26382,83 @@ function pharmaSwitchTab(code) {
   _animPlQ('pharma-ms-body', dir);
 }
 
+// Karta jedného okresu (hlavička + pacienti + signál + tabuľka MS% náš vs. konkurenti).
+// Zdieľaná medzi panelom Trhový podiel (pharmaRender) a záložkou Okresy.
+// grafBtnHtml = hotové HTML tlačidla „Graf" (každý volajúci si rieši vlastné napojenie kliku).
+function pharmaDistrictCardHtml(r, dSeries, prodLabel, q, isBoxProduct, districtDisplayMonths, districtDisplayLabels, grafBtnHtml) {
+  dSeries = dSeries || { nas:{}, comps:{} };
+  var insightVolumeLabel = isBoxProduct ? 'Objem boxov' : ('Objem pacientov na ' + prodLabel);
+  var html = '<div class="pharma-ms-district">';
+  var nasPat = (r.nas_pat_m1 || 0) + (r.nas_pat_m2 || 0) + (r.nas_pat_m3 || 0);
+  var totPat = (r.tot_pat_m1 || 0) + (r.tot_pat_m2 || 0) + (r.tot_pat_m3 || 0);
+  html += '<div class="pharma-ms-district-hdr">'
+    + '<div class="pharma-ms-district-name">' + mgrEscape(r.okres) + '</div>'
+    + (grafBtnHtml || '')
+    + '</div>';
+  var districtInsightHtml = pharmaInsightHtml(
+    pharmaDistrictInsightPointsFromSeries(districtDisplayMonths, dSeries),
+    'Signál okresu',
+    'pharma-ms-district-insight',
+    insightVolumeLabel
+  );
+  if ((nasPat > 0 || totPat > 0) || districtInsightHtml) {
+    html += '<div class="pharma-ms-district-meta">';
+    if (nasPat > 0 || totPat > 0) {
+      if (isBoxProduct) {
+        html += '<div class="pharma-ms-district-pat-row">V okrese ' + mgrEscape(r.okres) + ' máš v Q' + q + ' na ' + mgrEscape(prodLabel) + ' <strong>' + nasPat + '</strong> boxov z celkového trhu <strong>' + totPat + '</strong> boxov</div>';
+      } else {
+        html += '<div class="pharma-ms-district-pat-row">V okrese ' + mgrEscape(r.okres) + ' máš v Q' + q + ' nastavených na ' + mgrEscape(prodLabel) + ' <strong>' + nasPat + '</strong> pacientov z celkového množstva <strong>' + totPat + '</strong> pacientov</div>';
+      }
+    }
+    html += districtInsightHtml;
+    html += '</div>';
+  }
+  html += '<table class="pharma-ms-tbl"><thead><tr>';
+  html += '<th>Produkt <span class="pharma-ms-tbl-sublabel">' + (isBoxProduct ? 'MS% Box' : 'MS% Pat.') + '</span></th>';
+  html += '<th>' + mgrEscape(districtDisplayLabels[0]) + '</th>';
+  html += '<th>' + mgrEscape(districtDisplayLabels[1]) + '</th>';
+  html += '<th>' + mgrEscape(districtDisplayLabels[2]) + '</th>';
+  html += '</tr></thead><tbody>';
+
+  function fmtMs(v) {
+    var n = parseFloat(v);
+    return (!isNaN(n) && n > 0) ? n.toFixed(2) + '%' : '—';
+  }
+  function rowVal(row, idx) {
+    var n = parseFloat(row.vals[idx]);
+    return (!isNaN(n) && n > 0) ? n : null;
+  }
+  var ourMsRow = {
+    name: prodLabel,
+    vals: districtDisplayMonths.map(function(m){ return dSeries.nas[m]; }),
+    ours: true
+  };
+  var compMsRows = [];
+  Object.keys(dSeries.comps || {}).forEach(function(name) {
+    compMsRows.push({ name: name, vals: districtDisplayMonths.map(function(m){ return dSeries.comps[name][m]; }), ours: false });
+  });
+  var sortIdx = 2;
+  for (var si = 2; si >= 0; si--) {
+    if ([ourMsRow].concat(compMsRows).some(function(row) { return rowVal(row, si) !== null; })) { sortIdx = si; break; }
+  }
+  function cmpMsRows(a, b) {
+    var av = rowVal(a, sortIdx);
+    var bv = rowVal(b, sortIdx);
+    if (av === null && bv === null) return 0;
+    if (av === null) return 1;
+    if (bv === null) return -1;
+    return bv - av;
+  }
+  compMsRows.sort(cmpMsRows);
+  var msRows = [ourMsRow].concat(compMsRows.slice(0, 3)).sort(cmpMsRows);
+  msRows.forEach(function(row) {
+    html += '<tr' + (row.ours ? ' class="ours"' : '') + '><td>' + mgrEscape(row.name) + '</td>';
+    html += '<td>' + fmtMs(row.vals[0]) + '</td><td>' + fmtMs(row.vals[1]) + '</td><td>' + fmtMs(row.vals[2]) + '</td></tr>';
+  });
+  html += '</tbody></table></div>';
+  return html;
+}
+
 function pharmaRender(code) {
   var bodyEl = document.getElementById('pharma-ms-body');
   if (!bodyEl) return;
@@ -26377,80 +26586,11 @@ function pharmaRender(code) {
   window._pharmaOkresProdLabel = prodLabel;
 
   okresy.forEach(function(r, okrIdx) {
-    html += '<div class="pharma-ms-district">';
     var dSeries = districtMonthMap.districts[r.okres] || { nas:{}, comps:{} };
-    // Počet pacientov nášho produktu / celkový počet v Q (súčet 3 mesiacov)
-    var nasPat = (r.nas_pat_m1 || 0) + (r.nas_pat_m2 || 0) + (r.nas_pat_m3 || 0);
-    var totPat = (r.tot_pat_m1 || 0) + (r.tot_pat_m2 || 0) + (r.tot_pat_m3 || 0);
-    html += '<div class="pharma-ms-district-hdr">'
-      + '<div class="pharma-ms-district-name">' + mgrEscape(r.okres) + '</div>'
-      + '<button class="pharma-okres-chart-btn pharma-okres-btn" data-okr-idx="' + okrIdx + '" aria-label="Zobraziť graf okresu">'
+    var grafBtn = '<button class="pharma-okres-chart-btn pharma-okres-btn" data-okr-idx="' + okrIdx + '" aria-label="Zobraziť graf okresu">'
       + '<svg width="13" height="10" viewBox="0 0 15 11" fill="none" xmlns="http://www.w3.org/2000/svg"><polyline points="0.5,10 3.5,5.5 6.5,7.5 9.5,2 14,4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="2" r="1.5" fill="currentColor"/></svg>'
-      + 'Graf</button>'
-      + '</div>';
-    var districtInsightHtml = pharmaInsightHtml(
-      pharmaDistrictInsightPointsFromSeries(districtDisplayMonths, dSeries),
-      'Signál okresu',
-      'pharma-ms-district-insight',
-      insightVolumeLabel
-    );
-    if ((nasPat > 0 || totPat > 0) || districtInsightHtml) {
-      html += '<div class="pharma-ms-district-meta">';
-      if (nasPat > 0 || totPat > 0) {
-        if (isBoxProduct) {
-          html += '<div class="pharma-ms-district-pat-row">V okrese ' + mgrEscape(r.okres) + ' máš v Q' + q + ' na ' + mgrEscape(prodLabel) + ' <strong>' + nasPat + '</strong> boxov z celkového trhu <strong>' + totPat + '</strong> boxov</div>';
-        } else {
-          html += '<div class="pharma-ms-district-pat-row">V okrese ' + mgrEscape(r.okres) + ' máš v Q' + q + ' nastavených na ' + mgrEscape(prodLabel) + ' <strong>' + nasPat + '</strong> pacientov z celkového množstva <strong>' + totPat + '</strong> pacientov</div>';
-        }
-      }
-      html += districtInsightHtml;
-      html += '</div>';
-    }
-    html += '<table class="pharma-ms-tbl"><thead><tr>';
-    html += '<th>Produkt <span class="pharma-ms-tbl-sublabel">' + (isBoxProduct ? 'MS% Box' : 'MS% Pat.') + '</span></th>';
-    html += '<th>' + mgrEscape(districtDisplayLabels[0]) + '</th>';
-    html += '<th>' + mgrEscape(districtDisplayLabels[1]) + '</th>';
-    html += '<th>' + mgrEscape(districtDisplayLabels[2]) + '</th>';
-    html += '</tr></thead><tbody>';
-
-    function fmtMs(v) {
-      var n = parseFloat(v);
-      return (!isNaN(n) && n > 0) ? n.toFixed(2) + '%' : '—';
-    }
-    function rowVal(row, idx) {
-      var n = parseFloat(row.vals[idx]);
-      return (!isNaN(n) && n > 0) ? n : null;
-    }
-    var ourMsRow = {
-      name: prodLabel,
-      vals: districtDisplayMonths.map(function(m){ return dSeries.nas[m]; }),
-      ours: true
-    };
-    var compMsRows = [];
-    Object.keys(dSeries.comps || {}).forEach(function(name) {
-      compMsRows.push({ name: name, vals: districtDisplayMonths.map(function(m){ return dSeries.comps[name][m]; }), ours: false });
-    });
-    var msRows = [ourMsRow].concat(compMsRows);
-    var sortIdx = 2;
-    for (var si = 2; si >= 0; si--) {
-      if (msRows.some(function(row) { return rowVal(row, si) !== null; })) { sortIdx = si; break; }
-    }
-    function cmpMsRows(a, b) {
-      var av = rowVal(a, sortIdx);
-      var bv = rowVal(b, sortIdx);
-      if (av === null && bv === null) return 0;
-      if (av === null) return 1;
-      if (bv === null) return -1;
-      return bv - av;
-    }
-    compMsRows.sort(cmpMsRows);
-    msRows = [ourMsRow].concat(compMsRows.slice(0, 3)).sort(cmpMsRows);
-    msRows.forEach(function(row) {
-      html += '<tr' + (row.ours ? ' class="ours"' : '') + '><td>' + mgrEscape(row.name) + '</td>';
-      html += '<td>' + fmtMs(row.vals[0]) + '</td><td>' + fmtMs(row.vals[1]) + '</td><td>' + fmtMs(row.vals[2]) + '</td></tr>';
-    });
-
-    html += '</tbody></table></div>';
+      + 'Graf</button>';
+    html += pharmaDistrictCardHtml(r, dSeries, prodLabel, q, isBoxProduct, districtDisplayMonths, districtDisplayLabels, grafBtn);
   });
 
   bodyEl.innerHTML = html;
@@ -29759,6 +29899,411 @@ function closeLekarne() {
   closeAllPanels();
 }
 
+// ════════════════════════════════════════════════════════════════════
+//  OKRESY — záložka: okres → všetky produkty (Golem rep + manažérsky detail)
+//  Pivotne otočí existujúce pharma dáta (produkt → okresy) na okres → produkty.
+//  Dáta = rovnaké getPharmaData/PHARMA_STATE.cache ako panel Trhový podiel,
+//  načítané lazy pre všetky Golem produkty naraz (postupný render + cache).
+// ════════════════════════════════════════════════════════════════════
+var OKRESY_STATE = { open:false, ctx:'rep', oblast:null, kvartal:null, byCode:{}, expandedName:null, containerId:null, reqId:0, _raf:null, _districts:[], detail:null };
+
+// Golem pharma kódy v preferovanom poradí + farby bodiek (zhoda s PL_PROD_DOT_COLORS)
+var OKRESY_CODE_LIST  = ['VID','SUP','CAV','KOGGOL','TEL','JUN','AFLtbl','AFLsach','AFLcrm'];
+var OKRESY_CODE_COLOR = {
+  'VID':'#34D399','SUP':'#C084FC','CAV':'#FCD34D','KOGGOL':'#2DD4BF',
+  'TEL':'#F87171','JUN':'#A78BFA','AFLtbl':'#60A5FA','AFLsach':'#60A5FA','AFLcrm':'#60A5FA'
+};
+function okresyCodes() { return OKRESY_CODE_LIST.slice(); }
+function okresyLabel(code) {
+  return (typeof GOLEM_PHARMA_PROD_LABEL_DEFAULT !== 'undefined' && GOLEM_PHARMA_PROD_LABEL_DEFAULT[code])
+    || (PHARMA_PROD_LABEL && PHARMA_PROD_LABEL[code]) || code;
+}
+
+// Otvorenie zo záložky (rep-nav) — vlastný overlay
+function openOkresy() { okresyOpen('rep', 'okresy-list'); }
+function closeOkresy() { usageSectionClose(); OKRESY_STATE.open = false; closeAllPanels(); }
+
+function okresyOpen(ctx, containerId) {
+  OKRESY_STATE.open = true;
+  OKRESY_STATE.ctx = ctx || 'rep';
+  OKRESY_STATE.containerId = containerId || (OKRESY_STATE.ctx === 'mgr' ? 'pl-detail-okresy-body' : 'okresy-list');
+  OKRESY_STATE.byCode = {};
+  OKRESY_STATE.expandedName = null;
+  OKRESY_STATE._districts = [];
+  OKRESY_STATE.detail = null;
+  var reqId = (++OKRESY_STATE.reqId);
+
+  if (OKRESY_STATE.ctx === 'rep') { usageSectionEnter('Okresy'); _panelShow('okresy-overlay'); }
+
+  var oblast = pharmaGetOblast();
+  OKRESY_STATE.oblast = oblast;
+  OKRESY_STATE.kvartal = pharmaKvartalCode((new Date()).getFullYear(), plnenieCurrentQ());
+
+  var cont = document.getElementById(OKRESY_STATE.containerId);
+  if (!oblast) {
+    if (cont) cont.innerHTML = '<div class="okr-empty">Pre tento účet nie je nastavená oblasť, takže okresné dáta nie sú dostupné.</div>';
+    return;
+  }
+
+  // 1) Trvalá cache → okamžitý kompletný render (bez čakania na sieť)
+  var meta = okresyLoadCacheMeta(oblast, OKRESY_STATE.kvartal);
+  var reconstructed = meta ? okresyReconstruct(meta, oblast) : null;
+  var haveCache = !!(reconstructed && Object.keys(reconstructed).length >= okresyCodes().length);
+  if (haveCache) {
+    OKRESY_STATE.byCode = reconstructed;
+    OKRESY_STATE._cacheVer = meta.ver || '';
+    okresyRender();
+  } else if (cont) {
+    cont.innerHTML = '<div class="okr-loading">Načítavam okresné dáta…</div>';
+  }
+
+  // 2) Over verziu dát (1 lacný config fetch = dátum PharmaData). Ak sa nezmenila a cache je
+  //    kompletná → nerob nič. Inak dotiahni VŠETKY produkty a ulož novú cache.
+  okresyPharmaTsFetch(function(ver) {
+    if (reqId !== OKRESY_STATE.reqId) return;
+    if (haveCache && meta.ver && ver && meta.ver === ver) return;         // dáta nezmenené → cache je aktuálna
+    var forceNet = !!(haveCache && meta.ver && ver && meta.ver !== ver);  // zmena → obísť starú per-produkt cache
+    okresyLoadAll(reqId, ver, cont, !haveCache, forceNet);
+  });
+}
+
+// Dotiahni všetky produkty a vyrenderuj až keď sú VŠETKY hotové (žiadny postupný render).
+function okresyLoadAll(reqId, ver, cont, showLoading, forceNet) {
+  if (showLoading && cont) cont.innerHTML = '<div class="okr-loading">Načítavam okresné dáta…</div>';
+  var codes = okresyCodes();
+  var fresh = {}, got = 0, done = false;
+  function finish() {
+    if (done || reqId !== OKRESY_STATE.reqId) return;
+    done = true;
+    OKRESY_STATE.byCode = fresh;
+    OKRESY_STATE._cacheVer = ver || '';
+    okresySaveCache(OKRESY_STATE.oblast, OKRESY_STATE.kvartal, ver);
+    okresyRender();
+  }
+  codes.forEach(function(code) {
+    okresyFetchCode(code, OKRESY_STATE.oblast, OKRESY_STATE.kvartal, reqId, function(resp, rkv) {
+      if (reqId !== OKRESY_STATE.reqId) return;
+      fresh[code] = { resp: resp, kvartal: rkv };
+      got++;
+      if (got >= codes.length) finish();
+    }, false, forceNet);
+  });
+  // Poistka proti visiacemu requestu — po 20 s vyrenderuj čo máme
+  setTimeout(function() {
+    if (reqId !== OKRESY_STATE.reqId || done) return;
+    if (Object.keys(fresh).length) { OKRESY_STATE.byCode = fresh; okresyRender(); }
+  }, 20000);
+}
+
+// ── Trvalá cache Okresov (ľahká — len metadáta; pharma odpovede sú už v per-produkt cache) ──
+function okresyCacheKey(oblast, kvartal) {
+  var tag = (typeof notifLineTag === 'function') ? notifLineTag() : '';
+  return 'okresy_cache_v1_' + tag + oblast + '_' + kvartal;
+}
+// Verzia dát = dátum poslednej aktualizácie PharmaData (notif_pharma)
+function okresyPharmaTs() {
+  var ts = '';
+  try { ts = localStorage.getItem(settingsDateLsKey('pharma')) || ''; } catch(e){}
+  if (!ts && typeof notifUsesPrefetch === 'function' && notifUsesPrefetch()
+        && typeof NOTIF_PREFETCH_CACHE !== 'undefined' && NOTIF_PREFETCH_CACHE.pharma) {
+    ts = NOTIF_PREFETCH_CACHE.pharma;
+  }
+  return ts;
+}
+function okresyPharmaTsFetch(cb) {
+  if (typeof IS_DEV !== 'undefined' && IS_DEV) { cb(okresyPharmaTs()); return; }
+  if (typeof notifUrl !== 'function') { cb(okresyPharmaTs()); return; }
+  fetch(notifUrl('action=getConfig&key=notif_pharma'), { cache: 'no-store' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var ts = (d && d.ok && d.value) ? String(d.value) : '';
+      if (ts) { try { localStorage.setItem(settingsDateLsKey('pharma'), ts); } catch(e){} }
+      cb(ts || okresyPharmaTs());
+    })
+    .catch(function() { cb(okresyPharmaTs()); });
+}
+function okresySaveCache(oblast, kvartal, ver) {
+  var codes = {};
+  Object.keys(OKRESY_STATE.byCode).forEach(function(code) {
+    var e = OKRESY_STATE.byCode[code];
+    codes[code] = (e && e.resp && e.kvartal) ? e.kvartal : false;  // false = známy prázdny (bez dát)
+  });
+  var payload = JSON.stringify({ ver: ver || '', ts: Date.now(), kvartal: kvartal, codes: codes });
+  var key = okresyCacheKey(oblast, kvartal);
+  try { if (typeof lsSafeSet === 'function') lsSafeSet(key, payload); else localStorage.setItem(key, payload); } catch(e){}
+}
+function okresyLoadCacheMeta(oblast, kvartal) {
+  try { var raw = localStorage.getItem(okresyCacheKey(oblast, kvartal)); return raw ? JSON.parse(raw) : null; } catch(e){ return null; }
+}
+// Zrekonštruuj byCode z per-produkt localStorage cache podľa metadát. null = neúplné → refetch.
+function okresyReconstruct(meta, oblast) {
+  if (!meta || !meta.codes) return null;
+  var codeKeys = Object.keys(meta.codes);
+  if (!codeKeys.length) return null;
+  var byCode = {};
+  for (var i = 0; i < codeKeys.length; i++) {
+    var code = codeKeys[i], kv = meta.codes[code];
+    if (kv === false || kv === null || kv === '') { byCode[code] = { resp: null, kvartal: meta.kvartal || '' }; continue; }
+    var resp = PHARMA_STATE.cache[code + '_' + oblast + '_' + kv] || _phLsLoad(code, oblast, kv);
+    if (!resp) return null;                 // vypadnutý per-produkt záznam → radšej refetch všetkého
+    PHARMA_STATE.cache[code + '_' + oblast + '_' + kv] = resp;
+    byCode[code] = { resp: resp, kvartal: kv };
+  }
+  return byCode;
+}
+
+// Načítanie pharma dát pre jeden kód (cache → localStorage → sieť), s fallbackom na predošlý Q
+// forceNet = true → obíď per-produkt cache a choď rovno na sieť (pri zmene verzie dát)
+function okresyFetchCode(code, oblast, kvartal, reqId, cb, isPrev, forceNet) {
+  if (reqId !== OKRESY_STATE.reqId) return;
+  var cacheKey = code + '_' + oblast + '_' + kvartal;
+  function deliver(resp) { if (reqId === OKRESY_STATE.reqId) cb(resp, kvartal); }
+  function hasReal(resp) {
+    return resp && Array.isArray(resp.okresy) && resp.okresy.some(function(o) {
+      return (parseFloat(o.nas_m1) > 0) || (parseFloat(o.nas_m2) > 0) || (parseFloat(o.nas_m3) > 0);
+    });
+  }
+  if (!forceNet) {
+    var cached = PHARMA_STATE.cache[cacheKey];
+    if (!cached) {
+      var ls = _phLsLoad(code, oblast, kvartal);
+      if (ls) { PHARMA_STATE.cache[cacheKey] = ls; cached = ls; }
+    }
+    if (cached && (hasReal(cached) || isPrev)) { deliver(cached); return; }
+  }
+
+  if (typeof IS_DEV !== 'undefined' && IS_DEV) {
+    deliver((typeof MOCK_PHARMA_DATA !== 'undefined' && MOCK_PHARMA_DATA[code]) || null);
+    return;
+  }
+
+  function goPrev() {
+    var pk = pharmaKvartalPrev(kvartal);
+    if (pk && pk !== kvartal && !isPrev) okresyFetchCode(code, oblast, pk, reqId, cb, true, forceNet);
+    else deliver(null);
+  }
+
+  fetch(
+    scriptUrl('action=getPharmaData'
+      + '&oblast='  + encodeURIComponent(oblast)
+      + '&produkt=' + encodeURIComponent(code)
+      + '&kvartal=' + encodeURIComponent(kvartal)),
+    { cache: 'no-store' }
+  )
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+      if (resp && resp.ok && hasReal(resp)) {
+        PHARMA_STATE.cache[cacheKey] = resp;
+        try { _phPersistSave(code, oblast, kvartal, resp); } catch (e) {}
+        deliver(resp);
+      } else if (!isPrev) {
+        goPrev();
+      } else {
+        deliver(null);
+      }
+    })
+    .catch(function() { if (!isPrev) goPrev(); else deliver(null); });
+}
+
+// Pivot: byCode (produkt → okresy) → zoznam okresov, každý so všetkými produktami
+function okresyBuildDistricts() {
+  var byName = {};
+  okresyCodes().forEach(function(code) {
+    var entry = OKRESY_STATE.byCode[code];
+    if (!entry || !entry.resp || !Array.isArray(entry.resp.okresy)) return;
+    var resp = entry.resp, rkv = entry.kvartal;
+    var q = parseInt(String(rkv).slice(2), 10);
+    var map = pharmaDistrictMonthMap(resp, rkv);
+    var displayMonths = pharmaDistrictDisplayMonthsForQ(q, resp, rkv, pharmaQuarterMonths(rkv));
+    var isBox = (code === 'JUN');
+
+    resp.okresy.forEach(function(row) {
+      var name = String(row.okres || '').trim();
+      if (!name) return;
+      var series = (map.districts && map.districts[name]) || { nas:{}, comps:{} };
+
+      // Náš MS — posledný dostupný mesiac + trend cez zobrazené mesiace
+      var vals = displayMonths.map(function(m) { var v = series.nas[m]; return (typeof v === 'number' && v > 0) ? v : null; });
+      var present = vals.filter(function(v) { return v !== null; });
+      var latest = present.length ? present[present.length - 1] : null;
+      var first  = present.length ? present[0] : null;
+
+      // Pacienti (náš / celkovo) — súčet Q
+      var nasPat = (row.nas_pat_m1 || 0) + (row.nas_pat_m2 || 0) + (row.nas_pat_m3 || 0);
+      var totPat = (row.tot_pat_m1 || 0) + (row.tot_pat_m2 || 0) + (row.tot_pat_m3 || 0);
+
+      // Top konkurent v okrese (najvyšší posledný dostupný MS)
+      var topComp = null, topVal = -1;
+      Object.keys(series.comps || {}).forEach(function(cn) {
+        var cv = null;
+        for (var i = displayMonths.length - 1; i >= 0; i--) {
+          var v = series.comps[cn][displayMonths[i]];
+          if (typeof v === 'number' && v > 0) { cv = v; break; }
+        }
+        if (cv !== null && cv > topVal) { topVal = cv; topComp = cn; }
+      });
+
+      // Produkt zobraz len ak má v okrese aspoň nejaké dáta
+      if (latest === null && nasPat === 0 && totPat === 0 && !topComp) return;
+
+      // Trend
+      var trendCls = 'flat', trendTxt = '–';
+      if (latest !== null && first !== null && present.length >= 2) {
+        var d = latest - first;
+        if (d > 0.05)      { trendCls = 'up';   trendTxt = '▲ ' + Math.abs(d).toFixed(1); }
+        else if (d < -0.05){ trendCls = 'down'; trendTxt = '▼ ' + Math.abs(d).toFixed(1); }
+      }
+
+      if (!byName[name]) byName[name] = { name: name, products: [] };
+      byName[name].products.push({
+        code: code, label: okresyLabel(code), color: OKRESY_CODE_COLOR[code] || '#94A3B8',
+        latest: latest, trendCls: trendCls, trendTxt: trendTxt,
+        nasPat: nasPat, totPat: totPat, topComp: topComp, topVal: topVal, isBox: isBox,
+        hasChart: (latest !== null)
+      });
+    });
+  });
+
+  // Zoradenie okresov podľa abecedy, produktov podľa preferovaného poradia
+  var order = {}; okresyCodes().forEach(function(c, i) { order[c] = i; });
+  var list = Object.keys(byName).map(function(k) { return byName[k]; });
+  list.sort(function(a, b) { return a.name.localeCompare(b.name, 'sk'); });
+  list.forEach(function(d) { d.products.sort(function(a, b) { return (order[a.code] || 0) - (order[b.code] || 0); }); });
+  return list;
+}
+
+function okresyRender() {
+  var cont = document.getElementById(OKRESY_STATE.containerId);
+  if (!cont) return;
+  var districts = okresyBuildDistricts();
+  OKRESY_STATE._districts = districts;
+  // Ak je otvorený detail okresu, neprepisuj ho zoznamom (dobiehajúce fetchy len aktualizujú dáta)
+  if (OKRESY_STATE.detail) return;
+
+  var total = okresyCodes().length;
+  var done  = Object.keys(OKRESY_STATE.byCode).length;
+
+  if (!districts.length) {
+    cont.innerHTML = (done < total)
+      ? '<div class="okr-loading">Načítavam okresné dáta…</div>'
+      : '<div class="okr-empty">Pre toto teritórium zatiaľ nie sú nahraté okresné pharma dáta.</div>';
+    return;
+  }
+
+  var chevron = '<svg class="okr-chevron" viewBox="0 0 20 20" fill="none"><path d="M5 8l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  var html = '<div class="okr-intro">Ťukni na okres a rozbalí sa so všetkými produktami. Ťuk na produkt zobrazí jeho tabuľku trhového podielu v okrese (graf otvoríš tlačidlom Graf).</div>';
+  html += '<div class="okr-list">';
+
+  districts.forEach(function(d, dIdx) {
+    var open = (OKRESY_STATE.expandedName === d.name);
+    var n = d.products.length;
+    var plural = (n === 1) ? 'produkt' : (n >= 2 && n <= 4 ? 'produkty' : 'produktov');
+
+    html += '<div class="okr-item' + (open ? ' open' : '') + '">';
+    html += '<div class="okr-hdr" onclick="okresyToggle(' + dIdx + ')">'
+      + '<div class="okr-hdr-ico">📍</div>'
+      + '<div class="okr-hdr-txt"><div class="okr-hdr-name">' + mgrEscape(d.name) + '</div>'
+      + '<div class="okr-hdr-meta">' + n + ' ' + plural + '</div></div>'
+      + chevron + '</div>';
+    html += '<div class="okr-body">';
+
+    d.products.forEach(function(p, pIdx) {
+      var subParts = [];
+      if (p.nasPat > 0 || p.totPat > 0) subParts.push((p.isBox ? 'Box ' : 'Pac. ') + p.nasPat + '/' + p.totPat);
+      if (p.topComp) subParts.push('konk. ' + mgrEscape(p.topComp) + ' ' + p.topVal.toFixed(1) + '%');
+      var sub = subParts.join('  ·  ');
+
+      html += '<div class="okr-prod" onclick="okresyOpenDetail(' + dIdx + ',' + pIdx + ')">'
+        + '<span class="okr-prod-dot" style="background:' + p.color + '"></span>'
+        + '<div class="okr-prod-main">'
+        + '<div class="okr-prod-name">' + mgrEscape(p.label) + '</div>'
+        + (sub ? '<div class="okr-prod-sub">' + sub + '</div>' : '')
+        + '</div>'
+        + '<div class="okr-prod-right">'
+        + '<div class="okr-prod-msbox"><div class="okr-ms' + (p.latest === null ? ' none' : '') + '">'
+        + (p.latest !== null ? p.latest.toFixed(2) + '%' : '—') + '</div><div class="okr-ms-lbl">MS</div></div>'
+        + '<div class="okr-trend ' + p.trendCls + '">' + p.trendTxt + '</div>'
+        + '<div class="okr-prod-graf"><svg width="8" height="13" viewBox="0 0 8 13" fill="none"><path d="M1.5 1.5L6.5 6.5L1.5 11.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>'
+        + '</div>'
+        + '</div>';
+    });
+
+    html += '</div></div>';
+  });
+
+  html += '</div>';
+  if (done < total) html += '<div class="okr-loading" style="padding:14px">Načítavam ďalšie produkty…</div>';
+  cont.innerHTML = html;
+}
+
+function okresyToggle(dIdx) {
+  var d = OKRESY_STATE._districts[dIdx];
+  if (!d) return;
+  OKRESY_STATE.expandedName = (OKRESY_STATE.expandedName === d.name) ? null : d.name;
+  okresyRender();
+}
+
+// Nájdi okres-riadok daného produktu (pre detail aj graf)
+function okresyFindRow(dIdx, pIdx) {
+  var d = OKRESY_STATE._districts[dIdx];
+  if (!d) return null;
+  var p = d.products[pIdx];
+  if (!p) return null;
+  var entry = OKRESY_STATE.byCode[p.code];
+  if (!entry || !entry.resp) return null;
+  var row = null;
+  (entry.resp.okresy || []).forEach(function(r) { if (String(r.okres || '').trim() === d.name) row = r; });
+  if (!row) return null;
+  return { d: d, p: p, entry: entry, row: row };
+}
+
+// Klik na produkt v okrese → detail = tabuľka okresu (náš produkt vs. konkurenti), s tlačidlom Graf
+function okresyOpenDetail(dIdx, pIdx) {
+  var ctx = okresyFindRow(dIdx, pIdx);
+  if (!ctx) return;
+  var resp = ctx.entry.resp, rkv = ctx.entry.kvartal;
+  var q = parseInt(String(rkv).slice(2), 10);
+  var map = pharmaDistrictMonthMap(resp, rkv);
+  var dSeries = (map.districts && map.districts[ctx.d.name]) || { nas:{}, comps:{} };
+  var displayMonths = pharmaDistrictDisplayMonthsForQ(q, resp, rkv, pharmaQuarterMonths(rkv));
+  var displayLabels = displayMonths.map(function(m) { return PHARMA_MONTH_SK[parseInt(String(m).slice(2), 10)] || m; });
+  var prodLabel = okresyLabel(ctx.p.code);
+  var isBox = (ctx.p.code === 'JUN');
+
+  var grafBtn = '<button class="pharma-okres-chart-btn" onclick="okresyOpenGraf(' + dIdx + ',' + pIdx + ')" aria-label="Zobraziť graf okresu">'
+    + '<svg width="13" height="10" viewBox="0 0 15 11" fill="none" xmlns="http://www.w3.org/2000/svg"><polyline points="0.5,10 3.5,5.5 6.5,7.5 9.5,2 14,4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="2" r="1.5" fill="currentColor"/></svg>'
+    + 'Graf</button>';
+  var card = pharmaDistrictCardHtml(ctx.row, dSeries, prodLabel, q, isBox, displayMonths, displayLabels, grafBtn);
+
+  OKRESY_STATE.detail = { dIdx: dIdx, pIdx: pIdx };
+  var cont = document.getElementById(OKRESY_STATE.containerId);
+  if (!cont) return;
+  cont.innerHTML =
+    '<button class="okr-back" onclick="okresyBackToList()">'
+    + '<svg width="8" height="13" viewBox="0 0 8 13" fill="none"><path d="M6.5 1.5L1.5 6.5L6.5 11.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    + 'Späť na okres ' + mgrEscape(ctx.d.name) + '</button>'
+    + '<div class="okr-detail-title"><span class="okr-prod-dot" style="background:' + (ctx.p.color || '#94A3B8') + '"></span>' + mgrEscape(prodLabel) + ' · ' + mgrEscape(ctx.d.name) + '</div>'
+    + card;
+  cont.scrollTop = 0;
+  try { window.scrollTo(0, 0); } catch(e){}
+}
+
+// Graf tlačidlo v detaile → nastav PHARMA_STATE a otvor existujúci graf okresu
+function okresyOpenGraf(dIdx, pIdx) {
+  var ctx = okresyFindRow(dIdx, pIdx);
+  if (!ctx) return;
+  PHARMA_STATE.activeCode = ctx.p.code;
+  PHARMA_STATE.oblast     = OKRESY_STATE.oblast;
+  PHARMA_STATE.kvartal    = ctx.entry.kvartal;
+  openPharmaOkresChart(ctx.row, okresyLabel(ctx.p.code));
+}
+
+function okresyBackToList() {
+  OKRESY_STATE.detail = null;
+  okresyRender();
+}
+
 function mgrRenderCalendarView(resetMonth) {
   try { golemCalRefreshNavDay(); } catch(e){}
   try { gynCalEnsureSheet(); } catch(e){}
@@ -31017,6 +31562,13 @@ function lkMgrItem(l, tab) {
       </div>
     </div>
     <div id="lk-list"></div>
+  </div>
+</div>
+
+<!-- ═══ OKRESY overlay — okres → všetky produkty (Golem rep) ═══ -->
+<div class="lk-overlay" id="okresy-overlay">
+  <div class="lk-inner">
+    <div id="okresy-list"></div>
   </div>
 </div>
 
