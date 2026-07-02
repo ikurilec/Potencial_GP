@@ -3362,7 +3362,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.45.0';
+var APP_VERSION = '2.45.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -21871,7 +21871,7 @@ function plnenieRenderSummary() {
 // PRODUCT DRILL-DOWN SHEET — klik na produkt v sumári
 // ═══════════════════════════════════════════════════════════
 
-var PL_PROD_SHEET_STATE = { open: false, prodKey: null, prodLabel: null, activePharmaCode: null, predajeSubKey: null, swipeInited: false };
+var PL_PROD_SHEET_STATE = { open: false, prodKey: null, prodLabel: null, activePharmaCode: null, predajeSubKey: null, swipeInited: false, familyCombined: false };
 
 function prodSheetPlanKey(prodKey, pharmaCode) {
   if (prodKey === 'aflamil_family') {
@@ -21900,7 +21900,9 @@ function prodSheetUpdateHeader() {
   var q = PL_STATE.q, year = PL_STATE.year;
   var prodSummary = null;
   (PL_STATE.aggregates.products || []).forEach(function(p){ if (p.key === prodKey) prodSummary = p; });
-  var planTotal = prodSheetPlanTotal(prodSheetPlanKey(prodKey, pharmaCode));
+  var planTotal = (prodKey === 'aflamil_family')
+    ? (prodSheetPlanTotal('aflamil_tablety_sacky') + prodSheetPlanTotal('aflamil_kr'))
+    : prodSheetPlanTotal(prodSheetPlanKey(prodKey, pharmaCode));
   if (titleEl) titleEl.textContent = PL_PROD_SHEET_STATE.prodLabel || '';
   if (subEl) {
     var pctPart = (prodSummary && prodSummary.pct !== null)
@@ -21928,7 +21930,11 @@ function openProdSheet(prodKey, prodLabel) {
   var activeReps = plnenieGetActiveReps();
   var q = PL_STATE.q, year = PL_STATE.year;
   var kvartal = pharmaKvartalCode(year, q);
-  var pharmaCodes = prodSheetPharmaCodesFor(prodKey);
+  // Aflamil family = KOMBINOVANÝ pohľad (súčet aflamil_tablety_sacky + aflamil_kr).
+  // Zámerne bez subtabov Tablety/Sáčky/Krém — tie majú vlastné produktové karty.
+  var isFamily = (prodKey === 'aflamil_family');
+  PL_PROD_SHEET_STATE.familyCombined = isFamily;
+  var pharmaCodes = isFamily ? [] : prodSheetPharmaCodesFor(prodKey);
   var pharmaCode  = pharmaCodes.length ? pharmaCodes[0] : null;
   PL_PROD_SHEET_STATE.activePharmaCode = pharmaCode;
   PL_PROD_SHEET_STATE.predajeSubKey = PHARMA_PREDAJE_KEY[pharmaCode] || null;
@@ -22015,6 +22021,18 @@ function openProdSheet(prodKey, prodLabel) {
 // Vykreslí zoznam reprezentantov v product sheet.
 // Vždy používa PL_PROD_SHEET_STATE.prodKey + activePharmaCode + predajeSubKey.
 // Volá sa pri otvorení aj pri prepnutí subtabu (Tablety ↔ Sáčky).
+// Predikcia Aflamil family do konca Q pre jedného repa = súčet oboch plánových kľúčov
+// (aflamil_tablety_sacky + aflamil_kr), rovnaká metóda ako plnenieCalcPredikcia.
+function prodSheetFamilyPredikcia(q, year, famPlan, byMonth) {
+  if (plnenieDataCurrentQ() !== q) return null;
+  if (!famPlan || famPlan <= 0) return null;
+  var parts = plneniePredictionMonthParts(q, year, byMonth, null);
+  var sumActual = plnenieActualForPredictionParts(byMonth, parts, 'aflamil_tablety_sacky')
+                + plnenieActualForPredictionParts(byMonth, parts, 'aflamil_kr');
+  var sumPlan = plneniePlanForPredictionParts(year, q, famPlan, parts);
+  return sumPlan > 0 ? sumActual / sumPlan * 100 : null;
+}
+
 function prodSheetRenderRepList() {
   if (!PL_STATE.data || !PL_PROD_SHEET_STATE.prodKey) return;
   var prodKey      = PL_PROD_SHEET_STATE.prodKey;
@@ -22028,16 +22046,23 @@ function prodSheetRenderRepList() {
 
   // Zoradenie: pri subtabe podľa € daného subtypu, inak podľa % plnenia
   var repData = [];
-  // Aflamil family: per-subtab určujeme z ktorého produktu brať plán+predaje
-  // (AFLcrm → aflamil_kr, AFLtbl/AFLsach → aflamil_tablety_sacky)
+  var isFamily = (prodKey === 'aflamil_family');
+  // Aflamil family: kombinovaný súčet (aflamil_tablety_sacky + aflamil_kr).
+  // Inak (vrátane komponentov): AFLcrm → aflamil_kr, AFLtbl/AFLsach → aflamil_tablety_sacky.
   var planKey = prodSheetPlanKey(prodKey, pharmaCode);
   activeReps.forEach(function(rep) {
     var rPlan  = plan[rep] || {};
     var rSales = (predaje[rep] && predaje[rep].total) || {};
-    var pPlan  = parseFloat(rPlan[planKey]);  if (isNaN(pPlan))  pPlan  = 0;
-    var pSales = parseFloat(rSales[planKey]); if (isNaN(pSales)) pSales = 0;
+    var pPlan, pSales, subSales = null;
+    if (isFamily) {
+      pPlan  = (parseFloat(rPlan['aflamil_tablety_sacky']) || 0) + (parseFloat(rPlan['aflamil_kr']) || 0);
+      pSales = (parseFloat(rSales['aflamil_tablety_sacky']) || 0) + (parseFloat(rSales['aflamil_kr']) || 0);
+    } else {
+      pPlan  = parseFloat(rPlan[planKey]);  if (isNaN(pPlan))  pPlan  = 0;
+      pSales = parseFloat(rSales[planKey]); if (isNaN(pSales)) pSales = 0;
+      subSales = predajeSubKey ? (parseFloat(rSales[predajeSubKey]) || 0) : null;
+    }
     if (pPlan > 0) {
-      var subSales = predajeSubKey ? (parseFloat(rSales[predajeSubKey]) || 0) : null;
       repData.push({ username: rep, planEUR: pPlan, predajeEUR: pSales, pct: pSales / pPlan * 100, subSales: subSales });
     }
   });
@@ -22148,7 +22173,9 @@ function prodSheetRenderRepList() {
     // Predikcia tohto repa do konca Q pri tomto produkte (len aktuálny Q; rovnaká
     // metóda ako produktové karty v detaile repa — z mesačných predajov).
     var rByMonthPred = (predaje[r.username] && predaje[r.username].byMonth) || {};
-    var rPredikcia = plnenieCalcPredikcia(PL_STATE.q, PL_STATE.year, r.planEUR, rByMonthPred, planKey);
+    var rPredikcia = isFamily
+      ? prodSheetFamilyPredikcia(PL_STATE.q, PL_STATE.year, r.planEUR, rByMonthPred)
+      : plnenieCalcPredikcia(PL_STATE.q, PL_STATE.year, r.planEUR, rByMonthPred, planKey);
     var predHtml = (rPredikcia !== null)
       ? '<div class="pl-ps-pred">predikcia Q <span class="' + plnenieColorClass(rPredikcia) + '">' + plnenieFormatPct(rPredikcia) + '</span></div>'
       : '';
@@ -22286,11 +22313,12 @@ function prodSheetInitSubtabSwipe() {
   if (_prodSheetSubtabSwipeAttached) return;
   var bodyEl = document.getElementById('pl-ps-body');
   if (!bodyEl) return;
-  function curIdx(){
-    var codes = PHARMA_CODES[PL_PROD_SHEET_STATE.prodKey] || [];
-    return codes.indexOf(PL_PROD_SHEET_STATE.activePharmaCode);
+  function codes(){
+    // Aflamil family = kombinovaný pohľad → žiadne subtaby na swipovanie
+    if (PL_PROD_SHEET_STATE.familyCombined) return [];
+    return PHARMA_CODES[PL_PROD_SHEET_STATE.prodKey] || [];
   }
-  function codes(){ return PHARMA_CODES[PL_PROD_SHEET_STATE.prodKey] || []; }
+  function curIdx(){ return codes().indexOf(PL_PROD_SHEET_STATE.activePharmaCode); }
   attachDragSwitcher(bodyEl, {
     canPrev: function(){ return codes().length >= 2 && curIdx() > 0; },
     canNext: function(){ var c = codes(); return c.length >= 2 && curIdx() < c.length - 1; },
@@ -22383,6 +22411,7 @@ function prodSheetUpdateMsCells() {
 
 function prodSheetSwitchPharmaCode(code) {
   if (!PL_PROD_SHEET_STATE.open) return;
+  if (PL_PROD_SHEET_STATE.familyCombined) return;  // family nemá subtaby
   if (PL_PROD_SHEET_STATE.activePharmaCode === code) return;
   if (typeof haptic === 'function') haptic('selection');
   PL_PROD_SHEET_STATE.activePharmaCode = code;
