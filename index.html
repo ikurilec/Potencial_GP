@@ -3362,7 +3362,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.45.1';
+var APP_VERSION = '2.46.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6728,7 +6728,7 @@ function renderSettings(s){
       '<button type="button" class="set-action-btn' + (hasAvatar ? '' : ' set-action-primary set-action-pulse') + '" onclick="settingsOpenAvatar()">🎨 ' + (hasAvatar ? 'Upraviť avatar' : 'Vytvoriť avatar') + '</button>' +
     '</div>' +
     '<div class="set-card"><div class="set-card-title">Notifikácie</div>' +
-      settingsNotifHtml() + settingsCalNotifHtml(s) + '</div>' +
+      settingsNotifHtml() + settingsCalNotifHtml(s) + settingsBdayNotifHtml(s) + '</div>' +
     '<div class="set-card"><div class="set-card-title">Aplikácia</div>' +
       settingsAppHtml(s) + '</div>' +
     settingsProdOrderCard(s) +
@@ -6853,6 +6853,47 @@ function settingsToggleCalNotif(key){
   if(typeof userPrefsSet === 'function') userPrefsSet(patch);
   var sw = document.getElementById('set-calnotif-sw-' + key) || document.getElementById('set-calnotif-sw');
   if(sw){ sw.classList.toggle('on', nv); sw.setAttribute('aria-checked', nv ? 'true' : 'false'); }
+  try { haptic('selection'); } catch(e){}
+}
+
+// ── Meniny a narodeniny v tíme — opt-in push o polnoci (asistentka, AM, PM) ──
+function settingsBdayNotifHtml(s){
+  if(!s || s.line !== 'gyn') return '';
+  var role = String(s.role || '').toLowerCase();
+  if(role !== 'gyn-asistent' && role !== 'gyn-am' && role !== 'gyn-pm') return '';
+  var prefs = userPrefsGet();
+  var on = prefs.notifMeninyNarodeniny === true;   // default vypnuté (opt-in)
+  return '<div class="set-calnotif-sep"></div>' +
+    '<div class="set-toggle-row">' +
+      '<div class="set-toggle-info"><div class="set-toggle-lbl">🎂 Meniny a narodeniny v tíme</div><div class="set-row-desc">' +
+        (on ? 'O polnoci dostaneš push, ak má v ten deň niekto z tímu meniny alebo narodeniny.'
+            : 'Zapni si push upozornenie, keď má niekto z tímu meniny alebo narodeniny.') + '</div></div>' +
+      '<button type="button" id="set-bdaynotif-sw" class="gyn-cal-switch' + (on ? ' on' : '') + '" role="switch" aria-checked="' + (on ? 'true' : 'false') + '" onclick="settingsToggleBdayNotif()"><span class="gyn-cal-switch-kn"></span></button>' +
+    '</div>' +
+    (on ? '<button type="button" class="set-action-btn" style="margin-top:8px" onclick="settingsBdayNotifTest()">📲 Poslať test (len mne)</button>' +
+          '<div id="set-bdaynotif-result" class="set-push-result" style="display:none"></div>' : '');
+}
+function settingsBdayNotifTest(){
+  var resEl = document.getElementById('set-bdaynotif-result');
+  var s = getSession(); if(!s || typeof gynScriptUrl !== 'function') return;
+  if(resEl){ resEl.style.display='block'; resEl.className='set-push-result'; resEl.textContent='Odosielam…'; }
+  fetch(gynScriptUrl('action=testMeninyNarodeniny'), { cache:'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(!resEl) return;
+      if(d && d.ok){ resEl.className='set-push-result ok'; resEl.textContent = '✅ ' + (d.preview || 'Odoslané.'); }
+      else { resEl.className='set-push-result err'; resEl.textContent='❌ ' + ((d && d.error) || 'Nepodarilo sa odoslať.'); }
+    })
+    .catch(function(){ if(resEl){ resEl.className='set-push-result err'; resEl.textContent='❌ Chyba siete.'; } });
+}
+function settingsToggleBdayNotif(){
+  var prefs = userPrefsGet();
+  var nv = !(prefs.notifMeninyNarodeniny === true);
+  userPrefsSet({ notifMeninyNarodeniny: nv });
+  var sw = document.getElementById('set-bdaynotif-sw');
+  if(sw){ sw.classList.toggle('on', nv); sw.setAttribute('aria-checked', nv ? 'true' : 'false'); }
+  var descEl = sw ? sw.parentNode.querySelector('.set-row-desc') : null;
+  if(descEl) descEl.textContent = nv ? 'O polnoci dostaneš push, ak má v ten deň niekto z tímu meniny alebo narodeniny.' : 'Zapni si push upozornenie, keď má niekto z tímu meniny alebo narodeniny.';
   try { haptic('selection'); } catch(e){}
 }
 
@@ -17447,6 +17488,20 @@ var WN_HISTORY = [
         { icon: '⚡', bg: '#F5F3FF', title: 'Bez čakania', desc: 'Dáta sa cachujú — po prvom načítaní naskočia okamžite a obnovia sa len pri zmene PharmaData.' }
       ]
     }
+  },
+  // ── v2.46 — Meniny a narodeniny v tíme (len gyn, len manažéri: asistentka/AM/PM) ──
+  {
+    key: 'potencial_vl_wn_v2_46_meniny_narodeniny',
+    line: 'gyn',
+    mgrOnly: true,
+    mgr: {
+      icon: '🎂', title: 'Meniny a narodeniny v tíme', sub: 'v2.46 · Gedeon Richter Slovakia',
+      items: [
+        { icon: '⚙️', bg: '#EFF6FF', title: 'Nový prepínač v Nastaveniach', desc: 'V ⚙️ Nastaveniach → Notifikácie pribudol prepínač „Meniny a narodeniny v tíme" — je vypnutý, kým si ho sám nezapneš.' },
+        { icon: '🌙', bg: '#F0FDF4', title: 'Push o polnoci', desc: 'Keď si ho zapneš, o polnoci ti príde push upozornenie, ak má v ten deň niekto z tímu meniny alebo narodeniny.' },
+        { icon: '📲', bg: '#FFF7ED', title: 'Vyskúšaj si to hneď', desc: 'Po zapnutí pribudne tlačidlo „Poslať test (len mne)" — nemusíš čakať do polnoci, aby si videl, ako notifikácia vyzerá.' }
+      ]
+    }
   }
 ];
 
@@ -17456,13 +17511,15 @@ var WN_IS_MGR = false;
 // Položky relevantné pre aktuálnu líniu (it.line === 'gyn'/'gp' → len tá línia; bez line = obe).
 // it.golemOnly === true → len Golem GP línia (nie Reagila, nie Gyn) — usageLine() vracia 'gp'
 // aj pre Reagilu, preto Reagilu rozlíšime cez session.line.
+// it.mgrOnly === true → len pre manažérov (role !== 'gyn-rep'), reprezentanti túto položku vôbec nevidia.
 function wnLineItems(){
   var line = (typeof usageLine === 'function') ? usageLine() : 'gp';
-  var isReagila = false;
-  try { var s = getSession(); isReagila = !!(s && s.line === 'reagila'); } catch(e){}
+  var isReagila = false, isMgr = false;
+  try { var s = getSession(); isReagila = !!(s && s.line === 'reagila'); isMgr = !!(s && s.role && s.role !== 'gyn-rep'); } catch(e){}
   return WN_HISTORY.filter(function(it){
     if (it.line && it.line !== line) return false;
     if (it.golemOnly && (line === 'gyn' || isReagila)) return false;
+    if (it.mgrOnly && !isMgr) return false;
     return true;
   });
 }
