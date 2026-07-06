@@ -1176,6 +1176,9 @@
   /* Okresy záložka je len pre Golem GP líniu (Reagila má vlastnú 3-tab navigáciu) */
   body.reagila-line #rep-nav-okresy-btn,
   body.reagila-line #spn-okresy{ display:none !important; }
+  /* Tuyory záložka je len pre Golem GP líniu */
+  body.reagila-line #rep-nav-tuyory-btn,
+  body.reagila-line #spn-tuyory{ display:none !important; }
   body.reagila-line .rep-nav,
   body.reagila-line .panel-nav{ grid-template-columns:repeat(3,1fr); }
   body.reagila-line #rep-nav-plnenie-btn, body.reagila-line #spn-pl{ order:1; }
@@ -2547,6 +2550,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   <button type="button" class="rep-nav-btn" id="rep-nav-plnenie-btn" onclick="openRepPlnenie()"><span class="rn-ico">💊</span><span class="rn-lbl">Plnenie</span></button>
   <button type="button" class="rep-nav-btn" id="rep-nav-lekarne-btn" onclick="openLekarne()"><span class="rn-ico">🏪</span><span class="rn-lbl">Lekárne</span></button>
   <button type="button" class="rep-nav-btn" id="rep-nav-okresy-btn" onclick="openOkresy()"><span class="rn-ico">📍</span><span class="rn-lbl">Okresy</span></button>
+  <button type="button" class="rep-nav-btn" id="rep-nav-tuyory-btn" onclick="openTuyory()"><span class="rn-ico">🧬</span><span class="rn-lbl">Tuyory</span></button>
   <button type="button" class="rep-nav-btn" id="rep-nav-kal-btn" onclick="openGolemKalendar()"><span class="rn-ico gyn-cal-navico"><span class="gci-top"></span><span class="gci-day js-cal-nav-day">16</span></span><span class="rn-lbl">Kalendár</span></button>
 </div>
 
@@ -2571,12 +2575,18 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 
   <!-- Dashboard — zoznam reprezentantov -->
   <div class="mgr-list-wrap" id="mgr-list-wrap">
-    <div class="mgr-stats">
+    <div class="hist-subtabs" id="mgr-hist-subtabs">
+      <button type="button" class="hist-subtab active" data-hf="all" onclick="mgrHistSetFilter('all',this)">Všetko</button>
+      <button type="button" class="hist-subtab" data-hf="gp" onclick="mgrHistSetFilter('gp',this)">Všeobecní</button>
+      <button type="button" class="hist-subtab" data-hf="tuyory" onclick="mgrHistSetFilter('tuyory',this)">🧬 Tuyory</button>
+    </div>
+    <div id="mgr-tuy-banner" style="display:none"></div>
+    <div class="mgr-stats" style="display:none">
       <div class="mgr-stat"><div class="mgr-stat-num" id="mgr-stat-reps">—</div><div class="mgr-stat-lbl">Tím</div></div>
       <div class="mgr-stat"><div class="mgr-stat-num" id="mgr-stat-week">—</div><div class="mgr-stat-lbl">Týždeň</div></div>
       <div class="mgr-stat"><div class="mgr-stat-num" id="mgr-stat-month">—</div><div class="mgr-stat-lbl">Mesiac</div></div>
     </div>
-    <div class="mgr-toolbar">
+    <div class="mgr-toolbar" style="display:none">
       <button class="mgr-tb-btn active" data-sort="activity" onclick="mgrSetSort('activity')">Podľa aktivity</button>
       <button class="mgr-tb-btn" data-sort="volume" onclick="mgrSetSort('volume')">Podľa počtu</button>
       <button class="mgr-tb-btn" data-sort="name" onclick="mgrSetSort('name')">A–Z</button>
@@ -2584,7 +2594,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     <div class="mgr-list" id="mgr-list">
       <div class="skel-wrap"><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:55%"></div><div class="skel skel-line" style="width:38%"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:62%"></div><div class="skel skel-line" style="width:30%"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:48%"></div><div class="skel skel-line" style="width:42%"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:58%"></div><div class="skel skel-line" style="width:33%"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:52%"></div><div class="skel skel-line" style="width:36%"></div></div></div></div>
     </div>
-    <div id="mgr-managers-section"></div>
+    <div id="mgr-managers-section" style="display:none"></div>
   </div>
 
   <!-- Detail reprezentanta — zoznam jeho návštev -->
@@ -3031,6 +3041,11 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
         <span class="hist-search-icon">🔍</span>
         <input type="text" class="hist-search" id="hist-search" placeholder="Hľadať lekára..." oninput="filterHistory()" autocomplete="off">
       </div>
+      <div class="hist-subtabs" id="hist-subtabs">
+        <button type="button" class="hist-subtab active" data-hf="all" onclick="histSetFilter('all',this)">Všetko<span class="hist-subtab-count" id="hist-cnt-all"></span></button>
+        <button type="button" class="hist-subtab" data-hf="gp" onclick="histSetFilter('gp',this)">Všeobecní<span class="hist-subtab-count" id="hist-cnt-gp"></span></button>
+        <button type="button" class="hist-subtab" data-hf="tuyory" onclick="histSetFilter('tuyory',this)">🧬 Tuyory<span class="hist-subtab-count" id="hist-cnt-tuyory"></span></button>
+      </div>
       <div class="hist-body-card">
         <div class="hist-body" id="hist-body"></div>
       </div>
@@ -3362,7 +3377,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.46.1';
+var APP_VERSION = '2.47.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6394,6 +6409,7 @@ function timeAgo(dateKey, cas) {
 var _histDetailItems = [];
 
 function buildHistItemHtml(item) {
+  if (item && item.type === 'tuyory') return tuyoryHistCardHtml(item);
   var cls = getScenarioClass(item.scenar);
   var seg = SEGMENTS[item.scenar];
   var recHtml = '';
@@ -6422,7 +6438,12 @@ function renderHistItems(items) {
   if(!body) return;
   _histDetailItems = [];
   if(!items.length) {
-    body.innerHTML = mkEmpty('clipboard', 'Žiadne návštevy', 'Zatiaľ si nezaznamenal žiadnu návštevu.');
+    if (typeof _histFilter !== 'undefined' && _histFilter === 'tuyory')
+      body.innerHTML = mkEmpty('clipboard', 'Žiadne Tuyory záznamy', 'Zatiaľ si nevyplnil žiadny Tuyory formulár.');
+    else if (typeof _histFilter !== 'undefined' && _histFilter === 'gp')
+      body.innerHTML = mkEmpty('clipboard', 'Žiadni všeobecní lekári', 'Zatiaľ si nezaznamenal žiadnu návštevu.');
+    else
+      body.innerHTML = mkEmpty('clipboard', 'Žiadne návštevy', 'Zatiaľ si nezaznamenal žiadnu návštevu.');
     return;
   }
   // Group by dateKey
@@ -6487,28 +6508,51 @@ function attachHistItemGestures() {
   });
 }
 
-function filterHistory() {
-  var q = (document.getElementById('hist-search').value || '').trim().toLowerCase();
-  if(!q) {
-    renderHistItems(_histAllItems);
-    return;
-  }
-  var filtered = _histAllItems.filter(function(item) {
-    return (item.lekar || '').toLowerCase().indexOf(q) === 0 ||
-           (item.lekar || '').toLowerCase().indexOf(' ' + q) !== -1;
-  });
-  // Sort by best match (starts with query first)
-  filtered.sort(function(a, b) {
-    var aStart = (a.lekar || '').toLowerCase().indexOf(q) === 0 ? 0 : 1;
-    var bStart = (b.lekar || '').toLowerCase().indexOf(q) === 0 ? 0 : 1;
-    return aStart - bStart;
-  });
-  renderHistItems(filtered);
+// ── História — mini filter (Všetko / Všeobecní / Tuyory) + vyhľadávanie ──
+var _histFilter = 'all';
+function histFilterItems(items){
+  if (_histFilter === 'gp')     return items.filter(function(it){ return !(it && it.type === 'tuyory'); });
+  if (_histFilter === 'tuyory') return items.filter(function(it){ return it && it.type === 'tuyory'; });
+  return items;
 }
+function histUpdateCounts(all){
+  var g = 0, t = 0;
+  all.forEach(function(it){ if (it && it.type === 'tuyory') t++; else g++; });
+  function setC(id, n){ var el = document.getElementById(id); if (el) el.textContent = n ? (' ' + n) : ''; }
+  setC('hist-cnt-all', all.length); setC('hist-cnt-gp', g); setC('hist-cnt-tuyory', t);
+}
+function histSetFilter(f, btn){
+  _histFilter = f || 'all';
+  var bar = document.getElementById('hist-subtabs');
+  if (bar) Array.prototype.forEach.call(bar.querySelectorAll('.hist-subtab'), function(b){
+    b.classList.toggle('active', b.getAttribute('data-hf') === _histFilter);
+  });
+  try { haptic('selection'); } catch(e){}
+  histRender();
+}
+function histRender(){
+  var all = _histCombined();
+  histUpdateCounts(all);
+  var scoped = histFilterItems(all);
+  var q = (((document.getElementById('hist-search') || {}).value) || '').trim().toLowerCase();
+  if (q){
+    scoped = scoped.filter(function(item){
+      var n = (item.lekar || '').toLowerCase();
+      return n.indexOf(q) === 0 || n.indexOf(' ' + q) !== -1;
+    });
+    scoped.sort(function(a, b){
+      var as = (a.lekar || '').toLowerCase().indexOf(q) === 0 ? 0 : 1;
+      var bs = (b.lekar || '').toLowerCase().indexOf(q) === 0 ? 0 : 1;
+      return as - bs;
+    });
+  }
+  renderHistItems(scoped);
+}
+function filterHistory(){ histRender(); }
 
 var _panelCurrent = null;
 var _panelStack = []; // navigačný stack — pamätá odkiaľ sme prišli (pre Android back button)
-var _PANEL_ORDER = { 'hist-overlay': 0, 'lb-overlay': 1, 'rep-plnenie-overlay': 2, 'lk-overlay': 3, 'okresy-overlay': 4, 'golem-cal-overlay': 5 };
+var _PANEL_ORDER = { 'hist-overlay': 0, 'lb-overlay': 1, 'rep-plnenie-overlay': 2, 'lk-overlay': 3, 'okresy-overlay': 4, 'tuyory-overlay': 5, 'golem-cal-overlay': 6 };
 
 function _panelShow(newId, isBack) {
   // Ak je ten istý panel už otvorený — nerob nič (ochrana pred dvojitým kliknutím)
@@ -6559,7 +6603,7 @@ function _panelShow(newId, isBack) {
 }
 
 function closeAllPanels() {
-  ['hist-overlay','lb-overlay','rep-plnenie-overlay','lk-overlay','okresy-overlay','golem-cal-overlay','lk-detail','pharma-ms-overlay','pharma-okres-overlay'].forEach(function(id){
+  ['hist-overlay','lb-overlay','rep-plnenie-overlay','lk-overlay','okresy-overlay','tuyory-overlay','golem-cal-overlay','lk-detail','pharma-ms-overlay','pharma-okres-overlay'].forEach(function(id){
     var el = document.getElementById(id);
     if(el) el.classList.remove('show');
   });
@@ -6579,10 +6623,11 @@ function repNavSetActive(panelId){
     'rep-plnenie-overlay':'rep-nav-plnenie-btn',
     'lk-overlay':'rep-nav-lekarne-btn',
     'okresy-overlay':'rep-nav-okresy-btn',
+    'tuyory-overlay':'rep-nav-tuyory-btn',
     'golem-cal-overlay':'rep-nav-kal-btn'
   };
   var activeId = (panelId && map[panelId]) ? map[panelId] : 'rep-nav-form-btn';
-  ['rep-nav-form-btn','rep-nav-hist-btn','rep-nav-lb-btn','rep-nav-plnenie-btn','rep-nav-lekarne-btn','rep-nav-okresy-btn','rep-nav-kal-btn'].forEach(function(id){
+  ['rep-nav-form-btn','rep-nav-hist-btn','rep-nav-lb-btn','rep-nav-plnenie-btn','rep-nav-lekarne-btn','rep-nav-okresy-btn','rep-nav-tuyory-btn','rep-nav-kal-btn'].forEach(function(id){
     var b = document.getElementById(id);
     if(b) b.classList.toggle('active', id === activeId);
   });
@@ -6668,9 +6713,21 @@ function openHistory() {
   var session = getSession();
   var username = session ? session.username : '';
 
-  loadHistoryItems(username).then(function() {
-    renderHistItems(_histAllItems);
+  if (!(TUYORY.records && TUYORY.records.length)){ try { TUYORY.records = tuyoryLoadLocal(); } catch(e){} }
+  // Reset mini filtra na „Všetko" pri každom otvorení
+  _histFilter = 'all';
+  var _stabs = document.getElementById('hist-subtabs');
+  if (_stabs) Array.prototype.forEach.call(_stabs.querySelectorAll('.hist-subtab'), function(b){
+    b.classList.toggle('active', b.getAttribute('data-hf') === 'all');
   });
+  loadHistoryItems(username).then(function() { histRender(); });
+  // Tuyory záznamy dotiahni zo Sheetu a ak je História otvorená, prekresli
+  try {
+    tuyoryFetchServer(function(){
+      var ov = document.getElementById('hist-overlay');
+      if (ov && ov.classList.contains('show')) histRender();
+    });
+  } catch(e){}
 }
 
 function closeHistory() {
@@ -7697,6 +7754,7 @@ var _currentDetailReopenFn = null;  // funkcia na znovuotvorenie detailu po edit
 function openDetail(idx) {
   var item = _histDetailItems[idx];
   if(!item) return;
+  if(item.type === 'tuyory'){ tuyoryHistDetail(item); return; }
   _currentDetailIdx = idx;
   _currentDetailItem = item;
   _currentDetailReopenFn = function() { openDetail(idx); };
@@ -16232,7 +16290,9 @@ function mgrEnter(roleKey){
   var actBtn = document.getElementById('mgr-subtab-activity-btn');
   if (actBtn) actBtn.style.display = golemActivityAllowed(roleKey) ? '' : 'none';
 
+  MGR_STATE.histFilter = 'all';
   mgrLoadData();
+  mgrLoadTuyory();   // Tuyory záznamy pre manažérsky pohľad (getAllTuyory, filtrované klientom podľa repov)
   // Plnenie je default tab — načítaj všetky kvartály hneď pri vstupe
   plnenieLoadAllQuarters();
   // Úvodná obrazovka podľa nastavení manažéra (ak si zvolil inú ako Plnenie)
@@ -16695,6 +16755,28 @@ function mgrRenderList(){
       }
     }
 
+    var filter = MGR_STATE.histFilter || 'all';
+    var tuyRecsU = mgrRepTuyory(u);
+    var tuyCount = tuyRecsU.length;
+
+    var avMgr = lbAvatarContent(u, name, 42);
+    var avatarHtml = '<div class="mgr-avatar' + (avMgr.hasAvatar ? ' has-avatar' : '') + '" data-username="'+u+'" style="background:'+mgrAvatarColor(name)+'">'+avMgr.html+'</div>';
+
+    // TUYORY filter → len meno + počet nahodených Tuyory lekárov (bez GP údajov, 0 ak žiadne)
+    if(filter === 'tuyory'){
+      var tuyLast = tuyCount ? new Date(tuyRecsU[tuyRecsU.length-1].ts).getTime() : 0;
+      var tuyLastTxt = (tuyLast && !isNaN(tuyLast)) ? mgrTimeAgo(tuyLast) : 'Žiadny Tuyory záznam';
+      return '<div class="mgr-card" onclick="mgrOpenRep(\''+u.replace(/\'/g,"\\'")+'\')">' +
+        avatarHtml +
+        '<div class="mgr-body">' +
+          '<div class="mgr-name">'+nameEsc+'</div>' +
+          '<div class="mgr-meta"><span class="mgr-dot '+(tuyCount?act:'none')+'"></span>'+tuyLastTxt+lastLoginTxt+'</div>' +
+          '<div class="mgr-counts">🧬 Tuyory lekári: <strong>'+tuyCount+'</strong></div>' +
+        '</div>' +
+        '<div class="mgr-chev">›</div>' +
+      '</div>';
+    }
+
     var segs = '';
     ['top','udrzat','zvysit3','zvysit','frekvencia','vyradit'].forEach(function(sk){
       if(counts[sk] > 0){
@@ -16702,15 +16784,16 @@ function mgrRenderList(){
       }
     });
     if(!segs) segs = '<span style="font-size:11px;color:#94A3B8;font-style:italic">Žiadne záznamy zatiaľ</span>';
+    // VŠETKO → pridaj chip s počtom Tuyory lekárov
+    var tuyChip = (filter === 'all') ? '<span class="mgr-chip mgr-chip-tuy">🧬 Tuyory '+tuyCount+'</span>' : '';
 
-    var avMgr = lbAvatarContent(u, name, 42);
     return '<div class="mgr-card" onclick="mgrOpenRep(\''+u.replace(/\'/g,"\\'")+'\')">' +
-      '<div class="mgr-avatar' + (avMgr.hasAvatar ? ' has-avatar' : '') + '" data-username="'+u+'" style="background:'+mgrAvatarColor(name)+'">'+avMgr.html+'</div>' +
+      avatarHtml +
       '<div class="mgr-body">' +
         '<div class="mgr-name">'+nameEsc+'</div>' +
         '<div class="mgr-meta"><span class="mgr-dot '+act+'"></span>'+lastTxt+lastLoginTxt+'</div>' +
         '<div class="mgr-counts">Celkom: <strong>'+visits.length+'</strong> · týždeň: <strong>'+wk+'</strong> · mesiac: <strong>'+mo+'</strong></div>' +
-        '<div class="mgr-segs">'+segs+'</div>' +
+        '<div class="mgr-segs">'+tuyChip+segs+'</div>' +
       '</div>' +
       '<div class="mgr-chev">›</div>' +
     '</div>';
@@ -16821,23 +16904,151 @@ function mgrOpenRep(username){
   window.scrollTo(0, 0);
 }
 
+// ═══ Manažérsky Tuyory pohľad — súhrn za líniu/región + drill-down po repoch ═══
+function mgrTuyScopeLabel(){
+  var role = MGR_STATE.role;
+  if (role === 'amwest') return 'Región West';
+  if (role === 'ameast') return 'Región East';
+  return 'Celý Golem';
+}
+function mgrRepTuyory(username){
+  var by = MGR_STATE.tuyoryByRep || {};
+  return by[String(username || '').trim().toLowerCase()] || [];
+}
+function mgrTuyAllRecords(){
+  var out = [];
+  var reps = MGR_STATE.reps || {};
+  Object.keys(reps).forEach(function(u){ out = out.concat(mgrRepTuyory(u)); });
+  return out;
+}
+function mgrTuyBannerHtml(){
+  var recs = mgrTuyAllRecords();
+  var oslov = recs.length;
+  var nastav = recs.filter(function(r){ return r.nastavuje === 'ano'; }).length;
+  var pacSpolu = recs.reduce(function(s, r){ return s + (parseInt(r.pocet, 10) || 0); }, 0);
+  var switchLek = recs.filter(function(r){ return r.switchP === 'ano'; }).length;
+  var switchPac = recs.reduce(function(s, r){ return s + (parseInt(r.switchPocet, 10) || 0); }, 0);
+  var noviLek = recs.filter(function(r){ return r.noviP === 'ano'; }).length;
+  var noviPerMonth = recs.reduce(function(s, r){ if (r.noviP !== 'ano') return s; var n = parseInt(r.noviPocet, 10) || 0; return s + (r.noviObdobie === 'kvartal' ? n / 3 : n); }, 0);
+  noviPerMonth = Math.round(noviPerMonth * 10) / 10;
+  var repsWithData = Object.keys(MGR_STATE.reps || {}).filter(function(u){ return mgrRepTuyory(u).length; }).length;
+  return '<div class="mgr-tuy-banner">' +
+    '<div class="mgr-tuy-b-top">' +
+      '<div class="mgr-tuy-b-ico">🧬</div>' +
+      '<div><div class="mgr-tuy-b-title">Tuyory — ' + mgrEscape(mgrTuyScopeLabel()) + '</div>' +
+        '<div class="mgr-tuy-b-sub">' + oslov + ' záznamov · ' + repsWithData + ' reprezentantov</div></div>' +
+    '</div>' +
+    '<div class="mgr-tuy-b-nums">' +
+      '<div class="mgr-tuy-b-col"><div class="mgr-tuy-b-num">' + pacSpolu + '</div><div class="mgr-tuy-b-cap">Pacientov na tocilizumabe</div></div>' +
+      '<div class="mgr-tuy-b-div"></div>' +
+      '<div class="mgr-tuy-b-col"><div class="mgr-tuy-b-num">~' + noviPerMonth + '</div><div class="mgr-tuy-b-cap">Nových / mesiac</div></div>' +
+      '<div class="mgr-tuy-b-div"></div>' +
+      '<div class="mgr-tuy-b-col"><div class="mgr-tuy-b-num">' + switchPac + '</div><div class="mgr-tuy-b-cap">Na switch (pacientov)</div></div>' +
+    '</div>' +
+    '<div class="mgr-tuy-b-foot">' +
+      '<span class="mgr-tuy-b-chip">Nastavuje tocilizumab: ' + nastav + '</span>' +
+      '<span class="mgr-tuy-b-chip">Ochotní switchnúť: ' + switchLek + '</span>' +
+      '<span class="mgr-tuy-b-chip">Ochotní nastavovať nových: ' + noviLek + '</span>' +
+    '</div>' +
+  '</div>';
+}
+function mgrHistSetFilter(f, btn){
+  MGR_STATE.histFilter = f || 'all';
+  var bar = document.getElementById('mgr-hist-subtabs');
+  if (bar) Array.prototype.forEach.call(bar.querySelectorAll('.hist-subtab'), function(b){
+    b.classList.toggle('active', b.getAttribute('data-hf') === MGR_STATE.histFilter);
+  });
+  var banner = document.getElementById('mgr-tuy-banner');
+  if (banner){
+    if (MGR_STATE.histFilter === 'tuyory'){ banner.innerHTML = mgrTuyBannerHtml(); banner.style.display = 'block'; }
+    else { banner.style.display = 'none'; banner.innerHTML = ''; }
+  }
+  try { haptic('selection'); } catch(e){}
+  try { mgrRenderList(); } catch(e){}   // prekresli karty repov podľa filtra (GP / Tuyory počet)
+  var det = document.getElementById('mgr-detail');
+  if (MGR_STATE.currentRep && det && det.classList.contains('show')) mgrRenderVisits();
+}
+function mgrLoadTuyory(){
+  if (typeof IS_DEV !== 'undefined' && IS_DEV){ MGR_STATE.tuyoryByRep = MGR_STATE.tuyoryByRep || {}; return; }
+  fetch(scriptUrl('action=getAllTuyory'), { cache: 'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (!d || !d.ok || !d.byRep) return;
+      var by = {};
+      Object.keys(d.byRep).forEach(function(k){ by[String(k).trim().toLowerCase()] = d.byRep[k] || []; });
+      MGR_STATE.tuyoryByRep = by;
+      // Prekresli zoznam (počty Tuyory v kartách) + banner/detail ak treba
+      try { mgrRenderList(); } catch(e){}
+      if (MGR_STATE.histFilter === 'tuyory'){
+        var banner = document.getElementById('mgr-tuy-banner');
+        if (banner && banner.style.display !== 'none') banner.innerHTML = mgrTuyBannerHtml();
+        var det = document.getElementById('mgr-detail');
+        if (MGR_STATE.currentRep && det && det.classList.contains('show')) mgrRenderVisits();
+      }
+    })
+    .catch(function(){});
+}
+function mgrOpenTuyVisit(ti){
+  var recs = mgrRepTuyory(MGR_STATE.currentRep);
+  var r = recs[ti]; if (!r) return;
+  tuyoryHistDetail({ tuy: r });
+}
+// Karta Tuyory záznamu v manažérskom zozname (rovnaký štýl ako u reprezentanta)
+function mgrTuyCardHtml(r, ti){
+  var parts = [];
+  if (r.switchP === 'ano') parts.push('switch: ' + (r.switchPocet ? (r.switchPocet + ' pac.') : 'áno'));
+  if (r.noviP === 'ano') parts.push('noví: ' + (r.noviPocet ? (r.noviPocet + '/' + (r.noviObdobie === 'kvartal' ? 'Q' : 'mes')) : 'áno'));
+  var tag = (r.nastavuje === 'ano') ? ('Na tocilizumabe: ' + (r.pocet || '—')) : 'Nenastavuje tocilizumab';
+  var dd = new Date(r.ts); var ds = isNaN(dd.getTime()) ? '' : (dd.getDate() + '.' + (dd.getMonth() + 1) + '.' + dd.getFullYear());
+  return '<div class="mgr-vitem mgr-vitem-tuy" data-tidx="' + ti + '">' +
+    '<div class="mgr-vseg tuy"></div>' +
+    '<div class="mgr-vbody">' +
+      '<div class="mgr-vdoc">' + mgrEscape(r.meno || '—') + (r.poznamka ? '<span class="mgr-vnote-ico" title="Obsahuje poznámku">📝</span>' : '') + '<span class="hist-tuy-badge">🧬 Tuyory</span></div>' +
+      '<div class="mgr-vmeta">' +
+        '<span>📍 ' + mgrEscape(r.okres || '—') + '</span>' +
+        (ds ? '<span class="sep">·</span><span>' + mgrEscape(ds) + '</span>' : '') +
+        '<span class="sep">·</span><span>' + tag + (parts.length ? ' · ' + parts.join(' · ') : '') + '</span>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
 function mgrRenderVisits(){
   var username = MGR_STATE.currentRep;
   if(!username) return;
   var data = MGR_STATE.reps[username];
   var visits = (data && data.visits) || [];
+  var tuyRecs = mgrRepTuyory(username);
+  var filter = MGR_STATE.histFilter || 'all';
+  var det = document.getElementById('mgr-detail');
+  if (det) det.classList.toggle('mgr-detail-tuyonly', filter === 'tuyory');
   var q = (document.getElementById('mgr-vsearch').value || '').toLowerCase().trim();
-  var filtered = q ? visits.filter(function(v){
-    return String(v.lekar||'').toLowerCase().indexOf(q) !== -1 ||
-           String(v.okres||'').toLowerCase().indexOf(q) !== -1;
-  }) : visits;
 
-  if(!filtered.length){
-    document.getElementById('mgr-vlist').innerHTML = mkEmpty(q ? 'search' : 'clipboard', q ? 'Žiadne zhody' : 'Žiadne záznamy', q ? 'Skús iný vyhľadávací výraz.' : 'Reprezentant zatiaľ nezapísal žiadnu návštevu.');
+  // Aktualizuj počet v podnadpise podľa aktívneho filtra
+  var dsub = document.getElementById('mgr-dsub');
+  if (dsub){
+    var region = (typeof MGR_AM_WEST !== 'undefined' && MGR_AM_WEST.indexOf(username) !== -1) ? 'Región West' : 'Región East';
+    var cnt = (filter === 'tuyory') ? (tuyRecs.length + ' Tuyory')
+            : (filter === 'gp')     ? (visits.length + ' návštev')
+            :                         ((visits.length + tuyRecs.length) + ' záznamov');
+    dsub.textContent = region + ' · ' + cnt + ' · @' + username;
+  }
+
+  var gpFiltered = (filter === 'tuyory') ? [] : (q ? visits.filter(function(v){
+    return String(v.lekar||'').toLowerCase().indexOf(q) !== -1 || String(v.okres||'').toLowerCase().indexOf(q) !== -1;
+  }) : visits);
+  var tuyFiltered = (filter === 'gp') ? [] : (q ? tuyRecs.filter(function(r){
+    return String(r.meno||'').toLowerCase().indexOf(q) !== -1 || String(r.okres||'').toLowerCase().indexOf(q) !== -1;
+  }) : tuyRecs);
+
+  if(!gpFiltered.length && !tuyFiltered.length){
+    var emptySub = q ? 'Skús iný vyhľadávací výraz.'
+                 : (filter === 'tuyory' ? 'Reprezentant zatiaľ nevyplnil žiadny Tuyory formulár.' : 'Reprezentant zatiaľ nezapísal žiadnu návštevu.');
+    document.getElementById('mgr-vlist').innerHTML = mkEmpty(q ? 'search' : 'clipboard', q ? 'Žiadne zhody' : 'Žiadne záznamy', emptySub);
     return;
   }
 
-  var html = filtered.map(function(v){
+  var gpHtml = gpFiltered.map(function(v){
     var scenar = v.scenar || '';
     var dateStr = v.dateStr || '';
     var cas = v.cas || '';
@@ -16858,10 +17069,13 @@ function mgrRenderVisits(){
       '</div>' +
     '</div>';
   }).join('');
-  var listEl = document.getElementById('mgr-vlist');
-  listEl.innerHTML = html;
 
-  // Event delegation — pripojíme klik handler LEN RAZ, aj keď sa zoznam re-renderuje
+  var tuyHtml = tuyFiltered.map(function(r){ return mgrTuyCardHtml(r, tuyRecs.indexOf(r)); }).join('');
+
+  var listEl = document.getElementById('mgr-vlist');
+  listEl.innerHTML = gpHtml + tuyHtml;
+
+  // Event delegation — pripojíme klik handler LEN RAZ (GP → mgrOpenVisit, Tuyory → mgrOpenTuyVisit)
   if(!listEl._clickBound){
     listEl._clickBound = true;
     listEl.addEventListener('click', function(ev){
@@ -16872,8 +17086,9 @@ function mgrRenderVisits(){
         if(n && n.classList && n.classList.contains('mgr-vitem')) item = n;
       }
       if(!item) return;
-      var idxStr = item.getAttribute('data-vidx');
-      var idx = parseInt(idxStr, 10);
+      var tidx = item.getAttribute('data-tidx');
+      if(tidx !== null){ var ti = parseInt(tidx, 10); if(!isNaN(ti)) mgrOpenTuyVisit(ti); return; }
+      var idx = parseInt(item.getAttribute('data-vidx'), 10);
       if(isNaN(idx)) return;
       mgrOpenVisit(idx);
     });
@@ -31633,6 +31848,628 @@ function lkMgrItem(l, tab) {
     '</div>';
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// TUYORY — prieskum trhu tocilizumab (Golem rep). Dashboard (cieľ = počet
+// reumatológov v teritóriu + živá štatistika) + formulár s vetvením Q1.
+// Záznamy sa odosielajú do hárku „tuyory" (action=saveTuyory) a zároveň
+// cachujú do localStorage → dashboard reaguje okamžite aj bez backendu.
+// ═══════════════════════════════════════════════════════════════════
+var TUYORY = { records: [], answers: {}, znacky: [], editingTarget: false, flash: null, _flashT: null, _reqId: 0 };
+
+function tuyEsc(x){
+  return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function tuyUser(){ var s = getSession(); return (s && s.username) ? s.username : ''; }
+function tuyTarget(){ var t = +(userPrefsGet().tuyoryTarget || 0); return (t > 0) ? t : 0; }
+function tuyoryLocalKey(){ return 'tuyory_records_' + tuyUser(); }
+function tuyoryLoadLocal(){
+  try { var raw = localStorage.getItem(tuyoryLocalKey()); var a = raw ? JSON.parse(raw) : []; return Array.isArray(a) ? a : []; }
+  catch(e){ return []; }
+}
+function tuyorySaveLocal(arr){
+  try {
+    var payload = JSON.stringify(arr || []);
+    if (typeof lsSafeSet === 'function') lsSafeSet(tuyoryLocalKey(), payload);
+    else localStorage.setItem(tuyoryLocalKey(), payload);
+  } catch(e){}
+}
+
+// ── Otvorenie / zatvorenie záložky ──
+function openTuyory(){
+  usageSectionEnter('Tuyory');
+  _panelShow('tuyory-overlay');
+  TUYORY.records = tuyoryLoadLocal();
+  TUYORY.answers = {};
+  TUYORY.znacky = [];
+  TUYORY.flash = null;
+  TUYORY.editingTarget = !(tuyTarget() > 0);   // ak cieľ ešte nie je zadaný → rovno editor
+  tuyoryRender();
+  tuyoryFetchServer(function(){ tuyoryRenderDashboard(); });
+}
+function closeTuyory(){ usageSectionClose(); TUYORY._reqId++; closeAllPanels(); }
+
+// ── Načítanie záznamov zo Sheetu (getTuyory). Ak backend ešte nemá handler,
+//    ticho spadneme na localStorage cache. Server je po nasadení autoritatívny. ──
+function tuyoryFetchServer(cb){
+  if (typeof IS_DEV !== 'undefined' && IS_DEV){ if (cb) cb(); return; }   // DEV → len localStorage
+  var user = tuyUser();
+  if (!user){ if (cb) cb(); return; }
+  var reqId = (++TUYORY._reqId);
+  var url;
+  try { url = scriptUrl('action=getTuyory&reprezentant=' + encodeURIComponent(user)); }
+  catch(e){ if (cb) cb(); return; }
+  fetch(url, { cache: 'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (reqId !== TUYORY._reqId) return;
+      if (d && d.ok && Array.isArray(d.records)){
+        TUYORY.records = d.records;
+        tuyorySaveLocal(d.records);      // server je pravda → prepíš cache
+      }
+      if (cb) cb();
+    })
+    .catch(function(){ if (cb) cb(); });   // offline / handler neexistuje → ostáva localStorage
+}
+
+// ── Render celej záložky (dashboard + formulár) ──
+function tuyoryRender(){
+  var body = document.getElementById('tuyory-body');
+  if (!body) return;
+  var flashHtml = '';
+  if (TUYORY.flash){
+    flashHtml =
+      '<div class="tuy-success">' +
+        '<div class="tuy-success-ico">✅</div>' +
+        '<div class="tuy-success-title">Záznam uložený</div>' +
+        '<div class="tuy-success-sub">Údaje o lekárovi <strong>' + tuyEsc(TUYORY.flash) + '</strong> boli pridané do prehľadu.</div>' +
+      '</div>';
+  }
+  body.innerHTML = flashHtml + '<div id="tuy-dash"></div>' + tuyoryFormHtml();
+  tuyoryRenderDashboard();
+  tuySync();
+  if (TUYORY.flash){
+    clearTimeout(TUYORY._flashT);
+    TUYORY._flashT = setTimeout(function(){ TUYORY.flash = null; var b = document.getElementById('tuyory-body'); if (b){ var s = b.querySelector('.tuy-success'); if (s) s.remove(); } }, 4200);
+  }
+}
+
+// ── Dashboard: cieľ (počet reumatológov) + progres + štatistika ──
+function tuyoryRenderDashboard(){
+  var dash = document.getElementById('tuy-dash');
+  if (!dash) return;
+  var recs = TUYORY.records || [];
+  var target = tuyTarget();
+  var oslov = recs.length;
+  var zostava = Math.max(0, target - oslov);
+  var pct = target > 0 ? Math.min(100, Math.round(oslov / target * 100)) : 0;
+  var nastav = recs.filter(function(r){ return r.nastavuje === 'ano'; }).length;
+  var switchLek = recs.filter(function(r){ return r.switchP === 'ano'; }).length;
+  var switchPac = recs.reduce(function(s, r){ return s + (parseInt(r.switchPocet, 10) || 0); }, 0);
+  var noviLek = recs.filter(function(r){ return r.noviP === 'ano'; }).length;
+  var pacSpolu = recs.reduce(function(s, r){ return s + (parseInt(r.pocet, 10) || 0); }, 0);
+  // Noví pacienti prepočítaní na mesiac (kvartál ÷3)
+  var noviPerMonth = recs.reduce(function(s, r){
+    if (r.noviP !== 'ano') return s;
+    var n = parseInt(r.noviPocet, 10) || 0;
+    return s + (r.noviObdobie === 'kvartal' ? n / 3 : n);
+  }, 0);
+  noviPerMonth = Math.round(noviPerMonth * 10) / 10;
+
+  var targetHtml;
+  if (TUYORY.editingTarget || target === 0){
+    targetHtml =
+      '<div class="tuy-target">' +
+        '<div class="tuy-target-lbl">Koľko reumatológov máš v teritóriu?</div>' +
+        '<div class="tuy-target-row">' +
+          '<input class="tuy-target-input" id="tuy-target-input" type="number" inputmode="numeric" min="1" step="1" ' +
+                 'placeholder="0" value="' + (target > 0 ? target : '') + '" onkeydown="if(event.key===\'Enter\')tuyoryConfirmTarget()">' +
+          '<button type="button" class="tuy-target-confirm" onclick="tuyoryConfirmTarget()">Potvrdiť</button>' +
+        '</div>' +
+      '</div>';
+  } else {
+    targetHtml =
+      '<div class="tuy-target">' +
+        '<div class="tuy-target-lbl">Reumatológovia v teritóriu</div>' +
+        '<div class="tuy-target-set">' +
+          '<span class="tuy-target-num">' + target + '</span>' +
+          '<span class="tuy-target-cap">reumatológov</span>' +
+          '<button type="button" class="tuy-target-edit" onclick="tuyoryEditTarget()">Upraviť</button>' +
+        '</div>' +
+        '<div class="tuy-prog">' +
+          '<div class="tuy-prog-head">' +
+            '<span class="tuy-prog-txt">Oslovených ' + oslov + ' z ' + target + '</span>' +
+            '<span class="tuy-prog-pct">' + pct + '%</span>' +
+          '</div>' +
+          '<div class="tuy-prog-bar"><div class="tuy-prog-fill" style="width:' + pct + '%"></div></div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  // 3 kľúčové čísla po kope — celkový potenciál teritória
+  var summaryHtml =
+    '<div class="tuy-sum-lbl-top">Potenciál teritória</div>' +
+    '<div class="tuy-summary">' +
+      '<div class="tuy-sum-col"><div class="tuy-sum-num">' + pacSpolu + '</div><div class="tuy-sum-cap">Pacientov na tocilizumabe</div></div>' +
+      '<div class="tuy-sum-div"></div>' +
+      '<div class="tuy-sum-col"><div class="tuy-sum-num" style="color:#2563EB">~' + noviPerMonth + '</div><div class="tuy-sum-cap">Nových / mesiac</div></div>' +
+      '<div class="tuy-sum-div"></div>' +
+      '<div class="tuy-sum-col"><div class="tuy-sum-num" style="color:#059669">' + switchPac + '</div><div class="tuy-sum-cap">Na switch (pacientov)</div></div>' +
+    '</div>';
+
+  var statsHtml =
+    '<div class="tuy-stats">' +
+      '<div class="tuy-stat"><div class="tuy-stat-num is-ok">' + oslov + '</div><div class="tuy-stat-lbl">Oslovených lekárov</div></div>' +
+      '<div class="tuy-stat"><div class="tuy-stat-num ' + (zostava > 0 ? 'is-warn' : 'is-ok') + '">' + (target > 0 ? zostava : '—') + '</div><div class="tuy-stat-lbl">Zostáva osloviť</div></div>' +
+      '<div class="tuy-stat"><div class="tuy-stat-num is-ok">' + switchLek + '</div><div class="tuy-stat-lbl">Ochotní switchnúť</div></div>' +
+      '<div class="tuy-stat"><div class="tuy-stat-num is-ok">' + noviLek + '</div><div class="tuy-stat-lbl">Ochotní nastavovať nových</div></div>' +
+      '<div class="tuy-stat tuy-stat-wide">' +
+        '<div class="tuy-stat-ico">💉</div>' +
+        '<div><div class="tuy-stat-num">' + nastav + '</div><div class="tuy-stat-lbl">Nastavuje tocilizumab (z ' + oslov + ' oslovených)</div></div>' +
+      '</div>' +
+    '</div>';
+
+  dash.innerHTML =
+    '<div class="tuy-hero">' +
+      '<div class="tuy-hero-top">' +
+        '<div class="tuy-hero-badge">🧬</div>' +
+        '<div><div class="tuy-hero-title">Tuyory</div><div class="tuy-hero-sub">Prieskum trhu · tocilizumab</div></div>' +
+      '</div>' +
+      targetHtml +
+    '</div>' +
+    summaryHtml +
+    statsHtml;
+}
+
+function tuyoryEditTarget(){ TUYORY.editingTarget = true; tuyoryRenderDashboard(); try { var i = document.getElementById('tuy-target-input'); if (i) i.focus(); } catch(e){} }
+function tuyoryConfirmTarget(){
+  var i = document.getElementById('tuy-target-input');
+  var v = i ? parseInt(i.value, 10) : 0;
+  if (!v || v < 1){ if (i){ i.focus(); i.style.borderColor = '#F87171'; } return; }
+  userPrefsSet({ tuyoryTarget: v });
+  TUYORY.editingTarget = false;
+  try { haptic('success'); } catch(e){}
+  tuyoryRenderDashboard();
+}
+
+// ── Formulár ──
+function tuyoryNoviBlock(sfx){
+  // Podotázka „noví pacienti" — počet + obdobie (mesiac/kvartál). sfx = 'A' (áno vetva) / 'B' (nie vetva)
+  return '<div class="tuy-cond" id="tuy-blk-novi' + sfx + '-count">' +
+    '<label class="tuy-lbl">Koľko nových pacientov?</label>' +
+    '<input class="tuy-in" id="tuy-novi' + sfx + '-pocet" type="number" inputmode="numeric" min="1" step="1" placeholder="napr. 2">' +
+    '<div class="tuy-seg tuy-seg-2" data-g="obd' + sfx + '" style="margin-top:8px">' +
+      '<button type="button" class="tuy-opt" onclick="tuySeg(\'obd' + sfx + '\',\'mesiac\',this)">za mesiac</button>' +
+      '<button type="button" class="tuy-opt" onclick="tuySeg(\'obd' + sfx + '\',\'kvartal\',this)">za kvartál</button>' +
+    '</div>' +
+    '<div class="tuy-hint">V štatistike sa kvartál prepočíta ÷3 na mesiac.</div>' +
+  '</div>';
+}
+
+function tuyoryFormHtml(){
+  var znOpts = ['RoActemra', 'Tyenne', 'Avtozma'];
+  var znHtml = znOpts.map(function(z){
+    return '<button type="button" class="tuy-opt" data-zn="' + z + '" onclick="tuyZnacka(\'' + z + '\',this)">' + z + '</button>';
+  }).join('');
+
+  return '' +
+  '<div class="tuy-card">' +
+    '<div class="tuy-form-title">📝 Nový záznam</div>' +
+    '<div class="tuy-form-desc">Zaznamenaj reumatológa a jeho vzťah k tocilizumabu / prípravku Tuyory. Hviezdičkou (<span class="tuy-req">*</span>) sú označené povinné polia, ostatné sú dobrovoľné — čím viac vyplníš, tým lepší prehľad pri launchi.</div>' +
+  '</div>' +
+
+  '<div class="tuy-err" id="tuy-err"></div>' +
+
+  // ZÁKLAD
+  '<div class="tuy-card">' +
+    '<div class="tuy-sec-lbl">Základné údaje</div>' +
+    '<div class="tuy-field"><label class="tuy-lbl">Titul, meno a priezvisko lekára<span class="tuy-req">*</span></label>' +
+      '<input class="tuy-in" id="tuy-meno" type="text" autocomplete="off" placeholder="napr. MUDr. Jana Nováková" ' +
+        'onfocus="tuyMenoFocus(this)" oninput="tuyMenoInput(this)" onblur="tuyMenoBlur(this)">' +
+      '<div class="tuy-hint" id="tuy-meno-dup" style="display:none;color:#D97706">⚠︎ Tohto lekára už máš zaznamenaného.</div></div>' +
+    '<div class="tuy-field"><label class="tuy-lbl">Okres pracoviska lekára<span class="tuy-req">*</span></label>' +
+      '<div class="ac-wrap">' +
+        '<input class="tuy-in" id="tuy-okres" type="text" autocomplete="off" placeholder="ťukni a vyber okres" ' +
+          'oninput="tuyOkresInput(this)" onfocus="tuyOkresShowAll(this)" onblur="tuyOkresBlur(this)">' +
+        '<div class="ac-list" id="tuy-ac-list" style="display:none"></div>' +
+      '</div>' +
+      '<div class="tuy-hint">Ponúka len okresy tvojho teritória.</div></div>' +
+    '<div class="tuy-field"><label class="tuy-lbl">Pracovisko</label>' +
+      '<div class="tuy-seg tuy-seg-2" data-g="pracovisko">' +
+        '<button type="button" class="tuy-opt" onclick="tuySeg(\'pracovisko\',\'ambulancia\',this)">🏥 Ambulancia</button>' +
+        '<button type="button" class="tuy-opt" onclick="tuySeg(\'pracovisko\',\'nemocnica\',this)">🏨 Nemocnica</button>' +
+      '</div>' +
+      '<div class="tuy-hint">Nepovinné — pomôže pri IV logistike.</div>' +
+    '</div>' +
+  '</div>' +
+
+  // Q1
+  '<div class="tuy-card">' +
+    '<div class="tuy-sec-lbl">Tocilizumab</div>' +
+    '<div class="tuy-field"><label class="tuy-lbl">Nastavuje pacientov na tocilizumab?<span class="tuy-req">*</span></label>' +
+      '<div class="tuy-seg tuy-seg-2" data-g="nastavuje">' +
+        '<button type="button" class="tuy-opt tuy-opt-yes" onclick="tuySeg(\'nastavuje\',\'ano\',this)">Áno</button>' +
+        '<button type="button" class="tuy-opt tuy-opt-no" onclick="tuySeg(\'nastavuje\',\'nie\',this)">Nie</button>' +
+      '</div>' +
+    '</div>' +
+
+    // Vetva ÁNO
+    '<div class="tuy-cond" id="tuy-blk-ano">' +
+      '<div class="tuy-field"><label class="tuy-lbl">Koľko pacientov má na tocilizumabe?<span class="tuy-req">*</span></label>' +
+        '<input class="tuy-in" id="tuy-pocet" type="number" inputmode="numeric" min="1" step="1" placeholder="napr. 12"></div>' +
+
+      '<div class="tuy-field"><label class="tuy-lbl">Je ochotný switchnúť pacientov na Tuyory?<span class="tuy-req">*</span></label>' +
+        '<div class="tuy-seg tuy-seg-2" data-g="switchP">' +
+          '<button type="button" class="tuy-opt tuy-opt-yes" onclick="tuySeg(\'switchP\',\'ano\',this)">Áno</button>' +
+          '<button type="button" class="tuy-opt tuy-opt-no" onclick="tuySeg(\'switchP\',\'nie\',this)">Nie</button>' +
+        '</div>' +
+        // switch ÁNO → koľko prehodí (nepovinné)
+        '<div class="tuy-cond" id="tuy-blk-switch-ano" style="border-left-color:#059669;background:#F0FDF4;border-color:#BBF7D0">' +
+          '<label class="tuy-lbl">Koľko z nich by vedel prehodiť?</label>' +
+          '<input class="tuy-in" id="tuy-switch-pocet" type="number" inputmode="numeric" min="1" step="1" placeholder="napr. 5">' +
+          '<div class="tuy-hint">Nepovinné — podmnožina z počtu na tocilizumabe.</div></div>' +
+      '</div>' +
+
+      // Nasadzovanie nových — samostatná otázka (lekár môže switchnúť AJ brať nových)
+      '<div class="tuy-field"><label class="tuy-lbl">Je ochotný (aj) nastavovať nových pacientov na Tuyory?<span class="tuy-req">*</span></label>' +
+        '<div class="tuy-seg tuy-seg-2" data-g="noviA">' +
+          '<button type="button" class="tuy-opt tuy-opt-yes" onclick="tuySeg(\'noviA\',\'ano\',this)">Áno</button>' +
+          '<button type="button" class="tuy-opt tuy-opt-no" onclick="tuySeg(\'noviA\',\'nie\',this)">Nie</button>' +
+        '</div>' +
+        tuyoryNoviBlock('A') +
+      '</div>' +
+
+      // Doplňujúce (nepovinné) — značka, forma, bariéra
+      '<button type="button" class="tuy-extra-toggle" id="tuy-extra-toggle-A" onclick="tuyToggleExtra(\'A\',this)">＋ Doplňujúce údaje (nepovinné)</button>' +
+      '<div class="tuy-extra" id="tuy-extra-A">' +
+        '<div class="tuy-field"><label class="tuy-lbl">Akú značku dnes používa?</label>' +
+          '<div class="tuy-seg" data-g="znacky">' + znHtml + '</div>' +
+          '<div class="tuy-hint">Môžeš vybrať aj kombináciu.</div></div>' +
+        '<div class="tuy-field"><label class="tuy-lbl">Forma</label>' +
+          '<div class="tuy-seg tuy-seg-2" data-g="forma">' +
+            '<button type="button" class="tuy-opt" onclick="tuySeg(\'forma\',\'iv\',this)">IV</button>' +
+            '<button type="button" class="tuy-opt" onclick="tuySeg(\'forma\',\'sc\',this)">SC</button>' +
+            '<button type="button" class="tuy-opt" onclick="tuySeg(\'forma\',\'oboje\',this)">Oboje</button>' +
+          '</div></div>' +
+        '<div class="tuy-field"><label class="tuy-lbl">Bariéra pri switchi</label>' +
+          '<select class="tuy-in" id="tuy-bariera" onchange="tuyBarieraChange()">' +
+            '<option value="">— nevyplnené —</option>' +
+            '<option value="Zmluva / tender">Zmluva / tender</option>' +
+            '<option value="Lojalita k originálu">Lojalita k originálu</option>' +
+            '<option value="Obava zo switchu">Obava zo switchu</option>' +
+            '<option value="Iné">Iné</option>' +
+          '</select>' +
+          '<input class="tuy-in" id="tuy-bariera-ine" type="text" placeholder="Doplň bariéru…" style="display:none;margin-top:8px"></div>' +
+      '</div>' +
+    '</div>' +
+
+    // Vetva NIE (nenastavuje tocilizumab)
+    '<div class="tuy-cond" id="tuy-blk-nie">' +
+      '<div class="tuy-field"><label class="tuy-lbl">Je ochotný začať nastavovať nových pacientov na Tuyory?<span class="tuy-req">*</span></label>' +
+        '<div class="tuy-seg tuy-seg-2" data-g="noviB">' +
+          '<button type="button" class="tuy-opt tuy-opt-yes" onclick="tuySeg(\'noviB\',\'ano\',this)">Áno</button>' +
+          '<button type="button" class="tuy-opt tuy-opt-no" onclick="tuySeg(\'noviB\',\'nie\',this)">Nie</button>' +
+        '</div>' +
+        tuyoryNoviBlock('B') +
+      '</div>' +
+      '<button type="button" class="tuy-extra-toggle" id="tuy-extra-toggle-B" onclick="tuyToggleExtra(\'B\',this)">＋ Doplňujúce údaje (nepovinné)</button>' +
+      '<div class="tuy-extra" id="tuy-extra-B">' +
+        '<div class="tuy-field"><label class="tuy-lbl">Prečo tocilizumab nenastavuje?</label>' +
+          '<select class="tuy-in" id="tuy-preco" onchange="tuyPrecoChange()">' +
+            '<option value="">— nevyplnené —</option>' +
+            '<option value="Neindikuje biologiká">Neindikuje biologiká</option>' +
+            '<option value="Posiela pacientov do centra">Posiela pacientov do centra</option>' +
+            '<option value="Iné">Iné</option>' +
+          '</select>' +
+          '<input class="tuy-in" id="tuy-preco-ine" type="text" placeholder="Doplň dôvod…" style="display:none;margin-top:8px"></div>' +
+      '</div>' +
+    '</div>' +
+  '</div>' +
+
+  // Poznámka — nepovinné, posledná časť formulára
+  '<div class="tuy-card">' +
+    '<div class="tuy-field"><label class="tuy-lbl">Poznámka</label>' +
+      '<textarea class="tuy-in tuy-textarea" id="tuy-poznamka" rows="3" placeholder="Čokoľvek, čo si treba o lekárovi zapamätať…"></textarea>' +
+      '<div class="tuy-hint">Nepovinné — napr. preferencie lekára alebo na čo nadviazať pri ďalšej návšteve.</div></div>' +
+  '</div>' +
+
+  '<button type="button" class="tuy-submit" id="tuy-submit" onclick="tuyorySubmit()">Odoslať záznam</button>';
+}
+
+// Rozbaľ/zbaľ „Doplňujúce údaje"
+function tuyToggleExtra(sfx, btn){
+  var box = document.getElementById('tuy-extra-' + sfx);
+  if (!box) return;
+  var open = box.classList.toggle('show');
+  if (btn) btn.textContent = (open ? '－ Skryť doplňujúce údaje' : '＋ Doplňujúce údaje (nepovinné)');
+  try { haptic('selection'); } catch(e){}
+}
+
+// Segmentovaný výber (jedna hodnota)
+function tuySeg(group, val, el){
+  TUYORY.answers[group] = val;
+  var wrap = el.parentNode;
+  Array.prototype.forEach.call(wrap.querySelectorAll('.tuy-opt'), function(b){ b.classList.remove('on'); });
+  el.classList.add('on');
+  wrap.classList.remove('tuy-invalid');
+  try { haptic('selection'); } catch(e){}
+  tuySync();
+}
+// Značky — multi-select
+function tuyZnacka(val, el){
+  var i = TUYORY.znacky.indexOf(val);
+  if (i >= 0){ TUYORY.znacky.splice(i, 1); el.classList.remove('on'); }
+  else { TUYORY.znacky.push(val); el.classList.add('on'); }
+  el.parentNode.classList.remove('tuy-invalid');
+  try { haptic('selection'); } catch(e){}
+}
+function tuyBarieraChange(){
+  var sel = document.getElementById('tuy-bariera');
+  var ine = document.getElementById('tuy-bariera-ine');
+  if (sel && ine){ ine.style.display = (sel.value === 'Iné') ? 'block' : 'none'; sel.classList.remove('tuy-invalid'); }
+}
+function tuyPrecoChange(){
+  var sel = document.getElementById('tuy-preco');
+  var ine = document.getElementById('tuy-preco-ine');
+  if (sel && ine){ ine.style.display = (sel.value === 'Iné') ? 'block' : 'none'; sel.classList.remove('tuy-invalid'); }
+}
+
+// Ukáž/skry podmienené bloky podľa odpovedí (kaskáda: switch → ak nie → noví)
+function tuySync(){
+  var a = TUYORY.answers;
+  function show(id, cond){ var el = document.getElementById(id); if (el) el.classList.toggle('show', !!cond); }
+  show('tuy-blk-ano', a.nastavuje === 'ano');
+  show('tuy-blk-nie', a.nastavuje === 'nie');
+  show('tuy-blk-switch-ano', a.nastavuje === 'ano' && a.switchP === 'ano');
+  show('tuy-blk-noviA-count', a.nastavuje === 'ano' && a.noviA === 'ano');
+  show('tuy-blk-noviB-count', a.nastavuje === 'nie' && a.noviB === 'ano');
+}
+
+function tuyErr(msg, focusEl){
+  var e = document.getElementById('tuy-err');
+  if (e){ e.textContent = msg; e.classList.add('show'); }
+  try { haptic('error'); } catch(er){}
+  if (focusEl){
+    try { focusEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch(er){}
+    if (focusEl.classList) focusEl.classList.add('tuy-invalid');
+    try { focusEl.focus({ preventScroll: true }); } catch(er){}
+  } else if (e){
+    try { e.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch(er){}
+  }
+}
+function tuyClearErr(){ var e = document.getElementById('tuy-err'); if (e){ e.classList.remove('show'); }
+  document.querySelectorAll('#tuyory-overlay .tuy-invalid').forEach(function(el){ el.classList.remove('tuy-invalid'); }); }
+
+// Validácia + odoslanie
+function tuyorySubmit(){
+  tuyClearErr();
+  var a = TUYORY.answers;
+  var g = function(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; };
+
+  var meno = g('tuy-meno'), okres = g('tuy-okres');
+  if (!tuyMenoValid(meno)) return tuyErr('Zadaj titul, meno a priezvisko lekára.', document.getElementById('tuy-meno'));
+  if (!okres) return tuyErr('Vyber okres pracoviska lekára.', document.getElementById('tuy-okres'));
+  if (!tuyOkresValid(okres)) return tuyErr('Okres vyber zo zoznamu (ťukni do poľa a vyber).', document.getElementById('tuy-okres'));
+  if (!a.nastavuje) return tuyErr('Odpovedz, či nastavuje pacientov na tocilizumab.', document.querySelector('[data-g="nastavuje"]'));
+
+  var rec = {
+    ts: new Date().toISOString(), rep: tuyUser(),
+    meno: meno, okres: okres, pracovisko: a.pracovisko || '',
+    nastavuje: a.nastavuje, pocet: '',
+    switchP: '', switchPocet: '',
+    noviP: '', noviPocet: '', noviObdobie: '',
+    znacka: '', forma: '', bariera: '', preco: '',
+    poznamka: g('tuy-poznamka')
+  };
+
+  if (a.nastavuje === 'ano'){
+    var pocet = parseInt(g('tuy-pocet'), 10);
+    if (!pocet || pocet < 1) return tuyErr('Zadaj počet pacientov na tocilizumabe.', document.getElementById('tuy-pocet'));
+    if (!a.switchP) return tuyErr('Odpovedz, či je ochotný switchnúť pacientov na Tuyory.', document.querySelector('[data-g="switchP"]'));
+    rec.pocet = pocet;
+    rec.switchP = a.switchP;
+    if (a.switchP === 'ano'){
+      var sp = parseInt(g('tuy-switch-pocet'), 10);   // nepovinné
+      if (sp && sp >= 1){
+        if (sp > pocet) return tuyErr('Počet na switch nemôže byť väčší ako počet na tocilizumabe (' + pocet + ').', document.getElementById('tuy-switch-pocet'));
+        rec.switchPocet = sp;
+      }
+    }
+    // Nasadzovanie nových — samostatná otázka (nezávislá od switchu → lekár môže oboje)
+    if (!a.noviA) return tuyErr('Odpovedz, či je ochotný nastavovať nových pacientov na Tuyory.', document.querySelector('[data-g="noviA"]'));
+    rec.noviP = a.noviA;
+    if (a.noviA === 'ano'){
+      var npA = parseInt(g('tuy-noviA-pocet'), 10);
+      if (!npA || npA < 1) return tuyErr('Zadaj počet nových pacientov.', document.getElementById('tuy-noviA-pocet'));
+      if (!a.obdA) return tuyErr('Vyber obdobie (za mesiac / za kvartál).', document.querySelector('[data-g="obdA"]'));
+      rec.noviPocet = npA; rec.noviObdobie = a.obdA;
+    }
+    // nepovinné doplňujúce
+    if (TUYORY.znacky.length) rec.znacka = TUYORY.znacky.join(', ');
+    if (a.forma) rec.forma = a.forma;
+    var bar = g('tuy-bariera');
+    if (bar){ if (bar === 'Iné'){ var bi = g('tuy-bariera-ine'); bar = bi ? ('Iné: ' + bi) : 'Iné'; } rec.bariera = bar; }
+  } else {
+    // nenastavuje tocilizumab → rovno otázka na nových
+    if (!a.noviB) return tuyErr('Odpovedz, či je ochotný začať nastavovať nových pacientov na Tuyory.', document.querySelector('[data-g="noviB"]'));
+    rec.noviP = a.noviB;
+    if (a.noviB === 'ano'){
+      var npB = parseInt(g('tuy-noviB-pocet'), 10);
+      if (!npB || npB < 1) return tuyErr('Zadaj počet nových pacientov.', document.getElementById('tuy-noviB-pocet'));
+      if (!a.obdB) return tuyErr('Vyber obdobie (za mesiac / za kvartál).', document.querySelector('[data-g="obdB"]'));
+      rec.noviPocet = npB; rec.noviObdobie = a.obdB;
+    }
+    var preco = g('tuy-preco');   // nepovinné
+    if (preco){ if (preco === 'Iné'){ var pi = g('tuy-preco-ine'); preco = pi ? ('Iné: ' + pi) : 'Iné'; } rec.preco = preco; }
+  }
+
+  // 1) optimisticky do cache → dashboard + História reagujú okamžite
+  TUYORY.records = (TUYORY.records || []).concat([rec]);
+  tuyorySaveLocal(TUYORY.records);
+
+  // 2) odoslanie do Sheetu (action=saveTuyory) rovnakým iframe mechanizmom ako GP formulár
+  tuyorySendToSheet(rec);
+
+  // 3) reset formulára + potvrdenie + prekreslený dashboard
+  TUYORY.answers = {};
+  TUYORY.znacky = [];
+  TUYORY.flash = meno;
+  try { haptic('success'); } catch(e){}
+  tuyoryRender();
+  try { document.getElementById('tuyory-overlay').scrollTo({ top: 0, behavior: 'smooth' }); } catch(e){ var o = document.getElementById('tuyory-overlay'); if (o) o.scrollTop = 0; }
+}
+
+function tuyorySendToSheet(rec){
+  try {
+    if (typeof IS_DEV !== 'undefined' && IS_DEV) return;                                   // DEV → nepíš do Sheets
+    if (typeof SCRIPT_URL === 'string' && SCRIPT_URL.indexOf('VLOZ_SEM') === 0) return;   // backend nenakonfigurovaný
+    var data = {
+      action: 'saveTuyory',
+      reprezentant: rec.rep, meno: rec.meno, okres: rec.okres, pracovisko: rec.pracovisko,
+      nastavuje: rec.nastavuje, pocet: rec.pocet,
+      switch_priestor: rec.switchP, switch_pocet: rec.switchPocet,
+      novi_priestor: rec.noviP, novi_pocet: rec.noviPocet, novi_obdobie: rec.noviObdobie,
+      znacka: rec.znacka, forma: rec.forma, bariera: rec.bariera, preco: rec.preco,
+      poznamka: rec.poznamka
+    };
+    var params = Object.keys(data).map(function(k){ return encodeURIComponent(k) + '=' + encodeURIComponent(String(data[k])); }).join('&');
+    var iframe = document.getElementById('gs_frame');
+    if (!iframe){
+      iframe = document.createElement('iframe');
+      iframe.id = 'gs_frame';
+      iframe.style.cssText = 'display:none;width:0;height:0;border:0;position:absolute;left:-9999px';
+      document.body.appendChild(iframe);
+    }
+    iframe.src = scriptUrl(params);
+  } catch(e){}
+}
+
+// ── OKRES autocomplete (len okresy teritória repa, ako v GP formulári) ──
+function tuyOkresPool(){
+  var s = getSession(); var reg = s ? s.region : '';
+  if (reg && typeof REGION_OKRESY !== 'undefined' && REGION_OKRESY[reg]) return REGION_OKRESY[reg];
+  return (typeof OKRESY !== 'undefined' && OKRESY.length) ? OKRESY : [];
+}
+function tuyOkresValid(v){
+  v = String(v || '').trim().toLowerCase(); if (!v) return false;
+  var all = (typeof OKRESY !== 'undefined' && OKRESY.length) ? OKRESY : tuyOkresPool();
+  return all.some(function(o){ return o.toLowerCase() === v; });
+}
+function tuyOkresShowAll(el){
+  var pool = tuyOkresPool();
+  var list = document.getElementById('tuy-ac-list'); if (!list) return;
+  var val = el.value.trim().toLowerCase();
+  var items = val ? pool.filter(function(o){ return o.toLowerCase().indexOf(val) === 0; }) : pool;
+  if (!items.length){ list.style.display = 'none'; return; }
+  list.innerHTML = items.map(function(m){
+    var disp = val ? '<strong>' + m.slice(0, val.length) + '</strong>' + m.slice(val.length) : m;
+    return '<div class="ac-item" onclick="tuyOkresPick(\'' + m.replace(/'/g, "\\'") + '\')">' + disp + '</div>';
+  }).join('');
+  list.style.display = 'block';
+}
+function tuyOkresInput(el){ el.classList.remove('tuy-invalid'); tuyOkresShowAll(el); }
+function tuyOkresPick(okres){
+  var el = document.getElementById('tuy-okres'); if (el){ el.value = okres; el.classList.remove('tuy-invalid'); }
+  var list = document.getElementById('tuy-ac-list'); if (list) list.style.display = 'none';
+  try { haptic('selection'); } catch(e){}
+}
+function tuyOkresBlur(el){ setTimeout(function(){ var l = document.getElementById('tuy-ac-list'); if (l) l.style.display = 'none'; }, 250); }
+
+// ── MENO lekára (rovnaká logika ako GP formulár: titul, kapitalizácia, duplicita) ──
+var TUY_TITLES = ['mudr.', 'mddr.', 'rndr.', 'phdr.', 'judr.', 'ing.', 'mgr.', 'doc.', 'prof.', 'bc.', 'mvdr.', 'paeddr.'];
+function tuyMenoFocus(el){
+  if (!el.value) el.value = 'MUDr. ';
+  setTimeout(function(){ try { el.setSelectionRange(el.value.length, el.value.length); } catch(e){} }, 0);
+}
+function tuyMenoValid(v){
+  v = String(v || '').trim(); if (!v) return false;
+  var words = v.split(/\s+/).filter(function(w){ return w.length > 0; });
+  var real = words.filter(function(w){ return TUY_TITLES.indexOf(w.toLowerCase()) === -1; });
+  return real.length >= 2;
+}
+function tuyMenoInput(el){
+  if (typeof capAfterSpace === 'function') capAfterSpace(el);
+  el.classList.remove('tuy-invalid');
+  tuyMenoDupCheck(el.value);
+}
+function tuyMenoBlur(el){
+  var v = el.value.trim();
+  var words = v.split(/\s+/).filter(function(w){ return w.length > 0; });
+  if (v === '' || words.every(function(w){ return TUY_TITLES.indexOf(w.toLowerCase()) !== -1; })) el.value = '';
+  tuyMenoDupCheck(el.value);
+}
+function tuyMenoDupCheck(v){
+  var dup = document.getElementById('tuy-meno-dup'); if (!dup) return;
+  v = String(v || '').trim().toLowerCase();
+  var hit = v && (TUYORY.records || []).some(function(r){ return String(r.meno || '').trim().toLowerCase() === v; });
+  dup.style.display = hit ? 'block' : 'none';
+}
+
+// ── HISTÓRIA — Tuyory záznamy medzi GP návštevami ──
+function tuyoryHistItems(){
+  if (!TUYORY.records || !TUYORY.records.length){ try { TUYORY.records = tuyoryLoadLocal(); } catch(e){} }
+  return (TUYORY.records || []).map(function(r){
+    var d = new Date(r.ts); if (isNaN(d.getTime())) d = new Date();
+    var dateStr = d.getDate() + '.' + (d.getMonth() + 1) + '.' + d.getFullYear();
+    var dk = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+    var cas = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+    return { type: 'tuyory', tuy: r, lekar: r.meno, okres: r.okres, dateStr: dateStr, dateKey: dk, cas: cas };
+  });
+}
+function tuyoryHistCardHtml(item){
+  var idx = _histDetailItems.length;
+  _histDetailItems.push(item);
+  var r = item.tuy || {};
+  var tag = (r.nastavuje === 'ano') ? ('Na tocilizumabe: ' + (r.pocet || '—')) : 'Nenastavuje tocilizumab';
+  var parts = [];
+  if (r.switchP === 'ano') parts.push('switch: ' + (r.switchPocet ? (r.switchPocet + ' pac.') : 'áno'));
+  if (r.noviP === 'ano') parts.push('noví: ' + (r.noviPocet ? (r.noviPocet + '/' + (r.noviObdobie === 'kvartal' ? 'Q' : 'mes')) : 'áno'));
+  var extra = parts.length ? (' · ' + parts.join(' · ')) : '';
+  return '<div class="hist-item hist-item-tuy" data-idx="' + idx + '" onclick="openDetail(' + idx + ')" style="cursor:pointer">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' +
+      '<div class="hist-item-name">' + mgrEscape(r.meno || '—') + (r.poznamka ? ' <span title="Obsahuje poznámku">📝</span>' : '') + '</div>' +
+      '<span class="hist-tuy-badge">🧬 Tuyory</span>' +
+    '</div>' +
+    '<div class="hist-item-meta">' + mgrEscape(r.okres || '—') + ' · ' + mgrEscape(item.dateStr || '') + ' · ' + mgrEscape(item.cas || '') + '</div>' +
+    '<div class="hist-tuy-line">' + tag + extra + '</div>' +
+  '</div>';
+}
+function tuyoryHistDetail(item){
+  var r = (item && item.tuy) ? item.tuy : item;
+  var ov = document.getElementById('tuy-detail-overlay');
+  var body = document.getElementById('tuy-detail-body');
+  var title = document.getElementById('tuy-detail-title');
+  if (!ov || !body) return;
+  if (title) title.textContent = r.meno || 'Tuyory záznam';
+  function row(k, v){ return (v || v === 0) && v !== '' ? '<div class="tuy-dt-row"><span class="tuy-dt-k">' + k + '</span><span class="tuy-dt-v">' + tuyEsc(v) + '</span></div>' : ''; }
+  var obd = r.noviObdobie === 'kvartal' ? 'za kvartál' : (r.noviObdobie === 'mesiac' ? 'za mesiac' : '');
+  var html = '';
+  html += row('Okres', r.okres);
+  html += row('Pracovisko', r.pracovisko === 'ambulancia' ? 'Ambulancia' : (r.pracovisko === 'nemocnica' ? 'Nemocnica' : ''));
+  html += row('Nastavuje tocilizumab', r.nastavuje === 'ano' ? 'Áno' : 'Nie');
+  if (r.nastavuje === 'ano'){
+    html += row('Pacientov na tocilizumabe', r.pocet);
+    html += row('Ochotný switchnúť', r.switchP === 'ano' ? 'Áno' : 'Nie');
+    if (r.switchP === 'ano') html += row('Koľko by switchol', r.switchPocet);
+  }
+  if (r.noviP) html += row('Ochotný nastavovať nových', r.noviP === 'ano' ? 'Áno' : 'Nie');
+  if (r.noviP === 'ano') html += row('Počet nových', (r.noviPocet || '') + (obd ? (' ' + obd) : ''));
+  html += row('Značka', r.znacka);
+  html += row('Forma', r.forma ? String(r.forma).toUpperCase() : '');
+  html += row('Bariéra', r.bariera);
+  html += row('Prečo nenastavuje', r.preco);
+  if (r.poznamka) html += '<div class="tuy-dt-note"><div class="tuy-dt-note-k">📝 Poznámka</div><div class="tuy-dt-note-v">' + tuyEsc(r.poznamka).replace(/\n/g, '<br>') + '</div></div>';
+  body.innerHTML = html || '<div class="tuy-hint">Bez ďalších údajov.</div>';
+  ov.classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+function tuyoryDetailClose(){ var ov = document.getElementById('tuy-detail-overlay'); if (ov) ov.classList.remove('show'); document.body.style.overflow = ''; }
+// GP história + Tuyory záznamy dokopy (zoradenie/zoskupenie rieši renderHistItems podľa dátumu)
+function _histCombined(){
+  var gp = Array.isArray(_histAllItems) ? _histAllItems : [];
+  var tuy = (typeof tuyoryHistItems === 'function') ? tuyoryHistItems() : [];
+  return gp.concat(tuy);
+}
+
 </script>
 
 <!-- ── LOGOUT CONFIRM ── -->
@@ -31719,6 +32556,180 @@ function lkMgrItem(l, tab) {
 <div class="lk-overlay" id="okresy-overlay">
   <div class="lk-inner">
     <div id="okresy-list"></div>
+  </div>
+</div>
+
+<!-- ═══ TUYORY overlay — prieskum tocilizumab / Tuyory (Golem rep) ═══ -->
+<style>
+  /* ── Tuyory záložka — plne v dizajne appky (Outfit display / system body, navy+blue) ── */
+  #tuyory-overlay .tuy-hero{background:linear-gradient(155deg,#0C1E35 0%,#13294B 60%,#1A3A5C 100%);border-radius:18px;padding:18px 18px 16px;box-shadow:0 10px 26px rgba(12,30,53,.28);position:relative;overflow:hidden;margin-bottom:14px}
+  #tuyory-overlay .tuy-hero::after{content:'';position:absolute;top:-40px;right:-30px;width:150px;height:150px;background:radial-gradient(circle,rgba(59,130,246,.35),transparent 70%);pointer-events:none}
+  #tuyory-overlay .tuy-hero-top{display:flex;align-items:center;gap:10px;margin-bottom:4px;position:relative}
+  #tuyory-overlay .tuy-hero-badge{width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
+  #tuyory-overlay .tuy-hero-title{font-family:var(--font-display);font-size:19px;font-weight:800;color:#fff;letter-spacing:-.01em;line-height:1.1}
+  #tuyory-overlay .tuy-hero-sub{font-size:11.5px;font-weight:600;color:#AFC6E4;margin-top:2px;letter-spacing:.02em}
+
+  /* Cieľ — počet reumatológov */
+  #tuyory-overlay .tuy-target{position:relative;margin-top:14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:13px;padding:13px 14px}
+  #tuyory-overlay .tuy-target-lbl{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#8FB0D6;margin-bottom:8px}
+  #tuyory-overlay .tuy-target-row{display:flex;align-items:center;gap:9px}
+  #tuyory-overlay .tuy-target-input{flex:1;height:46px;border-radius:11px;border:1.5px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#fff;font-family:var(--font-display);font-size:20px;font-weight:800;text-align:center;outline:none;transition:border-color .18s,background .18s}
+  #tuyory-overlay .tuy-target-input::placeholder{color:#6E88A8;font-weight:700}
+  #tuyory-overlay .tuy-target-input:focus{border-color:#3B82F6;background:rgba(59,130,246,.12)}
+  #tuyory-overlay .tuy-target-confirm{height:46px;padding:0 18px;border:none;border-radius:11px;background:linear-gradient(180deg,#3B82F6,#2563EB 60%,#1E40AF);color:#fff;font-family:var(--font-display);font-size:14px;font-weight:800;letter-spacing:.01em;cursor:pointer;-webkit-tap-highlight-color:transparent;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 5px 14px rgba(37,99,235,.32);transition:transform .12s}
+  #tuyory-overlay .tuy-target-confirm:active{transform:scale(.97)}
+  #tuyory-overlay .tuy-target-set{display:flex;align-items:baseline;gap:8px}
+  #tuyory-overlay .tuy-target-num{font-family:var(--font-display);font-size:30px;font-weight:800;color:#fff;line-height:1;font-variant-numeric:tabular-nums}
+  #tuyory-overlay .tuy-target-cap{font-size:12px;font-weight:600;color:#AFC6E4}
+  #tuyory-overlay .tuy-target-edit{margin-left:auto;background:rgba(255,255,255,.10);border:none;color:#CFE0F4;font-size:11px;font-weight:700;font-family:inherit;padding:6px 12px;border-radius:9px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+
+  /* Progres oslovenia */
+  #tuyory-overlay .tuy-prog{margin-top:12px}
+  #tuyory-overlay .tuy-prog-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+  #tuyory-overlay .tuy-prog-txt{font-size:11.5px;font-weight:700;color:#CFE0F4}
+  #tuyory-overlay .tuy-prog-pct{font-family:var(--font-display);font-size:13px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums}
+  #tuyory-overlay .tuy-prog-bar{height:9px;border-radius:6px;background:rgba(255,255,255,.12);overflow:hidden}
+  #tuyory-overlay .tuy-prog-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,#22D3EE,#3B82F6);transition:width .5s cubic-bezier(.16,1,.3,1)}
+
+  /* Štatistické karty */
+  #tuyory-overlay .tuy-sum-lbl-top{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#94A3B8;margin:2px 2px 8px}
+  #tuyory-overlay .tuy-summary{display:flex;align-items:stretch;background:#fff;border-radius:16px;padding:16px 6px;box-shadow:0 4px 14px rgba(15,23,42,.08);border:1px solid #EEF2F7;margin-bottom:16px}
+  #tuyory-overlay .tuy-sum-col{flex:1;text-align:center;padding:0 4px;display:flex;flex-direction:column;justify-content:center;gap:6px}
+  #tuyory-overlay .tuy-sum-num{font-family:var(--font-display);font-size:26px;font-weight:800;color:#0C1E35;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  #tuyory-overlay .tuy-sum-cap{font-size:10.5px;font-weight:600;color:#64748B;line-height:1.25}
+  #tuyory-overlay .tuy-sum-div{width:1px;background:#EEF2F7;flex-shrink:0;margin:3px 0}
+  #tuyory-overlay .tuy-stats{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:16px}
+  #tuyory-overlay .tuy-stat{background:#fff;border-radius:14px;padding:13px 14px;box-shadow:0 2px 10px rgba(15,23,42,.06);border:1px solid #EEF2F7}
+  #tuyory-overlay .tuy-stat-num{font-family:var(--font-display);font-size:24px;font-weight:800;color:#0C1E35;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  #tuyory-overlay .tuy-stat-num.is-warn{color:#D97706}
+  #tuyory-overlay .tuy-stat-num.is-ok{color:#059669}
+  #tuyory-overlay .tuy-stat-lbl{font-size:11px;font-weight:600;color:#64748B;margin-top:4px;line-height:1.3}
+  #tuyory-overlay .tuy-stat-wide{grid-column:1 / -1;display:flex;align-items:center;gap:12px}
+  #tuyory-overlay .tuy-stat-wide .tuy-stat-ico{font-size:20px;width:40px;height:40px;border-radius:11px;background:#EFF6FF;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+  /* Sekcia / formulár */
+  #tuyory-overlay .tuy-card{background:#fff;border-radius:16px;padding:16px 15px;box-shadow:0 2px 10px rgba(15,23,42,.06);border:1px solid #EEF2F7;margin-bottom:13px}
+  #tuyory-overlay .tuy-form-title{display:flex;align-items:center;gap:8px;font-family:var(--font-display);font-size:16px;font-weight:800;color:#0F172A;letter-spacing:-.01em;margin-bottom:3px}
+  #tuyory-overlay .tuy-form-desc{font-size:12px;font-weight:500;color:#64748B;line-height:1.45;margin-bottom:2px}
+  #tuyory-overlay .tuy-sec-lbl{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#94A3B8;margin:0 0 9px}
+  #tuyory-overlay .tuy-field{margin-bottom:13px}
+  #tuyory-overlay .tuy-field:last-child{margin-bottom:0}
+  #tuyory-overlay .tuy-lbl{display:block;font-size:12.5px;font-weight:700;color:#334155;margin-bottom:6px;line-height:1.35}
+  #tuyory-overlay .tuy-lbl .tuy-req{color:#DC2626;margin-left:2px}
+  #tuyory-overlay .tuy-hint{font-size:11px;font-weight:500;color:#94A3B8;margin-top:5px;line-height:1.35}
+  #tuyory-overlay input.tuy-in,#tuyory-overlay select.tuy-in{width:100%;height:46px;padding:0 13px;border-radius:11px;border:1.5px solid var(--color-border);background:#fff;font-size:16px;font-family:inherit;color:var(--color-text);outline:none;transition:border-color .18s,box-shadow .18s;box-shadow:inset 0 1px 3px rgba(15,23,42,.04)}
+  #tuyory-overlay input.tuy-in:focus,#tuyory-overlay select.tuy-in:focus{border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  #tuyory-overlay input.tuy-in.tuy-invalid,#tuyory-overlay select.tuy-in.tuy-invalid{border-color:#FCA5A5;box-shadow:0 0 0 3px rgba(220,38,38,.10)}
+  #tuyory-overlay textarea.tuy-in{width:100%;min-height:82px;padding:11px 13px;border-radius:11px;border:1.5px solid var(--color-border);background:#fff;font-size:15px;font-family:inherit;color:var(--color-text);outline:none;line-height:1.45;resize:vertical;transition:border-color .18s,box-shadow .18s;box-shadow:inset 0 1px 3px rgba(15,23,42,.04)}
+  #tuyory-overlay textarea.tuy-in:focus{border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+
+  /* Segmentované prepínače (ÁNO/NIE, IV/SC/oboje, značky) */
+  #tuyory-overlay .tuy-seg{display:flex;gap:8px;flex-wrap:wrap}
+  #tuyory-overlay .tuy-seg.tuy-seg-2>.tuy-opt{flex:1}
+  #tuyory-overlay .tuy-opt{flex:0 1 auto;min-height:44px;padding:10px 16px;border-radius:11px;border:1.5px solid var(--color-border);background:#fff;color:#475569;font-size:13.5px;font-weight:700;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .15s;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+  #tuyory-overlay .tuy-opt:active{transform:scale(.97)}
+  #tuyory-overlay .tuy-opt.on{border-color:#2563EB;background:#EFF6FF;color:#1D4ED8;box-shadow:0 0 0 2px rgba(37,99,235,.10)}
+  #tuyory-overlay .tuy-opt.on.tuy-opt-yes{border-color:#059669;background:#ECFDF5;color:#047857;box-shadow:0 0 0 2px rgba(5,150,105,.12)}
+  #tuyory-overlay .tuy-opt.on.tuy-opt-no{border-color:#DC2626;background:#FEF2F2;color:#B91C1C;box-shadow:0 0 0 2px rgba(220,38,38,.10)}
+  #tuyory-overlay .tuy-seg.tuy-invalid>.tuy-opt{border-color:#FCA5A5}
+
+  /* Podmienené bloky */
+  #tuyory-overlay .tuy-cond{display:none;margin-top:12px;padding:13px 13px;border-radius:12px;background:#F8FAFC;border:1px solid #EEF2F7;border-left:3px solid #3B82F6}
+  #tuyory-overlay .tuy-cond.show{display:block;animation:tuyReveal .22s cubic-bezier(.16,1,.3,1) both}
+  #tuyory-overlay .tuy-cond.tuy-cond-warn{border-left-color:#F59E0B;background:#FFFBEB;border-color:#FDE68A}
+  @keyframes tuyReveal{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+
+  /* Chyba + submit */
+  #tuyory-overlay .tuy-err{display:none;background:#FEF2F2;border:1px solid #FECACA;color:#B91C1C;font-size:12.5px;font-weight:600;border-radius:11px;padding:11px 13px;margin-bottom:12px;line-height:1.4}
+  #tuyory-overlay .tuy-err.show{display:block}
+  #tuyory-overlay .tuy-submit{width:100%;background:linear-gradient(180deg,#3B82F6 0%,#2563EB 55%,#1E40AF 100%);color:#fff;border:none;border-radius:14px;padding:15px;font-size:15.5px;font-weight:800;font-family:var(--font-display);letter-spacing:.01em;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 8px 20px rgba(37,99,235,.30);transition:transform .12s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+  #tuyory-overlay .tuy-submit:active{transform:scale(.98)}
+  #tuyory-overlay .tuy-submit:disabled{opacity:.6;cursor:default}
+
+  /* Úspech po odoslaní */
+  #tuyory-overlay .tuy-success{background:#fff;border-radius:16px;padding:26px 20px;text-align:center;box-shadow:0 2px 10px rgba(15,23,42,.06);border:1px solid #EEF2F7;margin-bottom:13px}
+  #tuyory-overlay .tuy-success-ico{width:60px;height:60px;border-radius:18px;margin:0 auto 12px;background:linear-gradient(180deg,#ECFDF5,#D1FAE5);display:flex;align-items:center;justify-content:center;font-size:30px}
+  #tuyory-overlay .tuy-success-title{font-family:var(--font-display);font-size:18px;font-weight:800;color:#0F172A;margin-bottom:5px}
+  #tuyory-overlay .tuy-success-sub{font-size:13px;font-weight:500;color:#64748B;line-height:1.45}
+
+  /* Okres autocomplete — v štýle GP (reuse .ac-list/.ac-item) */
+  #tuyory-overlay .ac-wrap{position:relative}
+  #tuyory-overlay .ac-list{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;background:#fff;border:1px solid #E2E8F0;border-radius:12px;box-shadow:0 12px 28px rgba(15,23,42,.14);max-height:230px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  #tuyory-overlay .ac-item{padding:11px 14px;font-size:14px;color:#1E293B;cursor:pointer;border-bottom:1px solid #F1F5F9;-webkit-tap-highlight-color:transparent}
+  #tuyory-overlay .ac-item:last-child{border-bottom:none}
+  #tuyory-overlay .ac-item:hover,#tuyory-overlay .ac-item:active{background:#EFF6FF}
+  #tuyory-overlay .ac-item strong{color:#2563EB;font-weight:800}
+
+  /* Doplňujúce (nepovinné) — collapsible */
+  #tuyory-overlay .tuy-extra-toggle{width:100%;margin-top:12px;background:#F1F5F9;border:1px dashed #CBD5E1;border-radius:11px;color:#475569;font-size:12.5px;font-weight:700;font-family:inherit;padding:11px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .15s}
+  #tuyory-overlay .tuy-extra-toggle:active{background:#E2E8F0}
+  #tuyory-overlay .tuy-extra{display:none;margin-top:10px;padding-top:12px;border-top:1px dashed #E2E8F0}
+  #tuyory-overlay .tuy-extra.show{display:block;animation:tuyReveal .22s cubic-bezier(.16,1,.3,1) both}
+
+  /* História — sub-taby (mini filter Všetko / Všeobecní / Tuyory) */
+  .hist-subtabs{display:flex;gap:6px;background:#fff;border-radius:14px;padding:5px;margin-bottom:10px;box-shadow:0 2px 8px rgba(15,23,42,.06)}
+  .hist-subtab{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:5px;border:none;background:transparent;color:#64748B;font-size:12.5px;font-weight:700;font-family:inherit;padding:10px 6px;border-radius:10px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .15s,color .15s;white-space:nowrap}
+  .hist-subtab.active{background:#0C1E35;color:#fff}
+  .hist-subtab-count{font-size:11px;font-weight:800;opacity:.75;font-variant-numeric:tabular-nums}
+  .hist-subtab.active .hist-subtab-count{opacity:.9}
+
+  /* Manažérsky Tuyory banner (súhrn za líniu / región) */
+  .mgr-tuy-banner{background:linear-gradient(155deg,#0C1E35,#13294B 60%,#1A3A5C);border-radius:16px;padding:15px 16px;margin-bottom:12px;box-shadow:0 8px 22px rgba(12,30,53,.26);position:relative;overflow:hidden}
+  .mgr-tuy-banner::after{content:'';position:absolute;top:-40px;right:-30px;width:150px;height:150px;background:radial-gradient(circle,rgba(59,130,246,.32),transparent 70%);pointer-events:none}
+  .mgr-tuy-b-top{display:flex;align-items:center;gap:9px;margin-bottom:12px;position:relative}
+  .mgr-tuy-b-ico{width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+  .mgr-tuy-b-title{font-family:var(--font-display);font-size:15px;font-weight:800;color:#fff;letter-spacing:-.01em;line-height:1.1}
+  .mgr-tuy-b-sub{font-size:10.5px;font-weight:600;color:#AFC6E4;margin-top:2px}
+  .mgr-tuy-b-nums{display:flex;align-items:stretch;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px 4px;position:relative}
+  .mgr-tuy-b-col{flex:1;text-align:center;padding:0 3px;display:flex;flex-direction:column;gap:4px}
+  .mgr-tuy-b-num{font-family:var(--font-display);font-size:22px;font-weight:800;color:#fff;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .mgr-tuy-b-cap{font-size:9.5px;font-weight:600;color:#AFC6E4;line-height:1.2}
+  .mgr-tuy-b-div{width:1px;background:rgba(255,255,255,.14);flex-shrink:0;margin:2px 0}
+  .mgr-tuy-b-foot{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;position:relative}
+  .mgr-tuy-b-chip{background:rgba(255,255,255,.10);border-radius:20px;font-size:10.5px;font-weight:700;color:#CFE0F4;padding:4px 10px}
+  /* Tuyory chip v karte reprezentanta (mód Všetko) */
+  .mgr-chip.mgr-chip-tuy{background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE}
+  /* Tuyory karta v manažérskom zozname návštev */
+  .mgr-vseg.tuy{background:#2563EB}
+  .mgr-vitem-tuy .hist-tuy-badge{margin-left:5px}
+  .mgr-detail-tuyonly .mgr-dstats,.mgr-detail-tuyonly .mgr-segsum{display:none}
+
+  /* Tuyory karta v Histórii */
+  .hist-item-tuy{border-left:3px solid #2563EB}
+  .hist-tuy-badge{flex-shrink:0;background:linear-gradient(180deg,#EFF6FF,#DBEAFE);color:#1D4ED8;border:1px solid #BFDBFE;border-radius:20px;font-size:10px;font-weight:800;padding:3px 9px;letter-spacing:.01em;white-space:nowrap}
+  .hist-tuy-line{margin-top:7px;font-size:12px;font-weight:700;color:#334155;background:#F8FAFC;border-radius:8px;padding:6px 9px}
+
+  /* Tuyory detail (z Histórie) — modal */
+  #tuy-detail-overlay{display:none;position:fixed;inset:0;z-index:6200;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);align-items:center;justify-content:center;padding:20px}
+  #tuy-detail-overlay.show{display:flex;animation:tuyReveal .2s ease both}
+  #tuy-detail-overlay .tuy-dt-box{background:#fff;border-radius:20px;width:100%;max-width:460px;max-height:82vh;overflow-y:auto;-webkit-overflow-scrolling:touch;box-shadow:0 24px 60px rgba(15,23,42,.35)}
+  #tuy-detail-overlay .tuy-dt-hdr{position:sticky;top:0;background:linear-gradient(180deg,#0C1E35,#13294B);padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+  #tuy-detail-overlay .tuy-dt-hdr-t{font-family:var(--font-display);font-size:16px;font-weight:800;color:#fff;letter-spacing:-.01em;line-height:1.2}
+  #tuy-detail-overlay .tuy-dt-badge{font-size:10.5px;font-weight:700;color:#AFC6E4;margin-top:2px}
+  #tuy-detail-overlay .tuy-dt-close{flex-shrink:0;background:rgba(255,255,255,.12);border:none;color:#fff;font-size:18px;width:34px;height:34px;border-radius:10px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  #tuy-detail-overlay .tuy-dt-body{padding:8px 18px 18px}
+  #tuy-detail-overlay .tuy-dt-row{display:flex;justify-content:space-between;align-items:baseline;gap:14px;padding:11px 0;border-bottom:1px solid #F1F5F9}
+  #tuy-detail-overlay .tuy-dt-row:last-child{border-bottom:none}
+  #tuy-detail-overlay .tuy-dt-k{font-size:12px;font-weight:600;color:#94A3B8;flex-shrink:0}
+  #tuy-detail-overlay .tuy-dt-v{font-size:13.5px;font-weight:700;color:#0F172A;text-align:right}
+  #tuy-detail-overlay .tuy-dt-note{padding:12px 0 2px}
+  #tuy-detail-overlay .tuy-dt-note-k{font-size:12px;font-weight:600;color:#94A3B8;margin-bottom:6px}
+  #tuy-detail-overlay .tuy-dt-note-v{font-size:13px;font-weight:500;color:#78350F;line-height:1.55;background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:10px 12px}
+</style>
+<div class="lk-overlay" id="tuyory-overlay">
+  <div class="lk-inner">
+    <div id="tuyory-body"></div>
+  </div>
+</div>
+
+<!-- Tuyory detail (otvorený z Histórie) -->
+<div id="tuy-detail-overlay" onclick="if(event.target===this)tuyoryDetailClose()">
+  <div class="tuy-dt-box">
+    <div class="tuy-dt-hdr">
+      <div><div class="tuy-dt-hdr-t" id="tuy-detail-title">Tuyory záznam</div><div class="tuy-dt-badge">🧬 Prieskum Tuyory</div></div>
+      <button type="button" class="tuy-dt-close" onclick="tuyoryDetailClose()" aria-label="Zavrieť">✕</button>
+    </div>
+    <div class="tuy-dt-body" id="tuy-detail-body"></div>
   </div>
 </div>
 
