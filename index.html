@@ -3362,7 +3362,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.46.0';
+var APP_VERSION = '2.46.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -3473,10 +3473,74 @@ function pushInit(){
   try {
     if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(PUSH_CFG);
     _fcmMessaging = firebase.messaging();
-    // Push prišiel kým je appka v popredí → hneď obnov kalendár (odznak naskočí okamžite).
-    try { _fcmMessaging.onMessage(function(){ try { if (typeof gynCalLiveSync === 'function') gynCalLiveSync(); } catch(e){} }); } catch(e){}
+    // Push prišiel kým je appka v POPREDÍ. Service worker (onBackgroundMessage) sa v tomto
+    // prípade NESPUSTÍ — o zobrazenie sa musíme postarať tu, inak by notifikácia „zmizla".
+    // 1) obnov kalendár (odznak naskočí okamžite), 2) zobraz viditeľný pop-up (ako pri predajoch).
+    try { _fcmMessaging.onMessage(function(payload){
+      try { if (typeof gynCalLiveSync === 'function') gynCalLiveSync(); } catch(e){}
+      try {
+        var d  = (payload && payload.data) || {};
+        var nt = (payload && payload.notification) || {};
+        var title = d.title || nt.title || 'Upozornenie';
+        var body  = d.body  || nt.body  || '';
+        if (title || body) pushShowForegroundBanner(title, body);
+      } catch(e){}
+    }); } catch(e){}
     return true;
   } catch(e){ return false; }
+}
+
+// Zobrazí prijatý push ako viditeľný pop-up, keď je appka v popredí (rovnaký vzhľad ako
+// notifikácia o nových predajoch). Pri zatvorenej appke to rieši service worker sám.
+function pushShowForegroundBanner(title, body){
+  try {
+    var wrap = document.getElementById('notif-banner-wrap');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.id = 'notif-banner-wrap';
+      wrap.className = 'notif-banner';
+      document.body.appendChild(wrap);
+    }
+    var combo = String(title || '') + ' ' + String(body || '');
+    var icon = '🔔';
+    if (/narodenin|menin|🎂|🎉/i.test(combo)) icon = '🎂';
+    else if (/absenci|dovolenk|žiados|schvál|zamiet/i.test(combo)) icon = '📅';
+
+    var inner = document.createElement('div');
+    inner.className = 'notif-banner-inner';
+    var iconEl = document.createElement('div');
+    iconEl.className = 'notif-banner-icon';
+    iconEl.textContent = icon;
+    var txtEl = document.createElement('div');
+    txtEl.className = 'notif-banner-text';
+    if (title) {
+      var tl = document.createElement('div');
+      tl.style.marginBottom = '4px';
+      tl.textContent = String(title);
+      txtEl.appendChild(tl);
+    }
+    if (body) {
+      var bd = document.createElement('span');
+      bd.style.fontWeight = '500';
+      bd.style.opacity = '.9';
+      bd.textContent = String(body);
+      txtEl.appendChild(bd);
+    }
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'notif-banner-close';
+    btn.textContent = 'OK, rozumiem';
+    btn.onclick = function(){
+      try { inner.remove(); } catch(e){}
+      var w = document.getElementById('notif-banner-wrap');
+      if (w && !w.children.length) { try { w.remove(); } catch(e){} }
+    };
+    inner.appendChild(iconEl);
+    inner.appendChild(txtEl);
+    inner.appendChild(btn);
+    wrap.appendChild(inner);
+    try { haptic && haptic('light'); } catch(e){}
+  } catch(e){}
 }
 
 // Appkový vypínač odberu (povolenie v prehliadači sa z JS zrušiť nedá, preto
