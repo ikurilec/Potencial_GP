@@ -1179,6 +1179,9 @@
   /* Tuyory záložka je len pre Golem GP líniu */
   body.reagila-line #rep-nav-tuyory-btn,
   body.reagila-line #spn-tuyory{ display:none !important; }
+  /* Lonelix záložka je len pre Golem GP líniu */
+  body.reagila-line #rep-nav-lonelix-btn,
+  body.reagila-line #spn-lonelix{ display:none !important; }
   body.reagila-line .rep-nav,
   body.reagila-line .panel-nav{ grid-template-columns:repeat(3,1fr); }
   body.reagila-line #rep-nav-plnenie-btn, body.reagila-line #spn-pl{ order:1; }
@@ -2551,6 +2554,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   <button type="button" class="rep-nav-btn" id="rep-nav-lekarne-btn" onclick="openLekarne()"><span class="rn-ico">🏪</span><span class="rn-lbl">Lekárne</span></button>
   <button type="button" class="rep-nav-btn" id="rep-nav-okresy-btn" onclick="openOkresy()"><span class="rn-ico">📍</span><span class="rn-lbl">Okresy</span></button>
   <button type="button" class="rep-nav-btn" id="rep-nav-tuyory-btn" onclick="openTuyory()"><span class="rn-ico">🧬</span><span class="rn-lbl">Tuyory</span></button>
+  <button type="button" class="rep-nav-btn" id="rep-nav-lonelix-btn" onclick="openLonelix()"><span class="rn-ico">🛡️</span><span class="rn-lbl">Lonelix</span></button>
   <button type="button" class="rep-nav-btn" id="rep-nav-kal-btn" onclick="openGolemKalendar()"><span class="rn-ico gyn-cal-navico"><span class="gci-top"></span><span class="gci-day js-cal-nav-day">16</span></span><span class="rn-lbl">Kalendár</span></button>
 </div>
 
@@ -6410,6 +6414,7 @@ var _histDetailItems = [];
 
 function buildHistItemHtml(item) {
   if (item && item.type === 'tuyory') return tuyoryHistCardHtml(item);
+  if (item && item.type === 'lonelix-new') return lonelixNewCardHtml(item);
   var cls = getScenarioClass(item.scenar);
   var seg = SEGMENTS[item.scenar];
   var recHtml = '';
@@ -6425,7 +6430,7 @@ function buildHistItemHtml(item) {
   _histDetailItems.push(item);
   return '<div class="hist-item" data-idx="' + idx + '" onclick="openDetail(' + idx + ')" style="cursor:pointer">' +
     '<div style="display:flex;justify-content:space-between;align-items:center">' +
-      '<div class="hist-item-name">' + mgrEscape(item.lekar || '—') + '</div>' +
+      '<div class="hist-item-name">' + mgrEscape(item.lekar || '—') + ((typeof lonelixHasRecord === 'function' && lonelixHasRecord(item.lekar, item.okres)) ? ' <span class="hist-lon-badge" title="Má Lonelix záznam">🛡️</span>' : '') + '</div>' +
       '<span style="font-size:11px;color:#94A3B8">›</span>' +
     '</div>' +
     '<div class="hist-item-meta">' + mgrEscape(item.okres || '—') + ' · ' + mgrEscape(item.dateStr || '') + ' · ' + mgrEscape(item.cas || '') + '<span style="color:#94A3B8;font-size:10.5px;margin-left:6px">· ' + timeAgo(item.dateKey, item.cas) + '</span></div>' +
@@ -6446,23 +6451,35 @@ function renderHistItems(items) {
       body.innerHTML = mkEmpty('clipboard', 'Žiadne návštevy', 'Zatiaľ si nezaznamenal žiadnu návštevu.');
     return;
   }
-  // Group by dateKey
+  // Zoraď: najnovšie PRIDANÉ navrchu.
+  //  • GP záznam → poradie zápisu do hárku (vyšší riadok = pridaný neskôr)
+  //  • Tuyory / nový Lonelix lekár → práve pridané, pripni navrch podľa ich timestampu
+  function _histTime(it){
+    var dk = it.dateKey || '';
+    var cas = (it.cas && /^\d{1,2}:\d{2}/.test(it.cas)) ? it.cas : '00:00';
+    var t = Date.parse((dk || '1970-01-01') + 'T' + cas + ':00');
+    return isNaN(t) ? 0 : t;
+  }
+  function _histAddScore(it){
+    if (it && (it.type === 'tuyory' || it.type === 'lonelix-new')) return 1e15 + _histTime(it);
+    var row = (typeof it.row === 'number') ? it.row : (parseInt(it.row, 10) || 0);
+    return row;
+  }
+  var sorted = items.slice().sort(function(a, b){ return _histAddScore(b) - _histAddScore(a); });
+  // Group by dateKey (poradie skupín = poradie prvého výskytu v zoradenom zozname)
   var groups = {};
   var groupOrder = [];
-  items.forEach(function(item) {
+  sorted.forEach(function(item) {
     if(!groups[item.dateKey]) { groups[item.dateKey] = []; groupOrder.push(item.dateKey); }
     groups[item.dateKey].push(item);
   });
-  // Sort groups newest first
-  groupOrder.sort(function(a,b){ return b > a ? 1 : -1; });
   var html = '';
   groupOrder.forEach(function(dk) {
     var label = groups[dk][0].dateStr;
     var todayKey = getTodayKey();
     if(dk === todayKey) label = 'Dnes · ' + label;
     html += '<div class="hist-date-group">' + label + '</div>';
-    // Items within day: newest first
-    groups[dk].slice().reverse().forEach(function(item) {
+    groups[dk].forEach(function(item) {
       html += buildHistItemHtml(item);
     });
   });
@@ -6552,7 +6569,7 @@ function filterHistory(){ histRender(); }
 
 var _panelCurrent = null;
 var _panelStack = []; // navigačný stack — pamätá odkiaľ sme prišli (pre Android back button)
-var _PANEL_ORDER = { 'hist-overlay': 0, 'lb-overlay': 1, 'rep-plnenie-overlay': 2, 'lk-overlay': 3, 'okresy-overlay': 4, 'tuyory-overlay': 5, 'golem-cal-overlay': 6 };
+var _PANEL_ORDER = { 'hist-overlay': 0, 'lb-overlay': 1, 'rep-plnenie-overlay': 2, 'lk-overlay': 3, 'okresy-overlay': 4, 'tuyory-overlay': 5, 'lonelix-overlay': 6, 'golem-cal-overlay': 7 };
 
 function _panelShow(newId, isBack) {
   // Ak je ten istý panel už otvorený — nerob nič (ochrana pred dvojitým kliknutím)
@@ -6603,7 +6620,7 @@ function _panelShow(newId, isBack) {
 }
 
 function closeAllPanels() {
-  ['hist-overlay','lb-overlay','rep-plnenie-overlay','lk-overlay','okresy-overlay','tuyory-overlay','golem-cal-overlay','lk-detail','pharma-ms-overlay','pharma-okres-overlay'].forEach(function(id){
+  ['hist-overlay','lb-overlay','rep-plnenie-overlay','lk-overlay','okresy-overlay','tuyory-overlay','lonelix-overlay','golem-cal-overlay','lk-detail','pharma-ms-overlay','pharma-okres-overlay'].forEach(function(id){
     var el = document.getElementById(id);
     if(el) el.classList.remove('show');
   });
@@ -6624,10 +6641,11 @@ function repNavSetActive(panelId){
     'lk-overlay':'rep-nav-lekarne-btn',
     'okresy-overlay':'rep-nav-okresy-btn',
     'tuyory-overlay':'rep-nav-tuyory-btn',
+    'lonelix-overlay':'rep-nav-lonelix-btn',
     'golem-cal-overlay':'rep-nav-kal-btn'
   };
   var activeId = (panelId && map[panelId]) ? map[panelId] : 'rep-nav-form-btn';
-  ['rep-nav-form-btn','rep-nav-hist-btn','rep-nav-lb-btn','rep-nav-plnenie-btn','rep-nav-lekarne-btn','rep-nav-okresy-btn','rep-nav-tuyory-btn','rep-nav-kal-btn'].forEach(function(id){
+  ['rep-nav-form-btn','rep-nav-hist-btn','rep-nav-lb-btn','rep-nav-plnenie-btn','rep-nav-lekarne-btn','rep-nav-okresy-btn','rep-nav-tuyory-btn','rep-nav-lonelix-btn','rep-nav-kal-btn'].forEach(function(id){
     var b = document.getElementById(id);
     if(b) b.classList.toggle('active', id === activeId);
   });
@@ -6714,6 +6732,7 @@ function openHistory() {
   var username = session ? session.username : '';
 
   if (!(TUYORY.records && TUYORY.records.length)){ try { TUYORY.records = tuyoryLoadLocal(); } catch(e){} }
+  if (!(LONELIX.records && LONELIX.records.length)){ try { LONELIX.records = lonelixLoadLocal(); } catch(e){} }
   // Reset mini filtra na „Všetko" pri každom otvorení
   _histFilter = 'all';
   var _stabs = document.getElementById('hist-subtabs');
@@ -6724,6 +6743,13 @@ function openHistory() {
   // Tuyory záznamy dotiahni zo Sheetu a ak je História otvorená, prekresli
   try {
     tuyoryFetchServer(function(){
+      var ov = document.getElementById('hist-overlay');
+      if (ov && ov.classList.contains('show')) histRender();
+    });
+  } catch(e){}
+  // Lonelix záznamy zo Sheetu — po dotiahnutí prekresli (odznaky, noví lekári, detail)
+  try {
+    lonelixFetchServer(function(){
       var ov = document.getElementById('hist-overlay');
       if (ov && ov.classList.contains('show')) histRender();
     });
@@ -7755,6 +7781,7 @@ function openDetail(idx) {
   var item = _histDetailItems[idx];
   if(!item) return;
   if(item.type === 'tuyory'){ tuyoryHistDetail(item); return; }
+  if(item.type === 'lonelix-new'){ lonelixOpenGpForm(item.lon); return; }
   _currentDetailIdx = idx;
   _currentDetailItem = item;
   _currentDetailReopenFn = function() { openDetail(idx); };
@@ -7796,6 +7823,15 @@ function openDetail(idx) {
       repProdPanel.style.display = 'none';
       repProdPanel.innerHTML = '';
     }
+    // Lonelix info pre tohto lekára (ak má Lonelix záznam) — pripni hneď za produktový panel
+    try {
+      var lonBox = document.getElementById('rep-detail-lonelix');
+      if(!lonBox && repProdPanel.parentNode){
+        lonBox = document.createElement('div'); lonBox.id = 'rep-detail-lonelix';
+        repProdPanel.parentNode.insertBefore(lonBox, repProdPanel.nextSibling);
+      }
+      if(lonBox) lonBox.innerHTML = (typeof lonelixDetailBlockHtml === 'function') ? lonelixDetailBlockHtml(item.lekar, item.okres) : '';
+    } catch(e){}
   }
   var seg = SEGMENTS[item.scenar];
   var crClass = (item.scenar==='vyradit') ? 'res-no'
@@ -16952,6 +16988,52 @@ function mgrTuyBannerHtml(){
     '</div>' +
   '</div>';
 }
+// ═══ Manažérsky LONELIX súhrn (za líniu/región + za reprezentanta) ═══
+function mgrRepLonelix(username){ var by = MGR_STATE.lonelixByRep || {}; return by[String(username || '').trim().toLowerCase()] || []; }
+function mgrLonelixAllRecords(){ var out = []; Object.keys(MGR_STATE.reps || {}).forEach(function(u){ out = out.concat(mgrRepLonelix(u)); }); return out; }
+function mgrLonelixSummaryHtml(recs, title, sub){
+  var oslov = recs.length;
+  var pouziva = recs.filter(function(r){ return r.pouziva === 'ano'; }).length;
+  var pacSpolu = recs.reduce(function(s, r){ return s + (parseInt(r.pocet, 10) || 0); }, 0);
+  var ochotni = recs.filter(function(r){ return r.ochota === 'ano'; }).length;
+  return '<div class="mgr-tuy-banner">' +
+    '<div class="mgr-tuy-b-top"><div class="mgr-tuy-b-ico">🛡️</div>' +
+      '<div><div class="mgr-tuy-b-title">' + mgrEscape(title) + '</div><div class="mgr-tuy-b-sub">' + mgrEscape(sub) + '</div></div></div>' +
+    '<div class="mgr-tuy-b-nums">' +
+      '<div class="mgr-tuy-b-col"><div class="mgr-tuy-b-num">' + pouziva + '</div><div class="mgr-tuy-b-cap">Používa inozín</div></div>' +
+      '<div class="mgr-tuy-b-div"></div>' +
+      '<div class="mgr-tuy-b-col"><div class="mgr-tuy-b-num">' + pacSpolu + '</div><div class="mgr-tuy-b-cap">Pacientov/mes v sezóne</div></div>' +
+      '<div class="mgr-tuy-b-div"></div>' +
+      '<div class="mgr-tuy-b-col"><div class="mgr-tuy-b-num">' + ochotni + '</div><div class="mgr-tuy-b-cap">Ochotní predpisovať</div></div>' +
+    '</div>' +
+    '<div class="mgr-tuy-b-foot"><span class="mgr-tuy-b-chip">🛡️ Lonelix · lekárov oslovených: ' + oslov + '</span></div>' +
+  '</div>';
+}
+function mgrLonelixLineBannerHtml(){
+  var recs = mgrLonelixAllRecords();
+  var repsWithData = Object.keys(MGR_STATE.reps || {}).filter(function(u){ return mgrRepLonelix(u).length; }).length;
+  return mgrLonelixSummaryHtml(recs, 'Lonelix — ' + mgrTuyScopeLabel(), recs.length + ' záznamov · ' + repsWithData + ' reprezentantov');
+}
+function mgrLoadLonelix(){
+  if (typeof IS_DEV !== 'undefined' && IS_DEV){ MGR_STATE.lonelixByRep = MGR_STATE.lonelixByRep || {}; return; }
+  fetch(scriptUrl('action=getAllLonelix'), { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(d){
+    if (!d || !d.ok || !d.byRep) return;
+    var by = {};
+    Object.keys(d.byRep).forEach(function(k){ by[String(k).trim().toLowerCase()] = d.byRep[k] || []; });
+    MGR_STATE.lonelixByRep = by;
+    try { mgrHistRefreshBanner(); } catch(e){}
+    var det = document.getElementById('mgr-detail');
+    if (MGR_STATE.currentRep && det && det.classList.contains('show')) mgrRenderVisits();
+  }).catch(function(){});
+}
+// Banner hore podľa aktívneho filtra: Tuyory → Tuyory súhrn, GP (Všetko/Všeobecní) → Lonelix súhrn
+function mgrHistRefreshBanner(){
+  var banner = document.getElementById('mgr-tuy-banner'); if (!banner) return;
+  var f = MGR_STATE.histFilter || 'all';
+  banner.innerHTML = (f === 'tuyory') ? mgrTuyBannerHtml() : mgrLonelixLineBannerHtml();
+  banner.style.display = 'block';
+}
+
 function mgrHistSetFilter(f, btn){
   MGR_STATE.histFilter = f || 'all';
   var bar = document.getElementById('mgr-hist-subtabs');
@@ -32237,7 +32319,7 @@ function tuyErr(msg, focusEl){
   }
 }
 function tuyClearErr(){ var e = document.getElementById('tuy-err'); if (e){ e.classList.remove('show'); }
-  document.querySelectorAll('#tuyory-overlay .tuy-invalid').forEach(function(el){ el.classList.remove('tuy-invalid'); }); }
+  document.querySelectorAll('.tuy-scope .tuy-invalid').forEach(function(el){ el.classList.remove('tuy-invalid'); }); }
 
 // Validácia + odoslanie
 function tuyorySubmit(){
@@ -32249,6 +32331,7 @@ function tuyorySubmit(){
   if (!tuyMenoValid(meno)) return tuyErr('Zadaj titul, meno a priezvisko lekára.', document.getElementById('tuy-meno'));
   if (!okres) return tuyErr('Vyber okres pracoviska lekára.', document.getElementById('tuy-okres'));
   if (!tuyOkresValid(okres)) return tuyErr('Okres vyber zo zoznamu (ťukni do poľa a vyber).', document.getElementById('tuy-okres'));
+  if (tuyoryDoctorHasRecord(meno, okres)) return tuyErr('🚫 Tento lekár už má Tuyory záznam — druhý sa pridať nedá.', document.getElementById('tuy-meno'));
   if (!a.nastavuje) return tuyErr('Odpovedz, či nastavuje pacientov na tocilizumab.', document.querySelector('[data-g="nastavuje"]'));
 
   var rec = {
@@ -32366,11 +32449,12 @@ function tuyOkresShowAll(el){
   }).join('');
   list.style.display = 'block';
 }
-function tuyOkresInput(el){ el.classList.remove('tuy-invalid'); tuyOkresShowAll(el); }
+function tuyOkresInput(el){ el.classList.remove('tuy-invalid'); tuyOkresShowAll(el); tuyMenoDupCheck(); }
 function tuyOkresPick(okres){
   var el = document.getElementById('tuy-okres'); if (el){ el.value = okres; el.classList.remove('tuy-invalid'); }
   var list = document.getElementById('tuy-ac-list'); if (list) list.style.display = 'none';
   try { haptic('selection'); } catch(e){}
+  tuyMenoDupCheck();
 }
 function tuyOkresBlur(el){ setTimeout(function(){ var l = document.getElementById('tuy-ac-list'); if (l) l.style.display = 'none'; }, 250); }
 
@@ -32389,19 +32473,35 @@ function tuyMenoValid(v){
 function tuyMenoInput(el){
   if (typeof capAfterSpace === 'function') capAfterSpace(el);
   el.classList.remove('tuy-invalid');
-  tuyMenoDupCheck(el.value);
+  tuyMenoDupCheck();
 }
 function tuyMenoBlur(el){
   var v = el.value.trim();
   var words = v.split(/\s+/).filter(function(w){ return w.length > 0; });
   if (v === '' || words.every(function(w){ return TUY_TITLES.indexOf(w.toLowerCase()) !== -1; })) el.value = '';
-  tuyMenoDupCheck(el.value);
+  tuyMenoDupCheck();
 }
-function tuyMenoDupCheck(v){
-  var dup = document.getElementById('tuy-meno-dup'); if (!dup) return;
-  v = String(v || '').trim().toLowerCase();
-  var hit = v && (TUYORY.records || []).some(function(r){ return String(r.meno || '').trim().toLowerCase() === v; });
-  dup.style.display = hit ? 'block' : 'none';
+// Poistka proti dvojitému Tuyory záznamu (normalizované meno bez titulu + okres)
+function tuyoryDoctorHasRecord(meno, okres){
+  var n = (typeof lonNormName === 'function') ? lonNormName(meno) : String(meno || '').trim().toLowerCase();
+  var o = String(okres || '').trim().toLowerCase();
+  if (!n) return false;
+  return (TUYORY.records || []).some(function(r){
+    var rn = (typeof lonNormName === 'function') ? lonNormName(r.meno) : String(r.meno || '').trim().toLowerCase();
+    return rn === n && String(r.okres || '').trim().toLowerCase() === o;
+  });
+}
+function tuyMenoDupCheck(){
+  var dup = document.getElementById('tuy-meno-dup');
+  var submit = document.getElementById('tuy-submit');
+  var meno = (document.getElementById('tuy-meno') || {}).value || '';
+  var okres = (document.getElementById('tuy-okres') || {}).value || '';
+  var hit = tuyoryDoctorHasRecord(meno, okres);
+  if (dup){
+    if (hit){ dup.innerHTML = '🚫 Tento lekár už má Tuyory záznam — druhý sa pridať nedá.'; dup.style.display = 'block'; dup.style.color = '#B91C1C'; }
+    else { dup.style.display = 'none'; dup.style.color = '#D97706'; }
+  }
+  if (submit){ submit.disabled = !!hit; submit.style.opacity = hit ? '.5' : ''; }
 }
 
 // ── HISTÓRIA — Tuyory záznamy medzi GP návštevami ──
@@ -32467,7 +32567,475 @@ function tuyoryDetailClose(){ var ov = document.getElementById('tuy-detail-overl
 function _histCombined(){
   var gp = Array.isArray(_histAllItems) ? _histAllItems : [];
   var tuy = (typeof tuyoryHistItems === 'function') ? tuyoryHistItems() : [];
-  return gp.concat(tuy);
+  var lon = (typeof lonelixOnlyHistItems === 'function') ? lonelixOnlyHistItems() : [];
+  return gp.concat(tuy).concat(lon);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// LONELIX — prieskum inozín pranobex (isoprinosín) u GP lekárov.
+// Formulár s doctor-pickerom: existujúci (z Histórie) alebo nový lekár.
+// Vlastná záložka (dashboard bez cieľa + formulár). Záznamy → hárok „Lonelix".
+// ═══════════════════════════════════════════════════════════════════
+var LONELIX = { records: [], answers: {}, flash: null, _flashT: null, _reqId: 0, docList: [], _matchCache: [] };
+
+function lonelixLocalKey(){ return 'lonelix_records_' + tuyUser(); }
+function lonelixLoadLocal(){
+  try { var raw = localStorage.getItem(lonelixLocalKey()); var a = raw ? JSON.parse(raw) : []; return Array.isArray(a) ? a : []; }
+  catch(e){ return []; }
+}
+function lonelixSaveLocal(arr){
+  try { var p = JSON.stringify(arr || []); if (typeof lsSafeSet === 'function') lsSafeSet(lonelixLocalKey(), p); else localStorage.setItem(lonelixLocalKey(), p); } catch(e){}
+}
+
+function openLonelix(){
+  usageSectionEnter('Lonelix');
+  _panelShow('lonelix-overlay');
+  LONELIX.records = lonelixLoadLocal();
+  LONELIX.answers = {};
+  LONELIX.flash = null;
+  lonelixRender();
+  lonelixLoadDoctors();
+  lonelixFetchServer(function(){ lonelixRenderDashboard(); });
+}
+function closeLonelix(){ usageSectionClose(); LONELIX._reqId++; closeAllPanels(); }
+
+// Zoznam existujúcich GP lekárov repa (z Histórie) pre doctor-picker — unikátne meno+okres.
+function lonelixLoadDoctors(){
+  try {
+    var s = getSession(); var u = s ? s.username : '';
+    if (!u) return;
+    loadHistoryItems(u).then(function(items){
+      var seen = {}, out = [];
+      (items || []).forEach(function(it){
+        if (it && it.type === 'tuyory') return;                 // len GP lekári
+        var meno = String(it.lekar || '').trim();
+        if (!meno) return;
+        var okres = String(it.okres || '').trim();
+        var key = meno.toLowerCase() + '|' + okres.toLowerCase();
+        if (seen[key]) return; seen[key] = 1;
+        out.push({ meno: meno, okres: okres });
+      });
+      out.sort(function(a, b){ return a.meno.localeCompare(b.meno, 'sk'); });
+      LONELIX.docList = out;
+    });
+  } catch(e){}
+}
+function lonIsExisting(meno, okres){
+  var m = String(meno || '').trim().toLowerCase(), o = String(okres || '').trim().toLowerCase();
+  return (LONELIX.docList || []).some(function(d){ return String(d.meno).toLowerCase() === m && String(d.okres).toLowerCase() === o; });
+}
+// Normalizované meno (bez titulov) — aby poistka chytila lekára aj keď ho napíšu ručne
+function lonNormName(s){
+  s = String(s || '').toLowerCase();
+  (typeof TUY_TITLES !== 'undefined' ? TUY_TITLES : []).forEach(function(t){ s = s.split(t).join(' '); });
+  return s.replace(/\s+/g, ' ').trim();
+}
+// Má už tento lekár (meno+okres) Lonelix záznam? — poistka proti dvojitému zadaniu
+function lonelixDoctorHasRecord(meno, okres){
+  var n = lonNormName(meno), o = String(okres || '').trim().toLowerCase();
+  if (!n) return false;
+  return (LONELIX.records || []).some(function(r){ return lonNormName(r.meno) === n && String(r.okres || '').trim().toLowerCase() === o; });
+}
+
+// ── Načítanie záznamov zo Sheetu (getLonelix) ──
+function lonelixFetchServer(cb){
+  if (typeof IS_DEV !== 'undefined' && IS_DEV){ if (cb) cb(); return; }
+  var user = tuyUser(); if (!user){ if (cb) cb(); return; }
+  var reqId = (++LONELIX._reqId);
+  var url;
+  try { url = scriptUrl('action=getLonelix&reprezentant=' + encodeURIComponent(user)); } catch(e){ if (cb) cb(); return; }
+  fetch(url, { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(d){
+    if (reqId !== LONELIX._reqId) return;
+    if (d && d.ok && Array.isArray(d.records)){ LONELIX.records = d.records; lonelixSaveLocal(d.records); }
+    if (cb) cb();
+  }).catch(function(){ if (cb) cb(); });
+}
+
+function lonelixRender(){
+  var body = document.getElementById('lonelix-body'); if (!body) return;
+  var flashHtml = '';
+  if (LONELIX.flash){
+    flashHtml = '<div class="tuy-success"><div class="tuy-success-ico">✅</div>' +
+      '<div class="tuy-success-title">Záznam uložený</div>' +
+      '<div class="tuy-success-sub">Údaje o lekárovi <strong>' + tuyEsc(LONELIX.flash) + '</strong> boli pridané.</div></div>';
+  }
+  body.innerHTML = flashHtml + '<div id="lon-dash"></div>' + lonelixFormHtml();
+  lonelixRenderDashboard();
+  lonSync();
+  if (LONELIX.flash){ clearTimeout(LONELIX._flashT); LONELIX._flashT = setTimeout(function(){ LONELIX.flash = null; var b = document.getElementById('lonelix-body'); if (b){ var s = b.querySelector('.tuy-success'); if (s) s.remove(); } }, 4200); }
+}
+
+function lonelixRenderDashboard(){
+  var dash = document.getElementById('lon-dash'); if (!dash) return;
+  var recs = LONELIX.records || [];
+  var oslov = recs.length;
+  var pouziva = recs.filter(function(r){ return r.pouziva === 'ano'; }).length;
+  var pacSpolu = recs.reduce(function(s, r){ return s + (parseInt(r.pocet, 10) || 0); }, 0);
+  var ochotni = recs.filter(function(r){ return r.ochota === 'ano'; }).length;
+
+  dash.innerHTML =
+    '<div class="tuy-hero">' +
+      '<div class="tuy-hero-top">' +
+        '<div class="tuy-hero-badge">🛡️</div>' +
+        '<div><div class="tuy-hero-title">Lonelix</div><div class="tuy-hero-sub">Prieskum trhu · inozín pranobex (isoprinosín)</div></div>' +
+      '</div>' +
+      '<div class="tuy-target"><div class="tuy-target-lbl">Oslovených lekárov</div><div class="tuy-target-set"><span class="tuy-target-num">' + oslov + '</span><span class="tuy-target-cap">záznamov</span></div></div>' +
+    '</div>' +
+    '<div class="tuy-sum-lbl-top">Potenciál teritória</div>' +
+    '<div class="tuy-summary">' +
+      '<div class="tuy-sum-col"><div class="tuy-sum-num">' + pouziva + '</div><div class="tuy-sum-cap">Používa inozín</div></div>' +
+      '<div class="tuy-sum-div"></div>' +
+      '<div class="tuy-sum-col"><div class="tuy-sum-num" style="color:#2563EB">' + pacSpolu + '</div><div class="tuy-sum-cap">Pacientov / mesiac v sezóne</div></div>' +
+      '<div class="tuy-sum-div"></div>' +
+      '<div class="tuy-sum-col"><div class="tuy-sum-num" style="color:#059669">' + ochotni + '</div><div class="tuy-sum-cap">Ochotní predpisovať Lonelix</div></div>' +
+    '</div>';
+}
+
+function lonelixFormHtml(){
+  return '' +
+  '<div class="tuy-card">' +
+    '<div class="tuy-form-title">📝 Nový záznam</div>' +
+    '<div class="tuy-form-desc">Začni písať meno lekára — ak ho už máš v databáze, vyber ho zo zoznamu a údaje sa predvyplnia. Ak nie, zadaj ho ako nového. Hviezdičkou (<span class="tuy-req">*</span>) sú povinné polia.</div>' +
+  '</div>' +
+
+  '<div class="tuy-err" id="lon-err"></div>' +
+
+  '<div class="tuy-card">' +
+    '<div class="tuy-sec-lbl">Lekár</div>' +
+    '<div class="tuy-field"><label class="tuy-lbl">Titul, meno a priezvisko lekára<span class="tuy-req">*</span></label>' +
+      '<div class="ac-wrap">' +
+        '<input class="tuy-in" id="lon-meno" type="text" autocomplete="off" placeholder="napr. MUDr. Jana Nováková" ' +
+          'onfocus="lonMenoFocus(this)" oninput="lonMenoInput(this)" onblur="lonMenoBlur(this)">' +
+        '<div class="ac-list" id="lon-doc-list" style="display:none"></div>' +
+      '</div>' +
+      '<div class="tuy-hint" id="lon-doc-hint">Zhody z tvojej databázy sa ponúknu počas písania.</div></div>' +
+    '<div class="tuy-field"><label class="tuy-lbl">Okres pracoviska lekára<span class="tuy-req">*</span></label>' +
+      '<div class="ac-wrap">' +
+        '<input class="tuy-in" id="lon-okres" type="text" autocomplete="off" placeholder="ťukni a vyber okres" ' +
+          'oninput="lonOkresInput(this)" onfocus="lonOkresShowAll(this)" onblur="lonOkresBlur(this)">' +
+        '<div class="ac-list" id="lon-ac-list" style="display:none"></div>' +
+      '</div>' +
+      '<div class="tuy-hint">Ponúka len okresy tvojho teritória.</div></div>' +
+  '</div>' +
+
+  '<div class="tuy-card">' +
+    '<div class="tuy-sec-lbl">Inozín (isoprinosín)</div>' +
+    '<div class="tuy-field"><label class="tuy-lbl">Používa isoprinosín / inozín (pranobex)?<span class="tuy-req">*</span></label>' +
+      '<div class="tuy-seg tuy-seg-2" data-g="pouziva">' +
+        '<button type="button" class="tuy-opt tuy-opt-yes" onclick="lonSeg(\'pouziva\',\'ano\',this)">Áno</button>' +
+        '<button type="button" class="tuy-opt tuy-opt-no" onclick="lonSeg(\'pouziva\',\'nie\',this)">Nie</button>' +
+      '</div>' +
+    '</div>' +
+
+    // Vetva ÁNO
+    '<div class="tuy-cond" id="lon-blk-ano">' +
+      '<div class="tuy-field"><label class="tuy-lbl">Koľko pacientov mesačne počas sezóny?<span class="tuy-req">*</span></label>' +
+        '<input class="tuy-in" id="lon-pocet" type="number" inputmode="numeric" min="1" step="1" placeholder="napr. 8">' +
+        '<div class="tuy-hint">Približný počet pacientov za mesiac v sezóne.</div></div>' +
+      '<button type="button" class="tuy-extra-toggle" id="lon-extra-toggle" onclick="lonToggleExtra(this)">＋ Doplňujúce údaje (nepovinné)</button>' +
+      '<div class="tuy-extra" id="lon-extra">' +
+        '<div class="tuy-field"><label class="tuy-lbl">Ktorý prípravok dnes používa?</label>' +
+          '<select class="tuy-in" id="lon-pripravok">' +
+            '<option value="">— nevyplnené —</option>' +
+            '<option value="Isoprinosine">Isoprinosine (originál)</option>' +
+            '<option value="Generikum (INOMED)">Generikum (INOMED)</option>' +
+            '<option value="Kombinácia">Kombinácia</option>' +
+          '</select></div>' +
+        '<div class="tuy-field"><label class="tuy-lbl">Je ochotný začať predpisovať Lonelix?</label>' +
+          '<div class="tuy-seg tuy-seg-2" data-g="ochota">' +
+            '<button type="button" class="tuy-opt tuy-opt-yes" onclick="lonSeg(\'ochota\',\'ano\',this)">Áno</button>' +
+            '<button type="button" class="tuy-opt tuy-opt-no" onclick="lonSeg(\'ochota\',\'nie\',this)">Nie</button>' +
+          '</div></div>' +
+      '</div>' +
+    '</div>' +
+
+    // Vetva NIE
+    '<div class="tuy-cond" id="lon-blk-nie">' +
+      '<div class="tuy-field"><label class="tuy-lbl">Zvážil by inozín (Lonelix) u vhodných pacientov?</label>' +
+        '<div class="tuy-seg tuy-seg-2" data-g="zvazil">' +
+          '<button type="button" class="tuy-opt tuy-opt-yes" onclick="lonSeg(\'zvazil\',\'ano\',this)">Áno</button>' +
+          '<button type="button" class="tuy-opt tuy-opt-no" onclick="lonSeg(\'zvazil\',\'nie\',this)">Nie</button>' +
+        '</div>' +
+        '<div class="tuy-hint">Nepovinné.</div></div>' +
+    '</div>' +
+  '</div>' +
+
+  '<div class="tuy-card">' +
+    '<div class="tuy-field"><label class="tuy-lbl">Poznámka</label>' +
+      '<textarea class="tuy-in" id="lon-poznamka" rows="3" placeholder="Čokoľvek, čo si treba o lekárovi zapamätať…"></textarea>' +
+      '<div class="tuy-hint">Nepovinné.</div></div>' +
+  '</div>' +
+
+  '<button type="button" class="tuy-submit" id="lon-submit" onclick="lonelixSubmit()">Odoslať záznam</button>';
+}
+
+function lonToggleExtra(btn){
+  var box = document.getElementById('lon-extra'); if (!box) return;
+  var open = box.classList.toggle('show');
+  if (btn) btn.textContent = open ? '－ Skryť doplňujúce údaje' : '＋ Doplňujúce údaje (nepovinné)';
+  try { haptic('selection'); } catch(e){}
+}
+function lonSeg(group, val, el){
+  LONELIX.answers[group] = val;
+  var wrap = el.parentNode;
+  Array.prototype.forEach.call(wrap.querySelectorAll('.tuy-opt'), function(b){ b.classList.remove('on'); });
+  el.classList.add('on');
+  wrap.classList.remove('tuy-invalid');
+  try { haptic('selection'); } catch(e){}
+  lonSync();
+}
+function lonSync(){
+  var a = LONELIX.answers;
+  function show(id, cond){ var el = document.getElementById(id); if (el) el.classList.toggle('show', !!cond); }
+  show('lon-blk-ano', a.pouziva === 'ano');
+  show('lon-blk-nie', a.pouziva === 'nie');
+}
+
+// ── Doctor picker (meno) ──
+function lonMenoFocus(el){
+  if (!el.value) el.value = 'MUDr. ';
+  setTimeout(function(){ try { el.setSelectionRange(el.value.length, el.value.length); } catch(e){} }, 0);
+  lonDocShowMatches();
+}
+function lonMenoInput(el){
+  if (typeof capAfterSpace === 'function') capAfterSpace(el);
+  el.classList.remove('tuy-invalid');
+  lonMenoDupCheck();
+  lonDocShowMatches();
+  lonExistingHint();
+}
+function lonMenoBlur(el){
+  var v = el.value.trim();
+  var words = v.split(/\s+/).filter(function(w){ return w.length > 0; });
+  if (v === '' || words.every(function(w){ return (typeof TUY_TITLES !== 'undefined' ? TUY_TITLES : []).indexOf(w.toLowerCase()) !== -1; })) el.value = '';
+  setTimeout(function(){ var l = document.getElementById('lon-doc-list'); if (l) l.style.display = 'none'; }, 250);
+  lonMenoDupCheck();
+}
+function lonDocShowMatches(){
+  var el = document.getElementById('lon-meno'); var list = document.getElementById('lon-doc-list');
+  if (!el || !list) return;
+  var v = el.value.trim().toLowerCase();
+  // odstráň tituly z hľadaného výrazu
+  (typeof TUY_TITLES !== 'undefined' ? TUY_TITLES : []).forEach(function(t){ v = v.replace(t, ''); });
+  v = v.trim();
+  var docs = LONELIX.docList || [];
+  var matches = v.length >= 2 ? docs.filter(function(d){ return String(d.meno || '').toLowerCase().indexOf(v) !== -1; }).slice(0, 8) : [];
+  if (!matches.length){ list.style.display = 'none'; return; }
+  LONELIX._matchCache = matches;
+  list.innerHTML = matches.map(function(d, i){
+    return '<div class="ac-item" onclick="lonDocPick(' + i + ')"><strong>' + tuyEsc(d.meno) + '</strong>' + (d.okres ? ' <span style="color:#94A3B8">· ' + tuyEsc(d.okres) + '</span>' : '') + '</div>';
+  }).join('');
+  list.style.display = 'block';
+}
+function lonDocPick(i){
+  var d = (LONELIX._matchCache || [])[i]; if (!d) return;
+  var menoEl = document.getElementById('lon-meno'); if (menoEl){ menoEl.value = d.meno; menoEl.classList.remove('tuy-invalid'); }
+  var okrEl = document.getElementById('lon-okres'); if (okrEl){ okrEl.value = d.okres || ''; okrEl.classList.remove('tuy-invalid'); }
+  var list = document.getElementById('lon-doc-list'); if (list) list.style.display = 'none';
+  try { haptic('selection'); } catch(e){}
+  lonMenoDupCheck();
+  lonExistingHint();
+}
+// Vizuálny náznak — existujúci vs nový lekár
+function lonExistingHint(){
+  var hint = document.getElementById('lon-doc-hint');
+  var meno = (document.getElementById('lon-meno') || {}).value || '';
+  var okres = (document.getElementById('lon-okres') || {}).value || '';
+  if (!hint) return;
+  // Vyhodnocuj až keď je zadané aspoň meno + priezvisko (nie len titul + jedno slovo)
+  if (!tuyMenoValid(meno)){
+    hint.textContent = 'Zadaj meno aj priezvisko — zhody z databázy sa ponúknu počas písania.';
+    return;
+  }
+  if (!okres.trim()){
+    hint.textContent = 'Doplň ešte okres.';
+  } else if (lonIsExisting(meno, okres)){
+    hint.innerHTML = '<span style="color:#059669;font-weight:700">✓ Existujúci lekár z databázy — Lonelix sa pridá k jeho karte.</span>';
+  } else {
+    hint.innerHTML = '<span style="color:#D97706;font-weight:700">＋ Nový lekár — GP potenciál doplníš neskôr.</span>';
+  }
+}
+function lonMenoDupCheck(){
+  // Poistka: ak lekár už má LONELIX záznam → zablokuj odoslanie (aj pri ručne napísanom mene)
+  var meno = (document.getElementById('lon-meno') || {}).value || '';
+  var okres = (document.getElementById('lon-okres') || {}).value || '';
+  var err = document.getElementById('lon-err');
+  var submit = document.getElementById('lon-submit');
+  if (!err) return;
+  var dup = lonelixDoctorHasRecord(meno, okres);
+  if (dup){
+    err.textContent = '🚫 Tento lekár už má Lonelix záznam — druhý sa pridať nedá.';
+    err.classList.add('show'); err.style.background = '#FEF2F2'; err.style.borderColor = '#FECACA'; err.style.color = '#B91C1C';
+    if (submit){ submit.disabled = true; submit.style.opacity = '.5'; }
+  } else {
+    if (err.style.color === 'rgb(185, 28, 28)'){ err.classList.remove('show'); err.style.background = ''; err.style.borderColor = ''; err.style.color = ''; }
+    if (submit){ submit.disabled = false; submit.style.opacity = ''; }
+  }
+}
+
+// ── OKRES autocomplete (rovnaké ako Tuyory, len lon- ID) ──
+function lonOkresShowAll(el){
+  var pool = tuyOkresPool();
+  var list = document.getElementById('lon-ac-list'); if (!list) return;
+  var val = el.value.trim().toLowerCase();
+  var items = val ? pool.filter(function(o){ return o.toLowerCase().indexOf(val) === 0; }) : pool;
+  if (!items.length){ list.style.display = 'none'; return; }
+  list.innerHTML = items.map(function(m){
+    var disp = val ? '<strong>' + m.slice(0, val.length) + '</strong>' + m.slice(val.length) : m;
+    return '<div class="ac-item" onclick="lonOkresPick(\'' + m.replace(/'/g, "\\'") + '\')">' + disp + '</div>';
+  }).join('');
+  list.style.display = 'block';
+}
+function lonOkresInput(el){ el.classList.remove('tuy-invalid'); lonOkresShowAll(el); lonExistingHint(); lonMenoDupCheck(); }
+function lonOkresPick(okres){
+  var el = document.getElementById('lon-okres'); if (el){ el.value = okres; el.classList.remove('tuy-invalid'); }
+  var list = document.getElementById('lon-ac-list'); if (list) list.style.display = 'none';
+  try { haptic('selection'); } catch(e){}
+  lonExistingHint(); lonMenoDupCheck();
+}
+function lonOkresBlur(el){ setTimeout(function(){ var l = document.getElementById('lon-ac-list'); if (l) l.style.display = 'none'; }, 250); }
+
+function lonErr(msg, focusEl){
+  var e = document.getElementById('lon-err');
+  if (e){ e.textContent = msg; e.classList.add('show'); e.style.background = ''; e.style.borderColor = ''; e.style.color = ''; }
+  try { haptic('error'); } catch(er){}
+  if (focusEl){ try { focusEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch(er){} if (focusEl.classList) focusEl.classList.add('tuy-invalid'); try { focusEl.focus({ preventScroll: true }); } catch(er){} }
+  else if (e){ try { e.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch(er){} }
+}
+function lonClearErr(){ var e = document.getElementById('lon-err'); if (e){ e.classList.remove('show'); e.style.background = ''; e.style.borderColor = ''; e.style.color = ''; }
+  document.querySelectorAll('#lonelix-overlay .tuy-invalid').forEach(function(el){ el.classList.remove('tuy-invalid'); }); }
+
+function lonelixSubmit(){
+  lonClearErr();
+  var a = LONELIX.answers;
+  var g = function(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  var meno = g('lon-meno'), okres = g('lon-okres');
+  if (!tuyMenoValid(meno)) return lonErr('Zadaj titul, meno a priezvisko lekára.', document.getElementById('lon-meno'));
+  if (!okres) return lonErr('Vyber okres pracoviska lekára.', document.getElementById('lon-okres'));
+  if (!tuyOkresValid(okres)) return lonErr('Okres vyber zo zoznamu (ťukni do poľa a vyber).', document.getElementById('lon-okres'));
+  if (lonelixDoctorHasRecord(meno, okres)) return lonErr('🚫 Tento lekár už má Lonelix záznam — druhý sa pridať nedá.', document.getElementById('lon-meno'));
+  if (!a.pouziva) return lonErr('Odpovedz, či používa isoprinosín / inozín.', document.querySelector('#lonelix-overlay [data-g="pouziva"]'));
+
+  var rec = {
+    ts: new Date().toISOString(), rep: tuyUser(),
+    meno: meno, okres: okres, existujuci: lonIsExisting(meno, okres) ? 'ano' : 'nie',
+    pouziva: a.pouziva, pocet: '', pripravok: '', ochota: '', zvazil: '',
+    poznamka: g('lon-poznamka')
+  };
+
+  if (a.pouziva === 'ano'){
+    var pocet = parseInt(g('lon-pocet'), 10);
+    if (!pocet || pocet < 1) return lonErr('Zadaj počet pacientov mesačne počas sezóny.', document.getElementById('lon-pocet'));
+    rec.pocet = pocet;
+    rec.pripravok = g('lon-pripravok');   // nepovinné
+    if (a.ochota) rec.ochota = a.ochota;  // nepovinné
+  } else {
+    if (a.zvazil) rec.zvazil = a.zvazil;  // nepovinné
+  }
+
+  LONELIX.records = (LONELIX.records || []).concat([rec]);
+  lonelixSaveLocal(LONELIX.records);
+  lonelixSendToSheet(rec);
+
+  LONELIX.answers = {};
+  LONELIX.flash = meno;
+  try { haptic('success'); } catch(e){}
+  lonelixRender();
+  try { document.getElementById('lonelix-overlay').scrollTo({ top: 0, behavior: 'smooth' }); } catch(e){ var o = document.getElementById('lonelix-overlay'); if (o) o.scrollTop = 0; }
+}
+
+function lonelixSendToSheet(rec){
+  try {
+    if (typeof IS_DEV !== 'undefined' && IS_DEV) return;
+    if (typeof SCRIPT_URL === 'string' && SCRIPT_URL.indexOf('VLOZ_SEM') === 0) return;
+    var data = {
+      action: 'saveLonelix',
+      reprezentant: rec.rep, meno: rec.meno, okres: rec.okres, existujuci: rec.existujuci,
+      pouziva: rec.pouziva, pocet_sezona: rec.pocet, pripravok: rec.pripravok,
+      ochota_lonelix: rec.ochota, zvazil_inozin: rec.zvazil, poznamka: rec.poznamka
+    };
+    var params = Object.keys(data).map(function(k){ return encodeURIComponent(k) + '=' + encodeURIComponent(String(data[k])); }).join('&');
+    var iframe = document.getElementById('gs_frame');
+    if (!iframe){ iframe = document.createElement('iframe'); iframe.id = 'gs_frame'; iframe.style.cssText = 'display:none;width:0;height:0;border:0;position:absolute;left:-9999px'; document.body.appendChild(iframe); }
+    iframe.src = scriptUrl(params);
+  } catch(e){}
+}
+
+// ── LONELIX v Histórii — naviazanie na kartu GP lekára + noví lekári ──
+function lonelixForDoctor(meno, okres){
+  var m = String(meno || '').trim().toLowerCase(), o = String(okres || '').trim().toLowerCase();
+  if (!m) return [];
+  return (LONELIX.records || []).filter(function(r){
+    return String(r.meno || '').trim().toLowerCase() === m && (!o || String(r.okres || '').trim().toLowerCase() === o);
+  });
+}
+function lonelixHasRecord(meno, okres){ return lonelixForDoctor(meno, okres).length > 0; }
+
+// HTML blok „🛡️ Lonelix" do detailu GP lekára (posledný záznam, ak ich je viac)
+function lonelixDetailBlockHtml(meno, okres){
+  var recs = lonelixForDoctor(meno, okres);
+  if (!recs.length) return '';
+  var r = recs[recs.length - 1];
+  function ln(k, v){ return (v || v === 0) && v !== '' ? '<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0"><span style="font-size:12px;color:#475569">' + k + '</span><span style="font-size:13px;font-weight:700;color:#0F172A;text-align:right">' + tuyEsc(v) + '</span></div>' : ''; }
+  var body = ln('Používa inozín', r.pouziva === 'ano' ? 'Áno' : 'Nie');
+  if (r.pouziva === 'ano'){
+    body += ln('Pacientov/mes. v sezóne', r.pocet);
+    body += ln('Prípravok', r.pripravok);
+    if (r.ochota) body += ln('Ochotný začať s Lonelixom', r.ochota === 'ano' ? 'Áno' : 'Nie');
+  } else if (r.zvazil){
+    body += ln('Zvážil by inozín', r.zvazil === 'ano' ? 'Áno' : 'Nie');
+  }
+  var note = r.poznamka ? '<div style="margin-top:8px;font-size:12px;color:#78350F;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:8px 10px;line-height:1.5">📝 ' + tuyEsc(r.poznamka).replace(/\n/g, '<br>') + '</div>' : '';
+  return '<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:10px 14px;margin-bottom:12px">' +
+    '<div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#1D4ED8;margin-bottom:8px">🛡️ Lonelix</div>' +
+    body + note +
+    (recs.length > 1 ? '<div style="font-size:10.5px;color:#94A3B8;margin-top:6px">' + recs.length + ' Lonelix záznamy — zobrazený posledný</div>' : '') +
+  '</div>';
+}
+
+// Lonelix lekári, ktorí ešte NEMAJÚ GP kartu → do Histórie ako „doplniť GP"
+function lonelixOnlyHistItems(){
+  if (!LONELIX.records || !LONELIX.records.length){ try { LONELIX.records = lonelixLoadLocal(); } catch(e){} }
+  var gp = Array.isArray(_histAllItems) ? _histAllItems : [];
+  var have = {};
+  gp.forEach(function(it){ if (it && it.type !== 'tuyory') have[String(it.lekar || '').trim().toLowerCase() + '|' + String(it.okres || '').trim().toLowerCase()] = 1; });
+  var seen = {}, out = [];
+  (LONELIX.records || []).forEach(function(r){
+    var key = String(r.meno || '').trim().toLowerCase() + '|' + String(r.okres || '').trim().toLowerCase();
+    if (have[key] || seen[key]) return;
+    seen[key] = 1;
+    var d = new Date(r.ts); if (isNaN(d.getTime())) d = new Date();
+    out.push({ type: 'lonelix-new', lon: r, lekar: r.meno, okres: r.okres,
+      dateStr: d.getDate() + '.' + (d.getMonth() + 1) + '.' + d.getFullYear(),
+      dateKey: d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2),
+      cas: ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) });
+  });
+  return out;
+}
+function lonelixNewCardHtml(item){
+  var idx = _histDetailItems.length; _histDetailItems.push(item);
+  var r = item.lon || {};
+  return '<div class="hist-item hist-item-lonnew" data-idx="' + idx + '" onclick="openDetail(' + idx + ')" style="cursor:pointer">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' +
+      '<div class="hist-item-name">' + mgrEscape(r.meno || '—') + '</div>' +
+      '<span class="hist-lonnew-badge">＋ Doplniť GP</span>' +
+    '</div>' +
+    '<div class="hist-item-meta">' + mgrEscape(r.okres || '—') + ' · 🛡️ Lonelix zadaný — GP potenciál ešte nezistený</div>' +
+  '</div>';
+}
+// Klik na „doplniť GP" → otvorí GP formulár predvyplnený menom a okresom
+function lonelixOpenGpForm(r){
+  try {
+    if (typeof repNavToForm === 'function') repNavToForm();
+    setTimeout(function(){
+      var lek = document.getElementById('lekar');
+      if (lek){ lek.value = r.meno || ''; try { if (typeof setIcon === 'function') setIcon('lekar', 'ok'); } catch(e){} }
+      var mesto = document.getElementById('mesto');
+      if (mesto){ mesto.value = r.okres || ''; try { if (typeof setIcon === 'function') setIcon('mesto', 'ok'); } catch(e){} }
+      try { if (typeof updateProgress === 'function') updateProgress(); } catch(e){}
+      try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch(e){ window.scrollTo(0, 0); }
+    }, 280);
+  } catch(e){}
 }
 
 </script>
@@ -32562,109 +33130,109 @@ function _histCombined(){
 <!-- ═══ TUYORY overlay — prieskum tocilizumab / Tuyory (Golem rep) ═══ -->
 <style>
   /* ── Tuyory záložka — plne v dizajne appky (Outfit display / system body, navy+blue) ── */
-  #tuyory-overlay .tuy-hero{background:linear-gradient(155deg,#0C1E35 0%,#13294B 60%,#1A3A5C 100%);border-radius:18px;padding:18px 18px 16px;box-shadow:0 10px 26px rgba(12,30,53,.28);position:relative;overflow:hidden;margin-bottom:14px}
-  #tuyory-overlay .tuy-hero::after{content:'';position:absolute;top:-40px;right:-30px;width:150px;height:150px;background:radial-gradient(circle,rgba(59,130,246,.35),transparent 70%);pointer-events:none}
-  #tuyory-overlay .tuy-hero-top{display:flex;align-items:center;gap:10px;margin-bottom:4px;position:relative}
-  #tuyory-overlay .tuy-hero-badge{width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
-  #tuyory-overlay .tuy-hero-title{font-family:var(--font-display);font-size:19px;font-weight:800;color:#fff;letter-spacing:-.01em;line-height:1.1}
-  #tuyory-overlay .tuy-hero-sub{font-size:11.5px;font-weight:600;color:#AFC6E4;margin-top:2px;letter-spacing:.02em}
+  .tuy-scope .tuy-hero{background:linear-gradient(155deg,#0C1E35 0%,#13294B 60%,#1A3A5C 100%);border-radius:18px;padding:18px 18px 16px;box-shadow:0 10px 26px rgba(12,30,53,.28);position:relative;overflow:hidden;margin-bottom:14px}
+  .tuy-scope .tuy-hero::after{content:'';position:absolute;top:-40px;right:-30px;width:150px;height:150px;background:radial-gradient(circle,rgba(59,130,246,.35),transparent 70%);pointer-events:none}
+  .tuy-scope .tuy-hero-top{display:flex;align-items:center;gap:10px;margin-bottom:4px;position:relative}
+  .tuy-scope .tuy-hero-badge{width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
+  .tuy-scope .tuy-hero-title{font-family:var(--font-display);font-size:19px;font-weight:800;color:#fff;letter-spacing:-.01em;line-height:1.1}
+  .tuy-scope .tuy-hero-sub{font-size:11.5px;font-weight:600;color:#AFC6E4;margin-top:2px;letter-spacing:.02em}
 
   /* Cieľ — počet reumatológov */
-  #tuyory-overlay .tuy-target{position:relative;margin-top:14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:13px;padding:13px 14px}
-  #tuyory-overlay .tuy-target-lbl{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#8FB0D6;margin-bottom:8px}
-  #tuyory-overlay .tuy-target-row{display:flex;align-items:center;gap:9px}
-  #tuyory-overlay .tuy-target-input{flex:1;height:46px;border-radius:11px;border:1.5px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#fff;font-family:var(--font-display);font-size:20px;font-weight:800;text-align:center;outline:none;transition:border-color .18s,background .18s}
-  #tuyory-overlay .tuy-target-input::placeholder{color:#6E88A8;font-weight:700}
-  #tuyory-overlay .tuy-target-input:focus{border-color:#3B82F6;background:rgba(59,130,246,.12)}
-  #tuyory-overlay .tuy-target-confirm{height:46px;padding:0 18px;border:none;border-radius:11px;background:linear-gradient(180deg,#3B82F6,#2563EB 60%,#1E40AF);color:#fff;font-family:var(--font-display);font-size:14px;font-weight:800;letter-spacing:.01em;cursor:pointer;-webkit-tap-highlight-color:transparent;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 5px 14px rgba(37,99,235,.32);transition:transform .12s}
-  #tuyory-overlay .tuy-target-confirm:active{transform:scale(.97)}
-  #tuyory-overlay .tuy-target-set{display:flex;align-items:baseline;gap:8px}
-  #tuyory-overlay .tuy-target-num{font-family:var(--font-display);font-size:30px;font-weight:800;color:#fff;line-height:1;font-variant-numeric:tabular-nums}
-  #tuyory-overlay .tuy-target-cap{font-size:12px;font-weight:600;color:#AFC6E4}
-  #tuyory-overlay .tuy-target-edit{margin-left:auto;background:rgba(255,255,255,.10);border:none;color:#CFE0F4;font-size:11px;font-weight:700;font-family:inherit;padding:6px 12px;border-radius:9px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .tuy-scope .tuy-target{position:relative;margin-top:14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:13px;padding:13px 14px}
+  .tuy-scope .tuy-target-lbl{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#8FB0D6;margin-bottom:8px}
+  .tuy-scope .tuy-target-row{display:flex;align-items:center;gap:9px}
+  .tuy-scope .tuy-target-input{flex:1;height:46px;border-radius:11px;border:1.5px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#fff;font-family:var(--font-display);font-size:20px;font-weight:800;text-align:center;outline:none;transition:border-color .18s,background .18s}
+  .tuy-scope .tuy-target-input::placeholder{color:#6E88A8;font-weight:700}
+  .tuy-scope .tuy-target-input:focus{border-color:#3B82F6;background:rgba(59,130,246,.12)}
+  .tuy-scope .tuy-target-confirm{height:46px;padding:0 18px;border:none;border-radius:11px;background:linear-gradient(180deg,#3B82F6,#2563EB 60%,#1E40AF);color:#fff;font-family:var(--font-display);font-size:14px;font-weight:800;letter-spacing:.01em;cursor:pointer;-webkit-tap-highlight-color:transparent;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 5px 14px rgba(37,99,235,.32);transition:transform .12s}
+  .tuy-scope .tuy-target-confirm:active{transform:scale(.97)}
+  .tuy-scope .tuy-target-set{display:flex;align-items:baseline;gap:8px}
+  .tuy-scope .tuy-target-num{font-family:var(--font-display);font-size:30px;font-weight:800;color:#fff;line-height:1;font-variant-numeric:tabular-nums}
+  .tuy-scope .tuy-target-cap{font-size:12px;font-weight:600;color:#AFC6E4}
+  .tuy-scope .tuy-target-edit{margin-left:auto;background:rgba(255,255,255,.10);border:none;color:#CFE0F4;font-size:11px;font-weight:700;font-family:inherit;padding:6px 12px;border-radius:9px;cursor:pointer;-webkit-tap-highlight-color:transparent}
 
   /* Progres oslovenia */
-  #tuyory-overlay .tuy-prog{margin-top:12px}
-  #tuyory-overlay .tuy-prog-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
-  #tuyory-overlay .tuy-prog-txt{font-size:11.5px;font-weight:700;color:#CFE0F4}
-  #tuyory-overlay .tuy-prog-pct{font-family:var(--font-display);font-size:13px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums}
-  #tuyory-overlay .tuy-prog-bar{height:9px;border-radius:6px;background:rgba(255,255,255,.12);overflow:hidden}
-  #tuyory-overlay .tuy-prog-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,#22D3EE,#3B82F6);transition:width .5s cubic-bezier(.16,1,.3,1)}
+  .tuy-scope .tuy-prog{margin-top:12px}
+  .tuy-scope .tuy-prog-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+  .tuy-scope .tuy-prog-txt{font-size:11.5px;font-weight:700;color:#CFE0F4}
+  .tuy-scope .tuy-prog-pct{font-family:var(--font-display);font-size:13px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums}
+  .tuy-scope .tuy-prog-bar{height:9px;border-radius:6px;background:rgba(255,255,255,.12);overflow:hidden}
+  .tuy-scope .tuy-prog-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,#22D3EE,#3B82F6);transition:width .5s cubic-bezier(.16,1,.3,1)}
 
   /* Štatistické karty */
-  #tuyory-overlay .tuy-sum-lbl-top{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#94A3B8;margin:2px 2px 8px}
-  #tuyory-overlay .tuy-summary{display:flex;align-items:stretch;background:#fff;border-radius:16px;padding:16px 6px;box-shadow:0 4px 14px rgba(15,23,42,.08);border:1px solid #EEF2F7;margin-bottom:16px}
-  #tuyory-overlay .tuy-sum-col{flex:1;text-align:center;padding:0 4px;display:flex;flex-direction:column;justify-content:center;gap:6px}
-  #tuyory-overlay .tuy-sum-num{font-family:var(--font-display);font-size:26px;font-weight:800;color:#0C1E35;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
-  #tuyory-overlay .tuy-sum-cap{font-size:10.5px;font-weight:600;color:#64748B;line-height:1.25}
-  #tuyory-overlay .tuy-sum-div{width:1px;background:#EEF2F7;flex-shrink:0;margin:3px 0}
-  #tuyory-overlay .tuy-stats{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:16px}
-  #tuyory-overlay .tuy-stat{background:#fff;border-radius:14px;padding:13px 14px;box-shadow:0 2px 10px rgba(15,23,42,.06);border:1px solid #EEF2F7}
-  #tuyory-overlay .tuy-stat-num{font-family:var(--font-display);font-size:24px;font-weight:800;color:#0C1E35;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
-  #tuyory-overlay .tuy-stat-num.is-warn{color:#D97706}
-  #tuyory-overlay .tuy-stat-num.is-ok{color:#059669}
-  #tuyory-overlay .tuy-stat-lbl{font-size:11px;font-weight:600;color:#64748B;margin-top:4px;line-height:1.3}
-  #tuyory-overlay .tuy-stat-wide{grid-column:1 / -1;display:flex;align-items:center;gap:12px}
-  #tuyory-overlay .tuy-stat-wide .tuy-stat-ico{font-size:20px;width:40px;height:40px;border-radius:11px;background:#EFF6FF;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .tuy-scope .tuy-sum-lbl-top{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#94A3B8;margin:2px 2px 8px}
+  .tuy-scope .tuy-summary{display:flex;align-items:stretch;background:#fff;border-radius:16px;padding:16px 6px;box-shadow:0 4px 14px rgba(15,23,42,.08);border:1px solid #EEF2F7;margin-bottom:16px}
+  .tuy-scope .tuy-sum-col{flex:1;text-align:center;padding:0 4px;display:flex;flex-direction:column;justify-content:center;gap:6px}
+  .tuy-scope .tuy-sum-num{font-family:var(--font-display);font-size:26px;font-weight:800;color:#0C1E35;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .tuy-scope .tuy-sum-cap{font-size:10.5px;font-weight:600;color:#64748B;line-height:1.25}
+  .tuy-scope .tuy-sum-div{width:1px;background:#EEF2F7;flex-shrink:0;margin:3px 0}
+  .tuy-scope .tuy-stats{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:16px}
+  .tuy-scope .tuy-stat{background:#fff;border-radius:14px;padding:13px 14px;box-shadow:0 2px 10px rgba(15,23,42,.06);border:1px solid #EEF2F7}
+  .tuy-scope .tuy-stat-num{font-family:var(--font-display);font-size:24px;font-weight:800;color:#0C1E35;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .tuy-scope .tuy-stat-num.is-warn{color:#D97706}
+  .tuy-scope .tuy-stat-num.is-ok{color:#059669}
+  .tuy-scope .tuy-stat-lbl{font-size:11px;font-weight:600;color:#64748B;margin-top:4px;line-height:1.3}
+  .tuy-scope .tuy-stat-wide{grid-column:1 / -1;display:flex;align-items:center;gap:12px}
+  .tuy-scope .tuy-stat-wide .tuy-stat-ico{font-size:20px;width:40px;height:40px;border-radius:11px;background:#EFF6FF;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 
   /* Sekcia / formulár */
-  #tuyory-overlay .tuy-card{background:#fff;border-radius:16px;padding:16px 15px;box-shadow:0 2px 10px rgba(15,23,42,.06);border:1px solid #EEF2F7;margin-bottom:13px}
-  #tuyory-overlay .tuy-form-title{display:flex;align-items:center;gap:8px;font-family:var(--font-display);font-size:16px;font-weight:800;color:#0F172A;letter-spacing:-.01em;margin-bottom:3px}
-  #tuyory-overlay .tuy-form-desc{font-size:12px;font-weight:500;color:#64748B;line-height:1.45;margin-bottom:2px}
-  #tuyory-overlay .tuy-sec-lbl{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#94A3B8;margin:0 0 9px}
-  #tuyory-overlay .tuy-field{margin-bottom:13px}
-  #tuyory-overlay .tuy-field:last-child{margin-bottom:0}
-  #tuyory-overlay .tuy-lbl{display:block;font-size:12.5px;font-weight:700;color:#334155;margin-bottom:6px;line-height:1.35}
-  #tuyory-overlay .tuy-lbl .tuy-req{color:#DC2626;margin-left:2px}
-  #tuyory-overlay .tuy-hint{font-size:11px;font-weight:500;color:#94A3B8;margin-top:5px;line-height:1.35}
-  #tuyory-overlay input.tuy-in,#tuyory-overlay select.tuy-in{width:100%;height:46px;padding:0 13px;border-radius:11px;border:1.5px solid var(--color-border);background:#fff;font-size:16px;font-family:inherit;color:var(--color-text);outline:none;transition:border-color .18s,box-shadow .18s;box-shadow:inset 0 1px 3px rgba(15,23,42,.04)}
-  #tuyory-overlay input.tuy-in:focus,#tuyory-overlay select.tuy-in:focus{border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
-  #tuyory-overlay input.tuy-in.tuy-invalid,#tuyory-overlay select.tuy-in.tuy-invalid{border-color:#FCA5A5;box-shadow:0 0 0 3px rgba(220,38,38,.10)}
-  #tuyory-overlay textarea.tuy-in{width:100%;min-height:82px;padding:11px 13px;border-radius:11px;border:1.5px solid var(--color-border);background:#fff;font-size:15px;font-family:inherit;color:var(--color-text);outline:none;line-height:1.45;resize:vertical;transition:border-color .18s,box-shadow .18s;box-shadow:inset 0 1px 3px rgba(15,23,42,.04)}
-  #tuyory-overlay textarea.tuy-in:focus{border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  .tuy-scope .tuy-card{background:#fff;border-radius:16px;padding:16px 15px;box-shadow:0 2px 10px rgba(15,23,42,.06);border:1px solid #EEF2F7;margin-bottom:13px}
+  .tuy-scope .tuy-form-title{display:flex;align-items:center;gap:8px;font-family:var(--font-display);font-size:16px;font-weight:800;color:#0F172A;letter-spacing:-.01em;margin-bottom:3px}
+  .tuy-scope .tuy-form-desc{font-size:12px;font-weight:500;color:#64748B;line-height:1.45;margin-bottom:2px}
+  .tuy-scope .tuy-sec-lbl{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#94A3B8;margin:0 0 9px}
+  .tuy-scope .tuy-field{margin-bottom:13px}
+  .tuy-scope .tuy-field:last-child{margin-bottom:0}
+  .tuy-scope .tuy-lbl{display:block;font-size:12.5px;font-weight:700;color:#334155;margin-bottom:6px;line-height:1.35}
+  .tuy-scope .tuy-lbl .tuy-req{color:#DC2626;margin-left:2px}
+  .tuy-scope .tuy-hint{font-size:11px;font-weight:500;color:#94A3B8;margin-top:5px;line-height:1.35}
+  .tuy-scope input.tuy-in,.tuy-scope select.tuy-in{width:100%;height:46px;padding:0 13px;border-radius:11px;border:1.5px solid var(--color-border);background:#fff;font-size:16px;font-family:inherit;color:var(--color-text);outline:none;transition:border-color .18s,box-shadow .18s;box-shadow:inset 0 1px 3px rgba(15,23,42,.04)}
+  .tuy-scope input.tuy-in:focus,.tuy-scope select.tuy-in:focus{border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  .tuy-scope input.tuy-in.tuy-invalid,.tuy-scope select.tuy-in.tuy-invalid{border-color:#FCA5A5;box-shadow:0 0 0 3px rgba(220,38,38,.10)}
+  .tuy-scope textarea.tuy-in{width:100%;min-height:82px;padding:11px 13px;border-radius:11px;border:1.5px solid var(--color-border);background:#fff;font-size:15px;font-family:inherit;color:var(--color-text);outline:none;line-height:1.45;resize:vertical;transition:border-color .18s,box-shadow .18s;box-shadow:inset 0 1px 3px rgba(15,23,42,.04)}
+  .tuy-scope textarea.tuy-in:focus{border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
 
   /* Segmentované prepínače (ÁNO/NIE, IV/SC/oboje, značky) */
-  #tuyory-overlay .tuy-seg{display:flex;gap:8px;flex-wrap:wrap}
-  #tuyory-overlay .tuy-seg.tuy-seg-2>.tuy-opt{flex:1}
-  #tuyory-overlay .tuy-opt{flex:0 1 auto;min-height:44px;padding:10px 16px;border-radius:11px;border:1.5px solid var(--color-border);background:#fff;color:#475569;font-size:13.5px;font-weight:700;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .15s;display:inline-flex;align-items:center;justify-content:center;gap:6px}
-  #tuyory-overlay .tuy-opt:active{transform:scale(.97)}
-  #tuyory-overlay .tuy-opt.on{border-color:#2563EB;background:#EFF6FF;color:#1D4ED8;box-shadow:0 0 0 2px rgba(37,99,235,.10)}
-  #tuyory-overlay .tuy-opt.on.tuy-opt-yes{border-color:#059669;background:#ECFDF5;color:#047857;box-shadow:0 0 0 2px rgba(5,150,105,.12)}
-  #tuyory-overlay .tuy-opt.on.tuy-opt-no{border-color:#DC2626;background:#FEF2F2;color:#B91C1C;box-shadow:0 0 0 2px rgba(220,38,38,.10)}
-  #tuyory-overlay .tuy-seg.tuy-invalid>.tuy-opt{border-color:#FCA5A5}
+  .tuy-scope .tuy-seg{display:flex;gap:8px;flex-wrap:wrap}
+  .tuy-scope .tuy-seg.tuy-seg-2>.tuy-opt{flex:1}
+  .tuy-scope .tuy-opt{flex:0 1 auto;min-height:44px;padding:10px 16px;border-radius:11px;border:1.5px solid var(--color-border);background:#fff;color:#475569;font-size:13.5px;font-weight:700;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .15s;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+  .tuy-scope .tuy-opt:active{transform:scale(.97)}
+  .tuy-scope .tuy-opt.on{border-color:#2563EB;background:#EFF6FF;color:#1D4ED8;box-shadow:0 0 0 2px rgba(37,99,235,.10)}
+  .tuy-scope .tuy-opt.on.tuy-opt-yes{border-color:#059669;background:#ECFDF5;color:#047857;box-shadow:0 0 0 2px rgba(5,150,105,.12)}
+  .tuy-scope .tuy-opt.on.tuy-opt-no{border-color:#DC2626;background:#FEF2F2;color:#B91C1C;box-shadow:0 0 0 2px rgba(220,38,38,.10)}
+  .tuy-scope .tuy-seg.tuy-invalid>.tuy-opt{border-color:#FCA5A5}
 
   /* Podmienené bloky */
-  #tuyory-overlay .tuy-cond{display:none;margin-top:12px;padding:13px 13px;border-radius:12px;background:#F8FAFC;border:1px solid #EEF2F7;border-left:3px solid #3B82F6}
-  #tuyory-overlay .tuy-cond.show{display:block;animation:tuyReveal .22s cubic-bezier(.16,1,.3,1) both}
-  #tuyory-overlay .tuy-cond.tuy-cond-warn{border-left-color:#F59E0B;background:#FFFBEB;border-color:#FDE68A}
+  .tuy-scope .tuy-cond{display:none;margin-top:12px;padding:13px 13px;border-radius:12px;background:#F8FAFC;border:1px solid #EEF2F7;border-left:3px solid #3B82F6}
+  .tuy-scope .tuy-cond.show{display:block;animation:tuyReveal .22s cubic-bezier(.16,1,.3,1) both}
+  .tuy-scope .tuy-cond.tuy-cond-warn{border-left-color:#F59E0B;background:#FFFBEB;border-color:#FDE68A}
   @keyframes tuyReveal{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 
   /* Chyba + submit */
-  #tuyory-overlay .tuy-err{display:none;background:#FEF2F2;border:1px solid #FECACA;color:#B91C1C;font-size:12.5px;font-weight:600;border-radius:11px;padding:11px 13px;margin-bottom:12px;line-height:1.4}
-  #tuyory-overlay .tuy-err.show{display:block}
-  #tuyory-overlay .tuy-submit{width:100%;background:linear-gradient(180deg,#3B82F6 0%,#2563EB 55%,#1E40AF 100%);color:#fff;border:none;border-radius:14px;padding:15px;font-size:15.5px;font-weight:800;font-family:var(--font-display);letter-spacing:.01em;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 8px 20px rgba(37,99,235,.30);transition:transform .12s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-  #tuyory-overlay .tuy-submit:active{transform:scale(.98)}
-  #tuyory-overlay .tuy-submit:disabled{opacity:.6;cursor:default}
+  .tuy-scope .tuy-err{display:none;background:#FEF2F2;border:1px solid #FECACA;color:#B91C1C;font-size:12.5px;font-weight:600;border-radius:11px;padding:11px 13px;margin-bottom:12px;line-height:1.4}
+  .tuy-scope .tuy-err.show{display:block}
+  .tuy-scope .tuy-submit{width:100%;background:linear-gradient(180deg,#3B82F6 0%,#2563EB 55%,#1E40AF 100%);color:#fff;border:none;border-radius:14px;padding:15px;font-size:15.5px;font-weight:800;font-family:var(--font-display);letter-spacing:.01em;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 8px 20px rgba(37,99,235,.30);transition:transform .12s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+  .tuy-scope .tuy-submit:active{transform:scale(.98)}
+  .tuy-scope .tuy-submit:disabled{opacity:.6;cursor:default}
 
   /* Úspech po odoslaní */
-  #tuyory-overlay .tuy-success{background:#fff;border-radius:16px;padding:26px 20px;text-align:center;box-shadow:0 2px 10px rgba(15,23,42,.06);border:1px solid #EEF2F7;margin-bottom:13px}
-  #tuyory-overlay .tuy-success-ico{width:60px;height:60px;border-radius:18px;margin:0 auto 12px;background:linear-gradient(180deg,#ECFDF5,#D1FAE5);display:flex;align-items:center;justify-content:center;font-size:30px}
-  #tuyory-overlay .tuy-success-title{font-family:var(--font-display);font-size:18px;font-weight:800;color:#0F172A;margin-bottom:5px}
-  #tuyory-overlay .tuy-success-sub{font-size:13px;font-weight:500;color:#64748B;line-height:1.45}
+  .tuy-scope .tuy-success{background:#fff;border-radius:16px;padding:26px 20px;text-align:center;box-shadow:0 2px 10px rgba(15,23,42,.06);border:1px solid #EEF2F7;margin-bottom:13px}
+  .tuy-scope .tuy-success-ico{width:60px;height:60px;border-radius:18px;margin:0 auto 12px;background:linear-gradient(180deg,#ECFDF5,#D1FAE5);display:flex;align-items:center;justify-content:center;font-size:30px}
+  .tuy-scope .tuy-success-title{font-family:var(--font-display);font-size:18px;font-weight:800;color:#0F172A;margin-bottom:5px}
+  .tuy-scope .tuy-success-sub{font-size:13px;font-weight:500;color:#64748B;line-height:1.45}
 
   /* Okres autocomplete — v štýle GP (reuse .ac-list/.ac-item) */
-  #tuyory-overlay .ac-wrap{position:relative}
-  #tuyory-overlay .ac-list{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;background:#fff;border:1px solid #E2E8F0;border-radius:12px;box-shadow:0 12px 28px rgba(15,23,42,.14);max-height:230px;overflow-y:auto;-webkit-overflow-scrolling:touch}
-  #tuyory-overlay .ac-item{padding:11px 14px;font-size:14px;color:#1E293B;cursor:pointer;border-bottom:1px solid #F1F5F9;-webkit-tap-highlight-color:transparent}
-  #tuyory-overlay .ac-item:last-child{border-bottom:none}
-  #tuyory-overlay .ac-item:hover,#tuyory-overlay .ac-item:active{background:#EFF6FF}
-  #tuyory-overlay .ac-item strong{color:#2563EB;font-weight:800}
+  .tuy-scope .ac-wrap{position:relative}
+  .tuy-scope .ac-list{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;background:#fff;border:1px solid #E2E8F0;border-radius:12px;box-shadow:0 12px 28px rgba(15,23,42,.14);max-height:230px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .tuy-scope .ac-item{padding:11px 14px;font-size:14px;color:#1E293B;cursor:pointer;border-bottom:1px solid #F1F5F9;-webkit-tap-highlight-color:transparent}
+  .tuy-scope .ac-item:last-child{border-bottom:none}
+  .tuy-scope .ac-item:hover,.tuy-scope .ac-item:active{background:#EFF6FF}
+  .tuy-scope .ac-item strong{color:#2563EB;font-weight:800}
 
   /* Doplňujúce (nepovinné) — collapsible */
-  #tuyory-overlay .tuy-extra-toggle{width:100%;margin-top:12px;background:#F1F5F9;border:1px dashed #CBD5E1;border-radius:11px;color:#475569;font-size:12.5px;font-weight:700;font-family:inherit;padding:11px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .15s}
-  #tuyory-overlay .tuy-extra-toggle:active{background:#E2E8F0}
-  #tuyory-overlay .tuy-extra{display:none;margin-top:10px;padding-top:12px;border-top:1px dashed #E2E8F0}
-  #tuyory-overlay .tuy-extra.show{display:block;animation:tuyReveal .22s cubic-bezier(.16,1,.3,1) both}
+  .tuy-scope .tuy-extra-toggle{width:100%;margin-top:12px;background:#F1F5F9;border:1px dashed #CBD5E1;border-radius:11px;color:#475569;font-size:12.5px;font-weight:700;font-family:inherit;padding:11px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .15s}
+  .tuy-scope .tuy-extra-toggle:active{background:#E2E8F0}
+  .tuy-scope .tuy-extra{display:none;margin-top:10px;padding-top:12px;border-top:1px dashed #E2E8F0}
+  .tuy-scope .tuy-extra.show{display:block;animation:tuyReveal .22s cubic-bezier(.16,1,.3,1) both}
 
   /* História — sub-taby (mini filter Všetko / Všeobecní / Tuyory) */
   .hist-subtabs{display:flex;gap:6px;background:#fff;border-radius:14px;padding:5px;margin-bottom:10px;box-shadow:0 2px 8px rgba(15,23,42,.06)}
@@ -32698,6 +33266,10 @@ function _histCombined(){
   .hist-item-tuy{border-left:3px solid #2563EB}
   .hist-tuy-badge{flex-shrink:0;background:linear-gradient(180deg,#EFF6FF,#DBEAFE);color:#1D4ED8;border:1px solid #BFDBFE;border-radius:20px;font-size:10px;font-weight:800;padding:3px 9px;letter-spacing:.01em;white-space:nowrap}
   .hist-tuy-line{margin-top:7px;font-size:12px;font-weight:700;color:#334155;background:#F8FAFC;border-radius:8px;padding:6px 9px}
+  /* Lonelix v Histórii — odznak na GP karte + karta nového lekára */
+  .hist-lon-badge{font-size:12px;margin-left:2px}
+  .hist-item-lonnew{border-left:3px solid #F59E0B}
+  .hist-lonnew-badge{flex-shrink:0;background:linear-gradient(180deg,#FFFBEB,#FEF3C7);color:#B45309;border:1px solid #FDE68A;border-radius:20px;font-size:10px;font-weight:800;padding:3px 9px;white-space:nowrap}
 
   /* Tuyory detail (z Histórie) — modal */
   #tuy-detail-overlay{display:none;position:fixed;inset:0;z-index:6200;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);align-items:center;justify-content:center;padding:20px}
@@ -32716,9 +33288,16 @@ function _histCombined(){
   #tuy-detail-overlay .tuy-dt-note-k{font-size:12px;font-weight:600;color:#94A3B8;margin-bottom:6px}
   #tuy-detail-overlay .tuy-dt-note-v{font-size:13px;font-weight:500;color:#78350F;line-height:1.55;background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:10px 12px}
 </style>
-<div class="lk-overlay" id="tuyory-overlay">
+<div class="lk-overlay tuy-scope" id="tuyory-overlay">
   <div class="lk-inner">
     <div id="tuyory-body"></div>
+  </div>
+</div>
+
+<!-- ═══ LONELIX overlay — prieskum inozín pranobex (GP lekári) ═══ -->
+<div class="lk-overlay tuy-scope" id="lonelix-overlay">
+  <div class="lk-inner">
+    <div id="lonelix-body"></div>
   </div>
 </div>
 
