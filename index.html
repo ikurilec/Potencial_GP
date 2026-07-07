@@ -485,14 +485,17 @@
   .mgr-card:active{transform:scale(.985);box-shadow:0 1px 4px rgba(0,0,0,.04)}
   .mgr-avatar{width:42px;height:42px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;font-family:var(--font-display);letter-spacing:.02em}
   .mgr-body{flex:1;min-width:0}
-  .mgr-name{font-size:14.5px;font-weight:700;color:#0F172A;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.005em}
+  .mgr-name{font-size:14.5px;font-weight:700;color:#0F172A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.005em;min-width:0}
+  .mgr-namerow{display:flex;align-items:baseline;gap:9px;margin-bottom:6px}
+  .mgr-namerow .mgr-name{flex:1}
   .mgr-meta{font-size:11.5px;color:#64748B;display:flex;gap:5px;align-items:center;margin-bottom:6px}
   .mgr-dot{width:7px;height:7px;border-radius:50%;background:#10B981;flex-shrink:0}
   .mgr-dot.warn{background:#F59E0B}
   .mgr-dot.stale{background:#EF4444}
   .mgr-dot.none{background:#94A3B8}
   .mgr-dot.err{background:#DC2626}
-  .mgr-counts{font-size:11px;color:#8A97A6;margin-bottom:7px}
+  .mgr-counts{font-size:11px;color:#8A97A6;white-space:nowrap;flex-shrink:0}
+  .mgr-counts strong{color:#334155}
   .mgr-counts strong{color:#1A2A3A;font-weight:700}
   .mgr-segs{display:flex;gap:4px;flex-wrap:wrap}
   .mgr-chip{font-size:10px;padding:3px 8px;border-radius:20px;font-weight:700;white-space:nowrap;letter-spacing:.04em;text-transform:uppercase;display:inline-flex;align-items:center;gap:4px;box-shadow:0 1px 2px rgba(15,23,42,.05)}
@@ -526,9 +529,12 @@
   .mgr-dstat-lbl{font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-top:3px;font-weight:600}
   .mgr-segsum{background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.04);display:flex;gap:4px;flex-wrap:wrap;align-items:center}
   .mgr-segsum-lbl{font-size:10.5px;color:#64748B;font-weight:600;margin-right:4px;text-transform:uppercase;letter-spacing:.05em}
-  .mgr-vsearch{background:#fff;border-radius:10px;margin-bottom:8px;box-shadow:0 2px 8px rgba(0,0,0,.05);display:flex;align-items:center;padding-left:12px}
-  .mgr-vsearch-ico{color:#94A3B8;font-size:15px}
-  .mgr-vsearch input{flex:1;border:none;padding:11px 14px 11px 8px;border-radius:10px;font-size:14px;font-family:inherit;outline:none;color:#1A2A3A;background:transparent}
+  /* Manažérske vyhľadávanie — rovnaké ako u repov: biela sticky karta + ohraničené pole.
+     top = výška sticky navu .mgr-subtabs (aby sa vyhľadávanie prilepilo POD nav, nie zaň). */
+  .mgr-vsearch{position:sticky;top:var(--mgr-sub-h,58px);z-index:20;padding:10px;border-radius:14px;background:#fff;box-shadow:0 2px 8px rgba(15,23,42,.06);margin-bottom:10px;display:block}
+  .mgr-vsearch-ico{position:absolute;left:26px;top:50%;transform:translateY(-50%);font-size:14px;color:#94A3B8;pointer-events:none;z-index:1}
+  .mgr-vsearch input{width:100%;height:40px;padding:0 12px 0 36px;border-radius:10px;border:1.5px solid #E2E8F0;background:#F8FAFC;font-size:14px;font-family:inherit;color:#1A2A3A;outline:none;box-sizing:border-box;transition:border-color var(--t-base),background var(--t-base)}
+  .mgr-vsearch input:focus{border-color:var(--color-primary);background:#fff}
   .mgr-vlist{display:flex;flex-direction:column;gap:8px}
   .mgr-vitem{background:#fff;border-radius:10px;padding:11px 12px 11px 0;box-shadow:0 2px 8px rgba(15,23,42,.05),0 0 0 1px rgba(15,23,42,.04);display:flex;gap:10px;align-items:stretch;overflow:hidden;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform var(--t-fast),box-shadow var(--t-base)}
   .mgr-vitem:hover{box-shadow:0 6px 16px rgba(15,23,42,.08),0 0 0 1px rgba(37,99,235,.10);transform:translateY(-1px)}
@@ -2581,9 +2587,10 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   <div class="mgr-list-wrap" id="mgr-list-wrap">
     <div class="hist-subtabs" id="mgr-hist-subtabs">
       <button type="button" class="hist-subtab active" data-hf="all" onclick="mgrHistSetFilter('all',this)">Všetko</button>
-      <button type="button" class="hist-subtab" data-hf="gp" onclick="mgrHistSetFilter('gp',this)">Všeobecní</button>
+      <button type="button" class="hist-subtab" data-hf="gp" onclick="mgrHistSetFilter('gp',this)">🩺 GP's</button>
       <button type="button" class="hist-subtab" data-hf="tuyory" onclick="mgrHistSetFilter('tuyory',this)">🧬 Tuyory</button>
     </div>
+    <div id="mgr-gp-banner" style="display:none"></div>
     <div id="mgr-tuy-banner" style="display:none"></div>
     <div class="mgr-stats" style="display:none">
       <div class="mgr-stat"><div class="mgr-stat-num" id="mgr-stat-reps">—</div><div class="mgr-stat-lbl">Tím</div></div>
@@ -2610,12 +2617,6 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
         <div class="mgr-dname" id="mgr-dname"></div>
         <div class="mgr-dsub" id="mgr-dsub"></div>
       </div>
-    </div>
-    <div class="mgr-dstats">
-      <div class="mgr-dstat"><div class="mgr-dstat-num" id="mgr-ds-total">0</div><div class="mgr-dstat-lbl">Celkom</div></div>
-      <div class="mgr-dstat"><div class="mgr-dstat-num" id="mgr-ds-month">0</div><div class="mgr-dstat-lbl">Mesiac</div></div>
-      <div class="mgr-dstat"><div class="mgr-dstat-num" id="mgr-ds-week">0</div><div class="mgr-dstat-lbl">Týždeň</div></div>
-      <div class="mgr-dstat"><div class="mgr-dstat-num" id="mgr-ds-today">0</div><div class="mgr-dstat-lbl">Dnes</div></div>
     </div>
     <div class="mgr-segsum" id="mgr-segsum"></div>
     <div class="mgr-vsearch">
@@ -3047,7 +3048,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
       </div>
       <div class="hist-subtabs" id="hist-subtabs">
         <button type="button" class="hist-subtab active" data-hf="all" onclick="histSetFilter('all',this)">Všetko<span class="hist-subtab-count" id="hist-cnt-all"></span></button>
-        <button type="button" class="hist-subtab" data-hf="gp" onclick="histSetFilter('gp',this)">Všeobecní<span class="hist-subtab-count" id="hist-cnt-gp"></span></button>
+        <button type="button" class="hist-subtab" data-hf="gp" onclick="histSetFilter('gp',this)">🩺 GP's<span class="hist-subtab-count" id="hist-cnt-gp"></span></button>
         <button type="button" class="hist-subtab" data-hf="tuyory" onclick="histSetFilter('tuyory',this)">🧬 Tuyory<span class="hist-subtab-count" id="hist-cnt-tuyory"></span></button>
       </div>
       <div class="hist-body-card">
@@ -3143,7 +3144,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
         <div id="detail-note-wrap"></div>
         <hr style="border:none;border-top:1px solid #E2E8F0;margin:4px 0 14px">
         <div id="detail-edit-wrap" style="display:none;margin-bottom:10px">
-          <button type="button" class="edit-open-btn" onclick="openEditRecord()">✏️ Upraviť záznam</button>
+          <button type="button" class="edit-open-btn" onclick="openEditRecord()">✏️ Aktualizovať záznam</button>
         </div>
         <div class="confirm-btns" style="grid-template-columns:1fr">
           <button type="button" class="confirm-yes" onclick="closeDetail()">Zavrieť</button>
@@ -3158,7 +3159,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   <div class="edit-inner">
     <div class="edit-hdr">
       <button class="edit-close-btn" onclick="closeEditOverlay()">×</button>
-      <div class="edit-hdr-title">✏️ Upraviť záznam</div>
+      <div class="edit-hdr-title">✏️ Aktualizovať záznam</div>
       <div class="edit-hdr-sub" id="edit-hdr-sub"></div>
     </div>
     <div class="edit-form">
@@ -3381,7 +3382,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.47.0';
+var APP_VERSION = '2.48.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6564,6 +6565,14 @@ function histRender(){
     });
   }
   renderHistItems(scoped);
+  // Súhrn vývoja potenciálu — hlavička nad zoznamom "Všeobecní"
+  if (_histFilter === 'gp') {
+    var body = document.getElementById('hist-body');
+    if (body) {
+      var gpItems = all.filter(function(it){ return !(it && it.type === 'tuyory'); });
+      body.insertAdjacentHTML('afterbegin', gpSummaryHtml(gpItems));
+    }
+  }
 }
 function filterHistory(){ histRender(); }
 
@@ -6740,6 +6749,8 @@ function openHistory() {
     b.classList.toggle('active', b.getAttribute('data-hf') === 'all');
   });
   loadHistoryItems(username).then(function() { histRender(); });
+  // Vrstva zmien — dotiahni zdieľané override + súhrn línie (pre graf porovnania)
+  try { gpFetchOverrides(); gpFetchLineStats(); } catch(e){}
   // Tuyory záznamy dotiahni zo Sheetu a ak je História otvorená, prekresli
   try {
     tuyoryFetchServer(function(){
@@ -7798,10 +7809,22 @@ function openDetail(idx) {
       { name:'Suprax',         color:'#C084FC', n: item.suprax_n,    unit:'bal./mes.' },
       { name:'Cavinton Forte', color:'#FCD34D', n: item.cavinton_n,  unit:'pac./mes.' }
     ];
+    var ov = item._ov;
+    var fieldByName = { 'Vidonorm':'vidonorm_n', 'Aflamil':'aflamil_n', 'Suprax':'suprax_n', 'Cavinton Forte':'cavinton_n' };
     var hasAny = prods.some(function(p){ return p.n != null && p.n !== ''; });
-    if(hasAny) {
+    if(hasAny || (ov && ov.changed)) {
       var rows = prods.map(function(p){
         var val = (p.n != null && p.n !== '') ? p.n : '—';
+        var chip = '';
+        if(ov){
+          var f = fieldByName[p.name];
+          var b = gpNum(ov.base[f]), c = gpNum(ov.cur[f]);
+          if(b !== c){
+            var up = c > b;
+            chip = '<span style="display:inline-block;font-size:11px;font-weight:700;margin-left:6px;padding:1px 7px;border-radius:20px;' +
+              (up ? 'background:#DCFCE7;color:#166534' : 'background:#FEE2E2;color:#991B1B') + '">' + b + ' → ' + c + '</span>';
+          }
+        }
         return '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #F1F5F9">' +
           '<div style="display:flex;align-items:center;gap:8px">' +
             '<span style="width:8px;height:8px;border-radius:50%;background:' + p.color + ';display:inline-block;flex-shrink:0"></span>' +
@@ -7810,6 +7833,7 @@ function openDetail(idx) {
           '<div style="text-align:right">' +
             '<span style="font-size:15px;font-weight:700;color:#1E293B">' + val + '</span>' +
             '<span style="font-size:10px;color:#94A3B8;margin-left:4px">' + p.unit + '</span>' +
+            chip +
           '</div>' +
         '</div>';
       }).join('');
@@ -7817,7 +7841,8 @@ function openDetail(idx) {
         '<div style="background:#F8FAFC;border-radius:10px;padding:10px 14px;margin-bottom:12px">' +
           '<div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#94A3B8;margin-bottom:8px">Zadané hodnoty</div>' +
           rows +
-        '</div>';
+        '</div>' +
+        gpDoctorTrajectoryHtml(item);
       repProdPanel.style.display = 'block';
     } else {
       repProdPanel.style.display = 'none';
@@ -7936,12 +7961,13 @@ function openDetail(idx) {
     saveNote(item, item.poznamka);
   }
   renderNoteSection(item);
-  // Zobraz edit tlačidlo len pre admin rolu — a len ak má záznam číslo riadku (z GAS)
+  // Zobraz tlačidlo "Aktualizovať záznam" — pre repa, manažéra aj admina
+  // (každý prihlásený so záznamom, ktorý má číslo riadku). Aktualizácia sa
+  // NEZAPÍŠE do Sheetu — ide do vrstvy zmien (override), Sheet ostáva baseline.
   var editWrap = document.getElementById('detail-edit-wrap');
   if(editWrap) {
     var editSession = getSession();
-    var isAdmin = editSession && editSession.role === 'admin';
-    editWrap.style.display = (isAdmin && item.row) ? 'block' : 'none';
+    editWrap.style.display = (editSession && item.row) ? 'block' : 'none';
   }
   document.getElementById('detail-overlay').className = 'detail-overlay show';
   var scrollBox = document.getElementById('confirm-box-scroll');
@@ -8048,82 +8074,33 @@ function saveEditRecord() {
   if(!kap) { showMsg('⚠ Zadaj kapitáciu.', true); return; }
   if(kap > 9999) { showMsg('⚠ Kapitácia je nereálna.', true); return; }
 
-  // Prepočet odvodených hodnôt (rovnaká logika ako pri ukladaní návštevy)
-  var kategoria = kap <= 1500 ? 'C' : kap <= 1999 ? 'B' : 'A';
-  var aflEur    = Math.round(aflN * 4.10  * 12       * 100) / 100;
-  var supEur    = Math.round(supN * 12.82 * 0.75 * 12 * 100) / 100;
-  var vidEur    = Math.round(vidN * 285   * 0.7       * 100) / 100;
-  var cavEur    = Math.round(cavN * 421   * 0.7       * 100) / 100;
-  var total     = Math.round((aflEur + supEur + vidEur + cavEur) * 100) / 100;
-  var scenar    = (kap < 1501 && total < 3700) ? 'vyradit'
-                : (kap < 1501 && total >= 3700) ? 'frekvencia'
-                : (kap >= 1501 && kap <= 1999 && total < 3700) ? 'zvysit'
-                : (kap >= 1501 && kap <= 1999 && total >= 3700) ? 'udrzat'
-                : (kap >= 2000 && total < 3700) ? 'zvysit3'
-                : (kap >= 2000 && total >= 3700) ? 'top' : 'ok';
-  var odporucanie = {
-    'vyradit':   'Vyradit lekara z targetu',
-    'frekvencia':'Maximalnu frekvenciu 1 x za Q',
-    'zvysit':    'Zvysit preskripciu, ponechat v targete s maximalnou frekvenciou 2 x Q',
-    'udrzat':    'Udrzať preskripciu s maximalnou frekvenciou 2 x Q',
-    'zvysit3':   'Zvysit preskripciu, ponechat v targete s minimalnou frekvenciou 3 x Q',
-    'top':       'Udrzať preskripciu, s maximalnou frekvenciou 2 x Q',
-    'ok':        ''
-  }[scenar] || '';
+  // Aktualizácia sa NEZAPÍŠE do Sheetu — ukladáme ju do vrstvy zmien (override).
+  // Pôvodný riadok v Sheete ostáva ako baseline; každá aktualizácia = krok v čase.
+  var sess = getSession();
+  var byName = (sess && (sess.meno || sess.username)) || 'neznámy';
 
-  // DEV mód — simuluj uloženie bez Sheets
-  if(IS_DEV) {
-    item.kapitacia = kap; item.kategoria = kategoria;
-    item.aflamil_n = aflN; item.aflamil_eur = aflEur;
-    item.suprax_n  = supN; item.suprax_eur  = supEur;
-    item.vidonorm_n  = vidN; item.vidonorm_eur  = vidEur;
-    item.cavinton_n  = cavN; item.cavinton_eur  = cavEur;
-    item.rocny_potential = total; item.scenar = scenar; item.odporucanie = odporucanie;
-    item.poznamka = pozn;
-    showMsg('✓ Záznam uložený (DEV)', false);
-    setTimeout(function() { closeEditOverlay(); openDetail(_currentDetailIdx); }, 800);
-    return;
+  gpOverrideSave(item, {
+    kapitacia: kap, aflamil_n: aflN, suprax_n: supN, vidonorm_n: vidN, cavinton_n: cavN
+  }, byName);
+
+  // Poznámka sa ukladá samostatne (Sheet cez saveNote — poznámka nie je "prepis" dát)
+  if(item.row && typeof scriptUrl === 'function' && !(typeof IS_DEV !== 'undefined' && IS_DEV)) {
+    try { fetch(scriptUrl('action=saveNote&row=' + encodeURIComponent(item.row) + '&poznamka=' + encodeURIComponent(pozn)), { cache:'no-store' }).catch(function(){}); } catch(e){}
   }
+  item.poznamka = pozn;
 
-  // Odošli na Sheets
-  if(btn) { btn.disabled = true; btn.textContent = 'Ukladám…'; }
-  var url = scriptUrl(
-    'action=updateRecord' +
-    '&row=' + item.row +
-    '&kapitacia=' + kap +
-    '&kategoria=' + encodeURIComponent(kategoria) +
-    '&aflamil_n=' + aflN + '&aflamil_eur=' + aflEur +
-    '&suprax_n='  + supN + '&suprax_eur='  + supEur +
-    '&vidonorm_n=' + vidN + '&vidonorm_eur=' + vidEur +
-    '&cavinton_n=' + cavN + '&cavinton_eur=' + cavEur +
-    '&rocny_potential=' + total +
-    '&scenar=' + encodeURIComponent(scenar) +
-    '&odporucanie=' + encodeURIComponent(odporucanie) +
-    '&poznamka=' + encodeURIComponent(pozn)
-  );
+  // Premietni override na aktuálny detail item + na cache pre okamžitý prejav
+  gpDecorate(item);
 
-  fetch(url, { cache: 'no-store' })
-    .then(function(r){ return r.json(); })
-    .then(function(data) {
-      if(!data || !data.ok) throw new Error('updateRecord: no ok');
-      // Aktualizuj lokálnu cache
-      item.kapitacia = kap; item.kategoria = kategoria;
-      item.aflamil_n = aflN; item.aflamil_eur = aflEur;
-      item.suprax_n  = supN; item.suprax_eur  = supEur;
-      item.vidonorm_n  = vidN; item.vidonorm_eur  = vidEur;
-      item.cavinton_n  = cavN; item.cavinton_eur  = cavEur;
-      item.rocny_potential = total; item.scenar = scenar; item.odporucanie = odporucanie;
-      item.poznamka = pozn;
-      // Vynuť čerstvé načítanie histórie pri ďalšom otvorení
-      _histPromise = null;
-      if(btn) { btn.disabled = false; btn.textContent = 'Uložiť zmeny'; }
-      showMsg('✓ Záznam uložený', false);
-      setTimeout(function() { closeEditOverlay(); if(_currentDetailReopenFn) _currentDetailReopenFn(); }, 800);
-    })
-    .catch(function() {
-      if(btn) { btn.disabled = false; btn.textContent = 'Uložiť zmeny'; }
-      showMsg('⚠ Chyba pri ukladaní. Skús znova.', true);
-    });
+  try { usageAction('Aktualizoval záznam lekára', 'História návštev'); } catch(e){}
+
+  showMsg('✓ Aktualizované', false);
+  try { gpFetchLineStats(); } catch(e){}   // obnov súhrn línie (best-effort)
+  setTimeout(function() {
+    closeEditOverlay();
+    if (typeof histRender === 'function') histRender();   // premietni do zoznamu + súhrnu
+    if (_currentDetailReopenFn) _currentDetailReopenFn();
+  }, 700);
 }
 
 // ── PING LOGIN — zapíše posledný prístup do Sheets + vráti lekárne dáta ──
@@ -16800,14 +16777,13 @@ function mgrRenderList(){
 
     // TUYORY filter → len meno + počet nahodených Tuyory lekárov (bez GP údajov, 0 ak žiadne)
     if(filter === 'tuyory'){
-      var tuyLast = tuyCount ? new Date(tuyRecsU[tuyRecsU.length-1].ts).getTime() : 0;
-      var tuyLastTxt = (tuyLast && !isNaN(tuyLast)) ? mgrTimeAgo(tuyLast) : 'Žiadny Tuyory záznam';
       return '<div class="mgr-card" onclick="mgrOpenRep(\''+u.replace(/\'/g,"\\'")+'\')">' +
         avatarHtml +
         '<div class="mgr-body">' +
-          '<div class="mgr-name">'+nameEsc+'</div>' +
-          '<div class="mgr-meta"><span class="mgr-dot '+(tuyCount?act:'none')+'"></span>'+tuyLastTxt+lastLoginTxt+'</div>' +
-          '<div class="mgr-counts">🧬 Tuyory lekári: <strong>'+tuyCount+'</strong></div>' +
+          '<div class="mgr-namerow">' +
+            '<span class="mgr-name">'+nameEsc+'</span>' +
+            '<span class="mgr-counts">🧬 Tuyory lekári: <strong>'+tuyCount+'</strong></span>' +
+          '</div>' +
         '</div>' +
         '<div class="mgr-chev">›</div>' +
       '</div>';
@@ -16826,9 +16802,10 @@ function mgrRenderList(){
     return '<div class="mgr-card" onclick="mgrOpenRep(\''+u.replace(/\'/g,"\\'")+'\')">' +
       avatarHtml +
       '<div class="mgr-body">' +
-        '<div class="mgr-name">'+nameEsc+'</div>' +
-        '<div class="mgr-meta"><span class="mgr-dot '+act+'"></span>'+lastTxt+lastLoginTxt+'</div>' +
-        '<div class="mgr-counts">Celkom: <strong>'+visits.length+'</strong> · týždeň: <strong>'+wk+'</strong> · mesiac: <strong>'+mo+'</strong></div>' +
+        '<div class="mgr-namerow">' +
+          '<span class="mgr-name">'+nameEsc+'</span>' +
+          '<span class="mgr-counts">Celkom: <strong>'+visits.length+'</strong></span>' +
+        '</div>' +
         '<div class="mgr-segs">'+tuyChip+segs+'</div>' +
       '</div>' +
       '<div class="mgr-chev">›</div>' +
@@ -16881,8 +16858,22 @@ function mgrRenderList(){
 }
 
 // ── Detail reprezentanta ──
+// Odmeria výšku sticky navu .mgr-subtabs a nastaví ju do --mgr-sub-h,
+// aby sa sticky vyhľadávanie prilepilo presne pod nav (nie zaň).
+function gpSetMgrSubH(){
+  try {
+    var nav = document.querySelector('#mgr-view .mgr-subtabs');
+    if(nav){
+      var h = Math.round(nav.getBoundingClientRect().height);
+      if(h > 0) document.documentElement.style.setProperty('--mgr-sub-h', h + 'px');
+    }
+  } catch(e){}
+}
 function mgrOpenRep(username){
   MGR_STATE.currentRep = username;
+  gpSetMgrSubH();
+  // Vrstva zmien — dotiahni zdieľané override + súhrn línie (pre graf „oproti línii")
+  try { gpFetchOverrides(); gpFetchLineStats(); } catch(e){}
   document.getElementById('mgr-list-wrap').style.display = 'none';
   var detailEl = document.getElementById('mgr-detail');
   detailEl.classList.remove('panel-anim-r', 'pl-detail-exit-r');
@@ -16906,11 +16897,6 @@ function mgrOpenRep(username){
     avatarFillElement(av, { username: username, name: name, color: mgrAvatarColor(name), size: 52 });
   }
 
-  var WEEK = 7*24*60*60*1000, MONTH = 30*24*60*60*1000;
-  document.getElementById('mgr-ds-total').textContent = visits.length;
-  document.getElementById('mgr-ds-month').textContent = mgrCountSince(visits, MONTH);
-  document.getElementById('mgr-ds-week').textContent  = mgrCountSince(visits, WEEK);
-  document.getElementById('mgr-ds-today').textContent = mgrCountToday(visits);
 
   var counts = mgrSegCounts(visits);
   var sumHtml = '<span class="mgr-segsum-lbl">Segmenty:</span>';
@@ -16988,52 +16974,58 @@ function mgrTuyBannerHtml(){
     '</div>' +
   '</div>';
 }
-// ═══ Manažérsky LONELIX súhrn (za líniu/región + za reprezentanta) ═══
-function mgrRepLonelix(username){ var by = MGR_STATE.lonelixByRep || {}; return by[String(username || '').trim().toLowerCase()] || []; }
-function mgrLonelixAllRecords(){ var out = []; Object.keys(MGR_STATE.reps || {}).forEach(function(u){ out = out.concat(mgrRepLonelix(u)); }); return out; }
-function mgrLonelixSummaryHtml(recs, title, sub){
+// Tuyory header pre manažérsky detail repa — rovnaký ako vidí sám reprezentant
+// (hero + „Potenciál teritória" + štatistiky), z dát daného repa, read-only.
+function mgrRepTuyHeaderHtml(username){
+  var recs = mgrRepTuyory(username) || [];
   var oslov = recs.length;
-  var pouziva = recs.filter(function(r){ return r.pouziva === 'ano'; }).length;
+  var nastav = recs.filter(function(r){ return r.nastavuje === 'ano'; }).length;
+  var switchLek = recs.filter(function(r){ return r.switchP === 'ano'; }).length;
+  var switchPac = recs.reduce(function(s, r){ return s + (parseInt(r.switchPocet, 10) || 0); }, 0);
+  var noviLek = recs.filter(function(r){ return r.noviP === 'ano'; }).length;
   var pacSpolu = recs.reduce(function(s, r){ return s + (parseInt(r.pocet, 10) || 0); }, 0);
-  var ochotni = recs.filter(function(r){ return r.ochota === 'ano'; }).length;
-  return '<div class="mgr-tuy-banner">' +
-    '<div class="mgr-tuy-b-top"><div class="mgr-tuy-b-ico">🛡️</div>' +
-      '<div><div class="mgr-tuy-b-title">' + mgrEscape(title) + '</div><div class="mgr-tuy-b-sub">' + mgrEscape(sub) + '</div></div></div>' +
-    '<div class="mgr-tuy-b-nums">' +
-      '<div class="mgr-tuy-b-col"><div class="mgr-tuy-b-num">' + pouziva + '</div><div class="mgr-tuy-b-cap">Používa inozín</div></div>' +
-      '<div class="mgr-tuy-b-div"></div>' +
-      '<div class="mgr-tuy-b-col"><div class="mgr-tuy-b-num">' + pacSpolu + '</div><div class="mgr-tuy-b-cap">Pacientov/mes v sezóne</div></div>' +
-      '<div class="mgr-tuy-b-div"></div>' +
-      '<div class="mgr-tuy-b-col"><div class="mgr-tuy-b-num">' + ochotni + '</div><div class="mgr-tuy-b-cap">Ochotní predpisovať</div></div>' +
+  var noviPerMonth = recs.reduce(function(s, r){
+    if (r.noviP !== 'ano') return s;
+    var n = parseInt(r.noviPocet, 10) || 0;
+    return s + (r.noviObdobie === 'kvartal' ? n / 3 : n);
+  }, 0);
+  noviPerMonth = Math.round(noviPerMonth * 10) / 10;
+  var name = (typeof MGR_REP_NAMES !== 'undefined' && MGR_REP_NAMES[username]) || username;
+  return '<div class="mgr-tuy-scope">' +
+    '<div class="tuy-hero" style="margin-bottom:12px">' +
+      '<div class="tuy-hero-top">' +
+        '<div class="tuy-hero-badge">🧬</div>' +
+        '<div><div class="tuy-hero-title">Tuyory</div><div class="tuy-hero-sub">Prieskum trhu · tocilizumab · ' + mgrEscape(name) + '</div></div>' +
+      '</div>' +
     '</div>' +
-    '<div class="mgr-tuy-b-foot"><span class="mgr-tuy-b-chip">🛡️ Lonelix · lekárov oslovených: ' + oslov + '</span></div>' +
+    '<div class="tuy-sum-lbl-top">Potenciál teritória</div>' +
+    '<div class="tuy-summary">' +
+      '<div class="tuy-sum-col"><div class="tuy-sum-num">' + pacSpolu + '</div><div class="tuy-sum-cap">Pacientov na tocilizumabe</div></div>' +
+      '<div class="tuy-sum-div"></div>' +
+      '<div class="tuy-sum-col"><div class="tuy-sum-num" style="color:#2563EB">~' + noviPerMonth + '</div><div class="tuy-sum-cap">Nových / mesiac</div></div>' +
+      '<div class="tuy-sum-div"></div>' +
+      '<div class="tuy-sum-col"><div class="tuy-sum-num" style="color:#059669">' + switchPac + '</div><div class="tuy-sum-cap">Na switch (pacientov)</div></div>' +
+    '</div>' +
+    '<div class="tuy-stats" style="margin-bottom:12px">' +
+      '<div class="tuy-stat"><div class="tuy-stat-num is-ok">' + oslov + '</div><div class="tuy-stat-lbl">Oslovených lekárov</div></div>' +
+      '<div class="tuy-stat"><div class="tuy-stat-num is-ok">' + switchLek + '</div><div class="tuy-stat-lbl">Ochotní switchnúť</div></div>' +
+      '<div class="tuy-stat"><div class="tuy-stat-num is-ok">' + noviLek + '</div><div class="tuy-stat-lbl">Ochotní nastavovať nových</div></div>' +
+      '<div class="tuy-stat tuy-stat-wide">' +
+        '<div class="tuy-stat-ico">💉</div>' +
+        '<div><div class="tuy-stat-num">' + nastav + '</div><div class="tuy-stat-lbl">Nastavuje tocilizumab (z ' + oslov + ' oslovených)</div></div>' +
+      '</div>' +
+    '</div>' +
   '</div>';
 }
-function mgrLonelixLineBannerHtml(){
-  var recs = mgrLonelixAllRecords();
-  var repsWithData = Object.keys(MGR_STATE.reps || {}).filter(function(u){ return mgrRepLonelix(u).length; }).length;
-  return mgrLonelixSummaryHtml(recs, 'Lonelix — ' + mgrTuyScopeLabel(), recs.length + ' záznamov · ' + repsWithData + ' reprezentantov');
-}
-function mgrLoadLonelix(){
-  if (typeof IS_DEV !== 'undefined' && IS_DEV){ MGR_STATE.lonelixByRep = MGR_STATE.lonelixByRep || {}; return; }
-  fetch(scriptUrl('action=getAllLonelix'), { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(d){
-    if (!d || !d.ok || !d.byRep) return;
-    var by = {};
-    Object.keys(d.byRep).forEach(function(k){ by[String(k).trim().toLowerCase()] = d.byRep[k] || []; });
-    MGR_STATE.lonelixByRep = by;
-    try { mgrHistRefreshBanner(); } catch(e){}
-    var det = document.getElementById('mgr-detail');
-    if (MGR_STATE.currentRep && det && det.classList.contains('show')) mgrRenderVisits();
-  }).catch(function(){});
-}
-// Banner hore podľa aktívneho filtra: Tuyory → Tuyory súhrn, GP (Všetko/Všeobecní) → Lonelix súhrn
-function mgrHistRefreshBanner(){
-  var banner = document.getElementById('mgr-tuy-banner'); if (!banner) return;
-  var f = MGR_STATE.histFilter || 'all';
-  banner.innerHTML = (f === 'tuyory') ? mgrTuyBannerHtml() : mgrLonelixLineBannerHtml();
-  banner.style.display = 'block';
-}
 
+// Banner „vývoj celej línie Golem" nad zoznamom repov — len pri filtri GP's.
+function mgrRenderGpBanner(){
+  var b = document.getElementById('mgr-gp-banner');
+  if (!b) return;
+  if (MGR_STATE.histFilter === 'gp' && typeof gpLineSummaryHtml === 'function'){
+    b.innerHTML = gpLineSummaryHtml(); b.style.display = 'block';
+  } else { b.style.display = 'none'; b.innerHTML = ''; }
+}
 function mgrHistSetFilter(f, btn){
   MGR_STATE.histFilter = f || 'all';
   var bar = document.getElementById('mgr-hist-subtabs');
@@ -17045,6 +17037,11 @@ function mgrHistSetFilter(f, btn){
     if (MGR_STATE.histFilter === 'tuyory'){ banner.innerHTML = mgrTuyBannerHtml(); banner.style.display = 'block'; }
     else { banner.style.display = 'none'; banner.innerHTML = ''; }
   }
+  // Tuyory — pri každom kliknutí na tab znovu stiahni zo Sheetu (nové záznamy sa premietnu)
+  if (MGR_STATE.histFilter === 'tuyory'){ try { mgrLoadTuyory(); } catch(e){} }
+  // Vývoj celej línie — pri GP's dotiahni súhrn línie a vykresli banner
+  if (MGR_STATE.histFilter === 'gp'){ try { gpFetchOverrides(); gpFetchLineStats(); } catch(e){} }
+  mgrRenderGpBanner();
   try { haptic('selection'); } catch(e){}
   try { mgrRenderList(); } catch(e){}   // prekresli karty repov podľa filtra (GP / Tuyory počet)
   var det = document.getElementById('mgr-detail');
@@ -17123,10 +17120,13 @@ function mgrRenderVisits(){
     return String(r.meno||'').toLowerCase().indexOf(q) !== -1 || String(r.okres||'').toLowerCase().indexOf(q) !== -1;
   }) : tuyRecs);
 
+  // Tuyory header (rovnaký ako vidí reprezentant) — v detaile pod tabom Tuyory
+  var mgrTuyHeader = (filter === 'tuyory' && typeof mgrRepTuyHeaderHtml === 'function') ? mgrRepTuyHeaderHtml(username) : '';
+
   if(!gpFiltered.length && !tuyFiltered.length){
     var emptySub = q ? 'Skús iný vyhľadávací výraz.'
                  : (filter === 'tuyory' ? 'Reprezentant zatiaľ nevyplnil žiadny Tuyory formulár.' : 'Reprezentant zatiaľ nezapísal žiadnu návštevu.');
-    document.getElementById('mgr-vlist').innerHTML = mkEmpty(q ? 'search' : 'clipboard', q ? 'Žiadne zhody' : 'Žiadne záznamy', emptySub);
+    document.getElementById('mgr-vlist').innerHTML = mgrTuyHeader + mkEmpty(q ? 'search' : 'clipboard', q ? 'Žiadne zhody' : 'Žiadne záznamy', emptySub);
     return;
   }
 
@@ -17154,8 +17154,18 @@ function mgrRenderVisits(){
 
   var tuyHtml = tuyFiltered.map(function(r){ return mgrTuyCardHtml(r, tuyRecs.indexOf(r)); }).join('');
 
+  // Súhrn "kde je tento rep oproti línii" — pre filter Všetko/Všeobecní (nie Tuyory).
+  var mgrGpCard = '';
+  if(filter !== 'tuyory' && visits.length && typeof gpSummaryHtml === 'function'){
+    try {
+      var repName = (typeof MGR_REP_NAMES !== 'undefined' && MGR_REP_NAMES[username]) || username;
+      var decorated = visits.map(function(v){ return gpDecorate(Object.assign({}, v)); });
+      mgrGpCard = gpSummaryHtml(decorated, repName);
+    } catch(e){ mgrGpCard = ''; }
+  }
+
   var listEl = document.getElementById('mgr-vlist');
-  listEl.innerHTML = gpHtml + tuyHtml;
+  listEl.innerHTML = mgrGpCard + mgrTuyHeader + gpHtml + tuyHtml;
 
   // Event delegation — pripojíme klik handler LEN RAZ (GP → mgrOpenVisit, Tuyory → mgrOpenTuyVisit)
   if(!listEl._clickBound){
@@ -17861,6 +17871,30 @@ var WN_HISTORY = [
         { icon: '⚙️', bg: '#EFF6FF', title: 'Nový prepínač v Nastaveniach', desc: 'V ⚙️ Nastaveniach → Notifikácie pribudol prepínač „Meniny a narodeniny v tíme" — je vypnutý, kým si ho sám nezapneš.' },
         { icon: '🌙', bg: '#F0FDF4', title: 'Push o polnoci', desc: 'Keď si ho zapneš, o polnoci ti príde push upozornenie, ak má v ten deň niekto z tímu meniny alebo narodeniny.' },
         { icon: '📲', bg: '#FFF7ED', title: 'Vyskúšaj si to hneď', desc: 'Po zapnutí pribudne tlačidlo „Poslať test (len mne)" — nemusíš čakať do polnoci, aby si videl, ako notifikácia vyzerá.' }
+      ]
+    }
+  },
+  // ── v2.48 — Vývoj potenciálu: aktualizácia záznamov, GP's, kde si oproti línii (len Golem GP) ──
+  {
+    key: 'potencial_vl_wn_v2_48_gp_potencial',
+    line: 'gp',
+    golemOnly: true,
+    rep: {
+      icon: '📈', title: 'Sleduj svoj potenciál', sub: 'v2.48.0 · Gedeon Richter Slovakia',
+      items: [
+        { icon: '🔄', bg: '#EFF6FF', title: 'Aktualizuj záznam lekára', desc: 'V Histórii otvor lekára a klikni „Aktualizovať záznam". Uprav počty podľa aktuálnej reality — kapitácia, Aflamil, Suprax, Vidonorm, Cavinton.' },
+        { icon: '📈', bg: '#F0FDF4', title: 'Vývoj tvojho teritória', desc: 'Na tabe „🩺 GP\'s" navrchu vidíš, ako sa vyvíja potenciál tvojho teritória od začiatku, a aktuálny mesačný súhrn po produktoch.' },
+        { icon: '🎯', bg: '#FFF7ED', title: 'Kde si oproti línii', desc: 'Graf ti ukáže, kde stojíš v rámci celej línie Golem — férovo prepočítané na jedného lekára. Marker „TY" sa posúva, ako aktualizuješ.' },
+        { icon: '👤', bg: '#F5F3FF', title: 'Vývoj konkrétneho lekára', desc: 'Po aktualizácii vidíš pri produktoch zmenu „5 → 8" a malý graf, ako sa potenciál lekára mení v čase.' }
+      ]
+    },
+    mgr: {
+      icon: '🩺', title: 'Vývoj potenciálu Golemu', sub: 'v2.48.0 · Gedeon Richter Slovakia',
+      items: [
+        { icon: '🩺', bg: '#EFF6FF', title: 'Celá línia Golem', desc: 'Na tabe „GP\'s" vidíš vývoj celej línie: priemer potenciálu na jedného lekára (od začiatku po teraz), počet aktualizovaných lekárov a rozpad po produktoch.' },
+        { icon: '🎯', bg: '#F0FDF4', title: 'Reprezentant oproti línii', desc: 'Klikni na repa → uvidíš, kde stojí voči priemeru línie (na lekára), jeho vývoj od začiatku a aktuálny mesačný súhrn po produktoch.' },
+        { icon: '🔄', bg: '#FFF7ED', title: 'Aktualizácie počtov', desc: 'Reprezentanti (aj ty) môžu upravovať počty u lekárov. Zmenu „z 5 na 8" vidíš pri lekárovi aj v súhrnoch.' },
+        { icon: '🧬', bg: '#F5F3FF', title: 'Tuyory prehľad repa', desc: 'Na tabe Tuyory po kliknutí na repa vidíš jeho Tuyory dashboard — pacienti na tocilizumabe, noví/mesiac, na switch, oslovení lekári.' }
       ]
     }
   }
@@ -32564,8 +32598,430 @@ function tuyoryHistDetail(item){
 }
 function tuyoryDetailClose(){ var ov = document.getElementById('tuy-detail-overlay'); if (ov) ov.classList.remove('show'); document.body.style.overflow = ''; }
 // GP história + Tuyory záznamy dokopy (zoradenie/zoskupenie rieši renderHistItems podľa dátumu)
+// ══════════════════════════════════════════════════════════════════════════
+// ── VRSTVA ZMIEN (override) — aktualizácie počtov od repov/manažéra/admina ──
+// Sheet sa NIKDY neprepíše. Pôvodný riadok = baseline. Aktualizácie sa ukladajú
+// samostatne (localStorage + best-effort sync na backend) ako "current" + kroky
+// v čase (trajektória). Override sa premieta všade v Histórii cez gpDecorate().
+// ══════════════════════════════════════════════════════════════════════════
+var GP_OV_KEY = 'potencial_gp_overrides';
+var GP_OV_FIELDS = ['kapitacia','aflamil_n','suprax_n','vidonorm_n','cavinton_n'];
+
+function gpOvLoad(){
+  try { return JSON.parse(localStorage.getItem(GP_OV_KEY) || '{}') || {}; } catch(e){ return {}; }
+}
+function gpOvPersist(store){
+  try { localStorage.setItem(GP_OV_KEY, JSON.stringify(store)); }
+  catch(e){ if(typeof lsSafeSet === 'function') lsSafeSet(GP_OV_KEY, JSON.stringify(store)); }
+}
+// Stabilný kľúč lekára — primárne podľa riadku v Sheete, inak podľa mena+okresu.
+function gpOvKey(item){
+  if(!item) return '';
+  if(item.row != null && item.row !== '') return 'r' + item.row;
+  var nm = (item.lekar || '').trim().toLowerCase().replace(/\s+/g,'_');
+  var ok = (item.okres || '').trim().toLowerCase().replace(/\s+/g,'_');
+  return 'n' + nm + '|' + ok;
+}
+// Kto môže vidieť € (repom sa € nikde nezobrazuje).
+function gpCanSeeEur(){
+  var s = (typeof getSession === 'function') ? getSession() : null;
+  return !!(s && (s.role === 'admin' || s.role === 'manager'));
+}
+function gpNum(v){ var n = parseFloat(v); return isNaN(n) ? 0 : n; }
+
+// Prepočet odvodených hodnôt — rovnaká logika ako pri ukladaní návštevy.
+function gpRecompute(v){
+  var kap = gpNum(v.kapitacia);
+  var aflN = gpNum(v.aflamil_n), supN = gpNum(v.suprax_n), vidN = gpNum(v.vidonorm_n), cavN = gpNum(v.cavinton_n);
+  var aflEur = Math.round(aflN * 4.10  * 12       * 100) / 100;
+  var supEur = Math.round(supN * 12.82 * 0.75 * 12 * 100) / 100;
+  var vidEur = Math.round(vidN * 285   * 0.7       * 100) / 100;
+  var cavEur = Math.round(cavN * 421   * 0.7       * 100) / 100;
+  var total  = Math.round((aflEur + supEur + vidEur + cavEur) * 100) / 100;
+  var kategoria = kap <= 1500 ? 'C' : kap <= 1999 ? 'B' : 'A';
+  var scenar = (kap < 1501 && total < 3700) ? 'vyradit'
+             : (kap < 1501 && total >= 3700) ? 'frekvencia'
+             : (kap >= 1501 && kap <= 1999 && total < 3700) ? 'zvysit'
+             : (kap >= 1501 && kap <= 1999 && total >= 3700) ? 'udrzat'
+             : (kap >= 2000 && total < 3700) ? 'zvysit3'
+             : (kap >= 2000 && total >= 3700) ? 'top' : 'ok';
+  var odporucanie = {
+    'vyradit':'Vyradit lekara z targetu','frekvencia':'Maximalnu frekvenciu 1 x za Q',
+    'zvysit':'Zvysit preskripciu, ponechat v targete s maximalnou frekvenciou 2 x Q',
+    'udrzat':'Udrzať preskripciu s maximalnou frekvenciou 2 x Q',
+    'zvysit3':'Zvysit preskripciu, ponechat v targete s minimalnou frekvenciou 3 x Q',
+    'top':'Udrzať preskripciu, s maximalnou frekvenciou 2 x Q','ok':''
+  }[scenar] || '';
+  return { kapitacia:kap, kategoria:kategoria,
+    aflamil_n:aflN, aflamil_eur:aflEur, suprax_n:supN, suprax_eur:supEur,
+    vidonorm_n:vidN, vidonorm_eur:vidEur, cavinton_n:cavN, cavinton_eur:cavEur,
+    rocny_potential:total, scenar:scenar, odporucanie:odporucanie };
+}
+function gpPick(o){ var r={}; GP_OV_FIELDS.forEach(function(f){ r[f] = gpNum(o && o[f]); }); return r; }
+
+// Premietne override na kópiu záznamu. Baseline = pôvodné hodnoty zo Sheetu
+// (zachytené do item._base pri prvom prechode nad RAW záznamom). Vracia ten istý
+// objekt obohatený o current hodnoty + odvodené + item._ov (metadáta zmeny).
+function gpDecorate(item){
+  if(!item) return item;
+  if(!item._base) item._base = gpPick(item);        // pevný baseline (Sheet)
+  var base = item._base;
+  var store = gpOvLoad();
+  var rec = store[gpOvKey(item)];
+  var cur = (rec && rec.current) ? gpPick(rec.current) : gpPick(base);
+  // Zapíš efektívne (current) hodnoty + odvodené na item
+  var d = gpRecompute(cur);
+  GP_OV_FIELDS.forEach(function(f){ item[f] = cur[f]; });
+  item.kategoria = d.kategoria;
+  item.aflamil_eur = d.aflamil_eur; item.suprax_eur = d.suprax_eur;
+  item.vidonorm_eur = d.vidonorm_eur; item.cavinton_eur = d.cavinton_eur;
+  item.rocny_potential = d.rocny_potential; item.scenar = d.scenar; item.odporucanie = d.odporucanie;
+  var basePot = gpRecompute(base).rocny_potential;
+  var changed = GP_OV_FIELDS.some(function(f){ return gpNum(base[f]) !== gpNum(cur[f]); });
+  item._ov = {
+    changed: changed, base: base, cur: cur,
+    basePot: basePot, curPot: d.rocny_potential,
+    deltaPct: basePot > 0 ? Math.round((d.rocny_potential - basePot) / basePot * 1000) / 10 : 0,
+    steps: (rec && Array.isArray(rec.steps)) ? rec.steps : [],
+    updatedBy: rec && rec.updatedBy, updatedAt: rec && rec.updatedAt
+  };
+  return item;
+}
+
+// Uloží aktualizáciu do vrstvy zmien (localStorage) + best-effort na backend.
+// newVals = { kapitacia, aflamil_n, suprax_n, vidonorm_n, cavinton_n }. Baseline
+// (item._base) sa NEMENÍ. Do steps sa pridá bod v čase len ak nastala reálna zmena.
+function gpOverrideSave(item, newVals, byName){
+  if(!item) return;
+  var store = gpOvLoad();
+  var key = gpOvKey(item);
+  var rec = store[key] || { steps: [] };
+  var cur = gpPick(newVals);
+  var prev = (rec.current) ? gpPick(rec.current) : gpPick(item._base || item);
+  var changed = GP_OV_FIELDS.some(function(f){ return gpNum(prev[f]) !== gpNum(cur[f]); });
+  rec.current = cur;
+  rec.updatedBy = byName || (rec.updatedBy || '');
+  rec.updatedAt = new Date().toISOString();
+  if(!Array.isArray(rec.steps)) rec.steps = [];
+  if(changed || rec.steps.length === 0){
+    var step = { ts: rec.updatedAt, by: rec.updatedBy, pot: gpRecompute(cur).rocny_potential };
+    GP_OV_FIELDS.forEach(function(f){ step[f] = cur[f]; });
+    rec.steps.push(step);
+  }
+  store[key] = rec;
+  gpOvPersist(store);
+  // Best-effort sync na backend (akcia saveOverride) — chyba nerozbije UX.
+  try {
+    if(typeof IS_DEV === 'undefined' || !IS_DEV){
+      var qs = 'action=saveOverride&key=' + encodeURIComponent(key) +
+               '&lekar=' + encodeURIComponent(item.lekar || '') +
+               '&okres=' + encodeURIComponent(item.okres || '') +
+               '&row=' + encodeURIComponent(item.row || '') +
+               '&by=' + encodeURIComponent(rec.updatedBy || '');
+      GP_OV_FIELDS.forEach(function(f){ qs += '&' + f + '=' + gpNum(cur[f]); });
+      fetch(scriptUrl(qs), { cache:'no-store' }).catch(function(){});
+    }
+  } catch(e){}
+  return rec;
+}
+
+// Súhrn za teritórium — agreguje baseline vs. current cez všetkých GP lekárov.
+function gpTerritorySummary(items){
+  var basePot = 0, curPot = 0, nUp = 0, nDown = 0, nChanged = 0, nDoctors = 0;
+  var prodDefs = [
+    { key:'aflamil_n',  name:'Aflamil',        unit:'bal./mes.', color:'#60A5FA' },
+    { key:'suprax_n',   name:'Suprax',         unit:'bal./mes.', color:'#C084FC' },
+    { key:'vidonorm_n', name:'Vidonorm',       unit:'pac./mes.', color:'#34D399' },
+    { key:'cavinton_n', name:'Cavinton Forte', unit:'pac./mes.', color:'#FCD34D' }
+  ];
+  prodDefs.forEach(function(p){ p.base = 0; p.cur = 0; });
+  (items || []).forEach(function(it){
+    if(!it || it.type === 'tuyory' || !it._ov) return;
+    nDoctors++;
+    basePot += gpNum(it._ov.basePot);
+    curPot  += gpNum(it._ov.curPot);
+    prodDefs.forEach(function(p){ p.base += gpNum(it._ov.base[p.key]); p.cur += gpNum(it._ov.cur[p.key]); });
+    if(it._ov.changed){
+      nChanged++;
+      if(it._ov.curPot > it._ov.basePot) nUp++;
+      else if(it._ov.curPot < it._ov.basePot) nDown++;
+    }
+  });
+  return {
+    basePot: basePot, curPot: curPot,
+    // Priemer na jedného lekára — spravodlivé porovnanie bez ohľadu na veľkosť teritória.
+    nDoctors: nDoctors,
+    basePotAvg: nDoctors > 0 ? basePot / nDoctors : 0,
+    curPotAvg:  nDoctors > 0 ? curPot  / nDoctors : 0,
+    deltaPct: basePot > 0 ? Math.round((curPot - basePot) / basePot * 1000) / 10 : 0,
+    prods: prodDefs, nUp: nUp, nDown: nDown, nChanged: nChanged
+  };
+}
+
+// Škála línie pre graf „kde si oproti línii". Ak je načítaný súhrn línie z
+// backendu (getLineStats) → reálne min/priemer/max. Inak stabilná ukážka.
+var gpLineStatsCache = null;
+// Stav načítania súhrnu línie: 'loading' kým dobehne backend, potom 'ready'
+// (buď reálne dáta, alebo ukážka). V DEV/localhost bez backendu = rovno 'ready'.
+var gpLineStatsState = (typeof IS_DEV !== 'undefined' && IS_DEV) ? 'ready' : 'loading';
+function gpLineScale(basePot){
+  if(gpLineStatsCache && gpLineStatsCache.ok && gpLineStatsCache.nReps > 0){
+    var c = gpLineStatsCache;
+    return { min: c.min, avg: c.avg, max: c.max, source: 'line' };
+  }
+  var k = 'potencial_gp_linescale_mock';
+  try { var m = JSON.parse(localStorage.getItem(k) || 'null'); if(m && m.avg) return { min:m.min, avg:m.avg, max:m.max, source:'mock' }; } catch(e){}
+  var avg = basePot > 0 ? basePot : 100000;
+  var mm = { min: Math.round(avg * 0.55), avg: Math.round(avg), max: Math.round(avg * 1.6) };
+  try { localStorage.setItem(k, JSON.stringify(mm)); } catch(e){}
+  return { min: mm.min, avg: mm.avg, max: mm.max, source: 'mock' };
+}
+// Načíta súhrn línie z backendu a prekreslí súhrn (ak je viditeľný).
+function gpFetchLineStats(){
+  if(typeof IS_DEV !== 'undefined' && IS_DEV){ gpLineStatsState = 'ready'; return; }  // localhost → ukážka
+  if(typeof scriptUrl !== 'function'){ gpLineStatsState = 'ready'; return; }
+  gpLineStatsState = 'loading';
+  function done(){
+    gpLineStatsState = 'ready';
+    gpRerenderActiveView();
+  }
+  fetch(scriptUrl('action=getLineStats'), { cache:'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){ if(d && d.ok) gpLineStatsCache = d; done(); })
+    .catch(function(){ done(); });
+}
+// Načíta zdieľané override zo servera a zlúči do lokálneho úložiska (server má
+// prednosť) — takže admin/manažér vidia zmeny repov a fungujú medzi zariadeniami.
+function gpFetchOverrides(){
+  if(typeof IS_DEV !== 'undefined' && IS_DEV) return;
+  if(typeof scriptUrl !== 'function') return;
+  fetch(scriptUrl('action=getOverrides'), { cache:'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(list){
+      if(!Array.isArray(list) || !list.length) return;
+      var store = gpOvLoad();
+      list.forEach(function(o){
+        if(!o || !o.key) return;
+        store[o.key] = { current: o.current, steps: o.steps || [], updatedBy: o.updatedBy, updatedAt: o.updatedAt };
+      });
+      gpOvPersist(store);
+      gpRerenderActiveView();
+    })
+    .catch(function(){});
+}
+
+// Prekreslí ten pohľad, ktorý je práve otvorený (rep História alebo manažérsky detail repa).
+function gpRerenderActiveView(){
+  try {
+    if(typeof _histFilter !== 'undefined' && _histFilter === 'gp' &&
+       typeof _panelCurrent !== 'undefined' && _panelCurrent === 'hist-overlay' &&
+       typeof histRender === 'function') histRender();
+  } catch(e){}
+  try {
+    var det = document.getElementById('mgr-detail');
+    if(typeof MGR_STATE !== 'undefined' && MGR_STATE.currentRep && det && det.classList.contains('show') &&
+       typeof mgrRenderVisits === 'function') mgrRenderVisits();
+  } catch(e){}
+  // Manažérsky zoznam — banner vývoja línie (tab GP's)
+  try {
+    var lw = document.getElementById('mgr-list-wrap');
+    if(typeof MGR_STATE !== 'undefined' && MGR_STATE.histFilter === 'gp' && lw && lw.style.display !== 'none' &&
+       typeof mgrRenderGpBanner === 'function') mgrRenderGpBanner();
+  } catch(e){}
+}
+
+// Graf „kde si oproti línii" — baseline marker (štart) + aktuálny marker (TY).
+// Repom bez € (pozícia v %); admin/manažér vidí aj € škálu.
+function gpLineComparisonHtml(s, viewName){
+  var hdrLbl = viewName ? ('Kde je oproti línii') : 'Kde si oproti línii';
+  if(gpLineStatsState === 'loading'){
+    return '<div class="gp-cmp">' +
+      '<div class="gp-cmp-hdr"><span>' + hdrLbl + '</span><span class="gp-cmp-load-t">načítavam dáta línie…</span></div>' +
+      '<div class="gp-cmp-skel">' +
+        '<div class="gp-cmp-skel-track"></div>' +
+        '<div class="gp-cmp-skel-dot"></div>' +
+      '</div>' +
+      '<div class="gp-cmp-legend"><span>nižší</span><span>priemer línie</span><span>vyšší</span></div>' +
+    '</div>';
+  }
+  // Pozícia sa počíta z PRIEMERU NA LEKÁRA (nie zo súčtu) — fér naprieč veľkosťou teritória.
+  var myBaseAvg = s.basePotAvg, myCurAvg = s.curPotAvg;
+  var scale = gpLineScale(myBaseAvg);
+  var min = scale.min, max = scale.max, avg = scale.avg;
+  var span = (max - min) || 1;
+  function px(v){ var t = (v - min) / span; t = Math.max(0, Math.min(1, t)); return Math.round((8 + t * 284) * 10) / 10; }
+  var baseX = px(myBaseAvg), curX = px(myCurAvg), avgX = px(avg);
+  var moved = Math.abs(myCurAvg - myBaseAvg) > 0.5;
+  var eur = gpCanSeeEur();
+  var vsAvg = avg > 0 ? Math.round((myCurAvg - avg) / avg * 1000) / 10 : 0;
+  var above = vsAvg >= 0;
+  var col = above ? '#34D399' : '#F87171';
+  var posTxt = (above ? '▲ +' : '▼ ') + Math.abs(vsAvg).toFixed(1).replace('.', ',') + ' % ' + (above ? 'nad' : 'pod') + ' priemerom línie';
+  var eurScale = eur ? ('<div class="gp-cmp-eur"><span>' + Math.round(min).toLocaleString('sk-SK') + ' €</span><span>' + Math.round(avg).toLocaleString('sk-SK') + ' €</span><span>' + Math.round(max).toLocaleString('sk-SK') + ' €</span></div><div class="gp-cmp-eur-cap">potenciál na jedného lekára (€)</div>') : '';
+  var caption = scale.source === 'mock' ? '<div class="gp-cmp-note">ukážka línie — reálne dáta doplní backend</div>' : '';
+  var baseMarker = moved
+    ? '<circle cx="' + baseX + '" cy="26" r="5" fill="#0C1E35" stroke="#CBD5E1" stroke-width="2"/>'
+    : '';
+  return '<div class="gp-cmp">' +
+    '<div class="gp-cmp-hdr"><span>' + hdrLbl + '</span><span class="gp-cmp-pos" style="color:' + col + '">' + posTxt + '</span></div>' +
+    '<svg viewBox="0 0 300 40" width="100%" height="40" preserveAspectRatio="none" style="display:block;overflow:visible">' +
+      '<line x1="8" y1="26" x2="292" y2="26" stroke="rgba(255,255,255,.18)" stroke-width="6" stroke-linecap="round"/>' +
+      '<line x1="' + avgX + '" y1="14" x2="' + avgX + '" y2="38" stroke="rgba(255,255,255,.5)" stroke-width="1.5" stroke-dasharray="3 3"/>' +
+      baseMarker +
+      '<circle cx="' + curX + '" cy="26" r="7" fill="' + col + '" stroke="#0C1E35" stroke-width="2"/>' +
+    '</svg>' +
+    '<div class="gp-cmp-legend"><span>nižší</span><span>priemer línie</span><span>vyšší</span></div>' +
+    eurScale + caption +
+  '</div>';
+}
+
+// HTML súhrnnej hlavičky nad zoznamom "Všeobecní". Repom bez € (len % + počty).
+// viewName (voliteľné) = ak sa pozerá manažér/admin na cudzieho repa → 3. osoba.
+function gpSummaryHtml(items, viewName){
+  var s = gpTerritorySummary(items);
+  var cmp = gpLineComparisonHtml(s, viewName);
+  var eur = gpCanSeeEur();
+
+  // Vývoj od začiatku (len ak už nastala aspoň jedna aktualizácia) alebo výzva.
+  var mid;
+  if(!s.nChanged){
+    mid = viewName
+      ? '<div class="gp-sum-hint">📝 ' + mgrEscape(viewName) + ' zatiaľ nič neaktualizoval. Graf hore ukazuje, kde je toto teritórium oproti priemeru línie.</div>'
+      : '<div class="gp-sum-hint">📝 Zatiaľ si nič neaktualizoval. Otvor lekára a klikni „Aktualizovať záznam" — marker <b>TY</b> hore sa začne hýbať, ako sa mení potenciál tvojho teritória.</div>';
+  } else {
+    var up = s.deltaPct >= 0;
+    var arrow = up ? '▲' : '▼';
+    var col = up ? '#34D399' : '#F87171';
+    var pctStr = (up ? '+' : '') + s.deltaPct.toFixed(1).replace('.', ',') + ' %';
+    var eurStr = eur ? ('<div class="gp-sum-eur">' + Math.round(s.basePot).toLocaleString('sk-SK') + ' € → <b>' + Math.round(s.curPot).toLocaleString('sk-SK') + ' €</b></div>') : '';
+    mid = '<div class="gp-sum-devrow">' +
+        '<div class="gp-sum-lbl">Od začiatku · ' + s.nChanged + ' ' + (s.nChanged === 1 ? 'lekár' : (s.nChanged < 5 ? 'lekári' : 'lekárov')) +
+          (s.nUp ? ' · ▲ ' + s.nUp : '') + (s.nDown ? ' · ▼ ' + s.nDown : '') + '</div>' +
+        '<div class="gp-sum-delta" style="color:' + col + '">' + arrow + ' ' + pctStr + '</div>' +
+      '</div>' + eurStr;
+  }
+
+  // Vždy: aktuálny mesačný súhrn za lekárov repa po produktoch (koľko sa spolu píše).
+  // Pri úprave sa mení naživo; ak sa líši od baseline, ukáže „base → teraz (delta)".
+  var prodRows = s.prods.map(function(p){
+    var b = Math.round(p.base*10)/10, cu = Math.round(p.cur*10)/10, d = cu - b;
+    var valHtml;
+    if(d === 0){
+      valHtml = '<b>' + cu + '</b>';
+    } else {
+      var dc = d > 0 ? '#34D399' : '#F87171';
+      valHtml = b + ' → <b>' + cu + '</b> <span style="color:' + dc + ';font-weight:800">(' + (d>0?'+':'') + (Math.round(d*10)/10) + ')</span>';
+    }
+    return '<div class="gp-sum-prow">' +
+      '<span class="gp-sum-pdot" style="background:' + p.color + '"></span>' +
+      '<span class="gp-sum-pname">' + p.name + '</span>' +
+      '<span class="gp-sum-pval">' + valHtml + '</span>' +
+      '<span class="gp-sum-punit">' + p.unit + '</span>' +
+    '</div>';
+  }).join('');
+  var prodBlock =
+    '<div class="gp-sum-prods-lbl">Aktuálne / mesiac · ' + s.nDoctors + ' ' + (s.nDoctors === 1 ? 'lekár' : (s.nDoctors < 5 ? 'lekári' : 'lekárov')) + '</div>' +
+    '<div class="gp-sum-prods">' + prodRows + '</div>';
+
+  return '<div class="gp-sum-card">' + cmp + mid + prodBlock + '</div>';
+}
+
+// Súhrn vývoja CELEJ línie Golem — pre manažérsky/admin zoznam (tab „GP's").
+// Priemer na jedného lekára baseline → teraz + rozpad po produktoch za líniu.
+function gpLineSummaryHtml(){
+  if(gpLineStatsState === 'loading'){
+    return '<div class="gp-sum-card">' +
+      '<div class="gp-cmp"><div class="gp-cmp-hdr"><span>Golem — celá línia</span><span class="gp-cmp-load-t">načítavam vývoj línie…</span></div>' +
+      '<div class="gp-cmp-skel"><div class="gp-cmp-skel-track"></div></div></div></div>';
+  }
+  var c = gpLineStatsCache;
+  if(!c || !c.ok || !c.totalDoctors){
+    return '<div class="gp-sum-card gp-sum-empty">' +
+      '<div class="gp-sum-empty-ico">📈</div>' +
+      '<div class="gp-sum-empty-t">Vývoj Golemu (celá línia)</div>' +
+      '<div class="gp-sum-empty-s">Dáta línie sa načítajú z backendu. Po nasadení kód.gs (getLineStats) sa tu zobrazí vývoj celej línie a rozpad po produktoch.</div>' +
+    '</div>';
+  }
+  var eur = gpCanSeeEur();
+  var base = c.lineBaseAvg, cur = c.lineCurAvg;
+  var d = base > 0 ? Math.round((cur - base) / base * 1000) / 10 : 0;
+  var up = d >= 0, arrow = up ? '▲' : '▼', col = up ? '#34D399' : '#F87171';
+  var pctStr = (up ? '+' : '') + d.toFixed(1).replace('.', ',') + ' %';
+  var eurStr = eur ? ('<div class="gp-sum-eur">na lekára: ' + Math.round(base).toLocaleString('sk-SK') + ' € → <b>' + Math.round(cur).toLocaleString('sk-SK') + ' €</b></div>') : '';
+  var prodDefs = [
+    { key:'aflamil_n',  name:'Aflamil',        unit:'bal./mes.', color:'#60A5FA' },
+    { key:'suprax_n',   name:'Suprax',         unit:'bal./mes.', color:'#C084FC' },
+    { key:'vidonorm_n', name:'Vidonorm',       unit:'pac./mes.', color:'#34D399' },
+    { key:'cavinton_n', name:'Cavinton Forte', unit:'pac./mes.', color:'#FCD34D' }
+  ];
+  var prodRows = prodDefs.map(function(p){
+    var b = Math.round(((c.prodBase && c.prodBase[p.key]) || 0) * 10) / 10;
+    var cu = Math.round(((c.prodCur && c.prodCur[p.key]) || 0) * 10) / 10;
+    var dd = cu - b;
+    var dc = dd > 0 ? '#34D399' : dd < 0 ? '#F87171' : '#94A3B8';
+    var ds = dd === 0 ? '' : ' <span style="color:' + dc + ';font-weight:800">(' + (dd>0?'+':'') + (Math.round(dd*10)/10) + ')</span>';
+    return '<div class="gp-sum-prow">' +
+      '<span class="gp-sum-pdot" style="background:' + p.color + '"></span>' +
+      '<span class="gp-sum-pname">' + p.name + '</span>' +
+      '<span class="gp-sum-pval">' + b + ' → <b>' + cu + '</b>' + ds + '</span>' +
+      '<span class="gp-sum-punit">' + p.unit + '</span>' +
+    '</div>';
+  }).join('');
+  return '<div class="gp-sum-card">' +
+    '<div class="gp-sum-top">' +
+      '<div class="gp-sum-lbl">🩺 Golem — celá línia</div>' +
+      '<div class="gp-sum-delta" style="color:' + col + '">' + arrow + ' ' + pctStr + '</div>' +
+    '</div>' +
+    '<div class="gp-sum-sub">vývoj na lekára od začiatku · ' + (c.nReps||0) + ' repov · ' + (c.totalDoctors||0) + ' lekárov · ' + (c.nChangedDoctors||0) + ' aktualizovaných</div>' +
+    eurStr +
+    '<div class="gp-sum-prods">' + prodRows + '</div>' +
+  '</div>';
+}
+
+// Mini-sparkline (SVG) trajektórie potenciálu lekára — repom v %, adminovi v €.
+function gpDoctorTrajectoryHtml(item){
+  if(!item || !item._ov) return '';
+  var ov = item._ov;
+  var basePot = ov.basePot;
+  // Body: baseline + jednotlivé kroky
+  var pts = [ basePot ].concat((ov.steps || []).map(function(st){ return gpNum(st.pot); }));
+  if(pts.length < 2 && !ov.changed) return '';
+  var eur = gpCanSeeEur();
+  var min = Math.min.apply(null, pts), max = Math.max.apply(null, pts);
+  var range = (max - min) || 1;
+  var W = 260, H = 54, pad = 6;
+  var n = pts.length;
+  var coords = pts.map(function(p, i){
+    var x = pad + (n === 1 ? 0 : (i / (n - 1)) * (W - 2 * pad));
+    var y = H - pad - ((p - min) / range) * (H - 2 * pad);
+    return [Math.round(x*10)/10, Math.round(y*10)/10];
+  });
+  var line = coords.map(function(c, i){ return (i ? 'L' : 'M') + c[0] + ' ' + c[1]; }).join(' ');
+  var last = coords[coords.length - 1];
+  var up = ov.deltaPct >= 0;
+  var col = up ? '#16A34A' : '#DC2626';
+  var head = eur
+    ? (Math.round(ov.basePot).toLocaleString('sk-SK') + ' € → <b>' + Math.round(ov.curPot).toLocaleString('sk-SK') + ' €</b>')
+    : ('<b>' + (up ? '+' : '') + ov.deltaPct.toFixed(1).replace('.', ',') + ' %</b> od začiatku');
+  var last3 = (ov.steps || []).slice(-3).reverse().map(function(st){
+    var when = '';
+    try { var d = new Date(st.ts); when = d.getDate() + '.' + (d.getMonth()+1) + '.'; } catch(e){}
+    return '<div class="gp-traj-step"><span>' + when + '</span><span>' + (st.by ? mgrEscape(st.by) : '') + '</span></div>';
+  }).join('');
+  return '<div class="gp-traj">' +
+    '<div class="gp-traj-hdr"><span>📈 Vývoj potenciálu</span><span style="color:' + col + '">' + head + '</span></div>' +
+    '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" preserveAspectRatio="none" style="display:block">' +
+      '<path d="' + line + '" fill="none" stroke="' + col + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
+      '<circle cx="' + last[0] + '" cy="' + last[1] + '" r="3" fill="' + col + '"/>' +
+    '</svg>' +
+    (last3 ? '<div class="gp-traj-steps">' + last3 + '</div>' : '') +
+  '</div>';
+}
+
 function _histCombined(){
-  var gp = Array.isArray(_histAllItems) ? _histAllItems : [];
+  var gp = (Array.isArray(_histAllItems) ? _histAllItems : []).map(function(it){
+    return gpDecorate(Object.assign({}, it));   // dekóruj kópie — RAW ostáva baseline
+  });
   var tuy = (typeof tuyoryHistItems === 'function') ? tuyoryHistItems() : [];
   var lon = (typeof lonelixOnlyHistItems === 'function') ? lonelixOnlyHistItems() : [];
   return gp.concat(tuy).concat(lon);
@@ -33175,6 +33631,28 @@ function lonelixOpenGpForm(r){
   .tuy-scope .tuy-stat-wide{grid-column:1 / -1;display:flex;align-items:center;gap:12px}
   .tuy-scope .tuy-stat-wide .tuy-stat-ico{font-size:20px;width:40px;height:40px;border-radius:11px;background:#EFF6FF;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 
+  /* Tuyory header v manažérskom detaile repa — rovnaké štýly ako u reprezentanta */
+  .mgr-tuy-scope .tuy-hero{background:linear-gradient(155deg,#0C1E35 0%,#13294B 60%,#1A3A5C 100%);border-radius:18px;padding:18px 18px 16px;box-shadow:0 10px 26px rgba(12,30,53,.28);position:relative;overflow:hidden;margin-bottom:14px}
+  .mgr-tuy-scope .tuy-hero::after{content:'';position:absolute;top:-40px;right:-30px;width:150px;height:150px;background:radial-gradient(circle,rgba(59,130,246,.35),transparent 70%);pointer-events:none}
+  .mgr-tuy-scope .tuy-hero-top{display:flex;align-items:center;gap:10px;margin-bottom:4px;position:relative}
+  .mgr-tuy-scope .tuy-hero-badge{width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
+  .mgr-tuy-scope .tuy-hero-title{font-family:var(--font-display);font-size:19px;font-weight:800;color:#fff;letter-spacing:-.01em;line-height:1.1}
+  .mgr-tuy-scope .tuy-hero-sub{font-size:11.5px;font-weight:600;color:#AFC6E4;margin-top:2px;letter-spacing:.02em}
+  .mgr-tuy-scope .tuy-sum-lbl-top{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#94A3B8;margin:2px 2px 8px}
+  .mgr-tuy-scope .tuy-summary{display:flex;align-items:stretch;background:#fff;border-radius:16px;padding:16px 6px;box-shadow:0 4px 14px rgba(15,23,42,.08);border:1px solid #EEF2F7;margin-bottom:16px}
+  .mgr-tuy-scope .tuy-sum-col{flex:1;text-align:center;padding:0 4px;display:flex;flex-direction:column;justify-content:center;gap:6px}
+  .mgr-tuy-scope .tuy-sum-num{font-family:var(--font-display);font-size:26px;font-weight:800;color:#0C1E35;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .mgr-tuy-scope .tuy-sum-cap{font-size:10.5px;font-weight:600;color:#64748B;line-height:1.25}
+  .mgr-tuy-scope .tuy-sum-div{width:1px;background:#EEF2F7;flex-shrink:0;margin:3px 0}
+  .mgr-tuy-scope .tuy-stats{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:16px}
+  .mgr-tuy-scope .tuy-stat{background:#fff;border-radius:14px;padding:13px 14px;box-shadow:0 2px 10px rgba(15,23,42,.06);border:1px solid #EEF2F7}
+  .mgr-tuy-scope .tuy-stat-num{font-family:var(--font-display);font-size:24px;font-weight:800;color:#0C1E35;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .mgr-tuy-scope .tuy-stat-num.is-warn{color:#D97706}
+  .mgr-tuy-scope .tuy-stat-num.is-ok{color:#059669}
+  .mgr-tuy-scope .tuy-stat-lbl{font-size:11px;font-weight:600;color:#64748B;margin-top:4px;line-height:1.3}
+  .mgr-tuy-scope .tuy-stat-wide{grid-column:1 / -1;display:flex;align-items:center;gap:12px}
+  .mgr-tuy-scope .tuy-stat-wide .tuy-stat-ico{font-size:20px;width:40px;height:40px;border-radius:11px;background:#EFF6FF;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
   /* Sekcia / formulár */
   .tuy-scope .tuy-card{background:#fff;border-radius:16px;padding:16px 15px;box-shadow:0 2px 10px rgba(15,23,42,.06);border:1px solid #EEF2F7;margin-bottom:13px}
   .tuy-scope .tuy-form-title{display:flex;align-items:center;gap:8px;font-family:var(--font-display);font-size:16px;font-weight:800;color:#0F172A;letter-spacing:-.01em;margin-bottom:3px}
@@ -33240,6 +33718,59 @@ function lonelixOpenGpForm(r){
   .hist-subtab.active{background:#0C1E35;color:#fff}
   .hist-subtab-count{font-size:11px;font-weight:800;opacity:.75;font-variant-numeric:tabular-nums}
   .hist-subtab.active .hist-subtab-count{opacity:.9}
+
+  /* Súhrn vývoja potenciálu teritória — hlavička nad "Všeobecní" */
+  .gp-sum-card{background:linear-gradient(155deg,#0C1E35,#13294B 60%,#1A3A5C);border-radius:16px;padding:14px 16px;margin:2px 0 14px;box-shadow:0 8px 22px rgba(12,30,53,.24);position:relative;overflow:hidden}
+  .gp-sum-card::after{content:'';position:absolute;top:-40px;right:-30px;width:150px;height:150px;background:radial-gradient(circle,rgba(59,130,246,.3),transparent 70%);pointer-events:none}
+  .gp-sum-top{display:flex;align-items:center;justify-content:space-between;gap:10px;position:relative}
+  .gp-sum-lbl{font-family:var(--font-display);font-size:14px;font-weight:800;color:#fff;letter-spacing:-.01em}
+  .gp-sum-delta{font-family:var(--font-display);font-size:20px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;background:rgba(255,255,255,.1);padding:2px 12px;border-radius:20px}
+  .gp-sum-sub{font-size:10.5px;font-weight:600;color:#AFC6E4;margin-top:4px;position:relative}
+  .gp-sum-eur{font-size:12px;font-weight:600;color:#CBD9EC;margin-top:6px;position:relative}
+  .gp-sum-eur b{color:#fff;font-weight:800}
+  .gp-sum-prods-lbl{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8FA6C4;margin-top:12px;position:relative}
+  .gp-sum-prods{margin-top:6px;background:rgba(255,255,255,.06);border-radius:11px;padding:6px 11px;position:relative}
+  .gp-sum-prow{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.07);font-size:12.5px}
+  .gp-sum-prow:last-child{border-bottom:none}
+  .gp-sum-pdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .gp-sum-pname{font-weight:700;color:#E7EEF7;flex:1}
+  .gp-sum-pval{font-weight:600;color:#C6D5E8;font-variant-numeric:tabular-nums}
+  .gp-sum-pval b{color:#fff;font-weight:800}
+  .gp-sum-punit{font-size:9.5px;color:#7E96B4;flex-shrink:0;min-width:56px;text-align:right}
+  .gp-sum-empty{background:#F8FAFC;box-shadow:none;border:1px dashed #CBD5E1;text-align:center;padding:18px 16px}
+  .gp-sum-empty::after{display:none}
+  .gp-sum-empty-ico{font-size:26px}
+  .gp-sum-empty-t{font-family:var(--font-display);font-size:14px;font-weight:800;color:#334155;margin-top:4px}
+  .gp-sum-empty-s{font-size:11.5px;color:#64748B;margin-top:4px;line-height:1.45}
+
+  /* Graf "kde si oproti línii" (v tmavej súhrnnej karte) */
+  .gp-cmp{position:relative}
+  .gp-cmp-hdr{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;font-weight:700;color:#E7EEF7;margin-bottom:8px}
+  .gp-cmp-pos{font-weight:800;font-size:12px;font-variant-numeric:tabular-nums;text-align:right}
+  .gp-cmp-legend{display:flex;justify-content:space-between;font-size:9px;font-weight:600;color:#7E96B4;text-transform:uppercase;letter-spacing:.04em;margin-top:2px}
+  .gp-cmp-legend span:nth-child(2){color:#AFC6E4}
+  .gp-cmp-eur{display:flex;justify-content:space-between;font-size:10px;color:#8FA6C4;margin-top:4px;font-variant-numeric:tabular-nums;padding:0 2px}
+  .gp-cmp-eur span:nth-child(2){color:#CBD9EC;font-weight:700}
+  .gp-cmp-eur-cap{font-size:9px;color:#6B84A4;text-align:center;margin-top:2px}
+  .gp-cmp-note{font-size:9.5px;color:#6B84A4;margin-top:4px;text-align:center;font-style:italic}
+  .gp-cmp-load-t{font-size:11px;font-weight:600;color:#8FA6C4;display:inline-flex;align-items:center;gap:6px}
+  .gp-cmp-load-t::before{content:'';width:9px;height:9px;border-radius:50%;border:2px solid rgba(255,255,255,.25);border-top-color:#60A5FA;animation:gpSpin .7s linear infinite}
+  .gp-cmp-skel{position:relative;height:40px;display:flex;align-items:center}
+  .gp-cmp-skel-track{position:absolute;left:8px;right:8px;height:6px;border-radius:6px;background:linear-gradient(90deg,rgba(255,255,255,.08) 25%,rgba(255,255,255,.22) 50%,rgba(255,255,255,.08) 75%);background-size:200% 100%;animation:gpShimmer 1.2s ease-in-out infinite}
+  .gp-cmp-skel-dot{position:absolute;left:0;right:0;margin:auto;width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,.35);animation:gpPulse 1.2s ease-in-out infinite}
+  @keyframes gpShimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  @keyframes gpPulse{0%,100%{opacity:.35;transform:scale(.85)}50%{opacity:.7;transform:scale(1.05)}}
+  @keyframes gpSpin{to{transform:rotate(360deg)}}
+  .gp-sum-hint{font-size:11.5px;color:#CBD9EC;line-height:1.5;margin-top:12px;padding-top:11px;border-top:1px solid rgba(255,255,255,.1);position:relative}
+  .gp-sum-hint b{color:#fff;font-weight:800}
+  .gp-sum-devrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding-top:11px;border-top:1px solid rgba(255,255,255,.1);position:relative}
+
+  /* Mini-graf trajektórie potenciálu lekára (v detaile) */
+  .gp-traj{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px 12px 8px;margin-bottom:12px}
+  .gp-traj-hdr{display:flex;align-items:center;justify-content:space-between;font-size:11.5px;font-weight:700;color:#475569;margin-bottom:6px}
+  .gp-traj-hdr b{font-weight:800}
+  .gp-traj-steps{margin-top:6px;border-top:1px solid #EEF2F6;padding-top:5px}
+  .gp-traj-step{display:flex;justify-content:space-between;font-size:10.5px;color:#94A3B8;padding:1px 0}
 
   /* Manažérsky Tuyory banner (súhrn za líniu / región) */
   .mgr-tuy-banner{background:linear-gradient(155deg,#0C1E35,#13294B 60%,#1A3A5C);border-radius:16px;padding:15px 16px;margin-bottom:12px;box-shadow:0 8px 22px rgba(12,30,53,.26);position:relative;overflow:hidden}
