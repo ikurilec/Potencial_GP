@@ -3378,7 +3378,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.48.0';
+var APP_VERSION = '2.48.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -17001,6 +17001,8 @@ function mgrHistSetFilter(f, btn){
     if (MGR_STATE.histFilter === 'tuyory'){ banner.innerHTML = mgrTuyBannerHtml(); banner.style.display = 'block'; }
     else { banner.style.display = 'none'; banner.innerHTML = ''; }
   }
+  // Tuyory — pri každom kliknutí na tab znovu stiahni zo Sheetu (nové záznamy sa premietnu)
+  if (MGR_STATE.histFilter === 'tuyory'){ try { mgrLoadTuyory(); } catch(e){} }
   // Vývoj celej línie — pri GP's dotiahni súhrn línie a vykresli banner
   if (MGR_STATE.histFilter === 'gp'){ try { gpFetchOverrides(); gpFetchLineStats(); } catch(e){} }
   mgrRenderGpBanner();
