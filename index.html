@@ -1555,8 +1555,8 @@
   .rep-nav-btn.active{background:linear-gradient(135deg,#0C1E35 0%,#13294B 100%);color:#fff;border-color:transparent;box-shadow:0 4px 12px rgba(12,30,53,.25),inset 0 1px 0 rgba(255,255,255,.10)}
   /* ═══ Nový header — pozdrav + meniny ═══ */
   .hdr-greeting{font-size:13.5px;color:#BFD4E8;font-weight:600;margin-top:4px;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .hdr-nameday{font-size:11px;color:#7AABCC;margin-top:3px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .hdr-nameday.hdr-nameday-celebrate{color:#FCD34D;font-weight:800;font-size:12px;text-shadow:0 1px 6px rgba(251,191,36,.45);animation:ndayGlow 2s ease-in-out infinite}
+  .hdr-nameday{font-size:11px;color:#7AABCC;margin-top:3px;font-weight:500;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.3}
+  .hdr-nameday.hdr-nameday-celebrate{color:#FCD34D;font-weight:800;font-size:12px;text-shadow:0 1px 6px rgba(251,191,36,.45);animation:ndayGlow 2s ease-in-out infinite;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.3}
   @keyframes ndayGlow{0%,100%{text-shadow:0 1px 6px rgba(251,191,36,.35)}50%{text-shadow:0 1px 12px rgba(251,191,36,.75)}}
   @media(prefers-reduced-motion:reduce){.hdr-nameday.hdr-nameday-celebrate{animation:none}}
   #nameday-confetti{position:fixed;inset:0;z-index:9998;pointer-events:none}
@@ -2166,8 +2166,8 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .gyn-mgr-hdr-sub{font-size:10px;color:#7AABCC;margin-top:2px;letter-spacing:.04em;font-weight:500}
   .gyn-rep-hdr-region{font-size:10.5px;color:#7AABCC;margin-top:2px;letter-spacing:.04em;font-weight:500;text-transform:uppercase}
   .gyn-rep-hdr-name{font-size:16px;font-weight:800;color:#fff;margin-top:3px;font-family:var(--font-display);letter-spacing:-.01em;line-height:1.15}
-  .gyn-hdr-nameday{font-size:11px;color:#9DC0DE;margin-top:5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .gyn-hdr-nameday.celebrate{color:#FCD34D;font-weight:800;font-size:12px;text-shadow:0 1px 6px rgba(251,191,36,.45)}
+  .gyn-hdr-nameday{font-size:11px;color:#9DC0DE;margin-top:5px;font-weight:500;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.3}
+  .gyn-hdr-nameday.celebrate{color:#FCD34D;font-weight:800;font-size:12px;text-shadow:0 1px 6px rgba(251,191,36,.45);white-space:normal;overflow:visible;text-overflow:clip;line-height:1.3}
   /* Narodeniny v hlavičke (vlastné + tím pre manažérov) */
   #gyn-bday-banner{margin-top:3px}
   .gyn-hdr-bday{font-size:11px;margin-top:3px;font-weight:600;line-height:1.35;white-space:normal;overflow-wrap:anywhere}
@@ -2348,6 +2348,18 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .gyn-cal-evt-dot.pending{background:transparent!important;border:1.5px solid #94A3B8}
   .gyn-cal-evt-pend{font-size:9.5px;font-weight:800;color:#D97706;background:#FEF3C7;border-radius:999px;padding:2px 7px;text-transform:uppercase;letter-spacing:.03em;flex-shrink:0}
   .gyn-cal-evt-rej{font-size:9.5px;font-weight:800;color:#DC2626;background:#FEF2F2;border-radius:999px;padding:2px 7px;text-transform:uppercase;letter-spacing:.03em;flex-shrink:0}
+  /* Čakajúca žiadosť „po termíne" (posledný deň absencie už prešiel, no stále neschválená) */
+  .gyn-cal-evt-pend.overdue{color:#B91C1C;background:#FEE2E2}
+  .gyn-cal-day.overdue .gyn-cal-day-chip{background:#FEE2E2;color:#B91C1C}
+  .gyn-cal-status.pending.overdue{color:#991B1B;background:#FEE2E2}
+  /* Horná výstraha pre schvaľovateľa — staré neschválené žiadosti naprieč mesiacmi */
+  .gyn-cal-overdue-alert{background:#FEF2F2;border:1px solid #FCA5A5;border-radius:12px;padding:10px 12px;margin-bottom:14px}
+  .gyn-cal-overdue-hd{font-size:12.5px;font-weight:800;color:#991B1B;line-height:1.35;margin-bottom:8px}
+  .gyn-cal-overdue-row{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;border:none;background:#fff;border-radius:9px;padding:9px 11px;margin-top:6px;cursor:pointer;font-family:inherit;box-shadow:0 1px 3px rgba(0,0,0,.05);-webkit-tap-highlight-color:transparent}
+  .gyn-cal-overdue-row:first-of-type{margin-top:0}
+  .gyn-cal-overdue-row:active{transform:scale(.98)}
+  .gyn-cal-overdue-row-main{font-size:12.5px;font-weight:700;color:#1A2A3A;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .gyn-cal-overdue-row-dt{font-size:11.5px;font-weight:700;color:#B91C1C;flex-shrink:0}
   .gyn-cal-evt-tt.rej{color:#DC2626}
   /* štítky stavu v náhľade dňa */
   .gyn-cal-pend-badge{font-size:9.5px;font-weight:800;color:#D97706;background:#FEF3C7;border-radius:999px;padding:2px 7px;text-transform:uppercase;letter-spacing:.03em;vertical-align:middle}
@@ -3381,7 +3393,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.49.1';
+var APP_VERSION = '2.50.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -15027,7 +15039,10 @@ function gynCalHidePastList(list, y, m){
   var now=new Date();
   if(y!==now.getFullYear() || m!==now.getMonth()) return list;   // filtruj len aktuálny mesiac
   var todayK=gynCalDateKey(now.getFullYear(), now.getMonth(), now.getDate());
-  return (list||[]).filter(function(e){ return String(e.dateEnd||e.dateStart) >= todayK; });
+  return (list||[]).filter(function(e){
+    if(e.status==='pending') return true;   // po termíne, no stále čaká na schválenie → z Prehľadu nezmizne
+    return String(e.dateEnd||e.dateStart) >= todayK;
+  });
 }
 
 // ── Absencie tímu (krok 2d) — manažérsky pohľad po osobách ──
@@ -15225,6 +15240,19 @@ function gynCalPendingForMe(){
   // Golem/Reagila: počítaj len žiadosti, ktoré schvaľujem ja (alebo admin = všetky).
   return GYN_CAL.events.filter(function(e){ return e.status==='pending' && gynCalIsApproverOf(s, e); }).length;
 }
+// Absencia „po termíne" — stále čaká na schválenie, hoci jej posledný deň už prešiel.
+function gynCalIsOverduePending(ev){
+  if(!ev || ev.status!=='pending') return false;
+  var now=new Date(), todayK=gynCalDateKey(now.getFullYear(),now.getMonth(),now.getDate());
+  return String(ev.dateEnd||ev.dateStart) < todayK;
+}
+// Moje čakajúce žiadosti po termíne (naprieč mesiacmi) — pre hornú výstrahu schvaľovateľa.
+function gynCalOverduePendingForMe(){
+  var s=(typeof getSession==='function'&&getSession())||{};
+  return GYN_CAL.events.filter(function(e){
+    return gynCalIsOverduePending(e) && gynCalIsApproverOf(s, e);
+  }).sort(function(a,b){ return String(a.dateEnd||a.dateStart)<String(b.dateEnd||b.dateStart)?-1:1; });
+}
 function gynCalUpdateBadge(){
   if(!GYN_CAL._init){ var t=new Date(); GYN_CAL.y=t.getFullYear(); GYN_CAL.m=t.getMonth(); GYN_CAL._init=true; gynCalLoadLocal(); }
   var n=gynCalPendingForMe();
@@ -15366,6 +15394,7 @@ function gynKalShow(el, user) {
     evList.forEach(function(ev){
       var tt=gynCalTypeById(ev.type)||{color:'#2563EB'};
       var pend=ev.status==='pending', rej=ev.status==='rejected';
+      var overdue=pend && gynCalIsOverduePending(ev);
       var sd=ev.dateStart<monthFirst?monthFirst:ev.dateStart;      // chip začiatok orež do mesiaca
       var sp=sd.split('-'), dayNum=+sp[2], sdt=new Date(+sp[0],+sp[1]-1,+sp[2]);
       var wd=GYN_CAL_WD[(sdt.getDay()+6)%7];
@@ -15380,7 +15409,7 @@ function gynKalShow(el, user) {
         : '';
       var metaHtml = (who?'<div class="gyn-cal-evt-meta2">'+ownerChunk+'</div>':'')+
                      (dtTxt?'<div class="gyn-cal-evt-meta2 dt">'+gynEsc(dtTxt)+'</div>':'');
-      agenda+='<div class="gyn-cal-day'+(pend?' pending':'')+'" onclick="gynCalOpenEvent(\''+sd+'\',\''+ev.id+'\')">'+
+      agenda+='<div class="gyn-cal-day'+(pend?' pending':'')+(overdue?' overdue':'')+'" onclick="gynCalOpenEvent(\''+sd+'\',\''+ev.id+'\')">'+
         '<div class="gyn-cal-day-chip'+(isToday?' today':'')+'">'+
           '<div class="gyn-cal-day-num">'+dayNum+'</div>'+
           '<div class="gyn-cal-day-wd">'+wd+'</div>'+
@@ -15389,7 +15418,7 @@ function gynKalShow(el, user) {
           '<div class="gyn-cal-evt'+(pend?' pending':'')+'">'+
             '<span class="gyn-cal-evt-dot'+(pend?' pending':'')+'" style="'+(pend?'border-color:'+tt.color:rej?'background:#DC2626':'background:'+tt.color)+'"></span>'+
             '<span class="gyn-cal-evt-tt'+(rej?' rej':'')+'">'+gynEsc(ev.title)+'</span>'+
-            (pend?'<span class="gyn-cal-evt-pend">čaká</span>':'')+
+            (pend?'<span class="gyn-cal-evt-pend'+(overdue?' overdue':'')+'">'+(overdue?'po termíne':'čaká')+'</span>':'')+
             (rej?'<span class="gyn-cal-evt-rej">zamietnuté</span>':'')+
           '</div>'+
           metaHtml+
@@ -15398,6 +15427,24 @@ function gynKalShow(el, user) {
     });
   }
 
+  // Výstraha schvaľovateľovi: staré neschválené žiadosti po termíne (naprieč mesiacmi).
+  var overdueList = gynCalOverduePendingForMe();
+  var overdueBanner = '';
+  if(overdueList.length){
+    var _n=overdueList.length;
+    var _word=(_n===1?'žiadosť':(_n<5?'žiadosti':'žiadostí'));
+    overdueBanner='<div class="gyn-cal-overdue-alert">'+
+      '<div class="gyn-cal-overdue-hd">⚠️ '+_n+' '+_word+' po termíne — stále čaká na tvoje schválenie</div>'+
+      overdueList.map(function(e){
+        var who=e.ownerName||e.owner||'', tt=gynCalTypeById(e.type)||{};
+        var d=(e.dateStart!==e.dateEnd)?gynCalFmtRange(e.dateStart,e.dateEnd):gynCalFmtDMY(e.dateStart);
+        return '<button class="gyn-cal-overdue-row" onclick="gynCalOpenEvent(\''+e.dateStart+'\',\''+e.id+'\')">'+
+          '<span class="gyn-cal-overdue-row-main">'+gynEsc((tt.label||e.title||'Absencia')+(who?' — '+who:''))+'</span>'+
+          '<span class="gyn-cal-overdue-row-dt">'+gynEsc(d)+'</span>'+
+        '</button>';
+      }).join('')+
+    '</div>';
+  }
   // Manažér/admin dostane prepínač Prehľad ↔ Absencie tímu; rep len Prehľad.
   var isMgr = grp!=='rep';
   var agendaInner;
@@ -15422,7 +15469,7 @@ function gynKalShow(el, user) {
       '<button class="gyn-cal-nav" onclick="gynCalShift(1)" aria-label="Ďalší mesiac">›</button>'+
     '</div>'+
     '<div class="gyn-cal-grid">'+grid+'</div>'+
-    '<div class="gyn-cal-agenda">'+ agendaInner +'</div>'+
+    '<div class="gyn-cal-agenda">'+ overdueBanner + agendaInner +'</div>'+
   '</div>';
   // avatary autorov v agende + tímovom pohľade (DiceBear alebo iniciály)
   el.querySelectorAll('.gyn-cal-evt-owner-av, .gyn-cal-team-av').forEach(function(elx){
@@ -15640,10 +15687,13 @@ function gynCalOpenDetail(dk, id){
   var _apprNames = gynCalIsGyn() ? [] : gynCalApproverLogins(ev.owner).map(function(x){ return gynCalPersonName(x)||x; });
   var _apprName  = _apprNames.length <= 1 ? (_apprNames[0]||'')
                    : (_apprNames.slice(0,-1).join(', ') + ' alebo ' + _apprNames[_apprNames.length-1]);
-  var _pendTxt   = gynCalIsGyn() ? '⏳ Čaká na schválenie AM'
-                                 : ('⏳ Čaká na schválenie'+(_apprName?' — '+gynEsc(_apprName):''));
+  var _overdue   = gynCalIsOverduePending(ev);
+  var _pendTxt   = _overdue
+    ? ('⚠️ Po termíne — stále čaká na schválenie'+(!gynCalIsGyn() && _apprName ? ' — '+gynEsc(_apprName) : ''))
+    : (gynCalIsGyn() ? '⏳ Čaká na schválenie AM'
+                     : ('⏳ Čaká na schválenie'+(_apprName?' — '+gynEsc(_apprName):'')));
   var _approvedByName = ev.approvedBy ? (gynCalPersonName(ev.approvedBy)||ev.approvedBy) : '';
-  var statusBanner = ev.status==='pending' ? '<div class="gyn-cal-status pending">'+_pendTxt+'</div>'
+  var statusBanner = ev.status==='pending' ? '<div class="gyn-cal-status pending'+(_overdue?' overdue':'')+'">'+_pendTxt+'</div>'
     : ev.status==='rejected' ? '<div class="gyn-cal-status rejected">❌ Zamietnuté'+(_approvedByName?' — '+gynEsc(_approvedByName):'')+'</div>'+(ev.rejectReason?'<div class="gyn-cal-reason"><b>Dôvod:</b> '+gynEsc(ev.rejectReason)+'</div>':'')
     : ((gynCalTypeById(ev.type)||{}).cat==='absencia' && ev.approvedBy) ? '<div class="gyn-cal-status approved">✅ Schválené'+(_approvedByName?' — '+gynEsc(_approvedByName):'')+'</div>' : '';
   var apprActions='';
