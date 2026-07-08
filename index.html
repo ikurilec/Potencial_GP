@@ -3381,7 +3381,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.49.0';
+var APP_VERSION = '2.49.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -16959,7 +16959,7 @@ function mgrTuyBannerHtml(){
   var switchLek = recs.filter(function(r){ return r.switchP === 'ano'; }).length;
   var switchPac = recs.reduce(function(s, r){ return s + (parseInt(r.switchPocet, 10) || 0); }, 0);
   var noviLek = recs.filter(function(r){ return r.noviP === 'ano'; }).length;
-  var noviPerMonth = recs.reduce(function(s, r){ if (r.noviP !== 'ano') return s; var n = parseInt(r.noviPocet, 10) || 0; return s + (r.noviObdobie === 'kvartal' ? n / 3 : n); }, 0);
+  var noviPerMonth = recs.reduce(function(s, r){ if (r.noviP !== 'ano') return s; var n = parseInt(r.noviPocet, 10) || 0; return s + (n / tuyObdobieDiv(r.noviObdobie)); }, 0);
   noviPerMonth = Math.round(noviPerMonth * 10) / 10;
   var repsWithData = Object.keys(MGR_STATE.reps || {}).filter(function(u){ return mgrRepTuyory(u).length; }).length;
   return '<div class="mgr-tuy-banner">' +
@@ -16995,7 +16995,7 @@ function mgrRepTuyHeaderHtml(username){
   var noviPerMonth = recs.reduce(function(s, r){
     if (r.noviP !== 'ano') return s;
     var n = parseInt(r.noviPocet, 10) || 0;
-    return s + (r.noviObdobie === 'kvartal' ? n / 3 : n);
+    return s + (n / tuyObdobieDiv(r.noviObdobie));
   }, 0);
   noviPerMonth = Math.round(noviPerMonth * 10) / 10;
   var name = (typeof MGR_REP_NAMES !== 'undefined' && MGR_REP_NAMES[username]) || username;
@@ -17113,7 +17113,7 @@ function mgrOpenTuyVisit(ti){
 function mgrTuyCardHtml(r, ti){
   var parts = [];
   if (r.switchP === 'ano') parts.push('switch: ' + (r.switchPocet ? (r.switchPocet + ' pac.') : 'áno'));
-  if (r.noviP === 'ano') parts.push('noví: ' + (r.noviPocet ? (r.noviPocet + '/' + (r.noviObdobie === 'kvartal' ? 'Q' : 'mes')) : 'áno'));
+  if (r.noviP === 'ano') parts.push('noví: ' + (r.noviPocet ? (r.noviPocet + '/' + (tuyObdobieShort(r.noviObdobie))) : 'áno'));
   var tag = (r.nastavuje === 'ano') ? ('Na tocilizumabe: ' + (r.pocet || '—')) : 'Nenastavuje tocilizumab';
   var dd = new Date(r.ts); var ds = isNaN(dd.getTime()) ? '' : (dd.getDate() + '.' + (dd.getMonth() + 1) + '.' + dd.getFullYear());
   return '<div class="mgr-vitem mgr-vitem-tuy" data-tidx="' + ti + '">' +
@@ -32118,7 +32118,7 @@ function tuyoryRenderDashboard(){
   var noviPerMonth = recs.reduce(function(s, r){
     if (r.noviP !== 'ano') return s;
     var n = parseInt(r.noviPocet, 10) || 0;
-    return s + (r.noviObdobie === 'kvartal' ? n / 3 : n);
+    return s + (n / tuyObdobieDiv(r.noviObdobie));
   }, 0);
   noviPerMonth = Math.round(noviPerMonth * 10) / 10;
 
@@ -32199,16 +32199,23 @@ function tuyoryConfirmTarget(){
 }
 
 // ── Formulár ──
+// Obdobie výskytu nových pacientov → deliteľ na prepočet na mesiac, krátky a dlhý label.
+function tuyObdobieDiv(obd){ return obd === 'rok' ? 12 : (obd === 'polrok' ? 6 : (obd === 'kvartal' ? 3 : 1)); }
+function tuyObdobieShort(obd){ return obd === 'rok' ? 'rok' : (obd === 'polrok' ? '½r' : (obd === 'kvartal' ? 'Q' : 'mes')); }
+function tuyObdobieLabel(obd){ return obd === 'rok' ? 'za rok' : (obd === 'polrok' ? 'za pol rok' : (obd === 'kvartal' ? 'za kvartál' : (obd === 'mesiac' ? 'za mesiac' : ''))); }
+
 function tuyoryNoviBlock(sfx){
-  // Podotázka „noví pacienti" — počet + obdobie (mesiac/kvartál). sfx = 'A' (áno vetva) / 'B' (nie vetva)
+  // Podotázka „noví pacienti" — počet + obdobie (mesiac/kvartál/pol rok/rok). sfx = 'A' (áno vetva) / 'B' (nie vetva)
   return '<div class="tuy-cond" id="tuy-blk-novi' + sfx + '-count">' +
     '<label class="tuy-lbl">Koľko nových pacientov?</label>' +
     '<input class="tuy-in" id="tuy-novi' + sfx + '-pocet" type="number" inputmode="numeric" min="1" step="1" placeholder="napr. 2">' +
-    '<div class="tuy-seg tuy-seg-2" data-g="obd' + sfx + '" style="margin-top:8px">' +
+    '<div class="tuy-seg" data-g="obd' + sfx + '" style="margin-top:8px">' +
       '<button type="button" class="tuy-opt" onclick="tuySeg(\'obd' + sfx + '\',\'mesiac\',this)">za mesiac</button>' +
       '<button type="button" class="tuy-opt" onclick="tuySeg(\'obd' + sfx + '\',\'kvartal\',this)">za kvartál</button>' +
+      '<button type="button" class="tuy-opt" onclick="tuySeg(\'obd' + sfx + '\',\'polrok\',this)">za pol rok</button>' +
+      '<button type="button" class="tuy-opt" onclick="tuySeg(\'obd' + sfx + '\',\'rok\',this)">za rok</button>' +
     '</div>' +
-    '<div class="tuy-hint">V štatistike sa kvartál prepočíta ÷3 na mesiac.</div>' +
+    '<div class="tuy-hint">V štatistike sa prepočíta na mesiac (kvartál ÷3, pol rok ÷6, rok ÷12).</div>' +
   '</div>';
 }
 
@@ -32607,7 +32614,7 @@ function tuyoryHistCardHtml(item){
   var tag = (r.nastavuje === 'ano') ? ('Na tocilizumabe: ' + (r.pocet || '—')) : 'Nenastavuje tocilizumab';
   var parts = [];
   if (r.switchP === 'ano') parts.push('switch: ' + (r.switchPocet ? (r.switchPocet + ' pac.') : 'áno'));
-  if (r.noviP === 'ano') parts.push('noví: ' + (r.noviPocet ? (r.noviPocet + '/' + (r.noviObdobie === 'kvartal' ? 'Q' : 'mes')) : 'áno'));
+  if (r.noviP === 'ano') parts.push('noví: ' + (r.noviPocet ? (r.noviPocet + '/' + (tuyObdobieShort(r.noviObdobie))) : 'áno'));
   var extra = parts.length ? (' · ' + parts.join(' · ')) : '';
   return '<div class="hist-item hist-item-tuy" data-idx="' + idx + '" onclick="openDetail(' + idx + ')" style="cursor:pointer">' +
     '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' +
@@ -32626,7 +32633,7 @@ function tuyoryHistDetail(item){
   if (!ov || !body) return;
   if (title) title.textContent = r.meno || 'Tuyory záznam';
   function row(k, v){ return (v || v === 0) && v !== '' ? '<div class="tuy-dt-row"><span class="tuy-dt-k">' + k + '</span><span class="tuy-dt-v">' + tuyEsc(v) + '</span></div>' : ''; }
-  var obd = r.noviObdobie === 'kvartal' ? 'za kvartál' : (r.noviObdobie === 'mesiac' ? 'za mesiac' : '');
+  var obd = tuyObdobieLabel(r.noviObdobie);
   var html = '';
   html += row('Okres', r.okres);
   html += row('Pracovisko', r.pracovisko === 'ambulancia' ? 'Ambulancia' : (r.pracovisko === 'nemocnica' ? 'Nemocnica' : ''));
