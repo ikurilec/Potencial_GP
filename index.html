@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Satori">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Satori</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@700&display=swap');
@@ -74,6 +74,8 @@
     --t-slowest:.4s ease;
     --ease-spring:cubic-bezier(.34,1.56,.64,1);
     --ease-out-expo:cubic-bezier(.16,1,.3,1);
+    /* iOS notch / safe-area (vrchný výrez na kameru + status bar) */
+    --sat:env(safe-area-inset-top, 0px);
     /* Z-index scale */
     --z-base:1;
     --z-sticky:100;
@@ -120,7 +122,9 @@
     font-feature-settings:"tnum" 1,"lnum" 1
   }
   html,body{background:var(--color-bg);min-height:100%;font-family:var(--font-body);color:var(--color-text)}
-  body{padding:24px 16px;padding-bottom:calc(48px + env(safe-area-inset-bottom));padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+  body{padding:24px 16px;padding-top:calc(24px + var(--sat));padding-bottom:calc(48px + env(safe-area-inset-bottom));padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+  /* Čistý pás cez iOS notch/status bar — nech pri scrollovaní nepresvitá obsah v pozadí */
+  body::before{content:'';position:fixed;top:0;left:0;right:0;height:var(--sat);background:var(--color-bg);z-index:2050;pointer-events:none}
   .app{max-width:660px;margin:0 auto;visibility:hidden}
   .hdr{background:linear-gradient(135deg,#0C1E35 0%,#13294B 55%,#0C1E35 100%);border-radius:18px;padding:10px 20px 10px;margin-bottom:10px;box-shadow:0 12px 32px rgba(12,30,53,.35),0 4px 12px rgba(37,99,235,.18),inset 0 1px 0 rgba(255,255,255,.08);position:relative;overflow:hidden;min-height:60px}
   .hdr-logo-wrap{background:rgba(255,255,255,0.12);border-radius:10px;padding:8px 10px;display:flex;align-items:center;justify-content:center;position:absolute;right:-1px;top:50%;transform:translateY(-50%);z-index:10}
@@ -615,8 +619,8 @@
   .hdr-badge{color:#fff;font-size:10px;font-weight:700;padding:5px 6px 5px 8px;letter-spacing:.01em;white-space:nowrap}
   .hdr-badge.bump{transform:none}
   .progress-wrap{background:#fff;border-radius:12px;padding:10px 16px 12px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.06);border:1px solid #E2E8F0;transition:background .4s ease,border-radius .4s ease,border-color .4s ease,box-shadow .4s ease,backdrop-filter .4s ease,margin .4s ease}
-  .progress-wrap.sticky{position:sticky;top:0;z-index:997;border-radius:0 0 12px 12px;background:rgba(255,255,255,.82);backdrop-filter:blur(10px) saturate(1.4);-webkit-backdrop-filter:blur(10px) saturate(1.4);border:none;border-bottom:1px solid rgba(226,232,240,.7);box-shadow:0 2px 12px rgba(0,0,0,.08);margin-bottom:0}
-  body:not(.manager-mode) .progress-wrap.sticky{top:62px}
+  .progress-wrap.sticky{position:sticky;top:var(--sat);z-index:997;border-radius:0 0 12px 12px;background:rgba(255,255,255,.82);backdrop-filter:blur(10px) saturate(1.4);-webkit-backdrop-filter:blur(10px) saturate(1.4);border:none;border-bottom:1px solid rgba(226,232,240,.7);box-shadow:0 2px 12px rgba(0,0,0,.08);margin-bottom:0}
+  body:not(.manager-mode) .progress-wrap.sticky{top:calc(62px + var(--sat))}
   .progress-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
   .progress-label{font-size:11px;font-weight:600;color:#64748B;letter-spacing:.04em;text-transform:uppercase}
   .progress-pct{font-size:12px;font-weight:700;color:#2563EB}
@@ -759,7 +763,7 @@
   body.manager-mode .panel-nav{display:none}
   body.manager-mode .panel-nav-mgr-back{display:inline-flex}
   /* Zdieľaný fixný panel nav — zostáva statický pri prechode medzi panelmi */
-  #shared-panel-nav{position:fixed;top:0;left:0;right:0;z-index:2100;background:#EAECF2;padding:20px 16px 12px}
+  #shared-panel-nav{position:fixed;top:0;left:0;right:0;z-index:2100;background:#EAECF2;padding:calc(20px + var(--sat)) 16px 12px}
   #shared-panel-nav .panel-nav{max-width:628px;margin:0 auto;margin-bottom:0}
   body.manager-mode #shared-panel-nav{display:none !important}
   .hist-empty{text-align:center;padding:48px 24px;color:#94A3B8;font-size:13px;line-height:1.6}
@@ -1130,7 +1134,7 @@
   .tutorial-preskocit{display:block;margin:6px auto 0;background:none;border:none;color:#CBD5E1;font-size:11px;font-family:inherit;cursor:pointer;font-weight:500}
   .tutorial-hero-login-title{font-size:26px;font-weight:800;letter-spacing:-.03em;color:#fff;text-align:center;line-height:1.2}
   /* ── PLNENIE (Predaje vs Plán) — admin sub-view, v2.3.0 ── */
-  .mgr-subtabs{display:flex;gap:6px;margin:0 0 10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06);position:sticky;top:0;z-index:100}
+  .mgr-subtabs{display:flex;gap:6px;margin:0 0 10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06);position:sticky;top:var(--sat);z-index:100}
   .mgr-subtab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px 2px;border:none;background:transparent;font-size:11px;font-weight:700;color:#64748B;cursor:pointer;border-radius:9px;font-family:inherit;transition:all .15s;-webkit-tap-highlight-color:transparent;line-height:1.1}
   .mgr-subtab .st-emoji{font-size:17px;line-height:1}
   .mgr-subtab .st-lbl{font-size:11px;white-space:nowrap}
@@ -1547,7 +1551,7 @@
   /* ═══ REP NAV BAR (História / Rebríček / Plnenie) ═══ */
   /* Flex + zalomenie do vyvážených riadkov; šírku tlačidla určuje --cols (nastavuje repNavLayout()
      podľa počtu viditeľných tabov → nikdy nie „všetky v 1. riadku okrem jedného"). */
-  .rep-nav{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-bottom:0;position:sticky;top:0;z-index:1400;background:#EAECF2;padding-top:12px;padding-bottom:4px}
+  .rep-nav{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-bottom:0;position:sticky;top:var(--sat);z-index:1400;background:#EAECF2;padding-top:12px;padding-bottom:4px}
   .rep-nav-btn{flex:0 0 calc((100% - (var(--cols,4) - 1) * 6px) / var(--cols,4) - 0.5px);background:#fff;border:1px solid rgba(0,0,0,.07);border-radius:12px;padding:9px 2px;font-size:10px;font-weight:700;color:#1A2A3A;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(0,0,0,.06),0 1px 3px rgba(0,0,0,.04);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:opacity .15s,transform .15s,background .2s;-webkit-tap-highlight-color:transparent;white-space:nowrap;overflow:hidden;position:relative}
   .rep-nav-btn:active{opacity:.82;transform:scale(.96)}
   .rep-nav-btn .rn-ico{font-size:17px;line-height:1}
@@ -1576,7 +1580,7 @@
   @media(prefers-reduced-motion:reduce){.nday-emoji{animation:none}}
   /* ═══ Persistentný topbar pre GP reprezentanta (header + záložky vždy hore) ═══ */
   .rt-inner{max-width:660px;margin:0 auto}
-  body.gp-rep #rep-topbar{position:fixed;top:0;left:0;right:0;z-index:2100;background:#EAECF2;padding:14px 16px 6px;box-shadow:0 6px 16px rgba(15,23,42,.06)}
+  body.gp-rep #rep-topbar{position:fixed;top:0;left:0;right:0;z-index:2100;background:#EAECF2;padding:calc(14px + var(--sat)) 16px 6px;box-shadow:0 6px 16px rgba(15,23,42,.06)}
   body.gp-rep #rep-topbar .hdr{margin-bottom:8px}
   body.gp-rep #rep-topbar .rep-nav{position:static;top:auto;padding-top:0;padding-bottom:0;background:transparent;z-index:auto}
   body.gp-rep .app{padding-top:var(--rep-top-h,150px)}
@@ -3393,7 +3397,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.53.0';
+var APP_VERSION = '2.54.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
