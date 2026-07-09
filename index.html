@@ -3381,7 +3381,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.49.1';
+var APP_VERSION = '2.49.2';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -17110,6 +17110,22 @@ function mgrOpenTuyVisit(ti){
   tuyoryHistDetail({ tuy: r });
 }
 // Karta Tuyory záznamu v manažérskom zozname (rovnaký štýl ako u reprezentanta)
+// Karta Lonelix-only lekára (bez GP karty) v manažérskom zozname — s poznámkou „GP potenciál nezistený"
+function mgrLonNewCardHtml(r, li){
+  var info = (r.pouziva === 'ano') ? ('Používa inozín · ' + (r.pocet || '?') + ' pac./mes v sezóne')
+           : (r.pouziva === 'nie') ? 'Nepoužíva inozín' : '';
+  return '<div class="mgr-vitem mgr-vitem-lonnew" data-lonidx="' + li + '">' +
+    '<div class="mgr-vseg lonnew"></div>' +
+    '<div class="mgr-vbody">' +
+      '<div class="mgr-vdoc">' + mgrEscape(r.meno || '—') + (r.poznamka ? '<span class="mgr-vnote-ico" title="Obsahuje poznámku">📝</span>' : '') + '<span class="hist-lonnew-badge">🛡️ Lonelix</span></div>' +
+      '<div class="mgr-vmeta">' +
+        '<span>📍 ' + mgrEscape(r.okres || '—') + '</span>' +
+        '<span class="sep">·</span><span style="color:#B45309;font-weight:700">GP potenciál nezistený</span>' +
+        (info ? '<span class="sep">·</span><span>' + info + '</span>' : '') +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
 function mgrTuyCardHtml(r, ti){
   var parts = [];
   if (r.switchP === 'ano') parts.push('switch: ' + (r.switchPocet ? (r.switchPocet + ' pac.') : 'áno'));
@@ -17157,10 +17173,24 @@ function mgrRenderVisits(){
     return String(r.meno||'').toLowerCase().indexOf(q) !== -1 || String(r.okres||'').toLowerCase().indexOf(q) !== -1;
   }) : tuyRecs);
 
+  // Lonelix-only lekári (majú Lonelix, ale ešte nie sú v GP databáze repa) → karty „GP potenciál nezistený"
+  var mgrLonAll = (typeof mgrRepLonelix === 'function') ? mgrRepLonelix(username) : [];
+  var _gpKeys = {};
+  visits.forEach(function(v){ _gpKeys[String(v.lekar||'').trim().toLowerCase() + '|' + String(v.okres||'').trim().toLowerCase()] = 1; });
+  var _lonSeen = {};
+  var lonOnly = (filter === 'tuyory') ? [] : mgrLonAll.filter(function(r){
+    var key = String(r.meno||'').trim().toLowerCase() + '|' + String(r.okres||'').trim().toLowerCase();
+    if (_gpKeys[key] || _lonSeen[key]) return false;
+    _lonSeen[key] = 1;
+    if (q && String(r.meno||'').toLowerCase().indexOf(q) === -1 && String(r.okres||'').toLowerCase().indexOf(q) === -1) return false;
+    return true;
+  });
+  MGR_STATE._lonOnly = lonOnly;
+
   // Tuyory header (rovnaký ako vidí reprezentant) — v detaile pod tabom Tuyory
   var mgrTuyHeader = (filter === 'tuyory' && typeof mgrRepTuyHeaderHtml === 'function') ? mgrRepTuyHeaderHtml(username) : '';
 
-  if(!gpFiltered.length && !tuyFiltered.length){
+  if(!gpFiltered.length && !tuyFiltered.length && !lonOnly.length){
     var emptySub = q ? 'Skús iný vyhľadávací výraz.'
                  : (filter === 'tuyory' ? 'Reprezentant zatiaľ nevyplnil žiadny Tuyory formulár.' : 'Reprezentant zatiaľ nezapísal žiadnu návštevu.');
     document.getElementById('mgr-vlist').innerHTML = mgrTuyHeader + mkEmpty(q ? 'search' : 'clipboard', q ? 'Žiadne zhody' : 'Žiadne záznamy', emptySub);
@@ -17190,6 +17220,7 @@ function mgrRenderVisits(){
   }).join('');
 
   var tuyHtml = tuyFiltered.map(function(r){ return mgrTuyCardHtml(r, tuyRecs.indexOf(r)); }).join('');
+  var lonHtml = lonOnly.map(function(r, li){ return mgrLonNewCardHtml(r, li); }).join('');
 
   // Súhrn "kde je tento rep oproti línii" — pre filter Všetko/Všeobecní (nie Tuyory).
   var mgrGpCard = '';
@@ -17202,7 +17233,7 @@ function mgrRenderVisits(){
   }
 
   var listEl = document.getElementById('mgr-vlist');
-  listEl.innerHTML = mgrGpCard + mgrTuyHeader + gpHtml + tuyHtml;
+  listEl.innerHTML = mgrGpCard + mgrTuyHeader + gpHtml + lonHtml + tuyHtml;
 
   // Event delegation — pripojíme klik handler LEN RAZ (GP → mgrOpenVisit, Tuyory → mgrOpenTuyVisit)
   if(!listEl._clickBound){
@@ -17215,6 +17246,8 @@ function mgrRenderVisits(){
         if(n && n.classList && n.classList.contains('mgr-vitem')) item = n;
       }
       if(!item) return;
+      var lonidx = item.getAttribute('data-lonidx');
+      if(lonidx !== null){ var li = parseInt(lonidx, 10); if(!isNaN(li) && MGR_STATE._lonOnly && MGR_STATE._lonOnly[li]) lonelixDoctorDetail(MGR_STATE._lonOnly[li]); return; }
       var tidx = item.getAttribute('data-tidx');
       if(tidx !== null){ var ti = parseInt(tidx, 10); if(!isNaN(ti)) mgrOpenTuyVisit(ti); return; }
       var idx = parseInt(item.getAttribute('data-vidx'), 10);
@@ -32632,6 +32665,7 @@ function tuyoryHistDetail(item){
   var title = document.getElementById('tuy-detail-title');
   if (!ov || !body) return;
   if (title) title.textContent = r.meno || 'Tuyory záznam';
+  var _tbd = document.getElementById('tuy-detail-badge'); if (_tbd) _tbd.textContent = '🧬 Prieskum Tuyory';
   function row(k, v){ return (v || v === 0) && v !== '' ? '<div class="tuy-dt-row"><span class="tuy-dt-k">' + k + '</span><span class="tuy-dt-v">' + tuyEsc(v) + '</span></div>' : ''; }
   var obd = tuyObdobieLabel(r.noviObdobie);
   var html = '';
@@ -32655,6 +32689,32 @@ function tuyoryHistDetail(item){
   document.body.style.overflow = 'hidden';
 }
 function tuyoryDetailClose(){ var ov = document.getElementById('tuy-detail-overlay'); if (ov) ov.classList.remove('show'); document.body.style.overflow = ''; }
+// Detail Lonelix-only lekára (u manažéra) — reuse toho istého modalu s Lonelix obsahom
+function lonelixDoctorDetail(r){
+  if (!r) return;
+  var ov = document.getElementById('tuy-detail-overlay');
+  var body = document.getElementById('tuy-detail-body');
+  var title = document.getElementById('tuy-detail-title');
+  var badge = document.getElementById('tuy-detail-badge');
+  if (!ov || !body) return;
+  if (title) title.textContent = r.meno || 'Lonelix záznam';
+  if (badge) badge.textContent = '🛡️ Prieskum Lonelix';
+  function row(k, v){ return (v || v === 0) && v !== '' ? '<div class="tuy-dt-row"><span class="tuy-dt-k">' + k + '</span><span class="tuy-dt-v">' + tuyEsc(v) + '</span></div>' : ''; }
+  var html = '<div class="tuy-dt-note" style="margin:0 0 10px"><div class="tuy-dt-note-v">⚠︎ GP potenciál ešte nezistený — lekár zatiaľ nie je v GP databáze (má len Lonelix záznam).</div></div>';
+  html += row('Okres', r.okres);
+  html += row('Používa inozín', r.pouziva === 'ano' ? 'Áno' : 'Nie');
+  if (r.pouziva === 'ano'){
+    html += row('Pacientov/mes. v sezóne', r.pocet);
+    html += row('Prípravok', r.pripravok);
+    if (r.ochota) html += row('Ochotný začať s Lonelixom', r.ochota === 'ano' ? 'Áno' : 'Nie');
+  } else if (r.zvazil){
+    html += row('Zvážil by inozín', r.zvazil === 'ano' ? 'Áno' : 'Nie');
+  }
+  if (r.poznamka) html += '<div class="tuy-dt-note"><div class="tuy-dt-note-k">📝 Poznámka</div><div class="tuy-dt-note-v">' + tuyEsc(r.poznamka).replace(/\n/g, '<br>') + '</div></div>';
+  body.innerHTML = html;
+  ov.classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
 // GP história + Tuyory záznamy dokopy (zoradenie/zoskupenie rieši renderHistItems podľa dátumu)
 // ══════════════════════════════════════════════════════════════════════════
 // ── VRSTVA ZMIEN (override) — aktualizácie počtov od repov/manažéra/admina ──
@@ -33875,6 +33935,7 @@ function lonelixOpenGpForm(r){
   .mgr-chip.mgr-chip-tuy{background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE}
   /* Tuyory karta v manažérskom zozname návštev */
   .mgr-vseg.tuy{background:#2563EB}
+  .mgr-vseg.lonnew{background:#F59E0B}
   .mgr-vitem-tuy .hist-tuy-badge{margin-left:5px}
   .mgr-detail-tuyonly .mgr-dstats,.mgr-detail-tuyonly .mgr-segsum{display:none}
 
@@ -33921,7 +33982,7 @@ function lonelixOpenGpForm(r){
 <div id="tuy-detail-overlay" onclick="if(event.target===this)tuyoryDetailClose()">
   <div class="tuy-dt-box">
     <div class="tuy-dt-hdr">
-      <div><div class="tuy-dt-hdr-t" id="tuy-detail-title">Tuyory záznam</div><div class="tuy-dt-badge">🧬 Prieskum Tuyory</div></div>
+      <div><div class="tuy-dt-hdr-t" id="tuy-detail-title">Tuyory záznam</div><div class="tuy-dt-badge" id="tuy-detail-badge">🧬 Prieskum Tuyory</div></div>
       <button type="button" class="tuy-dt-close" onclick="tuyoryDetailClose()" aria-label="Zavrieť">✕</button>
     </div>
     <div class="tuy-dt-body" id="tuy-detail-body"></div>
