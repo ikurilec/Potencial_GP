@@ -3393,7 +3393,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.51.0';
+var APP_VERSION = '2.52.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6761,18 +6761,10 @@ function openHistory() {
     b.classList.toggle('active', b.getAttribute('data-hf') === 'all');
   });
   loadHistoryItems(username).then(function() { histRender(); });
-  // Vrstva zmien — dotiahni zdieľané override + súhrn línie (pre graf porovnania)
-  try { gpFetchOverrides(); gpFetchLineStats(); } catch(e){}
-  // Tuyory záznamy dotiahni zo Sheetu a ak je História otvorená, prekresli
+  // Override + súhrn línie + Tuyory + Lonelix v JEDNOM volaní (bootstrap) namiesto
+  // 4 paralelných — menej súbežných vykonávaní na serveri, svižnejší štart.
   try {
-    tuyoryFetchServer(function(){
-      var ov = document.getElementById('hist-overlay');
-      if (ov && ov.classList.contains('show')) histRender();
-    });
-  } catch(e){}
-  // Lonelix záznamy zo Sheetu — po dotiahnutí prekresli (odznaky, noví lekári, detail)
-  try {
-    lonelixFetchServer(function(){
+    gpBootstrapRep(username, function(){
       var ov = document.getElementById('hist-overlay');
       if (ov && ov.classList.contains('show')) histRender();
     });
@@ -16355,10 +16347,9 @@ function mgrEnter(roleKey){
 
   MGR_STATE.histFilter = 'all';
   mgrLoadData();
-  mgrLoadTuyory();   // Tuyory záznamy pre manažérsky pohľad (getAllTuyory, filtrované klientom podľa repov)
-  mgrLoadLonelix();  // Lonelix záznamy pre Lonelix riadok v súhrnnej karte repa
   MGR_STATE.detailTab = 'gp';   // default tab v detaile repa
-  try { gpFetchOverrides(); gpFetchLineStats(); } catch(e){}   // súhrn celej línie pre banner „celá línia"
+  // Override + súhrn línie + Tuyory + Lonelix v JEDNOM volaní (bootstrap) namiesto 4.
+  try { gpBootstrapMgr(); } catch(e){}
   // Plnenie je default tab — načítaj všetky kvartály hneď pri vstupe
   plnenieLoadAllQuarters();
   // Úvodná obrazovka podľa nastavení manažéra (ak si zvolil inú ako Plnenie)
@@ -17125,24 +17116,25 @@ function mgrHistSetFilter(f, btn){
   var det = document.getElementById('mgr-detail');
   if (MGR_STATE.currentRep && det && det.classList.contains('show')) mgrRenderVisits();
 }
+function mgrApplyTuyoryAll(d){
+  if (!d || !d.ok || !d.byRep) return;
+  var by = {};
+  Object.keys(d.byRep).forEach(function(k){ by[String(k).trim().toLowerCase()] = d.byRep[k] || []; });
+  MGR_STATE.tuyoryByRep = by;
+  // Prekresli zoznam (počty Tuyory v kartách) + banner/detail ak treba
+  try { mgrRenderList(); } catch(e){}
+  if (MGR_STATE.histFilter === 'tuyory'){
+    var banner = document.getElementById('mgr-tuy-banner');
+    if (banner && banner.style.display !== 'none') banner.innerHTML = mgrTuyBannerHtml();
+    var det = document.getElementById('mgr-detail');
+    if (MGR_STATE.currentRep && det && det.classList.contains('show')) mgrRenderVisits();
+  }
+}
 function mgrLoadTuyory(){
   if (typeof IS_DEV !== 'undefined' && IS_DEV){ MGR_STATE.tuyoryByRep = MGR_STATE.tuyoryByRep || {}; return; }
   fetch(scriptUrl('action=getAllTuyory'), { cache: 'no-store' })
     .then(function(r){ return r.json(); })
-    .then(function(d){
-      if (!d || !d.ok || !d.byRep) return;
-      var by = {};
-      Object.keys(d.byRep).forEach(function(k){ by[String(k).trim().toLowerCase()] = d.byRep[k] || []; });
-      MGR_STATE.tuyoryByRep = by;
-      // Prekresli zoznam (počty Tuyory v kartách) + banner/detail ak treba
-      try { mgrRenderList(); } catch(e){}
-      if (MGR_STATE.histFilter === 'tuyory'){
-        var banner = document.getElementById('mgr-tuy-banner');
-        if (banner && banner.style.display !== 'none') banner.innerHTML = mgrTuyBannerHtml();
-        var det = document.getElementById('mgr-detail');
-        if (MGR_STATE.currentRep && det && det.classList.contains('show')) mgrRenderVisits();
-      }
-    })
+    .then(function(d){ mgrApplyTuyoryAll(d); })
     .catch(function(){});
 }
 // Lonelix pre manažérsky pohľad — záznamy po repoch (pre Lonelix riadok v súhrnnej karte).
@@ -17150,19 +17142,20 @@ function mgrRepLonelix(username){
   var by = MGR_STATE.lonelixByRep || {};
   return by[String(username || '').trim().toLowerCase()] || [];
 }
+function mgrApplyLonelixAll(d){
+  if (!d || !d.ok || !d.byRep) return;
+  var by = {};
+  Object.keys(d.byRep).forEach(function(k){ by[String(k).trim().toLowerCase()] = d.byRep[k] || []; });
+  MGR_STATE.lonelixByRep = by;
+  // Ak je otvorený detail repa (GP pohľad) → prekresli, objaví sa Lonelix riadok
+  var det = document.getElementById('mgr-detail');
+  if (MGR_STATE.currentRep && det && det.classList.contains('show')) mgrRenderVisits();
+}
 function mgrLoadLonelix(){
   if (typeof IS_DEV !== 'undefined' && IS_DEV){ MGR_STATE.lonelixByRep = MGR_STATE.lonelixByRep || {}; return; }
   fetch(scriptUrl('action=getAllLonelix'), { cache: 'no-store' })
     .then(function(r){ return r.json(); })
-    .then(function(d){
-      if (!d || !d.ok || !d.byRep) return;
-      var by = {};
-      Object.keys(d.byRep).forEach(function(k){ by[String(k).trim().toLowerCase()] = d.byRep[k] || []; });
-      MGR_STATE.lonelixByRep = by;
-      // Ak je otvorený detail repa (GP pohľad) → prekresli, objaví sa Lonelix riadok
-      var det = document.getElementById('mgr-detail');
-      if (MGR_STATE.currentRep && det && det.classList.contains('show')) mgrRenderVisits();
-    })
+    .then(function(d){ mgrApplyLonelixAll(d); })
     .catch(function(){});
 }
 function mgrOpenTuyVisit(ti){
@@ -19431,6 +19424,105 @@ function loadRepList(forceFullRoster) {
 // ── INIT DATA — načíta repList + históriu + milestoneStats v jedinom HTTP requeste ──
 // Nahrádza loadRepList() + refreshBadgeFromSheets() pri logine.
 // Retry: pri zlyhaní skúsi znova po 3s a 8s, potom fallback na pôvodné funkcie.
+// ── BOOT LOADER — Satori logo + osobné oslovenie, plynulý progres → 100 % → odhalí appku ──
+var _bootLoader = { pct: 0, timer: null, failsafe: null };
+function _bootGreeting(){
+  var sess = (typeof getSession === 'function') ? getSession() : null;
+  var nm = String((sess && (sess.name || sess.username)) || '').trim().split(/\s+/)[0];
+  if(nm) nm = nm.charAt(0).toUpperCase() + nm.slice(1);
+  var h = new Date().getHours();
+  var g = h < 10 ? 'Dobré ráno' : h < 18 ? 'Dobrý deň' : 'Dobrý večer';
+  return nm ? (g + ', ' + nm) : g;
+}
+// Veľký avatar prihláseného (DiceBear) alebo fallback farebné iniciály — rovnaký helper ako inde.
+function _bootAvatarHtml(){
+  var sess = (typeof getSession === 'function') ? getSession() : null;
+  var username = (sess && sess.username) || '';
+  var name = (sess && (sess.name || sess.username)) || '?';
+  var col = (typeof gynCalAvatarColor === 'function') ? gynCalAvatarColor(username) : 'linear-gradient(135deg,#1E40AF,#3B82F6)';
+  if(typeof avatarHtml === 'function'){
+    var html = avatarHtml({ username: username, name: name, size: 150, color: col });
+    return html.replace('<img ', '<img onerror="try{avatarImgErr(this)}catch(e){}" ');
+  }
+  var ini = String(name).trim().slice(0,2).toUpperCase();
+  return '<span class="avatar-fallback" style="background:' + col + '">' + ini + '</span>';
+}
+function bootLoaderShow(){
+  if(typeof document === 'undefined' || !document.body) return;
+  var el = document.getElementById('boot-loader');
+  if(!el){
+    var st = document.createElement('style');
+    st.textContent =
+      '#boot-loader{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;' +
+        'background:radial-gradient(140% 120% at 50% 45%,#0C1E35 55%,#07121F 100%);opacity:1;transition:opacity .4s ease}' +
+      '#boot-loader.boot-hide{opacity:0;pointer-events:none}' +
+      '.boot-card{display:flex;flex-direction:column;align-items:center;gap:6px;width:min(80vw,340px);text-align:center}' +
+      '.boot-avatar{width:150px;height:150px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;' +
+        'font-size:56px;font-family:var(--font-display,inherit);margin-bottom:6px;' +
+        'box-shadow:0 0 0 4px rgba(255,255,255,.07),0 12px 34px rgba(0,0,0,.45);animation:bootFloat 4.2s ease-in-out infinite}' +
+      '.boot-avatar .avatar-img,.boot-avatar .avatar-fallback{width:100%;height:100%;border-radius:50%}' +
+      '.boot-brand{position:absolute;left:0;right:0;bottom:26px;text-align:center;color:rgba(255,255,255,.26);' +
+        'font-size:12px;font-weight:600;letter-spacing:6px}' +
+      '.boot-greet{color:#F1F6FC;font-size:20px;font-weight:700;letter-spacing:-.01em;margin-top:2px;' +
+        'opacity:0;animation:bootFade .6s ease .15s forwards}' +
+      '.boot-msg{color:#8FA9C6;font-size:13px;font-weight:500;min-height:18px;' +
+        'opacity:0;animation:bootFade .6s ease .3s forwards}' +
+      '.boot-track{width:100%;height:8px;border-radius:20px;background:rgba(255,255,255,.12);overflow:hidden;margin-top:16px}' +
+      '.boot-bar{height:100%;width:0;border-radius:20px;background:linear-gradient(90deg,#38BDF8,#22C55E);' +
+        'box-shadow:0 0 12px rgba(56,189,248,.5);transition:width .3s cubic-bezier(.4,0,.2,1)}' +
+      '.boot-pct{color:#9FB6D4;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:8px}' +
+      '@keyframes bootFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}' +
+      '@keyframes bootFade{to{opacity:1}}';
+    document.head.appendChild(st);
+    el = document.createElement('div');
+    el.id = 'boot-loader';
+    el.innerHTML = '<div class="boot-card">' +
+      '<div class="boot-avatar" id="boot-avatar"></div>' +
+      '<div class="boot-greet" id="boot-greet"></div>' +
+      '<div class="boot-msg" id="boot-loader-msg">Načítavam dáta…</div>' +
+      '<div class="boot-track"><div class="boot-bar" id="boot-loader-bar"></div></div>' +
+      '<div class="boot-pct" id="boot-loader-pct">0 %</div>' +
+    '</div>' +
+    '<div class="boot-brand">SATORI</div>';
+    document.body.appendChild(el);
+  }
+  var gEl = document.getElementById('boot-greet'); if(gEl) gEl.textContent = _bootGreeting();
+  var aEl = document.getElementById('boot-avatar'); if(aEl){ try { aEl.innerHTML = _bootAvatarHtml(); } catch(e){} }
+  el.classList.remove('boot-hide');
+  el.style.display = 'flex';
+  _bootLoader.pct = 0; bootLoaderSet(8);
+  clearInterval(_bootLoader.timer);
+  _bootLoader.timer = setInterval(function(){
+    if(_bootLoader.pct < 90) bootLoaderSet(_bootLoader.pct + Math.max(1, (90 - _bootLoader.pct) * 0.08));
+  }, 120);
+  clearTimeout(_bootLoader.failsafe);
+  _bootLoader.failsafe = setTimeout(bootLoaderDone, 15000); // poistka — nikdy nezasekni appku
+}
+function bootLoaderSet(pct){
+  _bootLoader.pct = Math.min(100, pct);
+  var bar = document.getElementById('boot-loader-bar'), p = document.getElementById('boot-loader-pct'),
+      msg = document.getElementById('boot-loader-msg');
+  if(bar) bar.style.width = _bootLoader.pct + '%';
+  if(p) p.textContent = Math.round(_bootLoader.pct) + ' %';
+  if(msg){
+    var t = _bootLoader.pct >= 100 ? 'Hotovo ✓'
+          : _bootLoader.pct >= 70  ? 'Ešte chvíľka…'
+          : _bootLoader.pct >= 35  ? 'Pripravujem tvoj prehľad…'
+          :                          'Načítavam dáta…';
+    if(msg.textContent !== t) msg.textContent = t;
+  }
+}
+function bootLoaderDone(){
+  clearInterval(_bootLoader.timer); clearTimeout(_bootLoader.failsafe);
+  var el = document.getElementById('boot-loader');
+  if(!el) return;
+  bootLoaderSet(100);
+  setTimeout(function(){
+    el.classList.add('boot-hide');
+    setTimeout(function(){ el.style.display = 'none'; }, 400);
+  }, 320);
+}
+
 function loadInitData(username, _attempt) {
   _attempt = _attempt || 0;
 
@@ -19450,6 +19542,11 @@ function loadInitData(username, _attempt) {
     return Promise.resolve({ ok: true });
   }
 
+  if(!_attempt){ try {
+    var _bls = (typeof getSession === 'function') ? getSession() : null;
+    var _blLine = _bls && _bls.line;
+    if(_blLine !== 'gyn' && _blLine !== 'reagila') bootLoaderShow(); // loader len pre Golem (getInitData)
+  } catch(e){} }
   var rok = (new Date()).getFullYear();
   var q   = plnenieCurrentQ();
   var url = scriptUrl('action=getInitData&reprezentant=' + encodeURIComponent(username)
@@ -19504,6 +19601,7 @@ function loadInitData(username, _attempt) {
         var lbq = parseInt(data.configs.lb_approved_q);
         if(!isNaN(lbq)) LB_APPROVED_Q = lbq;
       }
+      try { bootLoaderDone(); } catch(e){}
     })
     .catch(function() {
       var delays = [3000, 8000];
@@ -19514,6 +19612,7 @@ function loadInitData(username, _attempt) {
         // Po 3 pokusoch — fallback na pôvodné funkcie
         loadRepList();
         refreshBadgeFromSheets(username);
+        try { bootLoaderDone(); } catch(e){}
       }
     });
 }
@@ -32157,6 +32256,9 @@ function closeTuyory(){ usageSectionClose(); TUYORY._reqId++; closeAllPanels(); 
 
 // ── Načítanie záznamov zo Sheetu (getTuyory). Ak backend ešte nemá handler,
 //    ticho spadneme na localStorage cache. Server je po nasadení autoritatívny. ──
+function tuyoryApplyRecords(records){
+  if (Array.isArray(records)){ TUYORY.records = records; tuyorySaveLocal(records); }
+}
 function tuyoryFetchServer(cb){
   if (typeof IS_DEV !== 'undefined' && IS_DEV){ if (cb) cb(); return; }   // DEV → len localStorage
   var user = tuyUser();
@@ -32962,37 +33064,92 @@ function gpLineScale(basePot){
   return { min: mm.min, avg: mm.avg, max: mm.max, source: 'mock' };
 }
 // Načíta súhrn línie z backendu a prekreslí súhrn (ak je viditeľný).
+function gpApplyLineStats(d){
+  if(d && d.ok) gpLineStatsCache = d;
+  gpLineStatsState = 'ready';
+  gpRerenderActiveView();
+}
 function gpFetchLineStats(){
   if(typeof IS_DEV !== 'undefined' && IS_DEV){ gpLineStatsState = 'ready'; return; }  // localhost → ukážka
   if(typeof scriptUrl !== 'function'){ gpLineStatsState = 'ready'; return; }
   gpLineStatsState = 'loading';
-  function done(){
-    gpLineStatsState = 'ready';
-    gpRerenderActiveView();
-  }
   fetch(scriptUrl('action=getLineStats'), { cache:'no-store' })
     .then(function(r){ return r.json(); })
-    .then(function(d){ if(d && d.ok) gpLineStatsCache = d; done(); })
-    .catch(function(){ done(); });
+    .then(function(d){ gpApplyLineStats(d); })
+    .catch(function(){ gpApplyLineStats(null); });
 }
 // Načíta zdieľané override zo servera a zlúči do lokálneho úložiska (server má
 // prednosť) — takže admin/manažér vidia zmeny repov a fungujú medzi zariadeniami.
+function gpApplyOverrides(list){
+  if(!Array.isArray(list) || !list.length) return;
+  var store = gpOvLoad();
+  list.forEach(function(o){
+    if(!o || !o.key) return;
+    store[o.key] = { current: o.current, steps: o.steps || [], updatedBy: o.updatedBy, updatedAt: o.updatedAt };
+  });
+  gpOvPersist(store);
+  gpRerenderActiveView();
+}
 function gpFetchOverrides(){
   if(typeof IS_DEV !== 'undefined' && IS_DEV) return;
   if(typeof scriptUrl !== 'function') return;
   fetch(scriptUrl('action=getOverrides'), { cache:'no-store' })
     .then(function(r){ return r.json(); })
-    .then(function(list){
-      if(!Array.isArray(list) || !list.length) return;
-      var store = gpOvLoad();
-      list.forEach(function(o){
-        if(!o || !o.key) return;
-        store[o.key] = { current: o.current, steps: o.steps || [], updatedBy: o.updatedBy, updatedAt: o.updatedAt };
-      });
-      gpOvPersist(store);
-      gpRerenderActiveView();
-    })
+    .then(function(list){ gpApplyOverrides(list); })
     .catch(function(){});
+}
+
+// ── BOOTSTRAP — jedno volanie namiesto viacerých štartových (menej súbežných
+//    vykonávaní na serveri). Pri zlyhaní fallback na pôvodné samostatné volania. ──
+function gpBootstrapRep(username, done){
+  if((typeof IS_DEV !== 'undefined' && IS_DEV) || typeof scriptUrl !== 'function'){
+    // DEV/localhost bez backendu — nechaj pôvodné (ktoré si samy poradia)
+    try { gpFetchOverrides(); gpFetchLineStats(); tuyoryFetchServer(); lonelixFetchServer(); } catch(e){}
+    if(done) done(); return;
+  }
+  var url = scriptUrl('action=bootstrap&parts=overrides,linestats,tuyoryrep,lonelixrep&reprezentant=' + encodeURIComponent(username || ''));
+  fetch(url, { cache:'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(!d || !d.ok) throw new Error('bootstrap fail');
+      try { if(d.overrides) gpApplyOverrides(d.overrides); } catch(e){}
+      try { gpApplyLineStats(d.lineStats || null); } catch(e){}
+      try { if(d.tuyoryRep && Array.isArray(d.tuyoryRep.records)) tuyoryApplyRecords(d.tuyoryRep.records); } catch(e){}
+      try { if(d.lonelixRep && Array.isArray(d.lonelixRep.records)) lonelixApplyRecords(d.lonelixRep.records); } catch(e){}
+      if(done) done();
+    })
+    .catch(function(){
+      // Fallback — pôvodné samostatné volania (appka funguje aj bez bootstrapu)
+      try { gpFetchOverrides(); } catch(e){}
+      try { gpFetchLineStats(); } catch(e){}
+      try { tuyoryFetchServer(); } catch(e){}
+      try { lonelixFetchServer(); } catch(e){}
+      if(done) done();
+    });
+}
+function gpBootstrapMgr(done){
+  if((typeof IS_DEV !== 'undefined' && IS_DEV) || typeof scriptUrl !== 'function'){
+    try { gpFetchOverrides(); gpFetchLineStats(); mgrLoadTuyory(); mgrLoadLonelix(); } catch(e){}
+    if(done) done(); return;
+  }
+  var url = scriptUrl('action=bootstrap&parts=overrides,linestats,alltuyory,alllonelix');
+  fetch(url, { cache:'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(!d || !d.ok) throw new Error('bootstrap fail');
+      try { if(d.overrides) gpApplyOverrides(d.overrides); } catch(e){}
+      try { gpApplyLineStats(d.lineStats || null); } catch(e){}
+      try { if(d.allTuyory) mgrApplyTuyoryAll(d.allTuyory); } catch(e){}
+      try { if(d.allLonelix) mgrApplyLonelixAll(d.allLonelix); } catch(e){}
+      if(done) done();
+    })
+    .catch(function(){
+      try { gpFetchOverrides(); } catch(e){}
+      try { gpFetchLineStats(); } catch(e){}
+      try { mgrLoadTuyory(); } catch(e){}
+      try { mgrLoadLonelix(); } catch(e){}
+      if(done) done();
+    });
 }
 
 // Prekreslí ten pohľad, ktorý je práve otvorený (rep História alebo manažérsky detail repa).
@@ -33331,6 +33488,9 @@ function lonelixDoctorHasRecord(meno, okres){
 }
 
 // ── Načítanie záznamov zo Sheetu (getLonelix) ──
+function lonelixApplyRecords(records){
+  if (Array.isArray(records)){ LONELIX.records = records; lonelixSaveLocal(records); }
+}
 function lonelixFetchServer(cb){
   if (typeof IS_DEV !== 'undefined' && IS_DEV){ if (cb) cb(); return; }
   var user = tuyUser(); if (!user){ if (cb) cb(); return; }
