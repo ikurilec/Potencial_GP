@@ -76,6 +76,7 @@
     --ease-out-expo:cubic-bezier(.16,1,.3,1);
     /* iOS notch / safe-area (vrchný výrez na kameru + status bar) */
     --sat:env(safe-area-inset-top, 0px);
+    --sat-bg:var(--color-bg); /* farba pásu cez notch — pri gyn tmavá (viď body.gyn-line) */
     /* Z-index scale */
     --z-base:1;
     --z-sticky:100;
@@ -124,7 +125,9 @@
   html,body{background:var(--color-bg);min-height:100%;font-family:var(--font-body);color:var(--color-text)}
   body{padding:24px 16px;padding-top:calc(24px + var(--sat));padding-bottom:calc(48px + env(safe-area-inset-bottom));padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
   /* Čistý pás cez iOS notch/status bar — nech pri scrollovaní nepresvitá obsah v pozadí */
-  body::before{content:'';position:fixed;top:0;left:0;right:0;height:var(--sat);background:var(--color-bg);z-index:2050;pointer-events:none}
+  body::before{content:'';position:fixed;top:0;left:0;right:0;height:var(--sat);background:var(--sat-bg);z-index:2050;pointer-events:none}
+  /* Gyn má tmavú hlavičku → pás cez notch tiež tmavý (biele hodiny/batéria ostanú čitateľné) */
+  body.gyn-line{--sat-bg:#0C1E35}
   .app{max-width:660px;margin:0 auto;visibility:hidden}
   .hdr{background:linear-gradient(135deg,#0C1E35 0%,#13294B 55%,#0C1E35 100%);border-radius:18px;padding:10px 20px 10px;margin-bottom:10px;box-shadow:0 12px 32px rgba(12,30,53,.35),0 4px 12px rgba(37,99,235,.18),inset 0 1px 0 rgba(255,255,255,.08);position:relative;overflow:hidden;min-height:60px}
   .hdr-logo-wrap{background:rgba(255,255,255,0.12);border-radius:10px;padding:8px 10px;display:flex;align-items:center;justify-content:center;position:absolute;right:-1px;top:50%;transform:translateY(-50%);z-index:10}
@@ -2130,7 +2133,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   #gyn-view{display:none}
   #gyn-view.show{display:block}
   .gyn-inner{max-width:660px;margin:0 auto}
-  .gyn-hdr{background:linear-gradient(135deg,#0C1E35 0%,#13294B 55%,#0C1E35 100%);padding:20px 16px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10;box-shadow:0 4px 12px rgba(12,30,53,.20),inset 0 1px 0 rgba(255,255,255,.08);overflow:hidden}
+  .gyn-hdr{background:linear-gradient(135deg,#0C1E35 0%,#13294B 55%,#0C1E35 100%);padding:20px 16px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:var(--sat);z-index:10;box-shadow:0 4px 12px rgba(12,30,53,.20),inset 0 1px 0 rgba(255,255,255,.08);overflow:hidden}
   .gyn-hdr::before{content:'';position:absolute;top:-80px;right:-50px;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(59,130,246,.15),transparent 65%);pointer-events:none}
   .gyn-hdr > *{position:relative;z-index:1}
   .gyn-hdr-logo{font-size:20px}
@@ -2180,7 +2183,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .gyn-hdr-bday.soon{color:#9DC0DE}
   @media(prefers-reduced-motion:reduce){.gyn-hdr-bday.own{animation:none}}
   /* GYN NAV TABS */
-  .gyn-nav{display:flex;gap:6px;margin:0 0 10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06);position:sticky;top:0;z-index:100}
+  .gyn-nav{display:flex;gap:6px;margin:0 0 10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06);position:sticky;top:var(--sat);z-index:100}
   .gyn-nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;background:transparent;color:#64748B;touch-action:manipulation;transition:all .2s ease;-webkit-tap-highlight-color:transparent;line-height:1.1}
   .gyn-nav-btn .st-emoji{font-size:17px;line-height:1}
   .gyn-nav-btn .st-lbl{font-size:11px;white-space:nowrap}
@@ -3397,7 +3400,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.54.0';
+var APP_VERSION = '2.55.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11198,14 +11201,27 @@ function gynLoginSuccess(username, data) {
 }
 
 function gynEnter(user) {
+  document.body.classList.add('gyn-line');   // line-aware CSS (tmavý notch pás)
+  try { bootLoaderShow(); } catch(e){}       // načítacia obrazovka (avatar + oslovenie)
   var appEl = document.querySelector('.app');
   if(appEl) appEl.style.display = 'none';
   plnenieApplyDefaultPeriod(GYN_APP, true);
   document.getElementById('gyn-view').classList.add('show');
   gynRenderShell(user);
   gynApplyDefaultNav(user);   // úvodná obrazovka podľa nastavení používateľa (default = Plnenie)
-  gynRenderContent(user);
-  setTimeout(function(){ gynLoadRepList(user); }, 600);
+  gynBootstrap(user);   // repList + plnenie (aktuálny Q) v JEDNOM volaní; vykreslí obsah (fallback vnútri)
+  // Loader ostáva kým sa plnenie reálne nevykreslí (dáta alebo chybová karta) — pokryje aj
+  // pomalý „studený" prvý fetch peknou obrazovkou namiesto holého „Načítavam...". Cap 15 s.
+  (function(){
+    var _t0 = Date.now();
+    var _iv = setInterval(function(){
+      var gc = document.getElementById('gyn-content');
+      var ready = gc && gc.querySelector('.pl-sum-big, .mgr-plnenie-detail, .app-err-card');
+      if(ready || !document.getElementById('boot-loader') || Date.now() - _t0 > 15000){
+        clearInterval(_iv); try { bootLoaderDone(); } catch(e){}
+      }
+    }, 150);
+  })();
   setTimeout(function(){ try { gynCalPrefetch(); } catch(e){} }, 900);   // kalendár načítaj na pozadí hneď po prihlásení
   // Úplne prvý login → potlač WN changelog backlog, nech nový rep vidí len Satori uvítací overlay
   wnSuppressBacklogForFirstLogin();
@@ -11254,13 +11270,10 @@ function gynHydrateRepMeta(reps) {
   });
 }
 
-function gynLoadRepList(user) {
-  // Výber konkurentov pre MS graf — najprv localStorage (instant), Sheets prepíše nižšie
-  try { gynMsHydrate(localStorage.getItem(gynMsLsKey())); } catch(e){}
-  fetch(gynScriptUrl('action=getRepList'), { cache: 'no-store' })
-    .then(function(r){ return r.json(); })
-    .then(function(data){
-      if(data.ok && data.reps) {
+// Aplikuje dáta getRepList (zdieľané medzi gynLoadRepList a gynBootstrap).
+function gynApplyRepListData(data, user) {
+  if(!(data && data.ok && data.reps)) return;
+      {
         // Hydratuj uložený výber konkurentov z riadku prihláseného reprezentanta (zo Sheets)
         try {
           var _s = (typeof getSession === 'function') ? getSession() : null;
@@ -11329,7 +11342,56 @@ function gynLoadRepList(user) {
         try { gynBirthdayRefresh(); } catch(e){}
         try { gynBirthdayCelebrate(user); } catch(e){}
       }
-    }).catch(function(){});
+}
+
+function gynLoadRepList(user, _attempt) {
+  // Výber konkurentov pre MS graf — najprv localStorage (instant), Sheets prepíše nižšie
+  try { gynMsHydrate(localStorage.getItem(gynMsLsKey())); } catch(e){}
+  fetch(gynScriptUrl('action=getRepList'), { cache: 'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(data){ gynApplyRepListData(data, user); })
+    .catch(function(){
+      // Cold-start / session ešte nie je pripravená pri prvom logine → skús znova.
+      var _a = _attempt || 0;
+      if(_a < 2) setTimeout(function(){ gynLoadRepList(user, _a + 1); }, _a === 0 ? 2000 : 4000);
+    });
+}
+
+// Bootstrap — repList + plnenie (aktuálny Q) v jednom volaní. Fallback: pôvodné načítanie.
+function gynBootstrap(user) {
+  var q = GYN_APP.q, rok = GYN_APP.year;
+  if(typeof IS_DEV !== 'undefined' && IS_DEV){ try { gynLoadRepList(user); } catch(e){} return; }
+  // Zabráň, aby gynPlnenieShow spustil vlastný fetch — plnenie príde z bootstrapu.
+  var _wasLoading = GYN_APP.plLoading[q];
+  GYN_APP.plLoading[q] = true;
+  try { gynMsHydrate(localStorage.getItem(gynMsLsKey())); } catch(e){}
+  // Okamžite ukáž cache (ak je) — bez vlastného fetchu (plLoading guard). Bootstrap ju obnoví.
+  try { gynRenderContent(user); } catch(e){}
+  fetch(gynScriptUrl('action=bootstrap&rok=' + rok + '&Q=' + q), { cache: 'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(!d || !d.ok) throw new Error('bootstrap fail');
+      // Plnenie do cache (gynPlnenieShow ho potom vykreslí bez ďalšieho fetchu — plLoading drží guard)
+      if(d.plnenie && d.plnenie.ok){
+        try {
+          gynPreprocessData(d.plnenie);
+          GYN_APP.plCache[q] = d.plnenie;
+          gynCacheWrite(gynPlnenieCacheKey(rok, q), d.plnenie);
+        } catch(e){}
+      }
+      // RepList → naplní stav + spraví plný render (jeho re-render logika)
+      if(d.repList){ try { gynApplyRepListData(d.repList, user); } catch(e){} }
+      // Poistka — ak repList nič nevykreslil, vykresli aspoň plnenie z cache
+      var gc = document.getElementById('gyn-content');
+      if(!(gc && gc.querySelector('.pl-sum-big, .mgr-plnenie-detail'))) { try { gynRenderContent(user); } catch(e){} }
+      if(!_wasLoading) delete GYN_APP.plLoading[q];   // až teraz povoľ ďalšie fetche
+    })
+    .catch(function(){
+      // Fallback — pôvodné samostatné načítanie
+      if(!_wasLoading) delete GYN_APP.plLoading[q];
+      try { gynRenderContent(user); } catch(e){}   // gynPlnenieShow si dotiahne plnenie sám
+      try { gynLoadRepList(user); } catch(e){}
+    });
 }
 
 // Helper: vráti HTML pre gyn avatar circle — buď <img> s DiceBear URL alebo iniciály
@@ -11640,7 +11702,7 @@ function gynPreloadAllPharma() {
 }
 
 // ── PLNENIE ──
-function gynPlnenieShow(el, user) {
+function gynPlnenieShow(el, user, _attempt) {
   // Primárne otvorenie Plnenia (login / prepnutie tabu / zmena Q) → vždy povoľ animáciu barov,
   // aj keby nejaký background tichý re-render predtým nechal aktívny suppress flag.
   PL_SUPPRESS_COUNT_ANIM = false;
@@ -11675,6 +11737,13 @@ function gynPlnenieShow(el, user) {
     .catch(function(){
       delete GYN_APP.plLoading[q];
       if(!cached) {
+        var _att = _attempt || 0;
+        // Cold-start gyn backendu / session ešte nie je pripravená pri prvom logine →
+        // automaticky skús znova (netreba manuálny reload). Až po pár pokusoch chybová karta.
+        if(_att < 2) {
+          setTimeout(function(){ gynPlnenieShow(el, user, _att + 1); }, _att === 0 ? 1800 : 3500);
+          return; // ponechaj „Načítavam..."
+        }
         appRegisterRetry('gyn-plnenie', function(){ gynPlnenieShow(el, user); });
         el.innerHTML = gynQTabsHtml() + appErrorCardHtml({
           id: 'gyn-plnenie',
@@ -19553,7 +19622,7 @@ function loadInitData(username, _attempt) {
   if(!_attempt){ try {
     var _bls = (typeof getSession === 'function') ? getSession() : null;
     var _blLine = _bls && _bls.line;
-    if(_blLine !== 'gyn' && _blLine !== 'reagila') bootLoaderShow(); // loader len pre Golem (getInitData)
+    if(_blLine !== 'gyn') bootLoaderShow(); // Golem + reagila (obe cez getInitData); gyn má vlastný v gynEnter
   } catch(e){} }
   var rok = (new Date()).getFullYear();
   var q   = plnenieCurrentQ();
