@@ -3393,7 +3393,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.50.1';
+var APP_VERSION = '2.51.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6443,7 +6443,7 @@ function buildHistItemHtml(item) {
   return '<div class="hist-item" data-idx="' + idx + '" onclick="openDetail(' + idx + ')" style="cursor:pointer">' +
     '<div style="display:flex;justify-content:space-between;align-items:center">' +
       '<div class="hist-item-name">' + mgrEscape(item.lekar || '—') + ((typeof lonelixHasRecord === 'function' && lonelixHasRecord(item.lekar, item.okres)) ? ' <span class="hist-lon-badge" title="Má Lonelix záznam">🛡️</span>' : '') + '</div>' +
-      '<span style="font-size:11px;color:#94A3B8">›</span>' +
+      '<div style="display:flex;align-items:center">' + gpTrendBadgeHtml(item) + '<span style="font-size:11px;color:#94A3B8;margin-left:6px">›</span></div>' +
     '</div>' +
     '<div class="hist-item-meta">' + mgrEscape(item.okres || '—') + ' · ' + mgrEscape(item.dateStr || '') + ' · ' + mgrEscape(item.cas || '') + '<span style="color:#94A3B8;font-size:10.5px;margin-left:6px">· ' + timeAgo(item.dateKey, item.cas) + '</span></div>' +
     recHtml +
@@ -16718,6 +16718,7 @@ function mgrBuildProductsPanel(item){
     { key:'suprax',    name:'Suprax',         color:'#C084FC' },
     { key:'cavinton',  name:'Cavinton Forte', color:'#FCD34D' }
   ];
+  var ov = item._ov;
   var sumEur = 0;
   var rowsHtml = products.map(function(p){
     var n = mgrNum(item[p.key + '_n']);
@@ -16725,10 +16726,20 @@ function mgrBuildProductsPanel(item){
     sumEur += eur;
     var nInt = Math.round(n);
     var zeroCls = (nInt === 0) ? ' zero' : '';
+    // Čip so zmenou (baseline → aktuálne) — rovnako ako to vidí reprezentant.
+    var chip = '';
+    if(ov && ov.base && ov.cur){
+      var b = Math.round(mgrNum(ov.base[p.key + '_n'])), c = Math.round(mgrNum(ov.cur[p.key + '_n']));
+      if(b !== c){
+        var up = c > b;
+        chip = '<span class="prod-chg" style="display:inline-block;font-size:11px;font-weight:700;margin-left:6px;padding:1px 7px;border-radius:20px;' +
+          (up ? 'background:#DCFCE7;color:#166534' : 'background:#FEE2E2;color:#991B1B') + '">' + b + ' → ' + c + '</span>';
+      }
+    }
     return '<div class="prod-row'+zeroCls+'">' +
       '<span class="prod-dot" style="background:'+p.color+'"></span>' +
       '<span class="prod-name">'+p.name+'</span>' +
-      '<span class="prod-count"><strong>'+nInt+'</strong> '+mgrPluralBal(nInt)+'</span>' +
+      '<span class="prod-count"><strong>'+nInt+'</strong> '+mgrPluralBal(nInt)+chip+'</span>' +
       '<span class="prod-eur">'+mgrFmtEur(eur)+'</span>' +
     '</div>';
   }).join('');
@@ -17248,7 +17259,8 @@ function mgrRenderVisits(){
   }
 
   var gpHtml = gpFiltered.map(function(v){
-    var scenar = v.scenar || '';
+    var dv = gpDecorate(Object.assign({}, v));   // override → segment aj šípka podľa aktuálnych počtov
+    var scenar = dv.scenar || '';
     var dateStr = v.dateStr || '';
     var cas = v.cas || '';
     var noteIco = v.poznamka ? '<span class="mgr-vnote-ico" title="Obsahuje poznámku">📝</span>' : '';
@@ -17256,7 +17268,7 @@ function mgrRenderVisits(){
     return '<div class="mgr-vitem" data-vidx="'+originalIdx+'">' +
       '<div class="mgr-vseg '+scenar+'"></div>' +
       '<div class="mgr-vbody">' +
-        '<div class="mgr-vdoc">'+mgrEscape(v.lekar||'—')+noteIco+((typeof lonelixHasRecord==='function' && typeof mgrRepLonelix==='function' && lonelixHasRecord(v.lekar, v.okres, mgrRepLonelix(MGR_STATE.currentRep))) ? ' <span class="hist-lon-badge" title="Má Lonelix záznam">🛡️</span>' : '')+'</div>' +
+        '<div class="mgr-vdoc">'+mgrEscape(v.lekar||'—')+noteIco+((typeof lonelixHasRecord==='function' && typeof mgrRepLonelix==='function' && lonelixHasRecord(v.lekar, v.okres, mgrRepLonelix(MGR_STATE.currentRep))) ? ' <span class="hist-lon-badge" title="Má Lonelix záznam">🛡️</span>' : '')+gpTrendBadgeHtml(dv)+'</div>' +
         '<div class="mgr-vmeta">' +
           (scenar ? '<span class="mgr-vseg-lbl mgr-chip-'+scenar+'">'+(MGR_SEG_LBL[scenar]||scenar)+'</span>' : '') +
           (scenar ? '<span class="sep">·</span>' : '') +
@@ -17332,6 +17344,11 @@ function mgrOpenVisit(idx){
   var item = data.visits[idx];
   if(!item) { mgrShowToast('CHYBA: žiadna návšteva idx='+idx); return; }
 
+  // Premietni vrstvu zmien (override) — manažér/admin má vidieť AKTUÁLNE počty
+  // upravené repom, nie baseline zo Sheetu. Dekorujeme kópiu (data.visits[idx]
+  // ostáva baseline); prepočíta sa aj scenár, kategória a ročný potenciál.
+  item = gpDecorate(Object.assign({}, item));
+
   if(window.console && console.log){
   }
 
@@ -17364,7 +17381,7 @@ function mgrOpenVisit(idx){
   try {
     var prodPanel = document.getElementById('mgr-detail-prod-panel');
     if(prodPanel){
-      prodPanel.innerHTML = mgrBuildProductsPanel(item);
+      prodPanel.innerHTML = mgrBuildProductsPanel(item) + gpDoctorTrajectoryHtml(item);
       prodPanel.style.display = 'block';
     }
   } catch(prodErr){
@@ -33165,13 +33182,26 @@ function gpLineSummaryHtml(){
   '</div>';
 }
 
+// Zlúči po sebe idúce kroky s rovnakým potenciálom (backend historicky pridával
+// krok pri každom uložení aj bez zmeny) — nech sa v grafe neopakuje to isté.
+function gpDedupeSteps(steps){
+  var out = [];
+  (steps || []).forEach(function(st){
+    var prev = out[out.length - 1];
+    if(prev && gpNum(prev.pot) === gpNum(st.pot)) return;
+    out.push(st);
+  });
+  return out;
+}
+
 // Mini-sparkline (SVG) trajektórie potenciálu lekára — repom v %, adminovi v €.
 function gpDoctorTrajectoryHtml(item){
   if(!item || !item._ov) return '';
   var ov = item._ov;
   var basePot = ov.basePot;
+  var steps = gpDedupeSteps(ov.steps);
   // Body: baseline + jednotlivé kroky
-  var pts = [ basePot ].concat((ov.steps || []).map(function(st){ return gpNum(st.pot); }));
+  var pts = [ basePot ].concat(steps.map(function(st){ return gpNum(st.pot); }));
   if(pts.length < 2 && !ov.changed) return '';
   var eur = gpCanSeeEur();
   var min = Math.min.apply(null, pts), max = Math.max.apply(null, pts);
@@ -33190,10 +33220,14 @@ function gpDoctorTrajectoryHtml(item){
   var head = eur
     ? (Math.round(ov.basePot).toLocaleString('sk-SK') + ' € → <b>' + Math.round(ov.curPot).toLocaleString('sk-SK') + ' €</b>')
     : ('<b>' + (up ? '+' : '') + ov.deltaPct.toFixed(1).replace('.', ',') + ' %</b> od začiatku');
-  var last3 = (ov.steps || []).slice(-3).reverse().map(function(st){
+  var last3 = steps.slice(-3).reverse().map(function(st){
     var when = '';
-    try { var d = new Date(st.ts); when = d.getDate() + '.' + (d.getMonth()+1) + '.'; } catch(e){}
-    return '<div class="gp-traj-step"><span>' + when + '</span><span>' + (st.by ? mgrEscape(st.by) : '') + '</span></div>';
+    try { var d = new Date(st.ts); when = d.getDate() + '.' + (d.getMonth()+1) + '. ' + ('0'+d.getHours()).slice(-2) + ':' + ('0'+d.getMinutes()).slice(-2); } catch(e){}
+    var pv = gpNum(st.pot);
+    var valStr = eur
+      ? (Math.round(pv).toLocaleString('sk-SK') + ' €')
+      : ((basePot > 0 ? ((pv - basePot) / basePot * 100 >= 0 ? '+' : '') + ((pv - basePot) / basePot * 100).toFixed(1).replace('.', ',') : '0') + ' %');
+    return '<div class="gp-traj-step"><span>' + when + '</span><span style="font-weight:700;color:#64748B">' + valStr + '</span><span>' + (st.by ? mgrEscape(st.by) : '') + '</span></div>';
   }).join('');
   return '<div class="gp-traj">' +
     '<div class="gp-traj-hdr"><span>📈 Vývoj potenciálu</span><span style="color:' + col + '">' + head + '</span></div>' +
@@ -33203,6 +33237,22 @@ function gpDoctorTrajectoryHtml(item){
     '</svg>' +
     (last3 ? '<div class="gp-traj-steps">' + last3 + '</div>' : '') +
   '</div>';
+}
+
+// Malý indikátor smeru vývoja potenciálu lekára pre karty v zozname (▲/▼ + hodnota).
+// Rep vidí %, manažér/admin €. Vráti '' ak u lekára nenastala žiadna zmena.
+function gpTrendBadgeHtml(item){
+  var ov = item && item._ov;
+  if(!ov || !ov.changed) return '';
+  var up = ov.curPot >= ov.basePot;
+  var col = up ? '#16A34A' : '#DC2626';
+  var sign = up ? '+' : '-';
+  var val = gpCanSeeEur()
+    ? (sign + Math.abs(Math.round(ov.curPot - ov.basePot)).toLocaleString('sk-SK') + ' €')
+    : (sign + Math.abs(ov.deltaPct).toFixed(1).replace('.', ',') + ' %');
+  return '<span class="gp-trend" style="display:inline-flex;align-items:center;gap:3px;font-size:11px;' +
+    'font-weight:800;color:' + col + ';white-space:nowrap;margin-left:6px">' +
+    (up ? '▲' : '▼') + ' ' + val + '</span>';
 }
 
 function _histCombined(){
