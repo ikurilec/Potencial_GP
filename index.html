@@ -571,7 +571,7 @@
   .prod-kap-val small{font-size:11px;font-weight:500;color:#64748B;margin-left:3px}
   .prod-kategoria{font-size:15px;font-weight:700;padding:6px 13px;border-radius:8px;font-family:var(--font-display);letter-spacing:.05em}
   .prod-kategoria.kat-A{background:#D1FAE5;color:#047857}
-  .prod-kategoria.kat-B{background:#FED7AA;color:#9A3412}
+  .prod-kategoria.kat-B{background:#FEF08A;color:#854D0E}
   .prod-kategoria.kat-C{background:#FEE2E2;color:#991B1B}
   .prod-rows{padding:6px 0}
   .prod-row{display:flex;align-items:center;gap:10px;padding:8px 14px}
@@ -816,6 +816,25 @@
   .hist-item-seg-row{display:flex;gap:5px;align-items:baseline;margin-bottom:2px}
   .hist-item-seg-key{font-size:10px;font-weight:700;opacity:.6;text-transform:uppercase;letter-spacing:.04em;flex-shrink:0}
   .hist-item-seg-val{font-size:11px;font-weight:600;color:#334155;line-height:1.35}
+  .hist-cat{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:6px;color:#fff;font-size:12px;font-weight:800;letter-spacing:.02em}
+  .hist-tier{font-size:10.5px;font-weight:700;padding:1px 8px;border-radius:20px}
+  .hist-tier-green{background:#DCFCE7;color:#166534}
+  .hist-tier-orange{background:#FEF3C7;color:#92400E}
+  .hist-tier-red{background:#FEE2E2;color:#991B1B}
+  .hist-tier-gray{background:#F1F5F9;color:#475569}
+  .hist-opp{display:flex;align-items:center;gap:7px;margin-top:7px;flex-wrap:wrap}
+  .hist-opp-badge{font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap}
+  .hist-opp-sub{font-size:10.5px;color:#94A3B8}
+  .hist-oppfilter{display:flex;flex-wrap:wrap;gap:5px;padding:2px 2px 10px}
+  .hist-oppchip{flex:0 0 auto;font-size:11px;font-weight:600;color:#64748B;background:#fff;border:1px solid #E2E8F0;border-radius:14px;padding:5px 10px;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap}
+  .hist-oppchip.active{color:#fff;background:#0C1E35;border-color:#0C1E35;font-weight:700}
+  .conf-seg-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:none;padding:4px 0;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent}
+  .conf-seg-toggle .conf-seg-section-lbl{margin-bottom:0}
+  .conf-seg.open .conf-seg-actions{margin-top:8px;padding-top:8px;border-top:1px solid #EEF2F6}
+  .conf-seg-caret{color:#94A3B8;font-size:12px;transition:transform .2s}
+  .conf-seg.open .conf-seg-caret{transform:rotate(180deg)}
+  .conf-seg-actions{display:none;margin-top:4px}
+  .conf-seg.open .conf-seg-actions{display:block}
   /* ── EDIT OVERLAY (admin — úprava záznamu) ── */
   .edit-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#EAECF2;z-index:2400;flex-direction:column;overflow:hidden}
   .edit-overlay.show{display:flex}
@@ -937,7 +956,7 @@
   .confirm-no:hover{background:#B91C1C}
   .confirm-yes{padding:10px;border-radius:9px;border:none;background:#16A34A;color:#fff;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer}
   .confirm-yes:hover{background:#15803D}
-  .conf-seg{padding:0 16px 0;margin-bottom:0;text-align:left}
+  .conf-seg{margin:14px 0 0;background:#F8FAFC;border:1px solid #EEF2F6;border-radius:12px;padding:8px 14px 10px;text-align:left}
   .conf-seg-freq{background:#F8FAFC;border-radius:8px;padding:8px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;border:1px solid #E2E8F0}
   .conf-seg-freq-lbl{font-size:10px;font-weight:600;color:#64748B;letter-spacing:.04em;text-transform:uppercase}
   .conf-seg-freq-val{font-size:12px;font-weight:700;color:#1A2A3A}
@@ -952,7 +971,7 @@
   .conf-seg-goal-val{font-size:12px;font-weight:700;color:#14532D}
   .conf-seg-goal.orange .conf-seg-goal-val{color:#92400E}
   .conf-seg-goal.red .conf-seg-goal-val{color:#7F1D1D}
-  .conf-seg-divider{height:1px;background:#F1F5F9;margin:8px 0 8px}
+  .conf-seg-divider{display:none}
   .thankyou{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(145deg,#0C1E35,#1A3A5C);z-index:5300;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px;overflow:hidden}
   .thankyou.show{display:flex}
   .thankyou-canvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
@@ -2573,7 +2592,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 <!-- ═══ REP NAV BAR — Formulár / História / Rebríček / Plnenie / Lekárne (len reprezentant, skryté v manažérskom móde) ═══ -->
 <div class="rep-nav" id="rep-nav">
   <button type="button" class="rep-nav-btn active" id="rep-nav-form-btn" onclick="repNavToForm()"><span class="rn-ico">📝</span><span class="rn-lbl">Formulár</span></button>
-  <button type="button" class="rep-nav-btn" id="rep-nav-hist-btn" onclick="openHistory()"><span class="rn-ico">📋</span><span class="rn-lbl">História</span></button>
+  <button type="button" class="rep-nav-btn" id="rep-nav-hist-btn" onclick="openHistory()"><span class="rn-ico">📋</span><span class="rn-lbl">Lekári</span></button>
   <button type="button" class="rep-nav-btn" id="rep-nav-lb-btn" onclick="openLeaderboard()"><span class="rn-ico">🏆</span><span class="rn-lbl">Rebríček</span></button>
   <button type="button" class="rep-nav-btn" id="rep-nav-plnenie-btn" onclick="openRepPlnenie()"><span class="rn-ico">💊</span><span class="rn-lbl">Plnenie</span></button>
   <button type="button" class="rep-nav-btn" id="rep-nav-lekarne-btn" onclick="openLekarne()"><span class="rn-ico">🏪</span><span class="rn-lbl">Lekárne</span></button>
@@ -2590,7 +2609,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   <!-- Sub-tabs — Návštevy / Plnenie (admin Plnenie od v2.3.0) -->
   <div class="mgr-subtabs">
     <button type="button" class="mgr-subtab active" data-tab="plnenie" onclick="mgrSwitchSubtab('plnenie')"><span class="st-emoji">💊</span><span class="st-lbl">Plnenie</span></button>
-    <button type="button" class="mgr-subtab" data-tab="visits" onclick="mgrSwitchSubtab('visits')"><span class="st-emoji">📋</span><span class="st-lbl">Návštevy</span></button>
+    <button type="button" class="mgr-subtab" data-tab="visits" onclick="mgrSwitchSubtab('visits')"><span class="st-emoji">📋</span><span class="st-lbl">Lekári</span></button>
     <button type="button" class="mgr-subtab" data-tab="leaderboard" onclick="mgrSwitchSubtab('leaderboard')"><span class="st-emoji">🏆</span><span class="st-lbl">Rebríček</span></button>
     <button type="button" class="mgr-subtab" id="mgr-subtab-kal-btn" data-tab="kalendar" onclick="mgrSwitchSubtab('kalendar')"><span class="st-emoji gyn-cal-navico"><span class="gci-top"></span><span class="gci-day js-cal-nav-day">16</span></span><span class="st-lbl">Kalendár</span></button>
     <button type="button" class="mgr-subtab" data-tab="activity" id="mgr-subtab-activity-btn" style="display:none" onclick="mgrSwitchSubtab('activity')"><span class="st-emoji">📈</span><span class="st-lbl">Aktivita</span></button>
@@ -2635,6 +2654,13 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     <div class="hist-subtabs" id="mgr-detail-tabs">
       <button type="button" class="hist-subtab active" data-dt="gp" onclick="mgrDetailSetTab('gp',this)">🩺 GP's</button>
       <button type="button" class="hist-subtab" data-dt="tuyory" onclick="mgrDetailSetTab('tuyory',this)">🧬 Tuyory</button>
+    </div>
+    <div class="hist-oppfilter" id="mgr-oppfilter">
+      <button type="button" class="hist-oppchip active" data-of="all" onclick="mgrSetOppFilter('all',this)">Všetko</button>
+      <button type="button" class="hist-oppchip" data-of="nezisteny" onclick="mgrSetOppFilter('nezisteny',this)">🔍 Nezistený</button>
+      <button type="button" class="hist-oppchip" data-of="rezerva" onclick="mgrSetOppFilter('rezerva',this)">💎 Rezerva</button>
+      <button type="button" class="hist-oppchip" data-of="zvysit" onclick="mgrSetOppFilter('zvysit',this)">📈 Zvýšiť</button>
+      <button type="button" class="hist-oppchip" data-of="chyba" onclick="mgrSetOppFilter('chyba',this)">➖ Chýba</button>
     </div>
     <div class="mgr-segsum" id="mgr-segsum"></div>
     <div class="mgr-vsearch">
@@ -3038,7 +3064,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   <div id="shared-panel-nav" style="display:none">
     <div class="panel-nav">
       <button class="panel-nav-btn" id="spn-form" onclick="repNavToForm()"><span class="rn-ico">📝</span><span class="rn-lbl">Formulár</span></button>
-      <button class="panel-nav-btn" id="spn-hist" onclick="openHistory()"><span class="rn-ico">📋</span><span class="rn-lbl">História</span></button>
+      <button class="panel-nav-btn" id="spn-hist" onclick="openHistory()"><span class="rn-ico">📋</span><span class="rn-lbl">Lekári</span></button>
       <button class="panel-nav-btn" id="spn-lb" onclick="openLeaderboard()"><span class="rn-ico">🏆</span><span class="rn-lbl">Rebríček</span></button>
       <button class="panel-nav-btn" id="spn-pl" onclick="openRepPlnenie()"><span class="rn-ico">💊</span><span class="rn-lbl">Plnenie</span></button>
       <button class="panel-nav-btn" id="spn-lk" onclick="openLekarne()"><span class="rn-ico">🏪</span><span class="rn-lbl">Lekárne</span></button>
@@ -3057,17 +3083,24 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   <div class="hist-overlay" id="hist-overlay">
     <div class="hist-inner">
       <div class="hist-header">
-        <div class="hist-title">História lekárov</div>
+        <div class="hist-title">Lekári</div>
         <div class="hist-date" id="hist-date"></div>
       </div>
       <div class="hist-search-wrap">
         <span class="hist-search-icon">🔍</span>
-        <input type="text" class="hist-search" id="hist-search" placeholder="Hľadať lekára..." oninput="filterHistory()" autocomplete="off">
+        <input type="text" class="hist-search" id="hist-search" placeholder="Hľadať lekára alebo okres..." oninput="filterHistory()" autocomplete="off">
       </div>
       <div class="hist-subtabs" id="hist-subtabs">
         <button type="button" class="hist-subtab active" data-hf="all" onclick="histSetFilter('all',this)">Všetko<span class="hist-subtab-count" id="hist-cnt-all"></span></button>
         <button type="button" class="hist-subtab" data-hf="gp" onclick="histSetFilter('gp',this)">🩺 GP's<span class="hist-subtab-count" id="hist-cnt-gp"></span></button>
         <button type="button" class="hist-subtab" data-hf="tuyory" onclick="histSetFilter('tuyory',this)">🧬 Tuyory<span class="hist-subtab-count" id="hist-cnt-tuyory"></span></button>
+      </div>
+      <div class="hist-oppfilter" id="hist-oppfilter">
+        <button type="button" class="hist-oppchip active" data-of="all" onclick="histSetOppFilter('all',this)">Všetko</button>
+        <button type="button" class="hist-oppchip" data-of="nezisteny" onclick="histSetOppFilter('nezisteny',this)">🔍 Nezistený</button>
+        <button type="button" class="hist-oppchip" data-of="rezerva" onclick="histSetOppFilter('rezerva',this)">💎 Rezerva</button>
+        <button type="button" class="hist-oppchip" data-of="zvysit" onclick="histSetOppFilter('zvysit',this)">📈 Zvýšiť</button>
+        <button type="button" class="hist-oppchip" data-of="chyba" onclick="histSetOppFilter('chyba',this)">➖ Chýba</button>
       </div>
       <div class="hist-body-card">
         <div class="hist-body" id="hist-body"></div>
@@ -3325,7 +3358,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     <div class="tutorial-step-hero violet">
       <button class="tut-close" onclick="tutorialSkip()">×</button>
       <div class="tutorial-icon-circle violet">🔍</div>
-      <div class="tutorial-hero-title">História lekárov</div>
+      <div class="tutorial-hero-title">Lekári</div>
       <div class="tutorial-hero-sub">Všetko na jednom mieste</div>
     </div>
     <div class="tutorial-body">
@@ -3400,7 +3433,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.55.1';
+var APP_VERSION = '2.56.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -4879,7 +4912,7 @@ function usageCurrentSection() {
     if (shown('lk-overlay') || (typeof LK_STATE !== 'undefined' && LK_STATE.open)) return 'Lekárne';
     if (shown('okresy-overlay') || (typeof OKRESY_STATE !== 'undefined' && OKRESY_STATE.open && OKRESY_STATE.ctx === 'rep')) return 'Okresy';
     if (shown('rep-plnenie-overlay'))  return 'Plnenie';
-    if (shown('hist-overlay'))         return 'História návštev';
+    if (shown('hist-overlay'))         return 'Lekári';
     if (shown('lb-overlay'))           return 'Rebríček';
     if (shown('detail-overlay'))       return 'Karta lekára';
     if (shown('av-overlay'))           return 'Avatar';
@@ -4888,11 +4921,11 @@ function usageCurrentSection() {
       if (document.body.classList.contains('mgr-subtab-leaderboard')) return 'Manažér · Rebríček';
       if (document.body.classList.contains('mgr-subtab-activity'))    return 'Manažér · Aktivita';
       if (document.body.classList.contains('mgr-subtab-plnenie'))     return 'Manažér · Plnenie';
-      return 'Manažér · Návštevy';
+      return 'Manažér · Lekári';
     }
     if (document.getElementById('gyn-view') && getComputedStyle(document.getElementById('gyn-view')).display !== 'none') {
       var nav = (typeof GYN_APP !== 'undefined' && GYN_APP.nav) ? GYN_APP.nav : '';
-      var gmap = { plnenie:'Plnenie', leaderboard:'Rebríček', kalendar:'Kalendár', visits:'Návštevy', lekarne:'Lekárne', activity:'Aktivita' };
+      var gmap = { plnenie:'Plnenie', leaderboard:'Rebríček', kalendar:'Kalendár', visits:'Lekári', lekarne:'Lekárne', activity:'Aktivita' };
       return 'Gyn · ' + (gmap[nav] || 'Plnenie');
     }
     return 'Hľadanie lekára';   // Golem rep úvodná obrazovka (predtým 'Formulár')
@@ -6431,29 +6464,84 @@ function timeAgo(dateKey, cas) {
 }
 var _histDetailItems = [];
 
+// ── Farba kategórie A/B/C (kapitácia) — jednotná v celej appke (A zelená, B oranžová, C červená) ──
+function gpCatColor(kat){
+  var k = String(kat||'').toUpperCase().trim();
+  if(k === 'A') return { c:'#16A34A', txt:'#fff', bg:'#DCFCE7', tc:'#166534' };
+  if(k === 'B') return { c:'#EAB308', txt:'#422006', bg:'#FEF9C3', tc:'#854D0E' };
+  if(k === 'C') return { c:'#DC2626', txt:'#fff', bg:'#FEE2E2', tc:'#991B1B' };
+  return { c:'#94A3B8', txt:'#fff', bg:'#F1F5F9', tc:'#475569' };
+}
+
+// ── Príležitosť lekára — signál + krátky základ (na kartu) + plné vysvetlenie (do popupu).
+//    Priorita: rezerva > pod kategóriou > zvýšiť > chýba produkt > udržať/neutrál. Prahy sa dajú doladiť.
+function gpOpportunity(item){
+  if(!item) return null;
+  var kat = String(item.kategoria||'').toUpperCase().trim();
+  var kap = gpNum(item.kapitacia);
+  var afl = gpNum(item.aflamil_n), sup = gpNum(item.suprax_n), vid = gpNum(item.vidonorm_n), cav = gpNum(item.cavinton_n);
+  var pot = gpNum(item.rocny_potential);
+  var sc  = String(item.scenar||'').trim();
+  function fmt(n){ return Math.round(n).toLocaleString('sk-SK'); }
+  // 1) Veľká rezerva — veľká prax (A/B, kapitácia ≥ 1500), ale potenciál pod 85 % priemeru línie na lekára
+  var lineAvg = 0;
+  try { var ls = (typeof gpLineScale === 'function') ? gpLineScale(pot) : null; lineAvg = (ls && ls.avg) ? ls.avg : 0; } catch(e){}
+  if((kat === 'A' || kat === 'B') && kap >= 1500 && lineAvg > 0 && pot < lineAvg * 0.85){
+    return { key:'rezerva', emo:'💎', label:'Veľká rezerva', bg:'#E0F2FE', tc:'#075985',
+      short: fmt(kap) + ' pac. · píše málo',
+      full: 'Veľká prax (kategória ' + kat + ', ' + fmt(kap) + ' pacientov), ale ročný potenciál je pod priemerom línie — veľký nevyužitý priestor.' };
+  }
+  // 3) Odporúčané zvýšiť — scenár zvysit/zvysit3
+  if(sc === 'zvysit' || sc === 'zvysit3')
+    return { key:'zvysit', emo:'📈', label:'Odporúčané zvýšiť', bg:'#DCFCE7', tc:'#166534',
+      short:'priestor rásť', full:'Appka odporúča zvýšiť preskripciu — je tu priestor rásť.' };
+  // 4) Nepíše produkt — aspoň jeden hlavný = 0, kým iný > 0 (cross-sell)
+  var prods = [['Aflamil',afl],['Suprax',sup],['Vidonorm',vid],['Cavinton',cav]];
+  var anyPos = prods.some(function(p){ return p[1] > 0; });
+  var miss = prods.filter(function(p){ return p[1] === 0; });
+  if(anyPos && miss.length)
+    return { key:'chyba', emo:'➖', label:'Nepíše ' + miss[0][0], bg:'#FEE2E2', tc:'#991B1B',
+      short:'cross-sell', full:'Píše iné produkty, ale nulový ' + miss[0][0] + ' — príležitosť na cross-sell.' };
+  // 5) Neutrál — silný/udržať
+  if(sc === 'top' || sc === 'udrzat')
+    return { key:'udrzat', emo:'✅', label:'Silný — udržať', bg:'#F1F5F9', tc:'#475569',
+      short:'', full:'Silný lekár — cieľom je udržať preskripciu.' };
+  return { key:'ok', emo:'', label:'', bg:'#F1F5F9', tc:'#94A3B8', short:'', full:'' };
+}
+
+// Vysvetľujúci box príležitosti (string) — do popupu (rep aj manažér).
+function gpOppBoxHtml(item){
+  var o = (typeof gpOpportunity === 'function') ? gpOpportunity(item) : null;
+  if(!o || !o.full) return '';
+  return '<div style="background:' + o.bg + ';border-radius:12px;padding:9px 12px;margin-top:10px;text-align:left">' +
+    '<div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">' +
+    '<span style="font-size:14px;line-height:1">' + o.emo + '</span>' +
+    '<span style="font-size:12px;font-weight:700;color:' + o.tc + ';font-family:var(--font-display);letter-spacing:-.005em">' + o.label + '</span></div>' +
+    '<div style="font-size:11.5px;color:#475569;line-height:1.35">' + mgrEscape(o.full) + '</div></div>';
+}
+
 function buildHistItemHtml(item) {
   if (item && item.type === 'tuyory') return tuyoryHistCardHtml(item);
   if (item && item.type === 'lonelix-new') return lonelixNewCardHtml(item);
-  var cls = getScenarioClass(item.scenar);
+  var kat = String(item.kategoria||'').toUpperCase().trim();
+  var cc = gpCatColor(kat);
   var seg = SEGMENTS[item.scenar];
-  var recHtml = '';
-  if(seg) {
-    recHtml =
-      '<div class="hist-item-seg ' + cls + '">' +
-        '<div class="hist-item-seg-label">' + seg.icon + '&nbsp;' + seg.label + '</div>' +
-        '<div class="hist-item-seg-row"><span class="hist-item-seg-key">Frekvencia:</span><span class="hist-item-seg-val">' + seg.frekvencia + '</span></div>' +
-        '<div class="hist-item-seg-row"><span class="hist-item-seg-key">Cieľ:</span><span class="hist-item-seg-val">' + seg.ciel + '</span></div>' +
-      '</div>';
-  }
+  var tierPill = seg ? '<span class="hist-tier hist-tier-' + (seg.color||'gray') + '">' + seg.label + '</span> · ' : '';
+  var opp = gpOpportunity(item);
+  var oppHtml = (opp && opp.key !== 'ok') ?
+    '<div class="hist-opp"><span class="hist-opp-badge" style="background:' + opp.bg + ';color:' + opp.tc + '">' + opp.emo + ' ' + opp.label + '</span>' +
+      (opp.short ? '<span class="hist-opp-sub">' + mgrEscape(opp.short) + '</span>' : '') + '</div>' : '';
+  var catBadge = kat ? '<span class="hist-cat" style="background:' + cc.c + ';color:' + cc.txt + '">' + kat + '</span>' : '';
+  var lonBadge = (typeof lonelixHasRecord === 'function' && lonelixHasRecord(item.lekar, item.okres)) ? ' <span class="hist-lon-badge" title="Má Lonelix záznam">🛡️</span>' : '';
   var idx = _histDetailItems.length;
   _histDetailItems.push(item);
-  return '<div class="hist-item" data-idx="' + idx + '" onclick="openDetail(' + idx + ')" style="cursor:pointer">' +
-    '<div style="display:flex;justify-content:space-between;align-items:center">' +
-      '<div class="hist-item-name">' + mgrEscape(item.lekar || '—') + ((typeof lonelixHasRecord === 'function' && lonelixHasRecord(item.lekar, item.okres)) ? ' <span class="hist-lon-badge" title="Má Lonelix záznam">🛡️</span>' : '') + '</div>' +
-      '<div style="display:flex;align-items:center">' + gpTrendBadgeHtml(item) + '<span style="font-size:11px;color:#94A3B8;margin-left:6px">›</span></div>' +
+  return '<div class="hist-item" data-idx="' + idx + '" onclick="openDetail(' + idx + ')" style="cursor:pointer;border-left:4px solid ' + cc.c + '">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' +
+      '<div class="hist-item-name">' + mgrEscape(item.lekar || '—') + lonBadge + '</div>' +
+      '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0">' + gpTrendBadgeHtml(item) + catBadge + '<span style="font-size:11px;color:#94A3B8">›</span></div>' +
     '</div>' +
-    '<div class="hist-item-meta">' + mgrEscape(item.okres || '—') + ' · ' + mgrEscape(item.dateStr || '') + ' · ' + mgrEscape(item.cas || '') + '<span style="color:#94A3B8;font-size:10.5px;margin-left:6px">· ' + timeAgo(item.dateKey, item.cas) + '</span></div>' +
-    recHtml +
+    '<div class="hist-item-meta">' + tierPill + '📍 ' + mgrEscape(item.okres || '—') + ' · ' + mgrEscape(item.dateStr || '') + '<span style="color:#94A3B8;font-size:10.5px;margin-left:6px">· ' + timeAgo(item.dateKey, item.cas) + '</span></div>' +
+    oppHtml +
   '</div>';
 }
 
@@ -6546,10 +6634,30 @@ function attachHistItemGestures() {
 
 // ── História — mini filter (Všetko / Všeobecní / Tuyory) + vyhľadávanie ──
 var _histFilter = 'all';
+var _histOppFilter = 'all';
 function histFilterItems(items){
   if (_histFilter === 'gp')     return items.filter(function(it){ return !(it && it.type === 'tuyory'); });
   if (_histFilter === 'tuyory') return items.filter(function(it){ return it && it.type === 'tuyory'; });
   return items;
+}
+// Príležitostný filter (v rámci GP's) — 'all' | nezisteny | rezerva | zvysit | kategoria | chyba
+function histOppFilterItems(items){
+  if(_histOppFilter === 'all') return items;
+  if(_histOppFilter === 'nezisteny') return items.filter(function(it){ return it && it.type === 'lonelix-new'; });
+  return items.filter(function(it){
+    if(!it || it.type === 'tuyory' || it.type === 'lonelix-new') return false;
+    var o = gpOpportunity(it);
+    return o && o.key === _histOppFilter;
+  });
+}
+function histSetOppFilter(f, btn){
+  _histOppFilter = f || 'all';
+  var bar = document.getElementById('hist-oppfilter');
+  if(bar) Array.prototype.forEach.call(bar.querySelectorAll('.hist-oppchip'), function(b){
+    b.classList.toggle('active', b.getAttribute('data-of') === _histOppFilter);
+  });
+  try { haptic('selection'); } catch(e){}
+  histRender();
 }
 function histUpdateCounts(all){
   var g = 0, t = 0;
@@ -6570,15 +6678,20 @@ function histRender(){
   var all = _histCombined();
   histUpdateCounts(all);
   var scoped = histFilterItems(all);
+  // Príležitostný filter — len pre GP kontext; na Tuyory tabe chips skry
+  var oppBar = document.getElementById('hist-oppfilter');
+  if(oppBar) oppBar.style.display = (_histFilter === 'tuyory') ? 'none' : 'flex';
+  if(_histFilter !== 'tuyory') scoped = histOppFilterItems(scoped);
   var q = (((document.getElementById('hist-search') || {}).value) || '').trim().toLowerCase();
   if (q){
     scoped = scoped.filter(function(item){
-      var n = (item.lekar || '').toLowerCase();
-      return n.indexOf(q) === 0 || n.indexOf(' ' + q) !== -1;
+      var n = String(item.lekar || item.meno || '').toLowerCase();
+      var o = String(item.okres || '').toLowerCase();
+      return n.indexOf(q) !== -1 || o.indexOf(q) !== -1;
     });
     scoped.sort(function(a, b){
-      var as = (a.lekar || '').toLowerCase().indexOf(q) === 0 ? 0 : 1;
-      var bs = (b.lekar || '').toLowerCase().indexOf(q) === 0 ? 0 : 1;
+      var as = String(a.lekar || a.meno || '').toLowerCase().indexOf(q) === 0 ? 0 : 1;
+      var bs = String(b.lekar || b.meno || '').toLowerCase().indexOf(q) === 0 ? 0 : 1;
       return as - bs;
     });
   }
@@ -6763,9 +6876,14 @@ function openHistory() {
   if (!(LONELIX.records && LONELIX.records.length)){ try { LONELIX.records = lonelixLoadLocal(); } catch(e){} }
   // Reset mini filtra na „Všetko" pri každom otvorení
   _histFilter = 'all';
+  _histOppFilter = 'all';
   var _stabs = document.getElementById('hist-subtabs');
   if (_stabs) Array.prototype.forEach.call(_stabs.querySelectorAll('.hist-subtab'), function(b){
     b.classList.toggle('active', b.getAttribute('data-hf') === 'all');
+  });
+  var _ochips = document.getElementById('hist-oppfilter');
+  if (_ochips) Array.prototype.forEach.call(_ochips.querySelectorAll('.hist-oppchip'), function(b){
+    b.classList.toggle('active', b.getAttribute('data-of') === 'all');
   });
   loadHistoryItems(username).then(function() { histRender(); });
   // Override + súhrn línie + Tuyory + Lonelix v JEDNOM volaní (bootstrap) namiesto
@@ -7892,13 +8010,13 @@ function openDetail(idx) {
   var abcEl = cr.querySelector('.detail-abc-badge');
   if(abcEl) abcEl.remove();
   if(item.kategoria) {
-    var katColor = item.kategoria === 'A' ? '#16A34A' : item.kategoria === 'B' ? '#EA580C' : '#DC2626';
+    var _katc = gpCatColor(item.kategoria); var katColor = _katc.c;
     var kapStr = item.kapitacia ? Number(item.kapitacia).toLocaleString('sk-SK') + ' pac.' : '';
     var abcBadge = document.createElement('div');
     abcBadge.className = 'detail-abc-badge';
     abcBadge.style.cssText = 'display:inline-flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap;justify-content:center';
     abcBadge.innerHTML =
-      '<span style="background:' + katColor + ';color:#fff;font-size:11px;font-weight:800;padding:2px 10px;border-radius:20px;letter-spacing:.05em">Potenciál ' + item.kategoria + '</span>' +
+      '<span style="background:' + katColor + ';color:' + _katc.txt + ';font-size:11px;font-weight:800;padding:2px 10px;border-radius:20px;letter-spacing:.05em">Potenciál ' + item.kategoria + '</span>' +
       (kapStr ? '<span style="font-size:11px;color:#64748B;font-weight:600">· ' + kapStr + '</span>' : '');
     sub.insertAdjacentElement('afterend', abcBadge);
   }
@@ -7928,6 +8046,22 @@ function openDetail(idx) {
     var insertAfter = cr.querySelector('.detail-abc-badge') || sub;
     insertAfter.insertAdjacentElement('afterend', scoreBox);
   }
+
+  // Príležitosť — vysvetlenie základu (prečo je taký štítok v zozname)
+  try {
+    var _oldOpp = cr.querySelector('.detail-opp-box'); if(_oldOpp) _oldOpp.remove();
+    var _opp = gpOpportunity(item);
+    if(_opp && _opp.full){
+      var ob = document.createElement('div');
+      ob.className = 'detail-opp-box';
+      ob.style.cssText = 'background:' + _opp.bg + ';border-radius:12px;padding:9px 12px;margin-top:10px;text-align:left';
+      ob.innerHTML = '<div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">' +
+        '<span style="font-size:14px;line-height:1">' + _opp.emo + '</span>' +
+        '<span style="font-size:12px;font-weight:700;color:' + _opp.tc + ';font-family:var(--font-display);letter-spacing:-.005em">' + _opp.label + '</span></div>' +
+        '<div style="font-size:11.5px;color:#475569;line-height:1.35">' + mgrEscape(_opp.full) + '</div>';
+      (cr.querySelector('.detail-prod-score') || cr.querySelector('.detail-abc-badge') || sub).insertAdjacentElement('afterend', ob);
+    }
+  } catch(e){}
 
   // clear old scenario-msg
   var prev = cr.querySelector('.scenario-msg');
@@ -7959,8 +8093,8 @@ function openDetail(idx) {
     segDiv.innerHTML =
       '<div class="conf-seg-divider"></div>' +
       '<div class="conf-seg">' +
-        '<div class="conf-seg-section-lbl">Čo robiť</div>' +
-        actionsHtml +
+        '<button type="button" class="conf-seg-toggle" onclick="this.closest(\'.conf-seg\').classList.toggle(\'open\')"><span class="conf-seg-section-lbl">Čo robiť</span><span class="conf-seg-caret">▾</span></button>' +
+        '<div class="conf-seg-actions">' + actionsHtml + '</div>' +
       '</div>';
     segDiv.style.display = 'block';
   } else {
@@ -8043,12 +8177,12 @@ function recalcEditPreview() {
   var kap = parseInt(kapEl.value) || 0;
   if(!kap) { preview.style.display = 'none'; return; }
   var kat = kap <= 1500 ? 'C' : kap <= 1999 ? 'B' : 'A';
-  var katColor = kat === 'A' ? '#16A34A' : kat === 'B' ? '#EA580C' : '#DC2626';
+  var _katc = gpCatColor(kat); var katColor = _katc.c;
   preview.style.display = 'block';
   preview.innerHTML =
     '<span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#64748B">' +
       'Nový segment:&nbsp;' +
-      '<span style="background:' + katColor + ';color:#fff;font-size:11px;font-weight:800;' +
+      '<span style="background:' + katColor + ';color:' + _katc.txt + ';font-size:11px;font-weight:800;' +
         'padding:2px 10px;border-radius:20px;letter-spacing:.05em">Potenciál ' + kat + '</span>' +
     '</span>';
 }
@@ -17164,9 +17298,20 @@ function mgrDetailSetTab(t, btn){
   MGR_STATE.detailTab = t || 'gp';
   var bar = document.getElementById('mgr-detail-tabs');
   if (bar) Array.prototype.forEach.call(bar.querySelectorAll('.hist-subtab'), function(b){ b.classList.toggle('active', b.getAttribute('data-dt') === MGR_STATE.detailTab); });
+  MGR_STATE.oppFilter = 'all';
+  var ob = document.getElementById('mgr-oppfilter');
+  if (ob) Array.prototype.forEach.call(ob.querySelectorAll('.hist-oppchip'), function(b){ b.classList.toggle('active', b.getAttribute('data-of') === 'all'); });
   if (MGR_STATE.detailTab === 'tuyory'){ try { mgrLoadTuyory(); } catch(e){} }   // čerstvé Tuyory dáta
   try { haptic('selection'); } catch(e){}
   var vs = document.getElementById('mgr-vsearch'); if (vs) vs.value = '';
+  mgrRenderVisits();
+}
+// Príležitostný filter v manažérskom detaile (rovnaké kľúče ako u repa)
+function mgrSetOppFilter(f, btn){
+  MGR_STATE.oppFilter = f || 'all';
+  var bar = document.getElementById('mgr-oppfilter');
+  if (bar) Array.prototype.forEach.call(bar.querySelectorAll('.hist-oppchip'), function(b){ b.classList.toggle('active', b.getAttribute('data-of') === MGR_STATE.oppFilter); });
+  try { haptic('selection'); } catch(e){}
   mgrRenderVisits();
 }
 function mgrHistSetFilter(f, btn){
@@ -17313,6 +17458,20 @@ function mgrRenderVisits(){
     if (q && String(r.meno||'').toLowerCase().indexOf(q) === -1 && String(r.okres||'').toLowerCase().indexOf(q) === -1) return false;
     return true;
   });
+  // Príležitostný filter (len GP kontext; na Tuyory tabe chips skry)
+  var _mgrOppBar = document.getElementById('mgr-oppfilter');
+  if(_mgrOppBar) _mgrOppBar.style.display = (filter === 'tuyory') ? 'none' : 'flex';
+  var _mgrOppF = MGR_STATE.oppFilter || 'all';
+  if(filter !== 'tuyory' && _mgrOppF !== 'all'){
+    if(_mgrOppF === 'nezisteny'){ gpFiltered = []; }
+    else {
+      gpFiltered = gpFiltered.filter(function(v){
+        var o = (typeof gpOpportunity === 'function') ? gpOpportunity(gpDecorate(Object.assign({}, v))) : null;
+        return o && o.key === _mgrOppF;
+      });
+      lonOnly = [];
+    }
+  }
   MGR_STATE._lonOnly = lonOnly;
 
   // Tuyory header (rovnaký ako vidí reprezentant) — v detaile pod tabom Tuyory
@@ -17332,10 +17491,16 @@ function mgrRenderVisits(){
     var cas = v.cas || '';
     var noteIco = v.poznamka ? '<span class="mgr-vnote-ico" title="Obsahuje poznámku">📝</span>' : '';
     var originalIdx = visits.indexOf(v);
+    var kat = String(dv.kategoria||'').toUpperCase().trim();
+    var cc = gpCatColor(kat);
+    var catBadge = kat ? '<span class="hist-cat" style="background:'+cc.c+';color:'+cc.txt+';margin-left:6px">'+kat+'</span>' : '';
+    var opp = (typeof gpOpportunity === 'function') ? gpOpportunity(dv) : null;
+    var oppHtml = (opp && opp.key !== 'ok') ?
+      '<div style="display:flex;align-items:center;gap:7px;margin-top:6px;flex-wrap:wrap"><span class="hist-opp-badge" style="background:'+opp.bg+';color:'+opp.tc+'">'+opp.emo+' '+opp.label+'</span>'+(opp.short?'<span class="hist-opp-sub">'+mgrEscape(opp.short)+'</span>':'')+'</div>' : '';
     return '<div class="mgr-vitem" data-vidx="'+originalIdx+'">' +
-      '<div class="mgr-vseg '+scenar+'"></div>' +
+      '<div class="mgr-vseg" style="background:'+cc.c+'"></div>' +
       '<div class="mgr-vbody">' +
-        '<div class="mgr-vdoc">'+mgrEscape(v.lekar||'—')+noteIco+((typeof lonelixHasRecord==='function' && typeof mgrRepLonelix==='function' && lonelixHasRecord(v.lekar, v.okres, mgrRepLonelix(MGR_STATE.currentRep))) ? ' <span class="hist-lon-badge" title="Má Lonelix záznam">🛡️</span>' : '')+gpTrendBadgeHtml(dv)+'</div>' +
+        '<div class="mgr-vdoc">'+mgrEscape(v.lekar||'—')+noteIco+((typeof lonelixHasRecord==='function' && typeof mgrRepLonelix==='function' && lonelixHasRecord(v.lekar, v.okres, mgrRepLonelix(MGR_STATE.currentRep))) ? ' <span class="hist-lon-badge" title="Má Lonelix záznam">🛡️</span>' : '')+gpTrendBadgeHtml(dv)+catBadge+'</div>' +
         '<div class="mgr-vmeta">' +
           (scenar ? '<span class="mgr-vseg-lbl mgr-chip-'+scenar+'">'+(MGR_SEG_LBL[scenar]||scenar)+'</span>' : '') +
           (scenar ? '<span class="sep">·</span>' : '') +
@@ -17344,6 +17509,7 @@ function mgrRenderVisits(){
           '<span>'+mgrEscape(dateStr)+(cas?' · '+mgrEscape(cas):'')+'</span>' +
           (v.ts ? '<span class="sep">·</span><span style="color:#94A3B8">'+mgrTimeAgo(v.ts)+'</span>' : '') +
         '</div>' +
+        oppHtml +
       '</div>' +
     '</div>';
   }).join('');
@@ -17448,7 +17614,7 @@ function mgrOpenVisit(idx){
   try {
     var prodPanel = document.getElementById('mgr-detail-prod-panel');
     if(prodPanel){
-      prodPanel.innerHTML = mgrBuildProductsPanel(item) + gpDoctorTrajectoryHtml(item);
+      prodPanel.innerHTML = mgrBuildProductsPanel(item) + gpOppBoxHtml(item) + gpDoctorTrajectoryHtml(item);
       prodPanel.style.display = 'block';
     }
   } catch(prodErr){
@@ -17497,8 +17663,8 @@ function mgrOpenVisit(idx){
     segDiv.innerHTML =
       '<div class="conf-seg-divider"></div>' +
       '<div class="conf-seg">' +
-        '<div class="conf-seg-section-lbl">Čo robiť</div>' +
-        actionsHtml +
+        '<button type="button" class="conf-seg-toggle" onclick="this.closest(\'.conf-seg\').classList.toggle(\'open\')"><span class="conf-seg-section-lbl">Čo robiť</span><span class="conf-seg-caret">▾</span></button>' +
+        '<div class="conf-seg-actions">' + actionsHtml + '</div>' +
       '</div>';
     segDiv.style.display = 'block';
   } else {
@@ -18113,6 +18279,31 @@ var WN_HISTORY = [
         { icon: '🎯', bg: '#F0FDF4', title: 'Reprezentant oproti línii', desc: 'Klikni na repa → uvidíš, kde stojí voči priemeru línie (na lekára), jeho vývoj od začiatku a aktuálny mesačný súhrn po produktoch.' },
         { icon: '🔄', bg: '#FFF7ED', title: 'Aktualizácie počtov', desc: 'Reprezentanti (aj ty) môžu upravovať počty u lekárov. Zmenu „z 5 na 8" vidíš pri lekárovi aj v súhrnoch.' },
         { icon: '🧬', bg: '#F5F3FF', title: 'Tuyory prehľad repa', desc: 'Na tabe Tuyory po kliknutí na repa vidíš jeho Tuyory dashboard — pacienti na tocilizumabe, noví/mesiac, na switch, oslovení lekári.' }
+      ]
+    }
+  },
+  // ── v2.56 — záložka Lekári + príležitosti (len Golem) ──
+  {
+    key: 'potencial_vl_wn_v2_56',
+    golemOnly: true,
+    rep: {
+      icon: '🩺', title: 'Nové: záložka Lekári', sub: 'v2.56.0 · Gedeon Richter Slovakia',
+      items: [
+        { icon: '🩺', bg: '#EFF6FF', title: 'História je teraz Lekári', desc: 'Tvoja záložka „História" sa volá Lekári. Nájdeš tam všetkých svojich lekárov ako doteraz, len prehľadnejšie.' },
+        { icon: '💡', bg: '#F0FDF4', title: 'Príležitosti na prvý pohľad', desc: 'Pri každom lekárovi je štítok, kde sa oplatí zabrať: 💎 veľká rezerva, 📈 odporúčané zvýšiť, ➖ nepíše niektorý produkt, 🔍 nezistený potenciál.' },
+        { icon: '🎯', bg: '#FFF7ED', title: 'Filter príležitostí', desc: 'Hore si prepneš, čo chceš vidieť — napr. len lekárov s rezervou alebo kde chýba produkt.' },
+        { icon: '🎨', bg: '#FEFCE8', title: 'Farba kategórie', desc: 'Písmeno A/B/C pri lekárovi svieti farbou podľa kapitácie: A zelená, B žltá, C červená — veľkosť praxe hneď vidíš.' },
+        { icon: '🔍', bg: '#F5F3FF', title: 'Hľadaj aj podľa okresu', desc: 'Do vyhľadávania napíš okres a nájde ti lekárov z neho.' }
+      ]
+    },
+    mgr: {
+      icon: '🩺', title: 'Nové: záložka Lekári', sub: 'v2.56.0 · Gedeon Richter Slovakia',
+      items: [
+        { icon: '🩺', bg: '#EFF6FF', title: 'Návštevy sú teraz Lekári', desc: 'Pri každom repovi vidíš jeho zoznam lekárov, prehľadnejšie.' },
+        { icon: '💡', bg: '#F0FDF4', title: 'Kde má rep príležitosti', desc: 'Pri každom lekárovi štítok: 💎 rezerva, 📈 zvýšiť, ➖ chýba produkt, 🔍 nezistený potenciál. Ideálne na koučing — vidíš, kde môže rep rásť.' },
+        { icon: '🎯', bg: '#FFF7ED', title: 'Filter príležitostí', desc: 'Prepneš si napr. len lekárov s rezervou alebo kde chýba produkt.' },
+        { icon: '🎨', bg: '#FEFCE8', title: 'Farba kategórie', desc: 'A/B/C svieti farbou podľa kapitácie (A zelená · B žltá · C červená) — veľkosť praxe na prvý pohľad.' },
+        { icon: '🔍', bg: '#F5F3FF', title: 'Hľadaj podľa mena aj okresu', desc: 'Rýchlo nájdeš lekára aj celý okres.' }
       ]
     }
   }
@@ -34249,7 +34440,7 @@ function lonelixOpenGpForm(r){
   .gp-sum-devrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding-top:11px;border-top:1px solid rgba(255,255,255,.1);position:relative}
 
   /* Mini-graf trajektórie potenciálu lekára (v detaile) */
-  .gp-traj{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px 12px 8px;margin-bottom:12px}
+  .gp-traj{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:10px 12px 8px;margin-top:12px;margin-bottom:12px}
   .gp-traj-hdr{display:flex;align-items:center;justify-content:space-between;font-size:11.5px;font-weight:700;color:#475569;margin-bottom:6px}
   .gp-traj-hdr b{font-weight:800}
   .gp-traj-steps{margin-top:6px;border-top:1px solid #EEF2F6;padding-top:5px}
