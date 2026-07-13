@@ -32290,15 +32290,15 @@ function tuyObdobieLabel(obd){ return obd === 'rok' ? 'za rok' : (obd === 'polro
 function tuyoryNoviBlock(sfx){
   // Podotázka „noví pacienti" — počet + obdobie (mesiac/kvartál/pol rok/rok). sfx = 'A' (áno vetva) / 'B' (nie vetva)
   return '<div class="tuy-cond" id="tuy-blk-novi' + sfx + '-count">' +
-    '<label class="tuy-lbl">Koľko nových pacientov?</label>' +
-    '<input class="tuy-in" id="tuy-novi' + sfx + '-pocet" type="number" inputmode="numeric" min="1" step="1" placeholder="napr. 2">' +
+    '<label class="tuy-lbl">Koľko nových pacientov? <span style="font-weight:600;color:#94A3B8">(nepovinné)</span></label>' +
+    '<input class="tuy-in" id="tuy-novi' + sfx + '-pocet" type="number" inputmode="numeric" min="1" step="1" placeholder="napr. 2 — ak už vie">' +
     '<div class="tuy-seg" data-g="obd' + sfx + '" style="margin-top:8px">' +
       '<button type="button" class="tuy-opt" onclick="tuySeg(\'obd' + sfx + '\',\'mesiac\',this)">za mesiac</button>' +
       '<button type="button" class="tuy-opt" onclick="tuySeg(\'obd' + sfx + '\',\'kvartal\',this)">za kvartál</button>' +
       '<button type="button" class="tuy-opt" onclick="tuySeg(\'obd' + sfx + '\',\'polrok\',this)">za pol rok</button>' +
       '<button type="button" class="tuy-opt" onclick="tuySeg(\'obd' + sfx + '\',\'rok\',this)">za rok</button>' +
     '</div>' +
-    '<div class="tuy-hint">V štatistike sa prepočíta na mesiac (kvartál ÷3, pol rok ÷6, rok ÷12).</div>' +
+    '<div class="tuy-hint">Ak lekár ešte nevie počet (napr. nová ambulancia), nechaj prázdne. Ak vyplníš, do štatistiky sa prepočíta na mesiac (kvartál ÷3, pol rok ÷6, rok ÷12).</div>' +
   '</div>';
 }
 
@@ -32537,9 +32537,10 @@ function tuyorySubmit(){
     rec.noviP = a.noviA;
     if (a.noviA === 'ano'){
       var npA = parseInt(g('tuy-noviA-pocet'), 10);
-      if (!npA || npA < 1) return tuyErr('Zadaj počet nových pacientov.', document.getElementById('tuy-noviA-pocet'));
-      if (!a.obdA) return tuyErr('Vyber obdobie (za mesiac / za kvartál).', document.querySelector('[data-g="obdA"]'));
-      rec.noviPocet = npA; rec.noviObdobie = a.obdA;
+      if (npA && npA >= 1){   // počet je nepovinný — nová ambulancia ešte nemusí vedieť koľko
+        if (!a.obdA) return tuyErr('Vyber obdobie (za mesiac / za kvartál).', document.querySelector('[data-g="obdA"]'));
+        rec.noviPocet = npA; rec.noviObdobie = a.obdA;
+      }
     }
     // nepovinné doplňujúce
     if (TUYORY.znacky.length) rec.znacka = TUYORY.znacky.join(', ');
@@ -32552,9 +32553,10 @@ function tuyorySubmit(){
     rec.noviP = a.noviB;
     if (a.noviB === 'ano'){
       var npB = parseInt(g('tuy-noviB-pocet'), 10);
-      if (!npB || npB < 1) return tuyErr('Zadaj počet nových pacientov.', document.getElementById('tuy-noviB-pocet'));
-      if (!a.obdB) return tuyErr('Vyber obdobie (za mesiac / za kvartál).', document.querySelector('[data-g="obdB"]'));
-      rec.noviPocet = npB; rec.noviObdobie = a.obdB;
+      if (npB && npB >= 1){   // počet je nepovinný — nová ambulancia ešte nemusí vedieť koľko
+        if (!a.obdB) return tuyErr('Vyber obdobie (za mesiac / za kvartál).', document.querySelector('[data-g="obdB"]'));
+        rec.noviPocet = npB; rec.noviObdobie = a.obdB;
+      }
     }
     var preco = g('tuy-preco');   // nepovinné
     if (preco){ if (preco === 'Iné'){ var pi = g('tuy-preco-ine'); preco = pi ? ('Iné: ' + pi) : 'Iné'; } rec.preco = preco; }
