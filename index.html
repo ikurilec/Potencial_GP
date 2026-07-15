@@ -1889,6 +1889,8 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .pharma-ms-district-name{font-size:11px;font-weight:700;color:#fff;padding:8px 0;text-transform:uppercase;letter-spacing:.07em;font-family:var(--font-display);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .gyn-district-pct-badge{font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;flex-shrink:0;font-family:var(--font-display);letter-spacing:-.01em;white-space:nowrap}
   .gyn-district-trh-badge{font-size:10px;font-weight:700;color:rgba(255,255,255,.65);padding:2px 8px;border-radius:20px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);flex-shrink:0;font-family:var(--font-display);white-space:nowrap;letter-spacing:.01em}
+  /* MS nášho produktu za celý kvartál — chip v hlavičke okresu (priemer dostupných mesiacov) */
+  .pharma-ms-district-q-badge{font-size:10.5px;font-weight:800;color:#DBEAFE;padding:2px 9px;border-radius:20px;border:1px solid rgba(96,165,250,.45);background:rgba(37,99,235,.28);flex-shrink:0;font-family:var(--font-display);white-space:nowrap;letter-spacing:.01em}
   .gyn-district-pct-badge.g{background:rgba(16,185,129,.20);color:#34D399}
   .gyn-district-pct-badge.o{background:rgba(251,191,36,.20);color:#FBBF24}
   .gyn-district-pct-badge.r{background:rgba(248,113,113,.18);color:#F87171}
@@ -27473,8 +27475,19 @@ function pharmaDistrictCardHtml(r, dSeries, prodLabel, q, isBoxProduct, district
   var html = '<div class="pharma-ms-district">';
   var nasPat = (r.nas_pat_m1 || 0) + (r.nas_pat_m2 || 0) + (r.nas_pat_m3 || 0);
   var totPat = (r.tot_pat_m1 || 0) + (r.tot_pat_m2 || 0) + (r.tot_pat_m3 || 0);
+  // MS nášho produktu za celý kvartál = priemer dostupných mesiacov v Q
+  // (1 mesiac → jeho MS, 2 mesiace → priemer, 3 mesiace → priemer). Rovnaká logika ako súhrnný teritoriálny MS.
+  var nasQVals = districtDisplayMonths.map(function(m) {
+    var n = parseFloat(dSeries.nas[m]);
+    return (!isNaN(n) && n > 0) ? n : null;
+  }).filter(function(v) { return v !== null; });
+  var nasQAvg = nasQVals.length ? nasQVals.reduce(function(a, b) { return a + b; }, 0) / nasQVals.length : null;
+  var qBadgeHtml = (nasQAvg !== null)
+    ? '<div class="pharma-ms-district-q-badge" title="' + mgrEscape(prodLabel) + ' — MS za celý Q' + q + ' (priemer dostupných mesiacov)">Q' + q + ': ' + nasQAvg.toFixed(2) + '%</div>'
+    : '';
   html += '<div class="pharma-ms-district-hdr">'
     + '<div class="pharma-ms-district-name">' + mgrEscape(r.okres) + '</div>'
+    + qBadgeHtml
     + (grafBtnHtml || '')
     + '</div>';
   var districtInsightHtml = pharmaInsightHtml(
