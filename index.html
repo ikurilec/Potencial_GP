@@ -1203,7 +1203,7 @@
   body.reagila-line .lk-tab[data-lk-tab="reaktivacia"],
   body.reagila-line .lk-tab[data-lk-tab="priority"]{ display:none !important; }
   body.reagila-line .lk-tab[data-lk-tab="all"]{ order:-1; }
-  /* Reagila rep navigácia — 3 záložky: Plnenie | Lekárne | Rebríček (vyplnia šírku, väčší text) */
+  /* Reagila rep navigácia — 4 záložky: Plnenie | Kalendár | Lekárne | Rebríček (vyplnia šírku) */
   body.reagila-line #spn-form, body.reagila-line #spn-hist{ display:none !important; }
   /* Okresy záložka je len pre Golem GP líniu (Reagila má vlastnú 3-tab navigáciu) */
   body.reagila-line #rep-nav-okresy-btn,
@@ -1215,10 +1215,11 @@
   body.reagila-line #rep-nav-lonelix-btn,
   body.reagila-line #spn-lonelix{ display:none !important; }
   body.reagila-line .rep-nav,
-  body.reagila-line .panel-nav{ grid-template-columns:repeat(3,1fr); }
+  body.reagila-line .panel-nav{ grid-template-columns:repeat(4,1fr); }
   body.reagila-line #rep-nav-plnenie-btn, body.reagila-line #spn-pl{ order:1; }
-  body.reagila-line #rep-nav-lekarne-btn, body.reagila-line #spn-lk{ order:2; }
-  body.reagila-line #rep-nav-lb-btn,      body.reagila-line #spn-lb{ order:3; }
+  body.reagila-line #rep-nav-kal-btn,     body.reagila-line #spn-kal{ order:2; }
+  body.reagila-line #rep-nav-lekarne-btn, body.reagila-line #spn-lk{ order:3; }
+  body.reagila-line #rep-nav-lb-btn,      body.reagila-line #spn-lb{ order:4; }
   .act-period{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:12px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
   .act-period-btn{padding:11px 4px;border:none;background:transparent;font-size:12px;font-weight:700;color:#64748B;cursor:pointer;border-radius:8px;font-family:inherit;transition:all .15s;-webkit-tap-highlight-color:transparent}
   .act-period-btn.active{background:#0C1E35;color:#fff}
@@ -1635,9 +1636,7 @@
   .golem-cal-inner{max-width:628px;margin:0 auto;padding:18px 16px 48px}
   body.gp-rep .golem-cal-inner{padding-top:var(--rep-top-h,150px)}
   body.manager-mode .golem-cal-inner{padding-top:18px}
-  /* Reagila zatiaľ bez kalendára v navigácii (pridá sa neskôr) */
-  body.reagila-line #rep-nav-kal-btn,
-  body.reagila-line #spn-kal{display:none !important}
+  /* Reagila kalendár — rovnaký engine ako Golem (zdieľaný overlay), nav tlačidlá viditeľné */
   .lk-inner{padding:82px 16px 48px}
 .lk-floating-back{width:100%;border:0;border-radius:12px;background:#fff;color:#2563EB;font-size:13px;font-weight:800;font-family:inherit;padding:11px 16px;box-shadow:0 5px 16px rgba(15,23,42,.10),0 0 0 1px rgba(15,23,42,.06);cursor:pointer;-webkit-tap-highlight-color:transparent;display:inline-flex;align-items:center;justify-content:center;gap:6px;margin:8px 0 0}
 .lk-floating-back:active{transform:scale(.98);box-shadow:0 3px 12px rgba(15,23,42,.12),0 0 0 1px rgba(15,23,42,.06)}
@@ -3444,7 +3443,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.58.0';
+var APP_VERSION = '2.59.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7095,7 +7094,7 @@ function settingsTogglePushSub(){
 }
 
 // ── Kalendár — upozornenia approval flow (rep / schvaľovateľ), opt-in cez user-prefs ──
-// Gyn: jeden AM pre všetkých. Golem: per-osoba podľa stĺpca „Schvaľovateľ" (Reagila kalendár nemá).
+// Gyn: jeden AM pre všetkých. Golem aj Reagila: per-osoba podľa stĺpca „Schvaľovateľ".
 // Golem: som schvaľovateľom aspoň jednej osoby? (z rostra — hodnota v stĺpci „Schvaľovateľ")
 function golemSettingsIsApprover(){
   try {
@@ -7127,8 +7126,8 @@ function settingsCalNotifHtml(s){
     var isRep = (s.role === 'gyn-rep');
     if(isAm)       rows.push({ key:'calNotifApprovals', label:'Žiadosti o schválenie absencií', desc:'Dostaneš push, keď reprezentant požiada o dovolenku alebo administratívu.' });
     else if(isRep) rows.push({ key:'calNotifMine',      label:'Rozhodnutia o mojich absenciách', desc:'Dostaneš push, keď AM schváli alebo zamietne tvoju dovolenku/administratívu.' });
-  } else if((typeof gynCalLine === 'function' ? gynCalLine() : (s.line||'gp')) === 'gp'){
-    // Golem (Reagila kalendár nemá → žiadne prepínače)
+  } else {
+    // Golem aj Reagila — per-osoba schvaľovateľ zo stĺpca „Schvaľovateľ" (line-agnostic)
     if(golemSettingsIsApprover()) rows.push({ key:'calNotifApprovals', label:'Žiadosti o schválenie absencií', desc:'Dostaneš push, keď ti niekto z tímu pošle žiadosť o dovolenku, administratívu alebo náhradné voľno na schválenie.' });
     if(golemSettingsHasApprover()) rows.push({ key:'calNotifMine',      label:'Rozhodnutia o mojich absenciách', desc:'Dostaneš push, keď schvaľovateľ schváli alebo zamietne tvoju dovolenku, administratívu alebo náhradné voľno.' });
   }
@@ -9088,8 +9087,8 @@ function loginSuccess(username, name, role, region, extra) {
   try { userPrefsApplyMirror(user); } catch(e){}
   // Kalendár (Golem) — spusti načítanie udalostí HNEĎ pri prihlásení, paralelne s init dátami,
   // nech sú udalosti pripravené ešte pred prvým otvorením (nie až po kliknutí na Kalendár).
-  // Reagila kalendár nemá; gyn má vlastný prefetch v gynEnter. _synced guard chráni pred dvojitým fetchom.
-  try { if ((user.line || 'gp') === 'gp' && typeof gynCalPrefetch === 'function') gynCalPrefetch(); } catch(e){}
+  // Golem aj Reagila zdieľajú kalendár (scriptUrl podľa línie); gyn má vlastný prefetch v gynEnter. _synced guard chráni pred dvojitým fetchom.
+  try { var _pl = (user.line || 'gp'); if ((_pl === 'gp' || _pl === 'reagila') && typeof gynCalPrefetch === 'function') gynCalPrefetch(); } catch(e){}
   usageTrack('app_open', '', 'prihlásenie · rola: ' + (role || ''));
   haptic('success');
   var _isReagila = (user.line === 'reagila');
@@ -15275,7 +15274,6 @@ function gynCalLiveOn(){
   if(typeof IS_DEV!=='undefined' && IS_DEV) return false;
   var s=(typeof getSession==='function')?getSession():null;
   if(!s || !s.username) return false;
-  if((s.line||'gp')==='reagila') return false;   // Reagila kalendár nemá
   return true;
 }
 function gynCalLiveSync(){ if(gynCalLiveOn()){ try { gynCalSync(); } catch(e){} } }
