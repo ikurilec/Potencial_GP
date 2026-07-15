@@ -3443,7 +3443,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.59.0';
+var APP_VERSION = '2.60.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9090,6 +9090,11 @@ function loginSuccess(username, name, role, region, extra) {
   // Golem aj Reagila zdieľajú kalendár (scriptUrl podľa línie); gyn má vlastný prefetch v gynEnter. _synced guard chráni pred dvojitým fetchom.
   try { var _pl = (user.line || 'gp'); if ((_pl === 'gp' || _pl === 'reagila') && typeof gynCalPrefetch === 'function') gynCalPrefetch(); } catch(e){}
   usageTrack('app_open', '', 'prihlásenie · rola: ' + (role || ''));
+  // Reagila: hydratuj výber konkurentov (MS picker) — localStorage (instant) + zo Sheets (login response)
+  if (user.line === 'reagila') {
+    try { gynMsHydrate(localStorage.getItem(gynMsLsKey())); } catch(e){}
+    if (extra && extra.reagila_ms_vyber) { try { gynMsHydrate(extra.reagila_ms_vyber); } catch(e){} }
+  }
   haptic('success');
   var _isReagila = (user.line === 'reagila');
   var _appEl = document.querySelector('.app');
@@ -10133,11 +10138,17 @@ function gynMsScope() {
   try {
     var s = (typeof getSession === 'function') ? getSession() : null;
     var me = s && s.username ? String(s.username).toLowerCase() : '';
+    var line = (s && s.line) || 'gp';
     // Reprezentant otvorený priamo v Trhovom podiele (cesta cez produktový prehľad)
     // má prednosť; inak rep z otvoreného detailu (cesta cez detail reprezentanta).
     // Vďaka tomu je výber vždy naviazaný na konkrétneho repa bez ohľadu na cestu.
     var viewed = '';
-    if (typeof GYN_PHARMA_STATE !== 'undefined' && GYN_PHARMA_STATE && GYN_PHARMA_STATE.repLogin) {
+    if (line === 'reagila') {
+      // Reagila používa zdieľaný Golem render — viewed rep drží PHARMA_STATE.repLogin.
+      if (typeof PHARMA_STATE !== 'undefined' && PHARMA_STATE && PHARMA_STATE.repLogin) {
+        viewed = String(PHARMA_STATE.repLogin).toLowerCase();
+      }
+    } else if (typeof GYN_PHARMA_STATE !== 'undefined' && GYN_PHARMA_STATE && GYN_PHARMA_STATE.repLogin) {
       viewed = String(GYN_PHARMA_STATE.repLogin).toLowerCase();
     } else if (typeof GYN_APP !== 'undefined' && GYN_APP && GYN_APP.detailLogin) {
       viewed = String(GYN_APP.detailLogin).toLowerCase();
@@ -10159,7 +10170,8 @@ function gynMsGetSelection(produkt, okres) {
 
 function gynMsLsKey() {
   var s = (typeof getSession === 'function') ? getSession() : null;
-  return 'gyn_ms_vyber_' + ((s && s.username) ? s.username : 'anon');
+  var prefix = ((s && s.line) === 'reagila') ? 'reagila_ms_vyber_' : 'gyn_ms_vyber_';
+  return prefix + ((s && s.username) ? s.username : 'anon');
 }
 
 // Naplní GYN_MS_SELECTION z uloženého JSON (zo Sheets alebo localStorage).
@@ -10178,8 +10190,13 @@ function gynMsSetSelection(produkt, names, okres) {
   var s = (typeof getSession === 'function') ? getSession() : null;
   if (!s || !s.username) return;
   try {
-    fetch(gynScriptUrl('action=setGynMsSelection&username=' + encodeURIComponent(s.username)
-      + '&config=' + encodeURIComponent(JSON.stringify(GYN_MS_SELECTION))), { cache: 'no-store' });
+    var cfg = encodeURIComponent(JSON.stringify(GYN_MS_SELECTION));
+    var un  = encodeURIComponent(s.username);
+    // Line-aware ukladanie: Reagila má vlastný backend + stĺpec reagila_ms_vyber.
+    var url = ((s.line === 'reagila') && typeof reagilaScriptUrl === 'function')
+      ? reagilaScriptUrl('action=setReagilaMsSelection&username=' + un + '&config=' + cfg)
+      : gynScriptUrl('action=setGynMsSelection&username=' + un + '&config=' + cfg);
+    fetch(url, { cache: 'no-store' });
   } catch(e){}
 }
 
@@ -10341,11 +10358,22 @@ function gynMsDistrictToggleLine(chartId, key) {
   var rb = cont.querySelector('.pharma-legend-reset-btn'); if(rb) rb.classList.add('visible');
 }
 
+// Aktuálna pharma odpoveď pre picker podľa línie (Reagila = Golem PHARMA_STATE cache; inak gyn).
+function gynMsPickerResp() {
+  try {
+    var s = (typeof getSession === 'function') ? getSession() : null;
+    if (s && s.line === 'reagila' && typeof PHARMA_STATE !== 'undefined' && PHARMA_STATE) {
+      return PHARMA_STATE.cache[PHARMA_STATE.activeCode + '_' + PHARMA_STATE.oblast + '_' + PHARMA_STATE.kvartal] || null;
+    }
+  } catch(e){}
+  return (typeof GYN_PHARMA_STATE !== 'undefined' && GYN_PHARMA_STATE) ? GYN_PHARMA_STATE.lastResp : null;
+}
+
 // ── Picker modal — výber konkurentov do grafu ──
 function gynMsOpenPicker(produkt, okres) {
   _gynMsPickerProd = produkt;
   _gynMsPickerOkres = okres || null;
-  var resp = GYN_PHARMA_STATE.lastResp;
+  var resp = gynMsPickerResp();
   var names = okres ? gynMsDistrictCompNames(resp, okres) : gynMsAllCompNames(resp);
   // Picker zoznam zoradíme podľa abecedy (ľahšie hľadanie konkurenta), nie podľa MS
   names = names.slice().sort(function(a, b){ return String(a).localeCompare(String(b), 'sk'); });
@@ -10373,7 +10401,12 @@ function gynMsSavePicker() {
   Array.prototype.forEach.call(boxes, function(cb){ if (cb.checked) picked.push(cb.value); });
   gynMsSetSelection(_gynMsPickerProd, picked, _gynMsPickerOkres);
   gynMsClosePicker();
-  if (GYN_PHARMA_STATE.lastResp) gynPharmaRender(GYN_PHARMA_STATE.lastResp);
+  var _s = (typeof getSession === 'function') ? getSession() : null;
+  if (_s && _s.line === 'reagila') {
+    try { if (typeof PHARMA_STATE !== 'undefined' && PHARMA_STATE.activeCode) pharmaRender(PHARMA_STATE.activeCode); } catch(e){}
+  } else if (GYN_PHARMA_STATE.lastResp) {
+    gynPharmaRender(GYN_PHARMA_STATE.lastResp);
+  }
 }
 
 function gynMsClosePicker() {
@@ -23279,7 +23312,7 @@ function prodSheetOpenPharmaForRep(repUsername) {
   if (!oblast) return;
   var label = PL_PROD_SHEET_STATE.prodLabel || prodKey;
   closeProdSheet();
-  setTimeout(function(){ openPharmaMs(prodKey, label, oblast); }, 200);
+  setTimeout(function(){ openPharmaMs(prodKey, label, oblast, repUsername); }, 200);
 }
 
 function prodSheetInitSwipe() {
@@ -26385,7 +26418,7 @@ function pharmaGetOblast() {
   return (USERS_LOCAL[session.username] && USERS_LOCAL[session.username].region) || session.region || '';
 }
 
-function openPharmaMs(prodKey, label, oblastOverride) {
+function openPharmaMs(prodKey, label, oblastOverride, repLoginOverride) {
   var codes = PHARMA_CODES[prodKey];
   if (!codes || !codes.length) return;
   usageSectionEnter('Trhový podiel', 'produkt: ' + (label || prodKey));
@@ -26395,6 +26428,9 @@ function openPharmaMs(prodKey, label, oblastOverride) {
   // z produktového rebríčka (scope na jeho teritórium), inak sa odvodí zo scope-u.
   var oblast = oblastOverride || pharmaGetOblast();
   if (!oblast) return;
+  // repLoginOverride — Reagila: manažér otvoril trhový podiel konkrétneho repa → výber
+  // konkurentov (ceruzka) sa scope-uje per rep (uloží sa pod manažéra ako rep:<login>).
+  PHARMA_STATE.repLogin = repLoginOverride ? String(repLoginOverride).toLowerCase() : null;
 
   var repOverlayOpen = document.getElementById('rep-plnenie-overlay') && document.getElementById('rep-plnenie-overlay').classList.contains('show');
   var q    = repOverlayOpen ? (REP_PL_STATE.q || plnenieCurrentQ()) : (PL_STATE.q || plnenieCurrentQ());
@@ -26878,6 +26914,12 @@ function buildGrafChartHtml(code, oblast) {
     };
   }).filter(Boolean);
 
+  // Reagila: nahraď fixné top-3 (z getPharmaGraf) konkurentmi z okresovej agregácie + výberom (ceruzka).
+  if (reaMsActive()) {
+    var _reaComps = reaTeritCompCfg(code, oblast, rows);
+    if (_reaComps) kompCfg = _reaComps;
+  }
+
   // Škála
   var allVals = [];
   nasVals.forEach(function(v) { if (v !== null) allVals.push(v); });
@@ -26904,7 +26946,7 @@ function buildGrafChartHtml(code, oblast) {
   var firstNas = null, lastNas = null;
   nasVals.forEach(function(v) { if (v !== null && firstNas === null) firstNas = v; if (v !== null) lastNas = v; });
   var nasColor = (firstNas !== null && lastNas !== null && lastNas >= firstNas) ? '#10B981' : '#EF4444';
-  var kompColors = ['#60A5FA', '#A78BFA', '#FB923C', '#FBBF24'];
+  var kompColors = ['#60A5FA', '#A78BFA', '#FB923C', '#FBBF24', '#F97316', '#06B6D4', '#EC4899', '#8B5CF6', '#10B981', '#F43F5E', '#0EA5E9', '#D97706', '#6366F1', '#84CC16', '#14B8A6'];
 
   var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block;overflow:visible">';
 
@@ -26978,8 +27020,11 @@ function buildGrafChartHtml(code, oblast) {
     var v = null; k.vals.forEach(function(x) { if (x !== null) v = x; }); return v;
   });
 
+  var _teritPencil = reaMsActive()
+    ? '<button type="button" class="gyn-ms-edit-btn" aria-label="Upraviť konkurentov" onclick="gynMsOpenPicker(\'' + String(prodLabel).replace(/'/g, "\\'") + '\')">✎</button>'
+    : '';
   var out = '<div class="pharma-ms-trend-chart">';
-  out += '<div class="pharma-ms-trend-chart-title">Vývoj trhového podielu · ' + titleFrom + ' – ' + titleTo + '</div>';
+  out += '<div class="pharma-ms-trend-chart-title">Vývoj trhového podielu · ' + titleFrom + ' – ' + titleTo + _teritPencil + '</div>';
   out += svg;
 
   // Legenda — reset tlačidlo + 2-stĺpcová mriežka
@@ -27467,8 +27512,60 @@ function pharmaSwitchTab(code) {
 // Karta jedného okresu (hlavička + pacienti + signál + tabuľka MS% náš vs. konkurenti).
 // Zdieľaná medzi panelom Trhový podiel (pharmaRender) a záložkou Okresy.
 // grafBtnHtml = hotové HTML tlačidla „Graf" (každý volajúci si rieši vlastné napojenie kliku).
+// Reagila: výber konkurentov (ceruzka) je aktívny v Golem pharma renderi len pre Reagila líniu.
+function reaMsActive() {
+  try { var s = (typeof getSession === 'function') ? getSession() : null; return !!(s && s.line === 'reagila'); } catch(e){ return false; }
+}
+
+// Reagila — teritoriálny trend: konkurenti sa neberú z getPharmaGraf (len top-3), ale sa
+// agregujú z okresov (k_all) ako v gyn (priemer MS% naprieč okresmi per mesiac), a filtrujú
+// podľa uloženého výberu reprezentanta/manažéra (ceruzka; kľúč = produkt, bez okresu).
+// Vráti pole { name, vals:[per rows.mesiac] } alebo null (bez okresných dát → fallback na top-3).
+function reaTeritCompCfg(code, oblast, rows) {
+  try {
+    var d = PHARMA_STATE.cache[code + '_' + oblast + '_' + PHARMA_STATE.kvartal];
+    if (!d) return null;
+    var mm = pharmaDistrictMonthMap(d, PHARMA_STATE.kvartal);
+    if (!mm || !mm.districts) return null;
+    var sum = {}, cnt = {}, total = {};
+    Object.keys(mm.districts).forEach(function(okr){
+      var comps = mm.districts[okr].comps || {};
+      Object.keys(comps).forEach(function(name){
+        if (!sum[name]) { sum[name] = {}; cnt[name] = {}; total[name] = 0; }
+        Object.keys(comps[name]).forEach(function(yy){
+          var v = parseFloat(comps[name][yy]);
+          if (!isNaN(v) && v > 0) {
+            sum[name][yy] = (sum[name][yy] || 0) + v;
+            cnt[name][yy] = (cnt[name][yy] || 0) + 1;
+            total[name] += v;
+          }
+        });
+      });
+    });
+    var names = Object.keys(total);
+    if (!names.length) return null;
+    names.sort(function(a, b){ return total[b] - total[a]; });
+    var prodLabel = PHARMA_PROD_LABEL[code] || code;
+    var sel = gynMsGetSelection(prodLabel);   // null → default top-3
+    var chosen;
+    if (sel) { var keep = {}; sel.forEach(function(nm){ keep[nm] = true; }); chosen = names.filter(function(n){ return keep[n]; }); }
+    else chosen = names.slice(0, 3);
+    return chosen.map(function(name){
+      return {
+        name: name,
+        vals: rows.map(function(r){
+          var yy = String(r.mesiac);
+          var c = cnt[name] && cnt[name][yy];
+          return (c > 0) ? (sum[name][yy] / c) : null;
+        })
+      };
+    });
+  } catch(e){ return null; }
+}
+
 function pharmaDistrictCardHtml(r, dSeries, prodLabel, q, isBoxProduct, districtDisplayMonths, districtDisplayLabels, grafBtnHtml) {
   dSeries = dSeries || { nas:{}, comps:{} };
+  var msActive = reaMsActive() && !isBoxProduct;   // box-produkty (JUN) bez pickera
   var insightVolumeLabel = isBoxProduct ? 'Objem boxov' : ('Objem pacientov na ' + prodLabel);
   var html = '<div class="pharma-ms-district">';
   var nasPat = (r.nas_pat_m1 || 0) + (r.nas_pat_m2 || 0) + (r.nas_pat_m3 || 0);
@@ -27483,10 +27580,14 @@ function pharmaDistrictCardHtml(r, dSeries, prodLabel, q, isBoxProduct, district
   var qBadgeHtml = (nasQAvg !== null)
     ? '<div class="pharma-ms-district-q-badge" title="' + mgrEscape(prodLabel) + ' — MS za celý Q' + q + ' (priemer dostupných mesiacov)">Q' + q + ': ' + nasQAvg.toFixed(2) + '%</div>'
     : '';
+  var dPencil = msActive
+    ? '<button type="button" class="gyn-ms-edit-btn" aria-label="Upraviť konkurentov" onclick="gynMsOpenPicker(\'' + String(prodLabel).replace(/'/g, "\\'") + '\',\'' + String(r.okres).replace(/'/g, "\\'") + '\')">✎</button>'
+    : '';
   html += '<div class="pharma-ms-district-hdr">'
     + '<div class="pharma-ms-district-name">' + mgrEscape(r.okres) + '</div>'
     + qBadgeHtml
     + (grafBtnHtml || '')
+    + dPencil
     + '</div>';
   var districtInsightHtml = pharmaInsightHtml(
     pharmaDistrictInsightPointsFromSeries(districtDisplayMonths, dSeries),
@@ -27543,7 +27644,17 @@ function pharmaDistrictCardHtml(r, dSeries, prodLabel, q, isBoxProduct, district
     return bv - av;
   }
   compMsRows.sort(cmpMsRows);
-  var msRows = [ourMsRow].concat(compMsRows.slice(0, 3)).sort(cmpMsRows);
+  // Reagila: ak má rep/manažér uložený výber konkurentov pre tento produkt||okres, zobraz ho;
+  // inak default top-3 (compMsRows je zoradené zostupne podľa MS).
+  var chosenComps;
+  var selComps = msActive ? gynMsGetSelection(prodLabel, r.okres) : null;
+  if (selComps) {
+    var keepMap = {}; selComps.forEach(function(nm){ keepMap[nm] = true; });
+    chosenComps = compMsRows.filter(function(c){ return keepMap[c.name]; });
+  } else {
+    chosenComps = compMsRows.slice(0, 3);
+  }
+  var msRows = [ourMsRow].concat(chosenComps).sort(cmpMsRows);
   msRows.forEach(function(row) {
     html += '<tr' + (row.ours ? ' class="ours"' : '') + '><td>' + mgrEscape(row.name) + '</td>';
     html += '<td>' + fmtMs(row.vals[0]) + '</td><td>' + fmtMs(row.vals[1]) + '</td><td>' + fmtMs(row.vals[2]) + '</td></tr>';
