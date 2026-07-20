@@ -3620,7 +3620,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.63.0';
+var APP_VERSION = '2.64.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -3803,9 +3803,15 @@ function pushShowForegroundBanner(title, body){
 
 // Appkový vypínač odberu (povolenie v prehliadači sa z JS zrušiť nedá, preto
 // vypnutie = zmazanie FCM tokenu + pref, aby sa po prihlásení znova nezaregistroval).
-function pushMutedKey(){
+// Kľúč je per línia — Reagila má vlastný Sheet aj vlastné tokeny, takže nesmie zdieľať
+// „vypnuté" s Golemom (inak by sa v Reagile token nikdy nezaregistroval).
+function pushLineKeyTag(){
   var s = (typeof getSession === 'function') ? getSession() : null;
-  return 'push_muted_' + ((s && s.line === 'gyn') ? 'gyn' : 'gp');
+  var ln = (s && s.line) ? String(s.line) : 'gp';
+  return (ln === 'gyn' || ln === 'reagila') ? ln : 'gp';
+}
+function pushMutedKey(){
+  return 'push_muted_' + pushLineKeyTag();
 }
 function pushIsMuted(){
   try { return localStorage.getItem(pushMutedKey()) === '1'; } catch(e){ return false; }
@@ -3861,7 +3867,7 @@ function pushMaybePrompt(){
   // Zamietnuté → nenúť znova automaticky, ale ukáž zvonček (cez neho dáme návod)
   if (Notification.permission === 'denied') { pushUpdateBell(); return; }
   // Pýtali sme sa už? (raz stačí) → ukáž zvonček, nech sa vie vrátiť neskôr
-  var askedKey = 'push_prompt_seen_' + (s.line === 'gyn' ? 'gyn' : 'gp');
+  var askedKey = 'push_prompt_seen_' + pushLineKeyTag();
   try { if (localStorage.getItem(askedKey) === '1') { pushUpdateBell(); return; } } catch(e){}
   pushShowSoftPrompt(askedKey);
 }

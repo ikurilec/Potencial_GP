@@ -18,11 +18,14 @@ var messaging = firebase.messaging();
 messaging.onBackgroundMessage(function(payload) {
   var d = (payload && payload.data) || {};
   var title = d.title || 'Satori';
+  // Každá správa má vlastný tag — rovnaký tag by staršiu neprečítanú notifikáciu PREPÍSAL
+  // (dve žiadosti o absenciu by schvaľovateľ videl len ako jednu, tú poslednú).
+  // Backend môže poslať d.tag, ak chce zámerne zlúčiť sériu správ do jednej.
   var options = {
     body: d.body || '',
     icon: 'https://ikurilec.github.io/Potencial_GP/icon-192.png',
     badge: 'https://ikurilec.github.io/Potencial_GP/icon-192.png',
-    tag: 'potencial-update',
+    tag: d.tag || ('satori-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8)),
     data: { link: d.link || 'https://ikurilec.github.io/Potencial_GP/' }
   };
   return self.registration.showNotification(title, options);
