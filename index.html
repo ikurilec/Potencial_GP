@@ -320,6 +320,9 @@
   .gyn-ms-picker-row--fixed{color:#64748B}
   .gyn-ms-picker-row--fixed span{margin-left:auto;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#94A3B8}
   .gyn-ms-picker-empty{padding:14px 0;color:#94A3B8;font-size:12px;font-style:italic}
+  .gyn-ms-picker-resetwrap{display:none;padding:10px 18px 0}
+  .gyn-ms-picker-resetwrap.show{display:block}
+  .gyn-ms-picker-reset{width:100%;padding:9px;border-radius:10px;border:1px dashed #CBD5E1;background:#fff;color:#64748B;font-weight:600;font-size:13px;cursor:pointer}
   .gyn-ms-picker-actions{display:flex;gap:8px;padding:12px 18px 16px}
   .gyn-ms-picker-cancel{flex:1;padding:11px;border-radius:12px;border:1px solid #E2E8F0;background:#F8FAFC;color:#334155;font-weight:700;font-size:14px;cursor:pointer}
   .gyn-ms-picker-save{flex:1;padding:11px;border-radius:12px;border:none;background:linear-gradient(180deg,#3B82F6,#2563EB,#1E40AF);color:#fff;font-weight:700;font-size:14px;cursor:pointer}
@@ -3617,7 +3620,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.62.0';
+var APP_VERSION = '2.63.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10359,6 +10362,18 @@ function gynMsHydrate(raw) {
 // Uloží výber do pamäte + localStorage + (mimo DEV) na backend.
 function gynMsSetSelection(produkt, names, okres) {
   GYN_MS_SELECTION[gynMsStorageKey(produkt, okres)] = Array.isArray(names) ? names.slice() : [];
+  gynMsPersist();
+}
+
+// Zmaže výber → kľúč prestane existovať a graf sa vráti na predvolený stav
+// (top 3 konkurenti podľa MS). Pozor: NIE prázdne pole — to znamená
+// „rep zámerne nechce žiadneho konkurenta".
+function gynMsClearSelection(produkt, okres) {
+  delete GYN_MS_SELECTION[gynMsStorageKey(produkt, okres)];
+  gynMsPersist();
+}
+
+function gynMsPersist() {
   try { lsSafeSet(gynMsLsKey(), JSON.stringify(GYN_MS_SELECTION)); } catch(e){}
   if (typeof IS_DEV !== 'undefined' && IS_DEV) return;
   var s = (typeof getSession === 'function') ? getSession() : null;
@@ -10564,6 +10579,9 @@ function gynMsOpenPicker(produkt, okres) {
     var checked = selMap[nm] ? ' checked' : '';
     return '<label class="gyn-ms-picker-row"><input type="checkbox" value="' + gynEsc(nm) + '"' + checked + '><span>' + gynEsc(nm) + '</span></label>';
   }).join('') : '<div class="gyn-ms-picker-empty">Žiadni konkurenti v dátach.</div>';
+  // „Vrátiť na predvolené" má zmysel len keď rep/manažér niečo vlastné uložil
+  var resetEl = document.getElementById('gyn-ms-picker-resetwrap');
+  if (resetEl) resetEl.classList.toggle('show', sel != null);
   var ov = document.getElementById('gyn-ms-picker-overlay');
   if (ov) ov.classList.add('show');
 }
@@ -10575,6 +10593,20 @@ function gynMsSavePicker() {
   Array.prototype.forEach.call(boxes, function(cb){ if (cb.checked) picked.push(cb.value); });
   gynMsSetSelection(_gynMsPickerProd, picked, _gynMsPickerOkres);
   gynMsClosePicker();
+  gynMsRerender();
+}
+
+// „Predvolené" — zruší vlastný výber a vráti graf na default (top 3 podľa MS).
+// Manažér má vlastný scope (rep:<login>), takže resetuje len svoj pohľad na repa,
+// repov vlastný výber ostáva nedotknutý.
+function gynMsResetPicker() {
+  if (!_gynMsPickerProd) return gynMsClosePicker();
+  gynMsClearSelection(_gynMsPickerProd, _gynMsPickerOkres);
+  gynMsClosePicker();
+  gynMsRerender();
+}
+
+function gynMsRerender() {
   var _s = (typeof getSession === 'function') ? getSession() : null;
   if (_s && _s.line === 'reagila') {
     try { if (typeof PHARMA_STATE !== 'undefined' && PHARMA_STATE.activeCode) pharmaRender(PHARMA_STATE.activeCode); } catch(e){}
@@ -36213,6 +36245,9 @@ function lonelixOpenGpForm(r){
     <div class="gyn-ms-picker-hdr">Produkty v grafe <span id="gyn-ms-picker-prod"></span></div>
     <div class="gyn-ms-picker-fixed" id="gyn-ms-picker-fixed"></div>
     <div class="gyn-ms-picker-list" id="gyn-ms-picker-list"></div>
+    <div class="gyn-ms-picker-resetwrap" id="gyn-ms-picker-resetwrap">
+      <button type="button" class="gyn-ms-picker-reset" onclick="gynMsResetPicker()">↺ Vrátiť na predvolené (top 3)</button>
+    </div>
     <div class="gyn-ms-picker-actions">
       <button type="button" class="gyn-ms-picker-cancel" onclick="gynMsClosePicker()">Zrušiť</button>
       <button type="button" class="gyn-ms-picker-save" onclick="gynMsSavePicker()">Uložiť</button>
