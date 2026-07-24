@@ -3620,7 +3620,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.65.0';
+var APP_VERSION = '2.66.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -14811,21 +14811,25 @@ function gynPlnenieRenderMgr(el, user, data) {
   html += '</div>'; // pl-sum-big
 
   // Pill / Patch karty s predikciou
-  function regionCardHtml(label, pct, pred, predikcia) {
+  function regionCardHtml(label, pct, pred, predikcia, plan) {
     var predHtml = (predikcia !== null)
       ? '<div style="font-size:10.5px;color:#94A3B8;font-weight:500;margin-top:4px">predikcia ' + plnenieFormatPct(predikcia) + '</div>'
       : '';
+    var eurHtml = '<div style="font-size:11px;color:#64748B;font-weight:500;margin-top:4px">' +
+      gynFmtEur(pred) + ' <span style="color:#94A3B8">z plánu</span> ' + gynFmtEur(plan) +
+    '</div>';
     var pctAttr = (pct !== null && !isNaN(pct)) ? pct : '';
     var initVal = (pct !== null && !isNaN(pct)) ? '0,00%' : gynFmtPctOrEur(pct, pred);
     return '<div class="pl-region-card">' +
       '<div class="pl-region-lbl">' + label + '</div>' +
       '<div class="pl-region-val '+plnenieColorClass(pct)+'" data-pct="'+pctAttr+'">' + initVal + '</div>' +
+      eurHtml +
       predHtml +
     '</div>';
   }
   html += '<div class="pl-regions">' +
-    regionCardHtml('Pill',  pillPct,  pillPred,  pillPredikcia) +
-    regionCardHtml('Patch', patchPct, patchPred, patchPredikcia) +
+    regionCardHtml('Pill',  pillPct,  pillPred,  pillPredikcia,  pillPlan) +
+    regionCardHtml('Patch', patchPct, patchPred, patchPredikcia, patchPlan) +
   '</div>';
 
   // Reprezentanti — Pill potom Patch, zoradení % desc, bez medailí
