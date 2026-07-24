@@ -3620,7 +3620,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.64.0';
+var APP_VERSION = '2.65.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10054,6 +10054,11 @@ var GYN_ROLE_LABEL  = { 'gyn-rep':'Reprezentant', 'gyn-am':'Area Manager', 'gyn-
 // 'both' = produkt patrí do Pill aj Patch (zobrazí sa v oboch sekciách)
 // Produkty vyňaté z výpočtu celkového plnenia (sumár, PILL/PATCH karty) — zobrazia sa len v per-produkt sekcii
 var GYN_EXCLUDE_FROM_TOTALS = { 'escapelle': 1, 'daylla': 1, 'lenzetto': 1 };
+// Špeciál Q2 2026: daylla ešte nemá plán, ale jej predaj (€) sa má rátať do celkového
+// plnenia (čitateľ). Plán ostáva bez zmeny → % plnenia sa navýši. Od Q3 už daylla plán má.
+function gynDayllaQ2Bonus(pk, q, year){
+  return pk === 'daylla' && (q|0) === 2 && (year|0) === 2026;
+}
 var GYN_PRODUCT_LINIA = {
   // Pill
   'belara':'pill','daylette':'pill','daylla':'pill','drovelis':'pill',
@@ -11140,6 +11145,8 @@ function gynBuildRepAgg(username, data, qOverride) {
     var sv  = gynProductSalesTotalForKeys(pred.total || {}, byMonth, qForSales, [pk]);
     // Escapelle/Daylla → nepočítať do totalov, iba zobraziť v per-produkt sekcii
     if(pv > 0 && !GYN_EXCLUDE_FROM_TOTALS[pk]) { totalPlan += pv; totalPred += sv; }
+    // Q2 2026 výnimka: daylla nemá plán, ale predaj sa ráta do plnenia (len čitateľ)
+    else if(gynDayllaQ2Bonus(pk, qForSales, GYN_APP.year)) { totalPred += sv; }
     if(pv > 0 || sv > 0) {
       items.push({ name: pName, plan: pv, predaj: sv, pct: pv > 0 ? sv/pv*100 : null });
     }
