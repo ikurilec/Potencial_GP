@@ -2735,6 +2735,79 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .gyn-cal-aud-note{font-size:12px;color:#94A3B8;padding:6px 2px;font-weight:500}
   @keyframes avShakeX{10%,90%{transform:translateX(-1px)}20%,80%{transform:translateX(2px)}30%,50%,70%{transform:translateX(-4px)}40%,60%{transform:translateX(4px)}}
   @media(prefers-reduced-motion:reduce){.gyn-cal{animation:none}.gyn-cal-type-grid.shake{animation:none}#gyn-cal-sheet-bd{animation:none}}
+
+  /* ═══════════════════ GLOBÁLNE VYHĽADÁVANIE (command palette) ═══════════════════ */
+  /* Launcher — plávajúce tlačidlo, dostupné vo všetkých líniách/rolách po prihlásení.
+     Navy gradient + tiene ako aktívne nav tlačidlá appky. */
+  #gs-launcher{position:fixed;right:16px;bottom:calc(18px + var(--sab,0px));z-index:2050;width:54px;height:54px;border-radius:50%;border:none;cursor:pointer;
+    background:linear-gradient(135deg,#0C1E35 0%,#13294B 100%);color:#fff;display:none;align-items:center;justify-content:center;
+    box-shadow:0 8px 22px rgba(12,30,53,.34),inset 0 1px 0 rgba(255,255,255,.10);transition:transform var(--t-fast),box-shadow var(--t-base);-webkit-tap-highlight-color:transparent}
+  body.gs-ready #gs-launcher{display:flex}
+  body.gs-open #gs-launcher{opacity:0;pointer-events:none}
+  #gs-launcher:hover{box-shadow:0 12px 28px rgba(12,30,53,.42),inset 0 1px 0 rgba(255,255,255,.12)}
+  #gs-launcher:active{transform:scale(.9)}
+  #gs-launcher svg{width:23px;height:23px}
+  body.reagila-line #gs-launcher{background:linear-gradient(135deg,#4C1D95 0%,#6D28D9 100%)}
+
+  /* Overlay */
+  #gs-overlay{position:fixed;inset:0;z-index:3200;display:none;flex-direction:column;align-items:center;
+    background:rgba(12,30,53,.52);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);padding:calc(var(--sat,0px) + 7vh) 14px 14px;font-family:var(--font-body)}
+  #gs-overlay.show{display:flex;animation:gsFade .16s ease both}
+  @keyframes gsFade{from{opacity:0}to{opacity:1}}
+  .gs-modal{width:100%;max-width:600px;max-height:84vh;background:var(--color-bg);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;
+    box-shadow:0 24px 64px rgba(12,30,53,.42),0 0 0 1px rgba(255,255,255,.05);animation:gsPop .2s cubic-bezier(.2,.9,.3,1.2) both}
+  @keyframes gsPop{from{opacity:0;transform:translateY(-10px) scale(.97)}to{opacity:1;transform:none}}
+  /* Search box */
+  .gs-searchbar{display:flex;align-items:center;gap:11px;padding:15px 17px;background:#fff;box-shadow:0 2px 10px rgba(15,23,42,.05)}
+  .gs-searchbar svg{width:20px;height:20px;color:var(--color-primary);flex-shrink:0}
+  #gs-input{flex:1;border:none;outline:none;background:transparent;font-family:var(--font-body);font-size:16px;font-weight:600;color:var(--color-text);min-width:0}
+  #gs-input::placeholder{font-family:var(--font-body);color:var(--color-text-faint);font-weight:500}
+  .gs-esc{border:none;background:#EEF2F7;color:var(--color-text-muted);font-family:var(--font-display);font-size:11px;font-weight:800;padding:5px 9px;border-radius:8px;cursor:pointer;flex-shrink:0;letter-spacing:.03em}
+  .gs-esc:active{background:var(--color-border)}
+  /* Results */
+  #gs-results{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 8px 10px;flex:1}
+  .gs-group-hd{font-family:var(--font-display);font-size:10.5px;font-weight:800;color:var(--color-text-faint);text-transform:uppercase;letter-spacing:.07em;padding:13px 12px 5px}
+  .gs-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:13px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform var(--t-fast)}
+  .gs-row:active{transform:scale(.985)}
+  .gs-row.gs-cur{background:#fff;box-shadow:0 4px 14px rgba(15,23,42,.08),0 0 0 1px rgba(37,99,235,.14)}
+  .gs-ico{width:38px;height:38px;border-radius:11px;background:#fff;box-shadow:0 1px 4px rgba(15,23,42,.06),0 0 0 1px rgba(15,23,42,.04);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;line-height:1}
+  .gs-row.gs-cur .gs-ico{background:linear-gradient(135deg,#0C1E35,#13294B);box-shadow:0 4px 12px rgba(12,30,53,.25),inset 0 1px 0 rgba(255,255,255,.10)}
+  /* Top Hit (najlepšia zhoda) — prominentnejší ako v iOS Spotlight */
+  .gs-row-top{background:#fff;box-shadow:0 4px 14px rgba(15,23,42,.07),0 0 0 1px rgba(15,23,42,.05);padding:12px 12px}
+  .gs-row-top .gs-ico{width:44px;height:44px;border-radius:12px;font-size:22px;background:linear-gradient(135deg,#0C1E35,#13294B);box-shadow:0 4px 12px rgba(12,30,53,.22),inset 0 1px 0 rgba(255,255,255,.10)}
+  .gs-row-top .gs-title{font-size:15.5px}
+  .gs-row-top.gs-cur{box-shadow:0 6px 18px rgba(15,23,42,.10),0 0 0 1px rgba(37,99,235,.16)}
+  .gs-txt{min-width:0;flex:1}
+  .gs-title{font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--color-text-strong);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .gs-sub{font-size:11.5px;font-weight:600;color:var(--color-text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1.5px}
+  .gs-hint{font-size:13px;color:var(--color-text-soft);flex-shrink:0;opacity:0;transition:opacity var(--t-fast)}
+  .gs-row.gs-cur .gs-hint{opacity:1;color:var(--color-primary)}
+  .gs-empty{text-align:center;color:var(--color-text-faint);font-size:13.5px;font-weight:600;padding:36px 20px 20px}
+  .gs-empty .gs-empty-emoji{font-size:30px;display:block;margin-bottom:10px;opacity:.7}
+  /* Zvýraznenie zhody v texte */
+  .gs-hl{color:var(--color-primary);font-weight:800}
+  .gs-sub .gs-hl{color:#3B82F6}
+  /* „Zobraziť všetky" */
+  .gs-more{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 12px;margin:2px 0 2px;border-radius:11px;
+    cursor:pointer;font-size:12.5px;font-weight:700;color:var(--color-primary);-webkit-tap-highlight-color:transparent}
+  .gs-more:active{background:rgba(37,99,235,.06)}
+  .gs-more.gs-cur{background:#fff;box-shadow:0 2px 10px rgba(15,23,42,.06),0 0 0 1px rgba(37,99,235,.14)}
+  /* Nápoveda / tipy */
+  .gs-tips{padding:14px 12px 18px;border-top:1px solid rgba(15,23,42,.06);margin-top:8px}
+  .gs-tips-hd{font-family:var(--font-display);font-size:10.5px;font-weight:800;color:var(--color-text-faint);text-transform:uppercase;letter-spacing:.07em;margin-bottom:9px}
+  .gs-tip{display:inline-flex;align-items:center;gap:6px;background:#fff;border-radius:999px;padding:6px 12px;margin:0 6px 6px 0;
+    font-size:12px;font-weight:600;color:var(--color-text-muted);cursor:pointer;box-shadow:0 1px 4px rgba(15,23,42,.05),0 0 0 1px rgba(15,23,42,.04);-webkit-tap-highlight-color:transparent}
+  .gs-tip:active{transform:scale(.97)}
+  .gs-tip b{color:var(--color-text-strong);font-weight:700}
+  /* Drag mód launchera (dlhé podržanie → posun) */
+  #gs-launcher.gs-dragging{cursor:grabbing;transform:scale(1.12);box-shadow:0 14px 34px rgba(12,30,53,.45),inset 0 1px 0 rgba(255,255,255,.14);transition:none}
+  #gs-launcher.gs-dragging::after{content:'';position:absolute;inset:-6px;border-radius:50%;border:2px dashed rgba(255,255,255,.55);animation:gsDragPulse 1.2s ease-in-out infinite}
+  @keyframes gsDragPulse{0%,100%{opacity:.5}50%{opacity:1}}
+  @media(prefers-reduced-motion:reduce){#gs-launcher.gs-dragging::after{animation:none}}
+  .gs-foot{display:none;align-items:center;gap:16px;padding:9px 16px;background:#fff;box-shadow:0 -1px 8px rgba(15,23,42,.04);font-size:11px;color:var(--color-text-faint);font-weight:600}
+  .gs-foot kbd{font-family:var(--font-display);background:#EEF2F7;border-radius:5px;padding:2px 6px;font-size:10.5px;font-weight:800;color:var(--color-text-muted)}
+  @media(min-width:640px){ .gs-foot{display:flex} }
+  @media(prefers-reduced-motion:reduce){#gs-overlay.show,.gs-modal{animation:none}}
 </style>
 <!-- Firebase Cloud Messaging — natívne push notifikácie (defer aby nebrzdil štart) -->
 <script defer src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
@@ -3620,7 +3693,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.66.0';
+var APP_VERSION = '2.67.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7913,6 +7986,13 @@ function settingsAppHtml(s){
             '<button type="button" class="set-switch' + (hOn ? ' on' : '') + '" role="switch" aria-checked="' + (hOn ? 'true' : 'false') + '" aria-label="Haptická odozva" onclick="settingsToggleHaptics()"></button>' +
           '</div>';
 
+  // Globálne vyhľadávanie — možnosť skryť/vypnúť (uloží sa do Sheetu, stĺpec „nastavenia")
+  var gsOn = gsEnabled();
+  html += '<div class="set-row"><div class="set-row-label">Globálne vyhľadávanie<br>' +
+            '<span style="font-weight:600;color:#64748B">' + (gsOn ? '🔍 tlačidlo + Ctrl/Cmd + K' : 'skryté a vypnuté') + '</span></div>' +
+            '<button type="button" class="set-switch' + (gsOn ? ' on' : '') + '" role="switch" aria-checked="' + (gsOn ? 'true' : 'false') + '" aria-label="Globálne vyhľadávanie" onclick="settingsToggleGlobalSearch()"></button>' +
+          '</div>';
+
   // Predvolená (úvodná) obrazovka po prihlásení — reprezentant aj manažér, GP aj Gyn
   html += settingsDefaultTabHtml(s);
 
@@ -8028,6 +8108,15 @@ function settingsToggleHaptics(){
   var on = settingsHapticsOn();
   userPrefsSet({ haptics: !on });           // mirror aktualizuje aj 'haptics_enabled' pre haptic()
   if(on === false){ try { haptic('selection'); } catch(e){} } // krátka ukážka pri zapnutí
+  var s = getSession(); if(s) renderSettings(s);
+}
+
+// Globálne vyhľadávanie — zapni/vypni (uloží sa do Sheetu cez userPrefsSet)
+function settingsToggleGlobalSearch(){
+  var on = (typeof gsEnabled === 'function') ? gsEnabled() : true;
+  userPrefsSet({ globalSearch: !on });
+  try { if(typeof gsApplyEnabled === 'function') gsApplyEnabled(); } catch(e){}
+  try { haptic('selection'); } catch(e){}
   var s = getSession(); if(s) renderSettings(s);
 }
 
@@ -8948,6 +9037,7 @@ function setSession(user) {
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(user));
     localStorage.setItem(SESSION_KEY, JSON.stringify(user));
   } catch(e){}
+  try { if(typeof gsApplyEnabled==='function') gsApplyEnabled(); } catch(e){}
 }
 
 function clearSession() {
@@ -8959,6 +9049,7 @@ function clearSession() {
     localStorage.removeItem(MGR_DUAL_KEY);
     sessionStorage.removeItem(MGR_DUAL_KEY);
   } catch(e){}
+  try { document.body.classList.remove('gs-ready','gs-open'); var _gsov=document.getElementById('gs-overlay'); if(_gsov) _gsov.classList.remove('show'); } catch(e){}
   stopNotifPolling();
 }
 
@@ -18309,8 +18400,9 @@ function _handleAndroidBack() {
   el = document.getElementById('lk-overlay');
   if (el && el.classList.contains('show')) { closeLekarne(); return true; }
 
-  // 14. Panely — História / Rebríček / Plnenie / Kalendár (reprezentant)
-  var panels = ['hist-overlay', 'lb-overlay', 'rep-plnenie-overlay', 'golem-cal-overlay'];
+  // 14. Panely — História / Rebríček / Plnenie / Okresy / Tuyory / Lonelix / Kalendár (reprezentant)
+  //     (Okresy, Tuyory a Lonelix tu predtým chýbali → systémové „späť" ich nevedelo zavrieť.)
+  var panels = ['hist-overlay', 'lb-overlay', 'rep-plnenie-overlay', 'okresy-overlay', 'tuyory-overlay', 'lonelix-overlay', 'golem-cal-overlay'];
   for (var i = 0; i < panels.length; i++) {
     el = document.getElementById(panels[i]);
     if (el && el.classList.contains('show')) {
@@ -18645,6 +18737,30 @@ var WN_HISTORY = [
         { icon: '🎯', bg: '#FFF7ED', title: 'Filter príležitostí', desc: 'Prepneš si napr. len lekárov s rezervou alebo kde chýba produkt.' },
         { icon: '🎨', bg: '#FEFCE8', title: 'Farba kategórie', desc: 'A/B/C svieti farbou podľa kapitácie (A zelená · B žltá · C červená) — veľkosť praxe na prvý pohľad.' },
         { icon: '🔍', bg: '#F5F3FF', title: 'Hľadaj podľa mena aj okresu', desc: 'Rýchlo nájdeš lekára aj celý okres.' }
+      ]
+    }
+  },
+  // ── v2.67 — globálne vyhľadávanie (všetky línie: Golem, gyn, Reagila) ──
+  {
+    key: 'potencial_vl_wn_v2_67',
+    rep: {
+      icon: '🔍', title: 'Nájdeš čokoľvek naraz', sub: 'v2.67.0 · Gedeon Richter Slovakia',
+      items: [
+        { icon: '🔍', bg: '#EFF6FF', title: 'Jedno pole na všetko', desc: 'Vpravo dole máš nové tlačidlo 🔍. Nájde lekára, lekáreň, okres, produkt, udalosť v kalendári aj samotnú záložku — nemusíš sa preklikávať appkou.' },
+        { icon: '✍️', bg: '#F0FDF4', title: 'Píš ako ti napadne', desc: 'Diakritiku riešiť nemusíš — „zigray" nájde Žigraya. A stačí význam: napíš „dovolenka" a ponúkne ti Kalendár.' },
+        { icon: '🎯', bg: '#FFF7ED', title: 'Viac slov naraz', desc: 'Skús „nováková nitra" alebo „vidonorm poprad". Na poradí slov nezáleží — navrchu ti appka ukáže tú najpresnejšiu možnosť.' },
+        { icon: '👆', bg: '#F5F3FF', title: 'Presuň si tlačidlo', desc: 'Ak ti 🔍 zavadzia, podrž ho prstom a potiahni kamkoľvek. Pozíciu si appka zapamätá.' },
+        { icon: '⚙️', bg: '#FEF3C7', title: 'Nechceš ho?', desc: 'V Nastaveniach → Aplikácia si vyhľadávanie kedykoľvek vypneš a tlačidlo zmizne.' }
+      ]
+    },
+    mgr: {
+      icon: '🔍', title: 'Celý tím na jedno napísanie', sub: 'v2.67.0 · Gedeon Richter Slovakia',
+      items: [
+        { icon: '🔍', bg: '#EFF6FF', title: 'Hľadaj v celej appke', desc: 'Nové tlačidlo 🔍 vpravo dole, na počítači aj skratka Ctrl/Cmd + K. Nájde reprezentanta, lekára, lekáreň, okres, produkt aj udalosť v kalendári.' },
+        { icon: '👤', bg: '#F0FDF4', title: 'Napíš meno reprezentanta', desc: 'Rovno ti ponúkne, kam pri ňom ísť — Lekári, Plnenie, Lekárne, Okresy a ak máš záložku Reporty, aj jeho Report. Bez hľadania v zozname.' },
+        { icon: '🎯', bg: '#FFF7ED', title: 'Kombinuj slová', desc: 'Napíš „sabol vidonorm" a otvorí sa jeho plnenie na produkte, „sabol telexer svidník" ťa hodí na trhový podiel v tom okrese. Ak máš Reporty, funguje aj „reporty sabol".' },
+        { icon: '🔒', bg: '#F5F3FF', title: 'Vidíš len svoj tím', desc: 'Vyhľadávanie rešpektuje tvoju rolu — ponúka len reprezentantov, okresy a dáta, ku ktorým máš prístup.' },
+        { icon: '⚙️', bg: '#FEF3C7', title: 'Presun a vypnutie', desc: 'Tlačidlo presunieš dlhým podržaním. V Nastaveniach → Aplikácia vyhľadávanie úplne vypneš.' }
       ]
     }
   }
@@ -35666,6 +35782,946 @@ function lonelixOpenGpForm(r){
   } catch(e){}
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   GLOBÁLNE VYHĽADÁVANIE — command palette (skok + akcie, role/line-safe)
+   Bezpečnosť: index sa stavia LEN z dát, ktoré má daný user reálne načítané,
+   a sekcie sa čítajú z reálne viditeľných nav tlačidiel → nič navyše sa neukáže.
+   ═══════════════════════════════════════════════════════════════════════════ */
+var GS = { items:[], flat:[], cur:0, _combos:[] };
+
+function gsEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function gsNorm(s){ try { return lkNorm(s); } catch(e){ return String(s==null?'':s).toLowerCase(); } }
+function gsSession(){ try { return getSession(); } catch(e){ return null; } }
+/* Zapnuté/vypnuté globálne vyhľadávanie — preferencia sa ukladá do Sheetu
+   (stĺpec „nastavenia", kľúč globalSearch) cez userPrefsSet. Default = zapnuté. */
+function gsEnabled(){
+  try { var p=(typeof userPrefsGet==='function')?userPrefsGet():{}; return p.globalSearch!==false; } catch(e){ return true; }
+}
+// Premietne preferenciu do UI (skryje/ukáže launcher, prípadne zavrie otvorený panel)
+function gsApplyEnabled(){
+  try {
+    var on=gsEnabled() && !!gsSession();
+    document.body.classList.toggle('gs-ready', on);
+    if(!on) gsClose();
+  } catch(e){}
+}
+function gsLine(){ var s=gsSession(); return (s&&s.line)||'gp'; }
+function gsIsMgr(){ try { return !!mgrDetectRole(gsSession()); } catch(e){ return false; } }
+
+/* Synonymá / kľúčové slová k sekciám — aby sadli aj intent-slová (napr. „dovolenka" → Kalendár).
+   Kľúč = normalizovaný názov záložky (bez diakritiky). */
+var GS_SECTION_KW = {
+  'kalendar':'dovolenka absencia pn nemocenska volno sviatok dovolenku termin udalost stretnutie planovanie schvalenie navsteva zaznamenat',
+  'plnenie':'ciele plan planu predaj predaje obrat percenta vysledky napredovanie',
+  'lekarne':'lekaren pharmacy apoteka spiace reaktivacia predaje lekarni',
+  'lekari':'lekar doktor navsteva navstevy historia zaznam segment',
+  'navstevy':'lekar doktor navsteva navstevy historia zaznam segment',
+  'historia':'lekar doktor navsteva navstevy historia zaznam',
+  'formular':'novy zaznam lekar navsteva pridat vyplnit',
+  'rebricek':'poradie leaderboard sutaz rebricek najlepsi umiestnenie',
+  'okresy':'okres okresy region uzemie trhovy podiel mapa',
+  'aktivita':'statistiky pouzivanie analytika aktivita cas',
+  'reporty':'report reporty mesacny prehlad pdf',
+  'tuyory':'tuyory tocilizumab prieskum dotaznik',
+  'lonelix':'lonelix inozin pranobex prieskum dotaznik'
+};
+/* ── SEKCIE — z viditeľných nav tlačidiel (dedí všetky line/role pravidlá) ── */
+function gsSections(){
+  var out=[], seen={};
+  ['#rep-nav .rep-nav-btn','#gyn-nav .gyn-nav-btn','#mgr-view .mgr-subtabs .mgr-subtab'].forEach(function(sel){
+    var nodes; try { nodes=document.querySelectorAll(sel); } catch(e){ return; }
+    Array.prototype.forEach.call(nodes, function(btn){
+      try {
+        if(!btn.getClientRects().length) return;                 // skrytý tab → preskoč
+        var lblEl=btn.querySelector('.rn-lbl,.st-lbl');
+        var lbl=((lblEl?lblEl.textContent:btn.textContent)||'').trim();
+        if(!lbl) return;
+        var key=gsNorm(lbl); if(seen[key]) return; seen[key]=1;
+        var icoEl=btn.querySelector('.rn-ico,.st-emoji');
+        var ico=((icoEl?icoEl.textContent:'')||'').trim()||'📄';
+        var kw=lbl+' '+(GS_SECTION_KW[key]||'');
+        out.push({ type:'section', title:lbl, sub:'Sekcia', icon:ico, kw:kw,
+          run:(function(b){ return function(){ try{ b.click(); }catch(e){} }; })(btn) });
+      } catch(e){}
+    });
+  });
+  return out;
+}
+
+/* ── LEKÁRI (Golem/Reagila) ──
+   • reprezentant → z vlastnej histórie (_histAllItems / _histCombined)
+   • manažér/admin → naprieč jeho repmi z MGR_STATE.reps[*].visits (rolovo obmedzené) */
+function gsDoctors(){
+  var out=[], seen={}; if(gsLine()==='gyn') return out;
+  if(gsIsMgr()){
+    var reps={}; try { reps=(typeof MGR_STATE!=='undefined'&&MGR_STATE.reps)||{}; } catch(e){}
+    Object.keys(reps).forEach(function(u){
+      var vs=(reps[u]&&reps[u].visits)||[];
+      var repName=u; try { repName=(typeof MGR_REP_NAMES!=='undefined'&&MGR_REP_NAMES[u])||u; } catch(e){}
+      vs.forEach(function(it){
+        if(!it) return; var name=String(it.lekar||it.meno||'').trim(); if(!name) return;
+        var okres=String(it.okres||'').trim();
+        var key=gsNorm(name)+'|'+u; if(seen[key]) return; seen[key]=1;
+        // kw ZÁMERNE bez mena repa — hľadanie repa nemá zaplaviť jeho lekármi (rep má vlastné ciele)
+        out.push({ type:'doctor', title:name, sub:(okres?okres+' · ':'')+repName, icon:'🩺', kw:name+' '+okres,
+          run:(function(un,nm){ return function(){ gsJumpMgrDoctor(un,nm); }; })(u,name) });
+      });
+    });
+    return out;
+  }
+  var items=[];
+  try { if(typeof _histCombined==='function') items=_histCombined(); else if(typeof _histAllItems!=='undefined') items=_histAllItems||[]; } catch(e){ items=[]; }
+  (items||[]).forEach(function(it){
+    if(!it) return;
+    var name=String(it.lekar||it.meno||'').trim(); if(!name) return;
+    var okres=String(it.okres||it.mesto||'').trim();
+    var key=gsNorm(name)+'|'+gsNorm(okres); if(seen[key]) return; seen[key]=1;
+    out.push({ type:'doctor', title:name, sub:okres||'Lekár', icon:'🩺', kw:name+' '+okres,
+      run:(function(nm){ return function(){ gsJumpDoctor(nm); }; })(name) });
+  });
+  return out;
+}
+function gsJumpDoctor(name){
+  try { if(typeof openHistory==='function') openHistory(); } catch(e){}
+  setTimeout(function(){
+    var el=document.getElementById('hist-search');
+    if(el){ el.value=name; try { if(typeof histRender==='function') histRender(); else if(typeof filterHistory==='function') filterHistory(); } catch(e){} }
+  }, 80);
+}
+// Detail repa (#mgr-detail) je viditeľný LEN v subtabe „Lekári" (visits) —
+// CSS ho v ostatných subtaboch skrýva cez display:none !important. Preto pred
+// otvorením prepni na visits, inak sa detail „otvorí" do skrytej sekcie (nič nevidno).
+function gsMgrOpenRep(username, after){
+  try {
+    if(typeof mgrSwitchSubtab==='function' && !document.body.classList.contains('mgr-subtab-visits')) mgrSwitchSubtab('visits');
+  } catch(e){}
+  setTimeout(function(){
+    try { if(typeof mgrOpenRep==='function') mgrOpenRep(username); } catch(e){}
+    if(typeof after==='function') setTimeout(after, 200);
+  }, 60);
+}
+function gsJumpMgrDoctor(username, name){
+  gsMgrOpenRep(username, function(){
+    var el=document.getElementById('mgr-vsearch');
+    if(el){ el.value=name; try { if(typeof mgrRenderVisits==='function') mgrRenderVisits(); } catch(e){} }
+  });
+}
+
+/* ── LEKÁRNE ──
+   • reprezentant → vlastné (LK_STATE._rows)
+   • manažér/admin → všetky lekárne naprieč repmi (agregované z LK_STATE.cache po lkFetchAll) */
+var GS_PHARM_MGR = [];   // cache agregovaných manažérskych lekární (pre klik → lkOpenDetail)
+function gsAllMgrPharmacies(){
+  var rows=[];
+  try {
+    var c=(typeof LK_STATE!=='undefined' && LK_STATE.cache) || {};
+    // BEZPEČNOSŤ: lkFetchAll cachuje lekárne VŠETKÝCH repov (aj mimo regiónu manažéra).
+    // Preto ber len repov, ktorých má daná rola reálne priradených (MGR_STATE.reps),
+    // inak by napr. AM West videl cez vyhľadávanie lekárne AM East.
+    var allowed={};
+    try { Object.keys((typeof MGR_STATE!=='undefined'&&MGR_STATE.reps)||{}).forEach(function(u){ allowed[String(u).trim().toLowerCase()]=1; }); } catch(e){}
+    var isAdmin=false; try { isAdmin=(mgrDetectRole(gsSession())==='admin'); } catch(e){}
+    Object.keys(c).forEach(function(k){
+      var key=String(k).trim().toLowerCase();
+      if(key==='__all__') return;
+      if(!isAdmin && !allowed[key]) return;          // mimo pôsobnosti roly → preskoč
+      var e=c[k]; if(e && Array.isArray(e.rows)) rows=rows.concat(e.rows);
+    });
+  } catch(e){}
+  if(!rows.length) return [];
+  try { return (typeof lkBuildLekarne==='function') ? lkBuildLekarne(rows) : []; } catch(e){ return []; }
+}
+function gsPharmacies(){
+  var out=[], rows=[], seen={};
+  var mgr=gsIsMgr(), gyn=(gsLine()==='gyn');
+  if(mgr && !gyn){
+    GS_PHARM_MGR = gsAllMgrPharmacies();
+    rows = GS_PHARM_MGR.slice();
+    // fallback: aj práve otvorený per-rep zoznam
+    try { if(typeof LK_MGR_ALL!=='undefined' && Array.isArray(LK_MGR_ALL)) rows=rows.concat(LK_MGR_ALL); } catch(e){}
+  } else {
+    // rep (aj gyn) → vlastné načítané lekárne
+    try { if(typeof LK_STATE!=='undefined' && Array.isArray(LK_STATE._rows)) rows=rows.concat(LK_STATE._rows); } catch(e){}
+  }
+  var mgrPh=(mgr && !gyn);
+  rows.forEach(function(l){
+    if(!l||!l.key||seen[l.key]) return; seen[l.key]=1;
+    var nm=String(l.lekaren||'').trim(); if(!nm) return;
+    var okres=String(l.okres||'').trim(), mesto=String(l.mesto||'').trim();
+    out.push({ type:'pharmacy', title:nm, sub:[okres,mesto].filter(Boolean).join(' · ')||'Lekáreň', icon:'🏪', kw:nm+' '+okres+' '+mesto,
+      run:(function(k){ return function(){ mgrPh ? gsJumpMgrPharmacy(k) : gsJumpPharmacy(k); }; })(l.key) });
+  });
+  return out;
+}
+// lkOpenDetail otvorí samostatnú vrstvu lk-detail (funguje aj bez otvoreného zoznamu).
+// Rep: kľúč je už v LK_STATE._rows (výsledok odtiaľ vznikol). Priame otvorenie sa vyhne
+// race-u s openLekarne, ktoré async resetuje _rows.
+function gsJumpPharmacy(key){
+  try { if(typeof LK_FILTER!=='undefined') LK_FILTER._ctx='rep'; } catch(e){}
+  try { if(typeof lkOpenDetail==='function') lkOpenDetail(key); } catch(e){}
+}
+function gsJumpMgrPharmacy(key){
+  // lkOpenDetail hľadá kľúč v LK_STATE._rows + LK_MGR_ALL → dočasne doň vlož agregované lekárne
+  try {
+    if(typeof LK_MGR_ALL!=='undefined' && Array.isArray(LK_MGR_ALL) && Array.isArray(GS_PHARM_MGR)){
+      GS_PHARM_MGR.forEach(function(l){ if(l && l.key && !LK_MGR_ALL.some(function(x){ return x && x.key===l.key; })) LK_MGR_ALL.push(l); });
+    }
+  } catch(e){}
+  try { if(typeof LK_FILTER!=='undefined') LK_FILTER._ctx='mgr'; } catch(e){}
+  try { if(typeof lkOpenDetail==='function') lkOpenDetail(key); } catch(e){}
+}
+
+/* Okresy v pôsobnosti používateľa — podľa teritória (REGION_OKRESY), nie všetkých 79.
+   • reprezentant → okresy jeho regiónu (napr. MI = Michalovce, Svidník, Stropkov…)
+   • manažér      → zjednotenie regiónov jeho repov
+   • admin        → všetky
+   Gyn línia má iný model teritórií (BAPI/BAPA), tam ostáva plný zoznam — cieľ (trhový
+   podiel) sa aj tak scope-uje podľa vlastného regiónu používateľa. */
+function gsRegionDistricts(regionCode){
+  try {
+    var arr=REGION_OKRESY[String(regionCode||'').trim().toUpperCase()];
+    return Array.isArray(arr)?arr:[];
+  } catch(e){ return []; }
+}
+function gsAllowedDistricts(){
+  var out=[], seen={}, s=gsSession()||{};
+  function add(o){ o=String(o||'').trim(); if(!o) return; var k=gsNorm(o); if(!seen[k]){ seen[k]=1; out.push(o); } }
+  var isAdmin=false; try { isAdmin=(mgrDetectRole(s)==='admin'); } catch(e){}
+  if(isAdmin || gsLine()==='gyn'){ try { OKRESY.forEach(add); } catch(e){} return out; }
+  if(gsIsMgr()){
+    try {
+      var reps=(typeof MGR_STATE!=='undefined'&&MGR_STATE.reps)||{};
+      Object.keys(reps).forEach(function(u){
+        var reg=(typeof USERS_LOCAL!=='undefined' && USERS_LOCAL[u] && USERS_LOCAL[u].region)||'';
+        gsRegionDistricts(reg).forEach(add);
+      });
+    } catch(e){}
+  } else {
+    var reg='';
+    try { reg=(typeof pharmaGetOblast==='function')?pharmaGetOblast():(s.region||''); } catch(e){ reg=s.region||''; }
+    gsRegionDistricts(reg).forEach(add);
+  }
+  // Neznámy/nenamapovaný región → radšej plný zoznam než nefunkčné hľadanie okresov
+  if(!out.length){ try { OKRESY.forEach(add); } catch(e){} }
+  return out;
+}
+/* ── OKRESY ──
+   • reprezentant → z vlastných dát (LK_STATE._rows + história), klik → openOkresy
+   • manažér → z agregovaných lekární + návštev repov; klik nie je (manažér nemá záložku Okresy) */
+function gsDistricts(){
+  var out=[], seen={}; if(gsLine()==='gyn') return out;
+  var mgr=gsIsMgr();
+  function add(o){ o=String(o||'').trim(); if(!o) return; var k=gsNorm(o); if(seen[k]) return; seen[k]=1;
+    out.push({ type:'district', title:o, sub:'Okres', icon:'📍', kw:o,
+      run: mgr ? function(){} : function(){ try{ if(typeof openOkresy==='function') openOkresy(); }catch(e){} } }); }
+  if(mgr){
+    try { (GS_PHARM_MGR||[]).forEach(function(l){ add(l&&l.okres); }); } catch(e){}
+    try { var reps=(typeof MGR_STATE!=='undefined'&&MGR_STATE.reps)||{}; Object.keys(reps).forEach(function(u){ ((reps[u]&&reps[u].visits)||[]).forEach(function(it){ add(it&&it.okres); }); }); } catch(e){}
+  } else {
+    try { if(typeof LK_STATE!=='undefined' && Array.isArray(LK_STATE._rows)) LK_STATE._rows.forEach(function(l){ add(l&&l.okres); }); } catch(e){}
+    try { var items=(typeof _histAllItems!=='undefined')?(_histAllItems||[]):[]; items.forEach(function(it){ add(it&&it.okres); }); } catch(e){}
+  }
+  // Doplň okresy jeho TERITÓRIA — aby sa dal nájsť aj okres, kde zatiaľ nemá dáta
+  // (napr. Svidník v regióne MI), ale nie okresy mimo jeho pôsobnosti.
+  try { gsAllowedDistricts().forEach(add); } catch(e){}
+  return out;
+}
+
+/* ── PRODUKTY — skok do Plnenia + (gyn) akcia Trhový podiel ── */
+function gsTitleCase(s){ return String(s||'').replace(/\S+/g,function(w){ return w.charAt(0).toUpperCase()+w.slice(1); }); }
+function gsProducts(){
+  var out=[], seen={}, line=gsLine();
+  var names=[];
+  try {
+    if(line==='gyn'){
+      if(typeof GYN_PRODUCT_LINIA!=='undefined') names=Object.keys(GYN_PRODUCT_LINIA).map(gsTitleCase);
+    } else if(line==='reagila'){
+      if(typeof LK_REAGILA_PRODS!=='undefined' && typeof LK_PROD_DISPLAY!=='undefined')
+        names=LK_REAGILA_PRODS.map(function(k){ return LK_PROD_DISPLAY[k]||k; });
+    } else if(typeof LK_PROD_DISPLAY!=='undefined'){
+      var reag=(typeof LK_REAGILA_PRODS!=='undefined')?LK_REAGILA_PRODS:[];
+      names=Object.keys(LK_PROD_DISPLAY).filter(function(k){ return reag.indexOf(k)<0; }).map(function(k){ return LK_PROD_DISPLAY[k]||k; });
+    }
+  } catch(e){}
+  var gyn=(line==='gyn'), reg='';
+  try { reg=(gsSession()||{}).region||''; } catch(e){}
+  names.forEach(function(nm){
+    var base=String(nm).replace(/ (tbl\.|inj\.|krém|sáč\.|Forte|DSP)$/i,'').trim();
+    var kk=gsNorm(base); if(!base||seen[kk]) return; seen[kk]=1;
+    out.push({ type:'product', title:base, sub:'Produkt · Plnenie', icon:'💊', kw:base,
+      run:function(){ gsJumpPlnenie(); } });
+    // gyn: ak má produkt IQVIA dáta trhového podielu → samostatná akcia „Trhový podiel"
+    if(gyn){
+      var pkey=String(base).toLowerCase();
+      var hasMs=false; try { hasMs=!!(typeof GYN_PHARMA_PRODUCTS!=='undefined' && GYN_PHARMA_PRODUCTS[pkey]); } catch(e){}
+      // gyn: samostatná akcia Trhový podiel sa zobrazí len keď query smeruje na podiel
+      // (nie pri obyčajnom napísaní produktu) — drží výsledky čisté. Presný okres rieši kombinácia.
+      if(hasMs){
+        out.push({ type:'ms', title:'Trhový podiel · '+base, sub:'IQVIA · '+(reg||'BAPI'), icon:'📊', kw:'trhovy podiel market share ms', _needHint:true,
+          run:(function(prodName){ return function(){ try{ if(typeof gynOpenPharma==='function') gynOpenPharma(prodName, reg); }catch(e){} }; })(base) });
+      }
+    }
+  });
+  return out;
+}
+function gsJumpPlnenie(){
+  var line=gsLine();
+  try {
+    if(line==='gyn'){ if(typeof gynNavTo==='function') gynNavTo('plnenie'); return; }
+    if(gsIsMgr()){ if(typeof mgrSwitchSubtab==='function') mgrSwitchSubtab('plnenie'); return; }
+    if(typeof openRepPlnenie==='function') openRepPlnenie();
+  } catch(e){}
+}
+
+/* ── REPREZENTANTI — LEN manažér/admin, rolovo obmedzené dáta ── */
+function gsReps(){
+  var out=[]; if(!gsIsMgr()) return out;
+  if(gsLine()==='gyn'){
+    var reps=[]; try { reps=(typeof GYN_STATE!=='undefined'&&GYN_STATE.repList)||[]; } catch(e){}
+    reps.forEach(function(r){
+      if(!r) return; var nm=String(r.meno||r.name||'').trim(); var login=r.login||'';
+      if(!nm&&!login) return;
+      out.push({ type:'rep', title:nm||login, sub:'Reprezentant'+(r.region?(' · '+r.region):''), icon:'👤', kw:nm+' '+login+' '+(r.region||''),
+        _login:login, _meno:(r.meno||r.name||nm), _region:(r.region||''),
+        run:(function(rr){ return function(){ try{ if(typeof gynOpenRepDetail==='function') gynOpenRepDetail(rr.login, rr.meno||rr.name, rr.region||''); }catch(e){} }; })(r) });
+    });
+  } else {
+    var reps2={}; try { reps2=(typeof MGR_STATE!=='undefined'&&MGR_STATE.reps)||{}; } catch(e){}
+    Object.keys(reps2).forEach(function(u){
+      var nm=u; try { nm=(typeof MGR_REP_NAMES!=='undefined'&&MGR_REP_NAMES[u])||u; } catch(e){}
+      out.push({ type:'rep', title:nm, sub:'Reprezentant · @'+u, icon:'👤', kw:nm+' '+u,
+        _login:u,
+        run:(function(un){ return function(){ gsMgrOpenRep(un); }; })(u) });
+    });
+  }
+  return out;
+}
+// Manažér: otvor Plnenie konkrétneho repa (detail je viditeľný len v subtabe Plnenie)
+function gsMgrOpenPlnenie(login){
+  try { if(typeof mgrSwitchSubtab==='function' && !document.body.classList.contains('mgr-subtab-plnenie')) mgrSwitchSubtab('plnenie'); } catch(e){}
+  setTimeout(function(){ try { if(typeof plnenieOpenDetail==='function') plnenieOpenDetail(login); } catch(e){} }, 80);
+}
+// Ciele viazané na reprezentanta (kam sa dá pri ňom ísť) — pre manažéra/admina, non-gyn línia.
+function gsRepContext(rep){
+  var out=[]; if(!rep || !rep._login || gsLine()==='gyn') return out;
+  var nm=rep.title, login=rep._login;
+  out.push({ type:'repctx', title:'Lekári · '+nm, sub:'Návštevy reprezentanta', icon:'📋',
+    run:(function(l){ return function(){ gsMgrOpenRep(l); }; })(login) });
+  out.push({ type:'repctx', title:'Plnenie · '+nm, sub:'Plnenie reprezentanta', icon:'💊',
+    run:(function(l){ return function(){ gsMgrOpenPlnenie(l); }; })(login) });
+  out.push({ type:'repctx', title:'Lekárne · '+nm, sub:'Lekárne reprezentanta', icon:'🏪',
+    run:(function(l){ return function(){ gsMgrOpenRepLekarne(l); }; })(login) });
+  out.push({ type:'repctx', title:'Okresy · '+nm, sub:'MS % po okresoch', icon:'📊',
+    run:(function(l){ return function(){ gsMgrOpenRepOkresy(l, null); }; })(login) });
+  if(gsReportAllowed()){
+    out.push({ type:'repctx', title:'Report · '+nm, sub:'Mesačný report', icon:'📄',
+      run:(function(l){ return function(){ gsMgrOpenReport(l); }; })(login) });
+  }
+  return out;
+}
+
+/* ── KALENDÁRNE UDALOSTI — reálny obsah (webinár, míting, dovolenka…) ──
+   Role-aware cez gynCalVisibleToMe; GYN_CAL.events je line-scoped (Golem/gyn/Reagila zvlášť). */
+var GS_CALTYPE_KW = {
+  webinar:'webinar online prednaska', miting:'miting meeting stretnutie porada schodza',
+  cyklus:'cycle meeting cyklus meeting stretnutie', kongres:'kongres konferencia congress podujatie',
+  trening:'trening training skolenie', uzavierka:'uzavierka deadline termin',
+  dovolenka:'dovolenka volno absencia', paragraf:'paragraf lekar absencia',
+  ocr:'ocr rodinne opatrovanie', nahradne_volno:'nahradne volno absencia',
+  administrativa:'administrativa admin absencia', poznamka:'poznamka note'
+};
+function gsCalEvents(){
+  var out=[], seen={};
+  var evs=[]; try { evs=(typeof GYN_CAL!=='undefined' && GYN_CAL.events)||[]; } catch(e){}
+  evs.forEach(function(ev){
+    if(!ev || !ev.id || seen[ev.id]) return;
+    try { if(typeof gynCalVisibleToMe==='function' && !gynCalVisibleToMe(ev)) return; } catch(e){ return; }
+    seen[ev.id]=1;
+    var t=(typeof gynCalTypeById==='function' && gynCalTypeById(ev.type))||{};
+    var title=String(ev.title||t.label||'Udalosť').trim();
+    var dk=ev.dateStart||'';
+    var dateHuman=dk; try{ if(typeof gynCalFmtDateHuman==='function') dateHuman=gynCalFmtDateHuman(dk); }catch(e){}
+    var who=ev.ownerName||ev.owner||'';
+    var sub=[t.label||'', dateHuman, ev.location||''].filter(Boolean).join(' · ');
+    out.push({ type:'event', title:title, sub:sub||'Udalosť', icon:(t.icon||'📅'),
+      kw:title+' '+(t.label||'')+' '+(GS_CALTYPE_KW[ev.type]||'')+' '+(ev.location||'')+' '+(ev.note||'')+' '+dk,
+      run:(function(e){ return function(){ gsJumpCalEvent(e); }; })(ev) });
+  });
+  return out;
+}
+function gsJumpCalEvent(ev){
+  var line=gsLine();
+  try {
+    if(line==='gyn'){ if(typeof gynNavTo==='function') gynNavTo('kalendar'); }
+    else if(gsIsMgr()){ if(typeof mgrSwitchSubtab==='function') mgrSwitchSubtab('kalendar'); }
+    else { if(typeof openGolemKalendar==='function') openGolemKalendar(); }
+  } catch(e){}
+  setTimeout(function(){
+    try {
+      var dk=ev.dateStart, parts=String(dk).split('-');
+      if(parts.length>=2 && typeof GYN_CAL!=='undefined'){ GYN_CAL.y=+parts[0]; GYN_CAL.m=(+parts[1])-1; }
+      if(typeof gynCalOpenEvent==='function') gynCalOpenEvent(dk, ev.id);
+    } catch(e){}
+  }, 240);
+}
+
+/* ── RÝCHLE AKCIE ── */
+function gsActions(){
+  var out=[], line=gsLine(), mgr=gsIsMgr();
+  function push(title,icon,fn,kw){ out.push({ type:'action', title:title, sub:'Rýchla akcia', icon:icon, kw:kw||title, run:fn }); }
+  if(line==='gyn'){
+    push('Nová udalosť v kalendári','📅',function(){ try{ if(typeof gynNavTo==='function') gynNavTo('kalendar'); }catch(e){} },'nova udalost kalendar termin dovolenka absencia pn volno sviatok stretnutie');
+  } else if(!mgr){
+    push('Nový záznam (Formulár)','📝',function(){ try{ if(typeof repNavToForm==='function') repNavToForm(); }catch(e){} },'novy zaznam formular lekar navsteva');
+    push('Nová udalosť v kalendári','📅',function(){ try{ if(typeof openGolemKalendar==='function') openGolemKalendar(); }catch(e){} },'nova udalost kalendar termin dovolenka absencia pn volno sviatok stretnutie');
+  } else {
+    push('Otvoriť Kalendár','📅',function(){ try{ if(typeof mgrSwitchSubtab==='function') mgrSwitchSubtab('kalendar'); }catch(e){} },'kalendar udalosti dovolenka absencia pn volno schvalenie');
+  }
+  // Univerzálne (všetky role/línie)
+  push('Nastavenia','⚙️',function(){ try{ if(typeof openSettings==='function') openSettings(); }catch(e){} },'nastavenia settings profil avatar predvolby');
+  push('Odhlásiť sa','🚪',function(){ try{ if(typeof doLogout==='function') doLogout(); }catch(e){} },'odhlasit sa logout odhlasenie');
+  return out;
+}
+
+/* ── ZOSTAVENIE INDEXU ── */
+function gsBuildIndex(){
+  var idx=[];
+  [gsSections,gsActions,gsCalEvents,gsReps,gsDoctors,gsPharmacies,gsDistricts,gsProducts].forEach(function(fn){
+    try { idx=idx.concat(fn()||[]); } catch(e){}
+  });
+  // _k vždy obsahuje aj názov — inak by položka s vlastnými kľúčovými slovami
+  // (napr. „Trhový podiel · Daylla") nebola nájditeľná podľa svojho názvu.
+  idx.forEach(function(e){ e._n=gsNorm(e.title); e._k=gsNorm((e.title||'')+' '+(e.kw||'')); });
+  return idx;
+}
+
+/* ── SKÓROVANIE — token-based AND (viac slov, ľubovoľné poradie) ── */
+function gsTokens(q){ return gsNorm(q).split(/\s+/).filter(Boolean); }
+function gsTokScore(hay, tok){
+  var i=hay.indexOf(tok);
+  if(i<0) return -1;
+  if(i===0) return 6;                    // začiatok reťazca
+  if(hay.charAt(i-1)===' ') return 5;    // začiatok slova
+  return 2;                              // vnútri slova
+}
+// Každý token musí sedieť (AND). Skóre = kvalita zhôd + bonusy za zhodu v názve.
+function gsScoreTokens(e, toks){
+  var hay=e._k, ttl=e._n, total=0;
+  for(var t=0;t<toks.length;t++){
+    var s=gsTokScore(hay, toks[t]);
+    if(s<0) return -1;
+    total+=s;
+    if(gsTokScore(ttl, toks[t])>=5) total+=3;   // token sedí aj v názve
+  }
+  if(ttl.indexOf(toks[0])===0) total+=10;        // názov začína prvým tokenom
+  total -= Math.min(ttl.length,40)*0.02;         // kratší názov = presnejšie
+  return total;
+}
+// Spätná kompatibilita (ak by niekto volal gsScore s reťazcom)
+function gsScore(e,q){ return gsScoreTokens(e, gsTokens(q)); }
+
+/* ── KOMBINÁCIA produkt + okres → Trhový podiel (napr. „telexer poprad") ── */
+function gsMatchName(list, tok){
+  // presný prefix slova > prefix reťazca > podreťazec (min. 3 znaky)
+  for(var i=0;i<list.length;i++){ if((' '+list[i]._n).indexOf(' '+tok)>=0) return list[i]; }
+  for(var j=0;j<list.length;j++){ if(list[j]._n.indexOf(tok)===0) return list[j]; }
+  if(tok.length>=3){ for(var k=0;k<list.length;k++){ if(list[k]._n.indexOf(tok)>=0) return list[k]; } }
+  return null;
+}
+// Zámery (intenty) — slová ako „reporty", „plnenie", „lekárne"… ktoré v kombinácii
+// s reprezentantom určujú, KAM ísť („reporty sabol" → report Sabola).
+var GS_INTENTS = [
+  { id:'report',  label:'Report',   icon:'📄', kw:['report','reporty','mesacny','prehlad'] },
+  { id:'plnenie', label:'Plnenie',  icon:'💊', kw:['plnenie','plan','plany','ciele','predaje','predaj'] },
+  { id:'lekari',  label:'Lekári',   icon:'📋', kw:['lekari','lekar','navstevy','navsteva','historia','doktor'] },
+  { id:'lekarne', label:'Lekárne',  icon:'🏪', kw:['lekarne','lekaren','lekarni'] },
+  { id:'okresy',  label:'Okresy',   icon:'📊', kw:['okresy','okres','trhovy','podiel','ms'] }
+];
+function gsMatchIntent(tok){
+  if(!tok || tok.length<3) return null;
+  for(var i=0;i<GS_INTENTS.length;i++){
+    var kws=GS_INTENTS[i].kw;
+    for(var j=0;j<kws.length;j++){ if(kws[j].indexOf(tok)===0) return GS_INTENTS[i]; }
+  }
+  return null;
+}
+// Rozdelí tokeny na entity: reprezentant + produkt + okres (každý token sa použije raz).
+function gsClassify(toks){
+  var reps=GS.items.filter(function(e){ return e.type==='rep'; });
+  var prods=GS.items.filter(function(e){ return e.type==='product'; });
+  // Okresy: vlastné (z dát) NAJPRV, potom doplň VŠETKY okresy zo zoznamu — inak by
+  // kombinácia fungovala len pre okresy, kde už má rep návštevu/lekáreň (napr. Michalovce
+  // áno, Svidník nie). Okres je verejná geografia; cieľ (záložka Okresy) je aj tak scoped.
+  var dists=GS.items.filter(function(e){ return e.type==='district'; });
+  try {
+    var pool=gsAllowedDistricts();
+    if(pool.length){
+      var have={}; dists.forEach(function(d){ have[d._n||gsNorm(d.title)]=1; });
+      pool.forEach(function(o){ var n=gsNorm(o); if(!have[n]){ have[n]=1; dists.push({ title:o, _n:n }); } });
+    }
+  } catch(e){}
+  var res={ rep:null, prod:null, dist:null, intent:null, rest:[] };
+  toks.forEach(function(tok){
+    if(!res.rep){ var mr=gsMatchName(reps, tok); if(mr){ res.rep=mr; return; } }
+    if(!res.prod){ var mp=gsMatchName(prods, tok); if(mp){ res.prod=mp; return; } }
+    if(!res.dist){ var md=gsMatchName(dists, tok); if(md){ res.dist=md; return; } }
+    if(!res.intent){ var mi=gsMatchIntent(tok); if(mi){ res.intent=mi; return; } }
+    res.rest.push(tok);
+  });
+  return res;
+}
+// Otvor cieľ podľa zámeru pre konkrétneho repa (manažér/admin, Golem/Reagila)
+function gsMgrOpenIntent(intentId, login, okresName){
+  switch(intentId){
+    case 'report':  gsMgrOpenReport(login); return;
+    case 'lekari':  gsMgrOpenRep(login); return;
+    case 'lekarne': gsMgrOpenRepLekarne(login); return;
+    case 'okresy':  gsMgrOpenRepOkresy(login, okresName); return;
+    default:        gsMgrOpenPlnenie(login);
+  }
+}
+function gsMgrOpenReport(login){
+  try { if(typeof mgrSwitchSubtab==='function') mgrSwitchSubtab('reporty'); } catch(e){}
+  setTimeout(function(){ try { if(typeof rptViewSelectRep==='function') rptViewSelectRep(login); } catch(e){} }, 220);
+}
+function gsMgrOpenRepLekarne(login){
+  gsMgrOpenPlnenie(login);
+  setTimeout(function(){ try { if(typeof plnenieDetailSwitchSubtab==='function') plnenieDetailSwitchSubtab('lekarne'); } catch(e){} }, 320);
+}
+// Je záložka Reporty pre túto rolu vôbec dostupná? (číta reálnu viditeľnosť tlačidla)
+function gsReportAllowed(){
+  try { var b=document.getElementById('mgr-subtab-reporty-btn'); return !!(b && b.getClientRects().length); } catch(e){ return false; }
+}
+// Poskladá „inteligentné" ciele z kombinácie entít (rep × produkt × okres).
+// Vracia pole (0–2 položky) — prvá ide ako Top Hit.
+function gsCombo(toks){
+  if(!toks || toks.length<2) return [];
+  var line=gsLine(), mgr=gsIsMgr(), out=[];
+  var c=gsClassify(toks), rep=c.rep, prod=c.prod, dist=c.dist, intent=c.intent;
+  var reg=''; try{ reg=(gsSession()||{}).region||''; }catch(e){}
+
+  // ── S reprezentantom (len manažér/admin — rep sám seba nehľadá) ──
+  if(rep && mgr && rep._login){
+    var login=rep._login, rname=rep.title;
+    // Zámer + rep („reporty sabol", „lekárne sabol", „plnenie sabol"…)
+    if(intent && line!=='gyn' && !(intent.id==='report' && !gsReportAllowed())){
+      out.push({ type:'combo', title:intent.label+' · '+rname, sub:(intent.id==='okresy'&&dist)?('okres '+dist.title):(intent.label+' reprezentanta'), icon:intent.icon,
+        run:(function(id,l,o){ return function(){ gsMgrOpenIntent(id,l,o); }; })(intent.id, login, dist?dist.title:null) });
+      if(!(prod&&dist)) return out;
+    }
+    if(line==='gyn'){
+      out.push({ type:'combo', title:(prod?prod.title+' · ':'')+rname, sub:'Detail reprezentanta'+(prod?' · plnenie':''), icon:'👤',
+        run:(function(r){ return function(){ try{ if(typeof gynOpenRepDetail==='function') gynOpenRepDetail(r._login, r._meno||r.title, r._region||''); }catch(e){} }; })(rep) });
+      return out;
+    }
+    if(prod && dist){
+      out.push({ type:'combo', title:'Trhový podiel · '+prod.title+' · '+dist.title, sub:rname+' · okresy', icon:'📊',
+        run:(function(l,o){ return function(){ gsMgrOpenRepOkresy(l,o); }; })(login, dist.title) });
+      out.push({ type:'combo', title:'Plnenie · '+prod.title+' · '+rname, sub:'Plnenie reprezentanta', icon:'💊',
+        run:(function(l){ return function(){ gsMgrOpenPlnenie(l); }; })(login) });
+      return out;
+    }
+    if(prod){
+      out.push({ type:'combo', title:'Plnenie · '+prod.title+' · '+rname, sub:'Plnenie reprezentanta', icon:'💊',
+        run:(function(l){ return function(){ gsMgrOpenPlnenie(l); }; })(login) });
+      return out;
+    }
+    if(dist){
+      out.push({ type:'combo', title:'Lekári · '+dist.title+' · '+rname, sub:'Návštevy v okrese', icon:'📋',
+        run:(function(l,o){ return function(){ gsJumpMgrDoctor(l,o); }; })(login, dist.title) });
+      out.push({ type:'combo', title:'Okresy · '+rname, sub:'MS % po okresoch', icon:'📊',
+        run:(function(l,o){ return function(){ gsMgrOpenRepOkresy(l,o); }; })(login, dist.title) });
+      return out;
+    }
+    return out;
+  }
+
+  // ── Bez reprezentanta: produkt + okres → trhový podiel ──
+  if(prod && dist && line!=='reagila'){
+    var pName=prod.title, oName=dist.title;
+    if(line==='gyn'){
+      var hasMs=false; try{ hasMs=!!(typeof GYN_PHARMA_PRODUCTS!=='undefined' && GYN_PHARMA_PRODUCTS[String(pName).toLowerCase()]); }catch(e){}
+      if(!hasMs) return out;
+      out.push({ type:'combo', title:'Trhový podiel · '+pName+' · '+oName, sub:'IQVIA · okres '+oName, icon:'📊',
+        run:function(){ try{ if(typeof gynOpenPharma==='function') gynOpenPharma(pName, reg); }catch(e){} } });
+      return out;
+    }
+    if(mgr) return out;   // manažér bez repa nemá vlastnú oblasť → nechaj bežné výsledky
+    out.push({ type:'combo', title:'Trhový podiel · '+pName+' · '+oName, sub:'Okres '+oName+' · MS %', icon:'📊',
+      run:function(){ gsOpenOkresExpanded(oName); } });
+  }
+  return out;
+}
+// Manažér: Okresy (MS %) konkrétneho repa + rozbalenie okresu
+function gsMgrOpenRepOkresy(login, okresName){
+  gsMgrOpenPlnenie(login);
+  setTimeout(function(){
+    try { if(typeof plnenieDetailSwitchSubtab==='function') plnenieDetailSwitchSubtab('okresy'); } catch(e){}
+    if(okresName) gsExpandOkresWhenReady(okresName);
+  }, 320);
+}
+// Počká, kým sa okresné dáta vykreslia, a rozbalí hľadaný okres (rep aj mgr kontext).
+function gsExpandOkresWhenReady(okresName){
+  var nn=gsNorm(okresName), tries=0;
+  (function tryExpand(){
+    tries++;
+    try {
+      var ds=(typeof OKRESY_STATE!=='undefined' && OKRESY_STATE._districts)||[];
+      for(var i=0;i<ds.length;i++){
+        var dn=gsNorm(ds[i].name||'');
+        if(dn===nn || dn.indexOf(nn)>=0 || nn.indexOf(dn)>=0){
+          OKRESY_STATE.expandedName=ds[i].name;
+          if(typeof okresyRender==='function') okresyRender();
+          return;
+        }
+      }
+    } catch(e){}
+    if(tries<25) setTimeout(tryExpand, 140);
+  })();
+}
+function gsOpenOkresExpanded(okresName){
+  try { if(typeof openOkresy==='function') openOkresy(); } catch(e){}
+  gsExpandOkresWhenReady(okresName);
+}
+
+var GS_GROUP_ORDER=['section','action','event','rep','doctor','pharmacy','district','product','ms'];
+var GS_GROUP_LABEL={section:'Sekcie',action:'Akcie',event:'Kalendár',rep:'Reprezentanti',doctor:'Lekári',pharmacy:'Lekárne',district:'Okresy',product:'Produkty',ms:'Trhový podiel'};
+var GS_GROUP_CAP={section:20,action:12,event:10,rep:8,doctor:8,pharmacy:8,district:6,product:8,ms:8};
+
+/* ── RECENT ──
+   Kľúč je per-používateľ + línia — na zdieľanom zariadení nesmú v „Nedávne" ostať
+   mená lekárov/lekární predošlého účtu (rovnaký vzor ako gynCalLsKey). */
+function gsRecentKey(){
+  var s=gsSession()||{};
+  var login=String(s.username||'').toLowerCase(), line=String(s.line||'gp').toLowerCase();
+  return login ? ('gs_recent_v1_'+line+'_'+login) : 'gs_recent_v1';
+}
+function gsRecent(){ try { return JSON.parse(localStorage.getItem(gsRecentKey())||'[]')||[]; } catch(e){ return []; } }
+function gsPushRecent(e){
+  if(e.type==='section'||e.type==='action'||e.type==='combo'||e.type==='repctx') return;
+  try {
+    var r=gsRecent().filter(function(x){ return !(x.type===e.type && gsNorm(x.title)===gsNorm(e.title)); });
+    r.unshift({ type:e.type, title:e.title });
+    localStorage.setItem(gsRecentKey(), JSON.stringify(r.slice(0,8)));
+  } catch(err){}
+}
+
+/* ── RENDER ── */
+// Zvýrazní zhodné časti textu. Porovnáva sa na normalizovanom tvare (bez diakritiky),
+// ale zvýrazňuje sa PÔVODNÝ text — „zig" tak zvýrazní „Žig" v „Žigray".
+// (gsNorm zachováva dĺžku reťazca 1:1, takže indexy sedia.)
+function gsHi(text, toks){
+  var s=String(text==null?'':text);
+  if(!toks || !toks.length) return gsEsc(s);
+  var n=gsNorm(s);
+  if(n.length!==s.length) return gsEsc(s);      // poistka pri exotických znakoch
+  var marks=[];
+  toks.forEach(function(t){
+    if(!t) return;
+    var from=0, i;
+    while((i=n.indexOf(t, from))>=0){
+      for(var k=i;k<i+t.length;k++) marks[k]=1;
+      from=i+t.length;
+    }
+  });
+  var out='', open=false;
+  for(var j=0;j<s.length;j++){
+    if(marks[j] && !open){ out+='<b class="gs-hl">'; open=true; }
+    else if(!marks[j] && open){ out+='</b>'; open=false; }
+    out+=gsEsc(s.charAt(j));
+  }
+  if(open) out+='</b>';
+  return out;
+}
+function gsRowHtml(e, idx, big){
+  var t=GS._toks||[];
+  return '<div class="gs-row'+(big?' gs-row-top':'')+'" data-i="'+idx+'" onclick="gsRunAt('+idx+')" onmousemove="gsSetCur('+idx+')">'
+    +'<div class="gs-ico">'+gsEsc(e.icon||'📄')+'</div>'
+    +'<div class="gs-txt"><div class="gs-title">'+gsHi(e.title,t)+'</div><div class="gs-sub">'+gsHi(e.sub||'',t)+'</div></div>'
+    +'<span class="gs-hint">↵</span></div>';
+}
+// Riadok „Zobraziť všetky (N)" — rozbalí orezanú skupinu
+function gsMoreHtml(gk, n, idx){
+  return '<div class="gs-more" data-i="'+idx+'" onclick="gsRunAt('+idx+')" onmousemove="gsSetCur('+idx+')">'
+    +'Zobraziť všetky ('+n+') ›</div>';
+}
+function gsRender(){
+  var res=document.getElementById('gs-results'); if(!res) return;
+  var q=gsNorm((document.getElementById('gs-input')||{}).value||'');
+  var list; GS._combos=[]; GS._toks=q?gsTokens(q):[]; GS._noHits=false;
+  if(!q){
+    var rec=gsRecent(), recItems=[];
+    rec.forEach(function(r){
+      var hit=GS.items.filter(function(e){ return e.type===r.type && gsNorm(e.title)===gsNorm(r.title); })[0];
+      if(hit && recItems.indexOf(hit)<0){ hit._rec=true; recItems.push(hit); }
+    });
+    var base=GS.items.filter(function(e){ return e.type==='section'||e.type==='action'; });
+    list=recItems.concat(base);
+  } else {
+    var toks=gsTokens(q);
+    list=[];
+    GS.items.forEach(function(e){ e._rec=false; var s=gsScoreTokens(e, toks); if(s>=0){ e._s=s; list.push(e); } });
+    list.sort(function(a,b){ return b._s-a._s || a.title.length-b.title.length || a.title.localeCompare(b.title); });
+    GS._combos=gsCombo(toks)||[];
+  }
+  GS.flat=[]; GS.cur=0;
+  if(!list.length && !GS._combos.length){
+    res.innerHTML='<div class="gs-empty"><span class="gs-empty-emoji">🔍</span>Nič sa nenašlo</div>'+gsTipsHtml();
+    GS._noHits=true;
+    return;
+  }
+  var html='';
+  if(!q){
+    var recent=list.filter(function(e){ return e._rec; });
+    if(recent.length){
+      html+='<div class="gs-group-hd">Nedávne</div>';
+      recent.forEach(function(e){ html+=gsRowHtml(e, GS.flat.length); GS.flat.push(e); });
+    }
+    var rest=list.filter(function(e){ return !e._rec; });
+    GS_GROUP_ORDER.forEach(function(gk){
+      var items=rest.filter(function(e){ return e.type===gk; });
+      if(!items.length) return;
+      html+='<div class="gs-group-hd">'+GS_GROUP_LABEL[gk]+'</div>';
+      items.forEach(function(e){ html+=gsRowHtml(e, GS.flat.length); GS.flat.push(e); });
+    });
+    html+=gsTipsHtml();
+  } else {
+    // iPhone-style: Top Hit (najlepšia zhoda) + sprísnené, prehľadné skupiny.
+    var top = GS._combos[0] || list[0] || null;
+    if(top){
+      html+='<div class="gs-group-hd">Najlepšia zhoda</div>';
+      html+=gsRowHtml(top, GS.flat.length, true); GS.flat.push(top);
+      // ďalšie kombinácie (napr. Plnenie repa popri Trhovom podiele)
+      GS._combos.slice(1).forEach(function(e){ html+=gsRowHtml(e, GS.flat.length); GS.flat.push(e); });
+    }
+    // Ak je Top Hit reprezentant → ponúkni, kam sa dá pri ňom ísť (namiesto zoznamu jeho lekárov)
+    if(top && top.type==='rep'){
+      var ctx=gsRepContext(top);
+      if(ctx.length){
+        html+='<div class="gs-group-hd">Kam pri: '+gsEsc(top.title)+'</div>';
+        ctx.forEach(function(e){ html+=gsRowHtml(e, GS.flat.length); GS.flat.push(e); });
+      }
+    }
+    var rest=list.filter(function(e){ return e!==top; });
+    var QCAP={section:3,action:3,event:4,rep:4,doctor:4,pharmacy:4,district:5,product:4,ms:4};
+    var shownTotal=0, MAXTOTAL=14;
+    GS_GROUP_ORDER.forEach(function(gk){
+      var items=rest.filter(function(e){ return e.type===gk; });
+      if(!items.length) return;
+      var expanded=!!(GS._expand && GS._expand[gk]);
+      if(shownTotal>=MAXTOTAL && !expanded) return;
+      var cap=expanded ? items.length : Math.min(QCAP[gk]||4, Math.max(1, MAXTOTAL-shownTotal));
+      var shown=items.slice(0,cap);
+      html+='<div class="gs-group-hd">'+GS_GROUP_LABEL[gk]+(items.length>shown.length?(' · '+items.length):'')+'</div>';
+      shown.forEach(function(e){ html+=gsRowHtml(e, GS.flat.length); GS.flat.push(e); shownTotal++; });
+      if(items.length>shown.length){
+        var more={ _more:gk, _noClose:true, title:'Zobraziť všetky', run:(function(g){ return function(){ GS._expand=GS._expand||{}; GS._expand[g]=true; gsRender(); }; })(gk) };
+        html+=gsMoreHtml(gk, items.length, GS.flat.length); GS.flat.push(more);
+      }
+    });
+  }
+  res.innerHTML=html;
+  gsHighlight(false);
+}
+/* ── NÁPOVEDA — príklady podľa role/línie (klik ich rovno vyskúša) ── */
+function gsTipsHtml(){
+  var mgr=gsIsMgr(), line=gsLine(), tips=[];
+  if(line==='gyn'){
+    tips=['dovolenka','plnenie','trhový podiel'];
+  } else if(mgr){
+    tips=['reporty '+gsSampleRep(), gsSampleRep()+' vidonorm', gsSampleRep()+' '+gsSampleOkres(), 'dovolenka'];
+  } else {
+    tips=['telexer '+gsSampleOkres(), 'dovolenka', 'lekárne', 'nastavenia'];
+  }
+  tips=tips.filter(function(t){ return t && t.indexOf('undefined')<0; }).slice(0,4);
+  if(!tips.length) return '';
+  return '<div class="gs-tips"><div class="gs-tips-hd">Skús napríklad</div>'+
+    tips.map(function(t){ return '<span class="gs-tip" onclick="gsTryTip(\''+gsEsc(t).replace(/'/g,"\\'")+'\')">🔎 <b>'+gsEsc(t)+'</b></span>'; }).join('')+
+    '</div>';
+}
+function gsSampleRep(){
+  var r=GS.items.filter(function(e){ return e.type==='rep'; })[0];
+  if(!r) return 'reprezentant';
+  var parts=String(r.title).trim().split(/\s+/);
+  return (parts[parts.length-1]||r.title).toLowerCase();
+}
+function gsSampleOkres(){
+  var d=GS.items.filter(function(e){ return e.type==='district'; })[0];
+  return d ? String(d.title).toLowerCase() : 'okres';
+}
+function gsTryTip(t){
+  var inp=document.getElementById('gs-input');
+  if(inp){ inp.value=t; gsRender(); try{ inp.focus(); }catch(e){} }
+}
+/* ── MERANIE NEÚSPEŠNÝCH HĽADANÍ — čo ľudia hľadajú a nenájdu (na doplnenie synoným) ── */
+var _gsMissT=null, _gsMissLast='';
+function gsTrackMiss(q){
+  if(!q || q.length<3) return;
+  clearTimeout(_gsMissT);
+  _gsMissT=setTimeout(function(){
+    if(q===_gsMissLast) return;             // to isté nelogovať dokola
+    _gsMissLast=q;
+    try { if(typeof usageTrack==='function') usageTrack('search_miss','Vyhľadávanie', q); } catch(e){}
+  }, 1200);
+}
+function gsHighlight(scroll){
+  var rows=document.querySelectorAll('#gs-results .gs-row, #gs-results .gs-more');
+  Array.prototype.forEach.call(rows,function(r){ r.classList.toggle('gs-cur', (+r.getAttribute('data-i'))===GS.cur); });
+  if(scroll){ var cur=document.querySelector('#gs-results .gs-cur'); if(cur&&cur.scrollIntoView){ try{ cur.scrollIntoView({block:'nearest'}); }catch(e){} } }
+}
+function gsSetCur(i){ if(GS.cur!==i){ GS.cur=i; gsHighlight(false); } }
+function gsMove(d){ if(!GS.flat.length) return; GS.cur=(GS.cur+d+GS.flat.length)%GS.flat.length; gsHighlight(true); }
+function gsRunAt(i){
+  var e=GS.flat[i]; if(!e) return;
+  if(e._noClose){                            // „Zobraziť všetky" — len rozbalí, panel ostáva
+    try{ if(typeof haptic==='function') haptic('selection'); }catch(err){}
+    try{ e.run(); }catch(err){}
+    return;
+  }
+  gsPushRecent(e);
+  gsClose();
+  setTimeout(function(){ try{ if(typeof haptic==='function') haptic('light'); }catch(e){} try{ e.run(); }catch(err){} }, 40);
+}
+
+/* ── OTVORENIE / ZATVORENIE ── */
+function gsOpen(){
+  if(!gsSession() || !gsEnabled()) return;
+  GS._expand={};
+  GS.items=gsBuildIndex();
+  var ov=document.getElementById('gs-overlay'); if(!ov) return;
+  document.body.classList.add('gs-open');
+  ov.classList.add('show');
+  var inp=document.getElementById('gs-input'); if(inp) inp.value='';
+  gsRender();
+  setTimeout(function(){ try{ if(inp) inp.focus(); }catch(e){} }, 60);
+  gsEnsureData();
+  try { if(typeof usageTrack==='function') usageTrack('gs_open','',''); } catch(e){}
+}
+// Pri otvorení doťiahni na pozadí chýbajúce dáta (lekárne, história lekárov, kalendár)
+// a po načítaní prestav index + prekresli, ak je panel ešte otvorený → prvé otvorenie
+// nájde naozaj všetko, aj keď sa dáta ešte dosync-ovávali.
+function gsEnsureData(){
+  function rerender(){ var ov=document.getElementById('gs-overlay'); if(ov && ov.classList.contains('show')){ GS.items=gsBuildIndex(); gsRender(); } }
+  // Manažér/admin: všetky lekárne naprieč repmi
+  try {
+    if(gsIsMgr() && typeof lkFetchAll==='function' && typeof LK_STATE!=='undefined' && !LK_STATE.allLoaded){ lkFetchAll(rerender); }
+  } catch(e){}
+  // Golem reprezentant: história lekárov (vrátane Tuyory/Lonelix)
+  try {
+    if(!gsIsMgr() && gsLine()!=='gyn'){
+      var noHist=(typeof _histAllItems==='undefined') || !(_histAllItems && _histAllItems.length);
+      if(noHist && typeof loadHistoryItems==='function'){ var s=gsSession(); if(s && s.username){ loadHistoryItems(s.username).then(rerender); } }
+    }
+  } catch(e){}
+  // Kalendárne udalosti (všetky línie)
+  try {
+    var noEv=(typeof GYN_CAL==='undefined') || !(GYN_CAL.events && GYN_CAL.events.length);
+    if(noEv){
+      if(typeof gynCalSync==='function') gynCalSync();
+      else if(typeof gynCalPrefetch==='function') gynCalPrefetch();
+      setTimeout(rerender, 1300);
+    }
+  } catch(e){}
+}
+function gsClose(){
+  var ov=document.getElementById('gs-overlay'); if(ov) ov.classList.remove('show');
+  document.body.classList.remove('gs-open');
+}
+function gsOnInput(){
+  GS._expand={};
+  gsRender();
+  // Meranie sa spúšťa LEN pri písaní používateľa — background re-render (doťahovanie
+  // dát) inak časovač stále reštartoval a nikdy sa nezalogovalo.
+  if(GS._noHits) gsTrackMiss(gsNorm((document.getElementById('gs-input')||{}).value||''));
+  else clearTimeout(_gsMissT);
+}
+function gsOnKey(ev){
+  var k=ev.key;
+  if(k==='ArrowDown'){ ev.preventDefault(); gsMove(1); }
+  else if(k==='ArrowUp'){ ev.preventDefault(); gsMove(-1); }
+  else if(k==='Enter'){ ev.preventDefault(); gsRunAt(GS.cur); }
+  else if(k==='Escape'){ ev.preventDefault(); gsClose(); }
+}
+document.addEventListener('keydown', function(ev){
+  if((ev.ctrlKey||ev.metaKey) && (ev.key==='k'||ev.key==='K')){
+    if(!gsSession() || !gsEnabled()) return;
+    ev.preventDefault();
+    if(document.body.classList.contains('gs-open')) gsClose(); else gsOpen();
+  }
+});
+// Launcher zobraz, ak je používateľ prihlásený A má vyhľadávanie zapnuté v nastaveniach
+try { gsApplyEnabled(); } catch(e){}
+document.addEventListener('DOMContentLoaded', function(){ try { gsApplyEnabled(); } catch(e){} });
+
+/* ═══ LAUNCHER — dlhé podržanie (600 ms) → drag mód, pozícia sa uloží ═══ */
+var GS_LP={ key:'gs_launcher_pos_v1', t:null, dragging:false, moved:false, dx:0, dy:0 };
+function gsLpApply(){
+  var el=document.getElementById('gs-launcher'); if(!el) return;
+  var p=null; try { p=JSON.parse(localStorage.getItem(GS_LP.key)||'null'); } catch(e){}
+  if(!p || typeof p.x!=='number' || typeof p.y!=='number') return;
+  var w=el.offsetWidth||54, h=el.offsetHeight||54;
+  var x=Math.max(6, Math.min(p.x, window.innerWidth-w-6));
+  var y=Math.max(6, Math.min(p.y, window.innerHeight-h-6));
+  el.style.left=x+'px'; el.style.top=y+'px'; el.style.right='auto'; el.style.bottom='auto';
+}
+function gsLpSave(x,y){ try { localStorage.setItem(GS_LP.key, JSON.stringify({x:x,y:y})); } catch(e){} }
+function gsLpInit(){
+  var el=document.getElementById('gs-launcher'); if(!el || el._gsLp) return;
+  el._gsLp=1;
+  gsLpApply();
+  window.addEventListener('resize', function(){ try{ gsLpApply(); }catch(e){} });
+
+  function start(ev){
+    var pt=(ev.touches&&ev.touches[0])||ev;
+    GS_LP.moved=false;
+    clearTimeout(GS_LP.t);
+    GS_LP.t=setTimeout(function(){
+      GS_LP.dragging=true;
+      var r=el.getBoundingClientRect();
+      GS_LP.dx=pt.clientX-r.left; GS_LP.dy=pt.clientY-r.top;
+      el.classList.add('gs-dragging');
+      try { if(typeof haptic==='function') haptic('success'); } catch(e){}
+    }, 600);
+  }
+  function move(ev){
+    if(!GS_LP.dragging){
+      // pohyb pred aktiváciou → zruš dlhé podržanie (scroll/ťuknutie)
+      clearTimeout(GS_LP.t); return;
+    }
+    ev.preventDefault();
+    GS_LP.moved=true;
+    var pt=(ev.touches&&ev.touches[0])||ev;
+    var w=el.offsetWidth, h=el.offsetHeight;
+    var x=Math.max(6, Math.min(pt.clientX-GS_LP.dx, window.innerWidth-w-6));
+    var y=Math.max(6, Math.min(pt.clientY-GS_LP.dy, window.innerHeight-h-6));
+    el.style.left=x+'px'; el.style.top=y+'px'; el.style.right='auto'; el.style.bottom='auto';
+  }
+  function end(){
+    clearTimeout(GS_LP.t);
+    if(GS_LP.dragging){
+      GS_LP.dragging=false;
+      el.classList.remove('gs-dragging');
+      var r=el.getBoundingClientRect();
+      gsLpSave(Math.round(r.left), Math.round(r.top));
+      try { if(typeof haptic==='function') haptic('selection'); } catch(e){}
+    }
+  }
+  el.addEventListener('touchstart', start, {passive:true});
+  el.addEventListener('touchmove', move, {passive:false});
+  el.addEventListener('touchend', end);
+  el.addEventListener('touchcancel', end);
+  el.addEventListener('mousedown', start);
+  document.addEventListener('mousemove', move);
+  document.addEventListener('mouseup', end);
+  // Po ťahaní neotváraj panel (klik príde hneď po pustení)
+  el.addEventListener('click', function(ev){
+    if(GS_LP.moved){ ev.preventDefault(); ev.stopPropagation(); GS_LP.moved=false; return; }
+    gsOpen();
+  }, true);
+}
+document.addEventListener('DOMContentLoaded', function(){ try{ gsLpInit(); }catch(e){} });
+try { gsLpInit(); } catch(e){}
+
 </script>
 
 <!-- ── LOGOUT CONFIRM ── -->
@@ -36434,6 +37490,26 @@ function lonelixOpenGpForm(r){
         <button class="satori-btn" style="background:linear-gradient(135deg,#059669,#10B981);font-size:22px;padding:14px" onclick="satoriVote('up')">👍</button>
         <button class="satori-btn" style="background:linear-gradient(135deg,#DC2626,#EF4444);font-size:22px;padding:14px" onclick="satoriVote('down')">👎</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ GLOBÁLNE VYHĽADÁVANIE — launcher + command palette ═══ -->
+<button type="button" id="gs-launcher" aria-label="Hľadať" title="Hľadať (Ctrl/Cmd + K) · dlhé podržanie = presunúť">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+</button>
+<div id="gs-overlay" onclick="if(event.target===this)gsClose()">
+  <div class="gs-modal" role="dialog" aria-label="Globálne vyhľadávanie">
+    <div class="gs-searchbar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="gs-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Hľadať lekára, lekáreň, okres, sekciu…" oninput="gsOnInput()" onkeydown="gsOnKey(event)">
+      <button type="button" class="gs-esc" onclick="gsClose()">Zavrieť</button>
+    </div>
+    <div id="gs-results"></div>
+    <div class="gs-foot">
+      <span><kbd>↑</kbd><kbd>↓</kbd> pohyb</span>
+      <span><kbd>↵</kbd> otvoriť</span>
+      <span><kbd>esc</kbd> zavrieť</span>
     </div>
   </div>
 </div>
