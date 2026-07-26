@@ -3693,7 +3693,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.67.0';
+var APP_VERSION = '2.67.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -36292,6 +36292,49 @@ function gsMgrOpenRepLekarne(login){
 function gsReportAllowed(){
   try { var b=document.getElementById('mgr-subtab-reporty-btn'); return !!(b && b.getClientRects().length); } catch(e){ return false; }
 }
+/* Nájde lekárov/lekárne KONKRÉTNEHO repa podľa zvyšných slov dopytu.
+   Vďaka tomu funguje „sabol kurila" (rep + lekár), a pritom samotné „sabol"
+   nevypíše všetkých jeho lekárov — tí sa hľadajú len keď je meno repa spresnené. */
+function gsRepEntityHits(login, toks){
+  var out=[];
+  function matches(hay){
+    var n=gsNorm(hay);
+    for(var i=0;i<toks.length;i++){ if(n.indexOf(toks[i])<0) return false; }
+    return true;
+  }
+  // Lekári z jeho návštev
+  try {
+    var visits=((typeof MGR_STATE!=='undefined' && MGR_STATE.reps && MGR_STATE.reps[login] && MGR_STATE.reps[login].visits)||[]);
+    var seenD={};
+    visits.forEach(function(it){
+      if(!it) return;
+      var name=String(it.lekar||it.meno||'').trim(); if(!name) return;
+      var okres=String(it.okres||'').trim();
+      if(!matches(name+' '+okres)) return;
+      var k=gsNorm(name); if(seenD[k]) return; seenD[k]=1;
+      out.push({ type:'combo', title:name, sub:(okres?okres+' · ':'')+'Lekár · '+(gsRepName(login)), icon:'🩺',
+        run:(function(l,n){ return function(){ gsJumpMgrDoctor(l,n); }; })(login,name) });
+    });
+  } catch(e){}
+  // Lekárne z jeho teritória (agregované sú už scope-nuté na povolených repov)
+  try {
+    var seenP={};
+    (GS_PHARM_MGR||[]).forEach(function(l){
+      if(!l || String(l.login||'').trim().toLowerCase()!==String(login).trim().toLowerCase()) return;
+      var nm=String(l.lekaren||'').trim(); if(!nm) return;
+      var okres=String(l.okres||'').trim(), mesto=String(l.mesto||'').trim();
+      if(!matches(nm+' '+okres+' '+mesto)) return;
+      if(seenP[l.key]) return; seenP[l.key]=1;
+      var loc=(gsNorm(okres)===gsNorm(mesto)) ? okres : [okres,mesto].filter(Boolean).join(' · ');
+      out.push({ type:'combo', title:nm, sub:(loc?loc+' · ':'')+'Lekáreň · '+gsRepName(login), icon:'🏪',
+        run:(function(k){ return function(){ gsJumpMgrPharmacy(k); }; })(l.key) });
+    });
+  } catch(e){}
+  return out;
+}
+function gsRepName(login){
+  try { return (typeof MGR_REP_NAMES!=='undefined' && MGR_REP_NAMES[login]) || login; } catch(e){ return login; }
+}
 // Poskladá „inteligentné" ciele z kombinácie entít (rep × produkt × okres).
 // Vracia pole (0–2 položky) — prvá ide ako Top Hit.
 function gsCombo(toks){
@@ -36303,6 +36346,15 @@ function gsCombo(toks){
   // ── S reprezentantom (len manažér/admin — rep sám seba nehľadá) ──
   if(rep && mgr && rep._login){
     var login=rep._login, rname=rep.title;
+    // Rep + meno lekára/lekárne („sabol kurila") — hľadá LEN v jeho dátach, takže
+    // samotné meno repa jeho lekármi nezaplaví, ale spolu ich nájde.
+    if(c.rest.length && line!=='gyn'){
+      var hits=gsRepEntityHits(login, c.rest);
+      if(hits.length){
+        hits.slice(0,4).forEach(function(hit){ out.push(hit); });
+        return out;
+      }
+    }
     // Zámer + rep („reporty sabol", „lekárne sabol", „plnenie sabol"…)
     if(intent && line!=='gyn' && !(intent.id==='report' && !gsReportAllowed())){
       out.push({ type:'combo', title:intent.label+' · '+rname, sub:(intent.id==='okresy'&&dist)?('okres '+dist.title):(intent.label+' reprezentanta'), icon:intent.icon,
