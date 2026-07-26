@@ -3693,7 +3693,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.67.1';
+var APP_VERSION = '2.67.2';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -36643,9 +36643,19 @@ function gsOpen(){
   var ov=document.getElementById('gs-overlay'); if(!ov) return;
   document.body.classList.add('gs-open');
   ov.classList.add('show');
-  var inp=document.getElementById('gs-input'); if(inp) inp.value='';
+  // KLÁVESNICA NA MOBILE: focus musí prebehnúť SYNCHRÓNNE v rámci user-gesta (ťuknutia).
+  // Keby bol v setTimeout, iOS Safari reťaz gesta zruší a klávesnica sa neotvorí.
+  // void offsetHeight vynúti prepočet štýlu, aby input v práve zobrazenom overlayi
+  // už nebol display:none — inak Safari focus odmietne.
+  void ov.offsetHeight;
+  var inp=document.getElementById('gs-input');
+  if(inp){
+    inp.value='';
+    try { inp.focus({ preventScroll:true }); } catch(e){ try { inp.focus(); } catch(e2){} }
+  }
   gsRender();
-  setTimeout(function(){ try{ if(inp) inp.focus(); }catch(e){} }, 60);
+  // Poistka pre prehliadače, kde prvý pokus neprejde (napr. počas animácie)
+  setTimeout(function(){ try{ if(inp && document.activeElement!==inp) inp.focus({preventScroll:true}); }catch(e){} }, 80);
   gsEnsureData();
   try { if(typeof usageTrack==='function') usageTrack('gs_open','',''); } catch(e){}
 }
@@ -37554,7 +37564,7 @@ try { gsLpInit(); } catch(e){}
   <div class="gs-modal" role="dialog" aria-label="Globálne vyhľadávanie">
     <div class="gs-searchbar">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-      <input id="gs-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Hľadať lekára, lekáreň, okres, sekciu…" oninput="gsOnInput()" onkeydown="gsOnKey(event)">
+      <input id="gs-input" type="text" inputmode="search" enterkeyhint="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Hľadať lekára, lekáreň, okres, sekciu…" oninput="gsOnInput()" onkeydown="gsOnKey(event)">
       <button type="button" class="gs-esc" onclick="gsClose()">Zavrieť</button>
     </div>
     <div id="gs-results"></div>
