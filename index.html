@@ -2739,9 +2739,13 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   /* ═══════════════════ GLOBÁLNE VYHĽADÁVANIE (command palette) ═══════════════════ */
   /* Launcher — plávajúce tlačidlo, dostupné vo všetkých líniách/rolách po prihlásení.
      Navy gradient + tiene ako aktívne nav tlačidlá appky. */
+  /* touch-action:none + zákaz výberu/calloutu — inak iOS pri dlhom podržaní spustí výber
+     textu a Android kontextové menu, čo zruší dotyk (touchcancel) a ťahanie sa rozbije. */
   #gs-launcher{position:fixed;right:16px;bottom:calc(18px + var(--sab,0px));z-index:2050;width:54px;height:54px;border-radius:50%;border:none;cursor:pointer;
     background:linear-gradient(135deg,#0C1E35 0%,#13294B 100%);color:#fff;display:none;align-items:center;justify-content:center;
-    box-shadow:0 8px 22px rgba(12,30,53,.34),inset 0 1px 0 rgba(255,255,255,.10);transition:transform var(--t-fast),box-shadow var(--t-base);-webkit-tap-highlight-color:transparent}
+    box-shadow:0 8px 22px rgba(12,30,53,.34),inset 0 1px 0 rgba(255,255,255,.10);transition:transform var(--t-fast),box-shadow var(--t-base);
+    -webkit-tap-highlight-color:transparent;touch-action:none;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+  #gs-launcher svg{pointer-events:none}
   body.gs-ready #gs-launcher{display:flex}
   body.gs-open #gs-launcher{opacity:0;pointer-events:none}
   #gs-launcher:hover{box-shadow:0 12px 28px rgba(12,30,53,.42),inset 0 1px 0 rgba(255,255,255,.12)}
@@ -3693,7 +3697,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.67.2';
+var APP_VERSION = '2.67.3';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -36733,51 +36737,86 @@ function gsLpInit(){
   gsLpApply();
   window.addEventListener('resize', function(){ try{ gsLpApply(); }catch(e){} });
 
-  function start(ev){
-    var pt=(ev.touches&&ev.touches[0])||ev;
-    GS_LP.moved=false;
-    clearTimeout(GS_LP.t);
-    GS_LP.t=setTimeout(function(){
-      GS_LP.dragging=true;
-      var r=el.getBoundingClientRect();
-      GS_LP.dx=pt.clientX-r.left; GS_LP.dy=pt.clientY-r.top;
-      el.classList.add('gs-dragging');
-      try { if(typeof haptic==='function') haptic('success'); } catch(e){}
-    }, 600);
+  // Dlhé podržanie znesie chvenie prsta — bez tolerancie by sa long-press zrušil
+  // hneď pri 1px pohybe a na mobile by sa drag mód nikdy nespustil.
+  var HOLD_MS=550, JITTER=12;
+
+  function beginDrag(){
+    GS_LP.dragging=true; GS_LP.wasDrag=true;   // wasDrag → nasledujúci klik neotvorí panel
+    el.classList.add('gs-dragging');
+    try { if(GS_LP.pid!=null && el.setPointerCapture) el.setPointerCapture(GS_LP.pid); } catch(e){}
+    try { if(typeof haptic==='function') haptic('success'); } catch(e){}
   }
-  function move(ev){
-    if(!GS_LP.dragging){
-      // pohyb pred aktiváciou → zruš dlhé podržanie (scroll/ťuknutie)
-      clearTimeout(GS_LP.t); return;
-    }
-    ev.preventDefault();
-    GS_LP.moved=true;
-    var pt=(ev.touches&&ev.touches[0])||ev;
+  function moveTo(cx, cy){
     var w=el.offsetWidth, h=el.offsetHeight;
-    var x=Math.max(6, Math.min(pt.clientX-GS_LP.dx, window.innerWidth-w-6));
-    var y=Math.max(6, Math.min(pt.clientY-GS_LP.dy, window.innerHeight-h-6));
+    var x=Math.max(6, Math.min(cx-GS_LP.dx, window.innerWidth-w-6));
+    var y=Math.max(6, Math.min(cy-GS_LP.dy, window.innerHeight-h-6));
     el.style.left=x+'px'; el.style.top=y+'px'; el.style.right='auto'; el.style.bottom='auto';
   }
-  function end(){
+  function finish(){
     clearTimeout(GS_LP.t);
-    if(GS_LP.dragging){
-      GS_LP.dragging=false;
-      el.classList.remove('gs-dragging');
-      var r=el.getBoundingClientRect();
-      gsLpSave(Math.round(r.left), Math.round(r.top));
-      try { if(typeof haptic==='function') haptic('selection'); } catch(e){}
-    }
+    if(!GS_LP.dragging) return;
+    GS_LP.dragging=false;
+    el.classList.remove('gs-dragging');
+    try { if(GS_LP.pid!=null && el.releasePointerCapture) el.releasePointerCapture(GS_LP.pid); } catch(e){}
+    var r=el.getBoundingClientRect();
+    gsLpSave(Math.round(r.left), Math.round(r.top));
+    try { if(typeof haptic==='function') haptic('selection'); } catch(e){}
   }
-  el.addEventListener('touchstart', start, {passive:true});
-  el.addEventListener('touchmove', move, {passive:false});
-  el.addEventListener('touchend', end);
-  el.addEventListener('touchcancel', end);
-  el.addEventListener('mousedown', start);
-  document.addEventListener('mousemove', move);
-  document.addEventListener('mouseup', end);
-  // Po ťahaní neotváraj panel (klik príde hneď po pustení)
+
+  if(window.PointerEvent){
+    el.addEventListener('pointerdown', function(ev){
+      if(ev.button && ev.button!==0) return;
+      GS_LP.moved=false; GS_LP.wasDrag=false; GS_LP.pid=ev.pointerId;
+      GS_LP.sx=ev.clientX; GS_LP.sy=ev.clientY;
+      var r=el.getBoundingClientRect();
+      GS_LP.dx=ev.clientX-r.left; GS_LP.dy=ev.clientY-r.top;
+      clearTimeout(GS_LP.t);
+      GS_LP.t=setTimeout(beginDrag, HOLD_MS);
+    });
+    el.addEventListener('pointermove', function(ev){
+      if(!GS_LP.dragging){
+        // väčší pohyb pred aktiváciou = scroll/ťuknutie, nie podržanie
+        if(Math.abs(ev.clientX-GS_LP.sx)>JITTER || Math.abs(ev.clientY-GS_LP.sy)>JITTER) clearTimeout(GS_LP.t);
+        return;
+      }
+      ev.preventDefault();
+      GS_LP.moved=true;
+      moveTo(ev.clientX, ev.clientY);
+    });
+    el.addEventListener('pointerup', finish);
+    el.addEventListener('pointercancel', finish);
+    el.addEventListener('lostpointercapture', finish);
+  } else {
+    // Fallback pre staršie prehliadače bez Pointer Events
+    el.addEventListener('touchstart', function(ev){
+      var pt=ev.touches&&ev.touches[0]; if(!pt) return;
+      GS_LP.moved=false; GS_LP.wasDrag=false; GS_LP.sx=pt.clientX; GS_LP.sy=pt.clientY;
+      var r=el.getBoundingClientRect();
+      GS_LP.dx=pt.clientX-r.left; GS_LP.dy=pt.clientY-r.top;
+      clearTimeout(GS_LP.t);
+      GS_LP.t=setTimeout(beginDrag, HOLD_MS);
+    }, {passive:true});
+    el.addEventListener('touchmove', function(ev){
+      var pt=ev.touches&&ev.touches[0]; if(!pt) return;
+      if(!GS_LP.dragging){
+        if(Math.abs(pt.clientX-GS_LP.sx)>JITTER || Math.abs(pt.clientY-GS_LP.sy)>JITTER) clearTimeout(GS_LP.t);
+        return;
+      }
+      ev.preventDefault();
+      GS_LP.moved=true;
+      moveTo(pt.clientX, pt.clientY);
+    }, {passive:false});
+    el.addEventListener('touchend', finish);
+    el.addEventListener('touchcancel', finish);
+  }
+  // Dlhé podržanie nesmie vyvolať kontextové menu / výber textu (Android aj iOS)
+  el.addEventListener('contextmenu', function(ev){ ev.preventDefault(); });
+  el.addEventListener('selectstart', function(ev){ ev.preventDefault(); });
+  el.addEventListener('dragstart', function(ev){ ev.preventDefault(); });
+  // Po presúvaní neotváraj panel (klik príde hneď po pustení prsta)
   el.addEventListener('click', function(ev){
-    if(GS_LP.moved){ ev.preventDefault(); ev.stopPropagation(); GS_LP.moved=false; return; }
+    if(GS_LP.moved || GS_LP.wasDrag){ ev.preventDefault(); ev.stopPropagation(); GS_LP.moved=false; GS_LP.wasDrag=false; return; }
     gsOpen();
   }, true);
 }
