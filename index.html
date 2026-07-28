@@ -3697,7 +3697,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.67.3';
+var APP_VERSION = '2.67.4';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8026,20 +8026,14 @@ function settingsAppHtml(s){
   }
 
   // Záchrana chýbajúcej Golem línie — ak Golem login pri štarte zlyhal (cold start / pomalé
-  // pripojenie / druhé zariadenie), admin uviazne v Gyn/Reagile bez Golemu a prepínač ho
-  // neukáže. Tu ho vie načítať cez heslo bez odhlásenia. Podmienka: má 2+ línie (dual),
-  // nie je práve v Goleme a Golem v dual chýba.
+  // pripojenie / druhé zariadenie), používateľ uviazne v Gyn/Reagile bez Golemu a prepínač
+  // línie sa vôbec nezobrazí. Tu ho vie načítať cez heslo, bez odhlásenia.
   var _dualNow = (typeof mgrGetDual === 'function') ? mgrGetDual() : null;
-  // Len admin. Rolu admin nevieme čítať z Golemu (ten práve chýba), preto ju hľadáme
-  // v aktuálnej session aj v ktorejkoľvek línii dual-session (admin býva admin vo viacerých).
-  var _isAdminNow = false;
-  try {
-    if(typeof mgrDetectRole === 'function'){
-      if(mgrDetectRole(s) === 'admin') _isAdminNow = true;
-      else if(_dualNow){ ['gp','gyn','reagila'].forEach(function(L){ if(_dualNow[L] && mgrDetectRole(_dualNow[L]) === 'admin') _isAdminNow = true; }); }
-    }
-  } catch(e){}
-  if(_isAdminNow && _dualNow && !_dualNow.gp && typeof mgrCurrentLine === 'function' && mgrCurrentLine() !== 'gp'){
+  // Podmienka NIE JE „len admin". Golem môže vypadnúť komukoľvek, kto má účet vo viacerých
+  // líniách (AM v Goleme + KAM v Reagile, PM, BUM…) — a bez tejto záchrany uviazne v Gyn/Reagile
+  // bez Golemu a bez prepínača. Ukazujeme to len tomu, kto práve NIE JE v Goleme a Golem
+  // mu v dual session chýba; Golem-only reprezentanti (väčšina) to nikdy neuvidia.
+  if(typeof mgrCurrentLine === 'function' && mgrCurrentLine() !== 'gp' && !(_dualNow && _dualNow.gp)){
     html += '<div style="border-top:1px solid #F1F5F9;margin-top:6px;padding-top:14px">' +
               '<div class="set-card-sub">Chýba ti Golem línia?</div>' +
               '<div class="set-row-desc">Ak sa Golem pri prihlásení nenačítal (cold start servera, pomalé pripojenie alebo druhé zariadenie), môžeš ho doplniť <strong>bez odhlásenia</strong>. Zadáš heslo, appka načíta Golem líniu a prepne sa do nej.</div>' +
@@ -9096,8 +9090,14 @@ function mgrCurrentLine(){ var s = getSession(); return (s && s.line) ? s.line :
 var MGR_DUAL_MEM = null;
 function mgrSetDual(obj){
   MGR_DUAL_MEM = obj || null;
-  try { if(obj) localStorage.setItem(MGR_DUAL_KEY, JSON.stringify(obj)); } catch(e){}
-  try { if(obj) sessionStorage.setItem(MGR_DUAL_KEY, JSON.stringify(obj)); } catch(e){}
+  if(!obj) return;
+  var json = '';
+  try { json = JSON.stringify(obj); } catch(e){ return; }
+  // sessionStorage prvé (najspoľahlivejšie), localStorage cez lsSafeSet — pri plnom
+  // úložisku (iPhone + PharmaData cache) plain setItem ticho zlyhal a po reštarte PWA
+  // sa dual session stratila → používateľovi zmizol prepínač línie.
+  try { sessionStorage.setItem(MGR_DUAL_KEY, json); } catch(e){}
+  try { lsSafeSet(MGR_DUAL_KEY, json); } catch(e){}
 }
 function mgrGetDual(){
   if(MGR_DUAL_MEM) return MGR_DUAL_MEM;
@@ -9118,7 +9118,10 @@ function mgrStoreDualIfEligible(username, gpData, gynData, reagilaData){
   if(gynData && gynData.ok)         obj.gyn     = mgrBuildGynUser(username, gynData);
   if(reagilaData && reagilaData.ok) obj.reagila = mgrBuildReagilaUser(username, reagilaData);
   var lineCount = (obj.gp ? 1 : 0) + (obj.gyn ? 1 : 0) + (obj.reagila ? 1 : 0);
-  if(lineCount < 2) return;   // jedna línia → žiadny prepínač
+  if(lineCount < 1) return;
+  // Ulož aj keď je línia len jedna. Prepínač sa aj tak riadi mgrLineSwitchAvailable() (2+),
+  // ale zapísaná session je kotva pre dorobenie chýbajúcej línie (settingsLoadGolemLine):
+  // keď Golem login pri štarte vypadol (cold start / timeout), vieme ho domergovať sem.
   mgrSetDual(obj);
 }
 // Prepínač línie je dostupný, ak má používateľ v dual session 2+ línie.
@@ -9140,14 +9143,18 @@ function mgrLineTargets(){
 }
 // ── DOČASNÁ diagnostika prepínača línie (odstrániť po vyriešení) ──
 var MGR_LS_DIAG_KEY = 'potencial_gp_ls_diag';
-function mgrCaptureLineDiag(username, gpData, gynData){
+function mgrCaptureLineDiag(username, gpData, gynData, reagilaData){
   var detected = false;
   try { detected = mgrDetectRole(mgrBuildGpUser(username, gpData)) === 'admin'; } catch(e){}
   try {
     localStorage.setItem(MGR_LS_DIAG_KEY, JSON.stringify({
       ts: Date.now(), user: username,
       gpOk:  !!(gpData  && gpData.ok),  gpRole:  (gpData  && gpData.role)  || '',
+      gpFailed: !!(gpData && gpData._failed),
       gynOk: !!(gynData && gynData.ok), gynRole: (gynData && gynData.role) || '',
+      gynFailed: !!(gynData && gynData._failed),
+      reaOk: !!(reagilaData && reagilaData.ok), reaRole: (reagilaData && reagilaData.role) || '',
+      reaFailed: !!(reagilaData && reagilaData._failed),
       detectedAdmin: detected
     }));
   } catch(e){}
@@ -9159,11 +9166,23 @@ function mgrShowLineDiag(){
   if(!d){
     msg += '\nŽiadny záznam z posledného prihlásenia.\nOdhlás sa a znova prihlás (fresh login).';
   } else {
-    msg += '\nGolem login: ' + (d.gpOk ? 'OK' : 'ZLYHAL') + '  (role: "' + d.gpRole + '")';
-    msg += '\nGyn login: '   + (d.gynOk ? 'OK' : 'ZLYHAL') + '  (role: "' + d.gynRole + '")';
+    // „ZLYHAL (timeout)" = server neodpovedal → účet môže existovať, len sa nestihol overiť.
+    // „ZLYHAL (odmietnutý)" = backend vrátil ok:false → účet/heslo v tom Sheete nesedí.
+    function st(ok, failed){ return ok ? 'OK' : (failed ? 'ZLYHAL (timeout)' : 'ZLYHAL (odmietnutý)'); }
+    msg += '\nGolem login: '   + st(d.gpOk,  d.gpFailed)  + '  (role: "' + d.gpRole  + '")';
+    msg += '\nGyn login: '     + st(d.gynOk, d.gynFailed) + '  (role: "' + d.gynRole + '")';
+    msg += '\nReagila login: ' + st(d.reaOk, d.reaFailed) + '  (role: "' + (d.reaRole || '') + '")';
     msg += '\nDetekovaný admin: ' + (d.detectedAdmin ? 'áno' : 'nie');
   }
-  msg += '\nDual session uložená: ' + (dual ? 'áno' : 'nie');
+  msg += '\n\nDual session uložená: ' + (dual ? 'áno' : 'nie');
+  if(dual){
+    var have = [];
+    if(dual.gp) have.push('Golem');
+    if(dual.gyn) have.push('Gyn');
+    if(dual.reagila) have.push('Reagila');
+    msg += '\nLínie v session: ' + (have.length ? have.join(', ') : 'žiadne');
+  }
+  msg += '\nAktuálna línia: ' + (typeof mgrCurrentLine === 'function' ? mgrCurrentLine() : '?');
   alert(msg);
 }
 // Aktivuj prepínač línie BEZ odhlásenia — re-auth oba backendy na pozadí (obchádza biely-screen logout).
@@ -9622,7 +9641,7 @@ function doLogin() {
     var gynData = results[1];
     var reagilaData = results[2];
     // Ulož dostupné línie pre prepínač (ak ich má používateľ 2+)
-    try { mgrCaptureLineDiag(username, gpData, gynData); } catch(e){}
+    try { mgrCaptureLineDiag(username, gpData, gynData, reagilaData); } catch(e){}
     mgrStoreDualIfEligible(username, gpData, gynData, reagilaData);
 
     // Ktoré línie má používateľ k dispozícii (rovnaké meno+heslo v danom Sheete)
