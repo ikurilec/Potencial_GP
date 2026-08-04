@@ -3700,7 +3700,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.69.0';
+var APP_VERSION = '2.69.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -29847,12 +29847,22 @@ function rptAflRuleHtml(pl) {
 // ═══════════════════════════════════════════════════════════════════════════
 var RPT_VIEW = { scope: 'rep', username: null, period: null, expanded: {}, cmpExpanded: {}, pharmaLoadedOblasts: {}, pharmaLoading: false, _pollTries: 0 };
 
-// Aktuálne obdobie reportu — buď ručne zvolené (RPT_VIEW.period), inak automatické podľa predajov.
+var RPT_Q_MONTHS = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] };
+
+// Aktuálne obdobie reportu — ručne zvolené (RPT_VIEW.period), inak automatické podľa predajov.
+// sel.month === null → mód „celý kvartál" (kotví na posledný mesiac s dátami, label = Q).
 function rptViewPeriod() {
-  if (RPT_VIEW.period && RPT_VIEW.period.month) return rptMakePeriod(RPT_VIEW.period.month, RPT_VIEW.period.year);
+  var sel = RPT_VIEW.period;
+  if (sel && sel.q) {
+    if (sel.month) return rptMakePeriod(sel.month, sel.year);
+    var lastM = rptViewLatestMonthWithData(sel.q) || (RPT_Q_MONTHS[sel.q] || [sel.q * 3]).slice(-1)[0];
+    var p = rptMakePeriod(lastM, sel.year);
+    p.whole = true;
+    p.label = p.labelCap = 'Q' + sel.q + ' ' + sel.year;
+    return p;
+  }
   return rptPeriod();
 }
-var RPT_Q_MONTHS = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] };
 
 // Kvartál má dáta plnenia, ak má načítanú cache s aspoň jedným plánom.
 function rptViewQuarterHasData(q) {
@@ -30057,9 +30067,12 @@ function rptViewRenderControls() {
     qBtns += '<button class="rv-scope-btn' + (p.q === q ? ' active' : '') + '"' + (has ? '' : ' disabled') +
              ' onclick="rptViewSetQuarter(' + q + ')">Q' + q + '</button>';
   }
-  var mBtns = (RPT_Q_MONTHS[p.q] || []).map(function(m) {
-    return '<button class="rv-scope-btn rv-sm' + (p.month === m ? ' active' : '') + '" onclick="rptViewSetMonth(' + m + ')">' + RPT_M[m] + '</button>';
-  }).join('');
+  // „Celý Q" = agregát celého kvartálu (na porovnanie Q vs Q bez klikania mesiacov);
+  // mesiace sú voliteľné doladenie na konkrétny mesiac.
+  var mBtns = '<button class="rv-scope-btn rv-sm' + (p.whole ? ' active' : '') + '" onclick="rptViewSetQuarter(' + p.q + ')">Celý Q</button>' +
+    (RPT_Q_MONTHS[p.q] || []).map(function(m) {
+      return '<button class="rv-scope-btn rv-sm' + (!p.whole && p.month === m ? ' active' : '') + '" onclick="rptViewSetMonth(' + m + ')">' + RPT_M[m] + '</button>';
+    }).join('');
   c.innerHTML =
     '<div class="rv-ctrl-group rv-ctrl-rep">' +
       '<div class="rv-ctrl-lbl">👤 Reprezentant</div>' +
@@ -30083,14 +30096,13 @@ function rptViewSelectRep(u) { RPT_VIEW.username = u; RPT_VIEW.scope = 'rep'; RP
 function rptViewSetScope(s) { RPT_VIEW.scope = s; RPT_VIEW.expanded = {}; RPT_VIEW.cmpExpanded = {}; rptViewRenderControls(); rptViewRender(); rptViewEnsurePharma(); }
 function rptViewSetQuarter(q) {
   var yr = (RPT_VIEW.period && RPT_VIEW.period.year) || rptPeriod().year;
-  var m = rptViewLatestMonthWithData(q) || (RPT_Q_MONTHS[q] || [q * 3])[0];
-  RPT_VIEW.period = { month: m, year: yr };
+  RPT_VIEW.period = { q: q, month: null, year: yr }; // celý kvartál (bez konkrétneho mesiaca)
   RPT_VIEW.expanded = {}; RPT_VIEW.cmpExpanded = {};
   rptViewRenderControls(); rptViewRender(); rptViewEnsurePharma();
 }
 function rptViewSetMonth(m) {
   var yr = (RPT_VIEW.period && RPT_VIEW.period.year) || rptPeriod().year;
-  RPT_VIEW.period = { month: m, year: yr };
+  RPT_VIEW.period = { q: Math.ceil(m / 3), month: m, year: yr };
   RPT_VIEW.expanded = {}; RPT_VIEW.cmpExpanded = {};
   rptViewRenderControls(); rptViewRender(); rptViewEnsurePharma();
 }
@@ -30181,7 +30193,7 @@ function rvHeroHtml(reps, data, p, title, sub) {
   return '<div class="rv-hero">' +
     '<div class="rv-hero-top">' +
       '<div><div class="rv-hero-name">' + title + '</div><div class="rv-hero-sub">' + sub + '</div></div>' +
-      '<div class="rv-hero-period"><div class="rv-hero-period-m">' + p.labelCap + '</div><div class="rv-hero-period-q">Q' + p.q + ' · ' + p.qMonth + '. mesiac</div></div>' +
+      '<div class="rv-hero-period"><div class="rv-hero-period-m">' + p.labelCap + '</div><div class="rv-hero-period-q">' + (p.whole ? 'celý kvartál' : 'Q' + p.q + ' · ' + p.qMonth + '. mesiac') + '</div></div>' +
     '</div>' +
     '<div class="rv-hero-grid">' +
       '<div class="rv-hero-stat"><div class="rv-hero-big ' + cls + '">' + rptFmtPct(data.totalPct) + '</div><div class="rv-hero-stat-lbl">Plnenie Q' + p.q + '</div></div>' +
