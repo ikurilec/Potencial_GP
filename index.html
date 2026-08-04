@@ -3700,7 +3700,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.70.0';
+var APP_VERSION = '2.70.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7482,15 +7482,23 @@ function settingsPushDoSend(onlyMe){
   if(resEl){ resEl.style.display='block'; resEl.className='set-push-result'; resEl.textContent='Odosielam…'; }
   if(typeof IS_DEV !== 'undefined' && IS_DEV){ if(resEl){ resEl.className='set-push-result err'; resEl.textContent='DEV mód — push sa neodosiela.'; } return; }
   var url = settingsPushCurUrlFn()('action=sendPushCustom&title=' + encodeURIComponent(title) + '&body=' + encodeURIComponent(body) + (onlyMe ? '&onlyMe=1' : ''));
-  fetch(url, { cache:'no-store' }).then(function(r){ return r.json(); }).then(function(d){
+  // Čítame text a sami parsujeme JSON — keď backend hodí výnimku (napr. chýbajúci
+  // FCM_SERVICE_ACCOUNT), Apps Script vráti HTML stránku a appka ukáže skutočný dôvod
+  // namiesto zavádzajúceho „Chyba siete".
+  fetch(url, { cache:'no-store' }).then(function(r){ return r.text(); }).then(function(txt){
     if(!resEl) return;
+    var d = null; try { d = JSON.parse(txt); } catch(e){}
     if(d && d.ok){
       resEl.className='set-push-result ok';
       resEl.textContent = onlyMe ? ('✅ Test odoslaný (' + d.sent + '/' + d.total + ').')
                                  : ('✅ Odoslané ' + d.sent + ' z ' + d.total + ' používateľom.');
-    } else {
+    } else if(d && d.error){
       resEl.className='set-push-result err';
-      resEl.textContent='❌ ' + ((d && d.error) || 'Nepodarilo sa odoslať.');
+      resEl.textContent='❌ ' + d.error;
+    } else {
+      var snip = String(txt||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().slice(0,160);
+      resEl.className='set-push-result err';
+      resEl.textContent='❌ Backend chyba: ' + (snip || 'neznáma odpoveď');
     }
   }).catch(function(){ if(resEl){ resEl.className='set-push-result err'; resEl.textContent='❌ Chyba siete.'; } });
 }
