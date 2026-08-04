@@ -1208,6 +1208,9 @@
   .rv-scope-btn{border:1px solid #E2E8F0;background:#F8FAFC;padding:8px 12px;border-radius:9px;font-family:inherit;font-size:12px;font-weight:700;color:#64748B;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent}
   .rv-scope-btn:hover:not(.active){border-color:#CBD5E1;background:#fff;color:#0F172A}
   .rv-scope-btn.active{background:#0C1E35;border-color:#0C1E35;color:#fff}
+  .rv-scope-btn:disabled{opacity:.38;cursor:not-allowed;background:#F1F5F9}
+  .rv-scope-btn:disabled:hover{border-color:#E2E8F0;background:#F1F5F9;color:#64748B}
+  .rv-scope-btn.rv-sm{padding:6px 10px;font-size:11px}
   .rv-body{display:flex;flex-direction:column;gap:14px}
   .rv-hero-name,.rv-hero-big,.rv-hero-stat-val,.rv-hero-period-m,.rv-mini-big,.rv-prod-pct,.rv-prod-name,.rv-bm-val,.rv-rank-num,.rv-wi-total-val,.rv-wi-prod-name,.rv-sec-lbl,.rv-sk-gain,.rv-cmp-name,.rv-cmp-ms{font-family:var(--font-display)}
   .rv-hero-big,.rv-hero-stat-val,.rv-mini-big,.rv-prod-pct,.rv-bm-val,.rv-rank-num,.rv-wi-total-val,.rv-sk-gain,.rv-cmp-ms{font-variant-numeric:tabular-nums;letter-spacing:-.01em}
@@ -3697,7 +3700,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.68.0';
+var APP_VERSION = '2.69.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -28533,6 +28536,11 @@ function rptPeriod() {
       }
     }
   } catch(e){}
+  return rptMakePeriod(repMonth, repYear);
+}
+
+// Zostaví normalizovaný period objekt pre ľubovoľný mesiac/rok (rovnaký tvar ako rptPeriod).
+function rptMakePeriod(repMonth, repYear) {
   var q = Math.ceil(repMonth / 3);
   var qMonth = ((repMonth - 1) % 3) + 1;
   var lbl = RPT_SK_MONTHS[repMonth];
@@ -29837,7 +29845,33 @@ function rptAflRuleHtml(pl) {
 //   Výsledkovo zameraný mesačný report reprezentanta. Znovupoužíva rpt* dátové
 //   helpery, render je nový a interaktívny (SVG grafy, animácie, čo-keby slidery).
 // ═══════════════════════════════════════════════════════════════════════════
-var RPT_VIEW = { scope: 'rep', username: null, expanded: {}, cmpExpanded: {}, pharmaLoadedOblasts: {}, pharmaLoading: false, _pollTries: 0 };
+var RPT_VIEW = { scope: 'rep', username: null, period: null, expanded: {}, cmpExpanded: {}, pharmaLoadedOblasts: {}, pharmaLoading: false, _pollTries: 0 };
+
+// Aktuálne obdobie reportu — buď ručne zvolené (RPT_VIEW.period), inak automatické podľa predajov.
+function rptViewPeriod() {
+  if (RPT_VIEW.period && RPT_VIEW.period.month) return rptMakePeriod(RPT_VIEW.period.month, RPT_VIEW.period.year);
+  return rptPeriod();
+}
+var RPT_Q_MONTHS = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] };
+
+// Kvartál má dáta plnenia, ak má načítanú cache s aspoň jedným plánom.
+function rptViewQuarterHasData(q) {
+  var qc = PL_STATE.qCache[q];
+  return !!(qc && qc.data && qc.data.plan && Object.keys(qc.data.plan).length);
+}
+
+// Najnovší mesiac v kvartáli, ku ktorému existujú predaje (na default pri prepnutí kvartálu).
+function rptViewLatestMonthWithData(q) {
+  var qc = PL_STATE.qCache[q];
+  if (!qc || !qc.data || !qc.data.predaje) return null;
+  var months = RPT_Q_MONTHS[q] || [], best = null;
+  Object.keys(qc.data.predaje).forEach(function(u) {
+    var bm = qc.data.predaje[u] && qc.data.predaje[u].byMonth;
+    if (!bm) return;
+    months.forEach(function(m) { if (bm[m] && Object.keys(bm[m]).length && (best === null || m > best)) best = m; });
+  });
+  return best;
+}
 var RPT_WI = { mode: 'eur', prods: [], totalPlan: 0, basePred: 0 };
 var RPT_TREND = { mode: 'eur', qsel: [], series: [], allSeries: [], quarters: [], hover: [] };
 var RPT_M = { 1:'Jan',2:'Feb',3:'Mar',4:'Apr',5:'Máj',6:'Jún',7:'Júl',8:'Aug',9:'Sep',10:'Okt',11:'Nov',12:'Dec' };
@@ -30015,6 +30049,17 @@ function rptViewRenderControls() {
   var sc = scopes.map(function(s) {
     return '<button class="rv-scope-btn' + (RPT_VIEW.scope === s[0] ? ' active' : '') + '" onclick="rptViewSetScope(\'' + s[0] + '\')">' + s[1] + '</button>';
   }).join('');
+  // Výber obdobia — kvartál + mesiac (default = automatické podľa predajov)
+  var p = rptViewPeriod();
+  var qBtns = '';
+  for (var q = 1; q <= 4; q++) {
+    var has = rptViewQuarterHasData(q);
+    qBtns += '<button class="rv-scope-btn' + (p.q === q ? ' active' : '') + '"' + (has ? '' : ' disabled') +
+             ' onclick="rptViewSetQuarter(' + q + ')">Q' + q + '</button>';
+  }
+  var mBtns = (RPT_Q_MONTHS[p.q] || []).map(function(m) {
+    return '<button class="rv-scope-btn rv-sm' + (p.month === m ? ' active' : '') + '" onclick="rptViewSetMonth(' + m + ')">' + RPT_M[m] + '</button>';
+  }).join('');
   c.innerHTML =
     '<div class="rv-ctrl-group rv-ctrl-rep">' +
       '<div class="rv-ctrl-lbl">👤 Reprezentant</div>' +
@@ -30024,6 +30069,11 @@ function rptViewRenderControls() {
       '</div>' +
     '</div>' +
     '<div class="rv-ctrl-group">' +
+      '<div class="rv-ctrl-lbl">📅 Obdobie</div>' +
+      '<div class="rv-scope">' + qBtns + '</div>' +
+      '<div class="rv-scope" style="margin-top:5px">' + mBtns + '</div>' +
+    '</div>' +
+    '<div class="rv-ctrl-group">' +
       '<div class="rv-ctrl-lbl">Rozsah reportu</div>' +
       '<div class="rv-scope">' + sc + '</div>' +
     '</div>';
@@ -30031,6 +30081,19 @@ function rptViewRenderControls() {
 
 function rptViewSelectRep(u) { RPT_VIEW.username = u; RPT_VIEW.scope = 'rep'; RPT_VIEW.expanded = {}; RPT_VIEW.cmpExpanded = {}; rptViewRenderControls(); rptViewRender(); rptViewEnsurePharma(); }
 function rptViewSetScope(s) { RPT_VIEW.scope = s; RPT_VIEW.expanded = {}; RPT_VIEW.cmpExpanded = {}; rptViewRenderControls(); rptViewRender(); rptViewEnsurePharma(); }
+function rptViewSetQuarter(q) {
+  var yr = (RPT_VIEW.period && RPT_VIEW.period.year) || rptPeriod().year;
+  var m = rptViewLatestMonthWithData(q) || (RPT_Q_MONTHS[q] || [q * 3])[0];
+  RPT_VIEW.period = { month: m, year: yr };
+  RPT_VIEW.expanded = {}; RPT_VIEW.cmpExpanded = {};
+  rptViewRenderControls(); rptViewRender(); rptViewEnsurePharma();
+}
+function rptViewSetMonth(m) {
+  var yr = (RPT_VIEW.period && RPT_VIEW.period.year) || rptPeriod().year;
+  RPT_VIEW.period = { month: m, year: yr };
+  RPT_VIEW.expanded = {}; RPT_VIEW.cmpExpanded = {};
+  rptViewRenderControls(); rptViewRender(); rptViewEnsurePharma();
+}
 
 function rptViewToggleProd(key) {
   RPT_VIEW.expanded[key] = !RPT_VIEW.expanded[key];
@@ -30048,16 +30111,18 @@ function rptViewPharmaReadyForScope() {
 
 function rptViewEnsurePharma() {
   if (RPT_VIEW.pharmaLoading) return;
+  var p = rptViewPeriod();
+  var pk = p.year + 'Q' + p.q; // cache-key vrátane kvartálu → prepnutie obdobia dofetchuje pharma
   var oblasts = rptViewOblasts(rptViewScopeReps());
-  var need = oblasts.filter(function(o) { return !RPT_VIEW.pharmaLoadedOblasts[o]; });
+  var need = oblasts.filter(function(o) { return !RPT_VIEW.pharmaLoadedOblasts[o + '|' + pk]; });
   if (!need.length) return;
   RPT_VIEW.pharmaLoading = true;
   rptFetchPharmaForAllReps(need, function() {
-    need.forEach(function(o) { RPT_VIEW.pharmaLoadedOblasts[o] = true; });
+    need.forEach(function(o) { RPT_VIEW.pharmaLoadedOblasts[o + '|' + pk] = true; });
     RPT_VIEW.pharmaLoading = false;
     if (MGR_STATE.subtab === 'reporty') rptViewRender();
-    rptViewEnsurePharma(); // ak sa medzitým prepol rozsah na ďalšie oblasti
-  });
+    rptViewEnsurePharma(); // ak sa medzitým prepol rozsah/obdobie na ďalšie oblasti
+  }, p);
 }
 
 function rptViewAnimateBars() {
@@ -30070,7 +30135,7 @@ function rptViewAnimateBars() {
 // ── Hlavný render ──
 function rptViewRender() {
   var body = document.getElementById('rv-body'); if (!body) return;
-  var p = rptPeriod();
+  var p = rptViewPeriod();
   if (!rptViewReady(p)) {
     body.innerHTML = '<div class="rv-skel"></div><div class="rv-skel" style="height:220px;margin-top:14px"></div>';
     RPT_VIEW._pollTries = (RPT_VIEW._pollTries || 0) + 1;
@@ -31327,8 +31392,8 @@ function rptIosOpen() {
 // ══ ORCHESTRÁTOR ══
 // Načíta pharma GRAF dáta pre všetky oblasti (iba getPharmaGraf, nie getPharmaData —
 // report číta iba PHARMA_GRAF_STATE). Pokračuje aj s čiastočnými dátami po 20s.
-function rptFetchPharmaForAllReps(oblasts, onDone) {
-  var p = rptPeriod();
+function rptFetchPharmaForAllReps(oblasts, onDone, period) {
+  var p = period || rptPeriod();
   var kvartal = pharmaKvartalCode(p.year, p.q);
   var prevKvartal = pharmaKvartalPrev(kvartal);
   var allCodes = [];
