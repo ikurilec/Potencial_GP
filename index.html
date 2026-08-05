@@ -3700,7 +3700,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.71.0';
+var APP_VERSION = '2.72.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8046,6 +8046,18 @@ function settingsAppHtml(s){
     }
   }
 
+  // „Načítať línie" — pre manažéra/admina. Ak pri prihlásení niektorá línia vypadla
+  // (cold start Apps Scriptu / timeout), v dual session ostane len časť línií a prepínač
+  // sa nezobrazí. Týmto sa dá kedykoľvek doplniť/obnoviť celá dual session cez heslo.
+  var _isMgrLines = (typeof mgrDetectRole === 'function') && !!mgrDetectRole(s);
+  if(_isMgrLines){
+    var _switchOn = (typeof mgrShouldShowLineToggle === 'function') && mgrShouldShowLineToggle();
+    html += '<div class="set-row"><div class="set-row-label">Moje línie<br>' +
+              '<span style="font-weight:600;color:#64748B">' +
+                (_switchOn ? 'prepínač je aktívny' : 'chýba ti prepínač línie?') + '</span></div>' +
+              '<button type="button" class="set-mini-btn" onclick="settingsReloadAllLines()">↻ Načítať línie</button></div>';
+  }
+
   // Záchrana chýbajúcej Golem línie — ak Golem login pri štarte zlyhal (cold start / pomalé
   // pripojenie / druhé zariadenie), používateľ uviazne v Gyn/Reagile bez Golemu a prepínač
   // línie sa vôbec nezobrazí. Tu ho vie načítať cez heslo, bez odhlásenia.
@@ -8195,6 +8207,67 @@ function settingsLoadGolemLine(){
     if(typeof closeSettings === 'function') closeSettings();
     try { mgrSwitchLine('gp'); } catch(e){}
   });
+}
+
+// Načítaj/obnov VŠETKY moje línie (Golem + Gyn + Reagila) cez heslo, bez odhlásenia.
+// Rieši stav, keď pri prihlásení niektorá línia vypadla (cold start Apps Scriptu / timeout)
+// a v dual session ostala len časť línií → prepínač línie sa nezobrazí. Re-auth všetkých
+// troch backendov naraz (s retry), zloží KOMPLETNÚ dual session a obnoví prepínač.
+function settingsReloadAllLines(){
+  var s = (typeof getSession === 'function') ? getSession() : null;
+  if(!s || !s.username){ alert('Nie si prihlásený.'); return; }
+  var pwd = prompt('Zadaj svoje heslo — appka overí všetky tvoje línie (Golem, Gyn, Reagila) a sprístupní prepínač:');
+  if(pwd === null) return;                 // zrušené
+  if(!pwd){ alert('Heslo je prázdne.'); return; }
+  var lp = '?action=login&username=' + encodeURIComponent(s.username) +
+           '&password=' + encodeURIComponent(pwd) +
+           '&device_id=' + encodeURIComponent(authDeviceId());
+  // Každá línia: pokus s 20s, pri timeoute druhý pokus s 25s (cold start Apps Scriptu).
+  function tryLine(url){
+    function one(tmo){ return appFetchJson(url + lp, undefined, tmo).catch(function(){ return { ok:false, _failed:true }; }); }
+    return one(20000).then(function(d){ return (d && d._failed) ? one(25000) : d; });
+  }
+  var curLine = (typeof mgrCurrentLine === 'function') ? mgrCurrentLine() : 'gp';
+  Promise.all([tryLine(SCRIPT_URL), tryLine(GYN_SCRIPT_URL), tryLine(REAGILA_SCRIPT_URL)]).then(function(res){
+    var gp = res[0], gyn = res[1], rea = res[2];
+    var badPwd = [gp,gyn,rea].some(function(d){ return d && !d.ok && !d._failed; });   // backend vrátil ok:false = zlé heslo/účet
+    var d = { username: s.username };
+    if(gp  && gp.ok)  d.gp      = mgrBuildGpUser(s.username, gp);
+    if(gyn && gyn.ok) d.gyn     = mgrBuildGynUser(s.username, gyn);
+    if(rea && rea.ok) d.reagila = mgrBuildReagilaUser(s.username, rea);
+    var n = (d.gp?1:0) + (d.gyn?1:0) + (d.reagila?1:0);
+    if(n === 0){
+      alert(badPwd
+        ? 'Prihlásenie zamietnuté — nesprávne heslo.'
+        : 'Servery neodpovedali včas. Skús to znova o chvíľu.');
+      try { haptic('error'); } catch(e){}
+      return;
+    }
+    // Rolu aktuálnej línie zafixuj zo ŽIVEJ session — login môže vrátiť 'rep' fallback pri
+    // prázdnej bunke role v Sheets, a admin/manažér pohľad beží podľa živej session.
+    var curU = (curLine === 'gyn') ? d.gyn : (curLine === 'reagila') ? d.reagila : d.gp;
+    if(curU && s.role) curU.role = s.role;
+    mgrSetDual(d);
+    // Obnov aktuálnu session čerstvým tokenom danej línie (re-auth vydal nové tokeny —
+    // nech aktuálne volania nezostanú na starom, prípadne zneplatnenom tokene).
+    if(curU){
+      var live; try { live = JSON.parse(JSON.stringify(s)); } catch(e){ live = s; }
+      if(curU.session_token)      live.session_token = curU.session_token;
+      if(curU.session_expires_at) live.session_expires_at = curU.session_expires_at;
+      if(curU.device_id)          live.device_id = curU.device_id;
+      setSession(live);
+    }
+    try { mgrRenderLineSwitch(); } catch(e){}
+    try { renderSettings(); } catch(e){}
+    var have = [];
+    if(d.gp) have.push('Golem');
+    if(d.gyn) have.push('Gyn');
+    if(d.reagila) have.push('Reagila');
+    try { haptic(n >= 2 ? 'success' : 'warning'); } catch(e){}
+    alert('Načítané línie: ' + have.join(', ') + '.' + (n >= 2
+      ? '\n\nPrepínač línie je teraz dostupný v hlavičke aj tu v Nastaveniach.'
+      : '\n\nNašla sa len jedna línia. Skontroluj, či máš rovnaké meno + heslo aj v Google Sheets ostatných línií (hárok Pouzivatelia).'));
+  }).catch(function(){ alert('Chyba siete pri prihlasovaní.'); try { haptic('error'); } catch(e){} });
 }
 
 // Vymazať vyrovnávaciu pamäť (re-fetchovateľné cache; session ostáva)
@@ -9134,10 +9207,25 @@ function mgrGetDual(){
 // Ulož dostupné línie do dual session — pre KAŽDÉHO používateľa, čo má účet (rovnaké
 // meno+heslo) v 2+ líniách. Vďaka tomu vidí prepínač v Nastaveniach aj PM/BUM, nielen admin.
 function mgrStoreDualIfEligible(username, gpData, gynData, reagilaData){
+  // ZLÚČENIE, nie prepis: flaky login (cold start / timeout) nesmie zmazať už raz
+  // overené línie. Pravidlo pre každú líniu:
+  //   ok:true            → čerstvo overená, ulož
+  //   _failed (timeout)  → ZACHOVAJ predošlú známu líniu (server len neodpovedal včas)
+  //   ok:false (zamietn.)→ zahoď (účet/heslo v tom Sheete nesedí)
+  var prev = (typeof mgrGetDual === 'function') ? mgrGetDual() : null;
+  if(prev && prev.username && prev.username !== username) prev = null;   // iný používateľ → nezachovávaj
+  function pick(data, builder, prevU){
+    if(data && data.ok) return builder(username, data);
+    if(data && data._failed && prevU) return prevU;
+    return null;
+  }
   var obj = { username: username };
-  if(gpData && gpData.ok)           obj.gp      = mgrBuildGpUser(username, gpData);
-  if(gynData && gynData.ok)         obj.gyn     = mgrBuildGynUser(username, gynData);
-  if(reagilaData && reagilaData.ok) obj.reagila = mgrBuildReagilaUser(username, reagilaData);
+  var _gp  = pick(gpData,      mgrBuildGpUser,      prev && prev.gp);
+  var _gyn = pick(gynData,     mgrBuildGynUser,     prev && prev.gyn);
+  var _rea = pick(reagilaData, mgrBuildReagilaUser, prev && prev.reagila);
+  if(_gp)  obj.gp      = _gp;
+  if(_gyn) obj.gyn     = _gyn;
+  if(_rea) obj.reagila = _rea;
   var lineCount = (obj.gp ? 1 : 0) + (obj.gyn ? 1 : 0) + (obj.reagila ? 1 : 0);
   if(lineCount < 1) return;
   // Ulož aj keď je línia len jedna. Prepínač sa aj tak riadi mgrLineSwitchAvailable() (2+),
