@@ -3700,7 +3700,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.70.1';
+var APP_VERSION = '2.71.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10188,9 +10188,11 @@ var GYN_ROLE_LABEL  = { 'gyn-rep':'Reprezentant', 'gyn-am':'Area Manager', 'gyn-
 // Mapovanie produkt → línia (kľúč = lowercase názov produktu zo Sheets)
 // 'both' = produkt patrí do Pill aj Patch (zobrazí sa v oboch sekciách)
 // Produkty vyňaté z výpočtu celkového plnenia (sumár, PILL/PATCH karty) — zobrazia sa len v per-produkt sekcii
-var GYN_EXCLUDE_FROM_TOTALS = { 'escapelle': 1, 'daylla': 1, 'lenzetto': 1 };
-// Špeciál Q2 2026: daylla ešte nemá plán, ale jej predaj (€) sa má rátať do celkového
-// plnenia (čitateľ). Plán ostáva bez zmeny → % plnenia sa navýši. Od Q3 už daylla plán má.
+// Daylla: od Q3 2026 má vlastný plán → ráta sa normálne ako ostatné produkty (nie je tu). Kým plán nemá
+// (Q2 a staršie, pv=0), do totalov aj tak nespadne, lebo všade platí podmienka plan>0.
+var GYN_EXCLUDE_FROM_TOTALS = { 'escapelle': 1, 'lenzetto': 1 };
+// Špeciál Q2 2026 (historický): v Q2 daylla ešte nemala plán, ale jej predaj (€) sa rátal do celkového
+// plnenia (čitateľ). Ponechané, aby spätný pohľad na Q2 sedel. Od Q3 už daylla plán má → rátá sa štandardne.
 function gynDayllaQ2Bonus(pk, q, year){
   return pk === 'daylla' && (q|0) === 2 && (year|0) === 2026;
 }
@@ -10804,7 +10806,7 @@ var GYN_VIRTUAL_PRODUCTS = [
     key: '__oc_bez_drovelis',
     name: 'OC spolu bez Drovelis',
     linia: 'pill',
-    products: ['belara','daylette','evra','maitalon','mistra'],
+    products: ['belara','daylette','daylla','evra','maitalon','mistra'],
     order: -30,
     district: true
   },
