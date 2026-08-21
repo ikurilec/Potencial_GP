@@ -3700,7 +3700,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.72.2';
+var APP_VERSION = '2.73.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10310,6 +10310,10 @@ function gynRepAlwaysShowProduct(pk, region){
 var GYN_PHARMA_PRODUCTS = {
   // Patch
   'escapelle': 1, 'levosert': 1, 'ryeqo': 1,
+  // Fylrevy — od 202607 (IQVIA HRT súbor). MS sa ráta z estradiolového trhu
+  // (Fylrevy + Lenzetto vs Estrofem + Estradiol Besins); ostatné HRT produkty
+  // (Utrogestan, Progesterone, Livial, Ladybon) sa zobrazujú len informatívne.
+  'fylrevy': 1,
   // Pill
   'drovelis': 1, 'belara': 1, 'daylette': 1, 'daylla': 1,
   'maitalon': 1, 'mistra': 1, 'evra': 1,
