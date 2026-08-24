@@ -3700,7 +3700,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.73.2';
+var APP_VERSION = '2.73.3';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -24619,16 +24619,17 @@ function plnenieMsLabelsHtml(year, q) {
 // Pri novom roku pridaj nový záznam do PL_WORKING_DAYS_MAP.
 // Ak rok chýba v mape, použije sa fallback (iba Po-Pi bez sviatkov).
 var PL_WORKING_DAYS_MAP = {
-  // September 2026 = 21: 15. 9. (Sedembolestná) je voľno, 1. 9. sa pracuje.
+  // September 2026 = 22: 1. 9. aj 15. 9. sa u nás pracuje (potvrdené Ivanom),
+  // takže sa nič neodpočítava — je to počet všetkých pracovných dní Po-Pi.
   2026: { 1: 20, 2: 20, 3: 22, 4: 20, 5: 20, 6: 22,
-          7: 23, 8: 21, 9: 21, 10: 22, 11: 21, 12: 21 }
+          7: 23, 8: 21, 9: 22, 10: 22, 11: 21, 12: 21 }
 };
 
 // Pracovné dni od 1. do 15. dňa v mesiaci vrátane (Po-Pi mínus SK sviatky).
 // Používa sa pri polmesačných predajoch, ktoré chodia približne v polovici mesiaca.
 var PL_WORKING_DAYS_HALF_MAP = {
   2026: { 1: 9, 2: 10, 3: 10, 4: 9, 5: 10, 6: 11,
-          7: 11, 8: 10, 9: 10, 10: 11, 11: 10, 12: 11 }   // 9: 11 pracovných dní mínus 15. 9.
+          7: 11, 8: 10, 9: 11, 10: 11, 11: 10, 12: 11 }   // 9: 15. 9. sa pracuje → bez odpočtu
 };
 
 // Pracovné dni od 1. do 22. dňa vrátane (Po-Pi mínus SK sviatky) — len koncové mesiace
@@ -24636,7 +24637,7 @@ var PL_WORKING_DAYS_HALF_MAP = {
 // preto sa základ predikcie prepne z polmesačného (k 15.) na tento. Odvodené z
 // PL_WORKING_DAYS_MAP mínus pracovné dni 23.–koniec (kvôli zhode so zvyškom appky).
 var PL_WORKING_DAYS_D22_MAP = {
-  2026: { 3: 15, 6: 16, 9: 15, 12: 16 }   // 9: 21 celkom mínus 6 dní po 23. 9.
+  2026: { 3: 15, 6: 16, 9: 16, 12: 16 }   // 9: 22 celkom mínus 6 dní po 23. 9.
 };
 
 function plnenieWorkingDays(year, month) {
