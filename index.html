@@ -1394,6 +1394,9 @@
   /* Lonelix záložka je len pre Golem GP líniu */
   body.reagila-line #rep-nav-lonelix-btn,
   body.reagila-line #spn-lonelix{ display:none !important; }
+  /* Apixaban záložka je len pre Golem GP líniu */
+  body.reagila-line #rep-nav-apix-btn,
+  body.reagila-line #spn-apix{ display:none !important; }
   body.reagila-line .rep-nav,
   body.reagila-line .panel-nav{ grid-template-columns:repeat(5,1fr); }
   body.reagila-line #rep-nav-plnenie-btn, body.reagila-line #spn-pl{ order:1; }
@@ -2867,6 +2870,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   <button type="button" class="rep-nav-btn" id="rep-nav-okresy-btn" onclick="openOkresy()"><span class="rn-ico">📍</span><span class="rn-lbl">Okresy</span></button>
   <button type="button" class="rep-nav-btn" id="rep-nav-tuyory-btn" onclick="openTuyory()"><span class="rn-ico">🧬</span><span class="rn-lbl">Tuyory</span></button>
   <button type="button" class="rep-nav-btn" id="rep-nav-lonelix-btn" onclick="openLonelix()"><span class="rn-ico">🛡️</span><span class="rn-lbl">Lonelix</span></button>
+  <button type="button" class="rep-nav-btn" id="rep-nav-apix-btn" onclick="openApixaban()"><span class="rn-ico">🫀</span><span class="rn-lbl">Apixaban</span></button>
   <button type="button" class="rep-nav-btn" id="rep-nav-kal-btn" onclick="openGolemKalendar()"><span class="rn-ico gyn-cal-navico"><span class="gci-top"></span><span class="gci-day js-cal-nav-day">16</span></span><span class="rn-lbl">Kalendár</span></button>
 </div>
 
@@ -2923,6 +2927,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     <div class="hist-subtabs" id="mgr-detail-tabs">
       <button type="button" class="hist-subtab active" data-dt="gp" onclick="mgrDetailSetTab('gp',this)">🩺 GP's</button>
       <button type="button" class="hist-subtab" data-dt="tuyory" onclick="mgrDetailSetTab('tuyory',this)">🧬 Tuyory</button>
+      <button type="button" class="hist-subtab" data-dt="apixaban" onclick="mgrDetailSetTab('apixaban',this)">🫀 Apixaban</button>
     </div>
     <div class="hist-oppfilter" id="mgr-oppfilter">
       <button type="button" class="hist-oppchip active" data-of="all" onclick="mgrSetOppFilter('all',this)">Všetko</button>
@@ -3361,6 +3366,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
         <button type="button" class="hist-subtab active" data-hf="all" onclick="histSetFilter('all',this)">Všetko<span class="hist-subtab-count" id="hist-cnt-all"></span></button>
         <button type="button" class="hist-subtab" data-hf="gp" onclick="histSetFilter('gp',this)">🩺 GP's<span class="hist-subtab-count" id="hist-cnt-gp"></span></button>
         <button type="button" class="hist-subtab" data-hf="tuyory" onclick="histSetFilter('tuyory',this)">🧬 Tuyory<span class="hist-subtab-count" id="hist-cnt-tuyory"></span></button>
+        <button type="button" class="hist-subtab" data-hf="apixaban" onclick="histSetFilter('apixaban',this)">🫀 Apixaban<span class="hist-subtab-count" id="hist-cnt-apix"></span></button>
       </div>
       <div class="hist-oppfilter" id="hist-oppfilter">
         <button type="button" class="hist-oppchip active" data-of="all" onclick="histSetOppFilter('all',this)">Všetko</button>
@@ -3700,7 +3706,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.73.3';
+var APP_VERSION = '2.74.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6795,6 +6801,7 @@ function gpOppBoxHtml(item){
 
 function buildHistItemHtml(item) {
   if (item && item.type === 'tuyory') return tuyoryHistCardHtml(item);
+  if (item && item.type === 'apixaban') return apixHistCardHtml(item);
   if (item && item.type === 'lonelix-new') return lonelixNewCardHtml(item);
   var kat = String(item.kategoria||'').toUpperCase().trim();
   var cc = gpCatColor(kat);
@@ -6825,6 +6832,8 @@ function renderHistItems(items) {
   if(!items.length) {
     if (typeof _histFilter !== 'undefined' && _histFilter === 'tuyory')
       body.innerHTML = mkEmpty('clipboard', 'Žiadne Tuyory záznamy', 'Zatiaľ si nevyplnil žiadny Tuyory formulár.');
+    else if (typeof _histFilter !== 'undefined' && _histFilter === 'apixaban')
+      body.innerHTML = mkEmpty('clipboard', 'Žiadne Apixaban záznamy', apxIsOpen() ? 'Zatiaľ si nevyplnil žiadny Apixaban formulár.' : 'Zadávanie sa otvorí 2. 9. 2026.');
     else if (typeof _histFilter !== 'undefined' && _histFilter === 'gp')
       body.innerHTML = mkEmpty('clipboard', 'Žiadni všeobecní lekári', 'Zatiaľ si nezaznamenal žiadnu návštevu.');
     else
@@ -6841,7 +6850,7 @@ function renderHistItems(items) {
     return isNaN(t) ? 0 : t;
   }
   function _histAddScore(it){
-    if (it && (it.type === 'tuyory' || it.type === 'lonelix-new')) return 1e15 + _histTime(it);
+    if (it && (it.type === 'tuyory' || it.type === 'apixaban' || it.type === 'lonelix-new')) return 1e15 + _histTime(it);
     var row = (typeof it.row === 'number') ? it.row : (parseInt(it.row, 10) || 0);
     return row;
   }
@@ -6909,8 +6918,9 @@ function attachHistItemGestures() {
 var _histFilter = 'all';
 var _histOppFilter = 'all';
 function histFilterItems(items){
-  if (_histFilter === 'gp')     return items.filter(function(it){ return !(it && it.type === 'tuyory'); });
+  if (_histFilter === 'gp')     return items.filter(function(it){ return !(it && (it.type === 'tuyory' || it.type === 'apixaban')); });
   if (_histFilter === 'tuyory') return items.filter(function(it){ return it && it.type === 'tuyory'; });
+  if (_histFilter === 'apixaban') return items.filter(function(it){ return it && it.type === 'apixaban'; });
   return items;
 }
 // Príležitostný filter (v rámci GP's) — 'all' | nezisteny | rezerva | zvysit | kategoria | chyba
@@ -6918,7 +6928,7 @@ function histOppFilterItems(items){
   if(_histOppFilter === 'all') return items;
   if(_histOppFilter === 'nezisteny') return items.filter(function(it){ return it && it.type === 'lonelix-new'; });
   return items.filter(function(it){
-    if(!it || it.type === 'tuyory' || it.type === 'lonelix-new') return false;
+    if(!it || it.type === 'tuyory' || it.type === 'apixaban' || it.type === 'lonelix-new') return false;
     var o = gpOpportunity(it);
     return o && o.key === _histOppFilter;
   });
@@ -6933,10 +6943,10 @@ function histSetOppFilter(f, btn){
   histRender();
 }
 function histUpdateCounts(all){
-  var g = 0, t = 0;
-  all.forEach(function(it){ if (it && it.type === 'tuyory') t++; else g++; });
+  var g = 0, t = 0, ax = 0;
+  all.forEach(function(it){ if (it && it.type === 'tuyory') t++; else if (it && it.type === 'apixaban') ax++; else g++; });
   function setC(id, n){ var el = document.getElementById(id); if (el) el.textContent = n ? (' ' + n) : ''; }
-  setC('hist-cnt-all', all.length); setC('hist-cnt-gp', g); setC('hist-cnt-tuyory', t);
+  setC('hist-cnt-all', all.length); setC('hist-cnt-gp', g); setC('hist-cnt-tuyory', t); setC('hist-cnt-apix', ax);
 }
 function histSetFilter(f, btn){
   _histFilter = f || 'all';
@@ -6951,10 +6961,11 @@ function histRender(){
   var all = _histCombined();
   histUpdateCounts(all);
   var scoped = histFilterItems(all);
-  // Príležitostný filter — len pre GP kontext; na Tuyory tabe chips skry
+  // Príležitostný filter — len pre GP kontext; na Tuyory/Apixaban tabe chips skry
   var oppBar = document.getElementById('hist-oppfilter');
-  if(oppBar) oppBar.style.display = (_histFilter === 'tuyory') ? 'none' : 'flex';
-  if(_histFilter !== 'tuyory') scoped = histOppFilterItems(scoped);
+  var _histNoOpp = (_histFilter === 'tuyory' || _histFilter === 'apixaban');
+  if(oppBar) oppBar.style.display = _histNoOpp ? 'none' : 'flex';
+  if(!_histNoOpp) scoped = histOppFilterItems(scoped);
   var q = (((document.getElementById('hist-search') || {}).value) || '').trim().toLowerCase();
   if (q){
     scoped = scoped.filter(function(item){
@@ -6973,7 +6984,7 @@ function histRender(){
   if (_histFilter === 'gp') {
     var body = document.getElementById('hist-body');
     if (body) {
-      var gpItems = all.filter(function(it){ return !(it && it.type === 'tuyory'); });
+      var gpItems = all.filter(function(it){ return !(it && (it.type === 'tuyory' || it.type === 'apixaban')); });
       var _lonRep = (typeof LONELIX !== 'undefined' && LONELIX.records) ? LONELIX.records : [];
       body.insertAdjacentHTML('afterbegin', gpSummaryHtml(gpItems, undefined, _lonRep));
     }
@@ -6983,7 +6994,7 @@ function filterHistory(){ histRender(); }
 
 var _panelCurrent = null;
 var _panelStack = []; // navigačný stack — pamätá odkiaľ sme prišli (pre Android back button)
-var _PANEL_ORDER = { 'hist-overlay': 0, 'lb-overlay': 1, 'rep-plnenie-overlay': 2, 'lk-overlay': 3, 'okresy-overlay': 4, 'tuyory-overlay': 5, 'lonelix-overlay': 6, 'golem-cal-overlay': 7 };
+var _PANEL_ORDER = { 'hist-overlay': 0, 'lb-overlay': 1, 'rep-plnenie-overlay': 2, 'lk-overlay': 3, 'okresy-overlay': 4, 'tuyory-overlay': 5, 'lonelix-overlay': 6, 'apixaban-overlay': 7, 'golem-cal-overlay': 8 };
 
 function _panelShow(newId, isBack) {
   // Ak je ten istý panel už otvorený — nerob nič (ochrana pred dvojitým kliknutím)
@@ -7034,7 +7045,7 @@ function _panelShow(newId, isBack) {
 }
 
 function closeAllPanels() {
-  ['hist-overlay','lb-overlay','rep-plnenie-overlay','lk-overlay','okresy-overlay','tuyory-overlay','lonelix-overlay','golem-cal-overlay','lk-detail','pharma-ms-overlay','pharma-okres-overlay'].forEach(function(id){
+  ['hist-overlay','lb-overlay','rep-plnenie-overlay','lk-overlay','okresy-overlay','tuyory-overlay','lonelix-overlay','apixaban-overlay','golem-cal-overlay','lk-detail','pharma-ms-overlay','pharma-okres-overlay'].forEach(function(id){
     var el = document.getElementById(id);
     if(el) el.classList.remove('show');
   });
@@ -7056,10 +7067,11 @@ function repNavSetActive(panelId){
     'okresy-overlay':'rep-nav-okresy-btn',
     'tuyory-overlay':'rep-nav-tuyory-btn',
     'lonelix-overlay':'rep-nav-lonelix-btn',
+    'apixaban-overlay':'rep-nav-apix-btn',
     'golem-cal-overlay':'rep-nav-kal-btn'
   };
   var activeId = (panelId && map[panelId]) ? map[panelId] : 'rep-nav-form-btn';
-  ['rep-nav-form-btn','rep-nav-hist-btn','rep-nav-lb-btn','rep-nav-plnenie-btn','rep-nav-lekarne-btn','rep-nav-okresy-btn','rep-nav-tuyory-btn','rep-nav-lonelix-btn','rep-nav-kal-btn'].forEach(function(id){
+  ['rep-nav-form-btn','rep-nav-hist-btn','rep-nav-lb-btn','rep-nav-plnenie-btn','rep-nav-lekarne-btn','rep-nav-okresy-btn','rep-nav-tuyory-btn','rep-nav-lonelix-btn','rep-nav-apix-btn','rep-nav-kal-btn'].forEach(function(id){
     var b = document.getElementById(id);
     if(b) b.classList.toggle('active', id === activeId);
   });
@@ -7147,6 +7159,7 @@ function openHistory() {
 
   if (!(TUYORY.records && TUYORY.records.length)){ try { TUYORY.records = tuyoryLoadLocal(); } catch(e){} }
   if (!(LONELIX.records && LONELIX.records.length)){ try { LONELIX.records = lonelixLoadLocal(); } catch(e){} }
+  if (!(APIX.records && APIX.records.length)){ try { APIX.records = apixLoadLocal(); } catch(e){} }
   // Reset mini filtra na „Všetko" pri každom otvorení
   _histFilter = 'all';
   _histOppFilter = 'all';
@@ -8295,6 +8308,7 @@ function openDetail(idx) {
   var item = _histDetailItems[idx];
   if(!item) return;
   if(item.type === 'tuyory'){ tuyoryHistDetail(item); return; }
+  if(item.type === 'apixaban'){ apixHistDetail(item); return; }
   if(item.type === 'lonelix-new'){ lonelixOpenGpForm(item.lon); return; }
   _currentDetailIdx = idx;
   _currentDetailItem = item;
@@ -17632,8 +17646,10 @@ function mgrRenderList(){
       }
     });
     if(!segs) segs = '<span style="font-size:11px;color:#94A3B8;font-style:italic">Žiadne záznamy zatiaľ</span>';
-    // VŠETKO → pridaj chip s počtom Tuyory lekárov
+    // VŠETKO → pridaj chip s počtom Tuyory + Apixaban lekárov
     var tuyChip = (filter === 'all') ? '<span class="mgr-chip mgr-chip-tuy">🧬 Tuyory '+tuyCount+'</span>' : '';
+    var apixCountU = (typeof mgrRepApix === 'function') ? mgrRepApix(u).length : 0;
+    if (filter === 'all') tuyChip += '<span class="mgr-chip mgr-chip-apx">🫀 Apixaban '+apixCountU+'</span>';
 
     return '<div class="mgr-card" onclick="mgrOpenRep(\''+u.replace(/\'/g,"\\'")+'\')">' +
       avatarHtml +
@@ -17874,6 +17890,7 @@ function mgrDetailSetTab(t, btn){
   var ob = document.getElementById('mgr-oppfilter');
   if (ob) Array.prototype.forEach.call(ob.querySelectorAll('.hist-oppchip'), function(b){ b.classList.toggle('active', b.getAttribute('data-of') === 'all'); });
   if (MGR_STATE.detailTab === 'tuyory'){ try { mgrLoadTuyory(); } catch(e){} }   // čerstvé Tuyory dáta
+  if (MGR_STATE.detailTab === 'apixaban'){ try { mgrLoadApix(); } catch(e){} }   // čerstvé Apixaban dáta
   try { haptic('selection'); } catch(e){}
   var vs = document.getElementById('mgr-vsearch'); if (vs) vs.value = '';
   mgrRenderVisits();
@@ -17949,10 +17966,78 @@ function mgrLoadLonelix(){
     .then(function(d){ mgrApplyLonelixAll(d); })
     .catch(function(){});
 }
+// Apixaban pre manažérsky pohľad — záznamy po repoch (chip v karte + tab v detaile repa)
+function mgrRepApix(username){
+  var by = MGR_STATE.apixByRep || {};
+  return by[String(username || '').trim().toLowerCase()] || [];
+}
+function mgrApplyApixAll(d){
+  if (!d || !d.ok || !d.byRep) return;
+  var by = {};
+  Object.keys(d.byRep).forEach(function(k){ by[String(k).trim().toLowerCase()] = d.byRep[k] || []; });
+  MGR_STATE.apixByRep = by;
+  // Prekresli zoznam (počty Apixaban v kartách) + detail ak je otvorený na tabe Apixaban
+  try { mgrRenderList(); } catch(e){}
+  var det = document.getElementById('mgr-detail');
+  if (MGR_STATE.currentRep && det && det.classList.contains('show') && MGR_STATE.detailTab === 'apixaban') mgrRenderVisits();
+}
+function mgrLoadApix(){
+  if (typeof IS_DEV !== 'undefined' && IS_DEV){ MGR_STATE.apixByRep = MGR_STATE.apixByRep || {}; return; }
+  fetch(scriptUrl('action=getAllApixaban'), { cache: 'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){ mgrApplyApixAll(d); })
+    .catch(function(){});
+}
+// Apixaban header pre manažérsky detail repa — rovnaký dashboard ako vidí reprezentant
+// (hero + „Potenciál regiónu" + rozpad kardiológovia/internisti), read-only, bez cieľov.
+function mgrRepApixHeaderHtml(username){
+  var recs = mgrRepApix(username) || [];
+  var st = apixStats(recs);
+  var name = (typeof MGR_REP_NAMES !== 'undefined' && MGR_REP_NAMES[username]) || username;
+  return '<div class="mgr-tuy-scope">' +
+    '<div class="tuy-hero" style="margin-bottom:12px">' +
+      '<div class="tuy-hero-top">' +
+        '<div class="tuy-hero-badge">🫀</div>' +
+        '<div><div class="tuy-hero-title">Apixaban</div><div class="tuy-hero-sub">Prieskum trhu · apixaban · ' + mgrEscape(name) + '</div></div>' +
+      '</div>' +
+    '</div>' +
+    apixSummaryBlocksHtml(st) +
+    '<div class="tuy-stats" style="margin-bottom:12px">' +
+      '<div class="tuy-stat"><div class="tuy-stat-num is-ok">' + st.oslov + '</div><div class="tuy-stat-lbl">Oslovených lekárov</div></div>' +
+      '<div class="tuy-stat"><div class="tuy-stat-num is-ok">' + st.switchLek + '</div><div class="tuy-stat-lbl">Ochotní prestaviť z originálu</div></div>' +
+      '<div class="tuy-stat"><div class="tuy-stat-num is-ok">' + st.noviLek + '</div><div class="tuy-stat-lbl">Ochotní nastavovať nových</div></div>' +
+      '<div class="tuy-stat tuy-stat-wide">' +
+        '<div class="tuy-stat-ico">💊</div>' +
+        '<div><div class="tuy-stat-num">' + st.nastav + '</div><div class="tuy-stat-lbl">Nastavuje apixaban (z ' + st.oslov + ' oslovených)</div></div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
 function mgrOpenTuyVisit(ti){
   var recs = mgrRepTuyory(MGR_STATE.currentRep);
   var r = recs[ti]; if (!r) return;
   tuyoryHistDetail({ tuy: r });
+}
+function mgrOpenApixVisit(ai){
+  var recs = mgrRepApix(MGR_STATE.currentRep);
+  var r = recs[ai]; if (!r) return;
+  apixHistDetail({ apx: r });
+}
+// Karta Apixaban záznamu v manažérskom zozname (rovnaký štýl ako u reprezentanta)
+function mgrApixCardHtml(r, ai){
+  var dd = new Date(r.ts); var ds = isNaN(dd.getTime()) ? '' : (dd.getDate() + '.' + (dd.getMonth() + 1) + '.' + dd.getFullYear());
+  return '<div class="mgr-vitem mgr-vitem-apx" data-aidx="' + ai + '">' +
+    '<div class="mgr-vseg apx"></div>' +
+    '<div class="mgr-vbody">' +
+      '<div class="mgr-vdoc">' + mgrEscape(r.meno || '—') + (r.poznamka ? '<span class="mgr-vnote-ico" title="Obsahuje poznámku">📝</span>' : '') + '<span class="hist-apx-badge">🫀 Apixaban</span></div>' +
+      '<div class="mgr-vmeta">' +
+        '<span>📍 ' + mgrEscape(r.okres || '—') + '</span>' +
+        '<span class="sep">·</span><span>' + mgrEscape(apxSpecLbl(r.spec) || '—') + '</span>' +
+        (ds ? '<span class="sep">·</span><span>' + mgrEscape(ds) + '</span>' : '') +
+        '<span class="sep">·</span><span>' + apixHistTagLine(r) + '</span>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
 }
 // Karta Tuyory záznamu v manažérskom zozname (rovnaký štýl ako u reprezentanta)
 // Karta Lonelix-only lekára (bez GP karty) v manažérskom zozname — s poznámkou „GP potenciál nezistený"
@@ -17996,45 +18081,51 @@ function mgrRenderVisits(){
   var data = MGR_STATE.reps[username];
   var visits = (data && data.visits) || [];
   var tuyRecs = mgrRepTuyory(username);
-  var filter = MGR_STATE.detailTab || 'gp';   // tab v detaile repa: 'gp' | 'tuyory'
+  var apixRecs = (typeof mgrRepApix === 'function') ? mgrRepApix(username) : [];
+  var filter = MGR_STATE.detailTab || 'gp';   // tab v detaile repa: 'gp' | 'tuyory' | 'apixaban'
+  var isSurvey = (filter === 'tuyory' || filter === 'apixaban');   // prieskumové taby — bez GP údajov
   var det = document.getElementById('mgr-detail');
-  if (det) det.classList.toggle('mgr-detail-tuyonly', filter === 'tuyory');
+  if (det) det.classList.toggle('mgr-detail-tuyonly', isSurvey);
   var q = (document.getElementById('mgr-vsearch').value || '').toLowerCase().trim();
 
   // Aktualizuj počet v podnadpise podľa aktívneho filtra
   var dsub = document.getElementById('mgr-dsub');
   if (dsub){
     var region = (typeof MGR_AM_WEST !== 'undefined' && MGR_AM_WEST.indexOf(username) !== -1) ? 'Región West' : 'Región East';
-    var cnt = (filter === 'tuyory') ? (tuyRecs.length + ' Tuyory')
-            : (filter === 'gp')     ? (visits.length + ' návštev')
-            :                         ((visits.length + tuyRecs.length) + ' záznamov');
+    var cnt = (filter === 'tuyory')   ? (tuyRecs.length + ' Tuyory')
+            : (filter === 'apixaban') ? (apixRecs.length + ' Apixaban')
+            : (filter === 'gp')       ? (visits.length + ' návštev')
+            :                           ((visits.length + tuyRecs.length + apixRecs.length) + ' záznamov');
     dsub.textContent = region + ' · ' + cnt + ' · @' + username;
   }
 
-  var gpFiltered = (filter === 'tuyory') ? [] : (q ? visits.filter(function(v){
+  var gpFiltered = isSurvey ? [] : (q ? visits.filter(function(v){
     return String(v.lekar||'').toLowerCase().indexOf(q) !== -1 || String(v.okres||'').toLowerCase().indexOf(q) !== -1;
   }) : visits);
-  var tuyFiltered = (filter === 'gp') ? [] : (q ? tuyRecs.filter(function(r){
+  var tuyFiltered = (filter !== 'tuyory') ? [] : (q ? tuyRecs.filter(function(r){
     return String(r.meno||'').toLowerCase().indexOf(q) !== -1 || String(r.okres||'').toLowerCase().indexOf(q) !== -1;
   }) : tuyRecs);
+  var apixFiltered = (filter !== 'apixaban') ? [] : (q ? apixRecs.filter(function(r){
+    return String(r.meno||'').toLowerCase().indexOf(q) !== -1 || String(r.okres||'').toLowerCase().indexOf(q) !== -1;
+  }) : apixRecs);
 
   // Lonelix-only lekári (majú Lonelix, ale ešte nie sú v GP databáze repa) → karty „GP potenciál nezistený"
   var mgrLonAll = (typeof mgrRepLonelix === 'function') ? mgrRepLonelix(username) : [];
   var _gpKeys = {};
   visits.forEach(function(v){ _gpKeys[String(v.lekar||'').trim().toLowerCase() + '|' + String(v.okres||'').trim().toLowerCase()] = 1; });
   var _lonSeen = {};
-  var lonOnly = (filter === 'tuyory') ? [] : mgrLonAll.filter(function(r){
+  var lonOnly = isSurvey ? [] : mgrLonAll.filter(function(r){
     var key = String(r.meno||'').trim().toLowerCase() + '|' + String(r.okres||'').trim().toLowerCase();
     if (_gpKeys[key] || _lonSeen[key]) return false;
     _lonSeen[key] = 1;
     if (q && String(r.meno||'').toLowerCase().indexOf(q) === -1 && String(r.okres||'').toLowerCase().indexOf(q) === -1) return false;
     return true;
   });
-  // Príležitostný filter (len GP kontext; na Tuyory tabe chips skry)
+  // Príležitostný filter (len GP kontext; na Tuyory/Apixaban tabe chips skry)
   var _mgrOppBar = document.getElementById('mgr-oppfilter');
-  if(_mgrOppBar) _mgrOppBar.style.display = (filter === 'tuyory') ? 'none' : 'flex';
+  if(_mgrOppBar) _mgrOppBar.style.display = isSurvey ? 'none' : 'flex';
   var _mgrOppF = MGR_STATE.oppFilter || 'all';
-  if(filter !== 'tuyory' && _mgrOppF !== 'all'){
+  if(!isSurvey && _mgrOppF !== 'all'){
     if(_mgrOppF === 'nezisteny'){ gpFiltered = []; }
     else {
       gpFiltered = gpFiltered.filter(function(v){
@@ -18046,12 +18137,15 @@ function mgrRenderVisits(){
   }
   MGR_STATE._lonOnly = lonOnly;
 
-  // Tuyory header (rovnaký ako vidí reprezentant) — v detaile pod tabom Tuyory
+  // Tuyory/Apixaban header (rovnaký ako vidí reprezentant) — v detaile pod daným tabom
   var mgrTuyHeader = (filter === 'tuyory' && typeof mgrRepTuyHeaderHtml === 'function') ? mgrRepTuyHeaderHtml(username) : '';
+  if (filter === 'apixaban' && typeof mgrRepApixHeaderHtml === 'function') mgrTuyHeader = mgrRepApixHeaderHtml(username);
 
-  if(!gpFiltered.length && !tuyFiltered.length && !lonOnly.length){
+  if(!gpFiltered.length && !tuyFiltered.length && !apixFiltered.length && !lonOnly.length){
     var emptySub = q ? 'Skús iný vyhľadávací výraz.'
-                 : (filter === 'tuyory' ? 'Reprezentant zatiaľ nevyplnil žiadny Tuyory formulár.' : 'Reprezentant zatiaľ nezapísal žiadnu návštevu.');
+                 : (filter === 'tuyory' ? 'Reprezentant zatiaľ nevyplnil žiadny Tuyory formulár.'
+                 : (filter === 'apixaban' ? (apxIsOpen() ? 'Reprezentant zatiaľ nevyplnil žiadny Apixaban formulár.' : 'Zadávanie Apixaban formulára sa reprezentantom otvorí 2. 9. 2026.')
+                 : 'Reprezentant zatiaľ nezapísal žiadnu návštevu.'));
     document.getElementById('mgr-vlist').innerHTML = mgrTuyHeader + mkEmpty(q ? 'search' : 'clipboard', q ? 'Žiadne zhody' : 'Žiadne záznamy', emptySub);
     return;
   }
@@ -18087,11 +18181,12 @@ function mgrRenderVisits(){
   }).join('');
 
   var tuyHtml = tuyFiltered.map(function(r){ return mgrTuyCardHtml(r, tuyRecs.indexOf(r)); }).join('');
+  var apixHtml = apixFiltered.map(function(r){ return mgrApixCardHtml(r, apixRecs.indexOf(r)); }).join('');
   var lonHtml = lonOnly.map(function(r, li){ return mgrLonNewCardHtml(r, li); }).join('');
 
-  // Súhrn "kde je tento rep oproti línii" — pre filter Všetko/Všeobecní (nie Tuyory).
+  // Súhrn "kde je tento rep oproti línii" — pre filter Všetko/Všeobecní (nie Tuyory/Apixaban).
   var mgrGpCard = '';
-  if(filter !== 'tuyory' && visits.length && typeof gpSummaryHtml === 'function'){
+  if(!isSurvey && visits.length && typeof gpSummaryHtml === 'function'){
     try {
       var repName = (typeof MGR_REP_NAMES !== 'undefined' && MGR_REP_NAMES[username]) || username;
       var decorated = visits.map(function(v){ return gpDecorate(Object.assign({}, v)); });
@@ -18100,7 +18195,7 @@ function mgrRenderVisits(){
   }
 
   var listEl = document.getElementById('mgr-vlist');
-  listEl.innerHTML = mgrGpCard + mgrTuyHeader + gpHtml + lonHtml + tuyHtml;
+  listEl.innerHTML = mgrGpCard + mgrTuyHeader + gpHtml + lonHtml + tuyHtml + apixHtml;
 
   // Event delegation — pripojíme klik handler LEN RAZ (GP → mgrOpenVisit, Tuyory → mgrOpenTuyVisit)
   if(!listEl._clickBound){
@@ -18117,6 +18212,8 @@ function mgrRenderVisits(){
       if(lonidx !== null){ var li = parseInt(lonidx, 10); if(!isNaN(li) && MGR_STATE._lonOnly && MGR_STATE._lonOnly[li]) lonelixDoctorDetail(MGR_STATE._lonOnly[li]); return; }
       var tidx = item.getAttribute('data-tidx');
       if(tidx !== null){ var ti = parseInt(tidx, 10); if(!isNaN(ti)) mgrOpenTuyVisit(ti); return; }
+      var aidx = item.getAttribute('data-aidx');
+      if(aidx !== null){ var ai = parseInt(aidx, 10); if(!isNaN(ai)) mgrOpenApixVisit(ai); return; }
       var idx = parseInt(item.getAttribute('data-vidx'), 10);
       if(isNaN(idx)) return;
       mgrOpenVisit(idx);
@@ -18542,7 +18639,7 @@ function _handleAndroidBack() {
 
   // 14. Panely — História / Rebríček / Plnenie / Okresy / Tuyory / Lonelix / Kalendár (reprezentant)
   //     (Okresy, Tuyory a Lonelix tu predtým chýbali → systémové „späť" ich nevedelo zavrieť.)
-  var panels = ['hist-overlay', 'lb-overlay', 'rep-plnenie-overlay', 'okresy-overlay', 'tuyory-overlay', 'lonelix-overlay', 'golem-cal-overlay'];
+  var panels = ['hist-overlay', 'lb-overlay', 'rep-plnenie-overlay', 'okresy-overlay', 'tuyory-overlay', 'lonelix-overlay', 'apixaban-overlay', 'golem-cal-overlay'];
   for (var i = 0; i < panels.length; i++) {
     el = document.getElementById(panels[i]);
     if (el && el.classList.contains('show')) {
@@ -35098,6 +35195,653 @@ function lonelixDoctorDetail(r){
   ov.classList.add('show');
   document.body.style.overflow = 'hidden';
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// APIXABAN — prieskum trhu apixaban u kardiológov a internistov (Golem rep).
+// Dashboard (cieľ = počet kardiológov + internistov v regióne, potenciál po
+// špecializáciách) + formulár so 4 otázkami. Zadávanie otvorené od 2. 9. 2026.
+// Záznamy sa odosielajú do hárku „apixaban" (action=saveApixaban) a zároveň
+// cachujú do localStorage → dashboard reaguje okamžite aj bez backendu.
+// ═══════════════════════════════════════════════════════════════════
+var APIX = { records: [], answers: {}, editingTarget: false, flash: null, _flashT: null, _reqId: 0, _cdT: null };
+// Zadávanie otvorené od 2. septembra 2026, 00:00 (lokálny čas). ?dev=1 obchádza zámok (test).
+var APIX_OPEN_TS = new Date(2026, 8, 2, 0, 0, 0).getTime();
+function apxIsOpen(){
+  if (typeof IS_DEV !== 'undefined' && IS_DEV) return true;
+  return Date.now() >= APIX_OPEN_TS;
+}
+function apxSpecLbl(s){ return s === 'kardiolog' ? 'Kardiológ' : (s === 'internista' ? 'Internista' : ''); }
+function apxTargets(){
+  var p = userPrefsGet();
+  return { kard: (+(p.apixTargetKard || 0) > 0) ? +p.apixTargetKard : 0, int: (+(p.apixTargetInt || 0) > 0) ? +p.apixTargetInt : 0 };
+}
+function apixLocalKey(){ return 'apixaban_records_' + tuyUser(); }
+function apixLoadLocal(){
+  try { var raw = localStorage.getItem(apixLocalKey()); var a = raw ? JSON.parse(raw) : []; return Array.isArray(a) ? a : []; }
+  catch(e){ return []; }
+}
+function apixSaveLocal(arr){
+  try {
+    var payload = JSON.stringify(arr || []);
+    if (typeof lsSafeSet === 'function') lsSafeSet(apixLocalKey(), payload);
+    else localStorage.setItem(apixLocalKey(), payload);
+  } catch(e){}
+}
+
+// ── Otvorenie / zatvorenie záložky ──
+function openApixaban(){
+  usageSectionEnter('Apixaban');
+  _panelShow('apixaban-overlay');
+  APIX.records = apixLoadLocal();
+  APIX.answers = {};
+  APIX.flash = null;
+  var tg = apxTargets();
+  APIX.editingTarget = !(tg.kard > 0 || tg.int > 0);   // ak cieľ ešte nie je zadaný → rovno editor
+  apixRender();
+  apixFetchServer(function(){ apixRenderDashboard(); });
+}
+function closeApixaban(){ usageSectionClose(); APIX._reqId++; clearInterval(APIX._cdT); closeAllPanels(); }
+
+// ── Načítanie záznamov zo Sheetu (getApixaban). Ak backend ešte nemá handler,
+//    ticho spadneme na localStorage cache. Server je po nasadení autoritatívny. ──
+function apixApplyRecords(records){
+  if (Array.isArray(records)){ APIX.records = records; apixSaveLocal(records); }
+}
+function apixFetchServer(cb){
+  if (typeof IS_DEV !== 'undefined' && IS_DEV){ if (cb) cb(); return; }   // DEV → len localStorage
+  var user = tuyUser();
+  if (!user){ if (cb) cb(); return; }
+  var reqId = (++APIX._reqId);
+  var url;
+  try { url = scriptUrl('action=getApixaban&reprezentant=' + encodeURIComponent(user)); }
+  catch(e){ if (cb) cb(); return; }
+  fetch(url, { cache: 'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (reqId !== APIX._reqId) return;
+      if (d && d.ok && Array.isArray(d.records)){
+        APIX.records = d.records;
+        apixSaveLocal(d.records);      // server je pravda → prepíš cache
+      }
+      if (cb) cb();
+    })
+    .catch(function(){ if (cb) cb(); });   // offline / handler neexistuje → ostáva localStorage
+}
+
+// ── Render celej záložky (dashboard + formulár / zámok pred otvorením) ──
+function apixRender(){
+  var body = document.getElementById('apixaban-body');
+  if (!body) return;
+  var flashHtml = '';
+  if (APIX.flash){
+    flashHtml =
+      '<div class="tuy-success">' +
+        '<div class="tuy-success-ico">✅</div>' +
+        '<div class="tuy-success-title">Záznam uložený</div>' +
+        '<div class="tuy-success-sub">Údaje o lekárovi <strong>' + tuyEsc(APIX.flash) + '</strong> boli pridané do prehľadu.</div>' +
+      '</div>';
+  }
+  var mainHtml = apxIsOpen() ? apixFormHtml() : apixLockHtml();
+  body.innerHTML = flashHtml + '<div id="apx-dash"></div>' + mainHtml;
+  apixRenderDashboard();
+  apxSync();
+  if (!apxIsOpen()) apixStartCountdown(); else clearInterval(APIX._cdT);
+  if (APIX.flash){
+    clearTimeout(APIX._flashT);
+    APIX._flashT = setTimeout(function(){ APIX.flash = null; var b = document.getElementById('apixaban-body'); if (b){ var s = b.querySelector('.tuy-success'); if (s) s.remove(); } }, 4200);
+  }
+}
+
+// Zámok pred 2. 9. 2026 — dashboard vidno, formulár ešte nie. Živé odpočítavanie.
+function apixLockHtml(){
+  function tile(id, lbl){
+    return '<div class="apx-cd-tile"><div class="apx-cd-num" id="apx-cd-' + id + '">—</div><div class="apx-cd-lbl">' + lbl + '</div></div>';
+  }
+  return '<div class="apx-lock">' +
+    '<div class="apx-lock-ico">🔒</div>' +
+    '<div class="apx-lock-t">Zadávanie sa otvorí 2. septembra 2026</div>' +
+    '<div class="apx-cd" id="apx-countdown">' +
+      tile('d', 'dní') + '<div class="apx-cd-sep">:</div>' +
+      tile('h', 'hodín') + '<div class="apx-cd-sep">:</div>' +
+      tile('m', 'minút') + '<div class="apx-cd-sep">:</div>' +
+      tile('s', 'sekúnd') +
+    '</div>' +
+    '<div class="apx-lock-s">Formulár na záznam kardiológov a internistov bude dostupný od <strong>2. 9. 2026, 00:00</strong>. Počty lekárov v regióne si môžeš nastaviť už teraz — po otvorení hneď vidíš, koľko ti zostáva osloviť.</div>' +
+  '</div>';
+}
+// Tikajúce odpočítavanie do otvorenia — po dobehnutí sa formulár sám odomkne.
+function apixStartCountdown(){
+  clearInterval(APIX._cdT);
+  function pad(n){ return (n < 10 ? '0' : '') + n; }
+  function tick(){
+    var box = document.getElementById('apx-countdown');
+    if (!box){ clearInterval(APIX._cdT); return; }   // panel zavretý / prekreslený
+    var left = APIX_OPEN_TS - Date.now();
+    if (left <= 0){ clearInterval(APIX._cdT); apixRender(); return; }   // otvorené → prekresli na formulár
+    var d = Math.floor(left / 86400000);
+    var h = Math.floor(left % 86400000 / 3600000);
+    var m = Math.floor(left % 3600000 / 60000);
+    var s = Math.floor(left % 60000 / 1000);
+    function set(id, v){ var el = document.getElementById('apx-cd-' + id); if (el) el.textContent = v; }
+    set('d', d); set('h', pad(h)); set('m', pad(m)); set('s', pad(s));
+  }
+  tick();
+  APIX._cdT = setInterval(tick, 1000);
+}
+
+// Súhrnné čísla z aktuálnych záznamov (spolu + po špecializáciách)
+function apixStats(recs){
+  recs = recs || [];
+  function isK(r){ return r.spec === 'kardiolog'; }
+  function pac(r){ return parseInt(r.pocet, 10) || 0; }
+  function sw(r){ return parseInt(r.switchMes, 10) || 0; }
+  function nm(r){ return (r.novi === 'ano') ? (parseInt(r.noviMes, 10) || 0) : 0; }
+  var st = {
+    oslov: recs.length,
+    oslovK: recs.filter(isK).length,
+    nastav: recs.filter(function(r){ return r.nastavuje === 'ano'; }).length,
+    pacK: 0, pacI: 0, swK: 0, swI: 0, noviMesK: 0, noviMesI: 0,
+    switchLek: recs.filter(function(r){ return r.switchP === 'ano'; }).length,
+    noviLek: recs.filter(function(r){ return r.novi === 'ano'; }).length,
+    noviK: recs.filter(function(r){ return r.novi === 'ano' && isK(r); }).length
+  };
+  st.oslovI = st.oslov - st.oslovK;
+  st.noviI = st.noviLek - st.noviK;
+  recs.forEach(function(r){
+    if (isK(r)){ st.pacK += pac(r); st.swK += sw(r); st.noviMesK += nm(r); }
+    else { st.pacI += pac(r); st.swI += sw(r); st.noviMesI += nm(r); }
+  });
+  st.pacT = st.pacK + st.pacI;
+  st.swT = st.swK + st.swI;
+  st.noviMesT = st.noviMesK + st.noviMesI;
+  return st;
+}
+
+// „Potenciál regiónu" + rozpad po špecializáciách — zdieľané pre repa aj manažérsky detail
+function apixSummaryBlocksHtml(st){
+  var sumHtml =
+    '<div class="tuy-sum-lbl-top">Potenciál regiónu</div>' +
+    '<div class="tuy-summary">' +
+      '<div class="tuy-sum-col"><div class="tuy-sum-num">' + st.pacT + '</div><div class="tuy-sum-cap">Pacientov na apixabane</div></div>' +
+      '<div class="tuy-sum-div"></div>' +
+      '<div class="tuy-sum-col"><div class="tuy-sum-num" style="color:#059669">' + st.swT + '</div><div class="tuy-sum-cap">Prestaviť na GR / mesiac</div></div>' +
+      '<div class="tuy-sum-div"></div>' +
+      '<div class="tuy-sum-col"><div class="tuy-sum-num" style="color:#2563EB">~' + st.noviMesT + '</div><div class="tuy-sum-cap">Noví / mesiac</div></div>' +
+    '</div>';
+  var specHtml =
+    '<div class="apx-spec-grid">' +
+      '<div class="apx-spec-card">' +
+        '<div class="apx-spec-hd">🫀 Kardiológovia</div>' +
+        '<div class="apx-spec-num">' + st.pacK + '</div>' +
+        '<div class="apx-spec-cap">pacientov na apixabane</div>' +
+        '<div class="apx-spec-meta">' +
+          '<div class="apx-spec-row"><span>Prestaviť</span><b>' + st.swK + '/mes</b></div>' +
+          '<div class="apx-spec-row"><span>Noví</span><b>~' + st.noviMesK + '/mes</b></div>' +
+          '<div class="apx-spec-row"><span>Oslovených</span><b>' + st.oslovK + '</b></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="apx-spec-card">' +
+        '<div class="apx-spec-hd">🩺 Internisti</div>' +
+        '<div class="apx-spec-num">' + st.pacI + '</div>' +
+        '<div class="apx-spec-cap">pacientov na apixabane</div>' +
+        '<div class="apx-spec-meta">' +
+          '<div class="apx-spec-row"><span>Prestaviť</span><b>' + st.swI + '/mes</b></div>' +
+          '<div class="apx-spec-row"><span>Noví</span><b>~' + st.noviMesI + '/mes</b></div>' +
+          '<div class="apx-spec-row"><span>Oslovených</span><b>' + st.oslovI + '</b></div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  return sumHtml + specHtml;
+}
+
+// ── Dashboard: cieľ (kardiológovia + internisti v regióne) + progres + potenciál ──
+function apixRenderDashboard(){
+  var dash = document.getElementById('apx-dash');
+  if (!dash) return;
+  var recs = APIX.records || [];
+  var st = apixStats(recs);
+  var tg = apxTargets();
+  var target = tg.kard + tg.int;
+  var zostava = Math.max(0, target - st.oslov);
+
+  var targetHtml;
+  if (APIX.editingTarget || target === 0){
+    targetHtml =
+      '<div class="tuy-target">' +
+        '<div class="tuy-target-lbl">Koľko lekárov máš v regióne?</div>' +
+        '<div class="apx-tg-edit-row">' +
+          '<div class="apx-tg-edit-col"><span class="apx-tg-edit-cap">🫀 Kardiológovia</span>' +
+            '<input class="tuy-target-input" id="apx-target-kard" type="number" inputmode="numeric" min="0" step="1" ' +
+              'placeholder="0" value="' + (tg.kard > 0 ? tg.kard : '') + '" onkeydown="if(event.key===\'Enter\')apixConfirmTarget()"></div>' +
+          '<div class="apx-tg-edit-col"><span class="apx-tg-edit-cap">🩺 Internisti</span>' +
+            '<input class="tuy-target-input" id="apx-target-int" type="number" inputmode="numeric" min="0" step="1" ' +
+              'placeholder="0" value="' + (tg.int > 0 ? tg.int : '') + '" onkeydown="if(event.key===\'Enter\')apixConfirmTarget()"></div>' +
+        '</div>' +
+        '<button type="button" class="tuy-target-confirm" style="width:100%;margin-top:9px" onclick="apixConfirmTarget()">Potvrdiť</button>' +
+      '</div>';
+  } else {
+    function progRow(emo, lbl, done, tot){
+      var pct = tot > 0 ? Math.min(100, Math.round(done / tot * 100)) : 0;
+      return '<div class="apx-tg-row">' +
+        '<div class="apx-tg-row-head"><span class="apx-tg-row-lbl">' + emo + ' ' + lbl + '</span>' +
+          '<span class="apx-tg-row-num">' + done + ' z ' + tot + ' · ' + pct + '%</span></div>' +
+        '<div class="tuy-prog-bar"><div class="tuy-prog-fill" style="width:' + pct + '%"></div></div>' +
+      '</div>';
+    }
+    var pctT = target > 0 ? Math.min(100, Math.round(st.oslov / target * 100)) : 0;
+    targetHtml =
+      '<div class="tuy-target">' +
+        '<div class="tuy-target-lbl">Lekári v regióne</div>' +
+        '<div class="tuy-target-set">' +
+          '<span class="tuy-target-num">' + target + '</span>' +
+          '<span class="tuy-target-cap">' + tg.kard + ' kardiológov · ' + tg.int + ' internistov</span>' +
+          '<button type="button" class="tuy-target-edit" onclick="apixEditTarget()">Upraviť</button>' +
+        '</div>' +
+        '<div class="tuy-prog">' +
+          progRow('🫀', 'Kardiológovia', st.oslovK, tg.kard) +
+          progRow('🩺', 'Internisti', st.oslovI, tg.int) +
+          '<div class="tuy-prog-head" style="margin-top:9px">' +
+            '<span class="tuy-prog-txt">Spolu oslovených ' + st.oslov + ' z ' + target + '</span>' +
+            '<span class="tuy-prog-pct">' + pctT + '%</span>' +
+          '</div>' +
+          '<div class="tuy-prog-bar"><div class="tuy-prog-fill" style="width:' + pctT + '%"></div></div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  var statsHtml =
+    '<div class="tuy-stats">' +
+      '<div class="tuy-stat"><div class="tuy-stat-num is-ok">' + st.oslov + '</div><div class="tuy-stat-lbl">Oslovených lekárov</div></div>' +
+      '<div class="tuy-stat"><div class="tuy-stat-num ' + (zostava > 0 ? 'is-warn' : 'is-ok') + '">' + (target > 0 ? zostava : '—') + '</div><div class="tuy-stat-lbl">Zostáva osloviť</div></div>' +
+      '<div class="tuy-stat"><div class="tuy-stat-num is-ok">' + st.switchLek + '</div><div class="tuy-stat-lbl">Ochotní prestaviť z originálu</div></div>' +
+      '<div class="tuy-stat"><div class="tuy-stat-num is-ok">' + st.noviLek + '</div><div class="tuy-stat-lbl">Ochotní nastavovať nových</div></div>' +
+      '<div class="tuy-stat tuy-stat-wide">' +
+        '<div class="tuy-stat-ico">💊</div>' +
+        '<div><div class="tuy-stat-num">' + st.nastav + '</div><div class="tuy-stat-lbl">Nastavuje apixaban (z ' + st.oslov + ' oslovených)</div></div>' +
+      '</div>' +
+    '</div>';
+
+  dash.innerHTML =
+    '<div class="tuy-hero">' +
+      '<div class="tuy-hero-top">' +
+        '<div class="tuy-hero-badge">🫀</div>' +
+        '<div><div class="tuy-hero-title">Apixaban</div><div class="tuy-hero-sub">Prieskum trhu · apixaban · Gedeon Richter</div></div>' +
+      '</div>' +
+      targetHtml +
+    '</div>' +
+    apixSummaryBlocksHtml(st) +
+    statsHtml;
+}
+
+function apixEditTarget(){ APIX.editingTarget = true; apixRenderDashboard(); try { var i = document.getElementById('apx-target-kard'); if (i) i.focus(); } catch(e){} }
+function apixConfirmTarget(){
+  var iK = document.getElementById('apx-target-kard');
+  var iI = document.getElementById('apx-target-int');
+  var vK = iK ? (parseInt(iK.value, 10) || 0) : 0;
+  var vI = iI ? (parseInt(iI.value, 10) || 0) : 0;
+  if (vK < 0) vK = 0;
+  if (vI < 0) vI = 0;
+  if (vK + vI < 1){ if (iK){ iK.focus(); iK.style.borderColor = '#F87171'; } if (iI) iI.style.borderColor = '#F87171'; return; }
+  userPrefsSet({ apixTargetKard: vK, apixTargetInt: vI });
+  APIX.editingTarget = false;
+  try { haptic('success'); } catch(e){}
+  apixRenderDashboard();
+}
+
+// ── Formulár — 4 otázky postupne ──
+// Podotázka „koľko nových mesačne očakáva" — sfx = 'A' (áno vetva) / 'B' (nie vetva)
+function apixNoviMesBlock(sfx){
+  return '<div class="tuy-cond" id="apx-blk-novi' + sfx + '-mes" style="border-left-color:#059669;background:#F0FDF4;border-color:#BBF7D0">' +
+    '<label class="tuy-lbl">Koľko pacientov mesačne očakáva na nastavenie?</label>' +
+    '<input class="tuy-in" id="apx-novi' + sfx + '-mes" type="number" inputmode="numeric" min="1" step="1" placeholder="napr. 2 — ak už vie">' +
+    '<div class="tuy-hint">Nepovinné — ak lekár ešte nevie počet, nechaj prázdne. Započíta sa do potenciálu ako „Noví / mesiac".</div>' +
+  '</div>';
+}
+function apixFormHtml(){
+  return '' +
+  '<div class="tuy-card">' +
+    '<div class="tuy-form-title">📝 Nový záznam</div>' +
+    '<div class="tuy-form-desc">Zaznamenaj kardiológa alebo internistu a jeho vzťah k apixabanu / prípravku Apixaban Gedeon Richter. Hviezdičkou (<span class="tuy-req">*</span>) sú označené povinné polia.</div>' +
+  '</div>' +
+
+  '<div class="tuy-err" id="apx-err"></div>' +
+
+  // ZÁKLAD
+  '<div class="tuy-card">' +
+    '<div class="tuy-sec-lbl">Základné údaje</div>' +
+    '<div class="tuy-field"><label class="tuy-lbl">Titul, meno a priezvisko lekára<span class="tuy-req">*</span></label>' +
+      '<input class="tuy-in" id="apx-meno" type="text" autocomplete="off" placeholder="napr. MUDr. Jana Nováková" ' +
+        'onfocus="apxMenoFocus(this)" oninput="apxMenoInput(this)" onblur="apxMenoBlur(this)">' +
+      '<div class="tuy-hint" id="apx-meno-dup" style="display:none;color:#D97706">⚠︎ Tohto lekára už máš zaznamenaného.</div></div>' +
+    '<div class="tuy-field"><label class="tuy-lbl">Okres pracoviska lekára<span class="tuy-req">*</span></label>' +
+      '<div class="ac-wrap">' +
+        '<input class="tuy-in" id="apx-okres" type="text" autocomplete="off" placeholder="ťukni a vyber okres" ' +
+          'oninput="apxOkresInput(this)" onfocus="apxOkresShowAll(this)" onblur="apxOkresBlur(this)">' +
+        '<div class="ac-list" id="apx-ac-list" style="display:none"></div>' +
+      '</div>' +
+      '<div class="tuy-hint">Ponúka len okresy tvojho teritória.</div></div>' +
+    '<div class="tuy-field"><label class="tuy-lbl">Špecializácia<span class="tuy-req">*</span></label>' +
+      '<div class="tuy-seg tuy-seg-2" data-g="spec">' +
+        '<button type="button" class="tuy-opt" onclick="apxSeg(\'spec\',\'kardiolog\',this)">🫀 Kardiológ</button>' +
+        '<button type="button" class="tuy-opt" onclick="apxSeg(\'spec\',\'internista\',this)">🩺 Internista</button>' +
+      '</div>' +
+    '</div>' +
+  '</div>' +
+
+  // OTÁZKY 1–4
+  '<div class="tuy-card">' +
+    '<div class="tuy-sec-lbl">Apixaban</div>' +
+    // Q1
+    '<div class="tuy-field"><label class="tuy-lbl">Nastavuje pacientov na apixaban?<span class="tuy-req">*</span></label>' +
+      '<div class="tuy-seg tuy-seg-2" data-g="nastavuje">' +
+        '<button type="button" class="tuy-opt tuy-opt-yes" onclick="apxSeg(\'nastavuje\',\'ano\',this)">Áno</button>' +
+        '<button type="button" class="tuy-opt tuy-opt-no" onclick="apxSeg(\'nastavuje\',\'nie\',this)">Nie</button>' +
+      '</div>' +
+    '</div>' +
+
+    // Vetva ÁNO — nastavuje apixaban
+    '<div class="tuy-cond" id="apx-blk-ano">' +
+      '<div class="tuy-field"><label class="tuy-lbl">Koľko pacientov má nastavených na apixabane?<span class="tuy-req">*</span></label>' +
+        '<input class="tuy-in" id="apx-pocet" type="number" inputmode="numeric" min="0" step="1" placeholder="napr. 25"></div>' +
+
+      '<div class="tuy-field"><label class="tuy-lbl">Je ochotný prestaviť pacientov z originálu na Apixaban Gedeon Richter?<span class="tuy-req">*</span></label>' +
+        '<div class="tuy-seg tuy-seg-2" data-g="switchP">' +
+          '<button type="button" class="tuy-opt tuy-opt-yes" onclick="apxSeg(\'switchP\',\'ano\',this)">Áno</button>' +
+          '<button type="button" class="tuy-opt tuy-opt-no" onclick="apxSeg(\'switchP\',\'nie\',this)">Nie</button>' +
+        '</div>' +
+        // prestaviť ÁNO → koľko mesačne (nepovinné)
+        '<div class="tuy-cond" id="apx-blk-switch-mes" style="border-left-color:#059669;background:#F0FDF4;border-color:#BBF7D0">' +
+          '<label class="tuy-lbl">Koľko pacientov mesačne je ochotný prestaviť?</label>' +
+          '<input class="tuy-in" id="apx-switch-mes" type="number" inputmode="numeric" min="1" step="1" placeholder="napr. 3 — ak už vie">' +
+          '<div class="tuy-hint">Nepovinné — ak lekár ešte nevie počet, nechaj prázdne. Započíta sa do potenciálu ako „Prestaviť na GR / mesiac".</div>' +
+        '</div>' +
+      '</div>' +
+
+      // Nastavovanie nových — samostatná otázka (lekár môže prestaviť AJ brať nových)
+      '<div class="tuy-field" style="margin-bottom:0"><label class="tuy-lbl">Je ochotný (aj) nastaviť nových pacientov na Apixaban Gedeon Richter?<span class="tuy-req">*</span></label>' +
+        '<div class="tuy-seg tuy-seg-2" data-g="noviA">' +
+          '<button type="button" class="tuy-opt tuy-opt-yes" onclick="apxSeg(\'noviA\',\'ano\',this)">Áno</button>' +
+          '<button type="button" class="tuy-opt tuy-opt-no" onclick="apxSeg(\'noviA\',\'nie\',this)">Nie</button>' +
+        '</div>' +
+        apixNoviMesBlock('A') +
+      '</div>' +
+    '</div>' +
+
+    // Vetva NIE — nenastavuje apixaban → rovno otázka na nových
+    '<div class="tuy-cond" id="apx-blk-nie">' +
+      '<div class="tuy-field" style="margin-bottom:0"><label class="tuy-lbl">Je ochotný začať nastavovať nových pacientov na Apixaban Gedeon Richter?<span class="tuy-req">*</span></label>' +
+        '<div class="tuy-seg tuy-seg-2" data-g="noviB">' +
+          '<button type="button" class="tuy-opt tuy-opt-yes" onclick="apxSeg(\'noviB\',\'ano\',this)">Áno</button>' +
+          '<button type="button" class="tuy-opt tuy-opt-no" onclick="apxSeg(\'noviB\',\'nie\',this)">Nie</button>' +
+        '</div>' +
+        apixNoviMesBlock('B') +
+      '</div>' +
+    '</div>' +
+  '</div>' +
+
+  // Poznámka — nepovinné
+  '<div class="tuy-card">' +
+    '<div class="tuy-field"><label class="tuy-lbl">Poznámka</label>' +
+      '<textarea class="tuy-in tuy-textarea" id="apx-poznamka" rows="3" placeholder="Čokoľvek, čo si treba o lekárovi zapamätať…"></textarea>' +
+      '<div class="tuy-hint">Nepovinné — napr. preferencie lekára alebo na čo nadviazať pri ďalšej návšteve.</div></div>' +
+  '</div>' +
+
+  '<button type="button" class="tuy-submit" id="apx-submit" onclick="apixSubmit()">Odoslať záznam</button>';
+}
+
+// Segmentovaný výber (jedna hodnota)
+function apxSeg(group, val, el){
+  APIX.answers[group] = val;
+  var wrap = el.parentNode;
+  Array.prototype.forEach.call(wrap.querySelectorAll('.tuy-opt'), function(b){ b.classList.remove('on'); });
+  el.classList.add('on');
+  wrap.classList.remove('tuy-invalid');
+  try { haptic('selection'); } catch(e){}
+  apxSync();
+}
+
+// Ukáž/skry podmienené bloky podľa odpovedí
+function apxSync(){
+  var a = APIX.answers;
+  function show(id, cond){ var el = document.getElementById(id); if (el) el.classList.toggle('show', !!cond); }
+  show('apx-blk-ano', a.nastavuje === 'ano');
+  show('apx-blk-nie', a.nastavuje === 'nie');
+  show('apx-blk-switch-mes', a.nastavuje === 'ano' && a.switchP === 'ano');
+  show('apx-blk-noviA-mes', a.nastavuje === 'ano' && a.noviA === 'ano');
+  show('apx-blk-noviB-mes', a.nastavuje === 'nie' && a.noviB === 'ano');
+}
+
+function apxErr(msg, focusEl){
+  var e = document.getElementById('apx-err');
+  if (e){ e.textContent = msg; e.classList.add('show'); }
+  try { haptic('error'); } catch(er){}
+  if (focusEl){
+    try { focusEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch(er){}
+    if (focusEl.classList) focusEl.classList.add('tuy-invalid');
+    try { focusEl.focus({ preventScroll: true }); } catch(er){}
+  } else if (e){
+    try { e.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch(er){}
+  }
+}
+function apxClearErr(){ var e = document.getElementById('apx-err'); if (e){ e.classList.remove('show'); }
+  document.querySelectorAll('#apixaban-overlay .tuy-invalid').forEach(function(el){ el.classList.remove('tuy-invalid'); }); }
+
+// Validácia + odoslanie
+function apixSubmit(){
+  apxClearErr();
+  if (!apxIsOpen()) return apxErr('🔒 Zadávanie sa otvorí 2. 9. 2026.');
+  var a = APIX.answers;
+  var g = function(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; };
+
+  var meno = g('apx-meno'), okres = g('apx-okres');
+  if (!apxMenoValid(meno)) return apxErr('Zadaj titul, meno a priezvisko lekára.', document.getElementById('apx-meno'));
+  if (!okres) return apxErr('Vyber okres pracoviska lekára.', document.getElementById('apx-okres'));
+  if (!tuyOkresValid(okres)) return apxErr('Okres vyber zo zoznamu (ťukni do poľa a vyber).', document.getElementById('apx-okres'));
+  if (apixDoctorHasRecord(meno, okres)) return apxErr('🚫 Tento lekár už má Apixaban záznam — druhý sa pridať nedá.', document.getElementById('apx-meno'));
+  if (!a.spec) return apxErr('Vyber špecializáciu lekára (Kardiológ / Internista).', document.querySelector('#apixaban-overlay [data-g="spec"]'));
+  if (!a.nastavuje) return apxErr('Odpovedz, či nastavuje pacientov na apixaban.', document.querySelector('#apixaban-overlay [data-g="nastavuje"]'));
+
+  var rec = {
+    ts: new Date().toISOString(), rep: tuyUser(),
+    meno: meno, okres: okres, spec: a.spec,
+    nastavuje: a.nastavuje, pocet: '',
+    switchP: '', switchMes: '',
+    novi: '', noviMes: '',
+    poznamka: g('apx-poznamka')
+  };
+
+  if (a.nastavuje === 'ano'){
+    var pocet = g('apx-pocet');
+    if (pocet === '' || isNaN(parseInt(pocet, 10)) || parseInt(pocet, 10) < 0) return apxErr('Zadaj počet pacientov nastavených na apixabane.', document.getElementById('apx-pocet'));
+    rec.pocet = parseInt(pocet, 10);
+    if (!a.switchP) return apxErr('Odpovedz, či je ochotný prestaviť pacientov z originálu na Apixaban Gedeon Richter.', document.querySelector('#apixaban-overlay [data-g="switchP"]'));
+    rec.switchP = a.switchP;
+    if (a.switchP === 'ano'){
+      var swm = parseInt(g('apx-switch-mes'), 10);   // nepovinné — lekár ešte nemusí vedieť počet
+      if (swm && swm >= 1){
+        if (swm > rec.pocet) return apxErr('Počet na prestavenie nemôže byť väčší ako počet pacientov na apixabane (' + rec.pocet + ').', document.getElementById('apx-switch-mes'));
+        rec.switchMes = swm;
+      }
+    }
+    // Nastavovanie nových — samostatná otázka (nezávislá od prestavenia → lekár môže oboje)
+    if (!a.noviA) return apxErr('Odpovedz, či je ochotný nastaviť nových pacientov na Apixaban Gedeon Richter.', document.querySelector('#apixaban-overlay [data-g="noviA"]'));
+    rec.novi = a.noviA;
+    if (a.noviA === 'ano'){
+      var nmA = parseInt(g('apx-noviA-mes'), 10);   // nepovinné
+      if (nmA && nmA >= 1) rec.noviMes = nmA;
+    }
+  } else {
+    // nenastavuje apixaban → rovno otázka na nových
+    if (!a.noviB) return apxErr('Odpovedz, či je ochotný začať nastavovať nových pacientov na Apixaban Gedeon Richter.', document.querySelector('#apixaban-overlay [data-g="noviB"]'));
+    rec.novi = a.noviB;
+    if (a.noviB === 'ano'){
+      var nmB = parseInt(g('apx-noviB-mes'), 10);   // nepovinné
+      if (nmB && nmB >= 1) rec.noviMes = nmB;
+    }
+  }
+
+  // 1) optimisticky do cache → dashboard + História reagujú okamžite
+  APIX.records = (APIX.records || []).concat([rec]);
+  apixSaveLocal(APIX.records);
+
+  // 2) odoslanie do Sheetu (action=saveApixaban) rovnakým iframe mechanizmom ako GP formulár
+  apixSendToSheet(rec);
+
+  // 3) reset formulára + potvrdenie + prekreslený dashboard
+  APIX.answers = {};
+  APIX.flash = meno;
+  try { haptic('success'); } catch(e){}
+  apixRender();
+  try { document.getElementById('apixaban-overlay').scrollTo({ top: 0, behavior: 'smooth' }); } catch(e){ var o = document.getElementById('apixaban-overlay'); if (o) o.scrollTop = 0; }
+}
+
+function apixSendToSheet(rec){
+  try {
+    if (typeof IS_DEV !== 'undefined' && IS_DEV) return;                                   // DEV → nepíš do Sheets
+    if (typeof SCRIPT_URL === 'string' && SCRIPT_URL.indexOf('VLOZ_SEM') === 0) return;   // backend nenakonfigurovaný
+    var data = {
+      action: 'saveApixaban',
+      reprezentant: rec.rep, meno: rec.meno, okres: rec.okres, specializacia: rec.spec,
+      nastavuje: rec.nastavuje, pocet: rec.pocet,
+      switch_ochota: rec.switchP, switch_mes: rec.switchMes,
+      novi: rec.novi, novi_mes: rec.noviMes,
+      poznamka: rec.poznamka
+    };
+    var params = Object.keys(data).map(function(k){ return encodeURIComponent(k) + '=' + encodeURIComponent(String(data[k])); }).join('&');
+    var iframe = document.getElementById('gs_frame');
+    if (!iframe){
+      iframe = document.createElement('iframe');
+      iframe.id = 'gs_frame';
+      iframe.style.cssText = 'display:none;width:0;height:0;border:0;position:absolute;left:-9999px';
+      document.body.appendChild(iframe);
+    }
+    iframe.src = scriptUrl(params);
+  } catch(e){}
+}
+
+// ── OKRES autocomplete (reuse pool/validácia z Tuyory, len apx- ID) ──
+function apxOkresShowAll(el){
+  var pool = tuyOkresPool();
+  var list = document.getElementById('apx-ac-list'); if (!list) return;
+  var val = el.value.trim().toLowerCase();
+  var items = val ? pool.filter(function(o){ return o.toLowerCase().indexOf(val) === 0; }) : pool;
+  if (!items.length){ list.style.display = 'none'; return; }
+  list.innerHTML = items.map(function(m){
+    var disp = val ? '<strong>' + m.slice(0, val.length) + '</strong>' + m.slice(val.length) : m;
+    return '<div class="ac-item" onclick="apxOkresPick(\'' + m.replace(/'/g, "\\'") + '\')">' + disp + '</div>';
+  }).join('');
+  list.style.display = 'block';
+}
+function apxOkresInput(el){ el.classList.remove('tuy-invalid'); apxOkresShowAll(el); apxMenoDupCheck(); }
+function apxOkresPick(okres){
+  var el = document.getElementById('apx-okres'); if (el){ el.value = okres; el.classList.remove('tuy-invalid'); }
+  var list = document.getElementById('apx-ac-list'); if (list) list.style.display = 'none';
+  try { haptic('selection'); } catch(e){}
+  apxMenoDupCheck();
+}
+function apxOkresBlur(el){ setTimeout(function(){ var l = document.getElementById('apx-ac-list'); if (l) l.style.display = 'none'; }, 250); }
+
+// ── MENO lekára (rovnaká logika ako Tuyory: titul, kapitalizácia, duplicita) ──
+function apxMenoFocus(el){
+  if (!el.value) el.value = 'MUDr. ';
+  setTimeout(function(){ try { el.setSelectionRange(el.value.length, el.value.length); } catch(e){} }, 0);
+}
+function apxMenoValid(v){
+  v = String(v || '').trim(); if (!v) return false;
+  var words = v.split(/\s+/).filter(function(w){ return w.length > 0; });
+  var real = words.filter(function(w){ return TUY_TITLES.indexOf(w.toLowerCase()) === -1; });
+  return real.length >= 2;
+}
+function apxMenoInput(el){
+  if (typeof capAfterSpace === 'function') capAfterSpace(el);
+  el.classList.remove('tuy-invalid');
+  apxMenoDupCheck();
+}
+function apxMenoBlur(el){
+  var v = el.value.trim();
+  var words = v.split(/\s+/).filter(function(w){ return w.length > 0; });
+  if (v === '' || words.every(function(w){ return TUY_TITLES.indexOf(w.toLowerCase()) !== -1; })) el.value = '';
+  apxMenoDupCheck();
+}
+// Poistka proti dvojitému Apixaban záznamu (normalizované meno bez titulu + okres)
+function apixDoctorHasRecord(meno, okres){
+  var n = (typeof lonNormName === 'function') ? lonNormName(meno) : String(meno || '').trim().toLowerCase();
+  var o = String(okres || '').trim().toLowerCase();
+  if (!n) return false;
+  return (APIX.records || []).some(function(r){
+    var rn = (typeof lonNormName === 'function') ? lonNormName(r.meno) : String(r.meno || '').trim().toLowerCase();
+    return rn === n && String(r.okres || '').trim().toLowerCase() === o;
+  });
+}
+function apxMenoDupCheck(){
+  var dup = document.getElementById('apx-meno-dup');
+  var submit = document.getElementById('apx-submit');
+  var meno = (document.getElementById('apx-meno') || {}).value || '';
+  var okres = (document.getElementById('apx-okres') || {}).value || '';
+  var hit = apixDoctorHasRecord(meno, okres);
+  if (dup){
+    if (hit){ dup.innerHTML = '🚫 Tento lekár už má Apixaban záznam — druhý sa pridať nedá.'; dup.style.display = 'block'; dup.style.color = '#B91C1C'; }
+    else { dup.style.display = 'none'; dup.style.color = '#D97706'; }
+  }
+  if (submit){ submit.disabled = !!hit; submit.style.opacity = hit ? '.5' : ''; }
+}
+
+// ── HISTÓRIA — Apixaban záznamy medzi GP návštevami ──
+function apixHistItems(){
+  if (!APIX.records || !APIX.records.length){ try { APIX.records = apixLoadLocal(); } catch(e){} }
+  return (APIX.records || []).map(function(r){
+    var d = new Date(r.ts); if (isNaN(d.getTime())) d = new Date();
+    var dateStr = d.getDate() + '.' + (d.getMonth() + 1) + '.' + d.getFullYear();
+    var dk = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+    var cas = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+    return { type: 'apixaban', apx: r, lekar: r.meno, okres: r.okres, dateStr: dateStr, dateKey: dk, cas: cas };
+  });
+}
+function apixHistTagLine(r){
+  var tag = (r.nastavuje === 'ano') ? ('Na apixabane: ' + (r.pocet === '' || r.pocet == null ? '—' : r.pocet)) : 'Nenastavuje apixaban';
+  var parts = [];
+  if (r.switchP === 'ano') parts.push('prestaviť: ' + (r.switchMes ? (r.switchMes + '/mes') : 'áno'));
+  if (r.novi === 'ano') parts.push('noví: ' + (r.noviMes ? ('~' + r.noviMes + '/mes') : 'áno'));
+  return tag + (parts.length ? (' · ' + parts.join(' · ')) : '');
+}
+function apixHistCardHtml(item){
+  var idx = _histDetailItems.length;
+  _histDetailItems.push(item);
+  var r = item.apx || {};
+  return '<div class="hist-item hist-item-apx" data-idx="' + idx + '" onclick="openDetail(' + idx + ')" style="cursor:pointer">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' +
+      '<div class="hist-item-name">' + mgrEscape(r.meno || '—') + (r.poznamka ? ' <span title="Obsahuje poznámku">📝</span>' : '') + '</div>' +
+      '<span class="hist-apx-badge">🫀 Apixaban</span>' +
+    '</div>' +
+    '<div class="hist-item-meta">' + mgrEscape(r.okres || '—') + ' · ' + mgrEscape(apxSpecLbl(r.spec) || '—') + ' · ' + mgrEscape(item.dateStr || '') + ' · ' + mgrEscape(item.cas || '') + '</div>' +
+    '<div class="hist-tuy-line">' + apixHistTagLine(r) + '</div>' +
+  '</div>';
+}
+function apixHistDetail(item){
+  var r = (item && item.apx) ? item.apx : item;
+  var ov = document.getElementById('tuy-detail-overlay');
+  var body = document.getElementById('tuy-detail-body');
+  var title = document.getElementById('tuy-detail-title');
+  if (!ov || !body) return;
+  if (title) title.textContent = r.meno || 'Apixaban záznam';
+  var _tbd = document.getElementById('tuy-detail-badge'); if (_tbd) _tbd.textContent = '🫀 Prieskum Apixaban';
+  function row(k, v){ return (v || v === 0) && v !== '' ? '<div class="tuy-dt-row"><span class="tuy-dt-k">' + k + '</span><span class="tuy-dt-v">' + tuyEsc(v) + '</span></div>' : ''; }
+  var html = '';
+  html += row('Okres', r.okres);
+  html += row('Špecializácia', apxSpecLbl(r.spec));
+  html += row('Nastavuje apixaban', r.nastavuje === 'ano' ? 'Áno' : 'Nie');
+  if (r.nastavuje === 'ano'){
+    html += row('Pacientov na apixabane', r.pocet);
+    if (r.switchP) html += row('Ochotný prestaviť z originálu', r.switchP === 'ano' ? 'Áno' : 'Nie');
+    if (r.switchP === 'ano' && r.switchMes) html += row('Prestaviť na GR / mesiac', r.switchMes);
+  }
+  if (r.novi) html += row('Ochotný nastaviť nových na GR', r.novi === 'ano' ? 'Áno' : 'Nie');
+  if (r.novi === 'ano' && r.noviMes) html += row('Očakáva nových / mesiac', r.noviMes);
+  if (r.poznamka) html += '<div class="tuy-dt-note"><div class="tuy-dt-note-k">📝 Poznámka</div><div class="tuy-dt-note-v">' + tuyEsc(r.poznamka).replace(/\n/g, '<br>') + '</div></div>';
+  body.innerHTML = html || '<div class="tuy-hint">Bez ďalších údajov.</div>';
+  ov.classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
 // GP história + Tuyory záznamy dokopy (zoradenie/zoskupenie rieši renderHistItems podľa dátumu)
 // ══════════════════════════════════════════════════════════════════════════
 // ── VRSTVA ZMIEN (override) — aktualizácie počtov od repov/manažéra/admina ──
@@ -35318,10 +36062,10 @@ function gpFetchOverrides(){
 function gpBootstrapRep(username, done){
   if((typeof IS_DEV !== 'undefined' && IS_DEV) || typeof scriptUrl !== 'function'){
     // DEV/localhost bez backendu — nechaj pôvodné (ktoré si samy poradia)
-    try { gpFetchOverrides(); gpFetchLineStats(); tuyoryFetchServer(); lonelixFetchServer(); } catch(e){}
+    try { gpFetchOverrides(); gpFetchLineStats(); tuyoryFetchServer(); lonelixFetchServer(); apixFetchServer(); } catch(e){}
     if(done) done(); return;
   }
-  var url = scriptUrl('action=bootstrap&parts=overrides,linestats,tuyoryrep,lonelixrep&reprezentant=' + encodeURIComponent(username || ''));
+  var url = scriptUrl('action=bootstrap&parts=overrides,linestats,tuyoryrep,lonelixrep,apixrep&reprezentant=' + encodeURIComponent(username || ''));
   fetch(url, { cache:'no-store' })
     .then(function(r){ return r.json(); })
     .then(function(d){
@@ -35330,6 +36074,7 @@ function gpBootstrapRep(username, done){
       try { gpApplyLineStats(d.lineStats || null); } catch(e){}
       try { if(d.tuyoryRep && Array.isArray(d.tuyoryRep.records)) tuyoryApplyRecords(d.tuyoryRep.records); } catch(e){}
       try { if(d.lonelixRep && Array.isArray(d.lonelixRep.records)) lonelixApplyRecords(d.lonelixRep.records); } catch(e){}
+      try { if(d.apixRep && Array.isArray(d.apixRep.records)) apixApplyRecords(d.apixRep.records); else apixFetchServer(); } catch(e){}
       if(done) done();
     })
     .catch(function(){
@@ -35338,15 +36083,16 @@ function gpBootstrapRep(username, done){
       try { gpFetchLineStats(); } catch(e){}
       try { tuyoryFetchServer(); } catch(e){}
       try { lonelixFetchServer(); } catch(e){}
+      try { apixFetchServer(); } catch(e){}
       if(done) done();
     });
 }
 function gpBootstrapMgr(done){
   if((typeof IS_DEV !== 'undefined' && IS_DEV) || typeof scriptUrl !== 'function'){
-    try { gpFetchOverrides(); gpFetchLineStats(); mgrLoadTuyory(); mgrLoadLonelix(); } catch(e){}
+    try { gpFetchOverrides(); gpFetchLineStats(); mgrLoadTuyory(); mgrLoadLonelix(); mgrLoadApix(); } catch(e){}
     if(done) done(); return;
   }
-  var url = scriptUrl('action=bootstrap&parts=overrides,linestats,alltuyory,alllonelix');
+  var url = scriptUrl('action=bootstrap&parts=overrides,linestats,alltuyory,alllonelix,allapix');
   fetch(url, { cache:'no-store' })
     .then(function(r){ return r.json(); })
     .then(function(d){
@@ -35355,6 +36101,7 @@ function gpBootstrapMgr(done){
       try { gpApplyLineStats(d.lineStats || null); } catch(e){}
       try { if(d.allTuyory) mgrApplyTuyoryAll(d.allTuyory); } catch(e){}
       try { if(d.allLonelix) mgrApplyLonelixAll(d.allLonelix); } catch(e){}
+      try { if(d.allApix) mgrApplyApixAll(d.allApix); else mgrLoadApix(); } catch(e){}
       if(done) done();
     })
     .catch(function(){
@@ -35362,6 +36109,7 @@ function gpBootstrapMgr(done){
       try { gpFetchLineStats(); } catch(e){}
       try { mgrLoadTuyory(); } catch(e){}
       try { mgrLoadLonelix(); } catch(e){}
+      try { mgrLoadApix(); } catch(e){}
       if(done) done();
     });
 }
@@ -35631,8 +36379,9 @@ function _histCombined(){
     return gpDecorate(Object.assign({}, it));   // dekóruj kópie — RAW ostáva baseline
   });
   var tuy = (typeof tuyoryHistItems === 'function') ? tuyoryHistItems() : [];
+  var apx = (typeof apixHistItems === 'function') ? apixHistItems() : [];
   var lon = (typeof lonelixOnlyHistItems === 'function') ? lonelixOnlyHistItems() : [];
-  return gp.concat(tuy).concat(lon);
+  return gp.concat(tuy).concat(apx).concat(lon);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -36148,7 +36897,8 @@ var GS_SECTION_KW = {
   'aktivita':'statistiky pouzivanie analytika aktivita cas',
   'reporty':'report reporty mesacny prehlad pdf',
   'tuyory':'tuyory tocilizumab prieskum dotaznik',
-  'lonelix':'lonelix inozin pranobex prieskum dotaznik'
+  'lonelix':'lonelix inozin pranobex prieskum dotaznik',
+  'apixaban':'apixaban kardiolog internista eliquis prieskum dotaznik'
 };
 /* ── SEKCIE — z viditeľných nav tlačidiel (dedí všetky line/role pravidlá) ── */
 function gsSections(){
@@ -37475,6 +38225,46 @@ try { gsLpInit(); } catch(e){}
   #tuy-detail-overlay .tuy-dt-note{padding:12px 0 2px}
   #tuy-detail-overlay .tuy-dt-note-k{font-size:12px;font-weight:600;color:#94A3B8;margin-bottom:6px}
   #tuy-detail-overlay .tuy-dt-note-v{font-size:13px;font-weight:500;color:#78350F;line-height:1.55;background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:10px 12px}
+
+  /* ── Apixaban — doplnky k zdieľaným tuy-* štýlom ── */
+  /* Cieľ — dvojica inputov (kardiológovia / internisti) */
+  .apx-tg-edit-row{display:flex;gap:9px}
+  .apx-tg-edit-col{flex:1;display:flex;flex-direction:column;gap:6px}
+  .apx-tg-edit-cap{font-size:11px;font-weight:700;color:#CFE0F4}
+  /* Progres po špecializáciách v hero */
+  .apx-tg-row{margin-top:9px}
+  .apx-tg-row:first-child{margin-top:0}
+  .apx-tg-row-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+  .apx-tg-row-lbl{font-size:11px;font-weight:700;color:#CFE0F4}
+  .apx-tg-row-num{font-family:var(--font-display);font-size:11.5px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums}
+  /* Rozpad potenciálu — kardiológovia vs. internisti */
+  .apx-spec-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:16px}
+  .apx-spec-card{background:#fff;border-radius:14px;padding:13px 14px;box-shadow:0 2px 10px rgba(15,23,42,.06);border:1px solid #EEF2F7;border-top:3px solid #E11D48}
+  .apx-spec-card:last-child{border-top-color:#2563EB}
+  .apx-spec-hd{font-size:11.5px;font-weight:800;color:#334155;margin-bottom:8px}
+  .apx-spec-num{font-family:var(--font-display);font-size:24px;font-weight:800;color:#0C1E35;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .apx-spec-cap{font-size:10.5px;font-weight:600;color:#64748B;margin-top:4px;line-height:1.25}
+  .apx-spec-meta{margin-top:9px;padding-top:4px;border-top:1px dashed #EEF2F7}
+  .apx-spec-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:4px 0;border-bottom:1px solid #F8FAFC;font-size:10.5px;font-weight:600;color:#64748B}
+  .apx-spec-row:last-child{border-bottom:none}
+  .apx-spec-row b{color:#0C1E35;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+  /* Zámok pred otvorením zadávania (2. 9. 2026) + odpočítavanie */
+  .apx-lock{background:#fff;border:1px dashed #CBD5E1;border-radius:16px;padding:26px 20px;text-align:center;margin-bottom:13px}
+  .apx-cd{display:flex;align-items:center;justify-content:center;gap:6px;margin:14px 0 16px}
+  .apx-cd-tile{background:linear-gradient(155deg,#0C1E35,#13294B 60%,#1A3A5C);border-radius:12px;padding:10px 6px;min-width:62px;box-shadow:0 4px 12px rgba(12,30,53,.22)}
+  .apx-cd-num{font-family:var(--font-display);font-size:24px;font-weight:800;color:#fff;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+  .apx-cd-lbl{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8FB0D6;margin-top:5px}
+  .apx-cd-sep{font-family:var(--font-display);font-size:20px;font-weight:800;color:#CBD5E1;padding-bottom:14px}
+  .apx-lock-ico{width:60px;height:60px;border-radius:18px;margin:0 auto 12px;background:linear-gradient(180deg,#F1F5F9,#E2E8F0);display:flex;align-items:center;justify-content:center;font-size:28px}
+  .apx-lock-t{font-family:var(--font-display);font-size:17px;font-weight:800;color:#0F172A;margin-bottom:6px}
+  .apx-lock-s{font-size:12.5px;font-weight:500;color:#64748B;line-height:1.5;max-width:420px;margin:0 auto}
+  .apx-lock-s strong{color:#0F172A}
+  /* Apixaban karta v Histórii + badge + manažérsky zoznam */
+  .hist-item-apx{border-left:3px solid #E11D48}
+  .hist-apx-badge{flex-shrink:0;background:linear-gradient(180deg,#FFF1F2,#FFE4E6);color:#BE123C;border:1px solid #FECDD3;border-radius:20px;font-size:10px;font-weight:800;padding:3px 9px;letter-spacing:.01em;white-space:nowrap}
+  .mgr-vseg.apx{background:#E11D48}
+  .mgr-vitem-apx .hist-apx-badge{margin-left:5px}
+  .mgr-chip.mgr-chip-apx{background:#FFF1F2;color:#BE123C;border:1px solid #FECDD3}
 </style>
 <div class="lk-overlay tuy-scope" id="tuyory-overlay">
   <div class="lk-inner">
@@ -37486,6 +38276,13 @@ try { gsLpInit(); } catch(e){}
 <div class="lk-overlay tuy-scope" id="lonelix-overlay">
   <div class="lk-inner">
     <div id="lonelix-body"></div>
+  </div>
+</div>
+
+<!-- ═══ APIXABAN overlay — prieskum apixaban / kardiológovia + internisti (Golem rep) ═══ -->
+<div class="lk-overlay tuy-scope" id="apixaban-overlay">
+  <div class="lk-inner">
+    <div id="apixaban-body"></div>
   </div>
 </div>
 
