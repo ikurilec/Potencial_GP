@@ -3706,7 +3706,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.74.0';
+var APP_VERSION = '2.74.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -17799,6 +17799,39 @@ function mgrTuyAllRecords(){
   Object.keys(reps).forEach(function(u){ out = out.concat(mgrRepTuyory(u)); });
   return out;
 }
+// Jednoriadkové súhrny prieskumov (Tuyory / Lonelix / Apixaban) za viditeľnú líniu —
+// vkladá sa do banneru „Golem — celá línia", nech manažér nemusí klikať po repoch.
+function mgrSurveysLineRowsHtml(){
+  try {
+    if (!document.body.classList.contains('manager-mode')) return '';
+    if (typeof MGR_STATE === 'undefined' || !MGR_STATE.reps) return '';
+    var reps = Object.keys(MGR_STATE.reps);
+    var tuy = [], lon = [], apx = [];
+    reps.forEach(function(u){
+      if (typeof mgrRepTuyory === 'function') tuy = tuy.concat(mgrRepTuyory(u));
+      if (typeof mgrRepLonelix === 'function') lon = lon.concat(mgrRepLonelix(u));
+      if (typeof mgrRepApix === 'function') apx = apx.concat(mgrRepApix(u));
+    });
+    var tuyPac = tuy.reduce(function(s, r){ return s + (parseInt(r.pocet, 10) || 0); }, 0);
+    var lonPac = lon.reduce(function(s, r){ return s + ((r.pouziva === 'ano') ? (parseInt(r.pocet, 10) || 0) : 0); }, 0);
+    var apxPac = apx.reduce(function(s, r){ return s + (parseInt(r.pocet, 10) || 0); }, 0);
+    function row(emo, name, valHtml){
+      return '<div class="gp-sum-prow">' +
+        '<span class="gp-sum-pname" style="flex:0 0 auto">' + emo + ' ' + name + '</span>' +
+        '<span class="gp-sum-pval" style="flex:1;text-align:right">' + valHtml + '</span>' +
+      '</div>';
+    }
+    var apxVal = (!apx.length && typeof apxIsOpen === 'function' && !apxIsOpen())
+      ? 'zadávanie od 2. 9. 2026'
+      : ('potenciál <b>' + apxPac + '</b> pac. · oslovených <b>' + apx.length + '</b> lek.');
+    return '<div class="gp-sum-prods-lbl">Prieskumy — celá línia</div>' +
+      '<div class="gp-sum-prods">' +
+        row('🧬', 'Tuyory',   'potenciál <b>' + tuyPac + '</b> pac. · oslovených <b>' + tuy.length + '</b> lek.') +
+        row('🛡️', 'Lonelix',  'potenciál <b>' + lonPac + '</b> pac./mes. · oslovených <b>' + lon.length + '</b> lek.') +
+        row('🫀', 'Apixaban', apxVal) +
+      '</div>';
+  } catch(e){ return ''; }
+}
 function mgrTuyBannerHtml(){
   var recs = mgrTuyAllRecords();
   var oslov = recs.length;
@@ -17929,8 +17962,9 @@ function mgrApplyTuyoryAll(d){
   var by = {};
   Object.keys(d.byRep).forEach(function(k){ by[String(k).trim().toLowerCase()] = d.byRep[k] || []; });
   MGR_STATE.tuyoryByRep = by;
-  // Prekresli zoznam (počty Tuyory v kartách) + banner/detail ak treba
+  // Prekresli zoznam (počty Tuyory v kartách) + súhrn prieskumov v banneri + detail ak treba
   try { mgrRenderList(); } catch(e){}
+  try { mgrRenderGpBanner(); } catch(e){}
   if (MGR_STATE.histFilter === 'tuyory'){
     var banner = document.getElementById('mgr-tuy-banner');
     if (banner && banner.style.display !== 'none') banner.innerHTML = mgrTuyBannerHtml();
@@ -17955,6 +17989,7 @@ function mgrApplyLonelixAll(d){
   var by = {};
   Object.keys(d.byRep).forEach(function(k){ by[String(k).trim().toLowerCase()] = d.byRep[k] || []; });
   MGR_STATE.lonelixByRep = by;
+  try { mgrRenderGpBanner(); } catch(e){}   // súhrn prieskumov v banneri línie
   // Ak je otvorený detail repa (GP pohľad) → prekresli, objaví sa Lonelix riadok
   var det = document.getElementById('mgr-detail');
   if (MGR_STATE.currentRep && det && det.classList.contains('show')) mgrRenderVisits();
@@ -17976,8 +18011,9 @@ function mgrApplyApixAll(d){
   var by = {};
   Object.keys(d.byRep).forEach(function(k){ by[String(k).trim().toLowerCase()] = d.byRep[k] || []; });
   MGR_STATE.apixByRep = by;
-  // Prekresli zoznam (počty Apixaban v kartách) + detail ak je otvorený na tabe Apixaban
+  // Prekresli zoznam (počty Apixaban v kartách) + súhrn v banneri + detail ak je otvorený na tabe Apixaban
   try { mgrRenderList(); } catch(e){}
+  try { mgrRenderGpBanner(); } catch(e){}
   var det = document.getElementById('mgr-detail');
   if (MGR_STATE.currentRep && det && det.classList.contains('show') && MGR_STATE.detailTab === 'apixaban') mgrRenderVisits();
 }
@@ -36072,8 +36108,9 @@ function gpBootstrapRep(username, done){
       if(!d || !d.ok) throw new Error('bootstrap fail');
       try { if(d.overrides) gpApplyOverrides(d.overrides); } catch(e){}
       try { gpApplyLineStats(d.lineStats || null); } catch(e){}
-      try { if(d.tuyoryRep && Array.isArray(d.tuyoryRep.records)) tuyoryApplyRecords(d.tuyoryRep.records); } catch(e){}
-      try { if(d.lonelixRep && Array.isArray(d.lonelixRep.records)) lonelixApplyRecords(d.lonelixRep.records); } catch(e){}
+      // Ak nasadený backend danú bootstrap časť ešte nepozná → stiahni samostatným volaním
+      try { if(d.tuyoryRep && Array.isArray(d.tuyoryRep.records)) tuyoryApplyRecords(d.tuyoryRep.records); else tuyoryFetchServer(); } catch(e){}
+      try { if(d.lonelixRep && Array.isArray(d.lonelixRep.records)) lonelixApplyRecords(d.lonelixRep.records); else lonelixFetchServer(); } catch(e){}
       try { if(d.apixRep && Array.isArray(d.apixRep.records)) apixApplyRecords(d.apixRep.records); else apixFetchServer(); } catch(e){}
       if(done) done();
     })
@@ -36099,8 +36136,9 @@ function gpBootstrapMgr(done){
       if(!d || !d.ok) throw new Error('bootstrap fail');
       try { if(d.overrides) gpApplyOverrides(d.overrides); } catch(e){}
       try { gpApplyLineStats(d.lineStats || null); } catch(e){}
-      try { if(d.allTuyory) mgrApplyTuyoryAll(d.allTuyory); } catch(e){}
-      try { if(d.allLonelix) mgrApplyLonelixAll(d.allLonelix); } catch(e){}
+      // Ak nasadený backend danú bootstrap časť ešte nepozná → stiahni samostatným volaním
+      try { if(d.allTuyory) mgrApplyTuyoryAll(d.allTuyory); else mgrLoadTuyory(); } catch(e){}
+      try { if(d.allLonelix) mgrApplyLonelixAll(d.allLonelix); else mgrLoadLonelix(); } catch(e){}
       try { if(d.allApix) mgrApplyApixAll(d.allApix); else mgrLoadApix(); } catch(e){}
       if(done) done();
     })
@@ -36298,6 +36336,7 @@ function gpLineSummaryHtml(){
     '<div class="gp-sum-sub">vývoj na lekára od začiatku · ' + (c.nReps||0) + ' repov · ' + (c.totalDoctors||0) + ' lekárov · ' + (c.nChangedDoctors||0) + ' aktualizovaných</div>' +
     eurStr +
     '<div class="gp-sum-prods">' + prodRows + '</div>' +
+    ((typeof mgrSurveysLineRowsHtml === 'function') ? mgrSurveysLineRowsHtml() : '') +
   '</div>';
 }
 
