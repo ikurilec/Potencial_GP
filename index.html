@@ -3706,7 +3706,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.74.2';
+var APP_VERSION = '2.74.3';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11439,6 +11439,10 @@ function gynPredictionBasisForRep(login, data, q, year, productKey) {
 // OC = perorálna antikoncepcia. Pri týchto sa medzimesačné porovnanie robí
 // voči mesiacu spred 3 mesiacov (predaj chodí v 3-cyklových baleniach), nie voči predošlému mesiacu.
 var GYN_OC_KEYS = { 'belara':1,'daylette':1,'daylla':1,'drovelis':1,'evra':1,'maitalon':1,'mistra':1,'azalia':1 };
+// Naše RG OC značky v pharma dátach — v signáloch sa NESMÚ ukazovať ako „konkurencia"
+// (OC trh obsahuje viac našich značiek naraz, IQVIA názvy sú napr. „MAITALON", „AZALIA 75 MCG").
+var GYN_OWN_BRAND_RE = /(^|[^a-z])(drovelis|belara|daylette|daylla|evra|maitalon|mistra|azalia)([^a-z]|$)/i;
+function gynIsOwnBrandName(name){ return GYN_OWN_BRAND_RE.test(String(name || '')); }
 function gynIsOcGroup(keys){
   var arr = (keys || []).map(function(k){ return String(k || '').trim().toLowerCase(); }).filter(Boolean);
   return arr.some(function(k){ return GYN_OC_KEYS[k]; });
@@ -11760,7 +11764,7 @@ function gynProductDistrictSignals(resp, kvartal){
       var pct = parseFloat(rec.comps[name][curYy]);
       var prevPct = prevYy != null ? parseFloat(rec.comps[name][prevYy]) : NaN;
       return { name:name, pct:isNaN(pct)?null:pct, prev:isNaN(prevPct)?null:prevPct, delta:(!isNaN(pct)&&!isNaN(prevPct))?+(pct-prevPct).toFixed(2):null };
-    }).filter(function(c){ return c.pct !== null; }).sort(function(a,b){ return b.pct - a.pct; });
+    }).filter(function(c){ return c.pct !== null && !gynIsOwnBrandName(c.name); }).sort(function(a,b){ return b.pct - a.pct; });
     var strongest = comps.filter(function(c){ return c.delta !== null && c.delta > 0.3 && c.pct >= 5; })
       .sort(function(a,b){ return ((b.pct||0)+Math.min(b.delta||0,8)*1.6) - ((a.pct||0)+Math.min(a.delta||0,8)*1.6); })[0] || null;
     rows.push({ okres:okres, cur:cur, prev:prev, delta: prev !== null ? +(cur - prev).toFixed(2) : null, comps:comps, fastestComp:strongest });
