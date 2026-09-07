@@ -1398,7 +1398,8 @@
   body.reagila-line #rep-nav-apix-btn,
   body.reagila-line #spn-apix{ display:none !important; }
   body.reagila-line .rep-nav,
-  body.reagila-line .panel-nav{ grid-template-columns:repeat(5,1fr); }
+  body.reagila-line .panel-nav{ grid-template-columns:repeat(6,1fr); }
+  body.reagila-line #rep-nav-nastenka-btn, body.reagila-line #spn-nastenka{ order:6; }
   body.reagila-line #rep-nav-plnenie-btn, body.reagila-line #spn-pl{ order:1; }
   body.reagila-line #rep-nav-kal-btn,     body.reagila-line #spn-kal{ order:2; }
   body.reagila-line #rep-nav-lekarne-btn, body.reagila-line #spn-lk{ order:3; }
@@ -2396,8 +2397,8 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .gyn-hdr-bday.soon{color:#9DC0DE}
   @media(prefers-reduced-motion:reduce){.gyn-hdr-bday.own{animation:none}}
   /* GYN NAV TABS */
-  .gyn-nav{display:flex;gap:6px;margin:0 0 10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06);position:sticky;top:var(--sat);z-index:100}
-  .gyn-nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;background:transparent;color:#64748B;touch-action:manipulation;transition:all .2s ease;-webkit-tap-highlight-color:transparent;line-height:1.1}
+  .gyn-nav{display:grid;grid-template-columns:repeat(var(--gcols,5),1fr);gap:6px;margin:0 0 10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06);position:sticky;top:var(--sat);z-index:100}
+  .gyn-nav-btn{min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px 2px;border:none;border-radius:10px;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;background:transparent;color:#64748B;touch-action:manipulation;transition:all .2s ease;-webkit-tap-highlight-color:transparent;line-height:1.1}
   .gyn-nav-btn .st-emoji{font-size:17px;line-height:1}
   .gyn-nav-btn .st-lbl{font-size:11px;white-space:nowrap}
   /* Dynamická ikonka kalendára v záložke — vykresľuje dnešné číslo dňa */
@@ -2871,6 +2872,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   <button type="button" class="rep-nav-btn" id="rep-nav-tuyory-btn" onclick="openTuyory()"><span class="rn-ico">🧬</span><span class="rn-lbl">Tuyory</span></button>
   <button type="button" class="rep-nav-btn" id="rep-nav-lonelix-btn" onclick="openLonelix()"><span class="rn-ico">🛡️</span><span class="rn-lbl">Lonelix</span></button>
   <button type="button" class="rep-nav-btn" id="rep-nav-apix-btn" onclick="openApixaban()"><span class="rn-ico">🫀</span><span class="rn-lbl">Apixaban</span></button>
+  <button type="button" class="rep-nav-btn" id="rep-nav-nastenka-btn" onclick="openNastenka()"><span class="rn-ico">📌</span><span class="rn-lbl">Nástenka</span></button>
   <button type="button" class="rep-nav-btn" id="rep-nav-kal-btn" onclick="openGolemKalendar()"><span class="rn-ico gyn-cal-navico"><span class="gci-top"></span><span class="gci-day js-cal-nav-day">16</span></span><span class="rn-lbl">Kalendár</span></button>
 </div>
 
@@ -2886,6 +2888,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     <button type="button" class="mgr-subtab" id="mgr-subtab-kal-btn" data-tab="kalendar" onclick="mgrSwitchSubtab('kalendar')"><span class="st-emoji gyn-cal-navico"><span class="gci-top"></span><span class="gci-day js-cal-nav-day">16</span></span><span class="st-lbl">Kalendár</span></button>
     <button type="button" class="mgr-subtab" data-tab="activity" id="mgr-subtab-activity-btn" style="display:none" onclick="mgrSwitchSubtab('activity')"><span class="st-emoji">📈</span><span class="st-lbl">Aktivita</span></button>
     <button type="button" class="mgr-subtab" data-tab="reporty" id="mgr-subtab-reporty-btn" style="display:none" onclick="mgrSwitchSubtab('reporty')"><span class="st-emoji">📄</span><span class="st-lbl">Reporty</span></button>
+    <button type="button" class="mgr-subtab" id="mgr-subtab-nastenka-btn" onclick="openNastenka()"><span class="st-emoji">📌</span><span class="st-lbl">Nástenka</span></button>
   </div>
 
   <!-- PTR indicator — zdieľaný pre Návštevy aj Plnenie -->
@@ -3341,6 +3344,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
       <button class="panel-nav-btn" id="spn-pl" onclick="openRepPlnenie()"><span class="rn-ico">💊</span><span class="rn-lbl">Plnenie</span></button>
       <button class="panel-nav-btn" id="spn-lk" onclick="openLekarne()"><span class="rn-ico">🏪</span><span class="rn-lbl">Lekárne</span></button>
       <button class="panel-nav-btn" id="spn-okresy" onclick="openOkresy()"><span class="rn-ico">📍</span><span class="rn-lbl">Okresy</span></button>
+      <button class="panel-nav-btn" id="spn-nastenka" onclick="openNastenka()"><span class="rn-ico">📌</span><span class="rn-lbl">Nástenka</span></button>
       <button class="panel-nav-btn" id="spn-kal" onclick="openGolemKalendar()"><span class="rn-ico gyn-cal-navico"><span class="gci-top"></span><span class="gci-day js-cal-nav-day">16</span></span><span class="rn-lbl">Kalendár</span></button>
     </div>
   </div>
@@ -3706,7 +3710,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.74.4';
+var APP_VERSION = '2.75.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10202,6 +10206,7 @@ function initLogin() {
   if(session && session.username) usageTrack('app_open', '', 'štart appky · rola: ' + (session.role || ''));
   if(session && session.username && session.line === 'gyn') {
     document.querySelector('.app').style.visibility = 'visible';
+    try { setTimeout(nstPrime, 1200); } catch(e){}   // Nástenka — bodka s počtom nových
     gynEnter(session);
     return;
   }
@@ -10215,6 +10220,7 @@ function initLogin() {
       setSession(session);
     }
     try { userPrefsApplyMirror(session); } catch(e){}
+    try { setTimeout(nstPrime, 1200); } catch(e){}   // Nástenka — bodka s počtom nových príspevkov
     var mgrRole = mgrDetectRole(session);
     // Reagila línia → body classa pre line-aware CSS + vyprázdnenie statických Golem zoznamov
     if(_isReagilaR){ document.body.classList.add('reagila-line'); reagilaClearGolemStatics(); }
@@ -11848,6 +11854,7 @@ function gynLoginSuccess(username, data) {
 
 function gynEnter(user) {
   document.body.classList.add('gyn-line');   // line-aware CSS (tmavý notch pás)
+  try { setTimeout(gynNavBalance, 60); setTimeout(gynNavBalance, 400); } catch(e){}
   try { bootLoaderShow(); } catch(e){}       // načítacia obrazovka (avatar + oslovenie)
   var appEl = document.querySelector('.app');
   if(appEl) appEl.style.display = 'none';
@@ -12094,6 +12101,7 @@ function gynRenderShell(user) {
         (user.role === 'gyn-rep' ? '<button class="gyn-nav-btn" data-tab="lekarne" onclick="gynNavTo(\'lekarne\')"><span class="st-emoji">🏪</span><span class="st-lbl">Lekárne</span></button>' : '') +
         '<button class="gyn-nav-btn"        data-tab="visits"      onclick="gynNavTo(\'visits\')"><span class="st-emoji">📋</span><span class="st-lbl">Návštevy</span></button>' +
         '<button class="gyn-nav-btn"        data-tab="leaderboard" onclick="gynNavTo(\'leaderboard\')"><span class="st-emoji">🏆</span><span class="st-lbl">Rebríček</span></button>' +
+        '<button class="gyn-nav-btn" id="gyn-nav-nastenka-btn" onclick="openNastenka()"><span class="st-emoji">📌</span><span class="st-lbl">Nástenka</span></button>' +
         (gynActivityAllowed(user) ? '<button class="gyn-nav-btn" data-tab="activity" onclick="gynNavTo(\'activity\')"><span class="st-emoji">📈</span><span class="st-lbl">Aktivita</span></button>' : '') +
       '</nav>' +
       '<div class="ptr-indicator" id="gyn-ptr-indicator">' +
@@ -12159,6 +12167,7 @@ function gynActivityAllowed(u) {
 
 // ── Navigácia medzi tabmi ──
 function gynNavTo(tab) {
+  try { setTimeout(gynNavBalance, 0); } catch(e){}
   // Aktivita (usage analytics) — admin + gyn manažéri
   if (tab === 'activity') { var _gs = getSession(); if (!gynActivityAllowed(_gs)) return; }
   if (tab === 'kalendar') {
@@ -18684,6 +18693,8 @@ function _handleAndroidBack() {
   // 14. Panely — História / Rebríček / Plnenie / Okresy / Tuyory / Lonelix / Kalendár (reprezentant)
   //     (Okresy, Tuyory a Lonelix tu predtým chýbali → systémové „späť" ich nevedelo zavrieť.)
   var panels = ['hist-overlay', 'lb-overlay', 'rep-plnenie-overlay', 'okresy-overlay', 'tuyory-overlay', 'lonelix-overlay', 'apixaban-overlay', 'golem-cal-overlay'];
+  // Nástenka je samostatný overlay (všetky línie) — systémové „späť“ ju zavrie ako prvú
+  try { var _nstOv = document.getElementById('nastenka-overlay'); if (_nstOv && _nstOv.classList.contains('show')) { closeNastenka(); return; } } catch(e){}
   for (var i = 0; i < panels.length; i++) {
     el = document.getElementById(panels[i]);
     if (el && el.classList.contains('show')) {
@@ -19042,6 +19053,30 @@ var WN_HISTORY = [
         { icon: '🎯', bg: '#FFF7ED', title: 'Kombinuj slová', desc: 'Napíš „sabol vidonorm" a otvorí sa jeho plnenie na produkte, „sabol telexer svidník" ťa hodí na trhový podiel v tom okrese. Ak máš Reporty, funguje aj „reporty sabol".' },
         { icon: '🔒', bg: '#F5F3FF', title: 'Vidíš len svoj tím', desc: 'Vyhľadávanie rešpektuje tvoju rolu — ponúka len reprezentantov, okresy a dáta, ku ktorým máš prístup.' },
         { icon: '⚙️', bg: '#FEF3C7', title: 'Presun a vypnutie', desc: 'Tlačidlo presunieš dlhým podržaním. V Nastaveniach → Aplikácia vyhľadávanie úplne vypneš.' }
+      ]
+    }
+  },
+  // ── v2.75 — Nástenka (všetky línie: Golem, gyn, Reagila) ──
+  {
+    key: 'potencial_vl_wn_v2_75_nastenka',
+    rep: {
+      icon: '📌', title: 'Nové: Nástenka', sub: 'v2.75.0 · Gedeon Richter Slovakia',
+      items: [
+        { icon: '📌', bg: '#EFF6FF', title: 'Zdieľajte medzi sebou', desc: 'Pribudla záložka Nástenka — spoločná pre celú tvoju líniu. Čo tam napíšeš, vidia hneď všetci kolegovia aj manažér.' },
+        { icon: '🔥', bg: '#FEF2F2', title: 'Čo robí konkurencia', desc: 'Napíš, čo konkurencia sľubuje lekárom, akú námietku si počul a ako si ju zvládol, alebo čo ti u lekára zabralo. Ostatní sa to dozvedia skôr, než na to nabehnú sami.' },
+        { icon: '🎯', bg: '#F0FDF4', title: 'Filtruj, čo chýba', desc: 'Prepneš si kategóriu, konkrétny produkt, región alebo len svoje príspevky. Hľadať sa dá aj v texte a v odpovediach.' },
+        { icon: '💬', bg: '#FFF7ED', title: 'Odpovede a 👍 Pomohlo', desc: 'Pod každým príspevkom vieš odpovedať — ideálne na otázku kolegom. Palcom označíš, čo ti naozaj pomohlo, a najužitočnejšie si vieš vyfiltrovať navrch.' },
+        { icon: '🔔', bg: '#F5F3FF', title: 'Uvidíš, čo je nové', desc: 'Pri záložke svieti počet nových príspevkov od tvojej poslednej návštevy. Nič ti neujde a nič ťa nebude rušiť.' }
+      ]
+    },
+    mgr: {
+      icon: '📌', title: 'Nové: Nástenka', sub: 'v2.75.0 · Gedeon Richter Slovakia',
+      items: [
+        { icon: '📌', bg: '#EFF6FF', title: 'Prečítaš si terén', desc: 'Nová záložka Nástenka — tvoji repi si tam zdieľajú, čo robí konkurencia, aké námietky dostávajú a čo im zabralo. Vidíš to všetko na jednom mieste.' },
+        { icon: '📢', bg: '#FFFBEB', title: 'Oznam pre celú líniu', desc: 'Kategória „Dôležité“ je len pre teba — príspevok sa pripne navrch nástenky a všetkým v línii príde notifikácia.' },
+        { icon: '🎯', bg: '#F0FDF4', title: 'Filtre podľa potreby', desc: 'Prepneš si kategóriu, produkt aj región — napr. len námietky k jednému produktu alebo všetko z jedného regiónu.' },
+        { icon: '🛡️', bg: '#F5F3FF', title: 'Máš to pod kontrolou', desc: 'Ktorýkoľvek príspevok vieš pripnúť navrch alebo zmazať; reprezentant si vie zmazať len ten svoj.' },
+        { icon: '💬', bg: '#FFF7ED', title: 'Diskusia pod príspevkom', desc: 'Pod príspevkami sa dá odpovedať a označiť 👍 „Pomohlo“ — hneď vidíš, čo tímu naozaj pomáha.' }
       ]
     }
   }
@@ -35257,6 +35292,548 @@ function lonelixDetailAddGp(){
   if (r && typeof lonelixOpenGpForm === 'function') lonelixOpenGpForm(r);
 }
 
+
+// ═══════════════════════════════════════════════════════════════════
+// NÁSTENKA — zdieľané poznámky reprezentantov v rámci línie (Golem / gyn /
+// Reagila). Príspevok = kategória + voliteľný produkt + text; pod ním komentáre
+// a 👍 „pomohlo mi". Manažér vie príspevok pripnúť navrch a mazať čokoľvek,
+// reprezentant maže len svoje. Dáta idú do hárku „Nastenka" v Sheete danej
+// línie (action=getNastenka / saveNastenka / nastenkaLike / nastenkaDelete /
+// nastenkaPin) a cachujú sa do localStorage, aby panel naskočil okamžite.
+// ═══════════════════════════════════════════════════════════════════
+var NST = {
+  posts: [], loaded: false, loading: false, err: '',
+  cat: 'all', prod: 'all', region: 'all', sort: 'new', q: '',
+  open: {},            // id → rozbalené komentáre
+  composeCat: '', composeProd: '',
+  _reqId: 0, _sending: false
+};
+
+var NST_CATS = [
+  { k: 'konkurencia', ico: '🔥', lbl: 'Konkurencia',     hint: 'Čo robí konkurencia — akcie, zľavy, materiály, čo sľubujú lekárom.' },
+  { k: 'namietka',    ico: '💬', lbl: 'Námietka lekára', hint: 'Čo si počul od lekára a ako si to zvládol.' },
+  { k: 'zabralo',     ico: '✅', lbl: 'Čo zabralo',      hint: 'Argument, materiál alebo postup, ktorý zafungoval.' },
+  { k: 'teren',       ico: '📋', lbl: 'Info z terénu',   hint: 'Nový lekár, odchod, materská, zmena ordinačných hodín…' },
+  { k: 'lekaren',     ico: '🏥', lbl: 'Lekárne',         hint: 'Výpadky, objednávky, čo hovorí lekárnik.' },
+  { k: 'otazka',      ico: '❓', lbl: 'Otázka kolegom',  hint: 'Potrebuješ radu alebo skúsenosť od ostatných.' },
+  { k: 'dolezite',    ico: '📌', lbl: 'Dôležité',        hint: 'Oznam pre celú líniu — pripne sa navrch a pošle notifikáciu.', mgrOnly: true }
+];
+function nstCat(k){ for (var i = 0; i < NST_CATS.length; i++) if (NST_CATS[i].k === k) return NST_CATS[i]; return null; }
+
+// Produkty do prepínača — podľa línie (Všeobecné = príspevok bez produktu).
+var NST_PRODUCTS = {
+  gp: ['Aflamil', 'Suprax', 'Vidonorm', 'Cavinton Forte', 'Telexer', 'Globifer', 'Junod', 'Kogavant', 'Lonelix', 'Ossica', 'Terrosa', 'Tuyory', 'Apixaban'],
+  gyn: ['Drovelis', 'Belara', 'Daylette', 'Daylla', 'Maitalon', 'Mistra', 'Evra', 'Azalia', 'Escapelle', 'Ryeqo', 'Levosert', 'Fylrevy', 'Lenzetto', 'Globifer', 'Ovosicare', 'Lidbree', 'Papilocare', 'Immunocaps'],
+  reagila: ['Reagila', 'Cavinton', 'Boxarid', 'Fingolimod', 'DMF', 'Yaxwer', 'Pazopanib', 'Lunaldin']
+};
+
+function nstEsc(x){ return String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function nstSession(){ try { return getSession(); } catch(e){ return null; } }
+function nstUser(){ var s = nstSession(); return (s && s.username) ? String(s.username).trim().toLowerCase() : ''; }
+function nstLine(){ var s = nstSession(); var l = String((s && s.line) || 'gp').toLowerCase(); return (l === 'gyn' || l === 'reagila') ? l : 'gp'; }
+function nstLineLabel(){ var l = nstLine(); return l === 'gyn' ? 'Gynekológia' : l === 'reagila' ? 'Reagila' : 'Golem'; }
+function nstProducts(){ return NST_PRODUCTS[nstLine()] || []; }
+function nstUrl(params){ return (nstLine() === 'gyn') ? gynScriptUrl(params) : scriptUrl(params); }
+// Manažér/admin (moderácia + kategória „Dôležité"); reprezentant = rep/KAM/gyn-rep.
+function nstIsMgr(){
+  try {
+    var s = nstSession(); if (!s) return false;
+    var r = String(s.role || '').trim().toLowerCase();
+    if (!r) return false;
+    if (r === 'gyn-rep' || r === 'kam' || r === 'rep' || r.indexOf('rep ') === 0) return false;
+    return true;
+  } catch(e){ return false; }
+}
+function nstPinned(p){ return String(p && p.pin) === '1' || (p && p.pin) === true; }
+
+// ── Lokálna cache (panel naskočí okamžite aj offline) ──
+function nstLocalKey(){ return 'nastenka_' + nstLine(); }
+function nstSeenKey(){ return 'nastenka_seen_' + nstLine() + '_' + nstUser(); }
+function nstLoadLocal(){
+  try { var raw = localStorage.getItem(nstLocalKey()); var a = raw ? JSON.parse(raw) : []; return Array.isArray(a) ? a : []; }
+  catch(e){ return []; }
+}
+function nstSaveLocal(arr){
+  try {
+    var payload = JSON.stringify(arr || []);
+    if (typeof lsSafeSet === 'function') lsSafeSet(nstLocalKey(), payload); else localStorage.setItem(nstLocalKey(), payload);
+  } catch(e){}
+}
+function nstTime(ts){ var t = Date.parse(ts || ''); return isNaN(t) ? 0 : t; }
+function nstSeenTs(){ try { return parseInt(localStorage.getItem(nstSeenKey()) || '0', 10) || 0; } catch(e){ return 0; } }
+function nstMarkSeen(){
+  try {
+    var newest = 0;
+    (NST.posts || []).forEach(function(p){ var t = nstTime(p.ts); if (t > newest) newest = t; });
+    if (newest) localStorage.setItem(nstSeenKey(), String(newest));
+  } catch(e){}
+  nstUpdateBadge();
+}
+// Počet nových cudzích príspevkov od poslednej návštevy
+function nstUnread(){
+  var seen = nstSeenTs(), me = nstUser(), n = 0;
+  (NST.posts || []).forEach(function(p){
+    if (String(p.rep || '').toLowerCase() === me) return;
+    if (nstTime(p.ts) > seen) n++;
+  });
+  return n;
+}
+// Gyn navigacia — vyvazi zalozky do 1–2 riadkov (rovnaka logika ako Golem rep-nav)
+function gynNavBalance(){
+  try {
+    var nav = document.getElementById('gyn-nav');
+    if (!nav) return;
+    var n = 0;
+    Array.prototype.forEach.call(nav.querySelectorAll('.gyn-nav-btn'), function(b){
+      if (getComputedStyle(b).display !== 'none') n++;
+    });
+    if (!n) return;
+    nav.style.setProperty('--gcols', (n <= 4) ? n : Math.ceil(n / 2));
+  } catch(e){}
+}
+if (typeof window !== 'undefined') window.addEventListener('resize', function(){ try { gynNavBalance(); } catch(e){} });
+
+function nstUpdateBadge(){
+  var n = nstUnread();
+  ['rep-nav-nastenka-btn', 'spn-nastenka', 'gyn-nav-nastenka-btn', 'mgr-subtab-nastenka-btn'].forEach(function(id){
+    var btn = document.getElementById(id);
+    if (!btn) return;
+    var dot = btn.querySelector('.nst-navdot');
+    if (n > 0){
+      if (!dot){ dot = document.createElement('span'); dot.className = 'nst-navdot'; btn.appendChild(dot); }
+      dot.textContent = n > 9 ? '9+' : String(n);
+    } else if (dot){ dot.remove(); }
+  });
+}
+// Tiché načítanie na pozadí po prihlásení — nech bodka v navigácii sedí bez otvorenia panelu
+function nstPrime(){
+  try {
+    if (!nstUser()) return;
+    NST.posts = nstLoadLocal();
+    nstUpdateBadge();
+    nstFetch(function(){ nstUpdateBadge(); });
+  } catch(e){}
+}
+
+// ── Otvorenie / zatvorenie panelu ──
+function openNastenka(){
+  try { usageSectionEnter('Nástenka'); } catch(e){}
+  var ov = document.getElementById('nastenka-overlay');
+  if (!ov) return;
+  if (!NST.posts.length) NST.posts = nstLoadLocal();
+  NST.err = '';
+  ov.classList.add('show');
+  document.body.style.overflow = 'hidden';
+  nstRender();
+  try { ov.scrollTop = 0; } catch(e){}
+  nstFetch(function(){ nstRender(); nstMarkSeen(); });
+}
+function closeNastenka(){
+  try { usageSectionClose(); } catch(e){}
+  NST._reqId++;
+  nstComposeClose();
+  var ov = document.getElementById('nastenka-overlay');
+  if (ov) ov.classList.remove('show');
+  document.body.style.overflow = '';
+  nstMarkSeen();
+}
+
+// ── Načítanie zo Sheetu ──
+function nstApply(posts){
+  if (!Array.isArray(posts)) return;
+  NST.posts = posts;
+  NST.loaded = true;
+  nstSaveLocal(posts);
+}
+function nstFetch(cb){
+  if (typeof IS_DEV !== 'undefined' && IS_DEV){ NST.loaded = true; nstDevSeed(); if (cb) cb(); return; }
+  if (!nstUser()){ if (cb) cb(); return; }
+  var reqId = (++NST._reqId);
+  NST.loading = true;
+  var url;
+  try { url = nstUrl('action=getNastenka'); } catch(e){ NST.loading = false; if (cb) cb(); return; }
+  fetch(url, { cache: 'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (reqId !== NST._reqId) return;
+      NST.loading = false;
+      if (d && d.ok && Array.isArray(d.posts)){ NST.err = ''; nstApply(d.posts); }
+      else NST.err = (d && d.error) ? String(d.error) : '';
+      if (cb) cb();
+    })
+    .catch(function(){
+      if (reqId !== NST._reqId) return;
+      NST.loading = false;
+      if (!NST.posts.length) NST.err = 'offline';
+      if (cb) cb();
+    });
+}
+
+
+// DEV — ukážkové príspevky, aby sa nástenka dala pozrieť na localhoste bez backendu
+function nstDevSeed(){
+  if (!(typeof IS_DEV !== 'undefined' && IS_DEV)) return;
+  if ((NST.posts || []).length) return;
+  var now = Date.now();
+  function iso(minAgo){ return new Date(now - minAgo * 60000).toISOString(); }
+  var prods = nstProducts();
+  NST.posts = [
+    { id: 'demo1', ts: iso(35), rep: 'demo.kolega', meno: 'Zuzana Leščišinová', region: 'BAMA', produkt: prods[0] || '', okres: 'Pezinok',
+      kategoria: 'konkurencia', text: 'Konkurencia začala v Pezinku rozdávať nové vzorky a sľubuje lekárom bonus za 10 pacientov. Traja lekári to spomínali tento týždeň.',
+      pin: '', likes: ['demo.kolega2'], comments: [ { id: 'dc1', ts: iso(20), rep: 'demo.kolega2', meno: 'Viktória Hatinová', text: 'To isté u nás v Malackách. Pomáha ukázať porovnanie úhrady.' } ] },
+    { id: 'demo2', ts: iso(180), rep: 'demo.kolega2', meno: 'Viktória Hatinová', region: 'BASE', produkt: prods[1] || '', okres: '',
+      kategoria: 'namietka', text: 'Námietka: „Mám dobré skúsenosti s originálom, prečo meniť?“ — zabralo mi porovnanie doplatku pacienta a ponuka začať u nových pacientov, nie prestavovať stávajúcich.',
+      pin: '', likes: ['demo.kolega', 'demo.kolega3'], comments: [] },
+    { id: 'demo3', ts: iso(1500), rep: 'demo.mgr', meno: 'Ivan Kurilec', region: '', produkt: '', okres: '',
+      kategoria: 'dolezite', text: 'Od septembra platí nový materiál k úhradám — nájdete ho v zdieľanom priečinku. Prosím používajte už novú verziu.',
+      pin: '1', likes: [], comments: [] }
+  ];
+}
+
+// ── Filtre ──
+function nstRegions(){
+  var seen = {}, out = [];
+  (NST.posts || []).forEach(function(p){ var r = String(p.region || '').trim().toUpperCase(); if (r && !seen[r]){ seen[r] = 1; out.push(r); } });
+  out.sort();
+  return out;
+}
+function nstFiltered(){
+  var me = nstUser();
+  var myReg = String((nstSession() || {}).region || '').trim().toUpperCase();
+  var q = String(NST.q || '').trim().toLowerCase();
+  var out = (NST.posts || []).filter(function(p){
+    if (NST.cat !== 'all' && String(p.kategoria || '') !== NST.cat) return false;
+    if (NST.prod === 'general'){ if (String(p.produkt || '').trim()) return false; }
+    else if (NST.prod !== 'all' && String(p.produkt || '').trim().toLowerCase() !== String(NST.prod).toLowerCase()) return false;
+    if (NST.region === 'mine'){ if (String(p.region || '').trim().toUpperCase() !== myReg) return false; }
+    else if (NST.region === 'me'){ if (String(p.rep || '').toLowerCase() !== me) return false; }
+    else if (NST.region !== 'all' && String(p.region || '').trim().toUpperCase() !== NST.region) return false;
+    if (q){
+      var hay = (String(p.text || '') + ' ' + String(p.meno || '') + ' ' + String(p.produkt || '') + ' ' + String(p.okres || '')).toLowerCase();
+      var inCom = (p.comments || []).some(function(c){ return String(c.text || '').toLowerCase().indexOf(q) !== -1; });
+      if (hay.indexOf(q) === -1 && !inCom) return false;
+    }
+    return true;
+  });
+  out.sort(function(a, b){
+    var ap = nstPinned(a) ? 1 : 0, bp = nstPinned(b) ? 1 : 0;
+    if (ap !== bp) return bp - ap;                       // pripnuté vždy navrch
+    if (NST.sort === 'top'){
+      var al = (a.likes || []).length, bl = (b.likes || []).length;
+      if (al !== bl) return bl - al;
+    }
+    return nstTime(b.ts) - nstTime(a.ts);
+  });
+  return out;
+}
+function nstSetCat(k){ NST.cat = k; nstRender(); try { haptic('selection'); } catch(e){} }
+function nstSetProd(k){ NST.prod = k; nstRender(); try { haptic('selection'); } catch(e){} }
+function nstSetRegion(k){ NST.region = k; nstRender(); try { haptic('selection'); } catch(e){} }
+function nstSetSort(k){ NST.sort = (k === 'top') ? 'top' : 'new'; nstRender(); try { haptic('selection'); } catch(e){} }
+function nstSearch(el){ NST.q = el.value || ''; nstRenderList(); }
+
+// ── Render: hlavička + filtre + zoznam ──
+function nstRender(){
+  var body = document.getElementById('nastenka-body');
+  if (!body) return;
+  var isMgr = nstIsMgr();
+  var catChips = '<button type="button" class="nst-chip' + (NST.cat === 'all' ? ' on' : '') + '" onclick="nstSetCat(\'all\')">Všetko</button>' +
+    NST_CATS.filter(function(c){ return !c.mgrOnly || isMgr || (NST.posts || []).some(function(p){ return p.kategoria === c.k; }); })
+      .map(function(c){
+        return '<button type="button" class="nst-chip nst-chip-' + c.k + (NST.cat === c.k ? ' on' : '') + '" onclick="nstSetCat(\'' + c.k + '\')">' + c.ico + ' ' + c.lbl + '</button>';
+      }).join('');
+
+  var prods = nstProducts();
+  var prodChips = '<button type="button" class="nst-chip' + (NST.prod === 'all' ? ' on' : '') + '" onclick="nstSetProd(\'all\')">Všetky produkty</button>' +
+    '<button type="button" class="nst-chip' + (NST.prod === 'general' ? ' on' : '') + '" onclick="nstSetProd(\'general\')">Všeobecné</button>' +
+    prods.map(function(p){
+      return '<button type="button" class="nst-chip' + (NST.prod === p ? ' on' : '') + '" onclick="nstSetProd(\'' + p.replace(/'/g, "\\'") + '\')">' + nstEsc(p) + '</button>';
+    }).join('');
+
+  var regs = nstRegions();
+  var regOpts = '<option value="all"' + (NST.region === 'all' ? ' selected' : '') + '>Všetky regióny</option>' +
+    '<option value="mine"' + (NST.region === 'mine' ? ' selected' : '') + '>Môj región</option>' +
+    '<option value="me"' + (NST.region === 'me' ? ' selected' : '') + '>Moje príspevky</option>' +
+    regs.map(function(r){ return '<option value="' + nstEsc(r) + '"' + (NST.region === r ? ' selected' : '') + '>' + nstEsc(r) + '</option>'; }).join('');
+
+  body.innerHTML =
+    '<div class="nst-hero">' +
+      '<div class="nst-hero-top">' +
+        '<div class="nst-hero-badge">📌</div>' +
+        '<div><div class="nst-hero-title">Nástenka</div>' +
+        '<div class="nst-hero-sub">' + nstEsc(nstLineLabel()) + ' · zdieľané medzi reprezentantmi línie</div></div>' +
+      '</div>' +
+      '<button type="button" class="nst-new-btn" onclick="nstComposeOpen()">＋ Pridať príspevok</button>' +
+    '</div>' +
+    '<div class="nst-filters">' +
+      '<div class="nst-chiprow">' + catChips + '</div>' +
+      '<div class="nst-chiprow nst-chiprow-prod">' + prodChips + '</div>' +
+      '<div class="nst-filterrow">' +
+        '<div class="nst-search"><span class="nst-search-ico">🔍</span>' +
+          '<input type="text" id="nst-q" placeholder="Hľadať v príspevkoch…" value="' + nstEsc(NST.q) + '" oninput="nstSearch(this)" autocomplete="off"></div>' +
+        '<select class="nst-select" onchange="nstSetRegion(this.value)">' + regOpts + '</select>' +
+        '<div class="nst-sort">' +
+          '<button type="button" class="nst-sort-btn' + (NST.sort === 'new' ? ' on' : '') + '" onclick="nstSetSort(\'new\')">Najnovšie</button>' +
+          '<button type="button" class="nst-sort-btn' + (NST.sort === 'top' ? ' on' : '') + '" onclick="nstSetSort(\'top\')">Najužitočnejšie</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div id="nst-list"></div>';
+  nstRenderList();
+}
+
+function nstRenderList(){
+  var list = document.getElementById('nst-list');
+  if (!list) return;
+  var items = nstFiltered();
+  if (!items.length){
+    var sub = NST.loading ? 'Načítavam príspevky…'
+            : (NST.q || NST.cat !== 'all' || NST.prod !== 'all' || NST.region !== 'all') ? 'Skús zmeniť filter alebo hľadaný výraz.'
+            : 'Buď prvý — pridaj, čo robí konkurencia, akú námietku si počul alebo čo ti zabralo.';
+    var title = (NST.q || NST.cat !== 'all' || NST.prod !== 'all' || NST.region !== 'all') ? 'Žiadne zhody' : 'Nástenka je zatiaľ prázdna';
+    list.innerHTML = '<div class="nst-empty"><div class="nst-empty-ico">📌</div><div class="nst-empty-t">' + title + '</div><div class="nst-empty-s">' + sub + '</div></div>';
+    return;
+  }
+  list.innerHTML = items.map(nstPostHtml).join('');
+}
+
+function nstPostHtml(p){
+  var c = nstCat(p.kategoria) || { ico: '📝', lbl: 'Poznámka', k: 'teren' };
+  var me = nstUser();
+  var likes = p.likes || [];
+  var iLike = likes.some(function(u){ return String(u || '').toLowerCase() === me; });
+  var canDel = nstIsMgr() || String(p.rep || '').toLowerCase() === me;
+  var canPin = nstIsMgr();
+  var id = String(p.id || '');
+  var idArg = "'" + id.replace(/'/g, "\\'") + "'";
+  var name = p.meno || p.rep || '—';
+  var av = '';
+  try {
+    if (typeof lbAvatarContent === 'function'){
+      var a = lbAvatarContent(p.rep, name, 34);
+      av = '<div class="nst-av' + (a.hasAvatar ? ' has-avatar' : '') + '" data-username="' + nstEsc(p.rep) + '" style="background:' + ((typeof mgrAvatarColor === 'function') ? mgrAvatarColor(name) : '#0C1E35') + '">' + a.html + '</div>';
+    }
+  } catch(e){}
+  if (!av) av = '<div class="nst-av" style="background:#0C1E35">' + nstEsc(String(name).trim().charAt(0).toUpperCase()) + '</div>';
+  var when = '';
+  try { when = (typeof mgrTimeAgo === 'function') ? mgrTimeAgo(nstTime(p.ts)) : ''; } catch(e){}
+  var meta = [];
+  if (String(p.produkt || '').trim()) meta.push('<span class="nst-tag nst-tag-prod">💊 ' + nstEsc(p.produkt) + '</span>');
+  if (String(p.okres || '').trim()) meta.push('<span class="nst-tag">📍 ' + nstEsc(p.okres) + '</span>');
+  if (String(p.region || '').trim()) meta.push('<span class="nst-tag">' + nstEsc(p.region) + '</span>');
+  var comments = p.comments || [];
+  var open = !!NST.open[id];
+
+  var commentsHtml = '';
+  if (open){
+    commentsHtml = '<div class="nst-comments">' +
+      comments.map(function(cm){
+        var cwhen = '';
+        try { cwhen = (typeof mgrTimeAgo === 'function') ? mgrTimeAgo(nstTime(cm.ts)) : ''; } catch(e){}
+        var cDel = (nstIsMgr() || String(cm.rep || '').toLowerCase() === me)
+          ? '<button type="button" class="nst-cdel" onclick="nstDelete(\'' + String(cm.id || '').replace(/'/g, "\\'") + '\')" aria-label="Zmazať">✕</button>' : '';
+        return '<div class="nst-comment">' +
+          '<div class="nst-comment-hd"><span class="nst-comment-who">' + nstEsc(cm.meno || cm.rep || '—') + '</span>' +
+            '<span class="nst-comment-when">' + nstEsc(cwhen) + '</span>' + cDel + '</div>' +
+          '<div class="nst-comment-txt">' + nstEsc(cm.text || '').replace(/\n/g, '<br>') + '</div>' +
+        '</div>';
+      }).join('') +
+      '<div class="nst-creply">' +
+        '<input type="text" class="nst-creply-in" id="nst-c-' + nstEsc(id) + '" placeholder="Napíš odpoveď…" onkeydown="if(event.key===\'Enter\')nstAddComment(' + idArg + ')">' +
+        '<button type="button" class="nst-creply-btn" onclick="nstAddComment(' + idArg + ')">Odoslať</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  return '<div class="nst-post' + (nstPinned(p) ? ' pinned' : '') + '">' +
+    (nstPinned(p) ? '<div class="nst-pinbar">📌 Pripnuté</div>' : '') +
+    '<div class="nst-post-hd">' +
+      av +
+      '<div class="nst-post-who"><div class="nst-post-name">' + nstEsc(name) + '</div>' +
+        '<div class="nst-post-when">' + nstEsc(when) + '</div></div>' +
+      '<span class="nst-catbadge nst-cat-' + c.k + '">' + c.ico + ' ' + c.lbl + '</span>' +
+    '</div>' +
+    (meta.length ? '<div class="nst-tags">' + meta.join('') + '</div>' : '') +
+    '<div class="nst-text">' + nstEsc(p.text || '').replace(/\n/g, '<br>') + '</div>' +
+    '<div class="nst-actions">' +
+      '<button type="button" class="nst-act' + (iLike ? ' on' : '') + '" onclick="nstLike(' + idArg + ')">👍 <span>' + (likes.length || '') + '</span> Pomohlo</button>' +
+      '<button type="button" class="nst-act' + (open ? ' on' : '') + '" onclick="nstToggleComments(' + idArg + ')">💬 ' + (comments.length ? comments.length + ' ' + (comments.length === 1 ? 'odpoveď' : (comments.length < 5 ? 'odpovede' : 'odpovedí')) : 'Odpovedať') + '</button>' +
+      (canPin ? '<button type="button" class="nst-act nst-act-icon" onclick="nstPin(' + idArg + ',' + (nstPinned(p) ? 'false' : 'true') + ')" title="' + (nstPinned(p) ? 'Odopnúť' : 'Pripnúť navrch') + '">📌</button>' : '') +
+      (canDel ? '<button type="button" class="nst-act nst-act-icon nst-act-del" onclick="nstDelete(' + idArg + ')" title="Zmazať">🗑</button>' : '') +
+    '</div>' +
+    commentsHtml +
+  '</div>';
+}
+
+// ── Akcie nad príspevkom ──
+function nstFindPost(id){
+  var out = null;
+  (NST.posts || []).forEach(function(p){ if (String(p.id) === String(id)) out = p; });
+  return out;
+}
+function nstToggleComments(id){
+  NST.open[id] = !NST.open[id];
+  nstRenderList();
+  try { haptic('selection'); } catch(e){}
+  if (NST.open[id]){ var el = document.getElementById('nst-c-' + id); if (el) try { el.focus({ preventScroll: true }); } catch(e){} }
+}
+function nstLike(id){
+  var p = nstFindPost(id); if (!p) return;
+  var me = nstUser();
+  p.likes = p.likes || [];
+  var i = -1;
+  p.likes.forEach(function(u, ix){ if (String(u || '').toLowerCase() === me) i = ix; });
+  if (i >= 0) p.likes.splice(i, 1); else p.likes.push(me);
+  nstSaveLocal(NST.posts);
+  nstRenderList();
+  try { haptic('selection'); } catch(e){}
+  nstSend({ action: 'nastenkaLike', id: id, on: (i >= 0 ? '0' : '1') });
+}
+function nstPin(id, on){
+  var p = nstFindPost(id); if (!p) return;
+  p.pin = on ? '1' : '';
+  nstSaveLocal(NST.posts);
+  nstRenderList();
+  try { haptic('success'); } catch(e){}
+  nstSend({ action: 'nastenkaPin', id: id, on: on ? '1' : '0' });
+}
+function nstDelete(id){
+  if (!confirm('Naozaj zmazať tento príspevok?')) return;
+  var posts = [];
+  (NST.posts || []).forEach(function(p){
+    if (String(p.id) === String(id)) return;
+    p.comments = (p.comments || []).filter(function(c){ return String(c.id) !== String(id); });
+    posts.push(p);
+  });
+  NST.posts = posts;
+  nstSaveLocal(posts);
+  nstRenderList();
+  try { haptic('warning'); } catch(e){}
+  nstSend({ action: 'nastenkaDelete', id: id });
+}
+function nstAddComment(id){
+  var el = document.getElementById('nst-c-' + id);
+  var txt = el ? String(el.value || '').trim() : '';
+  if (!txt) { if (el) el.focus(); return; }
+  var p = nstFindPost(id); if (!p) return;
+  var s = nstSession() || {};
+  var cid = 'c' + Date.now() + Math.floor(Math.random() * 1000);
+  p.comments = (p.comments || []).concat([{ id: cid, ts: new Date().toISOString(), rep: nstUser(), meno: s.name || nstUser(), text: txt }]);
+  nstSaveLocal(NST.posts);
+  NST.open[id] = true;
+  nstRenderList();
+  try { haptic('success'); } catch(e){}
+  nstSend({ action: 'saveNastenka', typ: 'comment', id: cid, parent_id: id, text: txt });
+}
+
+// Odoslanie do Sheetu — rovnaký iframe mechanizmus ako ostatné formuláre
+function nstSend(data){
+  try {
+    if (typeof IS_DEV !== 'undefined' && IS_DEV) return;
+    if (!nstUser()) return;
+    var params = Object.keys(data).map(function(k){ return encodeURIComponent(k) + '=' + encodeURIComponent(String(data[k] == null ? '' : data[k])); }).join('&');
+    var iframe = document.getElementById('gs_frame');
+    if (!iframe){
+      iframe = document.createElement('iframe');
+      iframe.id = 'gs_frame';
+      iframe.style.cssText = 'display:none;width:0;height:0;border:0;position:absolute;left:-9999px';
+      document.body.appendChild(iframe);
+    }
+    iframe.src = nstUrl(params);
+  } catch(e){}
+}
+
+// ── Nový príspevok (bottom sheet) ──
+function nstComposeOpen(){
+  var sh = document.getElementById('nst-compose');
+  var bd = document.getElementById('nst-compose-bd');
+  if (!sh || !bd) return;
+  NST.composeCat = NST.composeCat || 'konkurencia';
+  NST.composeProd = (NST.prod !== 'all' && NST.prod !== 'general') ? NST.prod : '';
+  nstComposeRender();
+  bd.classList.add('show');
+  sh.classList.add('show');
+  setTimeout(function(){ var t = document.getElementById('nst-text'); if (t) try { t.focus({ preventScroll: true }); } catch(e){} }, 220);
+}
+function nstComposeClose(){
+  var sh = document.getElementById('nst-compose');
+  var bd = document.getElementById('nst-compose-bd');
+  if (sh) sh.classList.remove('show');
+  if (bd) bd.classList.remove('show');
+}
+function nstComposeSetCat(k){ NST.composeCat = k; nstComposeRender(); try { haptic('selection'); } catch(e){} }
+function nstComposeSetProd(v){ NST.composeProd = v; }
+function nstComposeRender(){
+  var body = document.getElementById('nst-compose-body');
+  if (!body) return;
+  var isMgr = nstIsMgr();
+  var cats = NST_CATS.filter(function(c){ return !c.mgrOnly || isMgr; });
+  var cur = nstCat(NST.composeCat) || cats[0];
+  var prods = nstProducts();
+  var txt = '';
+  try { var old = document.getElementById('nst-text'); if (old) txt = old.value || ''; } catch(e){}
+  body.innerHTML =
+    '<div class="nst-f-lbl">Kategória</div>' +
+    '<div class="nst-chiprow nst-chiprow-wrap">' +
+      cats.map(function(c){
+        return '<button type="button" class="nst-chip nst-chip-' + c.k + (NST.composeCat === c.k ? ' on' : '') + '" onclick="nstComposeSetCat(\'' + c.k + '\')">' + c.ico + ' ' + c.lbl + '</button>';
+      }).join('') +
+    '</div>' +
+    '<div class="nst-f-hint">' + nstEsc((cur && cur.hint) || '') + '</div>' +
+    '<div class="nst-f-lbl">Produkt <span class="nst-f-opt">(nepovinné)</span></div>' +
+    '<select class="nst-select nst-select-full" id="nst-prod" onchange="nstComposeSetProd(this.value)">' +
+      '<option value="">Všeobecné — bez produktu</option>' +
+      prods.map(function(p){ return '<option value="' + nstEsc(p) + '"' + (NST.composeProd === p ? ' selected' : '') + '>' + nstEsc(p) + '</option>'; }).join('') +
+    '</select>' +
+    '<div class="nst-f-lbl">Okres <span class="nst-f-opt">(nepovinné)</span></div>' +
+    '<input type="text" class="nst-in" id="nst-okres" placeholder="napr. Nitra" autocomplete="off">' +
+    '<div class="nst-f-lbl">Text príspevku</div>' +
+    '<textarea class="nst-in nst-ta" id="nst-text" rows="5" placeholder="Napíš, čo chceš zdieľať s kolegami…">' + nstEsc(txt) + '</textarea>' +
+    '<div class="nst-err" id="nst-err"></div>' +
+    '<button type="button" class="nst-submit" id="nst-submit" onclick="nstSubmit()">Pridať na nástenku</button>';
+}
+function nstSubmit(){
+  var t = document.getElementById('nst-text');
+  var err = document.getElementById('nst-err');
+  var txt = t ? String(t.value || '').trim() : '';
+  if (err){ err.textContent = ''; err.classList.remove('show'); }
+  if (txt.length < 3){
+    if (err){ err.textContent = 'Napíš aspoň krátku poznámku.'; err.classList.add('show'); }
+    if (t) try { t.focus(); } catch(e){}
+    try { haptic('error'); } catch(e){}
+    return;
+  }
+  var s = nstSession() || {};
+  var prodEl = document.getElementById('nst-prod');
+  var okresEl = document.getElementById('nst-okres');
+  var isMgr = nstIsMgr();
+  var cat = NST.composeCat || 'konkurencia';
+  var rec = {
+    id: 'p' + Date.now() + Math.floor(Math.random() * 1000),
+    ts: new Date().toISOString(),
+    rep: nstUser(), meno: s.name || nstUser(), rola: s.role || '',
+    region: String(s.region || '').toUpperCase(),
+    produkt: prodEl ? String(prodEl.value || '') : '',
+    okres: okresEl ? String(okresEl.value || '').trim() : '',
+    kategoria: cat,
+    text: txt,
+    pin: (cat === 'dolezite' && isMgr) ? '1' : '',
+    likes: [], comments: []
+  };
+  NST.posts = [rec].concat(NST.posts || []);
+  nstSaveLocal(NST.posts);
+  nstSend({
+    action: 'saveNastenka', typ: 'post', id: rec.id, produkt: rec.produkt, okres: rec.okres,
+    kategoria: rec.kategoria, text: rec.text, pin: rec.pin
+  });
+  nstComposeClose();
+  NST.q = '';
+  nstRender();
+  nstMarkSeen();
+  try { haptic('success'); } catch(e){}
+  try { var ov = document.getElementById('nastenka-overlay'); if (ov) ov.scrollTo({ top: 0, behavior: 'smooth' }); } catch(e){}
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // APIXABAN — prieskum trhu apixaban u kardiológov a internistov (Golem rep).
 // Dashboard (cieľ = počet kardiológov + internistov v regióne, potenciál po
@@ -38350,6 +38927,148 @@ try { gsLpInit(); } catch(e){}
 <div class="lk-overlay tuy-scope" id="lonelix-overlay">
   <div class="lk-inner">
     <div id="lonelix-body"></div>
+  </div>
+</div>
+
+
+<!-- ═══ NÁSTENKA — zdieľané poznámky repov v rámci línie (Golem / gyn / Reagila) ═══ -->
+<style>
+  /* Panel */
+  #nastenka-overlay{display:none;position:fixed;inset:0;z-index:5900;background:#EAECF2;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  #nastenka-overlay.show{display:block;animation:nstIn .24s cubic-bezier(.16,1,.3,1) both}
+  @keyframes nstIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  .nst-inner{max-width:628px;margin:0 auto;padding:calc(12px + var(--sat)) 16px 90px}
+  .nst-topbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:calc(10px + var(--sat)) 0 10px;background:linear-gradient(#EAECF2 72%,rgba(234,236,242,0))}
+  .nst-back{background:#fff;border:1px solid #E2E8F0;border-radius:11px;color:#0F172A;font-size:13px;font-weight:700;font-family:inherit;padding:9px 14px;cursor:pointer;-webkit-tap-highlight-color:transparent;box-shadow:0 2px 8px rgba(15,23,42,.06)}
+  .nst-back:active{transform:scale(.97)}
+
+  /* Hero */
+  .nst-hero{background:linear-gradient(155deg,#0C1E35 0%,#13294B 60%,#1A3A5C 100%);border-radius:18px;padding:18px 18px 16px;box-shadow:0 10px 26px rgba(12,30,53,.28);position:relative;overflow:hidden;margin-bottom:12px}
+  .nst-hero::after{content:'';position:absolute;top:-40px;right:-30px;width:150px;height:150px;background:radial-gradient(circle,rgba(59,130,246,.35),transparent 70%);pointer-events:none}
+  .nst-hero-top{display:flex;align-items:center;gap:10px;position:relative}
+  .nst-hero-badge{width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
+  .nst-hero-title{font-family:var(--font-display);font-size:19px;font-weight:800;color:#fff;letter-spacing:-.01em;line-height:1.1}
+  .nst-hero-sub{font-size:11.5px;font-weight:600;color:#AFC6E4;margin-top:2px}
+  .nst-new-btn{position:relative;width:100%;margin-top:14px;background:linear-gradient(180deg,#3B82F6,#2563EB 60%,#1E40AF);color:#fff;border:none;border-radius:12px;padding:13px;font-size:14.5px;font-weight:800;font-family:var(--font-display);cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 6px 16px rgba(37,99,235,.3);-webkit-tap-highlight-color:transparent;transition:transform .12s}
+  .nst-new-btn:active{transform:scale(.98)}
+
+  /* Filtre */
+  .nst-filters{margin-bottom:12px}
+  .nst-chiprow{display:flex;gap:7px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:2px 0 8px;scrollbar-width:none}
+  .nst-chiprow::-webkit-scrollbar{display:none}
+  .nst-chiprow-wrap{flex-wrap:wrap;overflow:visible}
+  .nst-chip{flex-shrink:0;background:#fff;border:1px solid #E2E8F0;border-radius:20px;color:#64748B;font-size:12.5px;font-weight:700;font-family:inherit;padding:8px 13px;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap;transition:all .15s}
+  .nst-chip:active{transform:scale(.97)}
+  .nst-chip.on{background:#0C1E35;border-color:#0C1E35;color:#fff}
+  .nst-chiprow-prod .nst-chip.on{background:#2563EB;border-color:#2563EB}
+  .nst-filterrow{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+  .nst-search{position:relative;flex:1;min-width:160px}
+  .nst-search-ico{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:13px;opacity:.5}
+  .nst-search input{width:100%;height:40px;padding:0 12px 0 32px;border-radius:11px;border:1px solid #E2E8F0;background:#fff;font-size:14px;font-family:inherit;color:var(--color-text);outline:none}
+  .nst-search input:focus{border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+  .nst-select{height:40px;padding:0 10px;border-radius:11px;border:1px solid #E2E8F0;background:#fff;font-size:13px;font-family:inherit;color:#334155;outline:none;cursor:pointer}
+  .nst-select-full{width:100%;height:44px;font-size:15px;margin-bottom:2px}
+  .nst-sort{display:flex;gap:4px;background:#fff;border:1px solid #E2E8F0;border-radius:11px;padding:3px}
+  .nst-sort-btn{border:none;background:transparent;color:#64748B;font-size:12px;font-weight:700;font-family:inherit;padding:7px 10px;border-radius:8px;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap}
+  .nst-sort-btn.on{background:#0C1E35;color:#fff}
+
+  /* Príspevok */
+  .nst-post{background:#fff;border-radius:16px;padding:14px 15px;box-shadow:0 2px 10px rgba(15,23,42,.06);border:1px solid #EEF2F7;margin-bottom:11px;overflow:hidden}
+  .nst-post.pinned{border-color:#FDE68A;box-shadow:0 4px 14px rgba(217,119,6,.14)}
+  .nst-pinbar{margin:-14px -15px 11px;background:linear-gradient(90deg,#FFFBEB,#FEF3C7);color:#B45309;font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:6px 15px;border-bottom:1px solid #FDE68A}
+  .nst-post-hd{display:flex;align-items:center;gap:10px}
+  .nst-av{width:34px;height:34px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800;font-family:var(--font-display);overflow:hidden}
+  .nst-av img,.nst-av svg{width:100%;height:100%;object-fit:cover;display:block}
+  .nst-post-who{flex:1;min-width:0}
+  .nst-post-name{font-size:13.5px;font-weight:800;color:#0F172A;font-family:var(--font-display);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .nst-post-when{font-size:11px;color:#94A3B8;margin-top:1px}
+  .nst-catbadge{flex-shrink:0;border-radius:20px;font-size:10.5px;font-weight:800;padding:4px 10px;white-space:nowrap;border:1px solid}
+  .nst-cat-konkurencia{background:#FEF2F2;color:#B91C1C;border-color:#FECACA}
+  .nst-cat-namietka{background:#FFFBEB;color:#B45309;border-color:#FDE68A}
+  .nst-cat-zabralo{background:#ECFDF5;color:#047857;border-color:#A7F3D0}
+  .nst-cat-teren{background:#EFF6FF;color:#1D4ED8;border-color:#BFDBFE}
+  .nst-cat-lekaren{background:#F5F3FF;color:#6D28D9;border-color:#DDD6FE}
+  .nst-cat-otazka{background:#F0FDFA;color:#0F766E;border-color:#99F6E4}
+  .nst-cat-dolezite{background:#0C1E35;color:#fff;border-color:#0C1E35}
+  .nst-chip-konkurencia.on{background:#B91C1C;border-color:#B91C1C}
+  .nst-chip-namietka.on{background:#B45309;border-color:#B45309}
+  .nst-chip-zabralo.on{background:#047857;border-color:#047857}
+  .nst-chip-teren.on{background:#1D4ED8;border-color:#1D4ED8}
+  .nst-chip-lekaren.on{background:#6D28D9;border-color:#6D28D9}
+  .nst-chip-otazka.on{background:#0F766E;border-color:#0F766E}
+  .nst-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+  .nst-tag{background:#F1F5F9;border-radius:7px;font-size:10.5px;font-weight:700;color:#475569;padding:3px 8px}
+  .nst-tag-prod{background:#EFF6FF;color:#1D4ED8}
+  .nst-text{margin-top:10px;font-size:14px;color:#1E293B;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+  .nst-actions{display:flex;gap:7px;margin-top:12px;padding-top:10px;border-top:1px solid #F1F5F9;flex-wrap:wrap}
+  .nst-act{background:#F8FAFC;border:1px solid #EEF2F7;border-radius:9px;color:#64748B;font-size:12px;font-weight:700;font-family:inherit;padding:7px 11px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .15s}
+  .nst-act:active{transform:scale(.97)}
+  .nst-act.on{background:#EFF6FF;border-color:#BFDBFE;color:#1D4ED8}
+  .nst-act-icon{margin-left:auto;padding:7px 10px}
+  .nst-act-del{margin-left:0}
+  .nst-act-del:active{background:#FEF2F2;border-color:#FECACA;color:#B91C1C}
+
+  /* Komentáre */
+  .nst-comments{margin-top:11px;padding-top:11px;border-top:1px dashed #E2E8F0;animation:nstIn .2s ease both}
+  .nst-comment{background:#F8FAFC;border-radius:10px;padding:9px 11px;margin-bottom:7px}
+  .nst-comment-hd{display:flex;align-items:center;gap:8px}
+  .nst-comment-who{font-size:12px;font-weight:800;color:#334155}
+  .nst-comment-when{font-size:10.5px;color:#94A3B8;flex:1}
+  .nst-cdel{background:transparent;border:none;color:#CBD5E1;font-size:12px;cursor:pointer;padding:0 2px;-webkit-tap-highlight-color:transparent}
+  .nst-comment-txt{font-size:13px;color:#334155;line-height:1.5;margin-top:4px;word-break:break-word}
+  .nst-creply{display:flex;gap:7px;margin-top:8px}
+  .nst-creply-in{flex:1;height:40px;padding:0 12px;border-radius:10px;border:1px solid #E2E8F0;background:#fff;font-size:14px;font-family:inherit;color:var(--color-text);outline:none}
+  .nst-creply-in:focus{border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+  .nst-creply-btn{background:#0C1E35;border:none;border-radius:10px;color:#fff;font-size:12.5px;font-weight:700;font-family:inherit;padding:0 14px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+
+  /* Prázdny stav */
+  .nst-empty{background:#fff;border-radius:16px;padding:34px 22px;text-align:center;border:1px dashed #CBD5E1}
+  .nst-empty-ico{font-size:30px}
+  .nst-empty-t{font-family:var(--font-display);font-size:16px;font-weight:800;color:#334155;margin-top:8px}
+  .nst-empty-s{font-size:12.5px;color:#64748B;margin-top:5px;line-height:1.5;max-width:330px;margin-left:auto;margin-right:auto}
+
+  /* Nový príspevok — bottom sheet */
+  #nst-compose-bd{display:none;position:fixed;inset:0;z-index:6300;background:rgba(15,23,42,.5);backdrop-filter:blur(2px)}
+  #nst-compose-bd.show{display:block;animation:nstFade .2s ease both}
+  @keyframes nstFade{from{opacity:0}to{opacity:1}}
+  #nst-compose{display:none;position:fixed;left:0;right:0;bottom:0;z-index:6310;background:#fff;border-radius:20px 20px 0 0;box-shadow:0 -12px 40px rgba(15,23,42,.28);max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  #nst-compose.show{display:block;animation:nstUp .26s cubic-bezier(.16,1,.3,1) both}
+  @keyframes nstUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  .nst-sheet-inner{max-width:628px;margin:0 auto;padding:8px 18px calc(18px + var(--sab, 0px))}
+  .nst-handle{width:40px;height:4px;border-radius:4px;background:#E2E8F0;margin:8px auto 12px}
+  .nst-sheet-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+  .nst-sheet-title{font-family:var(--font-display);font-size:17px;font-weight:800;color:#0F172A}
+  .nst-sheet-close{background:#F1F5F9;border:none;color:#475569;font-size:16px;width:32px;height:32px;border-radius:9px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .nst-f-lbl{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#94A3B8;margin:12px 0 7px}
+  .nst-f-opt{font-weight:600;text-transform:none;letter-spacing:0;color:#CBD5E1}
+  .nst-f-hint{font-size:11.5px;color:#64748B;line-height:1.45;margin:-2px 0 2px}
+  .nst-in{width:100%;padding:11px 13px;border-radius:11px;border:1.5px solid var(--color-border);background:#fff;font-size:16px;font-family:inherit;color:var(--color-text);outline:none;box-shadow:inset 0 1px 3px rgba(15,23,42,.04)}
+  .nst-in:focus{border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  .nst-ta{min-height:110px;line-height:1.5;resize:vertical;font-size:15px}
+  .nst-err{display:none;background:#FEF2F2;border:1px solid #FECACA;color:#B91C1C;font-size:12.5px;font-weight:600;border-radius:10px;padding:10px 12px;margin-top:10px}
+  .nst-err.show{display:block}
+  .nst-submit{width:100%;margin-top:14px;background:linear-gradient(180deg,#3B82F6,#2563EB 55%,#1E40AF);color:#fff;border:none;border-radius:13px;padding:15px;font-size:15.5px;font-weight:800;font-family:var(--font-display);cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 8px 20px rgba(37,99,235,.3);-webkit-tap-highlight-color:transparent;transition:transform .12s}
+  .nst-submit:active{transform:scale(.98)}
+
+  /* Bodka s počtom nových v navigácii */
+  .nst-navdot{position:absolute;top:3px;right:8px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;background:#DC2626;color:#fff;font-size:9.5px;font-weight:800;line-height:16px;text-align:center;box-shadow:0 0 0 2px #fff;pointer-events:none}
+  .rep-nav-btn,.panel-nav-btn,.gyn-nav-btn,.mgr-subtab{position:relative}
+</style>
+<div id="nastenka-overlay">
+  <div class="nst-inner">
+    <div class="nst-topbar"><button type="button" class="nst-back" onclick="closeNastenka()">&larr; Späť</button></div>
+    <div id="nastenka-body"></div>
+  </div>
+</div>
+<div id="nst-compose-bd" onclick="nstComposeClose()"></div>
+<div id="nst-compose" role="dialog" aria-label="Nový príspevok na nástenku">
+  <div class="nst-sheet-inner">
+    <div class="nst-handle"></div>
+    <div class="nst-sheet-hd">
+      <span class="nst-sheet-title">📌 Nový príspevok</span>
+      <button type="button" class="nst-sheet-close" onclick="nstComposeClose()" aria-label="Zavrieť">✕</button>
+    </div>
+    <div id="nst-compose-body"></div>
   </div>
 </div>
 
