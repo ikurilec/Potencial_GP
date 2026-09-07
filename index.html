@@ -3706,7 +3706,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.74.3';
+var APP_VERSION = '2.74.4';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8309,7 +8309,7 @@ function openDetail(idx) {
   if(!item) return;
   if(item.type === 'tuyory'){ tuyoryHistDetail(item); return; }
   if(item.type === 'apixaban'){ apixHistDetail(item); return; }
-  if(item.type === 'lonelix-new'){ lonelixOpenGpForm(item.lon); return; }
+  if(item.type === 'lonelix-new'){ lonelixDoctorDetail(item.lon, { canAddGp: true }); return; }
   _currentDetailIdx = idx;
   _currentDetailItem = item;
   _currentDetailReopenFn = function() { openDetail(idx); };
@@ -35214,17 +35214,28 @@ function tuyoryHistDetail(item){
 }
 function tuyoryDetailClose(){ var ov = document.getElementById('tuy-detail-overlay'); if (ov) ov.classList.remove('show'); document.body.style.overflow = ''; }
 // Detail Lonelix-only lekára (u manažéra) — reuse toho istého modalu s Lonelix obsahom
-function lonelixDoctorDetail(r){
+// Detail Lonelix-only lekára. opts.canAddGp = true → hore tlačidlo „Doplniť GP potenciál"
+// (reprezentant v Histórii); manažér ho nedostane — GP formulár nevypĺňa.
+var _lonDetailRec = null;
+function lonelixDoctorDetail(r, opts){
   if (!r) return;
   var ov = document.getElementById('tuy-detail-overlay');
   var body = document.getElementById('tuy-detail-body');
   var title = document.getElementById('tuy-detail-title');
   var badge = document.getElementById('tuy-detail-badge');
   if (!ov || !body) return;
+  _lonDetailRec = r;
+  var canAdd = !!(opts && opts.canAddGp);
   if (title) title.textContent = r.meno || 'Lonelix záznam';
   if (badge) badge.textContent = '🛡️ Prieskum Lonelix';
   function row(k, v){ return (v || v === 0) && v !== '' ? '<div class="tuy-dt-row"><span class="tuy-dt-k">' + k + '</span><span class="tuy-dt-v">' + tuyEsc(v) + '</span></div>' : ''; }
-  var html = '<div class="tuy-dt-note" style="margin:0 0 10px"><div class="tuy-dt-note-v">⚠︎ GP potenciál ešte nezistený — lekár zatiaľ nie je v GP databáze (má len Lonelix záznam).</div></div>';
+  var html = '';
+  if (canAdd){
+    html += '<button type="button" class="tuy-dt-cta" onclick="lonelixDetailAddGp()">＋ Doplniť GP potenciál</button>' +
+      '<div class="tuy-dt-cta-sub">Tento lekár má zatiaľ len Lonelix záznam. Cez tlačidlo doplníš kapitáciu a ostatné produkty — potom sa zaradí medzi bežných GP lekárov.</div>';
+  } else {
+    html += '<div class="tuy-dt-note" style="margin:0 0 10px"><div class="tuy-dt-note-v">⚠︎ GP potenciál ešte nezistený — lekár zatiaľ nie je v GP databáze (má len Lonelix záznam).</div></div>';
+  }
   html += row('Okres', r.okres);
   html += row('Používa inozín', r.pouziva === 'ano' ? 'Áno' : 'Nie');
   if (r.pouziva === 'ano'){
@@ -35238,6 +35249,12 @@ function lonelixDoctorDetail(r){
   body.innerHTML = html;
   ov.classList.add('show');
   document.body.style.overflow = 'hidden';
+}
+// „Doplniť GP potenciál" z detailu → zavri modal a otvor GP formulár predvyplnený lekárom
+function lonelixDetailAddGp(){
+  var r = _lonDetailRec;
+  try { tuyoryDetailClose(); } catch(e){}
+  if (r && typeof lonelixOpenGpForm === 'function') lonelixOpenGpForm(r);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -38279,6 +38296,9 @@ try { gsLpInit(); } catch(e){}
   #tuy-detail-overlay .tuy-dt-note{padding:12px 0 2px}
   #tuy-detail-overlay .tuy-dt-note-k{font-size:12px;font-weight:600;color:#94A3B8;margin-bottom:6px}
   #tuy-detail-overlay .tuy-dt-note-v{font-size:13px;font-weight:500;color:#78350F;line-height:1.55;background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:10px 12px}
+  #tuy-detail-overlay .tuy-dt-cta{width:100%;margin:10px 0 6px;background:linear-gradient(180deg,#F59E0B 0%,#D97706 60%,#B45309 100%);color:#fff;border:none;border-radius:12px;padding:13px;font-size:14.5px;font-weight:800;font-family:var(--font-display);letter-spacing:.01em;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 6px 16px rgba(217,119,6,.28);transition:transform .12s;-webkit-tap-highlight-color:transparent}
+  #tuy-detail-overlay .tuy-dt-cta:active{transform:scale(.98)}
+  #tuy-detail-overlay .tuy-dt-cta-sub{font-size:11.5px;font-weight:500;color:#64748B;line-height:1.45;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #F1F5F9}
 
   /* ── Apixaban — doplnky k zdieľaným tuy-* štýlom ── */
   /* Cieľ — dvojica inputov (kardiológovia / internisti) */
