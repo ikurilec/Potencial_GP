@@ -1159,11 +1159,12 @@
   .tutorial-preskocit{display:block;margin:6px auto 0;background:none;border:none;color:#CBD5E1;font-size:11px;font-family:inherit;cursor:pointer;font-weight:500}
   .tutorial-hero-login-title{font-size:26px;font-weight:800;letter-spacing:-.03em;color:#fff;text-align:center;line-height:1.2}
   /* ── PLNENIE (Predaje vs Plán) — admin sub-view, v2.3.0 ── */
-  .mgr-subtabs{display:flex;gap:6px;margin:0 0 10px;background:#fff;border-radius:12px;padding:4px;box-shadow:0 2px 8px rgba(0,0,0,.06);position:sticky;top:var(--sat);z-index:100}
-  .mgr-subtab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px 2px;border:none;background:transparent;font-size:11px;font-weight:700;color:#64748B;cursor:pointer;border-radius:9px;font-family:inherit;transition:all .15s;-webkit-tap-highlight-color:transparent;line-height:1.1}
+  .mgr-subtabs{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:0 0 10px;background:#EAECF2;padding:12px 0 4px;position:sticky;top:var(--sat);z-index:100}
+  .mgr-subtab{flex:0 0 calc((100% - (var(--mcols,5) - 1) * 6px) / var(--mcols,5) - 0.5px);min-width:0;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px 2px;border:1px solid rgba(0,0,0,.07);background:#fff;font-size:11px;font-weight:700;color:#1A2A3A;cursor:pointer;border-radius:12px;font-family:inherit;box-shadow:0 2px 8px rgba(0,0,0,.06),0 1px 3px rgba(0,0,0,.04);transition:opacity .15s,transform .15s,background .2s;-webkit-tap-highlight-color:transparent;line-height:1.1;white-space:nowrap}
+  .mgr-subtab:active{opacity:.82;transform:scale(.96)}
   .mgr-subtab .st-emoji{font-size:17px;line-height:1}
   .mgr-subtab .st-lbl{font-size:11px;white-space:nowrap}
-  .mgr-subtab.active{background:#0C1E35;color:#fff}
+  .mgr-subtab.active{background:#0C1E35;border-color:#0C1E35;color:#fff;box-shadow:0 4px 12px rgba(12,30,53,.24)}
   .mgr-plnenie-view{display:none}
   body.mgr-subtab-plnenie .mgr-plnenie-view{display:block}
   body.mgr-subtab-plnenie .mgr-list-wrap,
@@ -3710,7 +3711,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.75.0';
+var APP_VERSION = '2.75.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -17153,6 +17154,7 @@ function mgrEnter(roleKey){
   if (rptBtn) rptBtn.style.display = golemActivityAllowed(roleKey) ? '' : 'none';
 
   MGR_STATE.histFilter = 'all';
+  try { setTimeout(mgrSubtabsBalance, 0); setTimeout(mgrSubtabsBalance, 300); } catch(e){}
   mgrLoadData();
   MGR_STATE.detailTab = 'gp';   // default tab v detaile repa
   // Override + súhrn línie + Tuyory + Lonelix v JEDNOM volaní (bootstrap) namiesto 4.
@@ -35378,6 +35380,23 @@ function nstUnread(){
   });
   return n;
 }
+// Manazerska navigacia — vyvazi subtaby do 1–2 riadkov (ako Golem rep-nav),
+// aby sa pri 7 zalozkach nic nevytlacilo mimo obrazovku.
+function mgrSubtabsBalance(){
+  try {
+    var nav = document.querySelector('#mgr-view .mgr-subtabs');
+    if (!nav) return;
+    var n = 0;
+    Array.prototype.forEach.call(nav.querySelectorAll('.mgr-subtab'), function(b){
+      if (getComputedStyle(b).display !== 'none') n++;
+    });
+    if (!n) return;
+    nav.style.setProperty('--mcols', (n <= 4) ? n : Math.ceil(n / 2));
+    if (typeof gpSetMgrSubH === 'function') gpSetMgrSubH();
+  } catch(e){}
+}
+if (typeof window !== 'undefined') window.addEventListener('resize', function(){ try { mgrSubtabsBalance(); } catch(e){} });
+
 // Gyn navigacia — vyvazi zalozky do 1–2 riadkov (rovnaka logika ako Golem rep-nav)
 function gynNavBalance(){
   try {
@@ -35544,11 +35563,9 @@ function nstRender(){
       }).join('');
 
   var prods = nstProducts();
-  var prodChips = '<button type="button" class="nst-chip' + (NST.prod === 'all' ? ' on' : '') + '" onclick="nstSetProd(\'all\')">Všetky produkty</button>' +
-    '<button type="button" class="nst-chip' + (NST.prod === 'general' ? ' on' : '') + '" onclick="nstSetProd(\'general\')">Všeobecné</button>' +
-    prods.map(function(p){
-      return '<button type="button" class="nst-chip' + (NST.prod === p ? ' on' : '') + '" onclick="nstSetProd(\'' + p.replace(/'/g, "\\'") + '\')">' + nstEsc(p) + '</button>';
-    }).join('');
+  var prodOpts = '<option value="all"' + (NST.prod === 'all' ? ' selected' : '') + '>Všetky produkty</option>' +
+    '<option value="general"' + (NST.prod === 'general' ? ' selected' : '') + '>Všeobecné — bez produktu</option>' +
+    prods.map(function(p){ return '<option value="' + nstEsc(p) + '"' + (NST.prod === p ? ' selected' : '') + '>' + nstEsc(p) + '</option>'; }).join('');
 
   var regs = nstRegions();
   var regOpts = '<option value="all"' + (NST.region === 'all' ? ' selected' : '') + '>Všetky regióny</option>' +
@@ -35567,11 +35584,13 @@ function nstRender(){
     '</div>' +
     '<div class="nst-filters">' +
       '<div class="nst-chiprow">' + catChips + '</div>' +
-      '<div class="nst-chiprow nst-chiprow-prod">' + prodChips + '</div>' +
+      '<div class="nst-filterrow">' +
+        '<select class="nst-select nst-select-half" onchange="nstSetProd(this.value)">' + prodOpts + '</select>' +
+        '<select class="nst-select nst-select-half" onchange="nstSetRegion(this.value)">' + regOpts + '</select>' +
+      '</div>' +
       '<div class="nst-filterrow">' +
         '<div class="nst-search"><span class="nst-search-ico">🔍</span>' +
           '<input type="text" id="nst-q" placeholder="Hľadať v príspevkoch…" value="' + nstEsc(NST.q) + '" oninput="nstSearch(this)" autocomplete="off"></div>' +
-        '<select class="nst-select" onchange="nstSetRegion(this.value)">' + regOpts + '</select>' +
         '<div class="nst-sort">' +
           '<button type="button" class="nst-sort-btn' + (NST.sort === 'new' ? ' on' : '') + '" onclick="nstSetSort(\'new\')">Najnovšie</button>' +
           '<button type="button" class="nst-sort-btn' + (NST.sort === 'top' ? ' on' : '') + '" onclick="nstSetSort(\'top\')">Najužitočnejšie</button>' +
@@ -38954,14 +38973,15 @@ try { gsLpInit(); } catch(e){}
 
   /* Filtre */
   .nst-filters{margin-bottom:12px}
-  .nst-chiprow{display:flex;gap:7px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:2px 0 8px;scrollbar-width:none}
-  .nst-chiprow::-webkit-scrollbar{display:none}
-  .nst-chiprow-wrap{flex-wrap:wrap;overflow:visible}
+  .nst-chiprow{display:flex;flex-wrap:wrap;gap:7px;padding:2px 0 8px}
+  .nst-chiprow-wrap{flex-wrap:wrap}
   .nst-chip{flex-shrink:0;background:#fff;border:1px solid #E2E8F0;border-radius:20px;color:#64748B;font-size:12.5px;font-weight:700;font-family:inherit;padding:8px 13px;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap;transition:all .15s}
   .nst-chip:active{transform:scale(.97)}
   .nst-chip.on{background:#0C1E35;border-color:#0C1E35;color:#fff}
   .nst-chiprow-prod .nst-chip.on{background:#2563EB;border-color:#2563EB}
-  .nst-filterrow{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+  .nst-filterrow{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:7px}
+  .nst-filterrow:last-child{margin-bottom:0}
+  .nst-select-half{flex:1 1 45%;min-width:0}
   .nst-search{position:relative;flex:1;min-width:160px}
   .nst-search-ico{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:13px;opacity:.5}
   .nst-search input{width:100%;height:40px;padding:0 12px 0 32px;border-radius:11px;border:1px solid #E2E8F0;background:#fff;font-size:14px;font-family:inherit;color:var(--color-text);outline:none}
