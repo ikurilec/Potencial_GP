@@ -3711,7 +3711,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.75.4';
+var APP_VERSION = '2.75.5';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9865,21 +9865,16 @@ function doLogin() {
       return;
     }
 
-    // Admin → vstup rovno do Golemu (zachované správanie), zapamätaná voľba ho neovplyvňuje.
-    var _isAdmin = false;
-    try { _isAdmin = gpData.ok && mgrDetectRole(mgrBuildGpUser(username, gpData)) === 'admin'; } catch(e){}
-    if(_isAdmin) {
-      enterLineFromLogin(username, 'gp', dataMap);   // admin vždy Golem
-      return;
-    }
-    // Zapamätaná voľba (Sheet má prednosť pred localStorage) → vstup rovno, bez pýtania
+    // Zapamätaná voľba (Sheet má prednosť pred localStorage) → vstup rovno, bez pýtania.
+    // Admin už nemá výnimku „vždy Golem" — s prístupom do viacerých línií dostane
+    // rovnaký výber rozhrania ako ostatní a môže si ho zapamätať.
     var _pref = lineReadPrefFromLogin(dataMap) || lineGetPref(username);
     if(_pref && avail.indexOf(_pref) !== -1) {
       lineSetPref(username, _pref);   // zrkadli do localStorage pre rýchle/offline čítanie
       enterLineFromLogin(username, _pref, dataMap);
       return;
     }
-    // Ne-admin s 2+ líniami → výber rozhrania
+    // Viac línií (vrátane admina) → výber rozhrania
     if(avail.length >= 2) {
       showLineChooser(username, avail, dataMap);
       return;
