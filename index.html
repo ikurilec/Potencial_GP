@@ -3711,7 +3711,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.75.1';
+var APP_VERSION = '2.75.2';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -35307,6 +35307,7 @@ var NST = {
   posts: [], loaded: false, loading: false, err: '',
   cat: 'all', prod: 'all', region: 'all', sort: 'new', q: '',
   open: {},            // id → rozbalené komentáre
+  likesOpen: {},       // id → rozbalený celý zoznam „pomohlo mi"
   composeCat: '', composeProd: '',
   _reqId: 0, _sending: false
 };
@@ -35606,15 +35607,80 @@ function nstRenderList(){
   if (!list) return;
   var items = nstFiltered();
   if (!items.length){
-    var sub = NST.loading ? 'Načítavam príspevky…'
-            : (NST.q || NST.cat !== 'all' || NST.prod !== 'all' || NST.region !== 'all') ? 'Skús zmeniť filter alebo hľadaný výraz.'
+    // ešte sa ťahajú dáta → kostra príspevkov (nie „prázdna nástenka")
+    if (NST.loading){ list.innerHTML = nstSkeletonHtml(); return; }
+    var filtered = (NST.q || NST.cat !== 'all' || NST.prod !== 'all' || NST.region !== 'all');
+    var sub = filtered ? 'Skús zmeniť filter alebo hľadaný výraz.'
             : 'Buď prvý — pridaj, čo robí konkurencia, akú námietku si počul alebo čo ti zabralo.';
-    var title = (NST.q || NST.cat !== 'all' || NST.prod !== 'all' || NST.region !== 'all') ? 'Žiadne zhody' : 'Nástenka je zatiaľ prázdna';
+    var title = filtered ? 'Žiadne zhody' : 'Nástenka je zatiaľ prázdna';
     list.innerHTML = '<div class="nst-empty"><div class="nst-empty-ico">📌</div><div class="nst-empty-t">' + title + '</div><div class="nst-empty-s">' + sub + '</div></div>';
     return;
   }
-  list.innerHTML = items.map(nstPostHtml).join('');
+  list.innerHTML = (NST.loading ? '<div class="nst-refresh"><span class="nst-spin"></span>Obnovujem…</div>' : '') +
+    items.map(nstPostHtml).join('');
 }
+
+
+// Kostra príspevkov počas načítavania (shimmer v štýle zvyšku appky)
+function nstSkeletonHtml(){
+  var one = '<div class="nst-post nst-skel-post">' +
+      '<div class="nst-post-hd">' +
+        '<div class="skel nst-sk-av"></div>' +
+        '<div class="nst-post-who"><div class="skel nst-sk-line" style="width:44%"></div>' +
+          '<div class="skel nst-sk-line nst-sk-sm" style="width:26%"></div></div>' +
+        '<div class="skel nst-sk-badge"></div>' +
+      '</div>' +
+      '<div class="skel nst-sk-line" style="width:92%;margin-top:12px"></div>' +
+      '<div class="skel nst-sk-line" style="width:78%"></div>' +
+      '<div class="skel nst-sk-line" style="width:55%"></div>' +
+      '<div class="nst-sk-acts"><div class="skel nst-sk-act"></div><div class="skel nst-sk-act"></div></div>' +
+    '</div>';
+  return '<div class="nst-loading"><span class="nst-spin"></span>Načítavam príspevky…</div>' + one + one + one;
+}
+
+
+// Meno k loginu — z autorov príspevkov/komentárov, z manažérskeho rostra alebo z vlastnej session
+function nstNameFor(login){
+  var l = String(login || '').trim().toLowerCase();
+  if (!l) return '';
+  if (l === nstUser()) return 'Ty';
+  var found = '';
+  (NST.posts || []).forEach(function(p){
+    if (!found && String(p.rep || '').toLowerCase() === l && p.meno) found = p.meno;
+    (p.comments || []).forEach(function(c){ if (!found && String(c.rep || '').toLowerCase() === l && c.meno) found = c.meno; });
+  });
+  if (!found){ try { if (typeof MGR_REP_NAMES !== 'undefined' && MGR_REP_NAMES[l]) found = MGR_REP_NAMES[l]; } catch(e){} }
+  // roster rebríčka / manažérske mapy — pokryje aj tichých kolegov, čo ešte nič nenapísali
+  if (!found){ try { if (typeof gynCalPersonName === 'function'){ var n = gynCalPersonName(l); if (n && n !== l) found = n; } } catch(e){} }
+  return found || login;
+}
+// „Ty a Zuzana Leščišinová", „Zuzana a 3 ďalší" — klik rozbalí celý zoznam
+function nstLikesLineHtml(p){
+  var likes = (p.likes || []).filter(function(x){ return !!String(x || '').trim(); });
+  if (!likes.length) return '';
+  var id = String(p.id || '');
+  var me = nstUser();
+  var ordered = likes.slice().sort(function(a, b){
+    var am = String(a || '').toLowerCase() === me ? 0 : 1;
+    var bm = String(b || '').toLowerCase() === me ? 0 : 1;
+    return am - bm;
+  });
+  var names = ordered.map(nstNameFor);
+  var full = !!NST.likesOpen[id];
+  var txt;
+  if (full || names.length <= 2){
+    txt = names.length === 1 ? names[0]
+        : names.slice(0, -1).join(', ') + ' a ' + names[names.length - 1];
+  } else {
+    var rest = names.length - 2;
+    txt = names.slice(0, 2).join(', ') + ' a ' + rest + ' ďalší';
+  }
+  var clickable = names.length > 2;
+  return '<div class="nst-likes' + (clickable ? ' is-click' : '') + '"' +
+    (clickable ? ' onclick="nstToggleLikes(\'' + id.replace(/'/g, "\\'") + '\')"' : '') + '>' +
+    '<span class="nst-likes-ico">👍</span><span class="nst-likes-txt">' + nstEsc(txt) + '</span></div>';
+}
+function nstToggleLikes(id){ NST.likesOpen[id] = !NST.likesOpen[id]; nstRenderList(); }
 
 function nstPostHtml(p){
   var c = nstCat(p.kategoria) || { ico: '📝', lbl: 'Poznámka', k: 'teren' };
@@ -35674,6 +35740,7 @@ function nstPostHtml(p){
     '</div>' +
     (meta.length ? '<div class="nst-tags">' + meta.join('') + '</div>' : '') +
     '<div class="nst-text">' + nstEsc(p.text || '').replace(/\n/g, '<br>') + '</div>' +
+    nstLikesLineHtml(p) +
     '<div class="nst-actions">' +
       '<button type="button" class="nst-act' + (iLike ? ' on' : '') + '" onclick="nstLike(' + idArg + ')">👍 <span>' + (likes.length || '') + '</span> Pomohlo</button>' +
       '<button type="button" class="nst-act' + (open ? ' on' : '') + '" onclick="nstToggleComments(' + idArg + ')">💬 ' + (comments.length ? comments.length + ' ' + (comments.length === 1 ? 'odpoveď' : (comments.length < 5 ? 'odpovede' : 'odpovedí')) : 'Odpovedať') + '</button>' +
@@ -39040,6 +39107,26 @@ try { gsLpInit(); } catch(e){}
   .nst-creply-in{flex:1;height:40px;padding:0 12px;border-radius:10px;border:1px solid #E2E8F0;background:#fff;font-size:14px;font-family:inherit;color:var(--color-text);outline:none}
   .nst-creply-in:focus{border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
   .nst-creply-btn{background:#0C1E35;border:none;border-radius:10px;color:#fff;font-size:12.5px;font-weight:700;font-family:inherit;padding:0 14px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+
+  /* Načítavanie — kostra + spinner */
+  .nst-loading,.nst-refresh{display:flex;align-items:center;justify-content:center;gap:8px;font-size:12.5px;font-weight:700;color:#64748B;padding:4px 0 12px}
+  .nst-refresh{padding:0 0 10px}
+  .nst-spin{width:14px;height:14px;border:2px solid #E2E8F0;border-top-color:#2563EB;border-radius:50%;animation:nstSpin .7s linear infinite;flex-shrink:0}
+  @keyframes nstSpin{to{transform:rotate(360deg)}}
+  .nst-skel-post{pointer-events:none}
+  .nst-sk-av{width:34px;height:34px;border-radius:50%;flex-shrink:0}
+  .nst-sk-line{height:11px;border-radius:6px;margin-bottom:7px}
+  .nst-sk-sm{height:9px;margin-top:5px;margin-bottom:0}
+  .nst-sk-badge{width:84px;height:20px;border-radius:20px;flex-shrink:0}
+  .nst-sk-acts{display:flex;gap:7px;margin-top:12px;padding-top:10px;border-top:1px solid #F1F5F9}
+  .nst-sk-act{width:96px;height:30px;border-radius:9px}
+
+  /* Kto dal 👍 pomohlo */
+  .nst-likes{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:#64748B}
+  .nst-likes.is-click{cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .nst-likes.is-click:active{opacity:.7}
+  .nst-likes-ico{width:20px;height:20px;border-radius:50%;background:linear-gradient(180deg,#3B82F6,#2563EB);display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;flex-shrink:0;box-shadow:0 1px 3px rgba(37,99,235,.35)}
+  .nst-likes-txt{font-weight:600;line-height:1.35}
 
   /* Prázdny stav */
   .nst-empty{background:#fff;border-radius:16px;padding:34px 22px;text-align:center;border:1px dashed #CBD5E1}
