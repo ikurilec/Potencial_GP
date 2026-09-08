@@ -12,8 +12,13 @@
   <meta name="apple-mobile-web-app-title" content="Satori">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Satori</title>
+  <!-- Font sa načítava cez <link>, nie cez @import v CSS. @import prehliadač objaví až
+       potom, ako stiahne a rozparsuje celý štýl — teda o stovky milisekúnd neskôr.
+       preconnect otvorí spojenia na obe domény Google Fonts hneď, súbežne s HTML. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@700&display=swap">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@700&display=swap');
   :root{
     /* Typography */
     --font-display:'Outfit','SF Pro Display',-apple-system,BlinkMacSystemFont,sans-serif;
@@ -3367,7 +3372,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
       </div>
       <div class="hist-search-wrap">
         <span class="hist-search-icon">🔍</span>
-        <input type="text" class="hist-search" id="hist-search" placeholder="Hľadať lekára alebo okres..." oninput="filterHistory()" autocomplete="off">
+        <input type="text" class="hist-search" id="hist-search" placeholder="Hľadať lekára alebo okres..." oninput="filterHistoryDebounced()" autocomplete="off">
       </div>
       <div class="hist-subtabs" id="hist-subtabs">
         <button type="button" class="hist-subtab active" data-hf="all" onclick="histSetFilter('all',this)">Všetko<span class="hist-subtab-count" id="hist-cnt-all"></span></button>
@@ -7058,6 +7063,15 @@ function histRender(){
   }
 }
 function filterHistory(){ histRender(); }
+// Každé stlačenie klávesu spúšťalo celé histRender() — filtrovanie, zoradenie celého
+// poľa a jeden veľký innerHTML nad celým zoznamom. Reprezentant so 400 lekármi tak
+// prekresľoval 400 kariet na každé písmeno. 120 ms po poslednom klávese stačí a je
+// pod hranicou, ktorú človek vníma ako oneskorenie.
+var _histSearchTimer = null;
+function filterHistoryDebounced(){
+  clearTimeout(_histSearchTimer);
+  _histSearchTimer = setTimeout(filterHistory, 120);
+}
 
 var _panelCurrent = null;
 var _panelStack = []; // navigačný stack — pamätá odkiaľ sme prišli (pre Android back button)
@@ -20776,10 +20790,13 @@ function loadInitData(username, _attempt) {
       try { bootLoaderDone(); } catch(e){}
     })
     .catch(function() {
-      var delays = [3000, 8000];
+      // Exponenciálne odstupy s náhodným rozptylom. Pevné hodnoty spôsobili, že po
+      // výpadku backendu sa naň všetci prihlásení vrhli v tú istú sekundu a výpadok
+      // tým predĺžili. Rozptyl 0,5x–1,5x ich rozloží v čase.
+      var delays = [3000, 9000, 27000];
       if(_attempt < delays.length) {
-        // Retry s oneskorením
-        setTimeout(function() { loadInitData(username, _attempt + 1); }, delays[_attempt]);
+        var wait = Math.round(delays[_attempt] * (0.5 + Math.random()));
+        setTimeout(function() { loadInitData(username, _attempt + 1); }, wait);
       } else {
         // Po 3 pokusoch — fallback na pôvodné funkcie
         loadRepList();
@@ -21146,6 +21163,13 @@ function startNotifPolling() {
   if (IS_DEV) return;
   stopNotifPolling();
   NOTIF_POLL_INTERVAL = setInterval(function() {
+    // Na pozadí sa nepolluje. Predtým tu kontrola viditeľnosti chýbala (na rozdiel od
+    // kalendárového gynCalLivePollStart, ktorý ju má), takže appka nechaná otvorená
+    // v pozadí volala backend celý deň — pri dvoch typoch a 60 s intervale okolo
+    // 960 volaní Apps Scriptu na jedného človeka za smenu, len aby sa zistilo, či sa
+    // zmenili dva dátumy, ktoré sa menia raz denne. Návrat do popredia kontrolu spustí
+    // sám (visibilitychange nižšie), takže sa nič nestratí.
+    if (document.visibilityState !== 'visible') return;
     NOTIF_TYPES.forEach(function(n) {
       var lsKey = notifSeenKey(n.key);
       fetch(notifUrl('action=getConfig&key=' + encodeURIComponent('notif_' + n.key)))
@@ -21158,7 +21182,7 @@ function startNotifPolling() {
         })
         .catch(function(){});
     });
-  }, 60000); // každých 60 sekúnd
+  }, 300000); // každých 5 minút v popredí; zmena dát je denná udalosť, nie sekundová
 }
 
 function stopNotifPolling() {
@@ -32181,8 +32205,18 @@ function downloadAllReportsPdf() {
     return;
   }
 
+  // Knižnica sa už nenačítava pri štarte appky — dotiahni ju teraz a pokračuj až potom.
+  // Pri opakovanom volaní je už v pamäti, takže druhýkrát je to okamžité.
   if (typeof html2pdf === 'undefined') {
-    alert('Knižnica html2pdf sa nepodarila načítať. Skontroluj pripojenie a skús znova.');
+    rptEnsureHtml2pdf(function(ok){
+      if (!ok) {
+        // Chyba hovorí, čo sa stalo a čo s tým. Používateľ nevie, čo je html2pdf,
+        // a ani vedieť nemá — pôvodná hláška menovala knižnicu.
+        showSwToast('PDF sa nepodarilo pripraviť. Skontroluj pripojenie a skús znova.', 4500);
+        return;
+      }
+      downloadAllReportsPdf();   // knižnica je načítaná, prejdi znova od začiatku
+    });
     return;
   }
   var overlay = document.getElementById('rpt-progress-overlay');
@@ -39754,7 +39788,24 @@ try { gsLpInit(); } catch(e){}
   <div id="rpt-progress-count" style="font-size:11px;color:#64748B;margin-top:8px"></div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+// html2pdf (jsPDF + html2canvas, stovky kB) sa NEnačítava pri štarte. Používa ho jediné
+// miesto — generovanie reportov u manažéra — a väčšina používateľov ho nespustí nikdy.
+// rptEnsureHtml2pdf(cb) ho dotiahne až vo chvíli, keď je naozaj treba.
+var _h2pState = 0;              // 0 = nenačítané, 1 = načítava sa, 2 = hotové
+var _h2pWaiting = [];
+function rptEnsureHtml2pdf(cb) {
+  if (typeof html2pdf !== 'undefined') { cb(true); return; }
+  _h2pWaiting.push(cb);
+  if (_h2pState === 1) return;
+  _h2pState = 1;
+  var sc = document.createElement('script');
+  sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+  sc.onload  = function(){ _h2pState = 2; var w=_h2pWaiting; _h2pWaiting=[]; w.forEach(function(f){ f(true); }); };
+  sc.onerror = function(){ _h2pState = 0; var w=_h2pWaiting; _h2pWaiting=[]; w.forEach(function(f){ f(false); }); };
+  document.head.appendChild(sc);
+}
+</script>
 
 <div id="gyn-view"></div>
 
