@@ -890,6 +890,8 @@
   .ac-wrap{position:relative}
   .ac-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid #3B82F6;border-top:none;border-radius:0 0 9px 9px;z-index:1000;overflow-y:auto;max-height:220px;box-shadow:0 4px 12px rgba(0,0,0,.12)}
   .ac-item{padding:11px 14px;font-size:15px;color:#1A2A3A;cursor:pointer;border-bottom:1px solid #F1F5F9}
+  /* Riadok „bez zhody" — nie je .ac-item, takže sa nedá vybrať šípkami ani klikom. */
+  .ac-empty{padding:11px 14px;font-size:13.5px;color:#64748B;font-weight:500}
   .ac-item:last-child{border-bottom:none}
   .ac-item:hover,.ac-item.active{background:#EFF6FF;color:#2563EB}
   .ac-item strong{color:#2563EB}
@@ -3157,7 +3159,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
           <div class="info-label">Okres pracoviska lek&#225;ra</div>
           <div class="ac-wrap">
             <div class="info-input-wrap">
-              <input class="info-input" type="text" id="mesto" placeholder="napr. Bratislava I" autocomplete="off" oninput="acInput(this);validateField('mesto')" onkeydown="acKey(event)" onfocus="acShowAll(this)" onblur="setTimeout(function(){var list=document.getElementById('ac-list');if(list)list.style.display='none';var el=document.getElementById('mesto');var v=(el?el.value.trim():'').toLowerCase();var exact=OKRESY.some(function(o){return o.toLowerCase()===v;});setIcon('mesto',exact?'ok':v?'err':'none');updateProgress();},250)">
+              <input class="info-input" type="text" id="mesto" placeholder="napr. Bratislava I" autocomplete="off" oninput="acInput(this);validateField('mesto')" onkeydown="acKey(event)" onfocus="acShowAll(this)" onblur="setTimeout(function(){acBlur();},250)">
               <span class="field-icon hidden" id="icon-mesto"></span>
             </div>
             <div class="ac-list" id="ac-list" style="display:none"></div>
@@ -5934,7 +5936,10 @@ function getAllFields() {
     afl1: document.getElementById('afl1-n') ? document.getElementById('afl1-n').value : '',
     sup1: document.getElementById('sup1-n') ? document.getElementById('sup1-n').value : '',
     vid1: document.getElementById('vid1-n') ? document.getElementById('vid1-n').value : '',
-    cav1: document.getElementById('cav-n') ? document.getElementById('cav-n').value : ''
+    cav1: document.getElementById('cav-n') ? document.getElementById('cav-n').value : '',
+    // Poznámka tu chýbala — rozpracovaná poznámka sa do draftu nikdy neuložila
+    // a po obnove formulára bola preč, hoci všetko ostatné sa vrátilo.
+    poznamka: document.getElementById('poznamka') ? document.getElementById('poznamka').value : ''
   };
 }
 
@@ -5962,16 +5967,17 @@ function restoreAccept() {
     if(saved.lekar) document.getElementById('lekar').value = saved.lekar;
     if(saved.mesto) document.getElementById('mesto').value = saved.mesto;
     if(saved.reprezentant) {
+      // Ten istý zvyšok po <select> ako v setRegion() — obnova draftu tu tichým
+      // TypeError prišla o všetky polia pod týmto riadkom (kapitácia, produkty, poznámka).
       var sel = document.getElementById('reprezentant');
-      for(var i=0; i<sel.options.length; i++) {
-        if(sel.options[i].value === saved.reprezentant) { sel.selectedIndex = i; break; }
-      }
+      if (sel) sel.value = saved.reprezentant;
     }
     if(saved.kapitacia) document.getElementById('kapitacia-n').value = saved.kapitacia;
     if(saved.afl1) document.getElementById('afl1-n').value = saved.afl1;
     if(saved.sup1) document.getElementById('sup1-n').value = saved.sup1;
     if(saved.vid1) document.getElementById('vid1-n').value = saved.vid1;
     if(saved.cav1) document.getElementById('cav-n').value = saved.cav1;
+    if(saved.poznamka) document.getElementById('poznamka').value = saved.poznamka;
     restoreIcons();
   } catch(e) {}
 }
@@ -5995,7 +6001,9 @@ function initAutosave() {
   } catch(e) {}
 
   // Attach save listeners to all inputs
-  var ids = ['lekar','mesto','kapitacia-n','afl1-n','sup1-n','vid1-n','cav-n'];
+  // 'poznamka' je v zozname zámerne — draft ju musí ukladať. V initProgress() naopak
+  // nie je, lebo poznámka je nepovinná a nemá ovplyvňovať vyplnenosť formulára.
+  var ids = ['lekar','mesto','kapitacia-n','afl1-n','sup1-n','vid1-n','cav-n','poznamka'];
   ids.forEach(function(id) {
     var el = document.getElementById(id);
     if(el) {
@@ -6152,7 +6160,7 @@ function acInput(el) {
       return;
     }
   }
-  var val = el.value.trim().toLowerCase();
+  var val = appNorm(el.value).trim();
   var list = document.getElementById('ac-list');
   acIdx = -1;
 
@@ -6160,53 +6168,64 @@ function acInput(el) {
   var selectedReg = rep ? rep.value : '';
   var pool = (selectedReg && REGION_OKRESY[selectedReg]) ? REGION_OKRESY[selectedReg] : OKRESY;
 
-  // Empty - show all from pool
-  if(!val) {
-    list.innerHTML = pool.map(function(m) {
-      return '<div class="ac-item" onclick="acSelect(\'' + m.replace(/'/g,"\\'") + '\')">' + m + '</div>';
-    }).join('');
+  // Jeden riadok ponuky. `at` = pozícia zhody v názve (-1 = bez zvýraznenia).
+  // Indexy z appNorm sedia na pôvodný reťazec znak po znaku: NFD rozloží písmeno na
+  // základ + kombinačnú značku a regex zahodí len tú značku, takže „Žilina" → „zilina"
+  // má rovnakú dĺžku aj rovnaké pozície. Preto sa dá zvýrazniť priamo v origináli.
+  function acRow(name, at, len) {
+    var label = (at >= 0 && len > 0)
+      ? acEsc(name.slice(0, at)) + '<strong>' + acEsc(name.slice(at, at + len)) + '</strong>' + acEsc(name.slice(at + len))
+      : acEsc(name);
+    return '<div class="ac-item" onclick="acSelect(\'' + name.replace(/'/g, "\\'") + '\')">' + label + '</div>';
+  }
+  function acRenderAll() {
+    list.innerHTML = pool.map(function(m) { return acRow(m, -1, 0); }).join('');
+    list.style.display = 'block';
+  }
+
+  // Prázdne pole — ukáž celý zoznam okresov (pool podľa zvoleného regiónu).
+  if (!val) {
+    acRenderAll();
+    setIcon('mesto', 'none');
+    return;
+  }
+
+  // Zhoda kdekoľvek v názve, nielen na začiatku: „zamky" musí nájsť „Nové Zámky".
+  // Okresy, ktoré začínajú napísaným textom, idú prvé — to je to, čo človek čaká.
+  var matches = [];
+  pool.forEach(function(o) {
+    var at = appNorm(o).indexOf(val);
+    if (at !== -1) matches.push({ name: o, at: at });
+  });
+
+  // Bez zhody sa vstup NIKDY nemaže. Predtým tu bolo el.value.slice(0, -1), takže
+  // appka ticho zmazala práve napísaný znak a používateľ videl, ako mu písmená mizmú
+  // pod prstami. Namiesto toho povedz, že zhoda nie je, a nechaj text tak.
+  if (!matches.length) {
+    list.innerHTML = '<div class="ac-empty">Žiadny okres nezodpovedá — skontroluj preklep</div>';
     list.style.display = 'block';
     setIcon('mesto', 'none');
     return;
   }
 
-  // Only show items that START with typed text
-  var matches = pool.filter(function(o) {
-    return o.toLowerCase().indexOf(val) === 0;
+  matches.sort(function(a, b) {
+    if (a.at !== b.at) return a.at - b.at;              // zhoda na začiatku má prednosť
+    return a.name.length - b.name.length;               // potom kratší názov
   });
 
-  if(!matches.length) {
-    // Invalid char - remove it and recheck
-    el.value = el.value.slice(0, -1);
-    var val2 = el.value.trim().toLowerCase();
-    if(!val2) {
-      list.innerHTML = pool.map(function(m) {
-        return '<div class="ac-item" onclick="acSelect(\'' + m.replace(/'/g,"\\'") + '\')">' + m + '</div>';
-      }).join('');
-      list.style.display = 'block';
-    } else {
-      var matches2 = pool.filter(function(o){ return o.toLowerCase().indexOf(val2) === 0; });
-      list.innerHTML = matches2.map(function(m) {
-        var bold = '<strong>' + m.slice(0, val2.length) + '</strong>' + m.slice(val2.length);
-        return '<div class="ac-item" onclick="acSelect(\'' + m.replace(/'/g,"\\'") + '\')">' + bold + '</div>';
-      }).join('');
-      list.style.display = matches2.length ? 'block' : 'none';
-    }
-    return;
-  }
+  setIcon('mesto', appNorm(el.value).trim() === val && pool.some(function(o){ return appNorm(o) === val; }) ? 'ok' : 'none');
 
-  // Sort by length, show all matches up to 5
-  matches.sort(function(a, b){ return a.length - b.length; });
-  var display = matches;
-
-  var exactMatch = pool.some(function(o){ return o.toLowerCase() === val; });
-  setIcon('mesto', exactMatch ? 'ok' : 'none');
-
-  list.innerHTML = display.map(function(m) {
-    var bold = '<strong>' + m.slice(0, val.length) + '</strong>' + m.slice(val.length);
-    return '<div class="ac-item" onclick="acSelect(\'' + m.replace(/'/g,"\\'") + '\')">' + bold + '</div>';
-  }).join('');
+  list.innerHTML = matches.map(function(m) { return acRow(m.name, m.at, val.length); }).join('');
   list.style.display = 'block';
+}
+
+// Escapovanie pre názvy okresov v ponuke. Dnes sú to konštanty zo zoznamu OKRESY,
+// ale ponuka sa skladá reťazcom do innerHTML — nech to nezávisí od toho, čo do
+// zoznamu raz niekto doplní.
+function acEsc(x) {
+  return String(x == null ? '' : x)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function acSelect(val) {
@@ -6227,6 +6246,32 @@ function acSelect(val) {
     if(kap) kap.focus();
     updateProgress();
   }, 200);
+}
+
+// Opustenie poľa Okres. Ak napísaný text zodpovedá práve jednému okresu aj po
+// odstránení diakritiky, doplň kanonický zápis za používateľa („zilina" → „Žilina").
+// Predtým sa taký zápis označil za chybu, hoci bol jednoznačný.
+function acBlur() {
+  var list = document.getElementById('ac-list');
+  if (list) list.style.display = 'none';
+  var el = document.getElementById('mesto');
+  if (!el) return;
+  var raw = el.value.trim();
+  if (!raw) { setIcon('mesto', 'none'); updateProgress(); return; }
+
+  var v = appNorm(raw);
+  var hits = OKRESY.filter(function(o) { return appNorm(o) === v; });
+  if (hits.length === 1) {
+    if (el.value !== hits[0]) {
+      el.value = hits[0];
+      var reg = getRegionForOkres(hits[0]);
+      if (reg) setRegion(reg);
+    }
+    setIcon('mesto', 'ok');
+  } else {
+    setIcon('mesto', 'err');
+  }
+  updateProgress();
 }
 
 function acKey(e) {
@@ -8752,17 +8797,18 @@ function getOkresyForRegion(reg) {
   return REGION_OKRESY[reg] || null;
 }
 
+// #reprezentant (región) bolo kedysi <select>, dnes je to <input type="hidden">.
+// Táto funkcia na ňom stále čítala sel.options.length — na skrytom inpute je options
+// undefined, takže KAŽDÉ volanie skončilo TypeError. Volá sa z acSelect(), teda pri
+// každom výbere okresu z ponuky: okres sa vyplnil, ale výnimka zhodila zvyšok
+// acSelect() — neaktualizoval sa progress bar a nepreskočil sa kurzor na Kapitáciu.
+// Chyba bola tichá, lebo vzniká vnútri onclick obsluhy.
 function setRegion(val) {
-  var sel = document.getElementById('reprezentant');
-  if(!sel) return;
-  for(var i=0; i<sel.options.length; i++) {
-    if(sel.options[i].value === val) {
-      sel.selectedIndex = i;
-      setIcon('reprezentant','ok');
-      updateProgress();
-      break;
-    }
-  }
+  var el = document.getElementById('reprezentant');
+  if (!el || !val) return;
+  el.value = val;
+  setIcon('reprezentant', 'ok');
+  updateProgress();
 }
 
 
