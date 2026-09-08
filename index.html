@@ -3703,6 +3703,17 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 </div>
 
 <script>
+// ── appNorm — JEDINÝ normalizátor textu pre všetko vyhľadávanie v appke ──
+// Malé písmená + odstránená diakritika (NFD rozloží znak na základ + dĺžeň/mäkčeň,
+// regex zahodí kombinačné značky). Vďaka tomu „safarik" nájde „Šafárik" a „zilina"
+// nájde „Žilina" — na mobilnej klávesnici skoro nikto diakritiku nepíše.
+// Predtým bola tá istá logika napísaná v súbore trikrát nezávisle od seba a hľadanie
+// lekárov, ktoré ju potrebuje najviac, nepoužívalo ani jednu z nich.
+function appNorm(s) {
+  s = String(s == null ? '' : s).toLowerCase();
+  try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (e) {}
+  return s;
+}
 // ╔══════════════════════════════════════════════════════════════╗
 // ║  VERZIA APLIKÁCIE                                              ║
 // ║  Pri každom nasadení novej verzie zmeniť:                     ║
@@ -6973,16 +6984,20 @@ function histRender(){
   var _histNoOpp = (_histFilter === 'tuyory' || _histFilter === 'apixaban');
   if(oppBar) oppBar.style.display = _histNoOpp ? 'none' : 'flex';
   if(!_histNoOpp) scoped = histOppFilterItems(scoped);
-  var q = (((document.getElementById('hist-search') || {}).value) || '').trim().toLowerCase();
+  // Hľadanie ignoruje diakritiku aj veľkosť písmen — na mobilnej klávesnici skoro nikto
+  // diakritiku nepíše, takže „safarik" musí nájsť „MUDr. Šafárik". appNorm() je zdieľaný
+  // normalizátor (odstráni diakritiku cez NFD) — ten istý, ktorý používajú Lekárne a hľadanie.
+  var q = appNorm((((document.getElementById('hist-search') || {}).value) || '')).trim();
   if (q){
     scoped = scoped.filter(function(item){
-      var n = String(item.lekar || item.meno || '').toLowerCase();
-      var o = String(item.okres || '').toLowerCase();
-      return n.indexOf(q) !== -1 || o.indexOf(q) !== -1;
+      var n = appNorm(item.lekar || item.meno || '');
+      var o = appNorm(item.okres || '');
+      var pz = appNorm(item.poznamka || '');
+      return n.indexOf(q) !== -1 || o.indexOf(q) !== -1 || pz.indexOf(q) !== -1;
     });
     scoped.sort(function(a, b){
-      var as = String(a.lekar || a.meno || '').toLowerCase().indexOf(q) === 0 ? 0 : 1;
-      var bs = String(b.lekar || b.meno || '').toLowerCase().indexOf(q) === 0 ? 0 : 1;
+      var as = appNorm(a.lekar || a.meno || '').indexOf(q) === 0 ? 0 : 1;
+      var bs = appNorm(b.lekar || b.meno || '').indexOf(q) === 0 ? 0 : 1;
       return as - bs;
     });
   }
@@ -11174,7 +11189,7 @@ function gynDistrictLookupKey(okres) {
   var s = String(okres || '').trim();
   if(!s) return '';
   if(typeof normalizeOkresInput === 'function') s = normalizeOkresInput(s);
-  return s.normalize ? s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() : s.toLowerCase();
+  return appNorm(s);
 }
 
 function gynDistrictActualForKeys(data, login, productKeys, okres) {
@@ -18206,7 +18221,7 @@ function mgrRenderVisits(){
   var isSurvey = (filter === 'tuyory' || filter === 'apixaban');   // prieskumové taby — bez GP údajov
   var det = document.getElementById('mgr-detail');
   if (det) det.classList.toggle('mgr-detail-tuyonly', isSurvey);
-  var q = (document.getElementById('mgr-vsearch').value || '').toLowerCase().trim();
+  var q = appNorm(document.getElementById('mgr-vsearch').value || '').trim();   // bez diakritiky — rovnako ako rep hľadanie
 
   // Aktualizuj počet v podnadpise podľa aktívneho filtra
   var dsub = document.getElementById('mgr-dsub');
@@ -18220,13 +18235,13 @@ function mgrRenderVisits(){
   }
 
   var gpFiltered = isSurvey ? [] : (q ? visits.filter(function(v){
-    return String(v.lekar||'').toLowerCase().indexOf(q) !== -1 || String(v.okres||'').toLowerCase().indexOf(q) !== -1;
+    return appNorm(v.lekar).indexOf(q) !== -1 || appNorm(v.okres).indexOf(q) !== -1;
   }) : visits);
   var tuyFiltered = (filter !== 'tuyory') ? [] : (q ? tuyRecs.filter(function(r){
-    return String(r.meno||'').toLowerCase().indexOf(q) !== -1 || String(r.okres||'').toLowerCase().indexOf(q) !== -1;
+    return appNorm(r.meno).indexOf(q) !== -1 || appNorm(r.okres).indexOf(q) !== -1;
   }) : tuyRecs);
   var apixFiltered = (filter !== 'apixaban') ? [] : (q ? apixRecs.filter(function(r){
-    return String(r.meno||'').toLowerCase().indexOf(q) !== -1 || String(r.okres||'').toLowerCase().indexOf(q) !== -1;
+    return appNorm(r.meno).indexOf(q) !== -1 || appNorm(r.okres).indexOf(q) !== -1;
   }) : apixRecs);
 
   // Lonelix-only lekári (majú Lonelix, ale ešte nie sú v GP databáze repa) → karty „GP potenciál nezistený"
@@ -18238,7 +18253,7 @@ function mgrRenderVisits(){
     var key = String(r.meno||'').trim().toLowerCase() + '|' + String(r.okres||'').trim().toLowerCase();
     if (_gpKeys[key] || _lonSeen[key]) return false;
     _lonSeen[key] = 1;
-    if (q && String(r.meno||'').toLowerCase().indexOf(q) === -1 && String(r.okres||'').toLowerCase().indexOf(q) === -1) return false;
+    if (q && appNorm(r.meno).indexOf(q) === -1 && appNorm(r.okres).indexOf(q) === -1) return false;
     return true;
   });
   // Príležitostný filter (len GP kontext; na Tuyory/Apixaban tabe chips skry)
@@ -32269,11 +32284,8 @@ var LK_REAGILA_PRODS = ['reagila','cavinton','boxarid','fingolimod','dmf','yaxwe
 function lkIsReagila(){ try { return document.body.classList.contains('reagila-line'); } catch(e){ return false; } }
 
 // Normalizácia pre vyhľadávanie — malé písmená + bez diakritiky (dunajska == Dunajská)
-function lkNorm(s) {
-  s = String(s == null ? '' : s).toLowerCase();
-  try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch(e) {}
-  return s;
-}
+// Ponechané ako alias — volá sa zo 7 miest v module Lekárne a z globálneho hľadania.
+function lkNorm(s) { return appNorm(s); }
 
 // Aktuálny mesiac pre "spiace" detekciu
 function lkCurrentYearMonth() {
@@ -32339,12 +32351,14 @@ function lkDobropisLabel(meta) {
 }
 
 function lkChainNameFlags(lekaren) {
-  var s = String(lekaren || '').toLowerCase();
-  try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch(e) {}
-  var compact = s.replace(/[^a-z0-9]/g, '');
+  // Pozor na rozdiel, ktorý tu bol od začiatku a musí ostať: „drmax" sa hľadá v zhustenom
+  // reťazci (bez medzier a interpunkcie, aby sadlo aj „Dr. Max"), „benu" v normalizovanom
+  // reťazci s medzerami. Zjednotenie na jeden z nich by zmenilo, ktoré lekárne sa skryjú.
+  var norm = appNorm(lekaren);
+  var compact = norm.replace(/[^a-z0-9]/g, '');
   return {
     drMax: compact.indexOf('drmax') !== -1,
-    benu: s.indexOf('benu') !== -1
+    benu: norm.indexOf('benu') !== -1
   };
 }
 
