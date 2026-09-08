@@ -3711,7 +3711,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.75.3';
+var APP_VERSION = '2.75.4';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -3748,6 +3748,8 @@ document.addEventListener('DOMContentLoaded', function(){
   if (vEl) vEl.textContent = 'ver. ' + APP_VERSION + ' · 2026';
   // Prefetch notifikácií na pozadí — výsledky budú hotové do prihlásenia
   prefetchNotifications();
+  // Zobuď všetky tri backendy, kým používateľ píše heslo (cold start Apps Scriptu)
+  warmUpBackends();
   // Delegovaný listener pre kliknutie na okres v pharma paneli
   var pharmaMsOvr = document.getElementById('pharma-ms-overlay');
   if (pharmaMsOvr) {
@@ -9252,6 +9254,45 @@ function mgrGetDual(){
 // o manažérskom pohľade (rieši medzery, veľkosť písmen aj fallback podľa username 'admin').
 // Ulož dostupné línie do dual session — pre KAŽDÉHO používateľa, čo má účet (rovnaké
 // meno+heslo) v 2+ líniách. Vďaka tomu vidí prepínač v Nastaveniach aj PM/BUM, nielen admin.
+
+// ── ZÁCHRANA CHÝBAJÚCEJ LÍNIE ──
+// Apps Script po dlhšej nečinnosti štartuje pomaly (cold start) a login do tej línie
+// vyprchá — používateľ potom uviazne bez nej (napr. admin bez Golemu). Tu ju doťaháme
+// ešte raz na pozadí, už bez čakania používateľa. Heslo drží len táto uzávierka
+// v pamäti (nikam sa neukladá) a zanikne s prekreslením stránky.
+// Týka sa LEN línii so stavom `_failed` (server neodpovedal). Línia, ktorá login
+// priamo odmietla (iné heslo / účet tam nie je), sa neopätuje — nemá to zmysel.
+function lineRetryFailedSilently(username, pwd, dataMap){
+  try {
+    if (!username || !pwd || !dataMap) return;
+    var need = [];
+    if (dataMap.gp && dataMap.gp._failed && typeof SCRIPT_URL === 'string') need.push(['gp', SCRIPT_URL]);
+    if (dataMap.gyn && dataMap.gyn._failed && typeof GYN_SCRIPT_URL === 'string') need.push(['gyn', GYN_SCRIPT_URL]);
+    if (dataMap.reagila && dataMap.reagila._failed && typeof REAGILA_SCRIPT_URL === 'string') need.push(['reagila', REAGILA_SCRIPT_URL]);
+    if (!need.length) return;
+    var lp = '?action=login&username=' + encodeURIComponent(username) +
+             '&password=' + encodeURIComponent(pwd) +
+             '&device_id=' + encodeURIComponent(authDeviceId());
+    setTimeout(function(){
+      need.forEach(function(n){
+        appFetchJson(n[1] + lp, undefined, 30000)
+          .then(function(d){
+            if (!d || !d.ok) return;
+            var dual = (typeof mgrGetDual === 'function' && mgrGetDual()) || { username: username };
+            if (String(dual.username || '').toLowerCase() !== String(username).toLowerCase()) return;  // medzičasom sa prihlásil niekto iný
+            dual.username = username;
+            if (n[0] === 'gp')           dual.gp      = mgrBuildGpUser(username, d);
+            else if (n[0] === 'gyn')     dual.gyn     = mgrBuildGynUser(username, d);
+            else                         dual.reagila = mgrBuildReagilaUser(username, d);
+            mgrSetDual(dual);
+            try { mgrRenderLineSwitch(); } catch(e){}
+          })
+          .catch(function(){});
+      });
+    }, 5000);   // po štarte appky, nech to nekonkuruje načítaniu dát
+  } catch(e){}
+}
+
 function mgrStoreDualIfEligible(username, gpData, gynData, reagilaData){
   // ZLÚČENIE, nie prepis: flaky login (cold start / timeout) nesmie zmazať už raz
   // overené línie. Pravidlo pre každú líniu:
@@ -9805,6 +9846,8 @@ function doLogin() {
     if(gynData.ok)     avail.push('gyn');
     if(reagilaData.ok) avail.push('reagila');
     var dataMap = { gp: gpData, gyn: gynData, reagila: reagilaData };
+    // Línia, ktorá nestihla odpovedať (cold start), sa dotiahne sama na pozadí
+    try { lineRetryFailedSilently(username, password, dataMap); } catch(e){}
 
     if(avail.length === 0) {
       if(gpData._failed && gynData._failed && reagilaData._failed) {
@@ -20971,6 +21014,28 @@ function notifLineTag(){ var s = getSession(); return (s && s.line === 'gyn') ? 
 function notifUsesPrefetch(){ return !notifLineTag(); }
 function notifUrl(params){ return (notifIsGyn() && typeof gynScriptUrl === 'function') ? gynScriptUrl(params) : scriptUrl(params); }
 function notifSeenKey(key){ return 'seen_notif_' + notifLineTag() + key; }
+
+
+// ── ZOBUDENIE BACKENDOV ──
+// Apps Script po nečinnosti štartuje pomaly (cold start) a prvé volanie tak vie trvať
+// aj desiatky sekúnd — preto pri prihlásení občas vypadla celá línia (napr. Golem).
+// Kým používateľ píše meno a heslo, pošleme na každý backend jedno ľahké volanie,
+// aby sa medzitým naštartoval. Výsledok nás nezaujíma — ide len o zobudenie.
+// Beží LEN na login obrazovke (bez session), aby to nezaťažovalo bežnú prácu v appke.
+function warmUpBackends(){
+  try {
+    if (typeof IS_DEV !== 'undefined' && IS_DEV) return;
+    var s = (typeof getSession === 'function') ? getSession() : null;
+    if (s && s.username) return;                    // už prihlásený — netreba
+    // Golem uz budi prefetchNotifications() — tu zobudime gyn a Reagilu.
+    // getConfig je najlahsie volanie, ktore funguje aj bez prihlasenia.
+    var q = '?action=getConfig&key=notif_predaje&token=';
+    var urls = [];
+    if (typeof GYN_SCRIPT_URL === 'string') urls.push(GYN_SCRIPT_URL + q + encodeURIComponent(GYN_API_TOKEN));
+    if (typeof REAGILA_SCRIPT_URL === 'string') urls.push(REAGILA_SCRIPT_URL + q + encodeURIComponent(REAGILA_API_TOKEN));
+    urls.forEach(function(u){ try { fetch(u, { cache: 'no-store', mode: 'no-cors' }).catch(function(){}); } catch(e){} });
+  } catch(e){}
+}
 
 // Spustí sa hneď pri načítaní stránky (ešte pred prihlásením) — výsledky čakajú v cache
 function prefetchNotifications() {
