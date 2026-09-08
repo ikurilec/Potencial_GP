@@ -3711,7 +3711,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.75.2';
+var APP_VERSION = '2.75.3';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7306,7 +7306,7 @@ function renderSettings(s){
       '<button type="button" class="set-action-btn' + (hasAvatar ? '' : ' set-action-primary set-action-pulse') + '" onclick="settingsOpenAvatar()">🎨 ' + (hasAvatar ? 'Upraviť avatar' : 'Vytvoriť avatar') + '</button>' +
     '</div>' +
     '<div class="set-card"><div class="set-card-title">Notifikácie</div>' +
-      settingsNotifHtml() + settingsCalNotifHtml(s) + settingsBdayNotifHtml(s) + '</div>' +
+      settingsNotifHtml() + settingsCalNotifHtml(s) + settingsNstNotifHtml(s) + settingsBdayNotifHtml(s) + '</div>' +
     '<div class="set-card"><div class="set-card-title">Aplikácia</div>' +
       settingsAppHtml(s) + '</div>' +
     settingsProdOrderCard(s) +
@@ -7431,6 +7431,33 @@ function settingsToggleCalNotif(key){
   if(typeof userPrefsSet === 'function') userPrefsSet(patch);
   var sw = document.getElementById('set-calnotif-sw-' + key) || document.getElementById('set-calnotif-sw');
   if(sw){ sw.classList.toggle('on', nv); sw.setAttribute('aria-checked', nv ? 'true' : 'false'); }
+  try { haptic('selection'); } catch(e){}
+}
+
+
+// ── Nástenka — push, keď niekoľďo v mojej línii pridá príspevok (default zapnuté) ──
+function settingsNstNotifHtml(s){
+  if(!s || !s.username) return '';
+  var prefs = userPrefsGet();
+  var on = prefs.notifNastenka !== false;   // default zapnuté
+  return '<div class="set-calnotif-sep"></div>' +
+    '<div class="set-toggle-row">' +
+      '<div class="set-toggle-info"><div class="set-toggle-lbl">📌 Príspevky na Nástenke</div><div class="set-row-desc">' +
+        (on ? 'Dostaneš push, keď niekto z tvojej línie pridá príspevok alebo odpovie na tvoj.'
+            : 'Push z Nástenky máš vypnutý — nové príspevky uvidíš len po otvorení appky (bodka pri záložke).') + '</div></div>' +
+      '<button type="button" id="set-nstnotif-sw" class="gyn-cal-switch' + (on ? ' on' : '') + '" role="switch" aria-checked="' + (on ? 'true' : 'false') + '" onclick="settingsToggleNstNotif()"><span class="gyn-cal-switch-kn"></span></button>' +
+    '</div>';
+}
+function settingsToggleNstNotif(){
+  var prefs = userPrefsGet();
+  var nv = !(prefs.notifNastenka !== false);   // default ON → prvý klik vypne
+  userPrefsSet({ notifNastenka: nv });
+  var sw = document.getElementById('set-nstnotif-sw');
+  if(sw){ sw.classList.toggle('on', nv); sw.setAttribute('aria-checked', nv ? 'true' : 'false'); }
+  var descEl = sw ? sw.parentNode.querySelector('.set-row-desc') : null;
+  if(descEl) descEl.textContent = nv
+    ? 'Dostaneš push, keď niekto z tvojej línie pridá príspevok alebo odpovie na tvoj.'
+    : 'Push z Nástenky máš vypnutý — nové príspevky uvidíš len po otvorení appky (bodka pri záložke).';
   try { haptic('selection'); } catch(e){}
 }
 
@@ -18501,6 +18528,8 @@ document.addEventListener('DOMContentLoaded', function(){
   } else {
     initLogin();
   }
+  // Nástenka — bodka s počtom nových + otvorenie panelu, ak appku spustila jej notifikácia
+  setTimeout(function(){ try { nstPrime(); } catch(e){} }, 1500);
   initAutosave();
   initCounter();
   initProgress();
@@ -35309,7 +35338,7 @@ var NST = {
   open: {},            // id → rozbalené komentáre
   likesOpen: {},       // id → rozbalený celý zoznam „pomohlo mi"
   composeCat: '', composeProd: '',
-  _reqId: 0, _sending: false
+  _reqId: 0, _sending: false, _loadT: null, _opened: false, _primed: false
 };
 
 var NST_CATS = [
@@ -35425,13 +35454,22 @@ function nstUpdateBadge(){
     } else if (dot){ dot.remove(); }
   });
 }
-// Tiché načítanie na pozadí po prihlásení — nech bodka v navigácii sedí bez otvorenia panelu
+// Tiché načítanie na pozadí po prihlásení — nech bodka v navigácii sedí bez otvorenia panelu.
+// Ak appku otvorila notifikácia z Nástenky (?nst=1), rovno otvor panel.
 function nstPrime(){
   try {
     if (!nstUser()) return;
+    if (NST._primed) return;
+    NST._primed = true;
     NST.posts = nstLoadLocal();
     nstUpdateBadge();
     nstFetch(function(){ nstUpdateBadge(); });
+    var fromPush = false;
+    try { fromPush = (new URLSearchParams(window.location.search)).get('nst') === '1'; } catch(e){}
+    if (fromPush && !NST._opened){
+      NST._opened = true;
+      setTimeout(function(){ try { openNastenka(); } catch(e){} }, 400);
+    }
   } catch(e){}
 }
 
@@ -35442,11 +35480,12 @@ function openNastenka(){
   if (!ov) return;
   if (!NST.posts.length) NST.posts = nstLoadLocal();
   NST.err = '';
+  NST.loading = true;                 // kostra sa musí vykresliť už pri prvom renderi
   ov.classList.add('show');
   document.body.style.overflow = 'hidden';
   nstRender();
   try { ov.scrollTop = 0; } catch(e){}
-  nstFetch(function(){ nstRender(); nstMarkSeen(); });
+  nstFetch(function(){ NST.loading = false; nstRender(); nstMarkSeen(); });
 }
 function closeNastenka(){
   try { usageSectionClose(); } catch(e){}
@@ -35466,7 +35505,11 @@ function nstApply(posts){
   nstSaveLocal(posts);
 }
 function nstFetch(cb){
-  if (typeof IS_DEV !== 'undefined' && IS_DEV){ NST.loaded = true; nstDevSeed(); if (cb) cb(); return; }
+  if (typeof IS_DEV !== 'undefined' && IS_DEV){
+    NST.loaded = true;
+    setTimeout(function(){ nstDevSeed(); NST.loading = false; if (cb) cb(); }, 900);   // dev — simuluj sieť
+    return;
+  }
   if (!nstUser()){ if (cb) cb(); return; }
   var reqId = (++NST._reqId);
   NST.loading = true;
@@ -35487,6 +35530,11 @@ function nstFetch(cb){
       if (!NST.posts.length) NST.err = 'offline';
       if (cb) cb();
     });
+  // poistka — keby odpoveď nikdy neprišla, kostru nenechávaj visieť donekonečna
+  clearTimeout(NST._loadT);
+  NST._loadT = setTimeout(function(){
+    if (reqId === NST._reqId && NST.loading){ NST.loading = false; nstRenderList(); }
+  }, 15000);
 }
 
 
