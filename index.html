@@ -3711,7 +3711,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 // ║    3) version.json na GitHube → {"version":"X.Y"}              ║
 // ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.76.0';
+var APP_VERSION = '2.76.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -35397,6 +35397,7 @@ var NST = {
   cat: 'all', prod: 'all', region: 'all', sort: 'new', q: '',
   open: {},            // id → rozbalené komentáre
   likesOpen: {},       // id → rozbalený celý zoznam „pomohlo mi"
+  votersOpen: {},      // id → rozbalený prehľad „kto ako hlasoval“
   composeCat: '', composeProd: '', composeOpts: ['', ''],
   _reqId: 0, _sending: false, _loadT: null, _opened: false, _primed: false
 };
@@ -35763,6 +35764,15 @@ function nstNameFor(login){
   if (!found){ try { if (typeof gynCalPersonName === 'function'){ var n = gynCalPersonName(l); if (n && n !== l) found = n; } } catch(e){} }
   return found || login;
 }
+// Prihlásený človek ide vždy prvý a volá sa „Ty" — používajú to lajky aj ankety
+function nstNamesOrdered(logins){
+  var me = nstUser();
+  return (logins || []).slice().sort(function(a, b){
+    var am = String(a || '').toLowerCase() === me ? 0 : 1;
+    var bm = String(b || '').toLowerCase() === me ? 0 : 1;
+    return am - bm;
+  }).map(nstNameFor);
+}
 // „Ty a Zuzana Leščišinová", „Zuzana a 3 ďalší" — klik rozbalí celý zoznam
 function nstLikesLineHtml(p){
   var likes = (p.likes || []).filter(function(x){ return !!String(x || '').trim(); });
@@ -35899,10 +35909,35 @@ function nstPollHtml(p){
   var foot = total
     ? (total + (total === 1 ? ' hlas' : (total < 5 ? ' hlasy' : ' hlasov')) + (mine >= 0 ? ' · hlasoval si' : ' · ešte si nehlasoval'))
     : 'Zatiaľ nikto nehlasoval — buď prvý';
+  // Kto ako hlasoval — rozpís po možnostiach (mená ako pri 👍, „Ty" prvý)
+  var votersOpen = !!NST.votersOpen[String(p.id || '')];
+  var votersHtml = '';
+  if (total && votersOpen){
+    var byOpt = opts.map(function(){ return []; });
+    Object.keys(votes).forEach(function(u){
+      var ix = parseInt(votes[u], 10);
+      if (!isNaN(ix) && ix >= 0 && ix < byOpt.length) byOpt[ix].push(u);
+    });
+    votersHtml = '<div class="nst-voters">' +
+      byOpt.map(function(list, i){
+        if (!list.length) return '';
+        return '<div class="nst-voters-row">' +
+          '<span class="nst-voters-opt">' + nstEsc(opts[i]) + '</span>' +
+          '<span class="nst-voters-names">' + nstEsc(nstNamesOrdered(list).join(', ')) + '</span>' +
+        '</div>';
+      }).join('') +
+    '</div>';
+  }
   return '<div class="nst-poll">' + rows +
     '<div class="nst-poll-foot">' + nstEsc(foot) +
       (mine >= 0 ? ' · <button type="button" class="nst-poll-clear" onclick="nstVote(' + idArg + ',-1)">zrušiť hlas</button>' : '') +
-    '</div></div>';
+      (total ? ' · <button type="button" class="nst-poll-clear" onclick="nstToggleVoters(' + idArg + ')">' + (votersOpen ? 'skryť kto hlasoval' : 'kto ako hlasoval') + '</button>' : '') +
+    '</div>' + votersHtml + '</div>';
+}
+function nstToggleVoters(id){
+  NST.votersOpen[id] = !NST.votersOpen[id];
+  nstRenderList();
+  try { haptic('selection'); } catch(e){}
 }
 function nstVote(id, opt){
   var p = nstFindPost(id); if (!p) return;
@@ -39371,6 +39406,10 @@ try { gsLpInit(); } catch(e){}
   .nst-poll-opt.on .nst-poll-num{color:#1D4ED8}
   .nst-poll-foot{font-size:11.5px;color:#94A3B8;font-weight:600;padding:2px 2px 0}
   .nst-poll-clear{background:none;border:none;color:#2563EB;font-size:11.5px;font-weight:800;font-family:inherit;padding:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .nst-voters{margin-top:8px;padding-top:8px;border-top:1px dashed #E2E8F0;display:flex;flex-direction:column;gap:6px;animation:nstIn .2s ease both}
+  .nst-voters-row{display:flex;gap:8px;align-items:baseline}
+  .nst-voters-opt{font-size:11.5px;font-weight:800;color:#1D4ED8;flex-shrink:0;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .nst-voters-names{font-size:11.5px;font-weight:600;color:#64748B;line-height:1.4}
   /* Možnosti vo formulári */
   .nst-opts{display:flex;flex-direction:column;gap:7px}
   .nst-opt-row{display:flex;align-items:center;gap:8px}
