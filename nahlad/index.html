@@ -2892,7 +2892,10 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .gyn-cal-agenda-title{font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
   .gyn-cal-agenda-title::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--color-primary);box-shadow:0 0 0 2px rgba(37,99,235,.15);flex-shrink:0}
   .gyn-cal-agenda-empty{text-align:center;padding:14px 12px 6px;color:#94A3B8;font-size:13px;font-weight:500}
-  /* prepínač Prehľad ↔ Absencie tímu */
+  .gyn-cal-vtoggle-n{display:inline-block;margin-left:6px;min-width:18px;padding:0 5px;border-radius:9px;
+    background:#F1F5F9;color:#64748B;font-size:10.5px;font-weight:800;line-height:17px;text-align:center}
+  .gyn-cal-vtoggle-btn.active .gyn-cal-vtoggle-n{background:rgba(255,255,255,.22);color:#fff}
+  /* prepínač Akcie ↔ Absencie */
   .gyn-cal-vtoggle{display:flex;gap:4px;background:#F1F5F9;padding:4px;border-radius:12px;box-shadow:inset 0 1px 2px rgba(15,23,42,.06);margin-bottom:14px}
   .gyn-cal-vtoggle-btn{flex:1;background:transparent;border:none;color:#64748B;font-size:12.5px;font-weight:700;font-family:inherit;padding:9px 8px;border-radius:9px;cursor:pointer;transition:background var(--t-fast),color var(--t-fast)}
   .gyn-cal-vtoggle-btn.active{background:#fff;color:#0C1E35;box-shadow:0 1px 3px rgba(15,23,42,.12)}
@@ -3214,7 +3217,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.80.3 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.81.0 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -4179,7 +4182,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.80.3';
+var APP_VERSION = '2.81.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -17720,6 +17723,13 @@ function gynCalHidePastList(list, y, m){
 }
 
 // ── Absencie tímu (krok 2d) — manažérsky pohľad po osobách ──
+// Ktorá záložka agendy je otvorená. Predvolene Akcie — kalendár má najprv
+// ukázať, čo sa deje. Staré uložené hodnoty (prehlad/tim) sa premapujú.
+function gynCalAgendaView(){
+  // Kalendár sa vždy otvára na Akciách. Absencie sú voľba na tento pohľad,
+  // nie trvalé nastavenie — staré hodnoty (prehlad/tim) sa preto zahodia.
+  return (GYN_CAL._agendaView==='absencie') ? 'absencie' : 'akcie';
+}
 function gynCalSetAgendaView(v){
   GYN_CAL._agendaView=v;
   var el=gynCalHost();
@@ -17753,7 +17763,11 @@ function gynCalTeamAbsences(y,m){
 }
 function gynCalTeamHtml(y,m){
   var rows=gynCalTeamAbsences(y,m);
-  if(!rows.length) return '<div class="gyn-cal-agenda-empty"><span class="gyn-cal-agenda-empty-icon">🏖️</span>Tento mesiac nikto z tímu nehlási absenciu</div>';
+  if(!rows.length){
+    var _rep = gynCalRoleGroup(getSession())==='rep';
+    return '<div class="gyn-cal-agenda-empty"><span class="gyn-cal-agenda-empty-icon">🏖️</span>'+
+      (_rep ? 'Tento mesiac nikto nehlási absenciu' : 'Tento mesiac nikto z tímu nehlási absenciu')+'</div>';
+  }
   var monthFirst=gynCalDateKey(y,m,1);
   var now=new Date(), todayK=gynCalDateKey(now.getFullYear(),now.getMonth(),now.getDate());
   var isCurrentMonth=(y===now.getFullYear() && m===now.getMonth());
@@ -18056,7 +18070,15 @@ function gynKalShow(el, user) {
   // ── agenda: jeden riadok na udalosť (od–do), nie po dňoch ──
   var monthFirst=gynCalDateKey(y,m,1);
   var grp=gynCalRoleGroup(getSession());
-  var evAll=gynCalMonthEvents(y,m);
+  var evAllRaw=gynCalMonthEvents(y,m);
+  // Akcie a absencie sú dve rôzne veci a v jednom zozname si zavadzali:
+  // dovolenky prekryli kongres, tréning aj uzávierku. Prehľad preto ukazuje
+  // akcie a absencie sú za druhou záložkou.
+  var evAll=evAllRaw.filter(function(e){
+    var t=gynCalTypeById(e.type)||{};
+    return t.cat!=='absencia';
+  });
+  var absCount=evAllRaw.length-evAll.length;
   var evList=gynCalHidePastList(evAll, y, m), agenda='';   // skry ukončené v aktuálnom mesiaci
   // Loading stav LEN pri úplne prázdnej cache a kým prvý sync nedobehol (prvé prihlásenie / nové
   // zariadenie). Keď je už niečo v cache, nič sa nezobrazuje — nové udalosti sa ticho dosynchronizujú.
@@ -18065,8 +18087,8 @@ function gynKalShow(el, user) {
     agenda='<div class="gyn-cal-agenda-empty"><span class="gyn-cal-loadspin"></span>Načítavam udalosti…</div>';
   } else if(!evList.length){
     agenda = (evAll.length > evList.length)
-      ? '<div class="gyn-cal-agenda-empty"><span class="gyn-cal-agenda-empty-icon">✅</span>Žiadne nadchádzajúce udalosti — staršie nájdeš kliknutím na deň</div>'
-      : '<div class="gyn-cal-agenda-empty"><span class="gyn-cal-agenda-empty-icon">🗓️</span>Tento mesiac zatiaľ nič naplánované</div>';
+      ? '<div class="gyn-cal-agenda-empty"><span class="gyn-cal-agenda-empty-icon">✅</span>Žiadne nadchádzajúce akcie — staršie nájdeš kliknutím na deň</div>'
+      : '<div class="gyn-cal-agenda-empty"><span class="gyn-cal-agenda-empty-icon">🗓️</span>Tento mesiac zatiaľ žiadne akcie</div>';
   } else {
     evList.forEach(function(ev){
       var tt=gynCalTypeById(ev.type)||{color:'#2563EB'};
@@ -18122,19 +18144,18 @@ function gynKalShow(el, user) {
       }).join('')+
     '</div>';
   }
-  // Manažér/admin dostane prepínač Prehľad ↔ Absencie tímu; rep len Prehľad.
-  var isMgr = grp!=='rep';
   var agendaInner;
-  if(isMgr){
-    var aview=GYN_CAL._agendaView||'prehlad';
-    agendaInner='<div class="gyn-cal-vtoggle">'+
-        '<button class="gyn-cal-vtoggle-btn'+(aview==='prehlad'?' active':'')+'" onclick="gynCalSetAgendaView(\'prehlad\')">Prehľad</button>'+
-        '<button class="gyn-cal-vtoggle-btn'+(aview==='tim'?' active':'')+'" onclick="gynCalSetAgendaView(\'tim\')">Absencie tímu</button>'+
-      '</div>'+
-      (aview==='tim' ? gynCalTeamHtml(y,m) : agenda);
-  } else {
-    agendaInner='<div class="gyn-cal-agenda-title">Prehľad — '+GYN_CAL_MONTHS[m]+' '+y+'</div>'+agenda;
-  }
+  // Prepínač Akcie ↔ Absencie majú všetci — reprezentant aj manažér.
+  // Otvára sa vždy na Akciách: to je to, čo sa deje. Kto má kedy dovolenku
+  // je otázka na inokedy, preto je za druhou záložkou.
+  var aview = gynCalAgendaView();
+  agendaInner='<div class="gyn-cal-vtoggle">'+
+      '<button class="gyn-cal-vtoggle-btn'+(aview==='akcie'?' active':'')+'" onclick="gynCalSetAgendaView(\'akcie\')">Akcie</button>'+
+      '<button class="gyn-cal-vtoggle-btn'+(aview==='absencie'?' active':'')+'" onclick="gynCalSetAgendaView(\'absencie\')">Absencie'+
+        (absCount?'<span class="gyn-cal-vtoggle-n">'+absCount+'</span>':'')+'</button>'+
+    '</div>'+
+    (aview==='absencie' ? gynCalTeamHtml(y,m)
+                        : '<div class="gyn-cal-agenda-title">'+GYN_CAL_MONTHS[m]+' '+y+'</div>'+agenda);
 
   el.innerHTML='<div class="gyn-card gyn-cal">'+
     '<div class="gyn-cal-hdr">'+
