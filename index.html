@@ -836,6 +836,18 @@
   /* Gyn nemá nad Domovom golemovskú hlavičku (jeho vlastná je vo vnútri
      pohľadu), takže dátum a meniny mu doplní tento riadok. Ostatným ho
      netreba — majú ho v hlavičke. */
+  .dnes-prog{height:6px;border-radius:99px;background:#E2E8F0;overflow:hidden;margin-top:6px}
+  .dnes-prog-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#2563EB,#60A5FA);transition:width .5s ease}
+  .dnes-kam{padding:9px 0;border-top:1px solid #F1F5F9}
+  .dnes-kam:first-child{border-top:none;padding-top:2px}
+  .dnes-kam-row{display:flex;align-items:baseline;gap:8px}
+  .dnes-kam-ic{font-size:15px}
+  .dnes-kam-t{font-weight:700;font-size:13.5px;color:#0C1E35;flex:1;min-width:0}
+  .dnes-kam-n{font-weight:800;font-size:13.5px;color:#2563EB;font-variant-numeric:tabular-nums}
+  .dnes-kam-cap{font-size:11.5px;color:#94A3B8;font-weight:600;margin-top:2px}
+  .dnes-rank{display:flex;align-items:baseline;gap:6px}
+  .dnes-rank-n{font-family:var(--font-display);font-size:34px;font-weight:800;color:#0C1E35;line-height:1}
+  .dnes-rank-z{font-size:14px;font-weight:700;color:#64748B}
   .dnes-sub{display:none;font-size:12.5px;color:#64748B;font-weight:600;margin-top:4px}
   body.gyn-line .dnes-sub{display:block}
   .dnes-title{font-family:var(--font-display);font-size:26px;font-weight:800;letter-spacing:-.02em;color:#0C1E35;line-height:1.1}
@@ -7931,6 +7943,115 @@ function dnesKalendar() {
   } catch (e) { return null; }
 }
 
+// Plnenie pre gyn — z ich vlastnej cache, aby Domov ukazoval presne to isté
+// číslo, aké ukazuje ich panel Plnenie. Reprezentantovi svoje, ostatným
+// súčet za tých, ktorých vidia (cache je už scopovaná podľa roly).
+function dnesPlnenieGyn() {
+  try {
+    var sess = getSession() || {};
+    var dp = plnenieDefaultPeriod();
+    var q = dp.q, year = dp.year;
+    var data = (GYN_APP.plCache && GYN_APP.plCache[q]) || gynCacheRead(gynPlnenieCacheKey(year, q));
+    if (!data) return null;
+    try { gynPreprocessData(data); } catch (e) {}
+    var tim = (sess.role !== 'gyn-rep');
+    var plan = 0, pred = 0;
+    if (!tim) {
+      var agg = gynBuildRepAgg(sess.username, data, q);
+      plan = agg.totalPlan; pred = agg.totalPred;
+    } else {
+      var logins = (GYN_STATE.repList || []).map(function (r) { return r.login; });
+      if (!logins.length) logins = Object.keys(data.plan || {});
+      logins.forEach(function (lg) {
+        var a2 = gynBuildRepAgg(lg, data, q);
+        plan += a2.totalPlan; pred += a2.totalPred;
+      });
+    }
+    if (!plan && !pred) return null;
+    return { q: q, year: year, pct: plan > 0 ? pred / plan * 100 : null,
+             planEUR: plan, predajeEUR: pred, tim: tim };
+  } catch (e) { return null; }
+}
+
+// Moje miesto v rebríčku. Golem a Reagila rátajú návštevy, gyn plnenie —
+// každý to, čo ukazuje jeho vlastný rebríček. Manažér v ňom nie je, tomu
+// ukážem, kto vedie.
+function dnesRebricekGyn(me) {
+  try {
+    var lastQ = gynLbLastCompletedQ();
+    if (lastQ < 1) return null;
+    var reps = gynLbScopeReps();
+    if (!reps.length) return null;
+    var data = GYN_LB.plCache[lastQ] ||
+               gynCacheRead(gynPlnenieCacheKey(GYN_APP.year, lastQ) + '|lb-fullLine');
+    if (!data) return null;
+    try { gynPreprocessData(data); } catch (e) {}
+    var rank = reps.map(function (r) {
+      return { u: String(r.login || '').toLowerCase(), meno: r.meno || r.login,
+               pct: gynBuildRepAgg(r.login, data, lastQ).pct };
+    }).filter(function (x) { return x.pct !== null; })
+      .sort(function (a, b) { return b.pct - a.pct; });
+    if (!rank.length) return null;
+    var i = -1;
+    for (var k = 0; k < rank.length; k++) { if (rank[k].u === me) { i = k; break; } }
+    if (i < 0) return { kind: 'lider', meno: rank[0].meno, hodnota: plnenieFormatPct(rank[0].pct), popis: 'Q' + lastQ };
+    return { kind: 'ja', rank: i + 1, total: rank.length,
+             hodnota: plnenieFormatPct(rank[i].pct), popis: 'plnenie Q' + lastQ };
+  } catch (e) { return null; }
+}
+function dnesRebricek() {
+  try {
+    var me = String(((getSession() || {}).username) || '').toLowerCase();
+    if (!me) return null;
+    if (appRole() === 'gyn') return dnesRebricekGyn(me);
+    var data = (typeof LB_STATE !== 'undefined' && LB_STATE.data) || _lbHsLoad();
+    if (!data) return null;
+    var byLower = {};
+    Object.keys(data).forEach(function (k) { byLower[k.toLowerCase()] = data[k]; });
+    var scope = lbScopeReps();
+    if (!scope.length) scope = Object.keys(data);
+    var rank = scope.map(function (u) {
+      var lk = String(u).toLowerCase();
+      var info = LB_REP_INFO[u] || LB_REP_INFO[lk] || {};
+      return { u: lk, meno: info.name || u, count: lbCountVisits(byLower[lk] || [], 'all') };
+    }).sort(function (a, b) { return b.count - a.count; });
+    if (!rank.length || !rank.some(function (x) { return x.count > 0; })) return null;
+    var i = -1;
+    for (var k = 0; k < rank.length; k++) { if (rank[k].u === me) { i = k; break; } }
+    if (i < 0) return { kind: 'lider', meno: rank[0].meno, hodnota: rank[0].count + ' návštev', popis: '' };
+    return { kind: 'ja', rank: i + 1, total: rank.length,
+             hodnota: rank[i].count + ' návštev', popis: 'celkovo' };
+  } catch (e) { return null; }
+}
+
+// Prieskumy s cieľom — koľko je hotových a koľko chýba. Všetko z localStorage,
+// rovnaké čísla, aké ukazuje dashboard v samotnom prieskume.
+function dnesKampane() {
+  if (appRole() !== 'gp') return null;
+  var out = [];
+  try {
+    var tr = (TUYORY.records && TUYORY.records.length) ? TUYORY.records : tuyoryLoadLocal();
+    var tt = tuyTarget();
+    if (tr.length || tt) out.push({ ic: '🧬', t: 'Tuyory', done: tr.length, target: tt,
+                                    unit: 'reumatológov', fn: 'openTuyory()' });
+  } catch (e) {}
+  try {
+    if (apxIsOpen()) {
+      var ar = (APIX.records && APIX.records.length) ? APIX.records : apixLoadLocal();
+      var tg = apxTargets();
+      var at = (tg.kard || 0) + (tg.int || 0);
+      if (ar.length || at) out.push({ ic: '🫀', t: 'Apixaban', done: ar.length, target: at,
+                                      unit: 'lekárov', fn: 'openApixaban()' });
+    }
+  } catch (e) {}
+  try {
+    var lr = (LONELIX.records && LONELIX.records.length) ? LONELIX.records : lonelixLoadLocal();
+    if (lr.length) out.push({ ic: '🛡️', t: 'Lonelix', done: lr.length, target: 0,
+                              unit: 'záznamov', fn: 'openLonelix()' });
+  } catch (e) {}
+  return out.length ? out : null;
+}
+
 // Najnovší príspevok na nástenke + počet nových. Obe z localStorage.
 function dnesNastenka() {
   try {
@@ -7965,55 +8086,13 @@ function dnesRender() {
   if (sub) { try { sub.textContent = hdrInfoText(); } catch (e) { sub.textContent = ''; } }
   var html = '';
 
-  // Akcie a karty s lekármi má len Golem reprezentant — Reagila, manažér ani
-  // gyn GP formulár nemajú, takže by tam boli prázdne.
+  // Akcie má len Golem reprezentant — ostatní GP formulár nemajú.
   var akcie = document.getElementById('dnes-akcie');
   if (akcie) akcie.style.display = (rola === 'gp') ? 'block' : 'none';
 
-  if (rola === 'gp') {
-    var items = dnesTodayItems();
-    var todayBody;
-    if (items.length) {
-      var rows = items.slice(0, 4).map(function (it) {
-        var kat = String(it.kategoria || '').toUpperCase().trim();
-        var meno = gpRecentShortName(it.lekar || it.meno || '—');
-        return '<div class="dnes-mini">' +
-                 '<span class="dnes-mini-dot" style="background:' + gpCatColor(kat).c + '"></span>' +
-                 '<span class="dnes-mini-name">' + appEsc(meno) + '</span>' +
-                 '<span class="dnes-mini-meta">' + appEsc(it.okres || '') + '</span>' +
-               '</div>';
-      }).join('');
-      var viac = (items.length > 4) ? '<div class="dnes-mini"><span class="dnes-mini-name" style="color:#94A3B8;font-weight:500">a ďalší ' + (items.length - 4) + '</span></div>' : '';
-      todayBody = '<div class="dnes-big-row"><div class="dnes-big">' + items.length + '</div>' +
-                  '<div class="dnes-big-sub">' + (items.length === 1 ? 'zadaný lekár' : (items.length < 5 ? 'zadaní lekári' : 'zadaných lekárov')) + '</div></div>' +
-                  rows + viac;
-    } else {
-      todayBody = '<div class="dnes-empty">Dnes si ešte nezadal žiadneho lekára. Nového pridáš tlačidlom hore.</div>';
-    }
-    html += dnesCardHtml('linear-gradient(90deg,#0C1E35,#1E3A5F)', 'Dnes zadaní lekári', '', todayBody);
-  }
-
-  // ── Plnenie ─────────────────────────────────────────────────────────
-  // Reprezentant vidí svoje, manažér tímové. Gyn si plnenie počíta vlastnou
-  // cestou — radšej ho tu neukazujem, než aby som ukázal číslo, ktoré by
-  // nemuselo sedieť s tým v paneli Plnenie.
-  var pl = (rola === 'mgr') ? dnesPlnenieTim() : (rola === 'gyn' ? null : dnesPlnenie());
-  if (pl) {
-    var cls = plnenieDetailColorClass(pl.pct);
-    var stamp = appDataStampText('predaje');
-    var plBody = '<div class="dnes-big-row">' +
-        '<div class="dnes-big ' + cls + '">' + plnenieFormatPct(pl.pct) + '</div>' +
-        '<div class="dnes-big-sub">' + plnenieFormatEUR(pl.predajeEUR) + '<br>z plánu ' + plnenieFormatEUR(pl.planEUR) + '</div>' +
-      '</div>' +
-      (stamp ? '<div class="dnes-post-meta">' + appEsc(stamp) + '</div>' : '');
-    html += '<div onclick="appGoPlnenie()" style="cursor:pointer">' +
-            dnesCardHtml('linear-gradient(90deg,#2563EB,#60A5FA)',
-                         (rola === 'mgr' ? 'Plnenie tímu · ' : 'Plnenie · ') + plnenieQLabel(pl.q, pl.year),
-                         '<span class="dnes-more">Otvoriť ›</span>', plBody) +
-            '</div>';
-  }
-
-  // ── Kalendár ────────────────────────────────────────────────────────
+  // ── Kalendár · dnes ─────────────────────────────────────────────────
+  // Hore, lebo je jediná karta viazaná na čas: keď má človek dnes o druhej
+  // stretnutie, musí to vidieť skôr než čokoľvek iné.
   var kal = dnesKalendar();
   if (kal) {
     var kBody = '';
@@ -8038,10 +8117,98 @@ function dnesRender() {
     }
   }
 
-  // ── Nedávno otvorení (len Golem reprezentant) ───────────────────────
-  if (rola === 'gp' && gpRecentList().length) {
-    html += dnesCardHtml('linear-gradient(90deg,#475569,#94A3B8)', 'Nedávno otvorení', '',
-                         '<div class="hist-recent" id="dnes-recent"></div>');
+  // ── Plnenie ─────────────────────────────────────────────────────────
+  // Reprezentant svoje, manažér tímové, gyn z vlastnej cache — každý presne
+  // to číslo, aké mu ukazuje jeho panel Plnenie.
+  var pl = (rola === 'mgr') ? dnesPlnenieTim()
+         : (rola === 'gyn') ? dnesPlnenieGyn()
+         : dnesPlnenie();
+  if (pl) {
+    var pct = (pl.pct === null || pl.pct === undefined) ? null : pl.pct;
+    var cls = (pct === null) ? '' : plnenieDetailColorClass(pct);
+    var stamp = appDataStampText('predaje');
+    var plBody = '<div class="dnes-big-row">' +
+        '<div class="dnes-big ' + cls + '">' + (pct === null ? '—' : plnenieFormatPct(pct)) + '</div>' +
+        '<div class="dnes-big-sub">' + plnenieFormatEUR(pl.predajeEUR) +
+          (pl.planEUR > 0 ? '<br>z plánu ' + plnenieFormatEUR(pl.planEUR) : '<br>plán zatiaľ nie je zadaný') + '</div>' +
+      '</div>' +
+      (stamp ? '<div class="dnes-post-meta">' + appEsc(stamp) + '</div>' : '');
+    var plTitul = ((rola === 'mgr' || pl.tim) ? 'Plnenie tímu · ' : 'Plnenie · ') + plnenieQLabel(pl.q, pl.year);
+    html += '<div onclick="appGoPlnenie()" style="cursor:pointer">' +
+            dnesCardHtml('linear-gradient(90deg,#2563EB,#60A5FA)', plTitul,
+                         '<span class="dnes-more">Otvoriť ›</span>', plBody) +
+            '</div>';
+  }
+
+  // ── Môj dnešok (Golem reprezentant) ─────────────────────────────────
+  if (rola === 'gp') {
+    var items = dnesTodayItems();
+    var todayBody;
+    if (items.length) {
+      var rows = items.slice(0, 4).map(function (it) {
+        var kat = String(it.kategoria || '').toUpperCase().trim();
+        var meno = gpRecentShortName(it.lekar || it.meno || '—');
+        return '<div class="dnes-mini">' +
+                 '<span class="dnes-mini-dot" style="background:' + gpCatColor(kat).c + '"></span>' +
+                 '<span class="dnes-mini-name">' + appEsc(meno) + '</span>' +
+                 '<span class="dnes-mini-meta">' + appEsc(it.okres || '') + '</span>' +
+               '</div>';
+      }).join('');
+      var viac = (items.length > 4) ? '<div class="dnes-mini"><span class="dnes-mini-name" style="color:#94A3B8;font-weight:500">a ďalší ' + (items.length - 4) + '</span></div>' : '';
+      todayBody = '<div class="dnes-big-row"><div class="dnes-big">' + items.length + '</div>' +
+                  '<div class="dnes-big-sub">' + (items.length === 1 ? 'zadaný lekár' : (items.length < 5 ? 'zadaní lekári' : 'zadaných lekárov')) + '</div></div>' +
+                  rows + viac;
+    } else {
+      todayBody = '<div class="dnes-empty">Dnes si ešte nezadal žiadneho lekára. Nového pridáš tlačidlom hore.</div>';
+    }
+    html += dnesCardHtml('linear-gradient(90deg,#0C1E35,#1E3A5F)', 'Dnes zadaní lekári', '', todayBody);
+  }
+
+  // ── Moje miesto v rebríčku ──────────────────────────────────────────
+  var reb = dnesRebricek();
+  if (reb) {
+    var rBody;
+    if (reb.kind === 'ja') {
+      rBody = '<div class="dnes-big-row">' +
+                '<div class="dnes-rank"><span class="dnes-rank-n">' + reb.rank + '.</span>' +
+                  '<span class="dnes-rank-z">z ' + reb.total + '</span></div>' +
+                '<div class="dnes-big-sub">' + appEsc(reb.hodnota) +
+                  (reb.popis ? '<br>' + appEsc(reb.popis) : '') + '</div>' +
+              '</div>';
+    } else {
+      rBody = '<div class="dnes-mini" style="border-top:none">' +
+                '<span class="dnes-mini-dot" style="background:#F59E0B"></span>' +
+                '<span class="dnes-mini-name">Vedie ' + appEsc(reb.meno) + '</span>' +
+                '<span class="dnes-mini-meta">' + appEsc(reb.hodnota) + '</span>' +
+              '</div>';
+    }
+    html += '<div onclick="' + (rola === 'gyn' ? "gynNavTo(\'leaderboard\')" : (rola === 'mgr' ? "mgrSwitchSubtab(\'leaderboard\')" : 'openLeaderboard()')) + '" style="cursor:pointer">' +
+            dnesCardHtml('linear-gradient(90deg,#D97706,#FCD34D)',
+                         reb.kind === 'ja' ? 'Moje miesto v rebríčku' : 'Rebríček',
+                         '<span class="dnes-more">Otvoriť ›</span>', rBody) +
+            '</div>';
+  }
+
+  // ── Prieskumy s cieľom ──────────────────────────────────────────────
+  var kam = dnesKampane();
+  if (kam) {
+    var kamBody = kam.map(function (c) {
+      var pctK = (c.target > 0) ? Math.min(100, Math.round(c.done / c.target * 100)) : null;
+      return '<div class="dnes-kam" onclick="' + c.fn + '">' +
+               '<div class="dnes-kam-row">' +
+                 '<span class="dnes-kam-ic">' + c.ic + '</span>' +
+                 '<span class="dnes-kam-t">' + appEsc(c.t) + '</span>' +
+                 '<span class="dnes-kam-n">' + c.done + (c.target > 0 ? ' / ' + c.target : '') + '</span>' +
+               '</div>' +
+               (pctK !== null
+                 ? '<div class="dnes-prog"><div class="dnes-prog-fill" style="width:' + pctK + '%"></div></div>' +
+                   '<div class="dnes-kam-cap">' + (c.target - c.done > 0
+                       ? 'zostáva ' + (c.target - c.done) + ' ' + c.unit
+                       : 'cieľ splnený') + '</div>'
+                 : '<div class="dnes-kam-cap">' + c.done + ' ' + c.unit + '</div>') +
+             '</div>';
+    }).join('');
+    html += dnesCardHtml('linear-gradient(90deg,#059669,#34D399)', 'Prieskumy', '', kamBody);
   }
 
   // ── Nástenka (všetci) ───────────────────────────────────────────────
@@ -8057,6 +8224,12 @@ function dnesRender() {
             dnesCardHtml('linear-gradient(90deg,#7C3ABE,#C084FC)', 'Nástenka',
                          badge + '<span class="dnes-more">Otvoriť ›</span>', nstBody) +
             '</div>';
+  }
+
+  // ── Nedávno otvorení (len Golem reprezentant) ───────────────────────
+  if (rola === 'gp' && gpRecentList().length) {
+    html += dnesCardHtml('linear-gradient(90deg,#475569,#94A3B8)', 'Nedávno otvorení', '',
+                         '<div class="hist-recent" id="dnes-recent"></div>');
   }
 
   if (!html) {
@@ -8425,6 +8598,15 @@ function openDnes() {
       });
     }
   } catch (e) {}
+  // Časť dát (rebríček, gyn plnenie, kalendár) dobieha na pozadí ešte chvíľu
+  // po prihlásení. Domov sa preto po chvíli sám prekreslí — karta, ktorá
+  // dovtedy nemala čo ukázať, pribudne bez toho, aby musel niekto ťahať dole.
+  [1200, 3500].forEach(function (ms) {
+    setTimeout(function () {
+      var ov = document.getElementById('dnes-overlay');
+      if (ov && ov.classList.contains('show')) { try { dnesRender(); } catch (e) {} }
+    }, ms);
+  });
 }
 
 function openHistory() {
