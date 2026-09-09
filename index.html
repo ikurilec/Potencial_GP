@@ -2232,11 +2232,12 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .okr-prod-graf{width:26px;height:26px;border-radius:8px;background:#EFF6FF;color:#2563EB;display:flex;align-items:center;justify-content:center;flex-shrink:0}
   .okr-prod-na{font-size:10.5px;color:#B6C2D2;font-weight:600;font-style:italic}
   .okr-empty,.okr-loading{text-align:center;color:#94A3B8;font-size:12.5px;padding:26px 12px;font-weight:600}
-  /* Kým dobiehajú ďalšie produkty — inak by to vyzeralo, že okresu chýbajú. */
-  .okr-progress{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:600;color:#64748B;margin:0 2px 10px;padding:7px 11px;background:#fff;border:1px solid #E2E8F0;border-radius:12px}
-  .okr-progress-dot{width:8px;height:8px;border-radius:50%;background:#2563EB;flex-shrink:0;animation:okrPulse 1.1s ease-in-out infinite}
-  @keyframes okrPulse{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
-  @media(prefers-reduced-motion:reduce){.okr-progress-dot{animation:none;opacity:.8}}
+  /* Riadok pod zoznamom, kým dobiehajú ďalšie produkty. Appka ho mala už
+     predtým — len sa nikdy neukázal, lebo sa vykresľovalo až na konci. */
+  .okr-more{display:flex;align-items:center;justify-content:center;gap:8px;font-size:12.5px;font-weight:600;color:#94A3B8;padding:16px 12px}
+  .okr-more-dot{width:7px;height:7px;border-radius:50%;background:#2563EB;flex-shrink:0;animation:okrPulse 1.1s ease-in-out infinite}
+  @keyframes okrPulse{0%,100%{opacity:.25;transform:scale(.75)}50%{opacity:1;transform:scale(1)}}
+  @media(prefers-reduced-motion:reduce){.okr-more-dot{animation:none;opacity:.8}}
   .okr-back{display:inline-flex;align-items:center;gap:7px;padding:9px 14px 9px 11px;margin:0 0 10px;background:#fff;border:1px solid #E2E8F0;border-radius:10px;color:#2563EB;font-size:12.5px;font-weight:750;font-family:var(--font-display);cursor:pointer;-webkit-tap-highlight-color:transparent;box-shadow:0 1px 2px rgba(15,23,42,.04)}
   .okr-back:active{background:#F1F5F9}
   .okr-detail-title{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;color:#0C1E35;font-family:var(--font-display);margin:0 2px 10px;padding:0 2px}
@@ -2351,7 +2352,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .rep-pl-inner .total-money{font-size:12px;color:#CBD5E1;font-weight:500}
   .rep-pl-inner .total-money strong{color:#fff;font-weight:700}
   .rep-pl-inner .total-pred{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.1);font-size:11.5px;color:#94A3B8}
-  .rep-pl-inner .total-stamp,.mgr-plnenie-detail .total-stamp{margin-top:8px;font-size:11px;color:#8FA9C6;font-weight:500}
+  .rep-pl-inner .total-stamp,.mgr-plnenie-detail .total-stamp{margin-top:5px;font-size:10.5px;font-weight:600;letter-spacing:.02em;color:#7F97B5}
   .rep-pl-inner .total-pred span{font-size:16px;font-weight:700;color:#94A3B8;margin-left:6px}
   .rep-pl-inner .pl-action-card{background:linear-gradient(180deg,#EFF6FF 0%,#EAF3FF 100%);border:1px solid #BFDBFE;border-radius:14px;padding:13px 14px;margin-bottom:12px;box-shadow:0 8px 22px rgba(37,99,235,.10),0 1px 3px rgba(15,23,42,.05)}
   .rep-pl-inner .pl-action-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}
@@ -26502,8 +26503,8 @@ function plnenieRenderDetail() {
       '<div class="total-lbl">Celkov\u00e9 plnenie \u00b7 ' + plnenieQLabel(PL_STATE.q, PL_STATE.year) + '</div>' +
       '<div class="total-val ' + repColorCls + '">' + (noData ? 'Žiadne dáta' : '0,00%') + '</div>' +
       '<div class="total-money" style="' + (noData ? 'opacity:.65' : '') + '">' + moneyStr + '</div>' +
-      prediktHtml +
-      appDataStampHtml('predaje', 'total-stamp');
+      appDataStampHtml('predaje', 'total-stamp') +
+      prediktHtml;
     if (!noData) plnenieCountUp(totalCardEl.querySelector('.total-val'), repPct);
   }
 
@@ -27307,8 +27308,8 @@ function repPlnenieRender() {
       '<div class="total-lbl">M\u00f4j pl\u00e1n \u00b7 ' + qLbl + '</div>' +
       '<div class="total-val ' + repColorCls + '">' + (noData ? 'Žiadne dáta' : '0,00%') + '</div>' +
       '<div class="total-money" style="' + (noData ? 'opacity:.65' : '') + '">' + moneyStr + '</div>' +
-      prediktHtml +
-      appDataStampHtml('predaje', 'total-stamp');
+      appDataStampHtml('predaje', 'total-stamp') +
+      prediktHtml;
     if (!noData) plnenieCountUp(totalCardEl.querySelector('.total-val'), repPct);
   }
 
@@ -34195,13 +34196,8 @@ function okresyRender() {
 
   var chevron = '<svg class="okr-chevron" viewBox="0 0 20 20" fill="none"><path d="M5 8l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
-  // Kým nie sú všetky produkty, povedz to — inak by to vyzeralo, že okresu
-  // niektoré produkty chýbajú, hoci sa len ešte načítavajú.
-  var html = (done < total)
-    ? '<div class="okr-progress"><span class="okr-progress-dot"></span>Načítavam produkty — ' + done + ' z ' + total + '</div>'
-    : '';
+  var html = '<div class="okr-intro">Ťukni na okres a rozbalí sa so všetkými produktami. Ťuk na produkt zobrazí jeho tabuľku trhového podielu v okrese (graf otvoríš tlačidlom Graf).</div>';
   html += appDataStampHtml('pharma');
-  html += '<div class="okr-intro">Ťukni na okres a rozbalí sa so všetkými produktami. Ťuk na produkt zobrazí jeho tabuľku trhového podielu v okrese (graf otvoríš tlačidlom Graf).</div>';
   html += '<div class="okr-list">';
 
   districts.forEach(function(d, dIdx) {
@@ -34242,7 +34238,10 @@ function okresyRender() {
   });
 
   html += '</div>';
-  if (done < total) html += '<div class="okr-loading" style="padding:14px">Načítavam ďalšie produkty…</div>';
+  // Kým nie sú všetky produkty, povedz to aj s počtom — inak by to vyzeralo,
+  // že okresu niektoré produkty chýbajú, hoci sa len ešte načítavajú.
+  if (done < total)
+    html += '<div class="okr-more"><span class="okr-more-dot"></span>Načítavam ďalšie produkty — ' + done + ' z ' + total + '</div>';
   cont.innerHTML = html;
 }
 
