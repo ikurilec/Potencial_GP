@@ -4,8 +4,6 @@
 // ║  cache-first pre ostatné assety (rýchly štart, offline ready).║
 // ╚══════════════════════════════════════════════════════════════╝
 
-// NÁHĽAD — vlastný názov cache, aby si náhľad a ostrá appka navzájom
-// nemazali uložené súbory.
 var CACHE_NAME = 'potencial-nahlad-v2800';
 
 self.addEventListener('install', function(event){
@@ -19,8 +17,6 @@ self.addEventListener('activate', function(event){
         // Maž LEN staré verzie, nie všetko. Predtým tu bolo caches.delete(n) pre každý
         // názov, takže každé nasadenie zmazalo aj fonty a avatary z DiceBear — veci,
         // ktoré sa medzi verziami vôbec nemenia — a všetko sa sťahovalo odznova.
-        // NÁHĽAD: maž len vlastné cache, nikdy nie tie od ostrej appky —
-        // obe bežia na tej istej doméne.
         return Promise.all(
           names.filter(function(n){ return n.indexOf('potencial-nahlad-') === 0 && n !== CACHE_NAME; })
                .map(function(n){ return caches.delete(n); })
