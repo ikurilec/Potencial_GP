@@ -635,6 +635,12 @@
   .progress-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
   /* Čo ešte chýba — ťuknutie na položku skočí na pole. Nahrádza percento, ktoré
      nikomu nepovie, čo má spraviť. */
+  /* Akcia v prázdnom výsledku hľadania. */
+  .gp-empty-cta{margin-top:16px;font-family:inherit;font-size:14.5px;font-weight:700;color:#fff;
+    background:linear-gradient(180deg,#2563EB,#1D4ED8);border:none;border-radius:12px;
+    padding:13px 20px;cursor:pointer;min-height:44px;-webkit-tap-highlight-color:transparent;
+    box-shadow:0 4px 14px rgba(37,99,235,.28)}
+  .gp-empty-cta:active{transform:scale(.98)}
   .progress-missing{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
   .progress-missing:empty{display:none}
   .pm-chip{font-family:inherit;font-size:12.5px;font-weight:600;color:#92400E;background:#FEF3C7;
@@ -7092,11 +7098,51 @@ function buildHistItemHtml(item) {
   '</div>';
 }
 
+// Prázdny výsledok hľadania — s ponukou založiť lekára pod napísaným menom.
+function gpNoSearchResultHtml(q) {
+  var looksLikeName = q.replace(/[^\p{L}\s.]/gu, '').trim().split(/\s+/).filter(function (w) {
+    return w.length > 1;
+  }).length >= 1;
+  return '<div class="empty-state">' +
+    '<div class="empty-state-title">Nenašiel sa nikto</div>' +
+    '<div class="empty-state-sub">Pre „' + appEsc(q) + '" nemáš zatiaľ žiadny záznam.</div>' +
+    (looksLikeName
+      ? '<button type="button" class="gp-empty-cta" data-newdoc="' + appEsc(q) + '">' +
+          '+ Zaznamenať ' + appEsc(q) +
+        '</button>'
+      : '') +
+  '</div>';
+}
+
+// Ťuknutie na ponuku: zatvor zoznam, otvor formulár a predvyplň meno.
+document.addEventListener('click', function (ev) {
+  var btn = ev.target && ev.target.closest ? ev.target.closest('[data-newdoc]') : null;
+  if (!btn) return;
+  var name = btn.getAttribute('data-newdoc') || '';
+  try { if (typeof repNavToForm === 'function') repNavToForm(); } catch (e) {}
+  setTimeout(function () {
+    var el = document.getElementById('lekar');
+    if (!el) return;
+    el.value = /^(mudr|mddr|doc|prof)\./i.test(name) ? name : 'MUDr. ' + name;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    try { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } catch (e) {}
+    try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+  }, 260);
+});
+
 function renderHistItems(items) {
   var body = document.getElementById('hist-body');
   if(!body) return;
   _histDetailItems = [];
   if(!items.length) {
+    // Ak sa nič nenašlo preto, že sa hľadalo, prázdny stav neponúka koniec, ale
+    // ďalší krok: založiť lekára s už napísaným menom. Prázdna obrazovka je jediné
+    // miesto, kde má používateľ plnú pozornosť — má tam byť akcia, nie mlčanie.
+    var q = (((document.getElementById('hist-search') || {}).value) || '').trim();
+    if (q) {
+      body.innerHTML = gpNoSearchResultHtml(q);
+      return;
+    }
     if (typeof _histFilter !== 'undefined' && _histFilter === 'tuyory')
       body.innerHTML = mkEmpty('clipboard', 'Žiadne Tuyory záznamy', 'Zatiaľ si nevyplnil žiadny Tuyory formulár.');
     else if (typeof _histFilter !== 'undefined' && _histFilter === 'apixaban')
