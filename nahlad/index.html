@@ -3221,7 +3221,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.81.4 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.81.5 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -4186,7 +4186,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.81.4';
+var APP_VERSION = '2.81.5';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11986,11 +11986,26 @@ try { window.addEventListener('orientationchange', function(){ setTimeout(repTop
 // Preto ešte raz, z jedného miesta, keď sa rozhranie usadí. Nikoho nevyruší:
 // ak si medzitým sám niekam odišiel alebo má zvolenú inú úvodnú obrazovku,
 // nerobí sa nič.
+// Odsadenie .app pre tlačidlo „Potvrdiť" nastavuje pozorovateľ na formulári.
+// Keď sa appka prepne do manažérskeho alebo gyn režimu, formulár zmizne, ale
+// posledná nastavená hodnota (90 px) ostane visieť ako prázdny pás pod
+// hlavičkou. Pozorovateľ ju sám neprepíše — kým sa nezmení viditeľnosť
+// tlačidla, nebeží. Preto sa upratuje aj odtiaľto.
+function appAppPaddingSync() {
+  try {
+    if (!document.body.classList.contains('manager-mode') &&
+        !document.body.classList.contains('gyn-line')) return;
+    var app = document.querySelector('.app');
+    if (app && app.style.paddingBottom) app.style.paddingBottom = '';
+  } catch (e) {}
+}
+
 var _uvodnaObrazovkaHotova = false;
 function appOpenDefaultScreen() {
   if (_uvodnaObrazovkaHotova) return;
   _uvodnaObrazovkaHotova = true;
   setTimeout(function () {
+    try { appAppPaddingSync(); } catch (e) {}
     try {
       if (appDefaultTab() !== 'dnes') return;
       var dnes = document.getElementById('dnes-overlay');
@@ -12011,6 +12026,7 @@ function updateHdrForUser(user) {
   // v každej línii.
   if (user && user.username) {
     document.body.classList.add('app-nav');
+    try { appAppPaddingSync(); } catch (e) {}
     try { appOpenDefaultScreen(); } catch (e) {}
   }
   // Názov línie ako titul
@@ -14066,6 +14082,7 @@ function gynRenderShell(user) {
 // Default = 'plnenie'. Volá sa po vyrenderovaní shellu, pred prvým gynRenderContent.
 function gynApplyDefaultNav(user) {
   try { gynCalUpdateBadge(); } catch(e){}
+  try { appAppPaddingSync(); } catch(e){}
   var nav = 'plnenie';   // default shellu
   try {
     var def = appDefaultTab();
@@ -19115,6 +19132,8 @@ function mgrEnter(roleKey){
   plnenieLoadAllQuarters();
   // Úvodná obrazovka podľa nastavení manažéra (ak si zvolil inú ako Plnenie)
   mgrApplyDefaultSubtab();
+  // Formulárové odsadenie .app sem už nepatrí — manažér formulár nemá.
+  try { appAppPaddingSync(); } catch (e) {}
 }
 
 // Po vstupe do manažérskeho módu prepni na úvodný sub-tab podľa nastavení používateľa.
