@@ -828,10 +828,7 @@
   .dnes-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#EAECF2;z-index:1500;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   .dnes-overlay.show{display:block}
   .dnes-inner{max-width:660px;margin:0 auto;padding:82px 16px 48px}
-  body.gp-rep .dnes-inner, body.app-nav .dnes-inner{padding-top:calc(var(--rep-top-h,150px) + 10px)}
-  /* Gyn má vlastnú hlavičku vo svojom pohľade a golemovská sa mu nezobrazuje —
-     Domov by tak začínal prázdnym pásom. Tam sa začína hneď hore. */
-  body.gyn-line .dnes-inner{padding-top:calc(var(--sat,0px) + 26px)}
+  body.gp-rep .dnes-inner, body.app-nav .dnes-inner{padding-top:calc(var(--rep-top-h,150px) + 4px)}
   .dnes-hdr{padding:0 2px 12px}
   /* Gyn nemá nad Domovom golemovskú hlavičku (jeho vlastná je vo vnútri
      pohľadu), takže dátum a meniny mu doplní tento riadok. Ostatným ho
@@ -2093,6 +2090,21 @@
   body.gp-rep #rep-topbar, body.app-nav #rep-topbar{position:fixed;top:0;left:0;right:0;z-index:2100;background:#EAECF2;padding:calc(14px + var(--sat)) 16px 6px;box-shadow:0 6px 16px rgba(15,23,42,.06)}
   body.gp-rep #rep-topbar .hdr, body.app-nav #rep-topbar .hdr{margin-bottom:8px}
   body.gp-rep #rep-topbar .rep-nav{position:static;top:auto;padding-top:0;padding-bottom:0;background:transparent;z-index:auto}
+  /* ── HLAVIČKA pri novej lište ─────────────────────────────────────
+     Panel je vyšší a informácie idú pod sebou, nie do jedného riadku:
+     „Manažérsky pohľad" ani „Ivan Kurilec · ADMIN · Žilina" sa do jedného
+     riadku nezmestia a doteraz sa orezávali o ozubené koliesko.
+     Zároveň sa zmenšila medzera medzi modrým panelom a obsahom pod ním —
+     bola tam prázdna plocha, ktorá nič nehovorila. */
+  body.app-nav #rep-topbar{padding:calc(10px + var(--sat)) 12px 2px}
+  body.app-nav #rep-topbar .hdr{margin-bottom:4px;padding:12px 14px 11px;border-radius:16px}
+  body.app-nav .hdr-row{gap:8px;min-height:0}
+  body.app-nav .hdr-title{white-space:normal;font-size:18px;line-height:1.15}
+  body.app-nav .hdr-greeting{white-space:normal;overflow:visible;text-overflow:clip;
+    font-size:13px;line-height:1.25;margin-top:2px}
+  body.app-nav .hdr-nameday{margin-top:6px;font-size:11.5px}
+  body.app-nav .hdr-burger{width:34px;height:34px}
+  body.app-nav .gear-btn{width:38px;height:38px}
   body.gp-rep .app, body.app-nav .app{padding-top:var(--rep-top-h,150px)}
   /* Progress bar: pri reprezentantovi vždy prilepený pod headerom (nezmizne pri scrollovaní) */
   body.gp-rep .progress-wrap{position:sticky;top:var(--rep-top-h,150px);z-index:997}
@@ -2104,7 +2116,7 @@
   body.gp-rep .hist-inner,
   body.gp-rep .lb-inner,
   body.gp-rep .lk-inner,
-  body.gp-rep .rep-pl-inner{padding-top:calc(var(--rep-top-h,150px) + 10px)}
+  body.gp-rep .rep-pl-inner{padding-top:calc(var(--rep-top-h,150px) + 4px)}
   /* Lekárne: obsah začína presne pod headerom, aby sticky search „necuklo" pri scrolle */
   body.gp-rep .lk-inner{padding-top:var(--rep-top-h,150px)}
   .rep-nav-badge{background:linear-gradient(135deg,#F59E0B,#EF4444);color:#fff;border-radius:8px;font-size:9px;font-weight:800;padding:1px 5px;min-width:16px;text-align:center;flex-shrink:0}
@@ -2130,6 +2142,39 @@
 .lk-sticky-controls{position:sticky;z-index:2050;padding:0;background:transparent}
 body:not(.manager-mode) .lk-sticky-controls{top:82px;background:#EAECF2;padding:0 0 10px}
 body.gp-rep .lk-sticky-controls{top:var(--rep-top-h,150px)}
+
+  /* ── ODSADENIE PANELOV od pevnej hlavičky a spodnej lišty ─────────
+     Jedno miesto pre všetky roly a línie. Doteraz to bolo rozsypané po
+     súbore a viazané na .gp-rep — manažérovi preto obsah liezol pod
+     hlavičku a gyn mal hore prázdny pás. */
+  body.app-nav:not(.gyn-line) .dnes-inner,
+  body.app-nav:not(.gyn-line) .hist-inner,
+  body.app-nav:not(.gyn-line) .lb-inner,
+  body.app-nav:not(.gyn-line) .lk-inner,
+  body.app-nav:not(.gyn-line) .rep-pl-inner,
+  body.app-nav:not(.gyn-line) .nst-inner,
+  body.app-nav:not(.gyn-line) .golem-cal-inner{padding-top:calc(var(--rep-top-h,150px) + 4px)}
+  /* Gyn golemovskú hlavičku nevidí (má vlastnú vo svojom pohľade), takže
+     tam panely začínajú hore — inak by hľadel na prázdny pás. */
+  body.gyn-line .dnes-inner,
+  body.gyn-line .hist-inner,
+  body.gyn-line .lb-inner,
+  body.gyn-line .lk-inner,
+  body.gyn-line .rep-pl-inner,
+  body.gyn-line .nst-inner,
+  body.gyn-line .golem-cal-inner{padding-top:calc(var(--sat,0px) + 22px)}
+  /* Prilepené ovládanie (hľadanie, filtre) sa lepí presne pod hlavičku */
+  body.app-nav:not(.gyn-line) .nst-topbar,
+  body.app-nav:not(.gyn-line) .hist-search-wrap,
+  body.app-nav:not(.gyn-line) .lk-sticky-controls{top:var(--rep-top-h,150px)}
+  body.gyn-line .nst-topbar,
+  body.gyn-line .hist-search-wrap,
+  body.gyn-line .lk-sticky-controls{top:var(--sat,0px)}
+  body.app-nav .nst-topbar{padding-top:2px}
+  /* Spodná lišta nesmie prekryť koniec obsahu v žiadnom paneli */
+  body.app-nav .lk-inner,
+  body.app-nav .okresy-inner{padding-bottom:calc(48px + var(--tabbar-h,62px))}
+
 body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 .mgr-plnenie-detail .lk-sticky-controls{top:46px;background:#EAECF2;padding:0 0 10px}
   .lk-sticky-controls::before{content:'';position:absolute;left:-16px;right:-16px;top:0;bottom:0;border-radius:0 0 18px 18px;background:linear-gradient(180deg,rgba(234,236,242,.98) 0%,rgba(234,236,242,.96) 72%,rgba(234,236,242,0) 100%);z-index:-1;pointer-events:none}
@@ -3180,10 +3225,10 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 
 <!-- ═══ SPODNÁ LIŠTA — Dnes / Lekári / Plnenie / Nástenka / Viac (Golem reprezentant) ═══ -->
 <nav class="tabbar" id="rep-tabbar" aria-label="Hlavná navigácia">
-  <button type="button" class="tb-btn active" id="tb-dnes" onclick="openDnes()"><span class="tb-ic">🏠</span><span class="tb-lbl">Domov</span></button>
+  <button type="button" class="tb-btn active" id="tb-dnes" onclick="appGoDomov()"><span class="tb-ic">🏠</span><span class="tb-lbl">Domov</span></button>
   <button type="button" class="tb-btn" id="tb-plnenie" onclick="appGoPlnenie()"><span class="tb-ic">💊</span><span class="tb-lbl">Plnenie</span></button>
   <button type="button" class="tb-btn" id="tb-kal" onclick="appGoKalendar()"><span class="tb-ic gyn-cal-navico" style="width:19px;height:19px"><span class="gci-top"></span><span class="gci-day js-cal-nav-day">16</span></span><span class="tb-lbl">Kalendár</span></button>
-  <button type="button" class="tb-btn" id="tb-nastenka" onclick="openNastenka()"><span class="tb-ic">📌</span><span class="tb-lbl">Nástenka</span></button>
+  <button type="button" class="tb-btn" id="tb-nastenka" onclick="appGoNastenka()"><span class="tb-ic">📌</span><span class="tb-lbl">Nástenka</span></button>
   <button type="button" class="tb-btn" id="tb-viac" onclick="openViac()"><span class="tb-av" id="tb-av">?</span><span class="tb-lbl">Menu</span></button>
 </nav>
 
@@ -4106,7 +4151,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.80.0';
+var APP_VERSION = '2.80.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7726,10 +7771,10 @@ function _panelShow(newId, isBack) {
   if (!newEl) return;
   _panelCurrent = newId;
   // Persistentný topbar — zvýrazni aktívnu záložku v rep-nav
-  if (!document.body.classList.contains('manager-mode')) {
-    repNavSetActive(newId);
-    try { repTabSetActive(newId); } catch (e) {}
-  }
+  // Horná mriežka patrí len reprezentantovi, spodná lišta všetkým — preto sa
+  // zvýrazňuje vždy, aj manažérovi.
+  if (!document.body.classList.contains('manager-mode')) repNavSetActive(newId);
+  try { repTabSetActive(newId); } catch (e) {}
   // Nový panel ide dopredu (nad starý), aby počas animácie nebolo vidieť pozadie
   newEl.style.zIndex = '1600';
   newEl.classList.remove('panel-anim-up','panel-anim-l','panel-anim-r');
@@ -8221,7 +8266,7 @@ function dnesRender() {
     try { kedy = mgrTimeAgo(nstTime(nst.post.ts)) || ''; } catch (e) { kedy = ''; }
     var nstBody = '<div class="dnes-post">' + appEsc(nst.post.text || '') + '</div>' +
                   '<div class="dnes-post-meta">' + autor + (kedy ? ' · ' + appEsc(kedy) : '') + '</div>';
-    html += '<div onclick="openNastenka()" style="cursor:pointer">' +
+    html += '<div onclick="appGoNastenka()" style="cursor:pointer">' +
             dnesCardHtml('linear-gradient(90deg,#7C3ABE,#C084FC)', 'Nástenka',
                          badge + '<span class="dnes-more">Otvoriť ›</span>', nstBody) +
             '</div>';
@@ -8260,24 +8305,64 @@ function appRole() {
   } catch (e) {}
   return 'gp';
 }
+// Ťuknutie na lištu musí vždy skončiť na tom, na čo som ťukol. Appka má
+// niekoľko vrstiev prekryvov (panely, Nástenka, Menu, detaily) a každá si
+// doteraz zatvárala len seba — Nástenka napríklad leží nad panelmi, takže
+// „Domov" ju nechal visieť navrchu a vyzeralo to, že tlačidlo nefunguje.
+// Preto jedno miesto, ktoré pred každým prepnutím upratá všetko ostatné.
+function appNavReset(nechaj) {
+  try { closeViac(); } catch (e) {}
+  try { closeGpPicker(); } catch (e) {}
+  if (nechaj !== 'nastenka') {
+    try {
+      var nst = document.getElementById('nastenka-overlay');
+      if (nst && nst.classList.contains('show')) closeNastenka();
+    } catch (e) {}
+  }
+  // Prekryvy, ktoré ležia nad panelmi (detail lekára, jeho úprava, lekáreň,
+  // trhový podiel). Zatvárajú sa priamo, lebo každý má vlastnú funkciu
+  // s vlastnými vedľajšími efektmi, ktoré tu nechceme spúšťať.
+  ['detail-overlay', 'edit-overlay', 'lk-detail', 'pharma-ms-overlay',
+   'pharma-okres-overlay', 'tuy-detail'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el && el.classList.contains('show')) el.classList.remove('show');
+  });
+}
+
+// Domov je panel nad všetkým — manažérovi aj gyn sa otvorí nad ich pohľadom.
+function appGoDomov() {
+  appNavReset('domov');
+  try { openDnes(); } catch (e) {}
+}
+
 // Plnenie a Kalendár vedú v každej línii inam — manažér a gyn prepínajú
-// vlastné záložky, reprezentant otvára panel.
-function appGoPlnenie() {
+// vlastné záložky vo svojom pohľade, reprezentant otvára panel. U manažéra
+// a gyn preto treba najprv zavrieť panely, inak by ich pohľad ostal schovaný
+// pod Domovom a prepnutie by nebolo vidieť.
+function appGoTab(kam) {
   var r = appRole();
+  appNavReset(kam === 'nastenka' ? 'nastenka' : null);
   try {
-    if (r === 'mgr') mgrSwitchSubtab('plnenie');
-    else if (r === 'gyn') gynNavTo('plnenie');
-    else openRepPlnenie();
+    if (kam === 'nastenka') {
+      // Nástenka leží nad panelmi, takže si ich musí zavrieť sama — inak by
+      // pod ňou ostal visieť ten, z ktorého sme prišli.
+      try { closeAllPanels(); } catch (e) {}
+      openNastenka();
+      return;
+    }
+    if (r === 'mgr' || r === 'gyn') {
+      try { closeAllPanels(); } catch (e) {}
+      if (r === 'mgr') mgrSwitchSubtab(kam);
+      else gynNavTo(kam);
+      return;
+    }
+    if (kam === 'plnenie') openRepPlnenie();
+    else if (kam === 'kalendar') openGolemKalendar();
   } catch (e) {}
 }
-function appGoKalendar() {
-  var r = appRole();
-  try {
-    if (r === 'mgr') mgrSwitchSubtab('kalendar');
-    else if (r === 'gyn') gynNavTo('kalendar');
-    else openGolemKalendar();
-  } catch (e) {}
-}
+function appGoPlnenie() { appGoTab('plnenie'); }
+function appGoKalendar() { appGoTab('kalendar'); }
+function appGoNastenka() { appGoTab('nastenka'); }
 // Manažér a gyn neprepínajú panely, ale vlastné záložky — lišta sa musí
 // zvýrazniť aj podľa nich.
 function appTabSyncFromTab(tab) {
@@ -8417,7 +8502,13 @@ function closeViac() {
 // ktorý práve otvorilo.
 document.addEventListener('click', function (ev) {
   var t = ev.target && ev.target.closest ? ev.target.closest('#viac-overlay [onclick]') : null;
-  if (t) setTimeout(closeViac, 0);
+  if (!t) return;
+  setTimeout(function () {
+    closeViac();
+    // To isté upratovanie ako pri lište — inak by nová sekcia otvorená z menu
+    // ostala pod Nástenkou alebo pod detailom, ktorý tam visel predtým.
+    try { appNavReset(); } catch (e) {}
+  }, 0);
 }, true);
 // Avatar v poslednej položke lišty — rovnaký ako v hlavičke.
 function tabbarSyncAvatar(user) {
@@ -11758,14 +11849,31 @@ function gynBirthdayShowOverlay(u){
 // Zmeria výšku persistentného topbaru a nastaví CSS premennú (pre odsadenie obsahu)
 function repTopbarSync(){
   try {
-    if(!document.body.classList.contains('gp-rep')) return;
+    // Hlavičku má teraz pevnú každý, kto má spodnú lištu — nielen Golem
+    // reprezentant. Kým sa merala len jemu, manažérovi ostávala predvolená
+    // hodnota 150 px a obsah panelov mal pod hlavičkou 48 px prázdna.
+    if(!document.body.classList.contains('gp-rep') &&
+       !document.body.classList.contains('app-nav')) return;
     var bar = document.getElementById('rep-topbar');
     if(!bar) return;
-    var h = Math.round(bar.getBoundingClientRect().height) || 150;
+    var h = Math.round(bar.getBoundingClientRect().height);
+    if(!h) return;                       // gyn golemovskú hlavičku vôbec nemá
     document.documentElement.style.setProperty('--rep-top-h', h + 'px');
   } catch(e){}
 }
 try { window.addEventListener('resize', function(){ repTopbarSync(); }); } catch(e){}
+// Titul aj pozdrav sa môžu zalomiť na dva riadky (dlhé meno, dlhá rola).
+// Vtedy hlavička narastie a odsadenie panelov musí narásť s ňou.
+try {
+  if (typeof ResizeObserver === 'function') {
+    var _rtBar = null;
+    var _rtObs = new ResizeObserver(function(){ repTopbarSync(); });
+    document.addEventListener('DOMContentLoaded', function(){
+      _rtBar = document.getElementById('rep-topbar');
+      if (_rtBar) _rtObs.observe(_rtBar);
+    });
+  }
+} catch(e){}
 try { window.addEventListener('orientationchange', function(){ setTimeout(repTopbarSync, 200); }); } catch(e){}
 
 function updateHdrForUser(user) {
@@ -37481,8 +37589,12 @@ function closeNastenka(){
   var ov = document.getElementById('nastenka-overlay');
   if (ov) ov.classList.remove('show');
   document.body.style.overflow = '';
-  try { repTabSetActive(_panelCurrent); } catch (e) {}
   nstMarkSeen();
+  // Domovom je Domov — zavretie Nástenky nemá končiť na prázdnom formulári.
+  if (document.body.classList.contains('app-nav') && !_panelCurrent) {
+    try { openDnes(); return; } catch (e) {}
+  }
+  try { repTabSetActive(_panelCurrent); } catch (e) {}
 }
 
 // ── Načítanie zo Sheetu ──
