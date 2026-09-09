@@ -221,14 +221,24 @@
   /* Leaderboard overlay */
 
   /* Pull-to-refresh */
-  .ptr-indicator{display:flex;align-items:center;justify-content:center;height:0;overflow:hidden;opacity:0;transition:height .2s,opacity .2s}
-  .ptr-indicator.pulling{height:60px;opacity:1}
-  .ptr-indicator.loading{height:60px;opacity:1}
-  .ptr-spinner{width:28px;height:28px;border:3px solid #E2E8F0;border-top-color:#2563EB;border-radius:50%}
-  .ptr-spinner.spin{animation:ptrSpin .7s linear infinite}
-  @keyframes ptrSpin{to{transform:rotate(360deg)}}
-  .ptr-arrow{font-size:20px;transition:transform .2s;display:inline-block;color:#64748B}
-  .ptr-arrow.ready{transform:rotate(180deg)}
+  /* ── Potiahnutie nadol na obnovenie (spoločný indikátor) ──
+     Krúžok sa dopĺňa podľa toho, ako ďaleko je prst — používateľ vidí, koľko
+     ešte chýba, a nemusí hádať. Po prekročení prahu sa zväčší a telefón
+     jemne cukne; po pustení sa točí, kým dáta nedobehnú. */
+  .app-ptr{display:flex;align-items:center;justify-content:center;height:0;overflow:hidden;opacity:0;pointer-events:none}
+  .app-ptr.anim{transition:height .24s cubic-bezier(.16,1,.3,1),opacity .22s ease}
+  .app-ptr-ring{transform:scale(.68);transition:transform .18s cubic-bezier(.34,1.56,.64,1);transform-origin:50% 50%}
+  .app-ptr-bg{fill:none;stroke:#C7CFDC;stroke-width:3.2}
+  .app-ptr-arc{fill:none;stroke:#2563EB;stroke-width:3.2;stroke-linecap:round;stroke-dasharray:97.4;stroke-dashoffset:97.4}
+  .app-ptr.ready .app-ptr-ring{transform:scale(1)}
+  .app-ptr.loading .app-ptr-ring{transform:scale(1);animation:appPtrSpin .75s linear infinite}
+  .app-ptr.loading .app-ptr-arc{stroke-dashoffset:73}
+  @keyframes appPtrSpin{from{transform:scale(1) rotate(0)}to{transform:scale(1) rotate(360deg)}}
+  @media(prefers-reduced-motion:reduce){
+    .app-ptr.anim{transition:none}
+    .app-ptr-ring{transition:none}
+    .app-ptr.loading .app-ptr-ring{animation-duration:1.8s}
+  }
   .lb-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#EAECF2;z-index:1500;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   .lb-inner{max-width:660px;margin:0 auto;padding:82px 16px 48px}
   /* ── WHAT'S NEW overlay ── */
@@ -2952,9 +2962,11 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   </div>
 
   <!-- PTR indicator — zdieľaný pre Návštevy aj Plnenie -->
-  <div class="ptr-indicator" id="ptr-indicator">
-    <span class="ptr-arrow" id="ptr-arrow">↓</span>
-    <div class="ptr-spinner" id="ptr-spinner" style="display:none"></div>
+  <div class="app-ptr" id="ptr-indicator" aria-hidden="true">
+    <svg class="app-ptr-ring" viewBox="0 0 36 36" width="26" height="26">
+      <circle class="app-ptr-bg" cx="18" cy="18" r="15.5"></circle>
+      <circle class="app-ptr-arc" cx="18" cy="18" r="15.5" transform="rotate(-90 18 18)"></circle>
+    </svg>
   </div>
 
   <!-- Dashboard — zoznam reprezentantov -->
@@ -3416,10 +3428,6 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 
   <div class="hist-overlay" id="hist-overlay">
     <div class="hist-inner">
-      <div class="ptr-indicator" id="hist-ptr-indicator">
-        <span class="ptr-arrow" id="hist-ptr-arrow">↓</span>
-        <div class="ptr-spinner" id="hist-ptr-spinner" style="display:none"></div>
-      </div>
       <div class="hist-header">
         <div class="hist-title">Lekári</div>
         <div class="hist-date" id="hist-date"></div>
@@ -12524,13 +12532,16 @@ function gynApplyRepListData(data, user) {
 function gynLoadRepList(user, _attempt) {
   // Výber konkurentov pre MS graf — najprv localStorage (instant), Sheets prepíše nižšie
   try { gynMsHydrate(localStorage.getItem(gynMsLsKey())); } catch(e){}
+  // Príznak, aby potiahnutie nadol vedelo, kedy zastaviť krúžok.
+  GYN_APP._repListLoading = true;
   fetch(gynScriptUrl('action=getRepList'), { cache: 'no-store' })
     .then(function(r){ return r.json(); })
-    .then(function(data){ gynApplyRepListData(data, user); })
+    .then(function(data){ GYN_APP._repListLoading = false; gynApplyRepListData(data, user); })
     .catch(function(){
       // Cold-start / session ešte nie je pripravená pri prvom logine → skús znova.
       var _a = _attempt || 0;
       if(_a < 2) setTimeout(function(){ gynLoadRepList(user, _a + 1); }, _a === 0 ? 2000 : 4000);
+      else GYN_APP._repListLoading = false;
     });
 }
 
@@ -12628,9 +12639,8 @@ function gynRenderShell(user) {
         '<button class="gyn-nav-btn" id="gyn-nav-nastenka-btn" onclick="openNastenka()"><span class="st-emoji">📌</span><span class="st-lbl">Nástenka</span></button>' +
         (gynActivityAllowed(user) ? '<button class="gyn-nav-btn" data-tab="activity" onclick="gynNavTo(\'activity\')"><span class="st-emoji">📈</span><span class="st-lbl">Aktivita</span></button>' : '') +
       '</nav>' +
-      '<div class="ptr-indicator" id="gyn-ptr-indicator">' +
-        '<span class="ptr-arrow" id="gyn-ptr-arrow">↓</span>' +
-        '<div class="ptr-spinner" id="gyn-ptr-spinner" style="display:none"></div>' +
+      '<div class="app-ptr" id="gyn-ptr-indicator" aria-hidden="true">' +
+        appPtrRingHtml() +
       '</div>' +
       '<div id="gyn-content"></div>' +
     '</div>';
@@ -29221,152 +29231,125 @@ function preloadAllPharmaData() {
   return;
 }
 
-// ── PULL-TO-REFRESH pre manažérsky zoznam ──
-(function(){
-  var startY = 0, startX = 0, pulling = false, triggered = false, dirLocked = false;
-  var THRESHOLD = 120;
-
-  function getListWrap(){ return document.getElementById('mgr-list-wrap'); }
-  function getIndicator(){ return document.getElementById('ptr-indicator'); }
-  function getArrow(){ return document.getElementById('ptr-arrow'); }
-  function getSpinner(){ return document.getElementById('ptr-spinner'); }
-
-  function isManagerList(){
-    if(!document.body.classList.contains('manager-mode')) return false;
-    // Nespúšťaj PTR ak je otvorený product sheet alebo nejaký overlay
-    if(PL_PROD_SHEET_STATE && PL_PROD_SHEET_STATE.open) return false;
-    var overlays = ['lb-overlay','detail-overlay','hist-overlay','wn-overlay','confirm-overlay','session-expired-overlay'];
-    for(var i=0;i<overlays.length;i++){
-      var el = document.getElementById(overlays[i]);
-      if(el && el.classList.contains('show')) return false;
-    }
-    // Plnenie subtab — ak je aktívny a detail reprezentanta nie je otvorený
-    if(MGR_STATE && MGR_STATE.subtab === 'plnenie'){
-      return !document.body.classList.contains('mgr-plnenie-detail-open');
-    }
-    // Zoznam lekárov (Návštevy)
-    var wrap = getListWrap();
-    return !!(wrap && wrap.style.display !== 'none');
-  }
-
-  document.addEventListener('touchstart', function(e){
-    if(!isManagerList()) return;
-    // Aktivuj len keď sme na vrchu stránky
-    if(window.scrollY > 5) return;
-    startY = e.touches[0].clientY;
-    startX = e.touches[0].clientX;
-    pulling = false;
-    triggered = false;
-    dirLocked = false;
-  }, {passive:true});
-
-  document.addEventListener('touchmove', function(e){
-    if(!isManagerList()) return;
-    if(window.scrollY > 5) return;
-    var dy = e.touches[0].clientY - startY;
-    var dx = Math.abs(e.touches[0].clientX - startX);
-    // Zisti smer pohybu pri prvom pohybe
-    if(!dirLocked){
-      if(Math.abs(dy) < 8 && dx < 8) return; // príliš malý pohyb
-      // Ak je horizontálny pohyb väčší — nie je to PTR
-      if(dx > Math.abs(dy)) return;
-      // Musí ísť dole (nie hore)
-      if(dy <= 0) return;
-      dirLocked = true;
-      pulling = true;
-    }
-    if(!pulling) return;
-    if(dy <= 0){ pulling = false; return; }
-    var ind = getIndicator();
-    var arrow = getArrow();
-    var pct = Math.min(dy / THRESHOLD, 1);
-    if(ind){
-      ind.classList.add('pulling');
-      ind.style.height = Math.min(dy * 0.5, 60) + 'px';
-      ind.style.opacity = pct;
-    }
-    if(arrow){
-      if(dy >= THRESHOLD){ arrow.classList.add('ready'); triggered = true; }
-      else { arrow.classList.remove('ready'); triggered = false; }
-    }
-  }, {passive:true});
-
-  document.addEventListener('touchend', function(){
-    if(!pulling || !isManagerList()) return;
-    pulling = false;
-    dirLocked = false;
-    var ind = getIndicator();
-    var arrow = getArrow();
-    var spinner = getSpinner();
-
-    if(triggered){
-      if(arrow) arrow.style.display = 'none';
-      if(spinner){ spinner.style.display = 'block'; spinner.classList.add('spin'); }
-      if(ind){ ind.classList.add('loading'); ind.style.height = '60px'; ind.style.opacity = '1'; }
-
-      if (MGR_STATE.subtab === 'plnenie') {
-        PL_STATE.loading = false; // reset aby loadAllQuarters mohol bežať
-        PL_STATE.qCache = {};     // vymaž cache — refresh = nové dáta
-        plnenieLoadAllQuarters();
-      } else {
-        MGR_STATE.reps = {};
-        mgrLoadData();
-      }
-
-      setTimeout(function(){
-        if(ind){ ind.classList.remove('pulling','loading'); ind.style.height = '0'; ind.style.opacity = '0'; }
-        if(arrow){ arrow.style.display = 'inline-block'; arrow.classList.remove('ready'); }
-        if(spinner){ spinner.style.display = 'none'; spinner.classList.remove('spin'); }
-      }, 1500);
-    } else {
-      if(ind){ ind.classList.remove('pulling'); ind.style.height = '0'; ind.style.opacity = '0'; }
-      if(arrow) arrow.classList.remove('ready');
-    }
-  });
-})();
-// ── Potiahnutie nadol na obnovenie — spoločná obsluha pre panely s vlastným skrolom ──
-// Manažérsky zoznam a gyn línia majú vlastné kópie tohto gesta. Nové panely
-// (Lekári, Nástenka) idú cez jednu obsluhu, aby sa správali rovnako a aby
-// oprava v gestách bola na jednom mieste.
+// ══════════════════════════════════════════════════════════════════════════
+//  POTIAHNUTIE NADOL NA OBNOVENIE — jedna obsluha pre všetky panely
+// ══════════════════════════════════════════════════════════════════════════
+// Každý panel, ktorý ťahá dáta z backendu, sa dá obnoviť potiahnutím nadol —
+// tak, ako to ľudia poznajú z Facebooku a Instagramu. Predtým to mal iba
+// manažérsky zoznam a gyn línia, takže reprezentant nemal ako povedať
+// „načítaj mi to znova" inak než zatvorením a znovuotvorením panela.
 //
-// Panel má vlastný skrol (position:fixed + overflow-y:auto), takže sa počíta
-// jeho scrollTop, nie scrollY okna — okno sa v ňom nehýbe vôbec.
-function appAttachOverlayPtr(opt) {
-  var THRESHOLD = 120;
-  var startY = 0, startX = 0, pulling = false, triggered = false, dirLocked = false, busy = false;
+// Spätná väzba počas ťahania: krúžok sa dopĺňa podľa vzdialenosti prsta.
+// Kým nie je plný, obnova sa nespustí — a je to vidieť. Po prekročení prahu
+// sa krúžok zväčší a telefón jemne cukne, takže sa dá pustiť aj bez pozerania.
+// Počas ťahania nemá indikátor prechod, aby šiel presne s prstom; animuje sa
+// až po pustení.
+//
+// Panely majú vlastný skrol (position:fixed + overflow-y:auto), takže sa
+// počíta ich scrollTop, nie scrollY okna — okno sa v nich nehýbe vôbec.
+var APP_PTR_THRESHOLD = 110;   // px ťahu, po ktorých sa obnova spustí
+var APP_PTR_CIRC = 97.4;       // obvod krúžku (r = 15.5)
 
-  function el(id){ return id ? document.getElementById(id) : null; }
-  function ov(){ return el(opt.overlayId); }
-  function ind(){ return el(opt.indicatorId); }
-  function arrow(){ return el(opt.arrowId); }
-  function spinner(){ return el(opt.spinnerId); }
+// Čaká, kým podmienka nezhasne (typicky „už sa nenačítava"). Vďaka tomu sa
+// nemuseli prepisovať loadery jednotlivých panelov — točenie sa zastaví
+// vtedy, keď panel naozaj dobehne, nie po odhadnutom čase.
+function appWaitUntil(cond, timeoutMs, cb) {
+  var t0 = Date.now();
+  (function tick() {
+    var ok = false;
+    try { ok = !!cond(); } catch (e) { ok = true; }
+    if (ok || Date.now() - t0 > (timeoutMs || 8000)) { cb(); return; }
+    setTimeout(tick, 150);
+  })();
+}
+
+function appPtrRingHtml() {
+  return '<svg class="app-ptr-ring" viewBox="0 0 36 36" width="26" height="26">' +
+           '<circle class="app-ptr-bg" cx="18" cy="18" r="15.5"></circle>' +
+           '<circle class="app-ptr-arc" cx="18" cy="18" r="15.5" transform="rotate(-90 18 18)"></circle>' +
+         '</svg>';
+}
+
+function appPtrEnsure(opt) {
+  // Panel s pevným indikátorom v HTML (manažér, gyn) — netreba nič vyrábať.
+  if (opt.indicatorId) return document.getElementById(opt.indicatorId);
+  var ov = document.getElementById(opt.overlayId);
+  if (!ov) return null;
+  var ind = ov.querySelector('.app-ptr');
+  if (ind) return ind;
+  // Panely si obsah prekresľujú cez innerHTML, čo by vložený indikátor zmazalo.
+  // Preto sa vytvára až keď treba, a vždy sa najprv overí, či ešte existuje.
+  var host = opt.mountSelector ? ov.querySelector(opt.mountSelector) : ov.firstElementChild;
+  if (!host) return null;
+  ind = document.createElement('div');
+  ind.className = 'app-ptr';
+  ind.setAttribute('aria-hidden', 'true');
+  ind.innerHTML = appPtrRingHtml();
+  if (opt.mountAfter) host.parentNode.insertBefore(ind, host.nextSibling);
+  else host.insertBefore(ind, host.firstChild);
+  return ind;
+}
+
+function appAttachOverlayPtr(opt) {
+  var startY = 0, startX = 0, pulling = false, ready = false, dirLocked = false, busy = false;
+  var MIN_MS = opt.minMs || 600;   // aby obnova neblikla a bolo vidieť, že sa niečo dialo
+
+  function ov(){ return opt.overlayId ? document.getElementById(opt.overlayId) : null; }
+
+  // Odkiaľ sa číta poloha skrolu. Panely skrolujú samy seba; manažérsky
+  // a gyn pohľad skrolujú okno.
+  function atTop() {
+    if (typeof opt.scrollTop === 'function') { try { return opt.scrollTop() <= 5; } catch (e) { return false; } }
+    var o = ov();
+    return !!o && o.scrollTop <= 5;
+  }
 
   function active() {
     if (busy) return false;
-    var o = ov();
-    if (!o || !o.classList.contains('show')) return false;
+    if (typeof opt.isActive === 'function') {
+      var okCustom = false;
+      try { okCustom = !!opt.isActive(); } catch (e) { okCustom = false; }
+      if (!okCustom) return false;
+    } else {
+      var o = ov();
+      if (!o || !o.classList.contains('show')) return false;
+    }
     // Nad panelom môže byť otvorený detail alebo dialóg — vtedy gesto nepatrí jemu.
     var blocked = opt.blockedBy || [];
     for (var i = 0; i < blocked.length; i++) {
       var b = document.getElementById(blocked[i]);
       if (b && b.classList.contains('show')) return false;
     }
-    if (typeof opt.extraBlock === 'function' && opt.extraBlock()) return false;
-    return o.scrollTop <= 5;
+    if (typeof opt.extraBlock === 'function') { try { if (opt.extraBlock()) return false; } catch (e) {} }
+    return atTop();
   }
 
-  function reset(hard) {
-    var i = ind(), a = arrow(), sp = spinner();
-    if (i) { i.classList.remove('pulling', 'loading'); i.style.height = '0'; i.style.opacity = '0'; }
-    if (a) { a.classList.remove('ready'); if (hard) a.style.display = 'inline-block'; }
-    if (sp && hard) { sp.style.display = 'none'; sp.classList.remove('spin'); }
+  function arcEl() {
+    var ind = appPtrEnsure(opt);
+    return ind ? ind.querySelector('.app-ptr-arc') : null;
+  }
+
+  function setArc(pct) {
+    var a = arcEl();
+    if (a) a.style.strokeDashoffset = String(APP_PTR_CIRC * (1 - Math.max(0, Math.min(1, pct))));
+  }
+
+  function close() {
+    var ind = appPtrEnsure(opt);
+    if (!ind) return;
+    ind.classList.add('anim');
+    ind.classList.remove('ready', 'loading');
+    ind.style.height = '0';
+    ind.style.opacity = '0';
+    setArc(0);
   }
 
   document.addEventListener('touchstart', function (e) {
     if (!active()) return;
+    appPtrEnsure(opt);
     startY = e.touches[0].clientY;
     startX = e.touches[0].clientX;
-    pulling = false; triggered = false; dirLocked = false;
+    pulling = false; ready = false; dirLocked = false;
   }, { passive: true });
 
   document.addEventListener('touchmove', function (e) {
@@ -29380,180 +29363,259 @@ function appAttachOverlayPtr(opt) {
       dirLocked = true; pulling = true;
     }
     if (!pulling) return;
-    if (dy <= 0) { pulling = false; reset(false); return; }
-    var i = ind(), a = arrow();
-    if (i) {
-      i.classList.add('pulling');
-      i.style.height = Math.min(dy * 0.5, 60) + 'px';
-      i.style.opacity = Math.min(dy / THRESHOLD, 1);
+    var ind = appPtrEnsure(opt);
+    if (!ind) return;
+    if (dy <= 0) { pulling = false; close(); return; }
+    var pct = Math.min(dy / APP_PTR_THRESHOLD, 1);
+    // Bez prechodu — indikátor musí ísť presne s prstom, nie za ním.
+    ind.classList.remove('anim');
+    ind.style.height = Math.min(dy * 0.55, 62) + 'px';
+    ind.style.opacity = String(Math.min(0.25 + pct * 0.75, 1));
+    setArc(pct);
+    var nowReady = dy >= APP_PTR_THRESHOLD;
+    if (nowReady !== ready) {
+      ready = nowReady;
+      ind.classList.toggle('ready', ready);
+      // Cuknutie presne v okamihu, keď sa dá pustiť — ako na iPhone.
+      if (ready) { try { haptic('light'); } catch (e) {} }
     }
-    if (a) { triggered = dy >= THRESHOLD; a.classList.toggle('ready', triggered); }
   }, { passive: true });
 
   document.addEventListener('touchend', function () {
     if (!pulling) return;
     pulling = false; dirLocked = false;
-    if (!triggered) { reset(false); return; }
-    triggered = false;
-    var i = ind(), a = arrow(), sp = spinner();
-    if (a) a.style.display = 'none';
-    if (sp) { sp.style.display = 'block'; sp.classList.add('spin'); }
-    // 'pulling' sa musí zložiť, inak trieda ostane visieť po celý čas načítania
-    // a nedá sa odlíšiť ťahanie od načítavania.
-    if (i) { i.classList.remove('pulling'); i.classList.add('loading'); i.style.height = '60px'; i.style.opacity = '1'; }
+    var ind = appPtrEnsure(opt);
+    if (!ready) { close(); return; }
+    ready = false;
+    if (ind) {
+      // Vlastný strokeDashoffset z ťahania sa musí zmazať, inak by prebil
+      // hodnotu zo štýlu a namiesto točiaceho sa oblúčika by ostal plný krúžok.
+      var a = ind.querySelector('.app-ptr-arc');
+      if (a) a.style.strokeDashoffset = '';
+      ind.classList.add('anim', 'loading');
+      ind.classList.remove('ready');
+      ind.style.height = '58px';
+      ind.style.opacity = '1';
+    }
     try { haptic('selection'); } catch (e) {}
     // busy zablokuje ďalšie potiahnutie, kým prvé nedobehne — dve súbežné
     // načítania by si navzájom prepisovali obsah.
     busy = true;
-    var done = false;
+    var done = false, hardStop = false, t0 = Date.now();
     function finish() {
       if (done) return;
-      done = true; busy = false; reset(true);
+      var left = MIN_MS - (Date.now() - t0);
+      if (left > 0 && !hardStop) { setTimeout(finish, left); return; }
+      done = true; busy = false;
+      close();
     }
-    // Poistka: keby sieť nikdy neodpovedala, koliesko sa musí zastaviť samo.
-    setTimeout(finish, 8000);
-    try { opt.onRefresh(function () { setTimeout(finish, 350); }); }
+    // Poistka: keby sieť nikdy neodpovedala, krúžok sa musí zastaviť sám.
+    setTimeout(function () { hardStop = true; finish(); }, 12000);
+    try { opt.onRefresh(function () { setTimeout(finish, 250); }); }
     catch (e) { finish(); }
   });
 }
 
-// Zoznam lekárov (reprezentant). Manažér potiahnutie mal, reprezentant nie —
-// a pritom je to jediný spôsob obnovy, ktorý ľudia z iných appiek poznajú.
-appAttachOverlayPtr({
-  overlayId: 'hist-overlay',
-  indicatorId: 'hist-ptr-indicator',
-  arrowId: 'hist-ptr-arrow',
-  spinnerId: 'hist-ptr-spinner',
-  blockedBy: ['detail-overlay', 'confirm-overlay', 'session-expired-overlay', 'wn-overlay'],
-  onRefresh: function (done) {
-    var session = getSession();
-    gpHistForceRefresh(session ? session.username : '', done);
-  }
-});
+// ── Ktoré panely obnovu majú ────────────────────────────────────────────
+// Manažérsky zoznam a gyn línia majú vlastnú staršiu obsluhu; tá ostáva.
+// Formuláre (Tuyory, Lonelix, Apixaban) obnovu zámerne nemajú — potiahnutie
+// počas vypĺňania by prepísalo rozpísaný prieskum.
+(function () {
+  var COMMON_BLOCK = ['detail-overlay', 'confirm-overlay', 'session-expired-overlay', 'wn-overlay', 'edit-overlay'];
 
-// Nástenka — samostatný panel pre všetky línie aj roly, takže potiahnutie
-// v nej chýbalo reprezentantom aj manažérom.
-appAttachOverlayPtr({
-  overlayId: 'nastenka-overlay',
-  indicatorId: 'nst-ptr-indicator',
-  arrowId: 'nst-ptr-arrow',
-  spinnerId: 'nst-ptr-spinner',
-  blockedBy: ['nst-compose', 'confirm-overlay', 'session-expired-overlay'],
-  onRefresh: function (done) {
-    NST.loading = true;
-    nstFetch(function () { NST.loading = false; try { nstRender(); } catch (e) {} done(); });
-  }
-});
-// ── PULL-TO-REFRESH pre gyn líniu ──
-(function(){
-  var startY = 0, startX = 0, pulling = false, triggered = false, dirLocked = false;
-  var THRESHOLD = 120;
-
-  function getIndicator(){ return document.getElementById('gyn-ptr-indicator'); }
-  function getArrow(){ return document.getElementById('gyn-ptr-arrow'); }
-  function getSpinner(){ return document.getElementById('gyn-ptr-spinner'); }
-
-  function isGynList(){
-    var gynV = document.getElementById('gyn-view');
-    if(!gynV || !gynV.classList.contains('show')) return false;
-    // Nespúšťaj PTR ak je otvorený product sheet
-    if(typeof PL_PROD_SHEET_STATE !== 'undefined' && PL_PROD_SHEET_STATE.open) return false;
-    // Nespúšťaj ak je otvorený nejaký overlay
-    var overlays = ['lb-overlay','detail-overlay','hist-overlay','wn-overlay','confirm-overlay',
-      'session-expired-overlay','pharma-ms-overlay','pharma-okres-overlay'];
-    for(var i=0;i<overlays.length;i++){
-      var el = document.getElementById(overlays[i]);
-      if(el && el.classList.contains('show')) return false;
+  // Zoznam lekárov (reprezentant)
+  appAttachOverlayPtr({
+    overlayId: 'hist-overlay',
+    mountSelector: '.hist-inner',
+    blockedBy: COMMON_BLOCK,
+    onRefresh: function (done) {
+      var session = getSession();
+      gpHistForceRefresh(session ? session.username : '', done);
     }
-    var picker = document.querySelector('.gyn-ms-picker-overlay.show');
-    if(picker) return false;
-    // Nespúšťaj v detaile reprezentanta
-    if(typeof GYN_APP !== 'undefined' && GYN_APP.detailLogin) return false;
-    return true;
-  }
+  });
 
-  function doRefresh(){
-    if(typeof GYN_APP === 'undefined') return;
-    var user = (typeof getSession === 'function') ? getSession() : null;
-    if(!user) return;
-    if(GYN_APP.nav === 'plnenie'){
-      GYN_APP.plCache = {};
-      GYN_APP.plLoading = {};
-      try { gynLoadRepList(user); } catch(e){}
-      try { gynRenderContent(user); } catch(e){}        // re-render → refetch aktuálneho Q
-      try { gynPreloadAllQuarters(); } catch(e){}
-    } else if(GYN_APP.nav === 'activity'){
-      try { gynRenderContent(user); } catch(e){}
-    } else {
-      try { gynLoadRepList(user); } catch(e){}
-      try { gynRenderContent(user); } catch(e){}
+  // Nástenka — všetky línie aj roly. Indikátor patrí POD lepiacu lištu,
+  // inak by ho lišta prekryla.
+  appAttachOverlayPtr({
+    overlayId: 'nastenka-overlay',
+    mountSelector: '.nst-topbar',
+    mountAfter: true,
+    blockedBy: ['nst-compose', 'confirm-overlay', 'session-expired-overlay'],
+    onRefresh: function (done) {
+      NST.loading = true;
+      nstFetch(function () { NST.loading = false; try { nstRender(); } catch (e) {} done(); });
     }
-  }
+  });
 
-  document.addEventListener('touchstart', function(e){
-    if(!isGynList()) return;
-    if(window.scrollY > 5) return;
-    startY = e.touches[0].clientY;
-    startX = e.touches[0].clientX;
-    pulling = false;
-    triggered = false;
-    dirLocked = false;
-  }, {passive:true});
-
-  document.addEventListener('touchmove', function(e){
-    if(!isGynList()) return;
-    if(window.scrollY > 5) return;
-    var dy = e.touches[0].clientY - startY;
-    var dx = Math.abs(e.touches[0].clientX - startX);
-    if(!dirLocked){
-      if(Math.abs(dy) < 8 && dx < 8) return;
-      if(dx > Math.abs(dy)) return;
-      if(dy <= 0) return;
-      dirLocked = true;
-      pulling = true;
+  // Rebríček
+  appAttachOverlayPtr({
+    overlayId: 'lb-overlay',
+    mountSelector: '.lb-inner',
+    blockedBy: COMMON_BLOCK,
+    onRefresh: function (done) {
+      try {
+        LB_PLNENIE_CACHE = null;
+        LB_PLNENIE_LOADING = false;
+        lbPreloadPlnenie();
+      } catch (e) { done(); return; }
+      appWaitUntil(function () { return !LB_PLNENIE_LOADING; }, 12000, function () {
+        try { lbRender(); } catch (e) {}
+        done();
+      });
     }
-    if(!pulling) return;
-    if(dy <= 0){ pulling = false; return; }
-    var ind = getIndicator();
-    var arrow = getArrow();
-    var pct = Math.min(dy / THRESHOLD, 1);
-    if(ind){
-      ind.classList.add('pulling');
-      ind.style.height = Math.min(dy * 0.5, 60) + 'px';
-      ind.style.opacity = pct;
+  });
+
+  // Plnenie (reprezentant)
+  appAttachOverlayPtr({
+    overlayId: 'rep-plnenie-overlay',
+    mountSelector: '.rep-pl-inner',
+    blockedBy: COMMON_BLOCK,
+    onRefresh: function (done) {
+      try {
+        REP_PL_STATE.loading = false;
+        REP_PL_STATE.qCache = {};   // obnova = nové dáta, nie to, čo je v cache
+        repPlnenieLoad();
+      } catch (e) { done(); return; }
+      appWaitUntil(function () { return !REP_PL_STATE.loading; }, 12000, done);
     }
-    if(arrow){
-      if(dy >= THRESHOLD){ arrow.classList.add('ready'); triggered = true; }
-      else { arrow.classList.remove('ready'); triggered = false; }
+  });
+
+  // Lekárne
+  appAttachOverlayPtr({
+    overlayId: 'lk-overlay',
+    mountSelector: '.lk-inner',
+    blockedBy: COMMON_BLOCK.concat(['lk-confirm-overlay', 'lk-prompt-overlay']),
+    onRefresh: function (done) {
+      var login = (getSession() || {}).username || '';
+      var key;
+      try {
+        key = lkCacheKey(login);
+        // Zmaž cache daného kľúča, inak lkFetch obslúži potiahnutie starými dátami.
+        delete LK_STATE.cache[key];
+        lkFetch(login, function (rows) {
+          if (!LK_STATE.open) return;
+          LK_STATE._rows = lkBuildLekarne(rows);
+          lkRender();
+        });
+      } catch (e) { done(); return; }
+      appWaitUntil(function () { return !_lkInFlight[key]; }, 12000, done);
     }
-  }, {passive:true});
+  });
 
-  document.addEventListener('touchend', function(){
-    if(!pulling || !isGynList()) return;
-    pulling = false;
-    dirLocked = false;
-    var ind = getIndicator();
-    var arrow = getArrow();
-    var spinner = getSpinner();
+  // Trhový podiel (detail produktu). Otvára sa z Plnenia a ťahá si vlastné
+  // IQVIA dáta, takže si obnovu zaslúži samostatne.
+  appAttachOverlayPtr({
+    overlayId: 'pharma-ms-overlay',
+    mountSelector: '.pharma-ms-hdr',
+    mountAfter: true,
+    blockedBy: COMMON_BLOCK.concat(['pharma-okres-overlay']),
+    onRefresh: function (done) {
+      var code = PHARMA_STATE.activeCode, key;
+      if (!code) { done(); return; }
+      try {
+        key = code + '_' + PHARMA_STATE.oblast + '_' + PHARMA_STATE.kvartal;
+        delete PHARMA_STATE.cache[key];        // obnova = nové dáta, nie cache
+        delete PHARMA_STATE.loading[key];      // aby fetch nezastavila stará značka
+        loadPharmaDataNetwork(code, PHARMA_STATE.oblast, PHARMA_STATE.kvartal);
+      } catch (e) { done(); return; }
+      appWaitUntil(function () { return !PHARMA_STATE.loading[key]; }, 12000, function () {
+        try { pharmaRender(code); } catch (e) {}
+        done();
+      });
+    }
+  });
 
-    if(triggered){
-      if(arrow) arrow.style.display = 'none';
-      if(spinner){ spinner.style.display = 'block'; spinner.classList.add('spin'); }
-      if(ind){ ind.classList.add('loading'); ind.style.height = '60px'; ind.style.opacity = '1'; }
+  // Manažérsky pohľad (Návštevy + Plnenie). Skroluje okno, nie panel, a
+  // indikátor je pevne v HTML pod záložkami. Podmienky sú tie isté ako mala
+  // pôvodná obsluha; nové je, že sa krúžok zastaví, keď dáta naozaj dobehnú
+  // — pôvodne sa zastavil po 1,5 s bez ohľadu na to, či niečo prišlo.
+  appAttachOverlayPtr({
+    indicatorId: 'ptr-indicator',
+    scrollTop: function () { return window.scrollY; },
+    blockedBy: ['lb-overlay', 'detail-overlay', 'hist-overlay', 'wn-overlay',
+                'confirm-overlay', 'session-expired-overlay', 'nastenka-overlay'],
+    isActive: function () {
+      if (!document.body.classList.contains('manager-mode')) return false;
+      if (typeof PL_PROD_SHEET_STATE !== 'undefined' && PL_PROD_SHEET_STATE && PL_PROD_SHEET_STATE.open) return false;
+      if (MGR_STATE && MGR_STATE.subtab === 'plnenie')
+        return !document.body.classList.contains('mgr-plnenie-detail-open');
+      var wrap = document.getElementById('mgr-list-wrap');
+      return !!(wrap && wrap.style.display !== 'none');
+    },
+    onRefresh: function (done) {
+      if (MGR_STATE && MGR_STATE.subtab === 'plnenie') {
+        try {
+          PL_STATE.loading = false;
+          PL_STATE.qCache = {};   // obnova = nové dáta, nie to, čo je v cache
+          plnenieLoadAllQuarters();
+        } catch (e) { done(); return; }
+        appWaitUntil(function () { return !PL_STATE.loading; }, 12000, done);
+      } else {
+        try {
+          MGR_STATE.reps = {};
+          MGR_STATE.repsLoaded = false;
+          mgrLoadData();
+        } catch (e) { done(); return; }
+        appWaitUntil(function () { return MGR_STATE.repsLoaded; }, 12000, done);
+      }
+    }
+  });
 
-      doRefresh();
+  // Gyn línia — tiež skroluje okno, indikátor je súčasťou gyn navigácie.
+  appAttachOverlayPtr({
+    indicatorId: 'gyn-ptr-indicator',
+    scrollTop: function () { return window.scrollY; },
+    blockedBy: ['lb-overlay', 'detail-overlay', 'hist-overlay', 'wn-overlay', 'confirm-overlay',
+                'session-expired-overlay', 'pharma-ms-overlay', 'pharma-okres-overlay', 'nastenka-overlay'],
+    isActive: function () {
+      var gynV = document.getElementById('gyn-view');
+      if (!gynV || !gynV.classList.contains('show')) return false;
+      if (typeof PL_PROD_SHEET_STATE !== 'undefined' && PL_PROD_SHEET_STATE && PL_PROD_SHEET_STATE.open) return false;
+      if (document.querySelector('.gyn-ms-picker-overlay.show')) return false;
+      if (typeof GYN_APP !== 'undefined' && GYN_APP.detailLogin) return false;   // detail reprezentanta
+      return true;
+    },
+    onRefresh: function (done) {
+      var user = (typeof getSession === 'function') ? getSession() : null;
+      if (typeof GYN_APP === 'undefined' || !user) { done(); return; }
+      try {
+        if (GYN_APP.nav === 'plnenie') {
+          GYN_APP.plCache = {};
+          GYN_APP.plLoading = {};
+          gynLoadRepList(user);
+          gynRenderContent(user);        // re-render → znova dotiahne aktuálny Q
+          gynPreloadAllQuarters();
+        } else if (GYN_APP.nav === 'activity') {
+          gynRenderContent(user);
+        } else {
+          gynLoadRepList(user);
+          gynRenderContent(user);
+        }
+      } catch (e) { done(); return; }
+      appWaitUntil(function () {
+        var plDone = !GYN_APP.plLoading || Object.keys(GYN_APP.plLoading).length === 0;
+        return plDone && !GYN_APP._repListLoading;
+      }, 12000, done);
+    }
+  });
 
-      setTimeout(function(){
-        if(ind){ ind.classList.remove('pulling','loading'); ind.style.height = '0'; ind.style.opacity = '0'; }
-        if(arrow){ arrow.style.display = 'inline-block'; arrow.classList.remove('ready'); }
-        if(spinner){ spinner.style.display = 'none'; spinner.classList.remove('spin'); }
-      }, 1500);
-    } else {
-      if(ind){ ind.classList.remove('pulling'); ind.style.height = '0'; ind.style.opacity = '0'; }
-      if(arrow) arrow.classList.remove('ready');
+  // Okresy
+  appAttachOverlayPtr({
+    overlayId: 'okresy-overlay',
+    mountSelector: '.lk-inner',
+    blockedBy: COMMON_BLOCK,
+    onRefresh: function (done) {
+      try {
+        var reqId = (++OKRESY_STATE.reqId);
+        var cont = document.getElementById(OKRESY_STATE.containerId);
+        // forceNet=true obíde per-produktovú cache; showLoading=false, lebo
+        // stav načítavania už ukazuje krúžok a zoznam sa nemá vyprázdniť.
+        okresyLoadAll(reqId, OKRESY_STATE._cacheVer, cont, false, true, done);
+      } catch (e) { done(); }
     }
   });
 })();
+
 // ── ANTI-DUPLIKÁT MutationObserver ──
 // Okamžite odstráni akékoľvek duplikáty kľúčových elementov ak sa objavia
 (function(){
@@ -33776,17 +33838,22 @@ function okresyOpen(ctx, containerId) {
 }
 
 // Dotiahni všetky produkty a vyrenderuj až keď sú VŠETKY hotové (žiadny postupný render).
-function okresyLoadAll(reqId, ver, cont, showLoading, forceNet) {
+// `done` je nepovinné — volá ho potiahnutie nadol, aby vedelo, kedy zastaviť
+// krúžok. Zavolá sa aj vtedy, keď medzitým prišla novšia požiadavka.
+function okresyLoadAll(reqId, ver, cont, showLoading, forceNet, done) {
+  function _fin(){ try { if (typeof done === 'function') { var d = done; done = null; d(); } } catch (e) {} }
   if (showLoading && cont) cont.innerHTML = '<div class="okr-loading">Načítavam okresné dáta…</div>';
   var codes = okresyCodes();
-  var fresh = {}, got = 0, done = false;
+  var fresh = {}, got = 0, finished = false;
   function finish() {
-    if (done || reqId !== OKRESY_STATE.reqId) return;
-    done = true;
+    if (finished) return;
+    if (reqId !== OKRESY_STATE.reqId) { _fin(); return; }
+    finished = true;
     OKRESY_STATE.byCode = fresh;
     OKRESY_STATE._cacheVer = ver || '';
     okresySaveCache(OKRESY_STATE.oblast, OKRESY_STATE.kvartal, ver);
     okresyRender();
+    _fin();
   }
   codes.forEach(function(code) {
     okresyFetchCode(code, OKRESY_STATE.oblast, OKRESY_STATE.kvartal, reqId, function(resp, rkv) {
@@ -33798,8 +33865,9 @@ function okresyLoadAll(reqId, ver, cont, showLoading, forceNet) {
   });
   // Poistka proti visiacemu requestu — po 20 s vyrenderuj čo máme
   setTimeout(function() {
-    if (reqId !== OKRESY_STATE.reqId || done) return;
+    if (reqId !== OKRESY_STATE.reqId || finished) { _fin(); return; }
     if (Object.keys(fresh).length) { OKRESY_STATE.byCode = fresh; okresyRender(); }
+    _fin();
   }, 20000);
 }
 
@@ -40052,10 +40120,6 @@ try { gsLpInit(); } catch(e){}
 <div id="nastenka-overlay">
   <div class="nst-inner">
     <div class="nst-topbar"><button type="button" class="nst-back" onclick="closeNastenka()">&larr; Späť</button></div>
-    <div class="ptr-indicator" id="nst-ptr-indicator">
-      <span class="ptr-arrow" id="nst-ptr-arrow">↓</span>
-      <div class="ptr-spinner" id="nst-ptr-spinner" style="display:none"></div>
-    </div>
     <div id="nastenka-body"></div>
   </div>
 </div>
