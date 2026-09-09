@@ -3711,7 +3711,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   <div class="dnes-overlay" id="dnes-overlay">
     <div class="dnes-inner">
       <div class="dnes-hdr">
-        <div class="dnes-title">Dnes</div>
+        <div class="dnes-title">Domov</div>
         <div class="dnes-sub" id="dnes-sub"></div>
       </div>
       <div id="dnes-akcie">
@@ -7839,8 +7839,9 @@ function applyDefaultTabIfRep() {
     // „Formulár GP", toho voľba platí ďalej.
     // Reagila nemá GP formulár ani históriu, takže nemá ani Dnes — tam ostáva
     // pôvodné správanie (neotvára sa nič).
-    var reagila = document.body.classList.contains('reagila-line');
-    var def = userPrefsGet().defaultTab || (reagila ? 'form' : 'dnes');
+    // Domov má teraz každý — aj Reagila. Kto si výslovne zvolil „Formulár GP",
+    // toho voľba platí ďalej.
+    var def = userPrefsGet().defaultTab || 'dnes';
     if(def === 'form') return;
     var openers = {
       dnes:     (typeof openDnes === 'function') ? openDnes : null,
@@ -8910,7 +8911,7 @@ function settingsNstNotifHtml(s){
     '<div class="set-toggle-row">' +
       '<div class="set-toggle-info"><div class="set-toggle-lbl">📌 Príspevky na Nástenke</div><div class="set-row-desc">' +
         (on ? 'Dostaneš push, keď niekto z tvojej línie pridá príspevok alebo odpovie na tvoj.'
-            : 'Push z Nástenky máš vypnutý — nové príspevky uvidíš len po otvorení appky (bodka pri záložke).') + '</div></div>' +
+            : 'Push z Nástenky máš vypnutý — nové príspevky uvidíš len po otvorení appky (gulička pri Nástenke v spodnej lište).') + '</div></div>' +
       '<button type="button" id="set-nstnotif-sw" class="gyn-cal-switch' + (on ? ' on' : '') + '" role="switch" aria-checked="' + (on ? 'true' : 'false') + '" onclick="settingsToggleNstNotif()"><span class="gyn-cal-switch-kn"></span></button>' +
     '</div>';
 }
@@ -8923,7 +8924,7 @@ function settingsToggleNstNotif(){
   var descEl = sw ? sw.parentNode.querySelector('.set-row-desc') : null;
   if(descEl) descEl.textContent = nv
     ? 'Dostaneš push, keď niekto z tvojej línie pridá príspevok alebo odpovie na tvoj.'
-    : 'Push z Nástenky máš vypnutý — nové príspevky uvidíš len po otvorení appky (bodka pri záložke).';
+    : 'Push z Nástenky máš vypnutý — nové príspevky uvidíš len po otvorení appky (gulička pri Nástenke v spodnej lište).';
   try { haptic('selection'); } catch(e){}
 }
 
@@ -9456,7 +9457,7 @@ function gynUserProdOrder(){
 // GP rep: Formulár/História/Rebríček/Plnenie/Lekárne.
 // Manažér (GP) a celá Gyn línia (rep aj manažér): Plnenie/Návštevy/Rebríček (+Aktivita admin).
 function settingsDefaultTabOpts(s){
-  if(!s) return { opts: [['dnes','🏠 Dnes']], hint: 'Dnes' };
+  if(!s) return { opts: [['dnes','🏠 Domov']], hint: 'Domov' };
   var isGyn   = s.line === 'gyn';
   var isReagila = s.line === 'reagila';
   var mgrRole = (typeof mgrDetectRole === 'function') ? mgrDetectRole(s) : null;
@@ -9465,19 +9466,19 @@ function settingsDefaultTabOpts(s){
   if(isReagila){
     if(mgrRole){
       // Manažér/admin: Plnenie · Kalendár · Rebríček (+ Aktivita pre admina) — kľúče mgr subtabov
-      var ro = [['plnenie','💊 Plnenie'],['kalendar','📅 Kalendár'],['leaderboard','🏆 Rebríček']];
+      var ro = [['dnes','🏠 Domov'],['plnenie','💊 Plnenie'],['kalendar','📅 Kalendár'],['leaderboard','🏆 Rebríček']];
       if(isAdmin) ro.push(['activity','📈 Aktivita']);
-      return { opts: ro, hint: 'Plnenie' };
+      return { opts: ro, hint: 'Domov' };
     }
     // KAM reprezentant: Plnenie · Kalendár · Lekárne · Okresy · Rebríček — kľúče rep záložiek
-    return { opts: [['plnenie','💊 Plnenie'],['kalendar','📅 Kalendár'],['lekarne','🏪 Lekárne'],['okresy','📍 Okresy'],['rebricek','🏆 Rebríček']], hint: 'Plnenie' };
+    return { opts: [['dnes','🏠 Domov'],['plnenie','💊 Plnenie'],['kalendar','📅 Kalendár'],['lekarne','🏪 Lekárne'],['okresy','📍 Okresy'],['rebricek','🏆 Rebríček']], hint: 'Domov' };
   }
   if(isGyn || mgrRole){
-    var opts = [['plnenie','💊 Plnenie'],['kalendar','📅 Kalendár'],['visits','📋 Návštevy'],['leaderboard','🏆 Rebríček']];
+    var opts = [['dnes','🏠 Domov'],['plnenie','💊 Plnenie'],['kalendar','📅 Kalendár'],['visits','📋 Návštevy'],['leaderboard','🏆 Rebríček']];
     if(isAdmin || (isGyn && typeof gynActivityAllowed === 'function' && gynActivityAllowed(s))) opts.push(['activity','📈 Aktivita']);
-    return { opts: opts, hint: 'Plnenie' };
+    return { opts: opts, hint: 'Domov' };
   }
-  return { opts: [['dnes','🏠 Dnes'],['form','📝 Formulár GP'],['historia','📋 História'],['rebricek','🏆 Rebríček'],['plnenie','💊 Plnenie'],['lekarne','🏪 Lekárne'],['okresy','📍 Okresy'],['kalendar','📅 Kalendár']], hint: 'Dnes' };
+  return { opts: [['dnes','🏠 Domov'],['form','📝 Formulár GP'],['historia','📋 História'],['rebricek','🏆 Rebríček'],['plnenie','💊 Plnenie'],['lekarne','🏪 Lekárne'],['okresy','📍 Okresy'],['kalendar','📅 Kalendár']], hint: 'Domov' };
 }
 function settingsDefaultTabHtml(s){
   var cfg = settingsDefaultTabOpts(s);
@@ -13828,6 +13829,9 @@ function gynApplyDefaultNav(user) {
   var nav = 'plnenie';   // default shellu
   try {
     var def = (userPrefsGet().defaultTab || '').trim();
+    // Domov je obrazovka nad líniami — otvorí sa nad gyn pohľadom.
+    // Bez vlastnej voľby je domovom Domov, rovnako ako u reprezentanta.
+    if (!def || def === 'dnes') { setTimeout(function(){ try { openDnes(); } catch(e){} }, 350); }
     var allowed = ['plnenie','kalendar','visits','leaderboard'];
     if (gynActivityAllowed(user)) allowed.push('activity');
     if (def && def !== 'plnenie' && allowed.indexOf(def) >= 0) {
@@ -18860,6 +18864,9 @@ function mgrEnter(roleKey){
 function mgrApplyDefaultSubtab(){
   try {
     var def = (userPrefsGet().defaultTab || '').trim();
+    // Domov je obrazovka nad líniami — otvorí sa nad manažérskym pohľadom.
+    // Bez vlastnej voľby je domovom Domov, rovnako ako u reprezentanta.
+    if (!def || def === 'dnes') { setTimeout(function(){ try { openDnes(); } catch(e){} }, 350); return; }
     var allowed = ['plnenie','kalendar','visits','leaderboard'];
     if (golemActivityAllowed(MGR_STATE.role)) allowed.push('activity');
     if (!def || def === 'plnenie' || allowed.indexOf(def) < 0) return;
@@ -37720,6 +37727,34 @@ function nstLikesLineHtml(p){
 }
 function nstToggleLikes(id){ NST.likesOpen[id] = !NST.likesOpen[id]; nstRenderList(); }
 
+// Riadok nad tlačidlami: vľavo kto dal palec, vpravo koľko je odpovedí.
+// Počet odpovedí patrí sem, nie na tlačidlo — tlačidlo má povedať, čo urobí
+// („Odpovedať"), nie koľko ich už je. Kým to bolo na tlačidle, nikomu nebolo
+// jasné, kam kliknúť, keď chce pridať vlastnú odpoveď.
+function nstMetaLineHtml(p){
+  var lajky = nstLikesLineHtml(p);
+  var n = (p.comments || []).length;
+  if (!lajky && !n) return '';
+  var id = String(p.id || '').replace(/'/g, "\\'");
+  var slovo = n === 1 ? 'odpoveď' : (n < 5 ? 'odpovede' : 'odpovedí');
+  return '<div class="nst-metaline">' +
+    '<div class="nst-metaline-l">' + lajky + '</div>' +
+    (n ? '<button type="button" class="nst-cnt" onclick="nstToggleComments(\'' + id + '\')">' +
+           n + ' ' + slovo + '</button>' : '') +
+  '</div>';
+}
+
+// „Odpovedať" nemá len rozbaliť diskusiu — má postaviť kurzor do poľa, aby
+// sa dalo hneď písať. Keď je pole už vidieť, netreba nič rozbaľovať.
+function nstFocusReply(id){
+  var vstup = document.getElementById('nst-c-' + id);
+  if (!vstup){ nstToggleComments(id); vstup = document.getElementById('nst-c-' + id); }
+  if (vstup){
+    try { vstup.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch(e){}
+    setTimeout(function(){ try { vstup.focus(); } catch(e){} }, 60);
+  }
+}
+
 function nstPostHtml(p){
   var c = nstCat(p.kategoria) || { ico: '📝', lbl: 'Poznámka', k: 'teren' };
   var me = nstUser();
@@ -37750,6 +37785,10 @@ function nstPostHtml(p){
   // Pole na odpoveď sa ukáže až po kliknutí na „Odpovedať“ (alebo po rozbalení).
   var shown = open ? comments : comments.slice(-2);
   var hiddenCnt = comments.length - shown.length;
+  // Kde už diskusia beží, musí byť vidieť aj kam písať. Predtým sa pole
+  // ukázalo až po ťuknutí na „Odpovedať" — kto prišiel k rozbehnutej diskusii,
+  // nemal ako uhádnuť, čo má spraviť.
+  var poleVidno = open || comments.length > 0;
 
   function nstCommentHtml(cm){
     var cwhen = '';
@@ -37770,7 +37809,7 @@ function nstPostHtml(p){
         ? '<button type="button" class="nst-cmore" onclick="nstShowAllComments(' + idArg + ')">Zobraziť ďalšie odpovede (' + hiddenCnt + ')</button>'
         : '') +
       shown.map(nstCommentHtml).join('') +
-      (open
+      (poleVidno
         ? '<div class="nst-creply">' +
             '<input type="text" class="nst-creply-in" id="nst-c-' + nstEsc(id) + '" placeholder="Napíš odpoveď…" onkeydown="if(event.key===\'Enter\')nstAddComment(' + idArg + ')">' +
             '<button type="button" class="nst-creply-btn" onclick="nstAddComment(' + idArg + ')">Odoslať</button>' +
@@ -37790,10 +37829,10 @@ function nstPostHtml(p){
     (meta.length ? '<div class="nst-tags">' + meta.join('') + '</div>' : '') +
     '<div class="nst-text">' + nstEsc(p.text || '').replace(/\n/g, '<br>') + '</div>' +
     nstPollHtml(p) +
-    nstLikesLineHtml(p) +
+    nstMetaLineHtml(p) +
     '<div class="nst-actions">' +
       '<button type="button" class="nst-act' + (iLike ? ' on' : '') + '" onclick="nstLike(' + idArg + ')">👍 <span>' + (likes.length || '') + '</span> Pomohlo</button>' +
-      '<button type="button" class="nst-act' + (open ? ' on' : '') + '" onclick="nstToggleComments(' + idArg + ')">💬 ' + (comments.length ? comments.length + ' ' + (comments.length === 1 ? 'odpoveď' : (comments.length < 5 ? 'odpovede' : 'odpovedí')) : 'Odpovedať') + '</button>' +
+      '<button type="button" class="nst-act' + (open ? ' on' : '') + '" onclick="nstFocusReply(' + idArg + ')">💬 Odpovedať</button>' +
       (canPin ? '<button type="button" class="nst-act nst-act-icon" onclick="nstPin(' + idArg + ',' + (nstPinned(p) ? 'false' : 'true') + ')" title="' + (nstPinned(p) ? 'Odopnúť' : 'Pripnúť navrch') + '">📌</button>' : '') +
       (canDel ? '<button type="button" class="nst-act nst-act-icon nst-act-del" onclick="nstDelete(' + idArg + ')" title="Zmazať">🗑</button>' : '') +
     '</div>' +
@@ -41311,6 +41350,10 @@ try { gsLpInit(); } catch(e){}
   .nst-sk-act{width:96px;height:30px;border-radius:9px}
 
   /* Kto dal 👍 pomohlo */
+  .nst-metaline{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .nst-metaline-l{flex:1;min-width:0}
+  .nst-cnt{flex-shrink:0;margin-top:10px;background:transparent;border:none;padding:0;color:#64748B;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .nst-cnt:active{opacity:.6}
   .nst-likes{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:#64748B}
   .nst-likes.is-click{cursor:pointer;-webkit-tap-highlight-color:transparent}
   .nst-likes.is-click:active{opacity:.7}
