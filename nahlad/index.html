@@ -3214,16 +3214,14 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   <span class="update-bar-icon">&#127881;</span>Dostupn&#225; nov&#225; verzia apky &#8212; <strong>&#357;ukni pre aktualiz&#225;ciu</strong>
 </div>
 <style>
-  /* NÁHĽAD — jediný rozdiel oproti tomu, čo by išlo do ostrej appky.
-     Píše do toho istého Google Sheetu, takže je dôležité vedieť, kde si.
-     Pásik je hore, nie dole: dole je navigačná lišta a tú prekrývať nesmie. */
+  /* NÁHĽAD — jediný rozdiel oproti tomu, čo by išlo do ostrej appky. */
   :root{--sat:calc(env(safe-area-inset-top, 0px) + 19px)}
   #nahlad-pas{position:fixed;left:0;right:0;top:0;z-index:99997;background:#B45309;color:#fff;
     font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:10px;font-weight:700;letter-spacing:.08em;
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.81.2 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.81.3 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -4188,7 +4186,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.81.2';
+var APP_VERSION = '2.81.3';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8078,7 +8076,7 @@ function dnesRebricekGyn(me) {
     var i = -1;
     for (var k = 0; k < rank.length; k++) { if (rank[k].u === me) { i = k; break; } }
     if (i < 0) return { kind: 'tim', total: rank.length, popis: 'plnenie Q' + lastQ,
-                        top: rank.slice(0, 5).map(function (x) {
+                        top: rank.slice(0, 6).map(function (x) {
                           return { meno: x.meno, hodnota: plnenieFormatPct(x.pct) };
                         }) };
     return { kind: 'ja', rank: i + 1, total: rank.length,
@@ -8114,7 +8112,7 @@ function dnesRebricek() {
     // presne ten, ktorý mu appka priradila podľa funkcie (lbScopeReps →
     // AM West/East svojich, BUM a admin všetkých).
     if (i < 0) return { kind: 'tim', total: rank.length,
-                        top: rank.filter(function (x) { return x.count > 0; }).slice(0, 5)
+                        top: rank.filter(function (x) { return x.count > 0; }).slice(0, 6)
                                .map(function (x) {
                                  return { meno: x.meno, hodnota: dnesRebricekJednotka(x.count) };
                                }) };
