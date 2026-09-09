@@ -741,37 +741,73 @@
   /* Horná mriežka 11 tlačidiel odpadá — nahradila ju lišta */
   body.gp-rep:not(.reagila-line):not(.manager-mode) #rep-nav{display:none}
 
-  /* ── VIAC ─────────────────────────────────────────────────────────
-     Zoznam s názvom a jednoriadkovým popisom, nie mriežka ikon —
-     zoznam sa číta rýchlejšie než šesť emoji. */
-  .viac-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#EAECF2;z-index:1500;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
-  .viac-overlay.show{display:block}
-  .viac-inner{max-width:660px;margin:0 auto;padding:82px 16px 48px}
-  body.gp-rep .viac-inner{padding-top:calc(var(--rep-top-h,150px) + 10px)}
-  .viac-me{display:flex;align-items:center;gap:13px;background:linear-gradient(135deg,#0C1E35 0%,#13294B 55%,#0C1E35 100%);
-    border-radius:14px;padding:15px 16px;margin-bottom:14px;color:#fff;
-    box-shadow:0 12px 32px rgba(12,30,53,.30),inset 0 1px 0 rgba(255,255,255,.08)}
-  .viac-me-av{width:48px;height:48px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;
-    font-family:var(--font-display);font-size:18px;font-weight:700;overflow:hidden;background:linear-gradient(135deg,#1E40AF,#3B82F6);
-    box-shadow:0 0 0 2px rgba(255,255,255,.16)}
+  /* ── MENU (bočné) ─────────────────────────────────────────────────
+     Vysúva sa zľava ponad obsah, ako na Facebooku. Otvára sa dvoma
+     spôsobmi: tromi čiarkami vľavo hore a poslednou položkou spodnej lišty.
+     Obe vedú na to isté miesto — nie je to dvakrát to isté menu, je to
+     jedno menu s dvoma vchodmi. */
+  .viac-bd{display:none;position:fixed;inset:0;z-index:5500;background:rgba(12,30,53,.45);
+    -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+  .viac-bd.show{display:block;animation:viacFade .18s ease both}
+  @keyframes viacFade{from{opacity:0}to{opacity:1}}
+  .viac-overlay{display:none;position:fixed;top:0;left:0;bottom:0;z-index:5510;
+    width:min(86vw,352px);background:#EAECF2;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;box-shadow:8px 0 34px rgba(12,30,53,.30)}
+  .viac-overlay.show{display:block;animation:viacIn .26s cubic-bezier(.16,1,.3,1) both}
+  @keyframes viacIn{from{transform:translateX(-100%)}to{transform:none}}
+  @media(prefers-reduced-motion:reduce){.viac-overlay.show,.viac-bd.show{animation:none}}
+  .viac-inner{padding:calc(14px + var(--sat)) 14px calc(20px + env(safe-area-inset-bottom))}
+  /* Profil hore — meno, región a cesta do Nastavení, ako na Facebooku */
+  .viac-me{display:flex;align-items:center;gap:12px;background:#fff;border-radius:14px;padding:13px 14px;
+    margin-bottom:12px;box-shadow:0 4px 16px rgba(15,23,42,.06),0 0 0 1px rgba(15,23,42,.04)}
+  .viac-me-av{width:46px;height:46px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-display);font-size:17px;font-weight:700;color:#fff;overflow:hidden;
+    background:linear-gradient(135deg,#1E40AF,#3B82F6)}
+  .viac-me-av .avatar-img,.viac-me-av .avatar-fallback{width:100%;height:100%;border-radius:50%}
   .viac-me-txt{min-width:0;flex:1}
-  .viac-me-name{font-family:var(--font-display);font-size:16px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .viac-me-sub{font-size:11.5px;color:#9FB6D4;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .viac-me-btn{flex-shrink:0;background:rgba(255,255,255,.13);border:none;border-radius:10px;padding:8px 12px;
-    color:#fff;font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent}
-  .viac-list{background:#fff;border-radius:14px;overflow:hidden;
-    box-shadow:0 4px 16px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.04),0 0 0 1px rgba(15,23,42,.04)}
-  .viac-item{display:flex;align-items:center;gap:12px;width:100%;background:none;border:none;
-    padding:13px 16px;border-bottom:1px solid #F1F5F9;font-family:inherit;text-align:left;cursor:pointer;
+  .viac-me-name{font-family:var(--font-display);font-size:16px;font-weight:700;color:#0C1E35;letter-spacing:-.01em;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .viac-me-sub{font-size:11.5px;color:#94A3B8;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .viac-me-btn{flex-shrink:0;width:32px;height:32px;border-radius:50%;background:#EEF2F7;border:none;
+    color:#64748B;font-size:15px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;
+    display:flex;align-items:center;justify-content:center}
+  /* Dlaždice v dvoch stĺpcoch — na malej ploche sa čítajú rýchlejšie než
+     dlhý zoznam a je na ne ľahšie trafiť. */
+  .viac-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:6px}
+  .viac-tile{display:flex;flex-direction:column;align-items:flex-start;gap:9px;background:#fff;
+    border:1px solid #E2E8F0;border-radius:12px;padding:13px 12px;font-family:inherit;text-align:left;
+    cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .15s,border-color .15s}
+  .viac-tile:active{background:#F1F5F9;border-color:#CBD5E1}
+  .viac-tile-ic{font-size:21px;line-height:1}
+  .viac-tile-t{font-size:13px;font-weight:700;color:#1A2A3A;line-height:1.2}
+  .viac-tile.off{opacity:.5}
+  .viac-tile.off .viac-tile-t{font-weight:600}
+  /* Spodný zoznam s deliacimi čiarami — nastavenia a odhlásenie */
+  .viac-list{background:#fff;border-radius:14px;overflow:hidden;margin-top:12px;
+    box-shadow:0 4px 16px rgba(15,23,42,.06),0 0 0 1px rgba(15,23,42,.04)}
+  .viac-item{display:flex;align-items:center;gap:13px;width:100%;background:none;border:none;
+    padding:14px 16px;border-bottom:1px solid #F1F5F9;font-family:inherit;text-align:left;cursor:pointer;
     -webkit-tap-highlight-color:transparent}
   .viac-item:last-child{border-bottom:none}
   .viac-item:active{background:#F8FAFC}
-  .viac-item-ic{font-size:19px;line-height:1;flex-shrink:0;width:24px;text-align:center}
-  .viac-item-txt{min-width:0;flex:1;display:block}
-  .viac-item-t{display:block;font-size:14.5px;font-weight:700;color:#1A2A3A;line-height:1.25}
-  .viac-item-s{display:block;font-size:11.5px;color:#94A3B8;line-height:1.35;margin-top:2px}
+  .viac-item-ic{font-size:18px;line-height:1;flex-shrink:0;width:22px;text-align:center}
+  .viac-item-t{flex:1;font-size:14.5px;font-weight:600;color:#1A2A3A}
   .viac-item-ch{font-size:13px;color:#CBD5E1;flex-shrink:0}
-  .viac-sec{font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.07em;margin:18px 2px 8px}
+  .viac-sec{font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.07em;margin:16px 2px 8px}
+  /* Tri čiarky vľavo hore v hlavičke */
+  .hdr-burger{display:none;flex-direction:column;background:rgba(255,255,255,.13);border:none;border-radius:11px;
+    width:38px;height:38px;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;
+    align-self:flex-start;-webkit-tap-highlight-color:transparent;margin:2px 11px 0 0}
+  body.gp-rep:not(.reagila-line):not(.manager-mode) .hdr-burger{display:flex}
+  .hdr-row{align-items:flex-start}
+  .hdr-burger:active{background:rgba(255,255,255,.22)}
+  .hdr-burger span{display:block;width:17px;height:2px;border-radius:2px;background:#fff;margin:2px 0}
+  /* Avatar v poslednej položke lišty — ako Profil na Facebooku */
+  .tb-av{width:21px;height:21px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;
+    font-size:9px;font-weight:800;color:#fff;font-family:var(--font-display);
+    background:linear-gradient(135deg,#1E40AF,#3B82F6);opacity:.55;transition:opacity .15s,box-shadow .15s}
+  .tb-av .avatar-img,.tb-av .avatar-fallback{width:100%;height:100%;border-radius:50%}
+  .tb-btn.active .tb-av{opacity:1;box-shadow:0 0 0 2px #0C1E35}
   .dnes-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#EAECF2;z-index:1500;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   .dnes-overlay.show{display:block}
   .dnes-inner{max-width:660px;margin:0 auto;padding:82px 16px 48px}
@@ -3038,6 +3074,9 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 
 <div class="hdr">
   <div class="hdr-row">
+    <button type="button" class="hdr-burger" id="hdr-burger" onclick="openViac()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
     <div style="flex:1;min-width:0">
       <div class="hdr-title" id="hdr-line-name">Golem</div>
       <div class="hdr-greeting" id="hdr-greeting"></div>
@@ -3068,7 +3107,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   <button type="button" class="tb-btn" id="tb-hist" onclick="openHistory()"><span class="tb-ic">📋</span><span class="tb-lbl">Lekári</span></button>
   <button type="button" class="tb-btn" id="tb-plnenie" onclick="openRepPlnenie()"><span class="tb-ic">💊</span><span class="tb-lbl">Plnenie</span></button>
   <button type="button" class="tb-btn" id="tb-nastenka" onclick="openNastenka()"><span class="tb-ic">📌</span><span class="tb-lbl">Nástenka</span></button>
-  <button type="button" class="tb-btn" id="tb-viac" onclick="openViac()"><span class="tb-ic">☰</span><span class="tb-lbl">Viac</span></button>
+  <button type="button" class="tb-btn" id="tb-viac" onclick="openViac()"><span class="tb-av" id="tb-av">?</span><span class="tb-lbl">Menu</span></button>
 </nav>
 
 <!-- ═══ REP NAV BAR — Formulár / História / Rebríček / Plnenie / Lekárne (len reprezentant, skryté v manažérskom móde) ═══ -->
@@ -3566,7 +3605,8 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     </div>
   </div>
 
-  <div class="viac-overlay" id="viac-overlay">
+  <div class="viac-bd" id="viac-bd" onclick="closeViac()"></div>
+  <div class="viac-overlay" id="viac-overlay" role="dialog" aria-label="Menu">
     <div class="viac-inner">
       <div class="viac-me" id="viac-me"></div>
       <div id="viac-body"></div>
@@ -7558,7 +7598,7 @@ function filterHistoryDebounced(){
 
 var _panelCurrent = null;
 var _panelStack = []; // navigačný stack — pamätá odkiaľ sme prišli (pre Android back button)
-var _PANEL_ORDER = { 'dnes-overlay': -1, 'viac-overlay': 9, 'hist-overlay': 0, 'lb-overlay': 1, 'rep-plnenie-overlay': 2, 'lk-overlay': 3, 'okresy-overlay': 4, 'tuyory-overlay': 5, 'lonelix-overlay': 6, 'apixaban-overlay': 7, 'golem-cal-overlay': 8 };
+var _PANEL_ORDER = { 'dnes-overlay': -1, 'hist-overlay': 0, 'lb-overlay': 1, 'rep-plnenie-overlay': 2, 'lk-overlay': 3, 'okresy-overlay': 4, 'tuyory-overlay': 5, 'lonelix-overlay': 6, 'apixaban-overlay': 7, 'golem-cal-overlay': 8 };
 
 function _panelShow(newId, isBack) {
   // Ak je ten istý panel už otvorený — nerob nič (ochrana pred dvojitým kliknutím)
@@ -7610,7 +7650,7 @@ function _panelShow(newId, isBack) {
 }
 
 function closeAllPanels() {
-  ['dnes-overlay','viac-overlay','hist-overlay','lb-overlay','rep-plnenie-overlay','lk-overlay','okresy-overlay','tuyory-overlay','lonelix-overlay','apixaban-overlay','golem-cal-overlay','lk-detail','pharma-ms-overlay','pharma-okres-overlay'].forEach(function(id){
+  ['dnes-overlay','hist-overlay','lb-overlay','rep-plnenie-overlay','lk-overlay','okresy-overlay','tuyory-overlay','lonelix-overlay','apixaban-overlay','golem-cal-overlay','lk-detail','pharma-ms-overlay','pharma-okres-overlay'].forEach(function(id){
     var el = document.getElementById(id);
     if(el) el.classList.remove('show');
   });
@@ -7871,19 +7911,20 @@ function dnesRender() {
   try { gpRecentRender('dnes-recent'); } catch (e) {}
 }
 
-// ── VIAC — zvyšok appky ─────────────────────────────────────────────────
-// Zoznam s názvom a jednoriadkovým popisom, nie mriežka ikon. Nič sa nemaže:
-// všetko, čo appka vie, tu je — len o jedno ťuknutie ďalej.
-var VIAC_POLOZKY = [
-  { sec: 'Prehľady' },
-  { ic: '🏆', t: 'Rebríček',  s: 'Ako je na tom tím v plnení',        fn: 'openLeaderboard()' },
-  { ic: '🏪', t: 'Lekárne',   s: 'Krém, dobropisy, spiace lekárne',   fn: 'openLekarne()' },
-  { ic: '📍', t: 'Okresy',    s: 'Trhový podiel podľa okresu',        fn: 'openOkresy()' },
-  { ic: '📅', t: 'Kalendár',  s: 'Plán návštev a sviatky',            fn: 'openGolemKalendar()' },
-  { sec: 'Prieskumy' },
-  { ic: '🧬', t: 'Tuyory',    s: 'Prieskum tocilizumab',              fn: 'openTuyory()' },
-  { ic: '🛡️', t: 'Lonelix',   s: 'Prieskum inozín pranobex',          fn: 'openLonelix()' },
-  { ic: '🫀', t: 'Apixaban',  s: 'Prieskum apixaban',                 fn: 'openApixaban()', openFn: 'apxIsOpen' }
+// ── MENU — zvyšok appky ─────────────────────────────────────────────────
+// Bočné menu, ako na Facebooku: hore profil, potom dlaždice v dvoch stĺpcoch,
+// dole nastavenia a odhlásenie. Nič sa nemaže — všetko, čo appka vie, tu je,
+// len o jedno ťuknutie ďalej.
+var VIAC_DLAZDICE = [
+  { ic: '🏆', t: 'Rebríček', fn: 'openLeaderboard()' },
+  { ic: '🏪', t: 'Lekárne',  fn: 'openLekarne()' },
+  { ic: '📍', t: 'Okresy',   fn: 'openOkresy()' },
+  { ic: '📅', t: 'Kalendár', fn: 'openGolemKalendar()' },
+  { ic: '🧬', t: 'Tuyory',   fn: 'openTuyory()' },
+  { ic: '🛡️', t: 'Lonelix',  fn: 'openLonelix()' },
+  // Apixaban je kampaň s termínom — mimo neho sa neponúka ako živá položka.
+  // apxIsOpen() to vedel, len to nikde nepovedal pred otvorením.
+  { ic: '🫀', t: 'Apixaban', fn: 'openApixaban()', openFn: 'apxIsOpen' }
 ];
 
 function viacRender() {
@@ -7891,50 +7932,73 @@ function viacRender() {
   var body = document.getElementById('viac-body');
   if (!body) return;
   var sess = getSession() || {};
+  var meno = sess.name || sess.username || '—';
   if (me) {
-    var meno = sess.name || sess.username || '—';
     var av = '';
-    try {
-      var a = lbAvatarContent(sess.username, meno, 48);
-      av = a.html;
-    } catch (e) { av = appEsc(String(meno).trim().charAt(0).toUpperCase()); }
+    try { av = lbAvatarContent(sess.username, meno, 46).html; }
+    catch (e) { av = appEsc(String(meno).trim().charAt(0).toUpperCase()); }
     me.innerHTML =
       '<div class="viac-me-av">' + av + '</div>' +
       '<div class="viac-me-txt">' +
         '<div class="viac-me-name">' + appEsc(meno) + '</div>' +
         '<div class="viac-me-sub">' + appEsc(sess.region || 'Gedeon Richter Slovakia') + '</div>' +
       '</div>' +
-      '<button type="button" class="viac-me-btn" onclick="openSettings()">Nastavenia</button>';
+      '<button type="button" class="viac-me-btn" onclick="openSettings()" aria-label="Nastavenia">›</button>';
   }
-  var html = '', open = false;
-  VIAC_POLOZKY.forEach(function (it) {
-    if (it.sec) {
-      if (open) { html += '</div>'; open = false; }
-      html += '<div class="viac-sec">' + it.sec + '</div><div class="viac-list">';
-      open = true;
-      return;
-    }
-    // Prieskum mimo termínu sa neponúka ako živá položka — appka to už vie
-    // (apxIsOpen), len to doteraz nikde nepovedala pred otvorením.
+  var tiles = VIAC_DLAZDICE.map(function (it) {
     var zatvoreny = it.openFn && typeof window[it.openFn] === 'function' && !window[it.openFn]();
-    html += '<button type="button" class="viac-item" onclick="' + it.fn + '"' +
-              (zatvoreny ? ' style="opacity:.55"' : '') + '>' +
-              '<span class="viac-item-ic">' + it.ic + '</span>' +
-              '<span class="viac-item-txt">' +
-                '<span class="viac-item-t">' + appEsc(it.t) + '</span>' +
-                '<span class="viac-item-s">' + appEsc(zatvoreny ? 'Zadávanie zatiaľ nie je otvorené' : it.s) + '</span>' +
-              '</span>' +
-              '<span class="viac-item-ch">›</span>' +
-            '</button>';
-  });
-  if (open) html += '</div>';
-  body.innerHTML = html;
+    return '<button type="button" class="viac-tile' + (zatvoreny ? ' off' : '') + '" onclick="' + it.fn + '">' +
+             '<span class="viac-tile-ic">' + it.ic + '</span>' +
+             '<span class="viac-tile-t">' + appEsc(it.t) + (zatvoreny ? '<br><span style="font-weight:600;font-size:10.5px;color:#94A3B8">zatiaľ zatvorené</span>' : '') + '</span>' +
+           '</button>';
+  }).join('');
+  body.innerHTML =
+    '<div class="viac-sec">Prehľady a prieskumy</div>' +
+    '<div class="viac-grid">' + tiles + '</div>' +
+    '<div class="viac-list">' +
+      '<button type="button" class="viac-item" onclick="openSettings()">' +
+        '<span class="viac-item-ic">⚙️</span><span class="viac-item-t">Nastavenia</span><span class="viac-item-ch">›</span></button>' +
+      '<button type="button" class="viac-item" onclick="doLogout()">' +
+        '<span class="viac-item-ic">🚪</span><span class="viac-item-t">Odhlásiť sa</span><span class="viac-item-ch">›</span></button>' +
+    '</div>';
 }
 
+// Menu je prekryv, nie panel — nezaraďuje sa do histórie panelov, aby sa
+// systémové „späť" nevracalo doň, ale tam, odkiaľ používateľ prišiel.
 function openViac() {
-  usageSectionEnter('Viac');
-  _panelShow('viac-overlay');
+  usageSectionEnter('Menu');
   viacRender();
+  var bd = document.getElementById('viac-bd');
+  var ov = document.getElementById('viac-overlay');
+  if (bd) bd.classList.add('show');
+  if (ov) ov.classList.add('show');
+  document.body.style.overflow = 'hidden';
+  try { repTabSetActive('viac-overlay'); } catch (e) {}
+}
+function closeViac() {
+  try { usageSectionClose(); } catch (e) {}
+  var bd = document.getElementById('viac-bd');
+  var ov = document.getElementById('viac-overlay');
+  if (bd) bd.classList.remove('show');
+  if (ov) ov.classList.remove('show');
+  document.body.style.overflow = '';
+  try { repTabSetActive(_panelCurrent); } catch (e) {}
+}
+// Ťuknutie na položku menu ho zavrie — inak by ostalo visieť nad panelom,
+// ktorý práve otvorilo.
+document.addEventListener('click', function (ev) {
+  var t = ev.target && ev.target.closest ? ev.target.closest('#viac-overlay [onclick]') : null;
+  if (t) setTimeout(closeViac, 0);
+}, true);
+// Avatar v poslednej položke lišty — rovnaký ako v hlavičke.
+function tabbarSyncAvatar(user) {
+  var el = document.getElementById('tb-av');
+  if (!el) return;
+  var sess = user || getSession();
+  if (!sess || !sess.username) return;
+  var meno = sess.name || sess.username;
+  try { el.innerHTML = lbAvatarContent(sess.username, meno, 21).html; }
+  catch (e) { el.textContent = String(meno).trim().charAt(0).toUpperCase(); }
 }
 
 // Zvýrazni aktívnu položku spodnej lišty. panelId=null → formulár, vtedy
@@ -11187,6 +11251,7 @@ function updateHdrForUser(user) {
   // Prepočítaj výšku topbaru (pozdrav/meniny zmenili obsah)
   try { repTopbarSync(); setTimeout(repTopbarSync, 60); } catch(e){}
   try { repTabbarSync(); setTimeout(repTabbarSync, 60); } catch(e){}
+  try { tabbarSyncAvatar(user); } catch(e){}
 }
 
 function updateHdrAvatar(user) {
@@ -19648,6 +19713,10 @@ function initAndroidBack() {
 function _handleAndroidBack() {
   // Poradie: od najvnútornejšieho overlaya po najvonkajší
   var el;
+
+  // 0. Bočné menu — leží nad panelmi, takže sa zatvára ako prvé
+  el = document.getElementById('viac-overlay');
+  if (el && el.classList.contains('show')) { closeViac(); return true; }
 
   // 1. Top modal vrstvy, ktoré môžu sedieť nad hociktorou obrazovkou
   el = document.getElementById('gyn-ms-picker-overlay');
