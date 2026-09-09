@@ -5441,6 +5441,23 @@ function gt(id){var e=document.getElementById(id);return e?(e.options?e.options[
 
 function cavAPV(d){return d===2?(4.67+((365-15)/45)*10.85)*0.7:(4.67+((365-10)/30)*10.85)*0.7;}
 
+// ── Segment lekára — JEDINÉ miesto, kde sú prahy ──
+// Prahy: ročný potenciál 3 700 EUR a kapitácia 1 501 / 2 000.
+// Predtým bol tento výpočet napísaný priamo v potvrdit(), takže sa nedal použiť
+// na priebežné zobrazenie počas vypĺňania. Test v smoke sade stráži hranice.
+function gpSegmentFor(kapitacia, total) {
+  var k = Number(kapitacia) || 0, t = Number(total) || 0;
+  if (k < 1501)  return t < 3700 ? 'vyradit' : 'frekvencia';
+  if (k <= 1999) return t < 3700 ? 'zvysit'  : 'udrzat';
+  return t < 3700 ? 'zvysit3' : 'top';
+}
+
+// Koľko EUR ročne chýba do hranice „navštevovať". 0 = hranica je dosiahnutá.
+function gpMissingToTarget(total) {
+  var d = 3700 - (Number(total) || 0);
+  return d > 0 ? d : 0;
+}
+
 function computeTotal(){
   var aflY = gn('afl1-n') * 4.10 * 12;
   var supY = gn('sup1-n') * 12.82 * 0.75 * 12;
@@ -5569,7 +5586,7 @@ function potvrdit(){
   var isYes = total >= 3700;
   var kapitacia = parseFloat(document.getElementById('kapitacia-n').value) || 0;
   // scenario: kapitacia < 1500 AND total < 3700 → red, vyradit
-  var scenario = (kapitacia < 1501 && total < 3700) ? 'vyradit' : (kapitacia < 1501 && total >= 3700) ? 'frekvencia' : (kapitacia >= 1501 && kapitacia <= 1999 && total < 3700) ? 'zvysit' : (kapitacia >= 1501 && kapitacia <= 1999 && total >= 3700) ? 'udrzat' : (kapitacia >= 2000 && total < 3700) ? 'zvysit3' : (kapitacia >= 2000 && total >= 3700) ? 'top' : 'ok';
+  var scenario = gpSegmentFor(kapitacia, total);   // prahy sú v gpSegmentFor, nie tu
 
   usageAction('Zalogoval návštevu', 'Hľadanie lekára');   // kľúčová akcia (whitelist)
   // show send popup + scroll to top
@@ -6479,8 +6496,60 @@ function updateProgress() {
     else fill.classList.remove('complete');
   }
   if(pctEl) pctEl.textContent = pct + '%';
+
+  // Živý výsledok sa prepočíta spolu s vyplnenosťou — updateProgress() sa už volá
+  // pri každej zmene poľa, takže netreba ďalších poslucháčov.
+  try { gpLiveResultUpdate(); } catch(e) {}
 }
 
+
+// ── ŽIVÝ VÝSLEDOK — karta #rec nad formulárom ──
+// Predtým držala statické „Zadajte počty pacientov" a segment sa reprezentant dozvedel
+// až po odoslaní, v potvrdzovacom okne. Prahy sú pritom v kóde a dajú sa počítať pri
+// každom stlačení klávesu — takto sa rep model potenciálu naučí za pár dní namiesto
+// toho, aby ho hádal.
+function gpLiveResultUpdate() {
+  var rec = document.getElementById('rec');
+  if (!rec) return;
+  var ri = document.getElementById('ri');
+  var rl = document.getElementById('rl');
+  var rs = document.getElementById('rs');
+  if (!ri || !rl || !rs) return;
+
+  var kapEl = document.getElementById('kapitacia-n');
+  var kapRaw = kapEl ? kapEl.value : '';
+  var anyProd = ['afl1-n', 'sup1-n', 'vid1-n', 'cav-n'].some(function (id) {
+    var e = document.getElementById(id);
+    return e && e.value !== '';
+  });
+
+  // Kým nie je kapitácia a aspoň jeden produkt, výsledok by bol zavádzajúci.
+  if (kapRaw === '' || !anyProd) {
+    rec.style.display = 'none';
+    return;
+  }
+
+  var total = computeTotal();
+  var kap = parseFloat(kapRaw) || 0;
+  var seg = gpSegmentFor(kap, total);
+  var meta = (typeof SEGMENTS !== 'undefined' && SEGMENTS[seg]) ? SEGMENTS[seg] : null;
+  var missing = gpMissingToTarget(total);
+
+  rec.style.display = 'block';
+  rec.className = 'rec ' + (total >= 3700 ? 'rec-yes' : 'rec-no');
+  ri.textContent = meta && meta.icon ? meta.icon : (total >= 3700 ? '✅' : '➖');
+  rl.textContent = meta && meta.label ? meta.label : '—';
+
+  rs.textContent = missing > 0
+    ? 'Do hranice navštevovať chýba ' + gpEurShort(missing)
+    : 'Hranicu ' + gpEurShort(3700) + ' ročne má splnenú';
+}
+
+// Krátky zápis eur pre živý výsledok: 3 700 €, 12 400 €.
+function gpEurShort(v) {
+  var n = Math.round(Number(v) || 0);
+  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0') + ' €';
+}
 
 // ── progress bar sticky ──
 function initProgressSticky() {
