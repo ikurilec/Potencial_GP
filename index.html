@@ -21080,8 +21080,29 @@ function _bootAvatarHtml(){
   var ini = String(name).trim().slice(0,2).toUpperCase();
   return '<span class="avatar-fallback" style="background:' + col + '">' + ini + '</span>';
 }
+// Máme čo ukázať bez siete? Ak áno, načítacia obrazovka nemá čo prekrývať.
+// Golem/Reagila: história v localStorage. Gyn: vlastná cache plnenia.
+function bootHasCachedData() {
+  try {
+    var sess = (typeof getSession === 'function') ? getSession() : null;
+    if (!sess || !sess.username) return false;
+    if (sess.line === 'gyn') {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf(GYN_CACHE_PREFIX) === 0) return true;
+      }
+      return false;
+    }
+    return _histLsLoad(sess.username) !== null;
+  } catch (e) { return false; }
+}
+
 function bootLoaderShow(){
   if(typeof document === 'undefined' || !document.body) return;
+  // Appka dáta väčšinou už má — história v localStorage, lekárne v IndexedDB,
+  // plnenie v cache. Prekryv cez ne nič nepridá, len ich schová. Ukáž ho len
+  // vtedy, keď naozaj niet čo vykresliť: prvé prihlásenie alebo vymazaná cache.
+  if (bootHasCachedData()) return;
   var el = document.getElementById('boot-loader');
   if(!el){
     var st = document.createElement('style');
@@ -21100,21 +21121,25 @@ function bootLoaderShow(){
         'opacity:0;animation:bootFade .6s ease .15s forwards}' +
       '.boot-msg{color:#8FA9C6;font-size:13px;font-weight:500;min-height:18px;' +
         'opacity:0;animation:bootFade .6s ease .3s forwards}' +
-      '.boot-track{width:100%;height:8px;border-radius:20px;background:rgba(255,255,255,.12);overflow:hidden;margin-top:16px}' +
-      '.boot-bar{height:100%;width:0;border-radius:20px;background:linear-gradient(90deg,#38BDF8,#22C55E);' +
-        'box-shadow:0 0 12px rgba(56,189,248,.5);transition:width .3s cubic-bezier(.4,0,.2,1)}' +
-      '.boot-pct{color:#9FB6D4;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:8px}' +
+      // Neurčitý pruh namiesto percenta. Percento predtým nemeralo nič — pripočítavalo
+      // sa každých 120 ms k deväťdesiatke a stovku dorazil až návrat zo servera.
+      // Číslo, ktoré nič neznamená, je horšie než žiadne: sľubuje odhad, ktorý neexistuje.
+      '.boot-track{position:relative;width:100%;height:6px;border-radius:20px;background:rgba(255,255,255,.12);overflow:hidden;margin-top:18px}' +
+      '.boot-bar{position:absolute;top:0;left:0;height:100%;width:38%;border-radius:20px;' +
+        'background:linear-gradient(90deg,rgba(56,189,248,0),#38BDF8,#22C55E,rgba(34,197,94,0));' +
+        'animation:bootSlide 1.25s cubic-bezier(.65,.05,.36,1) infinite}' +
+      '@keyframes bootSlide{0%{transform:translateX(-110%)}100%{transform:translateX(310%)}}' +
       '@keyframes bootFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}' +
-      '@keyframes bootFade{to{opacity:1}}';
+      '@keyframes bootFade{to{opacity:1}}' +
+      '@media(prefers-reduced-motion:reduce){.boot-avatar{animation:none}.boot-bar{animation-duration:2.4s}}';
     document.head.appendChild(st);
     el = document.createElement('div');
     el.id = 'boot-loader';
     el.innerHTML = '<div class="boot-card">' +
       '<div class="boot-avatar" id="boot-avatar"></div>' +
       '<div class="boot-greet" id="boot-greet"></div>' +
-      '<div class="boot-msg" id="boot-loader-msg">Načítavam dáta…</div>' +
+      '<div class="boot-msg" id="boot-loader-msg">Prvé načítanie — pripravujem tvoje dáta…</div>' +
       '<div class="boot-track"><div class="boot-bar" id="boot-loader-bar"></div></div>' +
-      '<div class="boot-pct" id="boot-loader-pct">0 %</div>' +
     '</div>' +
     '<div class="boot-brand">SATORI</div>';
     document.body.appendChild(el);
@@ -21123,30 +21148,22 @@ function bootLoaderShow(){
   var aEl = document.getElementById('boot-avatar'); if(aEl){ try { aEl.innerHTML = _bootAvatarHtml(); } catch(e){} }
   el.classList.remove('boot-hide');
   el.style.display = 'flex';
-  _bootLoader.pct = 0; bootLoaderSet(8);
-  clearInterval(_bootLoader.timer);
-  _bootLoader.timer = setInterval(function(){
-    if(_bootLoader.pct < 90) bootLoaderSet(_bootLoader.pct + Math.max(1, (90 - _bootLoader.pct) * 0.08));
-  }, 120);
+  // Text sa mení podľa toho, ako dlho to naozaj trvá — nie podľa vymysleného
+  // percenta. Po ôsmich sekundách povie pravdu: server sa prebúdza.
+  clearTimeout(_bootLoader.timer);
+  _bootLoader.timer = setTimeout(function(){
+    var m = document.getElementById('boot-loader-msg');
+    if (m) m.textContent = 'Server sa prebúdza — prvé načítanie po dlhšom čase trvá dlhšie.';
+  }, 8000);
   clearTimeout(_bootLoader.failsafe);
   _bootLoader.failsafe = setTimeout(bootLoaderDone, 15000); // poistka — nikdy nezasekni appku
 }
 function bootLoaderSet(pct){
-  _bootLoader.pct = Math.min(100, pct);
-  var bar = document.getElementById('boot-loader-bar'), p = document.getElementById('boot-loader-pct'),
-      msg = document.getElementById('boot-loader-msg');
-  if(bar) bar.style.width = _bootLoader.pct + '%';
-  if(p) p.textContent = Math.round(_bootLoader.pct) + ' %';
-  if(msg){
-    var t = _bootLoader.pct >= 100 ? 'Hotovo ✓'
-          : _bootLoader.pct >= 70  ? 'Ešte chvíľka…'
-          : _bootLoader.pct >= 35  ? 'Pripravujem tvoj prehľad…'
-          :                          'Načítavam dáta…';
-    if(msg.textContent !== t) msg.textContent = t;
-  }
+  var msg = document.getElementById('boot-loader-msg');
+  if(msg && pct >= 100) msg.textContent = 'Hotovo ✓';
 }
 function bootLoaderDone(){
-  clearInterval(_bootLoader.timer); clearTimeout(_bootLoader.failsafe);
+  clearTimeout(_bootLoader.timer); clearTimeout(_bootLoader.failsafe);
   var el = document.getElementById('boot-loader');
   if(!el) return;
   bootLoaderSet(100);
