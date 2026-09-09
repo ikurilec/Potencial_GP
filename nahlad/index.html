@@ -211,6 +211,7 @@
   .update-bar-icon{display:inline-block;margin-right:6px;animation:updatePulse 1.6s ease-in-out infinite}
   @keyframes updateSlide{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
   @keyframes updatePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+  body.app-nav .sw-toast{bottom:calc(14px + var(--tabbar-h,62px) + env(safe-area-inset-bottom))}
   .sw-toast{position:fixed;bottom:calc(72px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%) translateY(10px);background:#0F172A;color:#fff;padding:10px 20px;border-radius:50px;font-size:13px;font-weight:600;opacity:0;transition:opacity .25s,transform .25s;z-index:9999;pointer-events:none;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.3)}
   .sw-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   /* ═══ MANAGER MODE ═══ */
@@ -2188,6 +2189,8 @@ body.gp-rep .lk-sticky-controls{top:var(--rep-top-h,150px)}
   /* Tlačidlo „Späť" nad Nástenkou je pri spodnej lište zbytočné — späť aj
      inam sa chodí ňou. Celý pás tak odpadá a Nástenka začína obsahom. */
   body.app-nav .nst-topbar{display:none}
+  /* To isté na Rebríčku — otvára sa z Menu alebo z Domova a späť vedie lišta. */
+  body.app-nav .panel-nav-mgr-back{display:none}
   /* Spodná lišta nesmie prekryť koniec obsahu v žiadnom paneli */
   body.app-nav .lk-inner,
   body.app-nav .okresy-inner{padding-bottom:calc(48px + var(--tabbar-h,62px))}
@@ -3129,6 +3132,9 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     -webkit-tap-highlight-color:transparent;touch-action:none;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
   #gs-launcher svg{pointer-events:none}
   body.gs-ready #gs-launcher{display:flex}
+  /* Pri spodnej lište musí guľôčka hľadania sedieť nad ňou, nie pod ňou —
+     inak z nej trčí len kúsok a nedá sa poriadne trafiť. */
+  body.app-nav #gs-launcher{bottom:calc(12px + var(--tabbar-h,62px) + var(--sab,0px))}
   body.gs-open #gs-launcher{opacity:0;pointer-events:none}
   #gs-launcher:hover{box-shadow:0 12px 28px rgba(12,30,53,.42),inset 0 1px 0 rgba(255,255,255,.12)}
   #gs-launcher:active{transform:scale(.9)}
@@ -3217,7 +3223,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.81.1 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.81.2 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -4182,7 +4188,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.81.1';
+var APP_VERSION = '2.81.2';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8323,7 +8329,9 @@ function dnesRender() {
     try { kedy = mgrTimeAgo(nstTime(nst.post.ts)) || ''; } catch (e) { kedy = ''; }
     var nstBody = '<div class="dnes-post">' + appEsc(nst.post.text || '') + '</div>' +
                   '<div class="dnes-post-meta">' + autor + (kedy ? ' · ' + appEsc(kedy) : '') + '</div>';
-    html += '<div onclick="appGoNastenka()" style="cursor:pointer">' +
+    // Id ide do onclick atribútu — nechaj len znaky, ktoré tam nemôžu nič pokaziť.
+    var nstId = String((nst.post && nst.post.id) || '').replace(/[^A-Za-z0-9_.:-]/g, '');
+    html += '<div onclick="' + (nstId ? 'appGoNastenka(\'' + nstId + '\')' : 'appGoNastenka()') + '" style="cursor:pointer">' +
             dnesCardHtml('linear-gradient(90deg,#7C3ABE,#C084FC)', 'Nástenka',
                          badge + '<span class="dnes-more">Otvoriť ›</span>', nstBody) +
             '</div>';
@@ -8396,7 +8404,7 @@ function appGoDomov() {
 // vlastné záložky vo svojom pohľade, reprezentant otvára panel. U manažéra
 // a gyn preto treba najprv zavrieť panely, inak by ich pohľad ostal schovaný
 // pod Domovom a prepnutie by nebolo vidieť.
-function appGoTab(kam) {
+function appGoTab(kam, arg) {
   var r = appRole();
   appNavReset(kam === 'nastenka' ? 'nastenka' : null);
   try {
@@ -8404,7 +8412,7 @@ function appGoTab(kam) {
       // Nástenka leží nad panelmi, takže si ich musí zavrieť sama — inak by
       // pod ňou ostal visieť ten, z ktorého sme prišli.
       try { closeAllPanels(); } catch (e) {}
-      openNastenka();
+      if (arg) nstOpenPost(arg); else openNastenka();
       return;
     }
     if (r === 'mgr' || r === 'gyn') {
@@ -8419,7 +8427,7 @@ function appGoTab(kam) {
 }
 function appGoPlnenie() { appGoTab('plnenie'); }
 function appGoKalendar() { appGoTab('kalendar'); }
-function appGoNastenka() { appGoTab('nastenka'); }
+function appGoNastenka(postId) { appGoTab('nastenka', postId); }
 // Manažér a gyn neprepínajú panely, ale vlastné záložky — lišta sa musí
 // zvýrazniť aj podľa nich.
 function appTabSyncFromTab(tab) {
@@ -37858,6 +37866,27 @@ function nstRender(){
   nstRenderList();
 }
 
+// Ťuknutie na kartu Nástenky na Domove má otvoriť TEN príspevok, nie len
+// nástenku. Príspevky sa dopĺňajú zo Sheetu až po otvorení, takže si id
+// odložíme a doskrolujeme naň hneď, ako sa vykreslí.
+function nstOpenPost(id){
+  NST._focusId = String(id || '');
+  // Filter by ho mohol schovať — príspevok má byť vidieť bez ohľadu na to,
+  // čo si používateľ naposledy nastavil.
+  NST.cat = 'all'; NST.prod = 'all'; NST.region = 'all'; NST.q = '';
+  openNastenka();
+}
+function nstFocusPending(){
+  var id = NST._focusId;
+  if (!id) return;
+  var el = document.querySelector('[data-nst-id="' + id.replace(/"/g, '') + '"]');
+  if (!el) return;                       // ešte nedorazil — skúsi sa po ďalšom renderi
+  NST._focusId = '';
+  try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch(e){ el.scrollIntoView(); }
+  el.classList.add('nst-focus');
+  setTimeout(function(){ el.classList.remove('nst-focus'); }, 2200);
+}
+
 function nstRenderList(){
   var list = document.getElementById('nst-list');
   if (!list) return;
@@ -37874,6 +37903,8 @@ function nstRenderList(){
   }
   list.innerHTML = (NST.loading ? '<div class="nst-refresh"><span class="nst-spin"></span>Obnovujem…</div>' : '') +
     items.map(nstPostHtml).join('');
+  // Príspevok, na ktorý sa ťuklo z Domova — doskroluj naň a krátko ho zvýrazni.
+  setTimeout(nstFocusPending, 30);
 }
 
 
@@ -38038,7 +38069,7 @@ function nstPostHtml(p){
     '</div>';
   }
 
-  return '<div class="nst-post' + (nstPinned(p) ? ' pinned' : '') + '">' +
+  return '<div class="nst-post' + (nstPinned(p) ? ' pinned' : '') + '" data-nst-id="' + nstEsc(id) + '">' +
     (nstPinned(p) ? '<div class="nst-pinbar">📌 Pripnuté</div>' : '') +
     '<div class="nst-post-hd">' +
       av +
@@ -40966,8 +40997,15 @@ function gsLpApply(){
   var p=null; try { p=JSON.parse(localStorage.getItem(GS_LP.key)||'null'); } catch(e){}
   if(!p || typeof p.x!=='number' || typeof p.y!=='number') return;
   var w=el.offsetWidth||54, h=el.offsetHeight||54;
+  // Spodná hranica je nad lištou — guľôčku si ide presunúť kamkoľvek, len nie
+  // pod navigáciu, kde by sa na ňu nedalo ťuknúť.
+  var lista = 0;
+  if(document.body.classList.contains('app-nav')){
+    var _b=document.getElementById('rep-tabbar');
+    lista = _b ? Math.round(_b.getBoundingClientRect().height) : 62;
+  }
   var x=Math.max(6, Math.min(p.x, window.innerWidth-w-6));
-  var y=Math.max(6, Math.min(p.y, window.innerHeight-h-6));
+  var y=Math.max(6, Math.min(p.y, window.innerHeight-h-6-lista));
   el.style.left=x+'px'; el.style.top=y+'px'; el.style.right='auto'; el.style.bottom='auto';
 }
 function gsLpSave(x,y){ try { localStorage.setItem(GS_LP.key, JSON.stringify({x:x,y:y})); } catch(e){} }
@@ -41471,6 +41509,9 @@ try { gsLpInit(); } catch(e){}
   @keyframes nstIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
   .nst-inner{max-width:628px;margin:0 auto;padding:calc(12px + var(--sat)) 16px 90px}
   .nst-topbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:calc(10px + var(--sat)) 0 10px;background:linear-gradient(#EAECF2 72%,rgba(234,236,242,0))}
+  /* Krátke zvýraznenie príspevku, na ktorý sa ťuklo z Domova — nech je jasné,
+     ktorý to je, keď ich je na nástenke veľa. */
+  .nst-post.nst-focus{box-shadow:0 0 0 2px #2563EB,0 10px 26px rgba(37,99,235,.18);transition:box-shadow .3s ease}
   .nst-back{background:#fff;border:1px solid #E2E8F0;border-radius:11px;color:#0F172A;font-size:13px;font-weight:700;font-family:inherit;padding:9px 14px;cursor:pointer;-webkit-tap-highlight-color:transparent;box-shadow:0 2px 8px rgba(15,23,42,.06)}
   .nst-back:active{transform:scale(.97)}
 
