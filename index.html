@@ -3882,28 +3882,70 @@ window.addEventListener('error', function(ev){
 // (sivá obrazovka). Tieto cache kľúče sú re-fetchovateľné (sú aj v IndexedDB alebo
 // sa dotiahnu zo Sheets), takže ich môžeme bezpečne zmazať keď treba uvoľniť miesto.
 var LS_CACHE_PREFIXES = ['ph_c_', 'ph_graf_', 'pl_c_', 'pl_rc_', 'hist_', 'lb_allhist_', 'lekarne_cache_', 'potencial_gyn_cache_v2:'];
+function lsIsCacheKey(key) {
+  if (!key) return false;
+  for (var j = 0; j < LS_CACHE_PREFIXES.length; j++) {
+    if (key.indexOf(LS_CACHE_PREFIXES[j]) === 0) return true;
+  }
+  return false;
+}
+
+// Všetky cache záznamy zoradené od najstaršieho. Časová pečiatka `ts` sa
+// ukladá pri každom zápise do cache (história, plnenie, pharma, lekárne,
+// rebríček, gyn) — doteraz sa nikdy nečítala. Záznam bez pečiatky je buď
+// poškodený, alebo z veľmi starej verzie; ide von ako prvý.
+function lsCacheEntriesOldestFirst() {
+  var out = [];
+  try {
+    for (var i = 0; i < localStorage.length; i++) {
+      var key = localStorage.key(i);
+      if (!lsIsCacheKey(key)) continue;
+      var ts = 0;
+      try { ts = Number((JSON.parse(localStorage.getItem(key) || 'null') || {}).ts) || 0; } catch (e) { ts = 0; }
+      out.push({ key: key, ts: ts });
+    }
+  } catch (e) {}
+  out.sort(function (a, b) { return a.ts - b.ts; });
+  return out;
+}
+
+// Zmaže VŠETKY cache záznamy. Používa sa iba z Nastavení („Vymazať
+// vyrovnávaciu pamäť"), kde si to používateľ vyžiadal. Pri zaplnenom
+// úložisku sa už nepoužíva — od toho je lsSafeSet().
 function lsPruneCaches() {
   var removed = 0;
   try {
     var keys = [];
     for (var i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
     for (var k = 0; k < keys.length; k++) {
-      var key = keys[k];
-      if (!key) continue;
-      for (var j = 0; j < LS_CACHE_PREFIXES.length; j++) {
-        if (key.indexOf(LS_CACHE_PREFIXES[j]) === 0) { localStorage.removeItem(key); removed++; break; }
-      }
+      if (!lsIsCacheKey(keys[k])) continue;
+      localStorage.removeItem(keys[k]);
+      removed++;
     }
-  } catch(e){}
+  } catch (e) {}
   return removed;
 }
-// Bezpečný zápis do localStorage — pri quota chybe uvoľní cache a skúsi znova.
+
+// Bezpečný zápis do localStorage.
+//
+// Predtým prvá chyba kvóty zmazala úplne všetko: históriu, pharma dáta,
+// okresy aj lekárne naraz. Používateľ si nič nevšimol — až kým neotvoril
+// ďalšiu obrazovku, ktorá bola zrazu prázdna a pomalá. A keďže sa kvóta
+// prekročí práve pri zápise novej cache, dialo sa to vtedy, keď appka
+// najviac pracuje.
+//
+// Teraz sa maže po jednom, od najstaršieho, a po každom zmazaní sa zápis
+// skúsi znova. Zmizne len toľko, koľko bolo treba na uvoľnenie miesta.
 function lsSafeSet(key, val) {
   try { localStorage.setItem(key, val); return true; }
-  catch(e) {
-    lsPruneCaches();
-    try { localStorage.setItem(key, val); return true; } catch(e2) { return false; }
+  catch (e) {}
+  var cands = lsCacheEntriesOldestFirst();
+  for (var i = 0; i < cands.length; i++) {
+    if (cands[i].key === key) continue;   // nemaž to, čo sa práve zapisuje
+    try { localStorage.removeItem(cands[i].key); } catch (e) {}
+    try { localStorage.setItem(key, val); return true; } catch (e2) {}
   }
+  return false;
 }
 
 // ── PUSH NOTIFIKÁCIE (Firebase Cloud Messaging) ──
@@ -11440,9 +11482,7 @@ function gynCacheRead(key) {
   } catch(e) { return null; }
 }
 function gynCacheWrite(key, data) {
-  try {
-    localStorage.setItem(GYN_CACHE_PREFIX + key, JSON.stringify({ ts: Date.now(), data: data }));
-  } catch(e) {}
+  lsSafeSet(GYN_CACHE_PREFIX + key, JSON.stringify({ ts: Date.now(), data: data }));
 }
 function gynCacheSame(a, b) {
   try { return JSON.stringify(a || null) === JSON.stringify(b || null); }
@@ -22576,7 +22616,7 @@ function _plLsLoad(key) {
   } catch(e) { return null; }
 }
 function _plLsSave(key, data, agg, hash) {
-  try { localStorage.setItem(key, JSON.stringify({ data: data, agg: agg, hash: hash || _plHashData(data), ts: Date.now() })); } catch(e) {}
+  lsSafeSet(key, JSON.stringify({ data: data, agg: agg, hash: hash || _plHashData(data), ts: Date.now() }));
 }
 
 function plnenieDisplayName(rawKey) {
@@ -27496,7 +27536,7 @@ var PHARMA_OKRES_STATE = { cache: {}, loading: {}, current: null };
 var _LB_LS_V = 'v1';
 function _lbHsKey() { return 'lb_allhist_' + _LB_LS_V + '_' + ((typeof appLineTag === 'function') ? appLineTag() : 'gp'); }
 function _lbHsSave(data) {
-  try { localStorage.setItem(_lbHsKey(), JSON.stringify({ data: data, ts: Date.now() })); } catch(e) {}
+  lsSafeSet(_lbHsKey(), JSON.stringify({ data: data, ts: Date.now() }));
 }
 function _lbHsLoad() {
   try {
@@ -27509,7 +27549,7 @@ function _lbHsLoad() {
 var _HIST_LS_V = 'v1';
 function _histLsKey(username) { return 'hist_' + _HIST_LS_V + '_' + ((typeof appLineTag === 'function') ? appLineTag() : 'gp') + '_' + (username || '').toLowerCase(); }
 function _histLsSave(username, items) {
-  try { localStorage.setItem(_histLsKey(username), JSON.stringify({ items: items, ts: Date.now() })); } catch(e) {}
+  lsSafeSet(_histLsKey(username), JSON.stringify({ items: items, ts: Date.now() }));
 }
 function _histLsLoad(username) {
   try {
@@ -33429,7 +33469,7 @@ function lkSetCache(login, rows, persist) {
   var entry = { rows: rows || [], ts: Date.now(), hash: hash };
   LK_STATE.cache[key] = entry;
   if (persist && key !== '__all__') {
-    try { localStorage.setItem(lkLocalKey(key), JSON.stringify(entry)); } catch(e) {}
+    lsSafeSet(lkLocalKey(key), JSON.stringify(entry));
     lkIdbSave(key, entry);
   }
   return changed;
