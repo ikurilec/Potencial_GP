@@ -138,7 +138,11 @@
   .hdr-logo-wrap{background:rgba(255,255,255,0.12);border-radius:10px;padding:8px 10px;display:flex;align-items:center;justify-content:center;position:absolute;right:-1px;top:50%;transform:translateY(-50%);z-index:10}
   .hdr::before{content:'';position:absolute;top:-100px;right:-60px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(59,130,246,.18),transparent 65%);pointer-events:none}
   .hdr::after{content:'';position:absolute;bottom:-80px;left:-40px;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(91,141,184,.10),transparent 65%);pointer-events:none}
-  .hdr-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;position:relative;z-index:1}
+  /* Tri stĺpce: menu vľavo, informácie v strede, nastavenia a avatar vpravo.
+     Stredný stĺpec je centrovaný v rámci hlavičky, nie zarovnaný doľava. */
+  .hdr-row{display:flex;align-items:center;gap:10px;position:relative;z-index:1;min-height:60px}
+  .hdr-mid{flex:1;min-width:0;text-align:center}
+  .hdr-actions{display:flex;align-items:center;flex-shrink:0}
   .hdr-title{font-size:19px;font-weight:700;color:#fff;line-height:1.1;letter-spacing:.01em;font-family:var(--font-display);white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.25)}
   .hdr-sub{font-size:10px;color:#7AABCC;margin-top:2px;letter-spacing:.04em;font-weight:500}
   .hdr-dots{display:flex;gap:8px;flex-wrap:wrap}
@@ -727,6 +731,11 @@
   .tb-btn.active .tb-ic{filter:none;opacity:1}
   .tb-btn:active .tb-ic{transform:scale(.9)}
   .tb-btn .nst-navdot{top:0;right:calc(50% - 20px)}
+  /* Počas písania lišta zavadzia: na iPhone ju klávesnica aj tak prekryje
+     a tlačidlo Potvrdiť by nad ňou zbytočne poskočilo. Kým je kurzor v poli,
+     je preč — a hneď ako sa písanie skončí, vráti sa. */
+  body.kb-open .tabbar{display:none !important}
+  body.kb-open.gp-rep:not(.reagila-line):not(.manager-mode) .submit-wrap{bottom:0}
   /* Obsah nesmie končiť pod lištou */
   body.gp-rep:not(.reagila-line):not(.manager-mode) .submit-wrap{bottom:var(--tabbar-h,62px)}
   body.gp-rep:not(.reagila-line):not(.manager-mode) .dnes-inner,
@@ -797,9 +806,13 @@
   /* Tri čiarky vľavo hore v hlavičke */
   .hdr-burger{display:none;flex-direction:column;background:rgba(255,255,255,.13);border:none;border-radius:11px;
     width:38px;height:38px;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;
-    align-self:flex-start;-webkit-tap-highlight-color:transparent;margin:2px 11px 0 0}
+    -webkit-tap-highlight-color:transparent}
   body.gp-rep:not(.reagila-line):not(.manager-mode) .hdr-burger{display:flex}
-  .hdr-row{align-items:flex-start}
+  /* Popisok pod ozubeným kolieskom zaberal v hlavičke asi 90 px a tlačil
+     pozdrav do troch bodiek. Nastavenia sú v menu na dvoch miestach, takže
+     samotná ikona stačí. Ostatné roly menu nemajú — tam popisok ostáva. */
+  body.gp-rep:not(.reagila-line):not(.manager-mode) .gear-btn-lbl{display:none}
+  body.gp-rep:not(.reagila-line):not(.manager-mode) .hdr-avatar{width:46px;height:46px;font-size:15px;border-width:2px}
   .hdr-burger:active{background:rgba(255,255,255,.22)}
   .hdr-burger span{display:block;width:17px;height:2px;border-radius:2px;background:#fff;margin:2px 0}
   /* Avatar v poslednej položke lišty — ako Profil na Facebooku */
@@ -823,6 +836,44 @@
     letter-spacing:-.01em;cursor:pointer;-webkit-tap-highlight-color:transparent;margin-bottom:14px;
     box-shadow:0 12px 32px rgba(12,30,53,.30),inset 0 1px 0 rgba(255,255,255,.08);transition:transform .15s}
   .dnes-cta:active{transform:scale(.985)}
+  /* Druhá akcia — úprava potenciálu lekára, ktorý už v databáze je.
+     Nie je to rovnocenná akcia s pridaním nového, preto je tichšia. */
+  .dnes-cta2{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
+    background:#fff;color:#1A2A3A;border:1px solid #E2E8F0;border-radius:14px;padding:13px;
+    font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:14px;
+    -webkit-tap-highlight-color:transparent;
+    box-shadow:0 4px 16px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.04);transition:background .15s}
+  .dnes-cta2:active{background:#F1F5F9}
+  /* Výber lekára — hľadanie a zoznam v tom istom jazyku ako panel Lekári */
+  .gpp-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#EAECF2;
+    z-index:2300;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  .gpp-overlay.show{display:block}
+  .gpp-inner{max-width:660px;margin:0 auto;padding:calc(14px + var(--sat)) 16px calc(28px + env(safe-area-inset-bottom))}
+  .gpp-hd{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .gpp-back{background:#fff;border:1px solid #E2E8F0;border-radius:11px;width:38px;height:38px;flex-shrink:0;
+    font-size:17px;color:#1A2A3A;cursor:pointer;-webkit-tap-highlight-color:transparent;
+    display:flex;align-items:center;justify-content:center;font-family:inherit}
+  .gpp-title{font-family:var(--font-display);font-size:19px;font-weight:800;color:#0C1E35;letter-spacing:-.02em}
+  .gpp-sub{font-size:11.5px;color:#64748B;margin-top:1px;font-weight:500}
+  /* Rovnaký vzhľad ako hľadanie v paneli Lekári, ale bez lepenia — tu nad ním
+     nie je žiadny horný bar, o ktorý by sa malo zastaviť. */
+  .gpp-search-wrap{position:relative;padding:10px;border-radius:14px;background:#fff;margin-bottom:10px;
+    box-shadow:0 2px 8px rgba(15,23,42,.06)}
+  .gpp-count{font-size:11.5px;font-weight:600;color:#94A3B8;margin:0 2px 8px}
+  .gpp-list{background:#fff;border-radius:14px;overflow:hidden;
+    box-shadow:0 4px 16px rgba(15,23,42,.06),0 0 0 1px rgba(15,23,42,.04)}
+  .gpp-item{display:flex;align-items:center;gap:11px;width:100%;background:none;border:none;
+    padding:12px 15px;border-bottom:1px solid #F1F5F9;font-family:inherit;text-align:left;cursor:pointer;
+    -webkit-tap-highlight-color:transparent}
+  .gpp-item:last-child{border-bottom:none}
+  .gpp-item:active{background:#F8FAFC}
+  .gpp-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .gpp-txt{min-width:0;flex:1}
+  .gpp-name{display:block;font-size:14.5px;font-weight:700;color:#1A2A3A;line-height:1.25;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .gpp-meta{display:block;font-size:11.5px;color:#94A3B8;margin-top:2px}
+  .gpp-ch{font-size:13px;color:#CBD5E1;flex-shrink:0}
+  .gpp-empty{text-align:center;color:#64748B;font-size:13.5px;padding:30px 16px;line-height:1.5}
   .dnes-cta .dnes-cta-ic{font-size:19px;line-height:1}
   .dnes-card-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
   .dnes-more{font-size:11.5px;font-weight:700;color:#2563EB;white-space:nowrap}
@@ -1991,9 +2042,9 @@
   .rep-nav-btn .rn-lbl{font-size:10px;line-height:1}
   .rep-nav-btn.active{background:linear-gradient(135deg,#0C1E35 0%,#13294B 100%);color:#fff;border-color:transparent;box-shadow:0 4px 12px rgba(12,30,53,.25),inset 0 1px 0 rgba(255,255,255,.10)}
   /* ═══ Nový header — pozdrav + meniny ═══ */
-  .hdr-greeting{font-size:13.5px;color:#BFD4E8;font-weight:600;margin-top:4px;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .hdr-nameday{font-size:11px;color:#7AABCC;margin-top:3px;font-weight:500;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.3}
-  .hdr-sviatok{font-size:11px;color:#FCD34D;margin-top:3px;font-weight:700;line-height:1.3}
+  .hdr-greeting{font-size:13.5px;color:#BFD4E8;font-weight:600;margin-top:3px;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hdr-nameday{font-size:11px;color:#7AABCC;margin-top:2px;font-weight:500;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.3;text-align:center;position:relative;z-index:1}
+  .hdr-sviatok{font-size:11px;color:#FCD34D;margin-top:3px;font-weight:700;line-height:1.3;text-align:center;position:relative;z-index:1}
   .hdr-nameday.hdr-nameday-celebrate{color:#FCD34D;font-weight:800;font-size:12px;text-shadow:0 1px 6px rgba(251,191,36,.45);animation:ndayGlow 2s ease-in-out infinite;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.3}
   @keyframes ndayGlow{0%,100%{text-shadow:0 1px 6px rgba(251,191,36,.35)}50%{text-shadow:0 1px 12px rgba(251,191,36,.75)}}
   @media(prefers-reduced-motion:reduce){.hdr-nameday.hdr-nameday-celebrate{animation:none}}
@@ -3077,10 +3128,11 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     <button type="button" class="hdr-burger" id="hdr-burger" onclick="openViac()" aria-label="Menu">
       <span></span><span></span><span></span>
     </button>
-    <div style="flex:1;min-width:0">
+    <div class="hdr-mid">
       <div class="hdr-title" id="hdr-line-name">Golem</div>
       <div class="hdr-greeting" id="hdr-greeting"></div>
-      <div style="display:flex;justify-content:flex-end;align-items:center;margin-top:6px">
+    </div>
+      <div class="hdr-actions">
   <div style="display:flex;align-items:center;gap:10px">
   <div class="gear-wrap" id="gear-wrap">
     <button class="gear-btn" onclick="openSettings()" aria-label="Nastavenia" title="Nastavenia"><svg viewBox="0 0 24 24" width="21" height="21" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
@@ -3093,11 +3145,11 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   <div id="hdr-badge-wrap" style="display:none"><div class="hdr-badge" id="hdr-badge"></div></div>
   </div>
     </div>
-    <!-- Dátum, meniny a sviatok na plnú šírku POD riadkom s ozubeným kolieskom —
-         vedľa neho by sa text zalomil pod tlačidlá. -->
-    <div class="hdr-nameday" id="hdr-nameday"></div>
-    <div class="hdr-sviatok" id="hdr-sviatok" style="display:none"></div>
-    </div>
+  </div>
+  <!-- Dátum, meniny a sviatok pod hlavičkou, na plnú šírku a vycentrované —
+       vedľa ozubeného kolieska by sa text zalomil pod tlačidlá. -->
+  <div class="hdr-nameday" id="hdr-nameday"></div>
+  <div class="hdr-sviatok" id="hdr-sviatok" style="display:none"></div>
   </div>
 </div>
 
@@ -3613,13 +3665,34 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     </div>
   </div>
 
+  <div class="gpp-overlay" id="gpp-overlay">
+    <div class="gpp-inner">
+      <div class="gpp-hd">
+        <button type="button" class="gpp-back" onclick="closeGpPicker()" aria-label="Späť">←</button>
+        <div>
+          <div class="gpp-title">Upraviť potenciál</div>
+          <div class="gpp-sub">Vyber lekára, ktorý už v databáze je</div>
+        </div>
+      </div>
+      <div class="gpp-search-wrap">
+        <span class="hist-search-icon">🔍</span>
+        <input type="text" class="hist-search" id="gpp-search" placeholder="Hľadať lekára alebo okres..." oninput="gpPickerRender()" autocomplete="off">
+      </div>
+      <div class="gpp-count" id="gpp-count"></div>
+      <div id="gpp-body"></div>
+    </div>
+  </div>
+
   <div class="dnes-overlay" id="dnes-overlay">
     <div class="dnes-inner">
       <div class="dnes-hdr">
         <div class="dnes-title">Dnes</div>
       </div>
       <button type="button" class="dnes-cta" onclick="repNavToForm()">
-        <span class="dnes-cta-ic">＋</span><span>Zapísať návštevu</span>
+        <span class="dnes-cta-ic">＋</span><span>Zadať nového GP</span>
+      </button>
+      <button type="button" class="dnes-cta2" onclick="openGpPicker()">
+        <span>✏️</span><span>Upraviť potenciál lekára</span>
       </button>
       <div id="dnes-body"></div>
     </div>
@@ -7864,12 +7937,12 @@ function dnesRender() {
     }).join('');
     var viac = (items.length > 4) ? '<div class="dnes-mini"><span class="dnes-mini-name" style="color:#94A3B8;font-weight:500">a ďalší ' + (items.length - 4) + '</span></div>' : '';
     todayBody = '<div class="dnes-big-row"><div class="dnes-big">' + items.length + '</div>' +
-                '<div class="dnes-big-sub">' + (items.length === 1 ? 'zaznamenaný lekár' : (items.length < 5 ? 'zaznamenaní lekári' : 'zaznamenaných lekárov')) + '</div></div>' +
+                '<div class="dnes-big-sub">' + (items.length === 1 ? 'zadaný lekár' : (items.length < 5 ? 'zadaní lekári' : 'zadaných lekárov')) + '</div></div>' +
                 rows + viac;
   } else {
-    todayBody = '<div class="dnes-empty">Dnes si ešte nič nezaznamenal. Prvý záznam pridáš tlačidlom hore.</div>';
+    todayBody = '<div class="dnes-empty">Dnes si ešte nezadal žiadneho lekára. Nového pridáš tlačidlom hore.</div>';
   }
-  html += dnesCardHtml('linear-gradient(90deg,#0C1E35,#1E3A5F)', 'Dnešné návštevy', '', todayBody);
+  html += dnesCardHtml('linear-gradient(90deg,#0C1E35,#1E3A5F)', 'Dnes zadaní lekári', '', todayBody);
 
   // ── Plnenie ─────────────────────────────────────────────────────────
   var pl = dnesPlnenie();
@@ -7919,7 +7992,9 @@ var VIAC_DLAZDICE = [
   { ic: '🏆', t: 'Rebríček', fn: 'openLeaderboard()' },
   { ic: '🏪', t: 'Lekárne',  fn: 'openLekarne()' },
   { ic: '📍', t: 'Okresy',   fn: 'openOkresy()' },
-  { ic: '📅', t: 'Kalendár', fn: 'openGolemKalendar()' },
+  // Ikona kalendára nesie dnešný deň — rovnako, ako ho niesla v hornej
+  // navigácii. Číslo dopĺňa calNavSyncDay() cez .js-cal-nav-day.
+  { ic: '<span class="gyn-cal-navico" style="width:21px;height:21px"><span class="gci-top"></span><span class="gci-day js-cal-nav-day">' + (new Date()).getDate() + '</span></span>', t: 'Kalendár', fn: 'openGolemKalendar()', raw: true },
   { ic: '🧬', t: 'Tuyory',   fn: 'openTuyory()' },
   { ic: '🛡️', t: 'Lonelix',  fn: 'openLonelix()' },
   // Apixaban je kampaň s termínom — mimo neho sa neponúka ako živá položka.
@@ -7948,7 +8023,7 @@ function viacRender() {
   var tiles = VIAC_DLAZDICE.map(function (it) {
     var zatvoreny = it.openFn && typeof window[it.openFn] === 'function' && !window[it.openFn]();
     return '<button type="button" class="viac-tile' + (zatvoreny ? ' off' : '') + '" onclick="' + it.fn + '">' +
-             '<span class="viac-tile-ic">' + it.ic + '</span>' +
+             '<span class="viac-tile-ic">' + (it.raw ? it.ic : appEsc(it.ic)) + '</span>' +
              '<span class="viac-tile-t">' + appEsc(it.t) + (zatvoreny ? '<br><span style="font-weight:600;font-size:10.5px;color:#94A3B8">zatiaľ zatvorené</span>' : '') + '</span>' +
            '</button>';
   }).join('');
@@ -7961,6 +8036,9 @@ function viacRender() {
       '<button type="button" class="viac-item" onclick="doLogout()">' +
         '<span class="viac-item-ic">🚪</span><span class="viac-item-t">Odhlásiť sa</span><span class="viac-item-ch">›</span></button>' +
     '</div>';
+  // Dnešný deň do ikony kalendára — menu sa renderuje až pri otvorení, takže
+  // číslo treba doplniť po vložení do DOM.
+  try { golemCalRefreshNavDay(); } catch (e) {}
 }
 
 // Menu je prekryv, nie panel — nezaraďuje sa do histórie panelov, aby sa
@@ -8022,6 +8100,25 @@ function repTabSetActive(panelId) {
   });
 }
 
+// Kým je kurzor v textovom poli, spodná lišta je preč — klávesnica ju aj tak
+// prekryje a tlačidlo Potvrdiť by nad ňou zbytočne poskočilo.
+(function () {
+  var t = null;
+  function prepni() {
+    clearTimeout(t);
+    t = setTimeout(function () {
+      var el = document.activeElement;
+      var pise = !!(el && (el.tagName === 'TEXTAREA' ||
+        (el.tagName === 'INPUT' && ['text','number','search','tel','email','password','url'].indexOf(el.type) !== -1)));
+      document.body.classList.toggle('kb-open', pise);
+      // Výšku lišty prepočítaj až keď sa vráti, inak by sa zmerala nula.
+      if (!pise) { try { repTabbarSync(); } catch (e) {} }
+    }, 60);
+  }
+  document.addEventListener('focusin', prepni);
+  document.addEventListener('focusout', prepni);
+})();
+
 // Výška lišty do CSS premennej — obsah panelov ani tlačidlo Potvrdiť pod ňou
 // nesmú skončiť.
 function repTabbarSync() {
@@ -8036,6 +8133,106 @@ try {
   window.addEventListener('resize', function () { repTabbarSync(); });
   document.addEventListener('DOMContentLoaded', function () { repTabbarSync(); });
 } catch (e) {}
+
+// ── VÝBER LEKÁRA NA ÚPRAVU POTENCIÁLU ──────────────────────────────────
+// V Goleme sa lekár nezadáva pri každej návšteve — zadá sa raz a potom sa mu
+// upravuje potenciál, keď sa čísla zmenia. Preto sú na Dnes dve akcie:
+// zadať nového GP a upraviť potenciál toho, kto už v databáze je.
+//
+// Hľadá sa cez appNorm(), takže „safarik" nájde „Šafárik" — rovnako ako
+// v zozname Lekári. Ťuknutie otvorí detail a hneď nad ním úpravu hodnôt.
+function gpPickerItems() {
+  var q = appNorm(((document.getElementById('gpp-search') || {}).value) || '').trim();
+  var all = [];
+  try { all = _histCombined(); } catch (e) { all = []; }
+  // Len GP záznamy — potenciál majú len tie. Prieskumy a nezistení lekári nie.
+  var gp = all.filter(function (it) {
+    return it && it.row !== undefined && it.row !== null && it.row !== '' &&
+           it.type !== 'tuyory' && it.type !== 'apixaban' && it.type !== 'lonelix-new';
+  });
+  if (q) {
+    gp = gp.filter(function (it) {
+      return appNorm(it.lekar || '').indexOf(q) !== -1 || appNorm(it.okres || '').indexOf(q) !== -1;
+    });
+    gp.sort(function (a, b) {
+      var as = appNorm(a.lekar || '').indexOf(q) === 0 ? 0 : 1;
+      var bs = appNorm(b.lekar || '').indexOf(q) === 0 ? 0 : 1;
+      return as - bs;
+    });
+  } else {
+    gp.sort(function (a, b) { return String(a.lekar || '').localeCompare(String(b.lekar || ''), 'sk'); });
+  }
+  return gp;
+}
+
+function gpPickerRender() {
+  var body = document.getElementById('gpp-body');
+  var cnt = document.getElementById('gpp-count');
+  if (!body) return;
+  var items = gpPickerItems();
+  if (cnt) cnt.textContent = items.length ? (items.length + (items.length === 1 ? ' lekár' : (items.length < 5 ? ' lekári' : ' lekárov'))) : '';
+  if (!items.length) {
+    var q = (((document.getElementById('gpp-search') || {}).value) || '').trim();
+    body.innerHTML = '<div class="gpp-empty">' + (q
+      ? 'Pre „' + appEsc(q) + '" sa nič nenašlo.<br>Ak je to nový lekár, zadaj ho tlačidlom „Zadať nového GP".'
+      : 'Zatiaľ nemáš zadaného žiadneho lekára.') + '</div>';
+    return;
+  }
+  // Najviac 60 riadkov — pri dlhšom zozname je rýchlejšie dopísať meno než
+  // scrollovať, a prekresľovanie na každý znak by inak bolo cítiť.
+  var zobraz = items.slice(0, 60);
+  body.innerHTML = '<div class="gpp-list">' + zobraz.map(function (it) {
+    var kat = String(it.kategoria || '').toUpperCase().trim();
+    return '<button type="button" class="gpp-item" data-gpp-row="' + appEsc(it.row) + '">' +
+             '<span class="gpp-dot" style="background:' + gpCatColor(kat).c + '"></span>' +
+             '<span class="gpp-txt">' +
+               '<span class="gpp-name">' + appEsc(it.lekar || '—') + '</span>' +
+               '<span class="gpp-meta">' + appEsc(it.okres || '') + (it.dateStr ? ' · zadaný ' + appEsc(it.dateStr) : '') + '</span>' +
+             '</span>' +
+             '<span class="gpp-ch">›</span>' +
+           '</button>';
+  }).join('') + '</div>' +
+  (items.length > zobraz.length
+    ? '<div class="gpp-empty">Zobrazených ' + zobraz.length + ' z ' + items.length + '. Dopíš meno, nech sa zoznam zúži.</div>'
+    : '');
+}
+
+function openGpPicker() {
+  var ov = document.getElementById('gpp-overlay');
+  if (!ov) return;
+  usageSectionEnter('Úprava potenciálu');
+  var sb = document.getElementById('gpp-search');
+  if (sb) sb.value = '';
+  gpPickerRender();
+  ov.classList.add('show');
+  ov.scrollTop = 0;
+  document.body.style.overflow = 'hidden';
+}
+function closeGpPicker() {
+  var ov = document.getElementById('gpp-overlay');
+  if (ov) ov.classList.remove('show');
+  document.body.style.overflow = '';
+  try { usageSectionClose(); } catch (e) {}
+}
+
+// Ťuknutie na lekára — otvor jeho detail a hneď nad ním úpravu hodnôt.
+// Cez openDetail(), aby sa _currentDetailItem aj obnovenie po uložení
+// nastavili presne tak, ako to saveEditRecord() očakáva.
+document.addEventListener('click', function (ev) {
+  var btn = ev.target && ev.target.closest ? ev.target.closest('[data-gpp-row]') : null;
+  if (!btn) return;
+  var row = btn.getAttribute('data-gpp-row');
+  closeGpPicker();
+  var i = gpDetailIdxByRow(row);
+  if (i < 0) {
+    // Zoznam sa medzitým prestaval (napr. dobehla obnova) — postav ho nanovo
+    try { histRender(); } catch (e) {}
+    i = gpDetailIdxByRow(row);
+  }
+  if (i < 0) return;
+  openDetail(i);
+  setTimeout(function () { try { openEditRecord(); } catch (e) {} }, 220);
+});
 
 function openDnes() {
   usageSectionEnter('Dnes');
@@ -19717,6 +19914,9 @@ function _handleAndroidBack() {
   // 0. Bočné menu — leží nad panelmi, takže sa zatvára ako prvé
   el = document.getElementById('viac-overlay');
   if (el && el.classList.contains('show')) { closeViac(); return true; }
+
+  el = document.getElementById('gpp-overlay');
+  if (el && el.classList.contains('show')) { closeGpPicker(); return true; }
 
   // 1. Top modal vrstvy, ktoré môžu sedieť nad hociktorou obrazovkou
   el = document.getElementById('gyn-ms-picker-overlay');
