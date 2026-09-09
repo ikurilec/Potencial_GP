@@ -4,7 +4,7 @@
 // ║  cache-first pre ostatné assety (rýchly štart, offline ready).║
 // ╚══════════════════════════════════════════════════════════════╝
 
-var CACHE_NAME = 'potencial-vl-v10-wn-ok-fix';
+var CACHE_NAME = 'potencial-vl-v2770';
 
 self.addEventListener('install', function(event){
   self.skipWaiting();
@@ -14,7 +14,13 @@ self.addEventListener('activate', function(event){
   event.waitUntil(
     caches.keys()
       .then(function(names){
-        return Promise.all(names.map(function(n){ return caches.delete(n); }));
+        // Maž LEN staré verzie, nie všetko. Predtým tu bolo caches.delete(n) pre každý
+        // názov, takže každé nasadenie zmazalo aj fonty a avatary z DiceBear — veci,
+        // ktoré sa medzi verziami vôbec nemenia — a všetko sa sťahovalo odznova.
+        return Promise.all(
+          names.filter(function(n){ return n !== CACHE_NAME; })
+               .map(function(n){ return caches.delete(n); })
+        );
       })
       .then(function(){
         return self.clients.claim();

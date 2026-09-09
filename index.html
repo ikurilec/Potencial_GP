@@ -12,8 +12,13 @@
   <meta name="apple-mobile-web-app-title" content="Satori">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Satori</title>
+  <!-- Font sa načítava cez <link>, nie cez @import v CSS. @import prehliadač objaví až
+       potom, ako stiahne a rozparsuje celý štýl — teda o stovky milisekúnd neskôr.
+       preconnect otvorí spojenia na obe domény Google Fonts hneď, súbežne s HTML. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@700&display=swap">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@700&display=swap');
   :root{
     /* Typography */
     --font-display:'Outfit','SF Pro Display',-apple-system,BlinkMacSystemFont,sans-serif;
@@ -600,7 +605,11 @@
   @media(max-width:520px){.info-grid-3{grid-template-columns:1fr}}
   @media(max-width:480px){.app{padding:8px}.hdr{padding:10px 14px}.gyn-inner{padding:8px}.gyn-mgr-hdr{padding:10px 14px}}
   .info-field{display:flex;flex-direction:column;gap:4px}
-  .info-label{font-size:10px;font-weight:600;color:#64748B;letter-spacing:.06em;text-transform:uppercase}
+  /* Menovka je zároveň dotyková plocha — ťuknutie na ňu zaostrí pole, takže
+     potrebuje výšku aj čitateľnú veľkosť. 10px bolo pod hranicou oboch. */
+  .info-label{font-size:11px;font-weight:600;color:#64748B;letter-spacing:.06em;text-transform:uppercase;
+    display:block;padding:4px 0;cursor:pointer}
+  .flbl{cursor:pointer}
   .info-input{height:44px;padding:0 13px;border-radius:9px;border:1.5px solid #E2E8F0;background:#F8FAFC;font-size:16px;font-family:inherit;color:#1A2A3A;outline:none;transition:border-color .18s;width:100%;-webkit-appearance:none}
   .info-input:focus{border-color:#3B82F6;background:#fff;box-shadow:0 0 0 3px rgba(59,130,246,.11)}
   .info-input.has-error{border-color:#FCA5A5;background:#FFF5F5}
@@ -628,6 +637,21 @@
   .progress-wrap.sticky{position:sticky;top:var(--sat);z-index:997;border-radius:0 0 12px 12px;background:rgba(255,255,255,.82);backdrop-filter:blur(10px) saturate(1.4);-webkit-backdrop-filter:blur(10px) saturate(1.4);border:none;border-bottom:1px solid rgba(226,232,240,.7);box-shadow:0 2px 12px rgba(0,0,0,.08);margin-bottom:0}
   body:not(.manager-mode) .progress-wrap.sticky{top:calc(62px + var(--sat))}
   .progress-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+  /* Čo ešte chýba — ťuknutie na položku skočí na pole. Nahrádza percento, ktoré
+     nikomu nepovie, čo má spraviť. */
+  /* Akcia v prázdnom výsledku hľadania. */
+  .gp-empty-cta{margin-top:16px;font-family:inherit;font-size:14.5px;font-weight:700;color:#fff;
+    background:linear-gradient(180deg,#2563EB,#1D4ED8);border:none;border-radius:12px;
+    padding:13px 20px;cursor:pointer;min-height:44px;-webkit-tap-highlight-color:transparent;
+    box-shadow:0 4px 14px rgba(37,99,235,.28)}
+  .gp-empty-cta:active{transform:scale(.98)}
+  .progress-missing{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+  .progress-missing:empty{display:none}
+  .pm-chip{font-family:inherit;font-size:12.5px;font-weight:600;color:#92400E;background:#FEF3C7;
+    border:1px solid #FDE68A;border-radius:999px;padding:7px 12px;cursor:pointer;line-height:1.2;
+    -webkit-tap-highlight-color:transparent;min-height:32px;display:inline-flex;align-items:center}
+  .pm-chip:active{background:#FDE68A}
+  .pm-done{font-size:12.5px;font-weight:600;color:#15803D;padding:5px 0;display:inline-flex;align-items:center;gap:5px}
   .progress-label{font-size:11px;font-weight:600;color:#64748B;letter-spacing:.04em;text-transform:uppercase}
   .progress-pct{font-size:12px;font-weight:700;color:#2563EB}
   .progress-track{height:10px;background:#CBD5E1;border-radius:5px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(15,23,42,.08)}
@@ -890,6 +914,10 @@
   .ac-wrap{position:relative}
   .ac-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid #3B82F6;border-top:none;border-radius:0 0 9px 9px;z-index:1000;overflow-y:auto;max-height:220px;box-shadow:0 4px 12px rgba(0,0,0,.12)}
   .ac-item{padding:11px 14px;font-size:15px;color:#1A2A3A;cursor:pointer;border-bottom:1px solid #F1F5F9}
+  /* Riadok „bez zhody" — nie je .ac-item, takže sa nedá vybrať šípkami ani klikom. */
+  .ac-empty{padding:11px 14px;font-size:13.5px;color:#64748B;font-weight:500}
+  /* Poznámka nad ponukou — tiež nie je .ac-item, takže do výberu nezasahuje. */
+  .ac-note{padding:8px 14px;font-size:12px;color:#A8480B;font-weight:600;background:#FDF6F0;border-bottom:1px solid #F1F5F9}
   .ac-item:last-child{border-bottom:none}
   .ac-item:hover,.ac-item.active{background:#EFF6FF;color:#2563EB}
   .ac-item strong{color:#2563EB}
@@ -3132,9 +3160,10 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 
 <div class="progress-wrap" id="progress-wrap">
     <div class="progress-header">
-      <span class="progress-label">Vyplnenosť formulára</span>
+      <span class="progress-label" id="progress-label">Vyplnenosť formulára</span>
       <span class="progress-pct" id="progress-pct">0%</span>
     </div>
+    <div class="progress-missing" id="progress-missing"></div>
     <div class="progress-track">
       <div class="progress-fill" id="progress-fill" style="width:0%"></div>
   </div>
@@ -3146,7 +3175,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
       <div class="info-title">Identifik&#225;cia n&#225;v&#353;tevy</div>
       <div class="info-grid-3">
         <div class="info-field">
-          <div class="info-label">Titul, meno a priezvisko lek&#225;ra</div>
+          <label class="info-label" for="lekar">Titul, meno a priezvisko lek&#225;ra</label>
           <div class="info-input-wrap">
             <input class="info-input" type="text" id="lekar" placeholder="napr. MUDr. Gedeon Richter" onfocus="var el=this;if(!el.value){el.value='MUDr. ';setTimeout(function(){el.setSelectionRange(el.value.length,el.value.length);},0);}else{setTimeout(function(){el.setSelectionRange(el.value.length,el.value.length);},0);}" onblur="var v=this.value.trim();var TITLES=['mudr.', 'mddr.', 'rndr.', 'phdr.', 'judr.', 'ing.', 'mgr.', 'doc.', 'prof.', 'bc.', 'mvdr.', 'paeddr.'];if(v===''||v.split(' ').every(function(w){return TITLES.indexOf(w.toLowerCase())!==-1;})){this.value='';setIcon('lekar','none');}else{var words=v.split(' ').filter(function(w){return w.length>0;});var realWords=words.filter(function(w){return TITLES.indexOf(w.toLowerCase())===-1;});setIcon('lekar',realWords.length>=2?'ok':'err');}" oninput="capAfterSpace(this);dupCheckLekar(this);var v=this.value.trim();var TITLES=['mudr.', 'mddr.', 'rndr.', 'phdr.', 'judr.', 'ing.', 'mgr.', 'doc.', 'prof.', 'bc.', 'mvdr.', 'paeddr.'];var words=v.split(' ').filter(function(w){return w.length>0;});var realWords=words.filter(function(w){return TITLES.indexOf(w.toLowerCase())===-1;});setIcon('lekar',realWords.length>=2?'ok':'none');">
             <span class="field-icon hidden" id="icon-lekar"></span>
@@ -3154,10 +3183,10 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
         </div>
         <input type="hidden" id="reprezentant" value="">
         <div class="info-field">
-          <div class="info-label">Okres pracoviska lek&#225;ra</div>
+          <label class="info-label" for="mesto">Okres pracoviska lek&#225;ra</label>
           <div class="ac-wrap">
             <div class="info-input-wrap">
-              <input class="info-input" type="text" id="mesto" placeholder="napr. Bratislava I" autocomplete="off" oninput="acInput(this);validateField('mesto')" onkeydown="acKey(event)" onfocus="acShowAll(this)" onblur="setTimeout(function(){var list=document.getElementById('ac-list');if(list)list.style.display='none';var el=document.getElementById('mesto');var v=(el?el.value.trim():'').toLowerCase();var exact=OKRESY.some(function(o){return o.toLowerCase()===v;});setIcon('mesto',exact?'ok':v?'err':'none');updateProgress();},250)">
+              <input class="info-input" type="text" id="mesto" placeholder="napr. Bratislava I" autocomplete="off" oninput="acInput(this);validateField('mesto')" onkeydown="acKey(event)" onfocus="acShowAll(this)" onblur="setTimeout(function(){acBlur();},250)">
               <span class="field-icon hidden" id="icon-mesto"></span>
             </div>
             <div class="ac-list" id="ac-list" style="display:none"></div>
@@ -3180,9 +3209,9 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     <div class="prod-name">Kapit&#225;cia</div>
     <div class="row">
       <div>
-        <div class="flbl">Po&#269;et pacientov v kapit&#225;cii</div>
+        <label class="flbl" for="kapitacia-n">Po&#269;et pacientov v kapit&#225;cii</label>
         <div class="info-input-wrap">
-          <input type="number" id="kapitacia-n" min="0" max="9999" enterkeyhint="next" placeholder="0" inputmode="numeric" pattern="[0-9]*" oninput="validateNumField('kapitacia-n')" onkeydown="var k=event.key;if(k==='Enter'&&this.value!==''){focusNext('kapitacia-n');}else if(!/^[0-9]$/.test(k)&&k!=='Backspace'&&k!=='Delete'&&k!=='ArrowLeft'&&k!=='ArrowRight'&&k!=='Tab'&&k!=='Enter'){event.preventDefault();}" onblur="validateNumField('kapitacia-n');">
+          <input type="text" id="kapitacia-n" enterkeyhint="next" placeholder="0" inputmode="numeric" pattern="[0-9]*" oninput="gpDigitsOnly(this);validateNumField('kapitacia-n')" onkeydown="if(event.key==='Enter'&&this.value!==''){focusNext('kapitacia-n');}" onblur="validateNumField('kapitacia-n');">
           <span class="field-icon hidden" id="icon-kapitacia-n"></span>
         </div>
         <div id="kapitacia-err" style="display:none;color:#DC2626;font-size:11px;font-weight:500;margin-top:5px">⚠ Kapitácia je nereálna, skontroluj a uprav na skutočnosť</div>
@@ -3199,9 +3228,9 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     <div class="prod-type">Chronick&#253; produkt &nbsp;&middot;&nbsp; noví pacienti / mes.</div>
     <div class="row">
       <div>
-        <div class="flbl">Novonastavení pacienti / mesiac</div>
+        <label class="flbl" for="vid1-n">Novonastavení pacienti / mesiac</label>
         <div class="info-input-wrap">
-          <input type="number" id="vid1-n" min="0" enterkeyhint="next" placeholder="0" inputmode="numeric" pattern="[0-9]*" oninput="validateProdField('vid1-n')" onkeydown="var k=event.key;if(k==='Enter'&&this.value!==''){focusNext('vid1-n');}else if(!/^[0-9]$/.test(k)&&k!=='Backspace'&&k!=='Delete'&&k!=='ArrowLeft'&&k!=='ArrowRight'&&k!=='Tab'&&k!=='Enter'){event.preventDefault();}" onblur="validateProdField('vid1-n');">
+          <input type="text" id="vid1-n" enterkeyhint="next" placeholder="0" inputmode="numeric" pattern="[0-9]*" oninput="gpDigitsOnly(this);validateProdField('vid1-n')" onkeydown="if(event.key==='Enter'&&this.value!==''){focusNext('vid1-n');}" onblur="validateProdField('vid1-n');">
           <span class="field-icon hidden" id="icon-vid1-n"></span>
         </div>
       </div>
@@ -3217,9 +3246,9 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     <div class="prod-type">Ak&#250;tny produkt &nbsp;&middot;&nbsp; bal. / mes.</div>
     <div class="row">
       <div>
-        <div class="flbl">Počet predpísaných balení / mesiac</div>
+        <label class="flbl" for="afl1-n">Počet predpísaných balení / mesiac</label>
         <div class="info-input-wrap">
-          <input type="number" id="afl1-n" min="0" enterkeyhint="next" placeholder="0" inputmode="numeric" pattern="[0-9]*" oninput="validateProdField('afl1-n')" onkeydown="var k=event.key;if(k==='Enter'&&this.value!==''){focusNext('afl1-n');}else if(!/^[0-9]$/.test(k)&&k!=='Backspace'&&k!=='Delete'&&k!=='ArrowLeft'&&k!=='ArrowRight'&&k!=='Tab'&&k!=='Enter'){event.preventDefault();}" onblur="validateProdField('afl1-n');">
+          <input type="text" id="afl1-n" enterkeyhint="next" placeholder="0" inputmode="numeric" pattern="[0-9]*" oninput="gpDigitsOnly(this);validateProdField('afl1-n')" onkeydown="if(event.key==='Enter'&&this.value!==''){focusNext('afl1-n');}" onblur="validateProdField('afl1-n');">
           <span class="field-icon hidden" id="icon-afl1-n"></span>
         </div>
       </div>
@@ -3235,9 +3264,9 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     <div class="prod-type">Ak&#250;tny produkt &nbsp;&middot;&nbsp; bal. / mes.</div>
     <div class="row">
       <div>
-        <div class="flbl">Počet predpísaných balení / mesiac</div>
+        <label class="flbl" for="sup1-n">Počet predpísaných balení / mesiac</label>
         <div class="info-input-wrap">
-          <input type="number" id="sup1-n" min="0" enterkeyhint="next" placeholder="0" inputmode="numeric" pattern="[0-9]*" oninput="validateProdField('sup1-n')" onkeydown="var k=event.key;if(k==='Enter'&&this.value!==''){focusNext('sup1-n');}else if(!/^[0-9]$/.test(k)&&k!=='Backspace'&&k!=='Delete'&&k!=='ArrowLeft'&&k!=='ArrowRight'&&k!=='Tab'&&k!=='Enter'){event.preventDefault();}" onblur="validateProdField('sup1-n');">
+          <input type="text" id="sup1-n" enterkeyhint="next" placeholder="0" inputmode="numeric" pattern="[0-9]*" oninput="gpDigitsOnly(this);validateProdField('sup1-n')" onkeydown="if(event.key==='Enter'&&this.value!==''){focusNext('sup1-n');}" onblur="validateProdField('sup1-n');">
           <span class="field-icon hidden" id="icon-sup1-n"></span>
         </div>
       </div>
@@ -3253,9 +3282,9 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     <div class="prod-type">Chronick&#253; produkt &nbsp;&middot;&nbsp; noví pacienti / mes.</div>
     <div class="row">
       <div>
-        <div class="flbl">Novonastavení pacienti / mesiac</div>
+        <label class="flbl" for="cav-n">Novonastavení pacienti / mesiac</label>
         <div class="info-input-wrap">
-          <input type="number" id="cav-n" min="0" enterkeyhint="next" placeholder="0" inputmode="numeric" pattern="[0-9]*" oninput="validateProdField('cav-n')" onkeydown="var k=event.key;if(k==='Enter'&&this.value!==''){var btn=document.querySelector('.btn-submit');if(btn)btn.focus();}else if(!/^[0-9]$/.test(k)&&k!=='Backspace'&&k!=='Delete'&&k!=='ArrowLeft'&&k!=='ArrowRight'&&k!=='Tab'&&k!=='Enter'){event.preventDefault();}" onblur="validateProdField('cav-n');">
+          <input type="text" id="cav-n" enterkeyhint="next" placeholder="0" inputmode="numeric" pattern="[0-9]*" oninput="gpDigitsOnly(this);validateProdField('cav-n')" onkeydown="if(event.key==='Enter'&&this.value!==''){var btn=document.querySelector('.btn-submit');if(btn)btn.focus();}" onblur="validateProdField('cav-n');">
           <span class="field-icon hidden" id="icon-cav-n"></span>
         </div>
       </div>
@@ -3271,7 +3300,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     <div class="prod-type">Osobné poznámky</div>
     <div class="row">
       <div>
-        <div class="flbl">Poznámka</div>
+        <label class="flbl" for="poznamka">Poznámka</label>
         <textarea id="poznamka" placeholder="Napr. preferuje ráno, ohlásiť sa deň vopred, pekná ambulancia..." rows="3" style="width:100%;border-radius:9px;border:1.5px solid #E2E8F0;background:#fff;font-size:16px;font-family:inherit;color:#1A2A3A;padding:10px 13px;outline:none;resize:none;transition:border-color .18s,box-shadow .18s;box-shadow:inset 0 1px 3px rgba(0,0,0,.04)" onfocus="this.style.borderColor='#F59E0B';this.style.boxShadow='0 0 0 3px rgba(245,158,11,.11)'" onblur="this.style.borderColor='#E2E8F0';this.style.boxShadow='inset 0 1px 3px rgba(0,0,0,.04)'"></textarea>
       </div>
     </div>
@@ -3365,7 +3394,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
       </div>
       <div class="hist-search-wrap">
         <span class="hist-search-icon">🔍</span>
-        <input type="text" class="hist-search" id="hist-search" placeholder="Hľadať lekára alebo okres..." oninput="filterHistory()" autocomplete="off">
+        <input type="text" class="hist-search" id="hist-search" placeholder="Hľadať lekára alebo okres..." oninput="filterHistoryDebounced()" autocomplete="off">
       </div>
       <div class="hist-subtabs" id="hist-subtabs">
         <button type="button" class="hist-subtab active" data-hf="all" onclick="histSetFilter('all',this)">Všetko<span class="hist-subtab-count" id="hist-cnt-all"></span></button>
@@ -3703,15 +3732,40 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 </div>
 
 <script>
+// ── appNorm — JEDINÝ normalizátor textu pre všetko vyhľadávanie v appke ──
+// Malé písmená + odstránená diakritika (NFD rozloží znak na základ + dĺžeň/mäkčeň,
+// regex zahodí kombinačné značky). Vďaka tomu „safarik" nájde „Šafárik" a „zilina"
+// nájde „Žilina" — na mobilnej klávesnici skoro nikto diakritiku nepíše.
+// Predtým bola tá istá logika napísaná v súbore trikrát nezávisle od seba a hľadanie
+// lekárov, ktoré ju potrebuje najviac, nepoužívalo ani jednu z nich.
+function appNorm(s) {
+  s = String(s == null ? '' : s).toLowerCase();
+  try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (e) {}
+  return s;
+}
+
+// ── appEsc — JEDINÝ escaper textu vkladaného do HTML ──
+// Appka skladá HTML reťazcami na 260 miestach, takže escapovanie musí byť jedno
+// a to isté. Predtým existovalo šesť funkcií s rovnakým telom; dve z nich mali
+// odlišnú prácu s nulou, čo je presne dôvod, prečo sa aliasy nižšie správajú
+// naďalej po svojom a nie sú len prepísané na appEsc.
+function appEsc(x) {
+  return String(x == null ? '' : x)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 // ╔══════════════════════════════════════════════════════════════╗
 // ║  VERZIA APLIKÁCIE                                              ║
-// ║  Pri každom nasadení novej verzie zmeniť:                     ║
+// ║  Pri nasadení novej verzie zmeniť DVE miesta:                 ║
 // ║    1) toto číslo APP_VERSION                                   ║
-// ║    2) ver. X.Y · 2026 v login footeri                          ║
-// ║    3) version.json na GitHube → {"version":"X.Y"}              ║
-// ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
+// ║    2) version.json na GitHube → {"version":"X.Y.Z"}            ║
+// ║  Obe musia mať rovnakú hodnotu — podľa nich sa pozná, že je    ║
+// ║  k dispozícii aktualizácia.                                    ║
+// ║  Verzia v login pätičke sa dopĺňa sama z APP_VERSION, netreba  ║
+// ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
+// ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.76.1';
+var APP_VERSION = '2.77.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5410,6 +5464,28 @@ function gt(id){var e=document.getElementById(id);return e?(e.options?e.options[
 
 function cavAPV(d){return d===2?(4.67+((365-15)/45)*10.85)*0.7:(4.67+((365-10)/30)*10.85)*0.7;}
 
+// ── Segment lekára — JEDINÉ miesto, kde sú prahy ──
+// Prahy: ročný potenciál 3 700 EUR a kapitácia 1 501 / 2 000.
+// Predtým bol výpočet napísaný priamo v potvrdit(); tu je vytiahnutý, aby existoval
+// na jednom mieste a dal sa otestovať na hraniciach.
+//
+// ZÁMERNE sa NEPOUŽÍVA na priebežné zobrazenie počas vypĺňania formulára.
+// Keby reprezentant videl kategóriu skôr, než záznam odošle, mohol by čísla
+// prispôsobovať tak, aby lekár vyšiel do kategórie, ktorá mu vyhovuje. Výsledok
+// sa ukazuje až po odoslaní, v potvrdzovacom okne.
+function gpSegmentFor(kapitacia, total) {
+  var k = Number(kapitacia) || 0, t = Number(total) || 0;
+  if (k < 1501)  return t < 3700 ? 'vyradit' : 'frekvencia';
+  if (k <= 1999) return t < 3700 ? 'zvysit'  : 'udrzat';
+  return t < 3700 ? 'zvysit3' : 'top';
+}
+
+// Koľko EUR ročne chýba do hranice „navštevovať". 0 = hranica je dosiahnutá.
+function gpMissingToTarget(total) {
+  var d = 3700 - (Number(total) || 0);
+  return d > 0 ? d : 0;
+}
+
 function computeTotal(){
   var aflY = gn('afl1-n') * 4.10 * 12;
   var supY = gn('sup1-n') * 12.82 * 0.75 * 12;
@@ -5538,7 +5614,7 @@ function potvrdit(){
   var isYes = total >= 3700;
   var kapitacia = parseFloat(document.getElementById('kapitacia-n').value) || 0;
   // scenario: kapitacia < 1500 AND total < 3700 → red, vyradit
-  var scenario = (kapitacia < 1501 && total < 3700) ? 'vyradit' : (kapitacia < 1501 && total >= 3700) ? 'frekvencia' : (kapitacia >= 1501 && kapitacia <= 1999 && total < 3700) ? 'zvysit' : (kapitacia >= 1501 && kapitacia <= 1999 && total >= 3700) ? 'udrzat' : (kapitacia >= 2000 && total < 3700) ? 'zvysit3' : (kapitacia >= 2000 && total >= 3700) ? 'top' : 'ok';
+  var scenario = gpSegmentFor(kapitacia, total);   // prahy sú v gpSegmentFor, nie tu
 
   usageAction('Zalogoval návštevu', 'Hľadanie lekára');   // kľúčová akcia (whitelist)
   // show send popup + scroll to top
@@ -5923,7 +5999,10 @@ function getAllFields() {
     afl1: document.getElementById('afl1-n') ? document.getElementById('afl1-n').value : '',
     sup1: document.getElementById('sup1-n') ? document.getElementById('sup1-n').value : '',
     vid1: document.getElementById('vid1-n') ? document.getElementById('vid1-n').value : '',
-    cav1: document.getElementById('cav-n') ? document.getElementById('cav-n').value : ''
+    cav1: document.getElementById('cav-n') ? document.getElementById('cav-n').value : '',
+    // Poznámka tu chýbala — rozpracovaná poznámka sa do draftu nikdy neuložila
+    // a po obnove formulára bola preč, hoci všetko ostatné sa vrátilo.
+    poznamka: document.getElementById('poznamka') ? document.getElementById('poznamka').value : ''
   };
 }
 
@@ -5944,23 +6023,37 @@ function clearDraft() {
   try { localStorage.removeItem(SAVE_KEY); } catch(e) {}
 }
 
+// Nastav hodnotu poľa, ak pole existuje a hodnota nie je prázdna. Vracia true/false,
+// takže sa dá zistiť, či sa niečo naozaj obnovilo.
+function setFieldValue(id, value) {
+  if (value === undefined || value === null || value === '') return false;
+  var el = document.getElementById(id);
+  if (!el) return false;
+  el.value = value;
+  return true;
+}
+
 function restoreAccept() {
   document.getElementById('restore-overlay').className = 'restore-overlay';
   try {
     var saved = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}');
-    if(saved.lekar) document.getElementById('lekar').value = saved.lekar;
-    if(saved.mesto) document.getElementById('mesto').value = saved.mesto;
+    setFieldValue('lekar', saved.lekar);
+    setFieldValue('mesto', saved.mesto);
     if(saved.reprezentant) {
+      // Ten istý zvyšok po <select> ako v setRegion() — obnova draftu tu tichým
+      // TypeError prišla o všetky polia pod týmto riadkom (kapitácia, produkty, poznámka).
       var sel = document.getElementById('reprezentant');
-      for(var i=0; i<sel.options.length; i++) {
-        if(sel.options[i].value === saved.reprezentant) { sel.selectedIndex = i; break; }
-      }
+      if (sel) sel.value = saved.reprezentant;
     }
-    if(saved.kapitacia) document.getElementById('kapitacia-n').value = saved.kapitacia;
-    if(saved.afl1) document.getElementById('afl1-n').value = saved.afl1;
-    if(saved.sup1) document.getElementById('sup1-n').value = saved.sup1;
-    if(saved.vid1) document.getElementById('vid1-n').value = saved.vid1;
-    if(saved.cav1) document.getElementById('cav-n').value = saved.cav1;
+    // Cez pomocník, nie priamo: celý tento blok je v try{}catch(e){}, takže jediné
+    // chýbajúce pole by tichou výnimkou zahodilo všetko pod sebou. Presne to sa tu už
+    // raz stalo — obnova vracala len meno lekára a okres, čísla mizli bez hlásenia.
+    setFieldValue('kapitacia-n', saved.kapitacia);
+    setFieldValue('afl1-n',      saved.afl1);
+    setFieldValue('sup1-n',      saved.sup1);
+    setFieldValue('vid1-n',      saved.vid1);
+    setFieldValue('cav-n',       saved.cav1);
+    setFieldValue('poznamka',    saved.poznamka);
     restoreIcons();
   } catch(e) {}
 }
@@ -5984,7 +6077,9 @@ function initAutosave() {
   } catch(e) {}
 
   // Attach save listeners to all inputs
-  var ids = ['lekar','mesto','kapitacia-n','afl1-n','sup1-n','vid1-n','cav-n'];
+  // 'poznamka' je v zozname zámerne — draft ju musí ukladať. V initProgress() naopak
+  // nie je, lebo poznámka je nepovinná a nemá ovplyvňovať vyplnenosť formulára.
+  var ids = ['lekar','mesto','kapitacia-n','afl1-n','sup1-n','vid1-n','cav-n','poznamka'];
   ids.forEach(function(id) {
     var el = document.getElementById(id);
     if(el) {
@@ -6141,7 +6236,7 @@ function acInput(el) {
       return;
     }
   }
-  var val = el.value.trim().toLowerCase();
+  var val = appNorm(el.value).trim();
   var list = document.getElementById('ac-list');
   acIdx = -1;
 
@@ -6149,54 +6244,78 @@ function acInput(el) {
   var selectedReg = rep ? rep.value : '';
   var pool = (selectedReg && REGION_OKRESY[selectedReg]) ? REGION_OKRESY[selectedReg] : OKRESY;
 
-  // Empty - show all from pool
-  if(!val) {
-    list.innerHTML = pool.map(function(m) {
-      return '<div class="ac-item" onclick="acSelect(\'' + m.replace(/'/g,"\\'") + '\')">' + m + '</div>';
-    }).join('');
+  // Jeden riadok ponuky. `at` = pozícia zhody v názve (-1 = bez zvýraznenia).
+  // Indexy z appNorm sedia na pôvodný reťazec znak po znaku: NFD rozloží písmeno na
+  // základ + kombinačnú značku a regex zahodí len tú značku, takže „Žilina" → „zilina"
+  // má rovnakú dĺžku aj rovnaké pozície. Preto sa dá zvýrazniť priamo v origináli.
+  function acRow(name, at, len) {
+    var label = (at >= 0 && len > 0)
+      ? appEsc(name.slice(0, at)) + '<strong>' + appEsc(name.slice(at, at + len)) + '</strong>' + appEsc(name.slice(at + len))
+      : appEsc(name);
+    // Názov ide do data-atribútu, nie do skladaného JS reťazca v onclick. Apostrof
+    // v názve okresu by ten reťazec rozbil a úvodzovka by rozbila celý atribút;
+    // takto je to jedno, čo do zoznamu OKRESY raz niekto doplní. Kliknutie rieši
+    // jeden poslucháč na zozname (acListClick).
+    return '<div class="ac-item" data-okres="' + appEsc(name) + '">' + label + '</div>';
+  }
+  function acRenderAll() {
+    list.innerHTML = pool.map(function(m) { return acRow(m, -1, 0); }).join('');
+    list.style.display = 'block';
+  }
+
+  // Prázdne pole — ukáž celý zoznam okresov (pool podľa zvoleného regiónu).
+  if (!val) {
+    acRenderAll();
+    setIcon('mesto', 'none');
+    return;
+  }
+
+  // Zhoda kdekoľvek v názve, nielen na začiatku: „zamky" musí nájsť „Nové Zámky".
+  // Okresy, ktoré začínajú napísaným textom, idú prvé — to je to, čo človek čaká.
+  var matches = [];
+  pool.forEach(function(o) {
+    var at = appNorm(o).indexOf(val);
+    if (at !== -1) matches.push({ name: o, at: at });
+  });
+
+  // Bez zhody v regióne skús celé Slovensko. Pool je totiž zúžený na región, ktorý sa
+  // doplnil pri predošlom okrese — takže po výbere Žiliny (TN) by sa Košice nenašli
+  // a používateľ by dostal „skontroluj preklep" pri okrese, ktorý existuje. Ponúkni ho
+  // s poznámkou; výberom sa región prepíše na správny (acSelect volá setRegion).
+  var outsideRegion = false;
+  if (!matches.length && pool !== OKRESY) {
+    OKRESY.forEach(function(o) {
+      var at = appNorm(o).indexOf(val);
+      if (at !== -1) matches.push({ name: o, at: at });
+    });
+    outsideRegion = matches.length > 0;
+  }
+
+  // Vstup sa NIKDY nemaže. Predtým tu bolo el.value.slice(0, -1), takže appka ticho
+  // zmazala práve napísaný znak a používateľ videl, ako mu písmená mizmú pod prstami.
+  if (!matches.length) {
+    list.innerHTML = '<div class="ac-empty">Žiadny okres nezodpovedá — skontroluj preklep</div>';
     list.style.display = 'block';
     setIcon('mesto', 'none');
     return;
   }
 
-  // Only show items that START with typed text
-  var matches = pool.filter(function(o) {
-    return o.toLowerCase().indexOf(val) === 0;
+  matches.sort(function(a, b) {
+    if (a.at !== b.at) return a.at - b.at;              // zhoda na začiatku má prednosť
+    return a.name.length - b.name.length;               // potom kratší názov
   });
 
-  if(!matches.length) {
-    // Invalid char - remove it and recheck
-    el.value = el.value.slice(0, -1);
-    var val2 = el.value.trim().toLowerCase();
-    if(!val2) {
-      list.innerHTML = pool.map(function(m) {
-        return '<div class="ac-item" onclick="acSelect(\'' + m.replace(/'/g,"\\'") + '\')">' + m + '</div>';
-      }).join('');
-      list.style.display = 'block';
-    } else {
-      var matches2 = pool.filter(function(o){ return o.toLowerCase().indexOf(val2) === 0; });
-      list.innerHTML = matches2.map(function(m) {
-        var bold = '<strong>' + m.slice(0, val2.length) + '</strong>' + m.slice(val2.length);
-        return '<div class="ac-item" onclick="acSelect(\'' + m.replace(/'/g,"\\'") + '\')">' + bold + '</div>';
-      }).join('');
-      list.style.display = matches2.length ? 'block' : 'none';
-    }
-    return;
-  }
+  // Ikona „v poriadku" len pri presnej zhode s okresom (po odstránení diakritiky).
+  setIcon('mesto', pool.some(function(o){ return appNorm(o) === val; }) ? 'ok' : 'none');
 
-  // Sort by length, show all matches up to 5
-  matches.sort(function(a, b){ return a.length - b.length; });
-  var display = matches;
-
-  var exactMatch = pool.some(function(o){ return o.toLowerCase() === val; });
-  setIcon('mesto', exactMatch ? 'ok' : 'none');
-
-  list.innerHTML = display.map(function(m) {
-    var bold = '<strong>' + m.slice(0, val.length) + '</strong>' + m.slice(val.length);
-    return '<div class="ac-item" onclick="acSelect(\'' + m.replace(/'/g,"\\'") + '\')">' + bold + '</div>';
-  }).join('');
+  var head = outsideRegion
+    ? '<div class="ac-note">Mimo zvoleného regiónu — výberom sa región zmení</div>'
+    : '';
+  list.innerHTML = head + matches.map(function(m) { return acRow(m.name, m.at, val.length); }).join('');
   list.style.display = 'block';
 }
+
+
 
 function acSelect(val) {
   haptic('selection');
@@ -6218,6 +6337,42 @@ function acSelect(val) {
   }, 200);
 }
 
+// Opustenie poľa Okres. Ak napísaný text zodpovedá práve jednému okresu aj po
+// odstránení diakritiky, doplň kanonický zápis za používateľa („zilina" → „Žilina").
+// Predtým sa taký zápis označil za chybu, hoci bol jednoznačný.
+function acBlur() {
+  var list = document.getElementById('ac-list');
+  if (list) list.style.display = 'none';
+  var el = document.getElementById('mesto');
+  if (!el) return;
+  var raw = el.value.trim();
+  if (!raw) { setIcon('mesto', 'none'); updateProgress(); return; }
+
+  var v = appNorm(raw);
+  var hits = OKRESY.filter(function(o) { return appNorm(o) === v; });
+  if (hits.length === 1) {
+    if (el.value !== hits[0]) {
+      el.value = hits[0];
+      var reg = getRegionForOkres(hits[0]);
+      if (reg) setRegion(reg);
+    }
+    setIcon('mesto', 'ok');
+  } else {
+    setIcon('mesto', 'err');
+  }
+  updateProgress();
+}
+
+// Jeden poslucháč pre celú ponuku — namiesto onclick na každom riadku.
+(function () {
+  var list = document.getElementById('ac-list');
+  if (!list) return;
+  list.addEventListener('click', function (ev) {
+    var row = ev.target.closest ? ev.target.closest('.ac-item') : null;
+    if (row && row.getAttribute('data-okres')) acSelect(row.getAttribute('data-okres'));
+  });
+})();
+
 function acKey(e) {
   var list = document.getElementById('ac-list');
   var items = list.querySelectorAll('.ac-item');
@@ -6231,7 +6386,7 @@ function acKey(e) {
     items.forEach(function(i,n){ i.classList.toggle('active', n===acIdx); });
     e.preventDefault();
   } else if(e.key === 'Enter' && acIdx >= 0) {
-    acSelect(items[acIdx].textContent);
+    acSelect(items[acIdx].getAttribute('data-okres') || items[acIdx].textContent);
     e.preventDefault();
   } else if(e.key === 'Escape') {
     list.style.display = 'none';
@@ -6369,7 +6524,79 @@ function updateProgress() {
     else fill.classList.remove('complete');
   }
   if(pctEl) pctEl.textContent = pct + '%';
+
+  try { gpMissingRender(); } catch(e) {}
 }
+
+// Nechaj používateľa písať a hodnotu vyčisti až potom. Predtým každé číselné pole
+// blokovalo klávesy cez onkeydown preventDefault — to nechytí vloženie zo schránky
+// ani hlasový vstup, a naopak blokovalo Ctrl+V, Home, End aj niektoré klávesnice.
+function gpDigitsOnly(el) {
+  if (!el) return;
+  var clean = String(el.value || '').replace(/\D/g, '');
+  if (clean !== el.value) {
+    var atEnd = el.selectionStart === el.value.length;
+    el.value = clean;
+    if (!atEnd) { try { el.setSelectionRange(clean.length, clean.length); } catch (e) {} }
+  }
+}
+
+// ── ČO EŠTE CHÝBA ──
+// Percento „Vyplnenosť formulára 43 %" nikomu nepovie, čo má spraviť. Namiesto neho
+// zoznam konkrétnych chýbajúcich polí; ťuknutie na položku na pole skočí a zaostrí ho.
+// Predtým sa reprezentant dozvedel, čo chýba, až po ťuknutí na Potvrdiť — a appka ho
+// pri tom odscrollovala inam a vypísala vetu.
+function gpMissingFields() {
+  var out = [];
+
+  var lekar = ((document.getElementById('lekar') || {}).value || '').trim();
+  var TITLES = ['mudr.','mddr.','rndr.','phdr.','judr.','ing.','mgr.','doc.','prof.','bc.','mvdr.','paeddr.'];
+  var real = lekar.split(' ').filter(function (w) {
+    return w.length > 0 && TITLES.indexOf(w.toLowerCase()) === -1;
+  });
+  if (real.length < 2) out.push({ id: 'lekar', label: 'meno lekára' });
+
+  var mestoIcon = document.getElementById('icon-mesto');
+  if (!(mestoIcon && mestoIcon.classList.contains('ok'))) out.push({ id: 'mesto', label: 'okres' });
+
+  var kap = document.getElementById('kapitacia-n');
+  if (!kap || kap.value === '') out.push({ id: 'kapitacia-n', label: 'kapitácia' });
+
+  var anyProd = ['afl1-n', 'sup1-n', 'vid1-n', 'cav-n'].some(function (id) {
+    var e = document.getElementById(id);
+    return e && e.value !== '';
+  });
+  if (!anyProd) out.push({ id: 'afl1-n', label: 'aspoň jeden produkt' });
+
+  return out;
+}
+
+function gpMissingRender() {
+  var box = document.getElementById('progress-missing');
+  var lbl = document.getElementById('progress-label');
+  if (!box) return;
+
+  var missing = gpMissingFields();
+  if (!missing.length) {
+    box.innerHTML = '<span class="pm-done">✓ Všetko vyplnené — môžeš odoslať</span>';
+    if (lbl) lbl.textContent = 'Formulár je kompletný';
+    return;
+  }
+  if (lbl) lbl.textContent = missing.length === 1 ? 'Chýba ešte jedna vec' : 'Ešte chýba';
+  box.innerHTML = missing.map(function (m) {
+    return '<button type="button" class="pm-chip" data-goto="' + appEsc(m.id) + '">' + appEsc(m.label) + '</button>';
+  }).join('');
+}
+
+// Jeden poslucháč pre celý riadok — ťuknutie skočí na pole a zaostrí ho.
+document.addEventListener('click', function (ev) {
+  var chip = ev.target && ev.target.closest ? ev.target.closest('.pm-chip') : null;
+  if (!chip) return;
+  var el = document.getElementById(chip.getAttribute('data-goto'));
+  if (!el) return;
+  try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { }
+  setTimeout(function () { try { el.focus(); } catch (e) { } }, 260);
+});
 
 
 // ── progress bar sticky ──
@@ -6832,11 +7059,51 @@ function buildHistItemHtml(item) {
   '</div>';
 }
 
+// Prázdny výsledok hľadania — s ponukou založiť lekára pod napísaným menom.
+function gpNoSearchResultHtml(q) {
+  var looksLikeName = q.replace(/[^\p{L}\s.]/gu, '').trim().split(/\s+/).filter(function (w) {
+    return w.length > 1;
+  }).length >= 1;
+  return '<div class="empty-state">' +
+    '<div class="empty-state-title">Nenašiel sa nikto</div>' +
+    '<div class="empty-state-sub">Pre „' + appEsc(q) + '" nemáš zatiaľ žiadny záznam.</div>' +
+    (looksLikeName
+      ? '<button type="button" class="gp-empty-cta" data-newdoc="' + appEsc(q) + '">' +
+          '+ Zaznamenať ' + appEsc(q) +
+        '</button>'
+      : '') +
+  '</div>';
+}
+
+// Ťuknutie na ponuku: zatvor zoznam, otvor formulár a predvyplň meno.
+document.addEventListener('click', function (ev) {
+  var btn = ev.target && ev.target.closest ? ev.target.closest('[data-newdoc]') : null;
+  if (!btn) return;
+  var name = btn.getAttribute('data-newdoc') || '';
+  try { if (typeof repNavToForm === 'function') repNavToForm(); } catch (e) {}
+  setTimeout(function () {
+    var el = document.getElementById('lekar');
+    if (!el) return;
+    el.value = /^(mudr|mddr|doc|prof)\./i.test(name) ? name : 'MUDr. ' + name;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    try { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } catch (e) {}
+    try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+  }, 260);
+});
+
 function renderHistItems(items) {
   var body = document.getElementById('hist-body');
   if(!body) return;
   _histDetailItems = [];
   if(!items.length) {
+    // Ak sa nič nenašlo preto, že sa hľadalo, prázdny stav neponúka koniec, ale
+    // ďalší krok: založiť lekára s už napísaným menom. Prázdna obrazovka je jediné
+    // miesto, kde má používateľ plnú pozornosť — má tam byť akcia, nie mlčanie.
+    var q = (((document.getElementById('hist-search') || {}).value) || '').trim();
+    if (q) {
+      body.innerHTML = gpNoSearchResultHtml(q);
+      return;
+    }
     if (typeof _histFilter !== 'undefined' && _histFilter === 'tuyory')
       body.innerHTML = mkEmpty('clipboard', 'Žiadne Tuyory záznamy', 'Zatiaľ si nevyplnil žiadny Tuyory formulár.');
     else if (typeof _histFilter !== 'undefined' && _histFilter === 'apixaban')
@@ -6973,16 +7240,20 @@ function histRender(){
   var _histNoOpp = (_histFilter === 'tuyory' || _histFilter === 'apixaban');
   if(oppBar) oppBar.style.display = _histNoOpp ? 'none' : 'flex';
   if(!_histNoOpp) scoped = histOppFilterItems(scoped);
-  var q = (((document.getElementById('hist-search') || {}).value) || '').trim().toLowerCase();
+  // Hľadanie ignoruje diakritiku aj veľkosť písmen — na mobilnej klávesnici skoro nikto
+  // diakritiku nepíše, takže „safarik" musí nájsť „MUDr. Šafárik". appNorm() je zdieľaný
+  // normalizátor (odstráni diakritiku cez NFD) — ten istý, ktorý používajú Lekárne a hľadanie.
+  var q = appNorm((((document.getElementById('hist-search') || {}).value) || '')).trim();
   if (q){
     scoped = scoped.filter(function(item){
-      var n = String(item.lekar || item.meno || '').toLowerCase();
-      var o = String(item.okres || '').toLowerCase();
-      return n.indexOf(q) !== -1 || o.indexOf(q) !== -1;
+      var n = appNorm(item.lekar || item.meno || '');
+      var o = appNorm(item.okres || '');
+      var pz = appNorm(item.poznamka || '');
+      return n.indexOf(q) !== -1 || o.indexOf(q) !== -1 || pz.indexOf(q) !== -1;
     });
     scoped.sort(function(a, b){
-      var as = String(a.lekar || a.meno || '').toLowerCase().indexOf(q) === 0 ? 0 : 1;
-      var bs = String(b.lekar || b.meno || '').toLowerCase().indexOf(q) === 0 ? 0 : 1;
+      var as = appNorm(a.lekar || a.meno || '').indexOf(q) === 0 ? 0 : 1;
+      var bs = appNorm(b.lekar || b.meno || '').indexOf(q) === 0 ? 0 : 1;
       return as - bs;
     });
   }
@@ -6998,6 +7269,15 @@ function histRender(){
   }
 }
 function filterHistory(){ histRender(); }
+// Každé stlačenie klávesu spúšťalo celé histRender() — filtrovanie, zoradenie celého
+// poľa a jeden veľký innerHTML nad celým zoznamom. Reprezentant so 400 lekármi tak
+// prekresľoval 400 kariet na každé písmeno. 120 ms po poslednom klávese stačí a je
+// pod hranicou, ktorú človek vníma ako oneskorenie.
+var _histSearchTimer = null;
+function filterHistoryDebounced(){
+  clearTimeout(_histSearchTimer);
+  _histSearchTimer = setTimeout(filterHistory, 120);
+}
 
 var _panelCurrent = null;
 var _panelStack = []; // navigačný stack — pamätá odkiaľ sme prišli (pre Android back button)
@@ -7201,8 +7481,10 @@ function closeHistory() {
 // NASTAVENIA — jednotná obrazovka pre rep / manažéra / admina (GP aj Gyn)
 // ═══════════════════════════════════════════════════════════════════
 function settingsEsc(x){
+  // Pozor: delegovalo na gynEsc, ktorý má inú prácu s nulou — ponechané, nech sa
+  // nezmení, čo sa v nastaveniach vykreslí pre hodnotu 0.
   if(typeof gynEsc === 'function') return gynEsc(x);
-  return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return appEsc(x);
 }
 // Rola → čitateľný label (zjednotené pre obe línie)
 function settingsRoleLabel(s){
@@ -8338,6 +8620,17 @@ var _currentDetailIdx = -1;
 var _currentDetailItem = null;      // referencia na aktuálne otvorený záznam (rep aj admin)
 var _currentDetailReopenFn = null;  // funkcia na znovuotvorenie detailu po edit
 
+// Nájdi položku v aktuálne vykreslenom zozname podľa čísla riadku v hárku.
+// Index sa po prekreslení posúva (mení sa filter aj zoradenie), číslo riadku nie.
+function gpDetailIdxByRow(row) {
+  if (row === undefined || row === null || row === '') return -1;
+  for (var i = 0; i < _histDetailItems.length; i++) {
+    var it = _histDetailItems[i];
+    if (it && String(it.row) === String(row)) return i;
+  }
+  return -1;
+}
+
 function openDetail(idx) {
   var item = _histDetailItems[idx];
   if(!item) return;
@@ -8346,7 +8639,17 @@ function openDetail(idx) {
   if(item.type === 'lonelix-new'){ lonelixDoctorDetail(item.lon, { canAddGp: true }); return; }
   _currentDetailIdx = idx;
   _currentDetailItem = item;
-  _currentDetailReopenFn = function() { openDetail(idx); };
+  // Znovuotvorenie po úprave hľadá záznam podľa čísla riadku, nie podľa indexu.
+  // saveEditRecord() totiž najprv zavolá histRender(), ktorý _histDetailItems
+  // postaví nanovo — s aktuálnym filtrom aj zoradením. Zapamätaný index tak mohol
+  // ukazovať na iného lekára, a po uložení úpravy sa otvoril nesprávny detail.
+  // Ak záznam po úprave do aktívneho filtra už nespadá, detail sa neotvorí.
+  _currentDetailReopenFn = (function (rowKey) {
+    return function () {
+      var i = gpDetailIdxByRow(rowKey);
+      if (i >= 0) openDetail(i);
+    };
+  })(item.row);
   // Schovaj manažérsky produktový panel
   var prodPanel = document.getElementById('mgr-detail-prod-panel');
   if(prodPanel){ prodPanel.style.display = 'none'; prodPanel.innerHTML = ''; }
@@ -8737,33 +9040,28 @@ function getOkresyForRegion(reg) {
   return REGION_OKRESY[reg] || null;
 }
 
+// #reprezentant (región) bolo kedysi <select>, dnes je to <input type="hidden">.
+// Táto funkcia na ňom stále čítala sel.options.length — na skrytom inpute je options
+// undefined, takže KAŽDÉ volanie skončilo TypeError. Volá sa z acSelect(), teda pri
+// každom výbere okresu z ponuky: okres sa vyplnil, ale výnimka zhodila zvyšok
+// acSelect() — neaktualizoval sa progress bar a nepreskočil sa kurzor na Kapitáciu.
+// Chyba bola tichá, lebo vzniká vnútri onclick obsluhy.
 function setRegion(val) {
-  var sel = document.getElementById('reprezentant');
-  if(!sel) return;
-  for(var i=0; i<sel.options.length; i++) {
-    if(sel.options[i].value === val) {
-      sel.selectedIndex = i;
-      setIcon('reprezentant','ok');
-      updateProgress();
-      break;
-    }
-  }
+  var el = document.getElementById('reprezentant');
+  if (!el || !val) return;
+  el.value = val;
+  setIcon('reprezentant', 'ok');
+  updateProgress();
 }
 
 
+// Zaostrenie poľa Okres. Zámerne len presmerovanie na acInput — bola tu druhá,
+// staršia kópia tej istej logiky: zhoda len od začiatku názvu, bez ohľadu na
+// diakritiku a s escapovaním apostrofu, ktoré nič nerobilo — replace(/'/g, "\'")
+// nahrádza apostrof apostrofom. Dve kópie znamenali, že oprava v jednej sa
+// v druhej neprejavila, čo je presne to, čomu sa vyhýbame.
 function acShowAll(el) {
-  var rep = document.getElementById('reprezentant');
-  var selectedReg = rep ? rep.value : '';
-  var pool = (selectedReg && REGION_OKRESY[selectedReg]) ? REGION_OKRESY[selectedReg] : OKRESY;
-  var list = document.getElementById('ac-list');
-  var val = el.value.trim().toLowerCase();
-  var items = val ? pool.filter(function(o){ return o.toLowerCase().indexOf(val)===0; }) : pool;
-  if(!items.length) { list.style.display='none'; return; }
-  list.innerHTML = items.map(function(m) {
-    var display = val ? '<strong>' + m.slice(0, val.length) + '</strong>' + m.slice(val.length) : m;
-    return '<div class="ac-item" onclick="acSelect(\'' + m.replace(/'/g,"\'") + '\')">' + display + '</div>';
-  }).join('');
-  list.style.display = 'block';
+  acInput(el);
 }
 
 
@@ -11174,7 +11472,7 @@ function gynDistrictLookupKey(okres) {
   var s = String(okres || '').trim();
   if(!s) return '';
   if(typeof normalizeOkresInput === 'function') s = normalizeOkresInput(s);
-  return s.normalize ? s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() : s.toLowerCase();
+  return appNorm(s);
 }
 
 function gynDistrictActualForKeys(data, login, productKeys, okres) {
@@ -11418,7 +11716,9 @@ function gynPreprocessData(data) {
 }
 
 function gynEsc(s) {
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  // POZOR na String(s||''): číslo 0 sa zámerne vykreslí ako prázdny reťazec.
+  // Preto to NIE JE len appEsc(s) — zmena by potichu zmenila vykreslené hodnoty.
+  return s ? appEsc(s) : '';
 }
 function gynFmtPct(pct) {
   if(pct === null || pct === undefined) return '—';
@@ -17528,7 +17828,8 @@ function mgrActClass(visits){
   if(days < 10) return 'warn';
   return 'stale';
 }
-function mgrEscape(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// Rovnaká výhrada ako pri gynEsc — 0 ostáva prázdna.
+function mgrEscape(s){ return s ? appEsc(s) : ''; }
 
 // ── Produktový panel pre kartu lekára (manažér) ──
 function mgrNum(n){
@@ -18206,7 +18507,7 @@ function mgrRenderVisits(){
   var isSurvey = (filter === 'tuyory' || filter === 'apixaban');   // prieskumové taby — bez GP údajov
   var det = document.getElementById('mgr-detail');
   if (det) det.classList.toggle('mgr-detail-tuyonly', isSurvey);
-  var q = (document.getElementById('mgr-vsearch').value || '').toLowerCase().trim();
+  var q = appNorm(document.getElementById('mgr-vsearch').value || '').trim();   // bez diakritiky — rovnako ako rep hľadanie
 
   // Aktualizuj počet v podnadpise podľa aktívneho filtra
   var dsub = document.getElementById('mgr-dsub');
@@ -18220,13 +18521,13 @@ function mgrRenderVisits(){
   }
 
   var gpFiltered = isSurvey ? [] : (q ? visits.filter(function(v){
-    return String(v.lekar||'').toLowerCase().indexOf(q) !== -1 || String(v.okres||'').toLowerCase().indexOf(q) !== -1;
+    return appNorm(v.lekar).indexOf(q) !== -1 || appNorm(v.okres).indexOf(q) !== -1;
   }) : visits);
   var tuyFiltered = (filter !== 'tuyory') ? [] : (q ? tuyRecs.filter(function(r){
-    return String(r.meno||'').toLowerCase().indexOf(q) !== -1 || String(r.okres||'').toLowerCase().indexOf(q) !== -1;
+    return appNorm(r.meno).indexOf(q) !== -1 || appNorm(r.okres).indexOf(q) !== -1;
   }) : tuyRecs);
   var apixFiltered = (filter !== 'apixaban') ? [] : (q ? apixRecs.filter(function(r){
-    return String(r.meno||'').toLowerCase().indexOf(q) !== -1 || String(r.okres||'').toLowerCase().indexOf(q) !== -1;
+    return appNorm(r.meno).indexOf(q) !== -1 || appNorm(r.okres).indexOf(q) !== -1;
   }) : apixRecs);
 
   // Lonelix-only lekári (majú Lonelix, ale ešte nie sú v GP databáze repa) → karty „GP potenciál nezistený"
@@ -18238,7 +18539,7 @@ function mgrRenderVisits(){
     var key = String(r.meno||'').trim().toLowerCase() + '|' + String(r.okres||'').trim().toLowerCase();
     if (_gpKeys[key] || _lonSeen[key]) return false;
     _lonSeen[key] = 1;
-    if (q && String(r.meno||'').toLowerCase().indexOf(q) === -1 && String(r.okres||'').toLowerCase().indexOf(q) === -1) return false;
+    if (q && appNorm(r.meno).indexOf(q) === -1 && appNorm(r.okres).indexOf(q) === -1) return false;
     return true;
   });
   // Príležitostný filter (len GP kontext; na Tuyory/Apixaban tabe chips skry)
@@ -20715,10 +21016,13 @@ function loadInitData(username, _attempt) {
       try { bootLoaderDone(); } catch(e){}
     })
     .catch(function() {
-      var delays = [3000, 8000];
+      // Exponenciálne odstupy s náhodným rozptylom. Pevné hodnoty spôsobili, že po
+      // výpadku backendu sa naň všetci prihlásení vrhli v tú istú sekundu a výpadok
+      // tým predĺžili. Rozptyl 0,5x–1,5x ich rozloží v čase.
+      var delays = [3000, 9000, 27000];
       if(_attempt < delays.length) {
-        // Retry s oneskorením
-        setTimeout(function() { loadInitData(username, _attempt + 1); }, delays[_attempt]);
+        var wait = Math.round(delays[_attempt] * (0.5 + Math.random()));
+        setTimeout(function() { loadInitData(username, _attempt + 1); }, wait);
       } else {
         // Po 3 pokusoch — fallback na pôvodné funkcie
         loadRepList();
@@ -21085,6 +21389,13 @@ function startNotifPolling() {
   if (IS_DEV) return;
   stopNotifPolling();
   NOTIF_POLL_INTERVAL = setInterval(function() {
+    // Na pozadí sa nepolluje. Predtým tu kontrola viditeľnosti chýbala (na rozdiel od
+    // kalendárového gynCalLivePollStart, ktorý ju má), takže appka nechaná otvorená
+    // v pozadí volala backend celý deň — pri dvoch typoch a 60 s intervale okolo
+    // 960 volaní Apps Scriptu na jedného človeka za smenu, len aby sa zistilo, či sa
+    // zmenili dva dátumy, ktoré sa menia raz denne. Návrat do popredia kontrolu spustí
+    // sám (visibilitychange nižšie), takže sa nič nestratí.
+    if (document.visibilityState !== 'visible') return;
     NOTIF_TYPES.forEach(function(n) {
       var lsKey = notifSeenKey(n.key);
       fetch(notifUrl('action=getConfig&key=' + encodeURIComponent('notif_' + n.key)))
@@ -21097,7 +21408,7 @@ function startNotifPolling() {
         })
         .catch(function(){});
     });
-  }, 60000); // každých 60 sekúnd
+  }, 300000); // každých 5 minút v popredí; zmena dát je denná udalosť, nie sekundová
 }
 
 function stopNotifPolling() {
@@ -32120,8 +32431,18 @@ function downloadAllReportsPdf() {
     return;
   }
 
+  // Knižnica sa už nenačítava pri štarte appky — dotiahni ju teraz a pokračuj až potom.
+  // Pri opakovanom volaní je už v pamäti, takže druhýkrát je to okamžité.
   if (typeof html2pdf === 'undefined') {
-    alert('Knižnica html2pdf sa nepodarila načítať. Skontroluj pripojenie a skús znova.');
+    rptEnsureHtml2pdf(function(ok){
+      if (!ok) {
+        // Chyba hovorí, čo sa stalo a čo s tým. Používateľ nevie, čo je html2pdf,
+        // a ani vedieť nemá — pôvodná hláška menovala knižnicu.
+        showSwToast('PDF sa nepodarilo pripraviť. Skontroluj pripojenie a skús znova.', 4500);
+        return;
+      }
+      downloadAllReportsPdf();   // knižnica je načítaná, prejdi znova od začiatku
+    });
     return;
   }
   var overlay = document.getElementById('rpt-progress-overlay');
@@ -32269,11 +32590,8 @@ var LK_REAGILA_PRODS = ['reagila','cavinton','boxarid','fingolimod','dmf','yaxwe
 function lkIsReagila(){ try { return document.body.classList.contains('reagila-line'); } catch(e){ return false; } }
 
 // Normalizácia pre vyhľadávanie — malé písmená + bez diakritiky (dunajska == Dunajská)
-function lkNorm(s) {
-  s = String(s == null ? '' : s).toLowerCase();
-  try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch(e) {}
-  return s;
-}
+// Ponechané ako alias — volá sa zo 7 miest v module Lekárne a z globálneho hľadania.
+function lkNorm(s) { return appNorm(s); }
 
 // Aktuálny mesiac pre "spiace" detekciu
 function lkCurrentYearMonth() {
@@ -32339,12 +32657,14 @@ function lkDobropisLabel(meta) {
 }
 
 function lkChainNameFlags(lekaren) {
-  var s = String(lekaren || '').toLowerCase();
-  try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch(e) {}
-  var compact = s.replace(/[^a-z0-9]/g, '');
+  // Pozor na rozdiel, ktorý tu bol od začiatku a musí ostať: „drmax" sa hľadá v zhustenom
+  // reťazci (bez medzier a interpunkcie, aby sadlo aj „Dr. Max"), „benu" v normalizovanom
+  // reťazci s medzerami. Zjednotenie na jeden z nich by zmenilo, ktoré lekárne sa skryjú.
+  var norm = appNorm(lekaren);
+  var compact = norm.replace(/[^a-z0-9]/g, '');
   return {
     drMax: compact.indexOf('drmax') !== -1,
-    benu: s.indexOf('benu') !== -1
+    benu: norm.indexOf('benu') !== -1
   };
 }
 
@@ -35421,7 +35741,7 @@ var NST_PRODUCTS = {
   reagila: ['Reagila', 'Cavinton', 'Boxarid', 'Fingolimod', 'DMF', 'Yaxwer', 'Pazopanib', 'Lunaldin']
 };
 
-function nstEsc(x){ return String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function nstEsc(x){ return appEsc(x); }
 function nstSession(){ try { return getSession(); } catch(e){ return null; } }
 function nstUser(){ var s = nstSession(); return (s && s.username) ? String(s.username).trim().toLowerCase() : ''; }
 function nstLine(){ var s = nstSession(); var l = String((s && s.line) || 'gp').toLowerCase(); return (l === 'gyn' || l === 'reagila') ? l : 'gp'; }
@@ -37854,7 +38174,7 @@ function lonelixOpenGpForm(r){
    ═══════════════════════════════════════════════════════════════════════════ */
 var GS = { items:[], flat:[], cur:0, _combos:[] };
 
-function gsEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function gsEsc(s){ return appEsc(s); }
 function gsNorm(s){ try { return lkNorm(s); } catch(e){ return String(s==null?'':s).toLowerCase(); } }
 function gsSession(){ try { return getSession(); } catch(e){ return null; } }
 /* Zapnuté/vypnuté globálne vyhľadávanie — preferencia sa ukladá do Sheetu
@@ -39694,7 +40014,32 @@ try { gsLpInit(); } catch(e){}
   <div id="rpt-progress-count" style="font-size:11px;color:#64748B;margin-top:8px"></div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+// html2pdf (jsPDF + html2canvas, stovky kB) sa NEnačítava pri štarte. Používa ho jediné
+// miesto — generovanie reportov u manažéra — a väčšina používateľov ho nespustí nikdy.
+// rptEnsureHtml2pdf(cb) ho dotiahne až vo chvíli, keď je naozaj treba.
+var _h2pState = 0;              // 0 = nenačítané, 1 = načítava sa, 2 = hotové
+var _h2pWaiting = [];
+function rptEnsureHtml2pdf(cb) {
+  if (typeof html2pdf !== 'undefined') { cb(true); return; }
+  // Stav 2 = skript sa už raz načítal, a html2pdf aj tak nie je k dispozícii (CDN vrátilo
+  // niečo iné, firemný proxy prepísal odpoveď…). Bez tejto vetvy by volajúci, ktorý po
+  // úspešnom onload zavolá sám seba znova, pridával ďalší <script> donekonečna.
+  if (_h2pState === 2) { cb(false); return; }
+  _h2pWaiting.push(cb);
+  if (_h2pState === 1) return;
+  _h2pState = 1;
+  var sc = document.createElement('script');
+  sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+  function flush(ok) {
+    var w = _h2pWaiting; _h2pWaiting = [];
+    w.forEach(function(f){ try { f(ok); } catch(e) {} });
+  }
+  sc.onload  = function(){ _h2pState = 2; flush(typeof html2pdf !== 'undefined'); };
+  sc.onerror = function(){ _h2pState = 0; flush(false); };
+  document.head.appendChild(sc);
+}
+</script>
 
 <div id="gyn-view"></div>
 
