@@ -8446,6 +8446,17 @@ var _currentDetailIdx = -1;
 var _currentDetailItem = null;      // referencia na aktuálne otvorený záznam (rep aj admin)
 var _currentDetailReopenFn = null;  // funkcia na znovuotvorenie detailu po edit
 
+// Nájdi položku v aktuálne vykreslenom zozname podľa čísla riadku v hárku.
+// Index sa po prekreslení posúva (mení sa filter aj zoradenie), číslo riadku nie.
+function gpDetailIdxByRow(row) {
+  if (row === undefined || row === null || row === '') return -1;
+  for (var i = 0; i < _histDetailItems.length; i++) {
+    var it = _histDetailItems[i];
+    if (it && String(it.row) === String(row)) return i;
+  }
+  return -1;
+}
+
 function openDetail(idx) {
   var item = _histDetailItems[idx];
   if(!item) return;
@@ -8454,7 +8465,17 @@ function openDetail(idx) {
   if(item.type === 'lonelix-new'){ lonelixDoctorDetail(item.lon, { canAddGp: true }); return; }
   _currentDetailIdx = idx;
   _currentDetailItem = item;
-  _currentDetailReopenFn = function() { openDetail(idx); };
+  // Znovuotvorenie po úprave hľadá záznam podľa čísla riadku, nie podľa indexu.
+  // saveEditRecord() totiž najprv zavolá histRender(), ktorý _histDetailItems
+  // postaví nanovo — s aktuálnym filtrom aj zoradením. Zapamätaný index tak mohol
+  // ukazovať na iného lekára, a po uložení úpravy sa otvoril nesprávny detail.
+  // Ak záznam po úprave do aktívneho filtra už nespadá, detail sa neotvorí.
+  _currentDetailReopenFn = (function (rowKey) {
+    return function () {
+      var i = gpDetailIdxByRow(rowKey);
+      if (i >= 0) openDetail(i);
+    };
+  })(item.row);
   // Schovaj manažérsky produktový panel
   var prodPanel = document.getElementById('mgr-detail-prod-panel');
   if(prodPanel){ prodPanel.style.display = 'none'; prodPanel.innerHTML = ''; }
