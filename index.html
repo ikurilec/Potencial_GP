@@ -3756,13 +3756,16 @@ function appEsc(x) {
 }
 // ╔══════════════════════════════════════════════════════════════╗
 // ║  VERZIA APLIKÁCIE                                              ║
-// ║  Pri každom nasadení novej verzie zmeniť:                     ║
+// ║  Pri nasadení novej verzie zmeniť DVE miesta:                 ║
 // ║    1) toto číslo APP_VERSION                                   ║
-// ║    2) ver. X.Y · 2026 v login footeri                          ║
-// ║    3) version.json na GitHube → {"version":"X.Y"}              ║
-// ║  Všetky 3 musia mať rovnakú hodnotu.                           ║
+// ║    2) version.json na GitHube → {"version":"X.Y.Z"}            ║
+// ║  Obe musia mať rovnakú hodnotu — podľa nich sa pozná, že je    ║
+// ║  k dispozícii aktualizácia.                                    ║
+// ║  Verzia v login pätičke sa dopĺňa sama z APP_VERSION, netreba  ║
+// ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
+// ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.76.1';
+var APP_VERSION = '2.77.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5463,8 +5466,13 @@ function cavAPV(d){return d===2?(4.67+((365-15)/45)*10.85)*0.7:(4.67+((365-10)/3
 
 // ── Segment lekára — JEDINÉ miesto, kde sú prahy ──
 // Prahy: ročný potenciál 3 700 EUR a kapitácia 1 501 / 2 000.
-// Predtým bol tento výpočet napísaný priamo v potvrdit(), takže sa nedal použiť
-// na priebežné zobrazenie počas vypĺňania. Test v smoke sade stráži hranice.
+// Predtým bol výpočet napísaný priamo v potvrdit(); tu je vytiahnutý, aby existoval
+// na jednom mieste a dal sa otestovať na hraniciach.
+//
+// ZÁMERNE sa NEPOUŽÍVA na priebežné zobrazenie počas vypĺňania formulára.
+// Keby reprezentant videl kategóriu skôr, než záznam odošle, mohol by čísla
+// prispôsobovať tak, aby lekár vyšiel do kategórie, ktorá mu vyhovuje. Výsledok
+// sa ukazuje až po odoslaní, v potvrdzovacom okne.
 function gpSegmentFor(kapitacia, total) {
   var k = Number(kapitacia) || 0, t = Number(total) || 0;
   if (k < 1501)  return t < 3700 ? 'vyradit' : 'frekvencia';
@@ -6517,9 +6525,6 @@ function updateProgress() {
   }
   if(pctEl) pctEl.textContent = pct + '%';
 
-  // Živý výsledok sa prepočíta spolu s vyplnenosťou — updateProgress() sa už volá
-  // pri každej zmene poľa, takže netreba ďalších poslucháčov.
-  try { gpLiveResultUpdate(); } catch(e) {}
   try { gpMissingRender(); } catch(e) {}
 }
 
@@ -6593,54 +6598,6 @@ document.addEventListener('click', function (ev) {
   setTimeout(function () { try { el.focus(); } catch (e) { } }, 260);
 });
 
-
-// ── ŽIVÝ VÝSLEDOK — karta #rec nad formulárom ──
-// Predtým držala statické „Zadajte počty pacientov" a segment sa reprezentant dozvedel
-// až po odoslaní, v potvrdzovacom okne. Prahy sú pritom v kóde a dajú sa počítať pri
-// každom stlačení klávesu — takto sa rep model potenciálu naučí za pár dní namiesto
-// toho, aby ho hádal.
-function gpLiveResultUpdate() {
-  var rec = document.getElementById('rec');
-  if (!rec) return;
-  var ri = document.getElementById('ri');
-  var rl = document.getElementById('rl');
-  var rs = document.getElementById('rs');
-  if (!ri || !rl || !rs) return;
-
-  var kapEl = document.getElementById('kapitacia-n');
-  var kapRaw = kapEl ? kapEl.value : '';
-  var anyProd = ['afl1-n', 'sup1-n', 'vid1-n', 'cav-n'].some(function (id) {
-    var e = document.getElementById(id);
-    return e && e.value !== '';
-  });
-
-  // Kým nie je kapitácia a aspoň jeden produkt, výsledok by bol zavádzajúci.
-  if (kapRaw === '' || !anyProd) {
-    rec.style.display = 'none';
-    return;
-  }
-
-  var total = computeTotal();
-  var kap = parseFloat(kapRaw) || 0;
-  var seg = gpSegmentFor(kap, total);
-  var meta = (typeof SEGMENTS !== 'undefined' && SEGMENTS[seg]) ? SEGMENTS[seg] : null;
-  var missing = gpMissingToTarget(total);
-
-  rec.style.display = 'block';
-  rec.className = 'rec ' + (total >= 3700 ? 'rec-yes' : 'rec-no');
-  ri.textContent = meta && meta.icon ? meta.icon : (total >= 3700 ? '✅' : '➖');
-  rl.textContent = meta && meta.label ? meta.label : '—';
-
-  rs.textContent = missing > 0
-    ? 'Do hranice navštevovať chýba ' + gpEurShort(missing)
-    : 'Hranicu ' + gpEurShort(3700) + ' ročne má splnenú';
-}
-
-// Krátky zápis eur pre živý výsledok: 3 700 €, 12 400 €.
-function gpEurShort(v) {
-  var n = Math.round(Number(v) || 0);
-  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0') + ' €';
-}
 
 // ── progress bar sticky ──
 function initProgressSticky() {

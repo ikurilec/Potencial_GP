@@ -4,7 +4,7 @@
 // ║  cache-first pre ostatné assety (rýchly štart, offline ready).║
 // ╚══════════════════════════════════════════════════════════════╝
 
-var CACHE_NAME = 'potencial-vl-v11-cache-keep';
+var CACHE_NAME = 'potencial-vl-v2770';
 
 self.addEventListener('install', function(event){
   self.skipWaiting();
