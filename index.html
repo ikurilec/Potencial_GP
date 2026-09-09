@@ -873,14 +873,19 @@
   .hist-oppfilter{display:flex;flex-wrap:wrap;gap:5px;padding:2px 2px 10px}
   .hist-oppchip{flex:0 0 auto;font-size:11px;font-weight:600;color:#64748B;background:#fff;border:1px solid #E2E8F0;border-radius:14px;padding:5px 10px;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap}
   .hist-oppchip.active{color:#fff;background:#0C1E35;border-color:#0C1E35;font-weight:700}
-  .hist-recent{display:none;padding:0 2px 10px}
-  .hist-recent-lbl{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#94A3B8;margin-bottom:6px}
-  .hist-recent-row{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}
+  .hist-recent{display:none;padding:0 0 10px}
+  .hist-recent-lbl{font-size:11px;font-weight:600;color:#64748B;padding:0 2px;margin-bottom:7px}
+  /* Zľava doprava sa posledná skratka stráca — bez toho vyzerá orezaná ako chyba,
+     s tým je vidieť, že riadok pokračuje a dá sa posunúť. */
+  .hist-recent-row{display:flex;gap:7px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:1px 2px 3px;
+    -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 26px),transparent);
+            mask-image:linear-gradient(90deg,#000 calc(100% - 26px),transparent)}
   .hist-recent-row::-webkit-scrollbar{display:none}
-  .hist-recent-chip{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-start;gap:1px;max-width:150px;font-family:inherit;text-align:left;background:#fff;border:1px solid #E2E8F0;border-radius:14px;padding:6px 11px;cursor:pointer;-webkit-tap-highlight-color:transparent}
-  .hist-recent-chip .rc-name{font-size:11.5px;font-weight:700;color:#1E293B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:128px}
-  .hist-recent-chip .rc-sub{font-size:10px;color:#94A3B8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:128px}
-  .hist-recent-chip:active{background:#F8FAFC}
+  .hist-recent-chip{flex:0 0 auto;display:flex;align-items:center;gap:7px;font-family:inherit;background:#fff;border:1px solid #E2E8F0;border-radius:16px;padding:0 13px 0 10px;height:32px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .15s,border-color .15s}
+  /* Bodka v farbe kategórie — rovnaký kľúč ako farebný pruh na karte lekára v zozname. */
+  .hist-recent-chip .rc-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  .hist-recent-chip .rc-name{font-size:12px;font-weight:600;color:#1E293B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:132px;line-height:1}
+  .hist-recent-chip:active{background:#F1F5F9;border-color:#CBD5E1}
   .conf-seg-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:none;padding:4px 0;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent}
   .conf-seg-toggle .conf-seg-section-lbl{margin-bottom:0}
   .conf-seg.open .conf-seg-actions{margin-top:8px;padding-top:8px;border-top:1px solid #EEF2F6}
@@ -8694,6 +8699,17 @@ var _currentDetailReopenFn = null;  // funkcia na znovuotvorenie detailu po edit
 var GP_RECENT_KEY = 'satori_recent_docs';
 var GP_RECENT_MAX = 5;
 
+// Z „MUDr. Šafárik Ján" spraví „Šafárik Ján". Odreže sa IBA titul — ten je
+// jednoznačný. Priezvisko sa neháda: v dátach nie je zaručené, či je meno
+// zapísané ako priezvisko-krstné alebo naopak, a skratka s nesprávnym slovom
+// by bola horšia než dlhšia.
+var GP_TITLES = /^(mudr|mddr|rndr|phdr|judr|ing|mgr|doc|prof|bc|mvdr|paeddr)\.$/i;
+function gpRecentShortName(full) {
+  var words = String(full == null ? '' : full).trim().split(/\s+/);
+  while (words.length > 1 && GP_TITLES.test(words[0])) words.shift();
+  return words.join(' ');
+}
+
 function gpRecentList() {
   try {
     var raw = localStorage.getItem(GP_RECENT_KEY);
@@ -8716,7 +8732,7 @@ function gpRecentAdd(item) {
   var name = String(item.lekar || item.meno || '').trim();
   if (!name) return;
   var list = gpRecentList().filter(function (r) { return String(r.row) !== String(row); });
-  list.unshift({ row: row, name: name, okres: String(item.okres || '').trim() });
+  list.unshift({ row: row, name: name, kat: String(item.kategoria || '').toUpperCase().trim() });
   list = list.slice(0, GP_RECENT_MAX);
   try { localStorage.setItem(GP_RECENT_KEY, JSON.stringify(list)); } catch (e) {}
   try { gpRecentRender(); } catch (e) {}
@@ -8729,10 +8745,10 @@ function gpRecentRender() {
   var list = q ? [] : gpRecentList();
   if (!list.length) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
   var chips = list.map(function (r) {
-    var sub = r.okres ? appEsc(r.okres) : '&nbsp;';
-    return '<button type="button" class="hist-recent-chip" data-recent-row="' + appEsc(r.row) + '">' +
-             '<span class="rc-name">' + appEsc(r.name) + '</span>' +
-             '<span class="rc-sub">' + sub + '</span>' +
+    return '<button type="button" class="hist-recent-chip" data-recent-row="' + appEsc(r.row) + '"' +
+             ' aria-label="Otvoriť ' + appEsc(r.name) + '">' +
+             '<span class="rc-dot" style="background:' + gpCatColor(r.kat).c + '"></span>' +
+             '<span class="rc-name">' + appEsc(gpRecentShortName(r.name)) + '</span>' +
            '</button>';
   }).join('');
   wrap.innerHTML = '<div class="hist-recent-lbl">Nedávno otvorení</div>' +
