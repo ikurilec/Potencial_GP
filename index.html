@@ -4151,7 +4151,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.80.1';
+var APP_VERSION = '2.80.2';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7886,7 +7886,7 @@ function applyDefaultTabIfRep() {
     // pôvodné správanie (neotvára sa nič).
     // Domov má teraz každý — aj Reagila. Kto si výslovne zvolil „Formulár GP",
     // toho voľba platí ďalej.
-    var def = userPrefsGet().defaultTab || 'dnes';
+    var def = appDefaultTab();
     if(def === 'form') return;
     var openers = {
       dnes:     (typeof openDnes === 'function') ? openDnes : null,
@@ -9158,10 +9158,30 @@ function userPrefsSet(patch){
   } catch(e){}
 }
 
+// Ktorá obrazovka sa má otvoriť po prihlásení.
+//
+// Uložené voľby pochádzajú z času, keď Domov ešte neexistoval pre všetky roly
+// a manažér ani gyn si ho nemali ako zvoliť — ich „Plnenie" teda nie je
+// rozhodnutie proti Domovu, len jediná vtedajšia možnosť. Kým si používateľ
+// úvodnú obrazovku nezvolí nanovo (v Nastaveniach), domovom je Domov.
+// Marker je lokálny, aby sa uložená voľba v Sheete nikomu neprepísala.
+var DOMOV_VOLBA_KEY = 'satori_uvodna_obrazovka_v281';
+function appVolbaPotvrdena() {
+  try { return localStorage.getItem(DOMOV_VOLBA_KEY) === '1'; } catch (e) { return false; }
+}
+function appDefaultTab() {
+  if (!appVolbaPotvrdena()) return 'dnes';
+  var def = '';
+  try { def = String(userPrefsGet().defaultTab || '').trim(); } catch (e) {}
+  return def || 'dnes';
+}
+
 // Predvolená záložka po prihlásení — ulož voľbu (sync cez Sheets) + potvrdenie.
 // Po výbere aktualizuj zobrazenú hodnotu, zlož editor a zvýrazni vybranú možnosť.
 function settingsSetDefaultTab(val){
   val = val || 'form';
+  // Od tejto chvíle je to vlastná voľba používateľa a Domov ju neprebíja.
+  try { localStorage.setItem(DOMOV_VOLBA_KEY, '1'); } catch (e) {}
   userPrefsSet({ defaultTab: val });
   try { haptic('selection'); } catch(e){}
   try {
@@ -9574,7 +9594,7 @@ function settingsDefaultTabOpts(s){
 function settingsDefaultTabHtml(s){
   var cfg = settingsDefaultTabOpts(s);
   var opts = cfg.opts;
-  var def = userPrefsGet().defaultTab || opts[0][0];
+  var def = appDefaultTab() || opts[0][0];
   // Ak uložená hodnota nepatrí do aktuálnej ponuky (zmena role/línie), spadni na prvú
   if(!opts.some(function(o){ return o[0] === def; })) def = opts[0][0];
   var curLbl = (opts.filter(function(o){ return o[0] === def; })[0] || opts[0])[1];
@@ -13936,7 +13956,7 @@ function gynApplyDefaultNav(user) {
   try { gynCalUpdateBadge(); } catch(e){}
   var nav = 'plnenie';   // default shellu
   try {
-    var def = (userPrefsGet().defaultTab || '').trim();
+    var def = appDefaultTab();
     // Domov je obrazovka nad líniami — otvorí sa nad gyn pohľadom.
     // Bez vlastnej voľby je domovom Domov, rovnako ako u reprezentanta.
     if (!def || def === 'dnes') { setTimeout(function(){ try { openDnes(); } catch(e){} }, 350); }
@@ -18971,7 +18991,7 @@ function mgrEnter(roleKey){
 // Default = 'plnenie' (už nastavené v mgrEnter). Aktivita je len pre admina.
 function mgrApplyDefaultSubtab(){
   try {
-    var def = (userPrefsGet().defaultTab || '').trim();
+    var def = appDefaultTab();
     // Domov je obrazovka nad líniami — otvorí sa nad manažérskym pohľadom.
     // Bez vlastnej voľby je domovom Domov, rovnako ako u reprezentanta.
     if (!def || def === 'dnes') { setTimeout(function(){ try { openDnes(); } catch(e){} }, 350); return; }
