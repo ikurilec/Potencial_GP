@@ -4177,7 +4177,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.81.3';
+var APP_VERSION = '2.81.4';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10605,6 +10605,14 @@ function updateSubmitBtn(){
     wrap.parentNode.insertBefore(sentinel, wrap);
 
     var observer = new IntersectionObserver(function(entries) {
+      // Pozorovateľ vznikne raz a beží ďalej aj po prepnutí do manažérskeho
+      // režimu — tam ale formulár ani tlačidlo Potvrdiť nie sú a tých 90 px
+      // pod .app bol prázdny pás medzi hlavičkou a obsahom.
+      if(document.body.classList.contains('manager-mode') ||
+         document.body.classList.contains('gyn-line')) {
+        if(app) app.style.paddingBottom = '';
+        return;
+      }
       var isVisible = entries[0].isIntersecting;
       if(isVisible) {
         wrap.classList.add('at-bottom');
@@ -11963,11 +11971,39 @@ try {
 } catch(e){}
 try { window.addEventListener('orientationchange', function(){ setTimeout(repTopbarSync, 200); }); } catch(e){}
 
+// Poistka na úvodnú obrazovku. Každá línia si ju otvára vlastnou cestou
+// (applyDefaultTabIfRep / mgrApplyDefaultSubtab / gynApplyDefaultNav) a stačí,
+// aby jedna z nich nedobehla — a človek skončí tam, kde bol domov kedysi.
+// Preto ešte raz, z jedného miesta, keď sa rozhranie usadí. Nikoho nevyruší:
+// ak si medzitým sám niekam odišiel alebo má zvolenú inú úvodnú obrazovku,
+// nerobí sa nič.
+var _uvodnaObrazovkaHotova = false;
+function appOpenDefaultScreen() {
+  if (_uvodnaObrazovkaHotova) return;
+  _uvodnaObrazovkaHotova = true;
+  setTimeout(function () {
+    try {
+      if (appDefaultTab() !== 'dnes') return;
+      var dnes = document.getElementById('dnes-overlay');
+      if (dnes && dnes.classList.contains('show')) return;      // už je otvorený
+      if (_panelCurrent) return;                                 // niekam odišiel
+      var nst = document.getElementById('nastenka-overlay');
+      if (nst && nst.classList.contains('show')) return;
+      var set = document.getElementById('settings-overlay');
+      if (set && set.classList.contains('show')) return;
+      openDnes();
+    } catch (e) {}
+  }, 1200);
+}
+
 function updateHdrForUser(user) {
   // Spodná lišta patrí každému prihlásenému — všetkým trom líniám aj všetkým
   // rolám. Trieda sa pridáva tu, lebo updateHdrForUser() beží po prihlásení
   // v každej línii.
-  if (user && user.username) document.body.classList.add('app-nav');
+  if (user && user.username) {
+    document.body.classList.add('app-nav');
+    try { appOpenDefaultScreen(); } catch (e) {}
+  }
   // Názov línie ako titul
   var lineEl = document.getElementById('hdr-line-name');
   if(lineEl) lineEl.textContent = (user && user.line === 'gyn') ? 'Gynekológia' : (user && user.line === 'reagila') ? 'Reagila' : 'Golem';
