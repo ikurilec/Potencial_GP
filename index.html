@@ -730,7 +730,7 @@
   .tb-btn.active{color:#0C1E35}
   .tb-btn.active .tb-ic{filter:none;opacity:1}
   .tb-btn:active .tb-ic{transform:scale(.9)}
-  .tb-btn .nst-navdot{top:0;right:calc(50% - 20px)}
+  .tb-btn .nst-navdot{top:-1px;right:calc(50% - 23px);box-shadow:0 0 0 2px #fff}
   /* Počas písania lišta zavadzia: na iPhone ju klávesnica aj tak prekryje
      a tlačidlo Potvrdiť by nad ňou zbytočne poskočilo. Kým je kurzor v poli,
      je preč — a hneď ako sa písanie skončí, vráti sa. */
@@ -791,6 +791,8 @@
   .viac-tile-t{font-size:13px;font-weight:700;color:#1A2A3A;line-height:1.2}
   .viac-tile.off{opacity:.5}
   .viac-tile.off .viac-tile-t{font-weight:600}
+  .viac-tile{position:relative}
+  .viac-tile .gyn-cal-navbadge{top:8px;right:8px}
   /* Spodný zoznam s deliacimi čiarami — nastavenia a odhlásenie */
   .viac-list{background:#fff;border-radius:14px;overflow:hidden;margin-top:12px;
     box-shadow:0 4px 16px rgba(15,23,42,.06),0 0 0 1px rgba(15,23,42,.04)}
@@ -7994,7 +7996,7 @@ var VIAC_DLAZDICE = [
   { ic: '📍', t: 'Okresy',   fn: 'openOkresy()' },
   // Ikona kalendára nesie dnešný deň — rovnako, ako ho niesla v hornej
   // navigácii. Číslo dopĺňa calNavSyncDay() cez .js-cal-nav-day.
-  { ic: '<span class="gyn-cal-navico" style="width:21px;height:21px"><span class="gci-top"></span><span class="gci-day js-cal-nav-day">' + (new Date()).getDate() + '</span></span>', t: 'Kalendár', fn: 'openGolemKalendar()', raw: true },
+  { ic: '<span class="gyn-cal-navico" style="width:21px;height:21px"><span class="gci-top"></span><span class="gci-day js-cal-nav-day">' + (new Date()).getDate() + '</span></span>', t: 'Kalendár', fn: 'openGolemKalendar()', raw: true, id: 'viac-tile-kal' },
   { ic: '🧬', t: 'Tuyory',   fn: 'openTuyory()' },
   { ic: '🛡️', t: 'Lonelix',  fn: 'openLonelix()' },
   // Apixaban je kampaň s termínom — mimo neho sa neponúka ako živá položka.
@@ -8022,7 +8024,8 @@ function viacRender() {
   }
   var tiles = VIAC_DLAZDICE.map(function (it) {
     var zatvoreny = it.openFn && typeof window[it.openFn] === 'function' && !window[it.openFn]();
-    return '<button type="button" class="viac-tile' + (zatvoreny ? ' off' : '') + '" onclick="' + it.fn + '">' +
+    return '<button type="button" class="viac-tile' + (zatvoreny ? ' off' : '') + '"' +
+             (it.id ? ' id="' + it.id + '"' : '') + ' onclick="' + it.fn + '">' +
              '<span class="viac-tile-ic">' + (it.raw ? it.ic : appEsc(it.ic)) + '</span>' +
              '<span class="viac-tile-t">' + appEsc(it.t) + (zatvoreny ? '<br><span style="font-weight:600;font-size:10.5px;color:#94A3B8">zatiaľ zatvorené</span>' : '') + '</span>' +
            '</button>';
@@ -8036,9 +8039,27 @@ function viacRender() {
       '<button type="button" class="viac-item" onclick="doLogout()">' +
         '<span class="viac-item-ic">🚪</span><span class="viac-item-t">Odhlásiť sa</span><span class="viac-item-ch">›</span></button>' +
     '</div>';
-  // Dnešný deň do ikony kalendára — menu sa renderuje až pri otvorení, takže
-  // číslo treba doplniť po vložení do DOM.
+  // Dnešný deň do ikony kalendára a odznak čakajúcich dovoleniek — menu sa
+  // renderuje až pri otvorení, takže oboje treba doplniť po vložení do DOM.
   try { golemCalRefreshNavDay(); } catch (e) {}
+  try { gynCalUpdateBadge(); } catch (e) {}
+}
+
+// Odznak na položke Menu v spodnej lište a na troch čiarkach.
+// Bez neho by odznaky vecí schovaných v menu (napr. čakajúca dovolenka
+// v Kalendári) neboli vidieť — a odznak, ktorý nikto nevidí, je zbytočný.
+function viacSyncBadge() {
+  var n = 0;
+  try { n = gynCalPendingForMe() || 0; } catch (e) { n = 0; }
+  ['tb-viac', 'hdr-burger'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var b = el.querySelector('.nst-navdot');
+    if (n > 0) {
+      if (!b) { b = document.createElement('span'); b.className = 'nst-navdot'; el.appendChild(b); }
+      b.textContent = n > 9 ? '9+' : String(n);
+    } else if (b && b.parentNode) { b.parentNode.removeChild(b); }
+  });
 }
 
 // Menu je prekryv, nie panel — nezaraďuje sa do histórie panelov, aby sa
@@ -17381,7 +17402,10 @@ function gynCalUpdateBadge(){
     ? [document.querySelector('#gyn-nav .gyn-nav-btn[data-tab="kalendar"]')]
     : [document.getElementById('rep-nav-kal-btn'),
        document.getElementById('spn-kal'),
-       document.getElementById('mgr-subtab-kal-btn')];
+       document.getElementById('mgr-subtab-kal-btn'),
+       // Kalendár je u Golem reprezentanta v bočnom menu — odznak musí sadnúť
+       // aj tam, inak by ho nemal kde vidieť.
+       document.getElementById('viac-tile-kal')];
   btns.forEach(function(btn){
     if(!btn) return;
     var b=btn.querySelector('.gyn-cal-navbadge');
@@ -17390,6 +17414,8 @@ function gynCalUpdateBadge(){
       b.textContent = n>9 ? '9+' : String(n);
     } else if(b && b.parentNode){ b.parentNode.removeChild(b); }
   });
+  // A na položku Menu v lište, aby bolo vidieť, že vnútri niečo je.
+  try { viacSyncBadge(); } catch(e){}
 }
 function golemCalRefreshNavDay(){
   var day = String((new Date()).getDate());
