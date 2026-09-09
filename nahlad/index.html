@@ -3227,7 +3227,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.82.0 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.82.1 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -4192,7 +4192,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.82.0';
+var APP_VERSION = '2.82.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8096,41 +8096,77 @@ function dnesRebricekGyn(me) {
              hodnota: plnenieFormatPct(rank[i].pct), popis: 'plnenie Q' + lastQ };
   } catch (e) { return null; }
 }
-// Čo sa v rebríčku vlastne počíta. V Goleme sú to zadaní lekári — ich
-// potenciál, nie návštevy; „40 návštev" hovorilo niečo iné, než čo je za
-// tým číslom. Ostatné línie ostávajú pri návštevách.
-function dnesRebricekJednotka(n) {
-  return (appLineTag() === 'gp') ? (n + " GP's potenciál") : (n + ' návštev');
+// Rebríček na Domove ukazuje to isté, čo panel Rebríček: plnenie za posledný
+// uzavretý kvartál. Kým to boli návštevy, karta hovorila jedno a panel po
+// otvorení druhé — a číslo „koľko má kto lekárov v databáze" aj tak nikomu
+// nič nepovedalo.
+function dnesRebricekPct(pct) {
+  return (pct === null || pct === undefined) ? '—' : pct.toFixed(1).replace('.', ',') + ' %';
+}
+function dnesRebricekGyn(me) {
+  try {
+    var lastQ = gynLbLastCompletedQ();
+    if (lastQ < 1) return null;
+    var reps = gynLbScopeReps();
+    if (!reps.length) return null;
+    var data = GYN_LB.plCache[lastQ] ||
+               gynCacheRead(gynPlnenieCacheKey(GYN_APP.year, lastQ) + '|lb-fullLine');
+    if (!data) return null;
+    try { gynPreprocessData(data); } catch (e) {}
+    var rank = reps.map(function (r) {
+      return { u: String(r.login || '').toLowerCase(), meno: r.meno || r.login,
+               pct: gynBuildRepAgg(r.login, data, lastQ).pct };
+    }).filter(function (x) { return x.pct !== null; })
+      .sort(function (a, b) { return b.pct - a.pct; });
+    if (!rank.length) return null;
+    var qLabel = 'Q' + lastQ + ' ' + GYN_APP.year;
+    var i = -1;
+    for (var k = 0; k < rank.length; k++) { if (rank[k].u === me) { i = k; break; } }
+    if (i < 0) return { kind: 'tim', total: rank.length, qLabel: qLabel,
+                        top: rank.slice(0, 6).map(function (x) {
+                          return { meno: x.meno, hodnota: dnesRebricekPct(x.pct) };
+                        }) };
+    return { kind: 'ja', rank: i + 1, total: rank.length, qLabel: qLabel,
+             hodnota: dnesRebricekPct(rank[i].pct), popis: 'plnenie' };
+  } catch (e) { return null; }
 }
 function dnesRebricek() {
   try {
     var me = String(((getSession() || {}).username) || '').toLowerCase();
     if (!me) return null;
     if (appRole() === 'gyn') return dnesRebricekGyn(me);
-    var data = (typeof LB_STATE !== 'undefined' && LB_STATE.data) || _lbHsLoad();
-    if (!data) return null;
-    var byLower = {};
-    Object.keys(data).forEach(function (k) { byLower[k.toLowerCase()] = data[k]; });
+
+    var lastQ = lbLastCompletedQ();
+    if (lastQ < 1) return null;
+    var cached = LB_PLNENIE_CACHE;
+    if (!cached) {
+      // Ešte sa nenačítalo — rozbehni to a karta pribudne pri prekreslení Domova.
+      try { if (!LB_PLNENIE_LOADING) lbPreloadPlnenie(); } catch (e) {}
+      return null;
+    }
     var scope = lbScopeReps();
-    if (!scope.length) scope = Object.keys(data);
-    var rank = scope.map(function (u) {
-      var lk = String(u).toLowerCase();
-      var info = LB_REP_INFO[u] || LB_REP_INFO[lk] || {};
-      return { u: lk, meno: info.name || u, count: lbCountVisits(byLower[lk] || [], 'all') };
-    }).sort(function (a, b) { return b.count - a.count; });
-    if (!rank.length || !rank.some(function (x) { return x.count > 0; })) return null;
+    var repsList = (cached.data && scope.length)
+      ? (plnenieBuildAggregates(cached.data, lastQ, scope).reps || [])
+      : ((cached.aggregates && cached.aggregates.reps) ? cached.aggregates.reps : []);
+    var vScope = {};
+    scope.forEach(function (u) { vScope[String(u).toLowerCase()] = true; });
+    var rank = repsList.filter(function (x) {
+      return (!scope.length || vScope[String(x.username || '').toLowerCase()]) && x.pct !== null;
+    }).map(function (x) {
+      var info = LB_REP_INFO[x.username] || LB_REP_INFO[String(x.username).toLowerCase()] || {};
+      return { u: String(x.username || '').toLowerCase(), meno: info.name || x.username, pct: x.pct };
+    }).sort(function (a, b) { return b.pct - a.pct; });
+    if (!rank.length) return null;
+
+    var qLabel = 'Q' + lastQ + ' ' + (new Date()).getFullYear();
     var i = -1;
     for (var k = 0; k < rank.length; k++) { if (rank[k].u === me) { i = k; break; } }
-    // Manažér v rebríčku nie je — jemu patrí poradie jeho ľudí. Zoznam je
-    // presne ten, ktorý mu appka priradila podľa funkcie (lbScopeReps →
-    // AM West/East svojich, BUM a admin všetkých).
-    if (i < 0) return { kind: 'tim', total: rank.length,
-                        top: rank.filter(function (x) { return x.count > 0; }).slice(0, 6)
-                               .map(function (x) {
-                                 return { meno: x.meno, hodnota: dnesRebricekJednotka(x.count) };
-                               }) };
-    return { kind: 'ja', rank: i + 1, total: rank.length,
-             hodnota: dnesRebricekJednotka(rank[i].count), popis: '' };
+    if (i < 0) return { kind: 'tim', total: rank.length, qLabel: qLabel,
+                        top: rank.slice(0, 6).map(function (x) {
+                          return { meno: x.meno, hodnota: dnesRebricekPct(x.pct) };
+                        }) };
+    return { kind: 'ja', rank: i + 1, total: rank.length, qLabel: qLabel,
+             hodnota: dnesRebricekPct(rank[i].pct), popis: 'plnenie' };
   } catch (e) { return null; }
 }
 
@@ -8327,7 +8363,8 @@ function dnesRender() {
     }
     html += '<div onclick="' + (rola === 'gyn' ? "gynNavTo(\'leaderboard\')" : (rola === 'mgr' ? "mgrSwitchSubtab(\'leaderboard\')" : 'openLeaderboard()')) + '" style="cursor:pointer">' +
             dnesCardHtml('linear-gradient(90deg,#D97706,#FCD34D)',
-                         reb.kind === 'ja' ? 'Moje miesto v rebríčku' : 'Rebríček tímu',
+                         (reb.kind === 'ja' ? 'Moje miesto v rebríčku' : 'Rebríček tímu') +
+                         (reb.qLabel ? ' · ' + reb.qLabel : ''),
                          '<span class="dnes-more">Otvoriť ›</span>', rBody) +
             '</div>';
   }
