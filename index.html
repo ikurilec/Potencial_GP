@@ -3201,7 +3201,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
       <div>
         <div class="flbl">Po&#269;et pacientov v kapit&#225;cii</div>
         <div class="info-input-wrap">
-          <input type="number" id="kapitacia-n" min="0" max="9999" enterkeyhint="next" placeholder="0" inputmode="numeric" pattern="[0-9]*" oninput="validateNumField('kapitacia-n')" onkeydown="var k=event.key;if(k==='Enter'&&this.value!==''){focusNext('kapitacia-n');}else if(!/^[0-9]$/.test(k)&&k!=='Backspace'&&k!=='Delete'&&k!=='ArrowLeft'&&k!=='ArrowRight'&&k!=='Tab'&&k!=='Enter'){event.preventDefault();}" onblur="validateNumField('kapitacia-n');">
+          <input type="text" id="kapitacia-n" enterkeyhint="next" placeholder="0" inputmode="numeric" pattern="[0-9]*" oninput="gpDigitsOnly(this);validateNumField('kapitacia-n')" onkeydown="if(event.key==='Enter'&&this.value!==''){focusNext('kapitacia-n');}" onblur="validateNumField('kapitacia-n');">
           <span class="field-icon hidden" id="icon-kapitacia-n"></span>
         </div>
         <div id="kapitacia-err" style="display:none;color:#DC2626;font-size:11px;font-weight:500;margin-top:5px">⚠ Kapitácia je nereálna, skontroluj a uprav na skutočnosť</div>
@@ -3220,7 +3220,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
       <div>
         <div class="flbl">Novonastavení pacienti / mesiac</div>
         <div class="info-input-wrap">
-          <input type="number" id="vid1-n" min="0" enterkeyhint="next" placeholder="0" inputmode="numeric" pattern="[0-9]*" oninput="validateProdField('vid1-n')" onkeydown="var k=event.key;if(k==='Enter'&&this.value!==''){focusNext('vid1-n');}else if(!/^[0-9]$/.test(k)&&k!=='Backspace'&&k!=='Delete'&&k!=='ArrowLeft'&&k!=='ArrowRight'&&k!=='Tab'&&k!=='Enter'){event.preventDefault();}" onblur="validateProdField('vid1-n');">
+          <input type="text" id="vid1-n" enterkeyhint="next" placeholder="0" inputmode="numeric" pattern="[0-9]*" oninput="gpDigitsOnly(this);validateProdField('vid1-n')" onkeydown="if(event.key==='Enter'&&this.value!==''){focusNext('vid1-n');}" onblur="validateProdField('vid1-n');">
           <span class="field-icon hidden" id="icon-vid1-n"></span>
         </div>
       </div>
@@ -3238,7 +3238,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
       <div>
         <div class="flbl">Počet predpísaných balení / mesiac</div>
         <div class="info-input-wrap">
-          <input type="number" id="afl1-n" min="0" enterkeyhint="next" placeholder="0" inputmode="numeric" pattern="[0-9]*" oninput="validateProdField('afl1-n')" onkeydown="var k=event.key;if(k==='Enter'&&this.value!==''){focusNext('afl1-n');}else if(!/^[0-9]$/.test(k)&&k!=='Backspace'&&k!=='Delete'&&k!=='ArrowLeft'&&k!=='ArrowRight'&&k!=='Tab'&&k!=='Enter'){event.preventDefault();}" onblur="validateProdField('afl1-n');">
+          <input type="text" id="afl1-n" enterkeyhint="next" placeholder="0" inputmode="numeric" pattern="[0-9]*" oninput="gpDigitsOnly(this);validateProdField('afl1-n')" onkeydown="if(event.key==='Enter'&&this.value!==''){focusNext('afl1-n');}" onblur="validateProdField('afl1-n');">
           <span class="field-icon hidden" id="icon-afl1-n"></span>
         </div>
       </div>
@@ -3256,7 +3256,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
       <div>
         <div class="flbl">Počet predpísaných balení / mesiac</div>
         <div class="info-input-wrap">
-          <input type="number" id="sup1-n" min="0" enterkeyhint="next" placeholder="0" inputmode="numeric" pattern="[0-9]*" oninput="validateProdField('sup1-n')" onkeydown="var k=event.key;if(k==='Enter'&&this.value!==''){focusNext('sup1-n');}else if(!/^[0-9]$/.test(k)&&k!=='Backspace'&&k!=='Delete'&&k!=='ArrowLeft'&&k!=='ArrowRight'&&k!=='Tab'&&k!=='Enter'){event.preventDefault();}" onblur="validateProdField('sup1-n');">
+          <input type="text" id="sup1-n" enterkeyhint="next" placeholder="0" inputmode="numeric" pattern="[0-9]*" oninput="gpDigitsOnly(this);validateProdField('sup1-n')" onkeydown="if(event.key==='Enter'&&this.value!==''){focusNext('sup1-n');}" onblur="validateProdField('sup1-n');">
           <span class="field-icon hidden" id="icon-sup1-n"></span>
         </div>
       </div>
@@ -3274,7 +3274,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
       <div>
         <div class="flbl">Novonastavení pacienti / mesiac</div>
         <div class="info-input-wrap">
-          <input type="number" id="cav-n" min="0" enterkeyhint="next" placeholder="0" inputmode="numeric" pattern="[0-9]*" oninput="validateProdField('cav-n')" onkeydown="var k=event.key;if(k==='Enter'&&this.value!==''){var btn=document.querySelector('.btn-submit');if(btn)btn.focus();}else if(!/^[0-9]$/.test(k)&&k!=='Backspace'&&k!=='Delete'&&k!=='ArrowLeft'&&k!=='ArrowRight'&&k!=='Tab'&&k!=='Enter'){event.preventDefault();}" onblur="validateProdField('cav-n');">
+          <input type="text" id="cav-n" enterkeyhint="next" placeholder="0" inputmode="numeric" pattern="[0-9]*" oninput="gpDigitsOnly(this);validateProdField('cav-n')" onkeydown="if(event.key==='Enter'&&this.value!==''){var btn=document.querySelector('.btn-submit');if(btn)btn.focus();}" onblur="validateProdField('cav-n');">
           <span class="field-icon hidden" id="icon-cav-n"></span>
         </div>
       </div>
@@ -6511,6 +6511,19 @@ function updateProgress() {
   // pri každej zmene poľa, takže netreba ďalších poslucháčov.
   try { gpLiveResultUpdate(); } catch(e) {}
   try { gpMissingRender(); } catch(e) {}
+}
+
+// Nechaj používateľa písať a hodnotu vyčisti až potom. Predtým každé číselné pole
+// blokovalo klávesy cez onkeydown preventDefault — to nechytí vloženie zo schránky
+// ani hlasový vstup, a naopak blokovalo Ctrl+V, Home, End aj niektoré klávesnice.
+function gpDigitsOnly(el) {
+  if (!el) return;
+  var clean = String(el.value || '').replace(/\D/g, '');
+  if (clean !== el.value) {
+    var atEnd = el.selectionStart === el.value.length;
+    el.value = clean;
+    if (!atEnd) { try { el.setSelectionRange(clean.length, clean.length); } catch (e) {} }
+  }
 }
 
 // ── ČO EŠTE CHÝBA ──
