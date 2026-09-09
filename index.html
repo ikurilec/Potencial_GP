@@ -605,7 +605,11 @@
   @media(max-width:520px){.info-grid-3{grid-template-columns:1fr}}
   @media(max-width:480px){.app{padding:8px}.hdr{padding:10px 14px}.gyn-inner{padding:8px}.gyn-mgr-hdr{padding:10px 14px}}
   .info-field{display:flex;flex-direction:column;gap:4px}
-  .info-label{font-size:10px;font-weight:600;color:#64748B;letter-spacing:.06em;text-transform:uppercase}
+  /* Menovka je zároveň dotyková plocha — ťuknutie na ňu zaostrí pole, takže
+     potrebuje výšku aj čitateľnú veľkosť. 10px bolo pod hranicou oboch. */
+  .info-label{font-size:11px;font-weight:600;color:#64748B;letter-spacing:.06em;text-transform:uppercase;
+    display:block;padding:4px 0;cursor:pointer}
+  .flbl{cursor:pointer}
   .info-input{height:44px;padding:0 13px;border-radius:9px;border:1.5px solid #E2E8F0;background:#F8FAFC;font-size:16px;font-family:inherit;color:#1A2A3A;outline:none;transition:border-color .18s;width:100%;-webkit-appearance:none}
   .info-input:focus{border-color:#3B82F6;background:#fff;box-shadow:0 0 0 3px rgba(59,130,246,.11)}
   .info-input.has-error{border-color:#FCA5A5;background:#FFF5F5}
@@ -3171,7 +3175,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
       <div class="info-title">Identifik&#225;cia n&#225;v&#353;tevy</div>
       <div class="info-grid-3">
         <div class="info-field">
-          <div class="info-label">Titul, meno a priezvisko lek&#225;ra</div>
+          <label class="info-label" for="lekar">Titul, meno a priezvisko lek&#225;ra</label>
           <div class="info-input-wrap">
             <input class="info-input" type="text" id="lekar" placeholder="napr. MUDr. Gedeon Richter" onfocus="var el=this;if(!el.value){el.value='MUDr. ';setTimeout(function(){el.setSelectionRange(el.value.length,el.value.length);},0);}else{setTimeout(function(){el.setSelectionRange(el.value.length,el.value.length);},0);}" onblur="var v=this.value.trim();var TITLES=['mudr.', 'mddr.', 'rndr.', 'phdr.', 'judr.', 'ing.', 'mgr.', 'doc.', 'prof.', 'bc.', 'mvdr.', 'paeddr.'];if(v===''||v.split(' ').every(function(w){return TITLES.indexOf(w.toLowerCase())!==-1;})){this.value='';setIcon('lekar','none');}else{var words=v.split(' ').filter(function(w){return w.length>0;});var realWords=words.filter(function(w){return TITLES.indexOf(w.toLowerCase())===-1;});setIcon('lekar',realWords.length>=2?'ok':'err');}" oninput="capAfterSpace(this);dupCheckLekar(this);var v=this.value.trim();var TITLES=['mudr.', 'mddr.', 'rndr.', 'phdr.', 'judr.', 'ing.', 'mgr.', 'doc.', 'prof.', 'bc.', 'mvdr.', 'paeddr.'];var words=v.split(' ').filter(function(w){return w.length>0;});var realWords=words.filter(function(w){return TITLES.indexOf(w.toLowerCase())===-1;});setIcon('lekar',realWords.length>=2?'ok':'none');">
             <span class="field-icon hidden" id="icon-lekar"></span>
@@ -3179,7 +3183,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
         </div>
         <input type="hidden" id="reprezentant" value="">
         <div class="info-field">
-          <div class="info-label">Okres pracoviska lek&#225;ra</div>
+          <label class="info-label" for="mesto">Okres pracoviska lek&#225;ra</label>
           <div class="ac-wrap">
             <div class="info-input-wrap">
               <input class="info-input" type="text" id="mesto" placeholder="napr. Bratislava I" autocomplete="off" oninput="acInput(this);validateField('mesto')" onkeydown="acKey(event)" onfocus="acShowAll(this)" onblur="setTimeout(function(){acBlur();},250)">
@@ -3205,7 +3209,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     <div class="prod-name">Kapit&#225;cia</div>
     <div class="row">
       <div>
-        <div class="flbl">Po&#269;et pacientov v kapit&#225;cii</div>
+        <label class="flbl" for="kapitacia-n">Po&#269;et pacientov v kapit&#225;cii</label>
         <div class="info-input-wrap">
           <input type="text" id="kapitacia-n" enterkeyhint="next" placeholder="0" inputmode="numeric" pattern="[0-9]*" oninput="gpDigitsOnly(this);validateNumField('kapitacia-n')" onkeydown="if(event.key==='Enter'&&this.value!==''){focusNext('kapitacia-n');}" onblur="validateNumField('kapitacia-n');">
           <span class="field-icon hidden" id="icon-kapitacia-n"></span>
@@ -3224,7 +3228,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     <div class="prod-type">Chronick&#253; produkt &nbsp;&middot;&nbsp; noví pacienti / mes.</div>
     <div class="row">
       <div>
-        <div class="flbl">Novonastavení pacienti / mesiac</div>
+        <label class="flbl" for="vid1-n">Novonastavení pacienti / mesiac</label>
         <div class="info-input-wrap">
           <input type="text" id="vid1-n" enterkeyhint="next" placeholder="0" inputmode="numeric" pattern="[0-9]*" oninput="gpDigitsOnly(this);validateProdField('vid1-n')" onkeydown="if(event.key==='Enter'&&this.value!==''){focusNext('vid1-n');}" onblur="validateProdField('vid1-n');">
           <span class="field-icon hidden" id="icon-vid1-n"></span>
@@ -3242,7 +3246,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     <div class="prod-type">Ak&#250;tny produkt &nbsp;&middot;&nbsp; bal. / mes.</div>
     <div class="row">
       <div>
-        <div class="flbl">Počet predpísaných balení / mesiac</div>
+        <label class="flbl" for="afl1-n">Počet predpísaných balení / mesiac</label>
         <div class="info-input-wrap">
           <input type="text" id="afl1-n" enterkeyhint="next" placeholder="0" inputmode="numeric" pattern="[0-9]*" oninput="gpDigitsOnly(this);validateProdField('afl1-n')" onkeydown="if(event.key==='Enter'&&this.value!==''){focusNext('afl1-n');}" onblur="validateProdField('afl1-n');">
           <span class="field-icon hidden" id="icon-afl1-n"></span>
@@ -3260,7 +3264,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     <div class="prod-type">Ak&#250;tny produkt &nbsp;&middot;&nbsp; bal. / mes.</div>
     <div class="row">
       <div>
-        <div class="flbl">Počet predpísaných balení / mesiac</div>
+        <label class="flbl" for="sup1-n">Počet predpísaných balení / mesiac</label>
         <div class="info-input-wrap">
           <input type="text" id="sup1-n" enterkeyhint="next" placeholder="0" inputmode="numeric" pattern="[0-9]*" oninput="gpDigitsOnly(this);validateProdField('sup1-n')" onkeydown="if(event.key==='Enter'&&this.value!==''){focusNext('sup1-n');}" onblur="validateProdField('sup1-n');">
           <span class="field-icon hidden" id="icon-sup1-n"></span>
@@ -3278,7 +3282,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     <div class="prod-type">Chronick&#253; produkt &nbsp;&middot;&nbsp; noví pacienti / mes.</div>
     <div class="row">
       <div>
-        <div class="flbl">Novonastavení pacienti / mesiac</div>
+        <label class="flbl" for="cav-n">Novonastavení pacienti / mesiac</label>
         <div class="info-input-wrap">
           <input type="text" id="cav-n" enterkeyhint="next" placeholder="0" inputmode="numeric" pattern="[0-9]*" oninput="gpDigitsOnly(this);validateProdField('cav-n')" onkeydown="if(event.key==='Enter'&&this.value!==''){var btn=document.querySelector('.btn-submit');if(btn)btn.focus();}" onblur="validateProdField('cav-n');">
           <span class="field-icon hidden" id="icon-cav-n"></span>
@@ -3296,7 +3300,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     <div class="prod-type">Osobné poznámky</div>
     <div class="row">
       <div>
-        <div class="flbl">Poznámka</div>
+        <label class="flbl" for="poznamka">Poznámka</label>
         <textarea id="poznamka" placeholder="Napr. preferuje ráno, ohlásiť sa deň vopred, pekná ambulancia..." rows="3" style="width:100%;border-radius:9px;border:1.5px solid #E2E8F0;background:#fff;font-size:16px;font-family:inherit;color:#1A2A3A;padding:10px 13px;outline:none;resize:none;transition:border-color .18s,box-shadow .18s;box-shadow:inset 0 1px 3px rgba(0,0,0,.04)" onfocus="this.style.borderColor='#F59E0B';this.style.boxShadow='0 0 0 3px rgba(245,158,11,.11)'" onblur="this.style.borderColor='#E2E8F0';this.style.boxShadow='inset 0 1px 3px rgba(0,0,0,.04)'"></textarea>
       </div>
     </div>
