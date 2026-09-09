@@ -4177,7 +4177,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.81.2';
+var APP_VERSION = '2.81.3';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8067,7 +8067,7 @@ function dnesRebricekGyn(me) {
     var i = -1;
     for (var k = 0; k < rank.length; k++) { if (rank[k].u === me) { i = k; break; } }
     if (i < 0) return { kind: 'tim', total: rank.length, popis: 'plnenie Q' + lastQ,
-                        top: rank.slice(0, 5).map(function (x) {
+                        top: rank.slice(0, 6).map(function (x) {
                           return { meno: x.meno, hodnota: plnenieFormatPct(x.pct) };
                         }) };
     return { kind: 'ja', rank: i + 1, total: rank.length,
@@ -8103,7 +8103,7 @@ function dnesRebricek() {
     // presne ten, ktorý mu appka priradila podľa funkcie (lbScopeReps →
     // AM West/East svojich, BUM a admin všetkých).
     if (i < 0) return { kind: 'tim', total: rank.length,
-                        top: rank.filter(function (x) { return x.count > 0; }).slice(0, 5)
+                        top: rank.filter(function (x) { return x.count > 0; }).slice(0, 6)
                                .map(function (x) {
                                  return { meno: x.meno, hodnota: dnesRebricekJednotka(x.count) };
                                }) };
