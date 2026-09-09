@@ -836,7 +836,7 @@
     letter-spacing:-.01em;cursor:pointer;-webkit-tap-highlight-color:transparent;margin-bottom:14px;
     box-shadow:0 12px 32px rgba(12,30,53,.30),inset 0 1px 0 rgba(255,255,255,.08);transition:transform .15s}
   .dnes-cta:active{transform:scale(.985)}
-  /* Druhá akcia — úprava potenciálu lekára, ktorý už v databáze je.
+  /* Druhá akcia — aktualizácia potenciálu lekára, ktorý už v databáze je.
      Nie je to rovnocenná akcia s pridaním nového, preto je tichšia. */
   .dnes-cta2{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
     background:#fff;color:#1A2A3A;border:1px solid #E2E8F0;border-radius:14px;padding:13px;
@@ -3670,7 +3670,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
       <div class="gpp-hd">
         <button type="button" class="gpp-back" onclick="closeGpPicker()" aria-label="Späť">←</button>
         <div>
-          <div class="gpp-title">Upraviť potenciál</div>
+          <div class="gpp-title">Aktualizovať potenciál</div>
           <div class="gpp-sub">Vyber lekára, ktorý už v databáze je</div>
         </div>
       </div>
@@ -3692,7 +3692,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
         <span class="dnes-cta-ic">＋</span><span>Zadať nového GP</span>
       </button>
       <button type="button" class="dnes-cta2" onclick="openGpPicker()">
-        <span>✏️</span><span>Upraviť potenciál lekára</span>
+        <span>✏️</span><span>Aktualizovať potenciál lekára</span>
       </button>
       <div id="dnes-body"></div>
     </div>
@@ -7552,7 +7552,7 @@ function attachHistItemGestures() {
     row._gestureBound = true;
     var idx = parseInt(row.getAttribute('data-idx'), 10);
     if (isNaN(idx)) return;
-    // Long-press → otvori detail (admin uvidí Upraviť tlačidlo v detail-e)
+    // Long-press → otvorí detail (v ňom je tlačidlo „Aktualizovať záznam")
     attachLongPress(row, function(e) {
       e.preventDefault && e.preventDefault();
       if (typeof openDetail === 'function') openDetail(idx);
@@ -7568,7 +7568,7 @@ function attachHistItemGestures() {
           row.style.transform = '';
           setTimeout(function(){ row.style.transition = ''; }, 250);
         }, 200);
-        // Admin: otvor detail (v detail-e bude tlačidlo Upraviť/Zmazať)
+        // Admin: otvor detail (v ňom je tlačidlo „Aktualizovať záznam")
         if (isAdmin && typeof openDetail === 'function') {
           setTimeout(function(){ openDetail(idx); }, 300);
         }
@@ -8134,13 +8134,13 @@ try {
   document.addEventListener('DOMContentLoaded', function () { repTabbarSync(); });
 } catch (e) {}
 
-// ── VÝBER LEKÁRA NA ÚPRAVU POTENCIÁLU ──────────────────────────────────
+// ── VÝBER LEKÁRA NA AKTUALIZÁCIU POTENCIÁLU ────────────────────────────
 // V Goleme sa lekár nezadáva pri každej návšteve — zadá sa raz a potom sa mu
-// upravuje potenciál, keď sa čísla zmenia. Preto sú na Dnes dve akcie:
-// zadať nového GP a upraviť potenciál toho, kto už v databáze je.
+// aktualizuje potenciál, keď sa čísla zmenia. Preto sú na Dnes dve akcie:
+// zadať nového GP a aktualizovať potenciál toho, kto už v databáze je.
 //
 // Hľadá sa cez appNorm(), takže „safarik" nájde „Šafárik" — rovnako ako
-// v zozname Lekári. Ťuknutie otvorí detail a hneď nad ním úpravu hodnôt.
+// v zozname Lekári. Ťuknutie otvorí detail a hneď nad ním aktualizáciu hodnôt.
 function gpPickerItems() {
   var q = appNorm(((document.getElementById('gpp-search') || {}).value) || '').trim();
   var all = [];
@@ -8200,7 +8200,7 @@ function gpPickerRender() {
 function openGpPicker() {
   var ov = document.getElementById('gpp-overlay');
   if (!ov) return;
-  usageSectionEnter('Úprava potenciálu');
+  usageSectionEnter('Aktualizácia potenciálu');
   var sb = document.getElementById('gpp-search');
   if (sb) sb.value = '';
   gpPickerRender();
@@ -8215,7 +8215,7 @@ function closeGpPicker() {
   try { usageSectionClose(); } catch (e) {}
 }
 
-// Ťuknutie na lekára — otvor jeho detail a hneď nad ním úpravu hodnôt.
+// Ťuknutie na lekára — otvor jeho detail a hneď nad ním aktualizáciu hodnôt.
 // Cez openDetail(), aby sa _currentDetailItem aj obnovenie po uložení
 // nastavili presne tak, ako to saveEditRecord() očakáva.
 document.addEventListener('click', function (ev) {
