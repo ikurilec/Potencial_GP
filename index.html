@@ -29308,51 +29308,53 @@ function preloadAllPharmaData() {
     }
   });
 })();
-// ── PULL-TO-REFRESH pre zoznam lekárov (reprezentant) ──
-// Manažér potiahnutie nadol mal, reprezentant nie — a pritom je to jediný
-// spôsob, ktorý ľudia z iných appiek poznajú a skúšajú automaticky. Bez neho
-// sa dáta dali obnoviť len zatvorením a znovuotvorením panela, čo nikto
-// neuhádne. Panel má vlastný skrol (.hist-overlay), takže gesto sa počíta
-// z jeho scrollTop, nie z okna.
-(function () {
-  var startY = 0, startX = 0, pulling = false, triggered = false, dirLocked = false;
+// ── Potiahnutie nadol na obnovenie — spoločná obsluha pre panely s vlastným skrolom ──
+// Manažérsky zoznam a gyn línia majú vlastné kópie tohto gesta. Nové panely
+// (Lekári, Nástenka) idú cez jednu obsluhu, aby sa správali rovnako a aby
+// oprava v gestách bola na jednom mieste.
+//
+// Panel má vlastný skrol (position:fixed + overflow-y:auto), takže sa počíta
+// jeho scrollTop, nie scrollY okna — okno sa v ňom nehýbe vôbec.
+function appAttachOverlayPtr(opt) {
   var THRESHOLD = 120;
-  var busy = false;
+  var startY = 0, startX = 0, pulling = false, triggered = false, dirLocked = false, busy = false;
 
-  function getOverlay(){ return document.getElementById('hist-overlay'); }
-  function getIndicator(){ return document.getElementById('hist-ptr-indicator'); }
-  function getArrow(){ return document.getElementById('hist-ptr-arrow'); }
-  function getSpinner(){ return document.getElementById('hist-ptr-spinner'); }
+  function el(id){ return id ? document.getElementById(id) : null; }
+  function ov(){ return el(opt.overlayId); }
+  function ind(){ return el(opt.indicatorId); }
+  function arrow(){ return el(opt.arrowId); }
+  function spinner(){ return el(opt.spinnerId); }
 
-  function isHistList() {
+  function active() {
     if (busy) return false;
-    var ov = getOverlay();
-    if (!ov || !ov.classList.contains('show')) return false;
-    // Nad zoznamom môže byť otvorený detail lekára — vtedy gesto nepatrí zoznamu.
-    var above = ['detail-overlay', 'confirm-overlay', 'session-expired-overlay', 'wn-overlay'];
-    for (var i = 0; i < above.length; i++) {
-      var el = document.getElementById(above[i]);
-      if (el && el.classList.contains('show')) return false;
+    var o = ov();
+    if (!o || !o.classList.contains('show')) return false;
+    // Nad panelom môže byť otvorený detail alebo dialóg — vtedy gesto nepatrí jemu.
+    var blocked = opt.blockedBy || [];
+    for (var i = 0; i < blocked.length; i++) {
+      var b = document.getElementById(blocked[i]);
+      if (b && b.classList.contains('show')) return false;
     }
-    return ov.scrollTop <= 5;
+    if (typeof opt.extraBlock === 'function' && opt.extraBlock()) return false;
+    return o.scrollTop <= 5;
   }
 
   function reset(hard) {
-    var ind = getIndicator(), arrow = getArrow(), spinner = getSpinner();
-    if (ind) { ind.classList.remove('pulling', 'loading'); ind.style.height = '0'; ind.style.opacity = '0'; }
-    if (arrow) { arrow.classList.remove('ready'); if (hard) arrow.style.display = 'inline-block'; }
-    if (spinner && hard) { spinner.style.display = 'none'; spinner.classList.remove('spin'); }
+    var i = ind(), a = arrow(), sp = spinner();
+    if (i) { i.classList.remove('pulling', 'loading'); i.style.height = '0'; i.style.opacity = '0'; }
+    if (a) { a.classList.remove('ready'); if (hard) a.style.display = 'inline-block'; }
+    if (sp && hard) { sp.style.display = 'none'; sp.classList.remove('spin'); }
   }
 
   document.addEventListener('touchstart', function (e) {
-    if (!isHistList()) return;
+    if (!active()) return;
     startY = e.touches[0].clientY;
     startX = e.touches[0].clientX;
     pulling = false; triggered = false; dirLocked = false;
   }, { passive: true });
 
   document.addEventListener('touchmove', function (e) {
-    if (!isHistList()) return;
+    if (!active()) return;
     var dy = e.touches[0].clientY - startY;
     var dx = Math.abs(e.touches[0].clientX - startX);
     if (!dirLocked) {
@@ -29363,16 +29365,13 @@ function preloadAllPharmaData() {
     }
     if (!pulling) return;
     if (dy <= 0) { pulling = false; reset(false); return; }
-    var ind = getIndicator(), arrow = getArrow();
-    if (ind) {
-      ind.classList.add('pulling');
-      ind.style.height = Math.min(dy * 0.5, 60) + 'px';
-      ind.style.opacity = Math.min(dy / THRESHOLD, 1);
+    var i = ind(), a = arrow();
+    if (i) {
+      i.classList.add('pulling');
+      i.style.height = Math.min(dy * 0.5, 60) + 'px';
+      i.style.opacity = Math.min(dy / THRESHOLD, 1);
     }
-    if (arrow) {
-      triggered = dy >= THRESHOLD;
-      arrow.classList.toggle('ready', triggered);
-    }
+    if (a) { triggered = dy >= THRESHOLD; a.classList.toggle('ready', triggered); }
   }, { passive: true });
 
   document.addEventListener('touchend', function () {
@@ -29380,27 +29379,55 @@ function preloadAllPharmaData() {
     pulling = false; dirLocked = false;
     if (!triggered) { reset(false); return; }
     triggered = false;
-    var ind = getIndicator(), arrow = getArrow(), spinner = getSpinner();
-    if (arrow) arrow.style.display = 'none';
-    if (spinner) { spinner.style.display = 'block'; spinner.classList.add('spin'); }
-    if (ind) { ind.classList.add('loading'); ind.style.height = '60px'; ind.style.opacity = '1'; }
+    var i = ind(), a = arrow(), sp = spinner();
+    if (a) a.style.display = 'none';
+    if (sp) { sp.style.display = 'block'; sp.classList.add('spin'); }
+    // 'pulling' sa musí zložiť, inak trieda ostane visieť po celý čas načítania
+    // a nedá sa odlíšiť ťahanie od načítavania.
+    if (i) { i.classList.remove('pulling'); i.classList.add('loading'); i.style.height = '60px'; i.style.opacity = '1'; }
     try { haptic('selection'); } catch (e) {}
     // busy zablokuje ďalšie potiahnutie, kým prvé nedobehne — dve súbežné
-    // načítania by si navzájom prepisovali zoznam.
+    // načítania by si navzájom prepisovali obsah.
     busy = true;
-    var session = getSession();
-    var doneCalled = false;
+    var done = false;
     function finish() {
-      if (doneCalled) return;
-      doneCalled = true;
-      busy = false;
-      reset(true);
+      if (done) return;
+      done = true; busy = false; reset(true);
     }
     // Poistka: keby sieť nikdy neodpovedala, koliesko sa musí zastaviť samo.
     setTimeout(finish, 8000);
-    gpHistForceRefresh(session ? session.username : '', function () { setTimeout(finish, 350); });
+    try { opt.onRefresh(function () { setTimeout(finish, 350); }); }
+    catch (e) { finish(); }
   });
-})();
+}
+
+// Zoznam lekárov (reprezentant). Manažér potiahnutie mal, reprezentant nie —
+// a pritom je to jediný spôsob obnovy, ktorý ľudia z iných appiek poznajú.
+appAttachOverlayPtr({
+  overlayId: 'hist-overlay',
+  indicatorId: 'hist-ptr-indicator',
+  arrowId: 'hist-ptr-arrow',
+  spinnerId: 'hist-ptr-spinner',
+  blockedBy: ['detail-overlay', 'confirm-overlay', 'session-expired-overlay', 'wn-overlay'],
+  onRefresh: function (done) {
+    var session = getSession();
+    gpHistForceRefresh(session ? session.username : '', done);
+  }
+});
+
+// Nástenka — samostatný panel pre všetky línie aj roly, takže potiahnutie
+// v nej chýbalo reprezentantom aj manažérom.
+appAttachOverlayPtr({
+  overlayId: 'nastenka-overlay',
+  indicatorId: 'nst-ptr-indicator',
+  arrowId: 'nst-ptr-arrow',
+  spinnerId: 'nst-ptr-spinner',
+  blockedBy: ['nst-compose', 'confirm-overlay', 'session-expired-overlay'],
+  onRefresh: function (done) {
+    NST.loading = true;
+    nstFetch(function () { NST.loading = false; try { nstRender(); } catch (e) {} done(); });
+  }
+});
 // ── PULL-TO-REFRESH pre gyn líniu ──
 (function(){
   var startY = 0, startX = 0, pulling = false, triggered = false, dirLocked = false;
@@ -40009,6 +40036,10 @@ try { gsLpInit(); } catch(e){}
 <div id="nastenka-overlay">
   <div class="nst-inner">
     <div class="nst-topbar"><button type="button" class="nst-back" onclick="closeNastenka()">&larr; Späť</button></div>
+    <div class="ptr-indicator" id="nst-ptr-indicator">
+      <span class="ptr-arrow" id="nst-ptr-arrow">↓</span>
+      <div class="ptr-spinner" id="nst-ptr-spinner" style="display:none"></div>
+    </div>
     <div id="nastenka-body"></div>
   </div>
 </div>
