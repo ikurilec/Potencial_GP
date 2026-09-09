@@ -636,24 +636,42 @@
   .progress-wrap{background:#fff;border-radius:12px;padding:10px 16px 12px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.06);border:1px solid #E2E8F0;transition:background .4s ease,border-radius .4s ease,border-color .4s ease,box-shadow .4s ease,backdrop-filter .4s ease,margin .4s ease}
   .progress-wrap.sticky{position:sticky;top:var(--sat);z-index:997;border-radius:0 0 12px 12px;background:rgba(255,255,255,.82);backdrop-filter:blur(10px) saturate(1.4);-webkit-backdrop-filter:blur(10px) saturate(1.4);border:none;border-bottom:1px solid rgba(226,232,240,.7);box-shadow:0 2px 12px rgba(0,0,0,.08);margin-bottom:0}
   body:not(.manager-mode) .progress-wrap.sticky{top:calc(62px + var(--sat))}
-  .progress-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
-  /* Čo ešte chýba — ťuknutie na položku skočí na pole. Nahrádza percento, ktoré
-     nikomu nepovie, čo má spraviť. */
-  /* Akcia v prázdnom výsledku hľadania. */
+  .progress-header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:5px}
+  /* Nadpis nie je VERZÁLKAMI — pod ním sú teraz štyri krátke názvy krokov a dva
+     riadky verzálok nad sebou sa zle čítajú. Zostáva potichu, dôraz nesú kroky. */
+  .progress-label{font-size:12px;font-weight:600;color:#64748B;letter-spacing:.01em;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .progress-pct{font-size:12.5px;font-weight:700;color:#2563EB;white-space:nowrap;
+    font-variant-numeric:tabular-nums}
+  /* ── Vyplnenosť formulára ──
+     Pruh a zoznam chýbajúcich vecí sú jeden objekt, nie dve vrstvy pod sebou.
+     Štyri segmenty = štyri povinné veci; každý je zároveň tlačidlo, ktoré skočí
+     na svoje pole. Poradie je stále rovnaké, takže sa nič nepreskupuje počas
+     písania — mení sa len stav. Farby sú z palety appky (biele plochy, sivé
+     okraje, zelená --color-success), nie samostatná farebná schéma. */
+  .progress-steps{display:flex;gap:6px;margin-top:9px}
+  .ps-step{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:6px;
+    background:none;border:none;padding:0 0 2px;font-family:inherit;cursor:pointer;
+    -webkit-tap-highlight-color:transparent;text-align:center}
+  .ps-bar{height:6px;border-radius:3px;background:#CBD5E1;
+    box-shadow:inset 0 1px 2px rgba(15,23,42,.10);
+    transition:background .32s cubic-bezier(.4,0,.2,1)}
+  .ps-lbl{font-size:11px;font-weight:600;color:#94A3B8;letter-spacing:.01em;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    transition:color .32s ease}
+  .ps-step.is-done .ps-bar{background:linear-gradient(180deg,#22C55E,#16A34A);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.30)}
+  .ps-step.is-done .ps-lbl{color:#15803D}
+  .ps-step:active .ps-lbl{color:#2563EB}
+  .ps-step:active .ps-bar{transform:scaleY(1.4)}
+  /* Hotový formulár — potvrdenie namiesto ďalšieho čísla. */
+  .progress-wrap.is-complete .progress-pct{color:#15803D}
+  /* Akcia v prázdnom výsledku hľadania — hlavné tlačidlo appky (modrá --color-primary). */
   .gp-empty-cta{margin-top:16px;font-family:inherit;font-size:14.5px;font-weight:700;color:#fff;
     background:linear-gradient(180deg,#2563EB,#1D4ED8);border:none;border-radius:12px;
     padding:13px 20px;cursor:pointer;min-height:44px;-webkit-tap-highlight-color:transparent;
     box-shadow:0 4px 14px rgba(37,99,235,.28)}
   .gp-empty-cta:active{transform:scale(.98)}
-  .progress-missing{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
-  .progress-missing:empty{display:none}
-  .pm-chip{font-family:inherit;font-size:12.5px;font-weight:600;color:#92400E;background:#FEF3C7;
-    border:1px solid #FDE68A;border-radius:999px;padding:7px 12px;cursor:pointer;line-height:1.2;
-    -webkit-tap-highlight-color:transparent;min-height:32px;display:inline-flex;align-items:center}
-  .pm-chip:active{background:#FDE68A}
-  .pm-done{font-size:12.5px;font-weight:600;color:#15803D;padding:5px 0;display:inline-flex;align-items:center;gap:5px}
-  .progress-label{font-size:11px;font-weight:600;color:#64748B;letter-spacing:.04em;text-transform:uppercase}
-  .progress-pct{font-size:12px;font-weight:700;color:#2563EB}
   .progress-track{height:10px;background:#CBD5E1;border-radius:5px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(15,23,42,.08)}
   .progress-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,#EF4444,#F59E0B,#10B981);background-size:500% 100%;transition:width .4s cubic-bezier(.4,0,.2,1);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 0 8px rgba(16,185,129,.20);position:relative;overflow:hidden}
   .progress-fill::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.30) 50%,transparent 100%);transform:translateX(-100%);animation:progressShine 2.4s ease-in-out infinite}
@@ -3163,10 +3181,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
       <span class="progress-label" id="progress-label">Vyplnenosť formulára</span>
       <span class="progress-pct" id="progress-pct">0%</span>
     </div>
-    <div class="progress-missing" id="progress-missing"></div>
-    <div class="progress-track">
-      <div class="progress-fill" id="progress-fill" style="width:0%"></div>
-  </div>
+    <div class="progress-steps" id="progress-steps"></div>
 </div>
 
   <div class="info-card">
@@ -3765,7 +3780,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.77.0';
+var APP_VERSION = '2.77.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -6514,18 +6529,13 @@ function updateProgress() {
   });
   if(anyProd) score++;
 
-  var pct = Math.round((score / total) * 100);
-  var fill = document.getElementById('progress-fill');
+  // „2 zo 4" namiesto percenta — hovorí to isté, ale konkrétne.
   var pctEl = document.getElementById('progress-pct');
+  var wrap  = document.getElementById('progress-wrap');
+  if (pctEl) pctEl.textContent = (score === total) ? 'Hotovo ✓' : (score + ' zo ' + total);
+  if (wrap) wrap.classList.toggle('is-complete', score === total);
 
-  if(fill) {
-    fill.style.width = pct + '%';
-    if(pct === 100) fill.classList.add('complete');
-    else fill.classList.remove('complete');
-  }
-  if(pctEl) pctEl.textContent = pct + '%';
-
-  try { gpMissingRender(); } catch(e) {}
+  try { gpStepsRender(); } catch(e) {}
 }
 
 // Nechaj používateľa písať a hodnotu vyčisti až potom. Predtým každé číselné pole
@@ -6541,58 +6551,69 @@ function gpDigitsOnly(el) {
   }
 }
 
-// ── ČO EŠTE CHÝBA ──
-// Percento „Vyplnenosť formulára 43 %" nikomu nepovie, čo má spraviť. Namiesto neho
-// zoznam konkrétnych chýbajúcich polí; ťuknutie na položku na pole skočí a zaostrí ho.
-// Predtým sa reprezentant dozvedel, čo chýba, až po ťuknutí na Potvrdiť — a appka ho
-// pri tom odscrollovala inam a vypísala vetu.
-function gpMissingFields() {
-  var out = [];
+// ── VYPLNENOSŤ FORMULÁRA ──
+// Percento „43 %" nikomu nepovie, čo má spraviť, a chýbajúce veci sa reprezentant
+// dozvedel až po ťuknutí na Potvrdiť — appka ho pri tom odscrollovala inam.
+// Namiesto toho štyri segmenty v pevnom poradí: každý je jedna povinná vec,
+// zelenie sa keď je hotová, a ťuknutie naň skočí na príslušné pole.
+// Poradie sa nemení, takže sa počas písania nič nepreskupuje.
+var GP_STEPS = [
+  { id: 'lekar',       label: 'Lekár' },
+  { id: 'mesto',       label: 'Okres' },
+  { id: 'kapitacia-n', label: 'Kapitácia' },
+  { id: 'afl1-n',      label: 'Produkt' }
+];
 
-  var lekar = ((document.getElementById('lekar') || {}).value || '').trim();
-  var TITLES = ['mudr.','mddr.','rndr.','phdr.','judr.','ing.','mgr.','doc.','prof.','bc.','mvdr.','paeddr.'];
-  var real = lekar.split(' ').filter(function (w) {
-    return w.length > 0 && TITLES.indexOf(w.toLowerCase()) === -1;
-  });
-  if (real.length < 2) out.push({ id: 'lekar', label: 'meno lekára' });
-
-  var mestoIcon = document.getElementById('icon-mesto');
-  if (!(mestoIcon && mestoIcon.classList.contains('ok'))) out.push({ id: 'mesto', label: 'okres' });
-
-  var kap = document.getElementById('kapitacia-n');
-  if (!kap || kap.value === '') out.push({ id: 'kapitacia-n', label: 'kapitácia' });
-
-  var anyProd = ['afl1-n', 'sup1-n', 'vid1-n', 'cav-n'].some(function (id) {
+// Je daná povinná vec splnená? Rovnaké pravidlá ako v updateProgress().
+function gpStepDone(stepId) {
+  if (stepId === 'lekar') {
+    var v = ((document.getElementById('lekar') || {}).value || '').trim();
+    var TITLES = ['mudr.','mddr.','rndr.','phdr.','judr.','ing.','mgr.','doc.','prof.','bc.','mvdr.','paeddr.'];
+    return v.split(' ').filter(function (w) {
+      return w.length > 0 && TITLES.indexOf(w.toLowerCase()) === -1;
+    }).length >= 2;
+  }
+  if (stepId === 'mesto') {
+    var ico = document.getElementById('icon-mesto');
+    return !!(ico && ico.classList.contains('ok'));
+  }
+  if (stepId === 'kapitacia-n') {
+    var kap = document.getElementById('kapitacia-n');
+    return !!(kap && kap.value !== '');
+  }
+  // Produkt — stačí ktorýkoľvek zo štyroch.
+  return ['afl1-n', 'sup1-n', 'vid1-n', 'cav-n'].some(function (id) {
     var e = document.getElementById(id);
     return e && e.value !== '';
   });
-  if (!anyProd) out.push({ id: 'afl1-n', label: 'aspoň jeden produkt' });
-
-  return out;
 }
 
-function gpMissingRender() {
-  var box = document.getElementById('progress-missing');
-  var lbl = document.getElementById('progress-label');
+function gpStepsRender() {
+  var box = document.getElementById('progress-steps');
   if (!box) return;
 
-  var missing = gpMissingFields();
-  if (!missing.length) {
-    box.innerHTML = '<span class="pm-done">✓ Všetko vyplnené — môžeš odoslať</span>';
-    if (lbl) lbl.textContent = 'Formulár je kompletný';
-    return;
+  // Prvé vykreslenie postaví prvky; ďalšie už len prepínajú triedu, aby sa
+  // nezahadzoval a znova nevytváral DOM pri každom stlačení klávesu.
+  if (!box.children.length) {
+    box.innerHTML = GP_STEPS.map(function (st) {
+      return '<button type="button" class="ps-step" data-goto="' + appEsc(st.id) + '">' +
+               '<span class="ps-bar"></span>' +
+               '<span class="ps-lbl">' + appEsc(st.label) + '</span>' +
+             '</button>';
+    }).join('');
   }
-  if (lbl) lbl.textContent = missing.length === 1 ? 'Chýba ešte jedna vec' : 'Ešte chýba';
-  box.innerHTML = missing.map(function (m) {
-    return '<button type="button" class="pm-chip" data-goto="' + appEsc(m.id) + '">' + appEsc(m.label) + '</button>';
-  }).join('');
+  Array.prototype.forEach.call(box.children, function (el, i) {
+    var done = gpStepDone(GP_STEPS[i].id);
+    el.classList.toggle('is-done', done);
+    el.setAttribute('aria-label', GP_STEPS[i].label + (done ? ' — vyplnené' : ' — chýba'));
+  });
 }
 
 // Jeden poslucháč pre celý riadok — ťuknutie skočí na pole a zaostrí ho.
 document.addEventListener('click', function (ev) {
-  var chip = ev.target && ev.target.closest ? ev.target.closest('.pm-chip') : null;
-  if (!chip) return;
-  var el = document.getElementById(chip.getAttribute('data-goto'));
+  var step = ev.target && ev.target.closest ? ev.target.closest('.ps-step') : null;
+  if (!step) return;
+  var el = document.getElementById(step.getAttribute('data-goto'));
   if (!el) return;
   try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { }
   setTimeout(function () { try { el.focus(); } catch (e) { } }, 260);
