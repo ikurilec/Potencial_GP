@@ -944,7 +944,6 @@
   .ac-empty{padding:11px 14px;font-size:13.5px;color:#64748B;font-weight:500}
   /* Poznámka nad ponukou — tiež nie je .ac-item, takže do výberu nezasahuje. */
   .ac-note{padding:8px 14px;font-size:12px;color:#A8480B;font-weight:600;background:#FDF6F0;border-bottom:1px solid #F1F5F9}
-  .ac-head{padding:7px 14px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#94A3B8;background:#F8FAFC;border-bottom:1px solid #F1F5F9}
   .ac-item:last-child{border-bottom:none}
   .ac-item:hover,.ac-item.active{background:#EFF6FF;color:#2563EB}
   .ac-item strong{color:#2563EB}
@@ -6136,7 +6135,6 @@ closeConfirm = function(doNext) {
   // Save to history
   var lekar = (document.getElementById('lekar')||{}).value || '';
   var okres = (document.getElementById('mesto')||{}).value || '';
-  try { gpOkresRecentAdd(okres); } catch(e){}
   try {
     var scenarVal = window._lastScenario || 'ok';
     var recVal = window._lastOdporucanie || '';
@@ -6253,39 +6251,6 @@ function closeMilestone() {
 var OKRESY = ["Bánovce nad Bebravou", "Banská Bystrica", "Banská Štiavnica", "Bardejov", "Bratislava I", "Bratislava II", "Bratislava III", "Bratislava IV", "Bratislava V", "Brezno", "Bytča", "Čadca", "Detva", "Dolný Kubín", "Dunajská Streda", "Galanta", "Gelnica", "Hlohovec", "Humenné", "Ilava", "Kežmarok", "Komárno", "Košice I", "Košice II", "Košice III", "Košice IV", "Košice-okolie", "Krupina", "Kysucké Nové Mesto", "Levice", "Levoča", "Liptovský Mikuláš", "Lučenec", "Malacky", "Martin", "Medzilaborce", "Michalovce", "Myjava", "Námestovo", "Nitra", "Nové Mesto nad Váhom", "Nové Zámky", "Partizánske", "Pezinok", "Piešťany", "Poltár", "Poprad", "Považská Bystrica", "Prešov", "Prievidza", "Púchov", "Revúca", "Rimavská Sobota", "Rožňava", "Ružomberok", "Sabinov", "Senec", "Senica", "Skalica", "Snina", "Sobrance", "Spišská Nová Ves", "Stará Ľubovňa", "Stropkov", "Svidník", "Šaľa", "Topoľčany", "Trebišov", "Trenčín", "Trnava", "Turčianske Teplice", "Tvrdošín", "Veľký Krtíš", "Vranov nad Topľou", "Zlaté Moravce", "Zvolen", "Žarnovica", "Žiar nad Hronom", "Žilina"];
 var acIdx = -1;
 
-// ── Naposledy použité okresy ────────────────────────────────────────────
-// Reprezentant chodí po jednom území: v jeden deň zapisuje lekárov z toho
-// istého okresu, prípadne z dvoch susedných. Zoznam OKRESY má 79 položiek,
-// takže sa k tomu istému okresu zakaždým prescrolluje alebo ho vypíše.
-//
-// ZÁMERNE sa okres NEPREDVYPĹŇA sám. Zle predvyplnený okres, ktorý si
-// reprezentant nevšimne, je horší než jedno kliknutie navyše — v dátach by
-// vznikol lekár priradený do nesprávneho okresu a nikto by to nezistil.
-// Namiesto toho sú tri naposledy použité okresy navrchu ponuky, ktorá sa
-// aj tak otvára pri každom kliknutí do poľa. Výber ostáva vedomý.
-var GP_OKRES_RECENT_KEY = 'satori_recent_okresy';
-var GP_OKRES_RECENT_MAX = 3;
-
-function gpOkresRecentList() {
-  try {
-    var arr = JSON.parse(localStorage.getItem(GP_OKRES_RECENT_KEY) || '[]');
-    if (Object.prototype.toString.call(arr) !== '[object Array]') return [];
-    // Prejdi cez OKRESY — v úložisku môže byť okres, ktorý sa medzitým
-    // premenoval alebo zo zoznamu vypadol; taký sa ponúkať nesmie.
-    return arr.filter(function (o) {
-      return typeof o === 'string' && OKRESY.indexOf(o) !== -1;
-    }).slice(0, GP_OKRES_RECENT_MAX);
-  } catch (e) { return []; }
-}
-
-function gpOkresRecentAdd(okres) {
-  var name = String(okres == null ? '' : okres).trim();
-  if (!name || OKRESY.indexOf(name) === -1) return;
-  var list = gpOkresRecentList().filter(function (o) { return o !== name; });
-  list.unshift(name);
-  try { localStorage.setItem(GP_OKRES_RECENT_KEY, JSON.stringify(list.slice(0, GP_OKRES_RECENT_MAX))); } catch (e) {}
-}
-
 function acInput(el) {
   // Normalize arabic numbers to roman for Bratislava/Košice
   var normalized = normalizeOkresInput(el.value);
@@ -6322,18 +6287,7 @@ function acInput(el) {
     return '<div class="ac-item" data-okres="' + appEsc(name) + '">' + label + '</div>';
   }
   function acRenderAll() {
-    // Naposledy použité idú navrch a z abecedného zoznamu sa vynechajú —
-    // ten istý okres dvakrát v jednej ponuke vyzerá ako chyba.
-    var recent = gpOkresRecentList().filter(function (o) { return pool.indexOf(o) !== -1; });
-    var html = '';
-    if (recent.length) {
-      html += '<div class="ac-head">Naposledy</div>' +
-              recent.map(function (m) { return acRow(m, -1, 0); }).join('') +
-              '<div class="ac-head">Všetky okresy</div>';
-    }
-    html += pool.filter(function (m) { return recent.indexOf(m) === -1; })
-                .map(function (m) { return acRow(m, -1, 0); }).join('');
-    list.innerHTML = html;
+    list.innerHTML = pool.map(function(m) { return acRow(m, -1, 0); }).join('');
     list.style.display = 'block';
   }
 
