@@ -3227,7 +3227,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.82.1 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.82.2 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -4192,7 +4192,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.82.1';
+var APP_VERSION = '2.82.2';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8504,7 +8504,10 @@ function appGoNastenka(postId) { appGoTab('nastenka', postId); }
 // Manažér a gyn neprepínajú panely, ale vlastné záložky — lišta sa musí
 // zvýrazniť aj podľa nich.
 function appTabSyncFromTab(tab) {
-  appNavigaciaZaznam();
+  // Pozor: túto funkciu volá aj automatické prepnutie záložky pri štarte
+  // (manažérovi sa načíta Plnenie). Za vedomé ťuknutie sa preto NEráta —
+  // inak by zrušilo poistku na úvodnú obrazovku a človek by skončil tam,
+  // kde ho appka odložila, nie tam, kam chcel.
   var id = (tab === 'plnenie') ? 'tb-plnenie' : (tab === 'kalendar') ? 'tb-kal' : 'tb-viac';
   ['tb-dnes','tb-plnenie','tb-kal','tb-nastenka','tb-viac'].forEach(function (x) {
     var b = document.getElementById(x);
@@ -9310,7 +9313,10 @@ function userPrefsSet(patch){
 // rozhodnutie proti Domovu, len jediná vtedajšia možnosť. Kým si používateľ
 // úvodnú obrazovku nezvolí nanovo (v Nastaveniach), domovom je Domov.
 // Marker je lokálny, aby sa uložená voľba v Sheete nikomu neprepísala.
-var DOMOV_VOLBA_KEY = 'satori_uvodna_obrazovka_v281';
+// Kľúč nesie verziu: keď sa úvodná obrazovka zmení, staré voľby sa zahodia
+// a znovu platí Domov, kým si používateľ nevyberie nanovo. Bez toho by
+// zostávalo visieť nastavenie z čias, keď Domov ešte pre danú rolu neexistoval.
+var DOMOV_VOLBA_KEY = 'satori_uvodna_obrazovka_v282';
 function appVolbaPotvrdena() {
   try { return localStorage.getItem(DOMOV_VOLBA_KEY) === '1'; } catch (e) { return false; }
 }
@@ -11325,7 +11331,9 @@ function mgrSwitchLine(target){
       // Reagila dáta sa pri pôvodnom logine nenačítali (Golem login mal prednosť), preto load tu.
       try { loadInitData(u.username); } catch(e){}
       if(role){ mgrEnter(role); }
-      else if(target === 'reagila'){ try { openRepPlnenie(); } catch(e){} }
+      // Reagila kedysi začínala na Plnení. Domovom je Domov — Plnenie sa
+      // otvorí len tomu, kto si ho ako úvodnú obrazovku sám zvolil.
+      else if(target === 'reagila' && appDefaultTab() === 'plnenie'){ try { openRepPlnenie(); } catch(e){} }
       if(target === 'reagila'){
         setTimeout(function(){ try { lbFetchApprovedQ(function(){ lbLoadData(); lbPreloadPlnenie(); }); } catch(e){} }, 600);
         setTimeout(function(){ try { preloadAllPharmaData(); } catch(e){} }, 800);
@@ -12100,6 +12108,21 @@ function appOpenDefaultScreen() {
       openDnes();
     } catch (e) {}
   }, 600);
+  // A ešte raz, keď dobehnú dáta a niečo by Domov medzitým prekrylo.
+  setTimeout(function () {
+    try {
+      if (_uzNavigoval) return;
+      if (appDefaultTab() !== 'dnes') return;
+      var d2 = document.getElementById('dnes-overlay');
+      if (d2 && d2.classList.contains('show')) return;
+      if (_panelCurrent) return;
+      var n2 = document.getElementById('nastenka-overlay');
+      if (n2 && n2.classList.contains('show')) return;
+      var s2 = document.getElementById('settings-overlay');
+      if (s2 && s2.classList.contains('show')) return;
+      openDnes();
+    } catch (e) {}
+  }, 1800);
 }
 
 function updateHdrForUser(user) {
@@ -12251,7 +12274,11 @@ function initLogin() {
     // GP reprezentant → persistentný header + záložky (fixný topbar) — pred renderom hlavičky
     if(!mgrRole && session.line !== 'gyn'){ document.body.classList.add('gp-rep'); }
     // Reagila KAM → default záložka Plnenie synchrónne (kým je .app skrytá), potom odkry
-    if(!mgrRole && _isReagilaR){ try { openRepPlnenie(); } catch(e){} reagilaRevealAfterPaint(); }
+    if(!mgrRole && _isReagilaR){
+      // To isté pri obnovení relácie: na Plnenie len s vlastnou voľbou.
+      if(appDefaultTab() === 'plnenie'){ try { openRepPlnenie(); } catch(e){} }
+      reagilaRevealAfterPaint();
+    }
     updateHdrForUser(session);
     setTimeout(function(){ try { nameDayCelebrate(session); } catch(e){} }, 1500);
     pingLogin(session.username);
