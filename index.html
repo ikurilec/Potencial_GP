@@ -897,6 +897,8 @@
   .ac-item{padding:11px 14px;font-size:15px;color:#1A2A3A;cursor:pointer;border-bottom:1px solid #F1F5F9}
   /* Riadok „bez zhody" — nie je .ac-item, takže sa nedá vybrať šípkami ani klikom. */
   .ac-empty{padding:11px 14px;font-size:13.5px;color:#64748B;font-weight:500}
+  /* Poznámka nad ponukou — tiež nie je .ac-item, takže do výberu nezasahuje. */
+  .ac-note{padding:8px 14px;font-size:12px;color:#A8480B;font-weight:600;background:#FDF6F0;border-bottom:1px solid #F1F5F9}
   .ac-item:last-child{border-bottom:none}
   .ac-item:hover,.ac-item.active{background:#EFF6FF;color:#2563EB}
   .ac-item strong{color:#2563EB}
@@ -6231,9 +6233,21 @@ function acInput(el) {
     if (at !== -1) matches.push({ name: o, at: at });
   });
 
-  // Bez zhody sa vstup NIKDY nemaže. Predtým tu bolo el.value.slice(0, -1), takže
-  // appka ticho zmazala práve napísaný znak a používateľ videl, ako mu písmená mizmú
-  // pod prstami. Namiesto toho povedz, že zhoda nie je, a nechaj text tak.
+  // Bez zhody v regióne skús celé Slovensko. Pool je totiž zúžený na región, ktorý sa
+  // doplnil pri predošlom okrese — takže po výbere Žiliny (TN) by sa Košice nenašli
+  // a používateľ by dostal „skontroluj preklep" pri okrese, ktorý existuje. Ponúkni ho
+  // s poznámkou; výberom sa región prepíše na správny (acSelect volá setRegion).
+  var outsideRegion = false;
+  if (!matches.length && pool !== OKRESY) {
+    OKRESY.forEach(function(o) {
+      var at = appNorm(o).indexOf(val);
+      if (at !== -1) matches.push({ name: o, at: at });
+    });
+    outsideRegion = matches.length > 0;
+  }
+
+  // Vstup sa NIKDY nemaže. Predtým tu bolo el.value.slice(0, -1), takže appka ticho
+  // zmazala práve napísaný znak a používateľ videl, ako mu písmená mizmú pod prstami.
   if (!matches.length) {
     list.innerHTML = '<div class="ac-empty">Žiadny okres nezodpovedá — skontroluj preklep</div>';
     list.style.display = 'block';
@@ -6249,7 +6263,10 @@ function acInput(el) {
   // Ikona „v poriadku" len pri presnej zhode s okresom (po odstránení diakritiky).
   setIcon('mesto', pool.some(function(o){ return appNorm(o) === val; }) ? 'ok' : 'none');
 
-  list.innerHTML = matches.map(function(m) { return acRow(m.name, m.at, val.length); }).join('');
+  var head = outsideRegion
+    ? '<div class="ac-note">Mimo zvoleného regiónu — výberom sa región zmení</div>'
+    : '';
+  list.innerHTML = head + matches.map(function(m) { return acRow(m.name, m.at, val.length); }).join('');
   list.style.display = 'block';
 }
 
@@ -8881,19 +8898,13 @@ function setRegion(val) {
 }
 
 
+// Zaostrenie poľa Okres. Zámerne len presmerovanie na acInput — bola tu druhá,
+// staršia kópia tej istej logiky: zhoda len od začiatku názvu, bez ohľadu na
+// diakritiku a s escapovaním apostrofu, ktoré nič nerobilo — replace(/'/g, "\'")
+// nahrádza apostrof apostrofom. Dve kópie znamenali, že oprava v jednej sa
+// v druhej neprejavila, čo je presne to, čomu sa vyhýbame.
 function acShowAll(el) {
-  var rep = document.getElementById('reprezentant');
-  var selectedReg = rep ? rep.value : '';
-  var pool = (selectedReg && REGION_OKRESY[selectedReg]) ? REGION_OKRESY[selectedReg] : OKRESY;
-  var list = document.getElementById('ac-list');
-  var val = el.value.trim().toLowerCase();
-  var items = val ? pool.filter(function(o){ return o.toLowerCase().indexOf(val)===0; }) : pool;
-  if(!items.length) { list.style.display='none'; return; }
-  list.innerHTML = items.map(function(m) {
-    var display = val ? '<strong>' + m.slice(0, val.length) + '</strong>' + m.slice(val.length) : m;
-    return '<div class="ac-item" onclick="acSelect(\'' + m.replace(/'/g,"\'") + '\')">' + display + '</div>';
-  }).join('');
-  list.style.display = 'block';
+  acInput(el);
 }
 
 
