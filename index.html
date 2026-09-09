@@ -633,6 +633,15 @@
   .progress-wrap.sticky{position:sticky;top:var(--sat);z-index:997;border-radius:0 0 12px 12px;background:rgba(255,255,255,.82);backdrop-filter:blur(10px) saturate(1.4);-webkit-backdrop-filter:blur(10px) saturate(1.4);border:none;border-bottom:1px solid rgba(226,232,240,.7);box-shadow:0 2px 12px rgba(0,0,0,.08);margin-bottom:0}
   body:not(.manager-mode) .progress-wrap.sticky{top:calc(62px + var(--sat))}
   .progress-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+  /* Čo ešte chýba — ťuknutie na položku skočí na pole. Nahrádza percento, ktoré
+     nikomu nepovie, čo má spraviť. */
+  .progress-missing{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+  .progress-missing:empty{display:none}
+  .pm-chip{font-family:inherit;font-size:12.5px;font-weight:600;color:#92400E;background:#FEF3C7;
+    border:1px solid #FDE68A;border-radius:999px;padding:7px 12px;cursor:pointer;line-height:1.2;
+    -webkit-tap-highlight-color:transparent;min-height:32px;display:inline-flex;align-items:center}
+  .pm-chip:active{background:#FDE68A}
+  .pm-done{font-size:12.5px;font-weight:600;color:#15803D;padding:5px 0;display:inline-flex;align-items:center;gap:5px}
   .progress-label{font-size:11px;font-weight:600;color:#64748B;letter-spacing:.04em;text-transform:uppercase}
   .progress-pct{font-size:12px;font-weight:700;color:#2563EB}
   .progress-track{height:10px;background:#CBD5E1;border-radius:5px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(15,23,42,.08)}
@@ -3141,9 +3150,10 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 
 <div class="progress-wrap" id="progress-wrap">
     <div class="progress-header">
-      <span class="progress-label">Vyplnenosť formulára</span>
+      <span class="progress-label" id="progress-label">Vyplnenosť formulára</span>
       <span class="progress-pct" id="progress-pct">0%</span>
     </div>
+    <div class="progress-missing" id="progress-missing"></div>
     <div class="progress-track">
       <div class="progress-fill" id="progress-fill" style="width:0%"></div>
   </div>
@@ -6500,7 +6510,65 @@ function updateProgress() {
   // Živý výsledok sa prepočíta spolu s vyplnenosťou — updateProgress() sa už volá
   // pri každej zmene poľa, takže netreba ďalších poslucháčov.
   try { gpLiveResultUpdate(); } catch(e) {}
+  try { gpMissingRender(); } catch(e) {}
 }
+
+// ── ČO EŠTE CHÝBA ──
+// Percento „Vyplnenosť formulára 43 %" nikomu nepovie, čo má spraviť. Namiesto neho
+// zoznam konkrétnych chýbajúcich polí; ťuknutie na položku na pole skočí a zaostrí ho.
+// Predtým sa reprezentant dozvedel, čo chýba, až po ťuknutí na Potvrdiť — a appka ho
+// pri tom odscrollovala inam a vypísala vetu.
+function gpMissingFields() {
+  var out = [];
+
+  var lekar = ((document.getElementById('lekar') || {}).value || '').trim();
+  var TITLES = ['mudr.','mddr.','rndr.','phdr.','judr.','ing.','mgr.','doc.','prof.','bc.','mvdr.','paeddr.'];
+  var real = lekar.split(' ').filter(function (w) {
+    return w.length > 0 && TITLES.indexOf(w.toLowerCase()) === -1;
+  });
+  if (real.length < 2) out.push({ id: 'lekar', label: 'meno lekára' });
+
+  var mestoIcon = document.getElementById('icon-mesto');
+  if (!(mestoIcon && mestoIcon.classList.contains('ok'))) out.push({ id: 'mesto', label: 'okres' });
+
+  var kap = document.getElementById('kapitacia-n');
+  if (!kap || kap.value === '') out.push({ id: 'kapitacia-n', label: 'kapitácia' });
+
+  var anyProd = ['afl1-n', 'sup1-n', 'vid1-n', 'cav-n'].some(function (id) {
+    var e = document.getElementById(id);
+    return e && e.value !== '';
+  });
+  if (!anyProd) out.push({ id: 'afl1-n', label: 'aspoň jeden produkt' });
+
+  return out;
+}
+
+function gpMissingRender() {
+  var box = document.getElementById('progress-missing');
+  var lbl = document.getElementById('progress-label');
+  if (!box) return;
+
+  var missing = gpMissingFields();
+  if (!missing.length) {
+    box.innerHTML = '<span class="pm-done">✓ Všetko vyplnené — môžeš odoslať</span>';
+    if (lbl) lbl.textContent = 'Formulár je kompletný';
+    return;
+  }
+  if (lbl) lbl.textContent = missing.length === 1 ? 'Chýba ešte jedna vec' : 'Ešte chýba';
+  box.innerHTML = missing.map(function (m) {
+    return '<button type="button" class="pm-chip" data-goto="' + appEsc(m.id) + '">' + appEsc(m.label) + '</button>';
+  }).join('');
+}
+
+// Jeden poslucháč pre celý riadok — ťuknutie skočí na pole a zaostrí ho.
+document.addEventListener('click', function (ev) {
+  var chip = ev.target && ev.target.closest ? ev.target.closest('.pm-chip') : null;
+  if (!chip) return;
+  var el = document.getElementById(chip.getAttribute('data-goto'));
+  if (!el) return;
+  try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { }
+  setTimeout(function () { try { el.focus(); } catch (e) { } }, 260);
+});
 
 
 // ── ŽIVÝ VÝSLEDOK — karta #rec nad formulárom ──
