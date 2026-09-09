@@ -843,6 +843,8 @@
   .dnes-kam-t{font-weight:700;font-size:13.5px;color:#0C1E35;flex:1;min-width:0}
   .dnes-kam-n{font-weight:800;font-size:13.5px;color:#2563EB;font-variant-numeric:tabular-nums}
   .dnes-kam-cap{font-size:11.5px;color:#94A3B8;font-weight:600;margin-top:2px}
+  .dnes-mini[onclick]{cursor:pointer;border-radius:8px;margin-left:-4px;margin-right:-4px;padding-left:4px;padding-right:4px}
+  .dnes-mini[onclick]:active{background:#F1F5F9}
   .dnes-rank-p{font-size:13px;font-weight:800;color:#64748B;min-width:22px;flex-shrink:0}
   .dnes-rank{display:flex;align-items:baseline;gap:6px}
   .dnes-rank-n{font-family:var(--font-display);font-size:34px;font-weight:800;color:#0C1E35;line-height:1}
@@ -2119,7 +2121,11 @@
   /* .app v manažérskom režime neobsahuje nič okrem pevnej hlavičky a
      prekryvov (tie sú position:fixed) — nesmie teda zaberať miesto.
      Odsadenie o výšku hlavičky patrí manažérskemu pohľadu pod ňou. */
-  body.manager-mode.app-nav .app{padding:0}
+  /* !important, lebo odsadenie pre tlačidlo „Potvrdiť" sa nastavuje inline
+     z JS. Bez neho by prázdny pás zmizol až po tom, čo ho niečo upratá —
+     a to je o zlomok sekundy neskôr, ako to človek uvidí. */
+  body.manager-mode.app-nav .app,
+  body.gyn-line.app-nav .app{padding:0 !important}
   body.manager-mode.app-nav #mgr-view{padding-top:calc(var(--rep-top-h,150px) + 4px)}
   /* Progress bar: pri reprezentantovi vždy prilepený pod headerom (nezmizne pri scrollovaní) */
   body.gp-rep .progress-wrap{position:sticky;top:var(--rep-top-h,150px);z-index:997}
@@ -3221,7 +3227,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.81.5 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.82.0 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -4186,7 +4192,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.81.5';
+var APP_VERSION = '2.82.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8017,10 +8023,17 @@ function dnesKalendar() {
     var dk = d.getFullYear() + '-' + gynCalPad2(d.getMonth() + 1) + '-' + gynCalPad2(d.getDate());
     if (!GYN_CAL._init) { GYN_CAL.y = d.getFullYear(); GYN_CAL.m = d.getMonth(); GYN_CAL._init = true; gynCalLoadLocal(); }
     var evs = gynCalEventsForDay(dk) || [];
-    var pend = 0;
-    try { pend = gynCalPendingForMe() || 0; } catch (e) {}
+    var pend = 0, pendEvs = [];
+    try {
+      var sess = getSession() || {};
+      pendEvs = (GYN_CAL.events || []).filter(function (e) {
+        if (e.status !== 'pending') return false;
+        return gynCalIsGyn() ? gynCalIsApprover(sess) : gynCalIsApproverOf(sess, e);
+      });
+      pend = pendEvs.length;
+    } catch (e) { pend = 0; pendEvs = []; }
     if (!evs.length && !pend) return null;
-    return { evs: evs, pend: pend };
+    return { evs: evs, pend: pend, pendEvs: pendEvs };
   } catch (e) { return null; }
 }
 
@@ -8194,10 +8207,33 @@ function dnesRender() {
   if (kal) {
     var kBody = '';
     if (kal.pend) {
-      kBody += '<div class="dnes-mini" style="border-top:none;margin-top:6px">' +
-                 '<span class="dnes-mini-dot" style="background:#DC2626"></span>' +
-                 '<span class="dnes-mini-name">' + kal.pend + (kal.pend === 1 ? ' žiadosť čaká na schválenie' : (kal.pend < 5 ? ' žiadosti čakajú na schválenie' : ' žiadostí čaká na schválenie')) + '</span>' +
-               '</div>';
+      // Žiadosť sa má dať vybaviť rovno odtiaľto — nie hľadať ju v kalendári.
+      // Pri jednej otvoríme priamo ju, pri viacerých ich vypíšeme po jednej.
+      var ziadosti = (kal.pendEvs || []).slice(0, 3);
+      if (ziadosti.length) {
+        ziadosti.forEach(function (e, ix) {
+          var tt = gynCalTypeById(e.type) || {};
+          var kto = e.ownerName || e.owner || '';
+          var kedy = (e.dateStart !== e.dateEnd)
+            ? gynCalFmtRange(e.dateStart, e.dateEnd) : gynCalFmtDMY(e.dateStart);
+          var dk2 = String(e.dateStart || '').replace(/[^0-9-]/g, '');
+          var id2 = String(e.id || '').replace(/[^A-Za-z0-9_.:-]/g, '');
+          kBody += '<div class="dnes-mini"' + (ix === 0 ? ' style="border-top:none;margin-top:6px"' : '') +
+                     ' onclick="event.stopPropagation();gynCalOpenEvent(\'' + dk2 + '\',\'' + id2 + '\')">' +
+                     '<span class="dnes-mini-dot" style="background:#DC2626"></span>' +
+                     '<span class="dnes-mini-name">' + appEsc((tt.label || 'Absencia') + (kto ? ' — ' + kto : '')) + ' <span style="color:#DC2626;font-weight:800">čaká</span></span>' +
+                     '<span class="dnes-mini-meta">' + appEsc(kedy) + '</span>' +
+                   '</div>';
+        });
+        if (kal.pend > ziadosti.length) {
+          kBody += '<div class="dnes-post-meta">a ďalších ' + (kal.pend - ziadosti.length) + ' čaká na schválenie</div>';
+        }
+      } else {
+        kBody += '<div class="dnes-mini" style="border-top:none;margin-top:6px">' +
+                   '<span class="dnes-mini-dot" style="background:#DC2626"></span>' +
+                   '<span class="dnes-mini-name">' + kal.pend + (kal.pend === 1 ? ' žiadosť čaká na schválenie' : (kal.pend < 5 ? ' žiadosti čakajú na schválenie' : ' žiadostí čaká na schválenie')) + '</span>' +
+                 '</div>';
+      }
     }
     kal.evs.slice(0, 3).forEach(function (e) {
       kBody += '<div class="dnes-mini">' +
@@ -8394,6 +8430,7 @@ function appNavReset(nechaj) {
 
 // Domov je panel nad všetkým — manažérovi aj gyn sa otvorí nad ich pohľadom.
 function appGoDomov() {
+  appNavigaciaZaznam();
   appNavReset('domov');
   try { openDnes(); } catch (e) {}
 }
@@ -8403,6 +8440,7 @@ function appGoDomov() {
 // a gyn preto treba najprv zavrieť panely, inak by ich pohľad ostal schovaný
 // pod Domovom a prepnutie by nebolo vidieť.
 function appGoTab(kam, arg) {
+  appNavigaciaZaznam();
   var r = appRole();
   appNavReset(kam === 'nastenka' ? 'nastenka' : null);
   try {
@@ -8429,6 +8467,7 @@ function appGoNastenka(postId) { appGoTab('nastenka', postId); }
 // Manažér a gyn neprepínajú panely, ale vlastné záložky — lišta sa musí
 // zvýrazniť aj podľa nich.
 function appTabSyncFromTab(tab) {
+  appNavigaciaZaznam();
   var id = (tab === 'plnenie') ? 'tb-plnenie' : (tab === 'kalendar') ? 'tb-kal' : 'tb-viac';
   ['tb-dnes','tb-plnenie','tb-kal','tb-nastenka','tb-viac'].forEach(function (x) {
     var b = document.getElementById(x);
@@ -8543,6 +8582,7 @@ function viacRender() {
 // Menu je prekryv, nie panel — nezaraďuje sa do histórie panelov, aby sa
 // systémové „späť" nevracalo doň, ale tam, odkiaľ používateľ prišiel.
 function openViac() {
+  appNavigaciaZaznam();
   usageSectionEnter('Menu');
   viacRender();
   var bd = document.getElementById('viac-bd');
@@ -12001,12 +12041,17 @@ function appAppPaddingSync() {
 }
 
 var _uvodnaObrazovkaHotova = false;
+// Ktokoľvek ťukne na lištu, do menu alebo na kartu, poistka sa ruší — inak by
+// človeka, ktorý hneď po prihlásení niekam odišiel, hodila späť na Domov.
+var _uzNavigoval = false;
+function appNavigaciaZaznam() { _uzNavigoval = true; }
 function appOpenDefaultScreen() {
   if (_uvodnaObrazovkaHotova) return;
   _uvodnaObrazovkaHotova = true;
   setTimeout(function () {
     try { appAppPaddingSync(); } catch (e) {}
     try {
+      if (_uzNavigoval) return;                                  // už si niekam ťukol
       if (appDefaultTab() !== 'dnes') return;
       var dnes = document.getElementById('dnes-overlay');
       if (dnes && dnes.classList.contains('show')) return;      // už je otvorený
@@ -12017,7 +12062,7 @@ function appOpenDefaultScreen() {
       if (set && set.classList.contains('show')) return;
       openDnes();
     } catch (e) {}
-  }, 1200);
+  }, 600);
 }
 
 function updateHdrForUser(user) {
