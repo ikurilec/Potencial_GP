@@ -873,6 +873,14 @@
   .hist-oppfilter{display:flex;flex-wrap:wrap;gap:5px;padding:2px 2px 10px}
   .hist-oppchip{flex:0 0 auto;font-size:11px;font-weight:600;color:#64748B;background:#fff;border:1px solid #E2E8F0;border-radius:14px;padding:5px 10px;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap}
   .hist-oppchip.active{color:#fff;background:#0C1E35;border-color:#0C1E35;font-weight:700}
+  .hist-recent{display:none;padding:0 2px 10px}
+  .hist-recent-lbl{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#94A3B8;margin-bottom:6px}
+  .hist-recent-row{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}
+  .hist-recent-row::-webkit-scrollbar{display:none}
+  .hist-recent-chip{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-start;gap:1px;max-width:150px;font-family:inherit;text-align:left;background:#fff;border:1px solid #E2E8F0;border-radius:14px;padding:6px 11px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .hist-recent-chip .rc-name{font-size:11.5px;font-weight:700;color:#1E293B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:128px}
+  .hist-recent-chip .rc-sub{font-size:10px;color:#94A3B8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:128px}
+  .hist-recent-chip:active{background:#F8FAFC}
   .conf-seg-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:none;padding:4px 0;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent}
   .conf-seg-toggle .conf-seg-section-lbl{margin-bottom:0}
   .conf-seg.open .conf-seg-actions{margin-top:8px;padding-top:8px;border-top:1px solid #EEF2F6}
@@ -3424,6 +3432,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
         <button type="button" class="hist-oppchip" data-of="zvysit" onclick="histSetOppFilter('zvysit',this)">📈 Zvýšiť</button>
         <button type="button" class="hist-oppchip" data-of="chyba" onclick="histSetOppFilter('chyba',this)">➖ Chýba</button>
       </div>
+      <div class="hist-recent" id="hist-recent"></div>
       <div class="hist-body-card">
         <div class="hist-body" id="hist-body"></div>
       </div>
@@ -7279,6 +7288,7 @@ function histRender(){
     });
   }
   renderHistItems(scoped);
+  try { gpRecentRender(); } catch (e) {}
   // Súhrn vývoja potenciálu — hlavička nad zoznamom "Všeobecní"
   if (_histFilter === 'gp') {
     var body = document.getElementById('hist-body');
@@ -8643,6 +8653,84 @@ var _currentDetailReopenFn = null;  // funkcia na znovuotvorenie detailu po edit
 
 // Nájdi položku v aktuálne vykreslenom zozname podľa čísla riadku v hárku.
 // Index sa po prekreslení posúva (mení sa filter aj zoradenie), číslo riadku nie.
+// ── Nedávno otvorení lekári ─────────────────────────────────────────────
+// Reprezentant sa k tomu istému lekárovi vracia opakovane — pred návštevou si
+// pozrie detail, po návšteve zapíše. Bez skratky to zakaždým znamená napísať
+// meno do hľadania a prejsť zoznamom. Riadok drží posledných päť otvorených
+// lekárov, takže návrat je jedno kliknutie. Zoznam je lokálny (localStorage),
+// neposiela sa nikam a pri hľadaní sa skryje, aby neprekážal výsledkom.
+var GP_RECENT_KEY = 'satori_recent_docs';
+var GP_RECENT_MAX = 5;
+
+function gpRecentList() {
+  try {
+    var raw = localStorage.getItem(GP_RECENT_KEY);
+    if (!raw) return [];
+    var arr = JSON.parse(raw);
+    if (!arr || Object.prototype.toString.call(arr) !== '[object Array]') return [];
+    return arr.filter(function (r) {
+      return r && r.row !== undefined && r.row !== null && r.row !== '' && r.name;
+    }).slice(0, GP_RECENT_MAX);
+  } catch (e) { return []; }
+}
+
+function gpRecentAdd(item) {
+  if (!item) return;
+  // Tuyory / Apixaban / nezistení Lonelix lekári nemajú riadok v GP hárku,
+  // takže sa cez gpDetailIdxByRow() nedajú znovu otvoriť — tie sa neukladajú.
+  if (item.type === 'tuyory' || item.type === 'apixaban' || item.type === 'lonelix-new') return;
+  var row = item.row;
+  if (row === undefined || row === null || row === '') return;
+  var name = String(item.lekar || item.meno || '').trim();
+  if (!name) return;
+  var list = gpRecentList().filter(function (r) { return String(r.row) !== String(row); });
+  list.unshift({ row: row, name: name, okres: String(item.okres || '').trim() });
+  list = list.slice(0, GP_RECENT_MAX);
+  try { localStorage.setItem(GP_RECENT_KEY, JSON.stringify(list)); } catch (e) {}
+  try { gpRecentRender(); } catch (e) {}
+}
+
+function gpRecentRender() {
+  var wrap = document.getElementById('hist-recent');
+  if (!wrap) return;
+  var q = (((document.getElementById('hist-search') || {}).value) || '').trim();
+  var list = q ? [] : gpRecentList();
+  if (!list.length) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  var chips = list.map(function (r) {
+    var sub = r.okres ? appEsc(r.okres) : '&nbsp;';
+    return '<button type="button" class="hist-recent-chip" data-recent-row="' + appEsc(r.row) + '">' +
+             '<span class="rc-name">' + appEsc(r.name) + '</span>' +
+             '<span class="rc-sub">' + sub + '</span>' +
+           '</button>';
+  }).join('');
+  wrap.innerHTML = '<div class="hist-recent-lbl">Nedávno otvorení</div>' +
+                   '<div class="hist-recent-row">' + chips + '</div>';
+  wrap.style.display = 'block';
+}
+
+// Kliknutie na skratku: filtre sa najprv vrátia na „Všetko", lebo lekár môže byť
+// mimo práve zvoleného filtra — inak by sa detail neotvoril a nič by sa nestalo.
+document.addEventListener('click', function (ev) {
+  var btn = ev.target && ev.target.closest ? ev.target.closest('[data-recent-row]') : null;
+  if (!btn) return;
+  var row = btn.getAttribute('data-recent-row');
+  var sb = document.getElementById('hist-search');
+  if (sb) sb.value = '';
+  try {
+    if (typeof histSetFilter === 'function') histSetFilter('all');
+    if (typeof histSetOppFilter === 'function') histSetOppFilter('all');
+  } catch (e) {}
+  var i = gpDetailIdxByRow(row);
+  if (i >= 0) { if (typeof openDetail === 'function') openDetail(i); return; }
+  // Záznam sa v aktuálnych dátach nenašiel (zmazaný alebo ešte nenačítaný) —
+  // skratku ticho odstráň, aby používateľ neklikal na niečo, čo neexistuje.
+  try {
+    var rest = gpRecentList().filter(function (r) { return String(r.row) !== String(row); });
+    localStorage.setItem(GP_RECENT_KEY, JSON.stringify(rest));
+  } catch (e) {}
+  gpRecentRender();
+});
+
 function gpDetailIdxByRow(row) {
   if (row === undefined || row === null || row === '') return -1;
   for (var i = 0; i < _histDetailItems.length; i++) {
@@ -8655,6 +8743,7 @@ function gpDetailIdxByRow(row) {
 function openDetail(idx) {
   var item = _histDetailItems[idx];
   if(!item) return;
+  try { gpRecentAdd(item); } catch (e) {}
   if(item.type === 'tuyory'){ tuyoryHistDetail(item); return; }
   if(item.type === 'apixaban'){ apixHistDetail(item); return; }
   if(item.type === 'lonelix-new'){ lonelixDoctorDetail(item.lon, { canAddGp: true }); return; }
