@@ -3411,6 +3411,10 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 
   <div class="hist-overlay" id="hist-overlay">
     <div class="hist-inner">
+      <div class="ptr-indicator" id="hist-ptr-indicator">
+        <span class="ptr-arrow" id="hist-ptr-arrow">↓</span>
+        <div class="ptr-spinner" id="hist-ptr-spinner" style="display:none"></div>
+      </div>
       <div class="hist-header">
         <div class="hist-title">Lekári</div>
         <div class="hist-date" id="hist-date"></div>
@@ -6792,6 +6796,34 @@ function loadHistoryItems(username) {
       return _histAllItems;
     });
   return _histPromise;
+}
+
+// Vynúti nové načítanie histórie zo Sheets — obíde SWR aj localStorage.
+// Používa sa pri potiahnutí nadol; vtedy používateľ výslovne žiada aktuálne dáta,
+// takže tichá cache by bola presne to, čo nechce.
+function gpHistForceRefresh(username, done) {
+  function finish(){ try { if (typeof done === 'function') done(); } catch (e) {} }
+  if (!username) { finish(); return; }
+  _histPromise = null;
+  fetch(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username)))
+    .then(function (r) { return r.json(); })
+    .then(function (rows) {
+      if (Array.isArray(rows)) {
+        _histAllItems = _histParseRawRows(rows);
+        _histLsSave(username, _histAllItems);
+        updateBadge(_histAllItems.length, false);
+      }
+    })
+    .catch(function () {})
+    .then(function () {
+      // Prekresli aj keď sieť zlyhala — zoznam vtedy ostane taký, aký bol,
+      // ale točiace koliesko sa musí zastaviť tak či tak.
+      try { if (document.getElementById('hist-overlay').classList.contains('show')) histRender(); } catch (e) {}
+      try { gpBootstrapRep(username, function () {
+        try { if (document.getElementById('hist-overlay').classList.contains('show')) histRender(); } catch (e) {}
+      }); } catch (e) {}
+      finish();
+    });
 }
 
 function refreshBadgeFromSheets(username) {
@@ -29274,6 +29306,99 @@ function preloadAllPharmaData() {
       if(ind){ ind.classList.remove('pulling'); ind.style.height = '0'; ind.style.opacity = '0'; }
       if(arrow) arrow.classList.remove('ready');
     }
+  });
+})();
+// ── PULL-TO-REFRESH pre zoznam lekárov (reprezentant) ──
+// Manažér potiahnutie nadol mal, reprezentant nie — a pritom je to jediný
+// spôsob, ktorý ľudia z iných appiek poznajú a skúšajú automaticky. Bez neho
+// sa dáta dali obnoviť len zatvorením a znovuotvorením panela, čo nikto
+// neuhádne. Panel má vlastný skrol (.hist-overlay), takže gesto sa počíta
+// z jeho scrollTop, nie z okna.
+(function () {
+  var startY = 0, startX = 0, pulling = false, triggered = false, dirLocked = false;
+  var THRESHOLD = 120;
+  var busy = false;
+
+  function getOverlay(){ return document.getElementById('hist-overlay'); }
+  function getIndicator(){ return document.getElementById('hist-ptr-indicator'); }
+  function getArrow(){ return document.getElementById('hist-ptr-arrow'); }
+  function getSpinner(){ return document.getElementById('hist-ptr-spinner'); }
+
+  function isHistList() {
+    if (busy) return false;
+    var ov = getOverlay();
+    if (!ov || !ov.classList.contains('show')) return false;
+    // Nad zoznamom môže byť otvorený detail lekára — vtedy gesto nepatrí zoznamu.
+    var above = ['detail-overlay', 'confirm-overlay', 'session-expired-overlay', 'wn-overlay'];
+    for (var i = 0; i < above.length; i++) {
+      var el = document.getElementById(above[i]);
+      if (el && el.classList.contains('show')) return false;
+    }
+    return ov.scrollTop <= 5;
+  }
+
+  function reset(hard) {
+    var ind = getIndicator(), arrow = getArrow(), spinner = getSpinner();
+    if (ind) { ind.classList.remove('pulling', 'loading'); ind.style.height = '0'; ind.style.opacity = '0'; }
+    if (arrow) { arrow.classList.remove('ready'); if (hard) arrow.style.display = 'inline-block'; }
+    if (spinner && hard) { spinner.style.display = 'none'; spinner.classList.remove('spin'); }
+  }
+
+  document.addEventListener('touchstart', function (e) {
+    if (!isHistList()) return;
+    startY = e.touches[0].clientY;
+    startX = e.touches[0].clientX;
+    pulling = false; triggered = false; dirLocked = false;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', function (e) {
+    if (!isHistList()) return;
+    var dy = e.touches[0].clientY - startY;
+    var dx = Math.abs(e.touches[0].clientX - startX);
+    if (!dirLocked) {
+      if (Math.abs(dy) < 8 && dx < 8) return;
+      if (dx > Math.abs(dy)) return;   // vodorovný pohyb nie je potiahnutie
+      if (dy <= 0) return;             // musí ísť nadol
+      dirLocked = true; pulling = true;
+    }
+    if (!pulling) return;
+    if (dy <= 0) { pulling = false; reset(false); return; }
+    var ind = getIndicator(), arrow = getArrow();
+    if (ind) {
+      ind.classList.add('pulling');
+      ind.style.height = Math.min(dy * 0.5, 60) + 'px';
+      ind.style.opacity = Math.min(dy / THRESHOLD, 1);
+    }
+    if (arrow) {
+      triggered = dy >= THRESHOLD;
+      arrow.classList.toggle('ready', triggered);
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', function () {
+    if (!pulling) return;
+    pulling = false; dirLocked = false;
+    if (!triggered) { reset(false); return; }
+    triggered = false;
+    var ind = getIndicator(), arrow = getArrow(), spinner = getSpinner();
+    if (arrow) arrow.style.display = 'none';
+    if (spinner) { spinner.style.display = 'block'; spinner.classList.add('spin'); }
+    if (ind) { ind.classList.add('loading'); ind.style.height = '60px'; ind.style.opacity = '1'; }
+    try { haptic('selection'); } catch (e) {}
+    // busy zablokuje ďalšie potiahnutie, kým prvé nedobehne — dve súbežné
+    // načítania by si navzájom prepisovali zoznam.
+    busy = true;
+    var session = getSession();
+    var doneCalled = false;
+    function finish() {
+      if (doneCalled) return;
+      doneCalled = true;
+      busy = false;
+      reset(true);
+    }
+    // Poistka: keby sieť nikdy neodpovedala, koliesko sa musí zastaviť samo.
+    setTimeout(finish, 8000);
+    gpHistForceRefresh(session ? session.username : '', function () { setTimeout(finish, 350); });
   });
 })();
 // ── PULL-TO-REFRESH pre gyn líniu ──
