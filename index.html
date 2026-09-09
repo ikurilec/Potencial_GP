@@ -708,6 +708,70 @@
      .card-inner, .prod-name, .pl-section-lbl, .hist-recent-*), aby nevznikol
      druhý dizajnový jazyk. Vlastné sú len tri veci: tlačidlo akcie, veľké
      číslo a riadok dnešného záznamu. */
+  /* ── SPODNÁ LIŠTA ─────────────────────────────────────────────────
+     Palec na ňu dosiahne; horný okraj telefónu je najhoršie dosiahnuteľné
+     miesto jednou rukou, a reprezentant appku drží jednou rukou.
+     Len Golem reprezentant: manažér má vlastné záložky a Reagila nemá
+     ani Dnes, ani Lekárov, z ktorých sa lišta skladá. */
+  .tabbar{display:none}
+  body.gp-rep:not(.reagila-line):not(.manager-mode) .tabbar{
+    display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;z-index:2100;
+    background:#fff;border-top:1px solid #E2E8F0;padding:7px 2px calc(7px + env(safe-area-inset-bottom));
+    box-shadow:0 -6px 22px rgba(15,23,42,.07)}
+  .tb-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    background:none;border:none;padding:3px 2px;font-family:inherit;font-size:10px;font-weight:700;
+    color:#94A3B8;cursor:pointer;-webkit-tap-highlight-color:transparent;position:relative;
+    transition:color .15s}
+  .tb-ic{font-size:19px;line-height:1;filter:grayscale(1);opacity:.5;transition:filter .15s,opacity .15s,transform .15s}
+  .tb-btn.active{color:#0C1E35}
+  .tb-btn.active .tb-ic{filter:none;opacity:1}
+  .tb-btn:active .tb-ic{transform:scale(.9)}
+  .tb-btn .nst-navdot{top:0;right:calc(50% - 20px)}
+  /* Obsah nesmie končiť pod lištou */
+  body.gp-rep:not(.reagila-line):not(.manager-mode) .submit-wrap{bottom:var(--tabbar-h,62px)}
+  body.gp-rep:not(.reagila-line):not(.manager-mode) .dnes-inner,
+  body.gp-rep:not(.reagila-line):not(.manager-mode) .hist-inner,
+  body.gp-rep:not(.reagila-line):not(.manager-mode) .lb-inner,
+  body.gp-rep:not(.reagila-line):not(.manager-mode) .rep-pl-inner,
+  body.gp-rep:not(.reagila-line):not(.manager-mode) .lk-inner,
+  body.gp-rep:not(.reagila-line):not(.manager-mode) .nst-inner,
+  body.gp-rep:not(.reagila-line):not(.manager-mode) .viac-inner,
+  body.gp-rep:not(.reagila-line):not(.manager-mode) .golem-cal-inner,
+  body.gp-rep:not(.reagila-line):not(.manager-mode) .pharma-ms-inner{padding-bottom:calc(48px + var(--tabbar-h,62px))}
+  /* Horná mriežka 11 tlačidiel odpadá — nahradila ju lišta */
+  body.gp-rep:not(.reagila-line):not(.manager-mode) #rep-nav{display:none}
+
+  /* ── VIAC ─────────────────────────────────────────────────────────
+     Zoznam s názvom a jednoriadkovým popisom, nie mriežka ikon —
+     zoznam sa číta rýchlejšie než šesť emoji. */
+  .viac-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#EAECF2;z-index:1500;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  .viac-overlay.show{display:block}
+  .viac-inner{max-width:660px;margin:0 auto;padding:82px 16px 48px}
+  body.gp-rep .viac-inner{padding-top:calc(var(--rep-top-h,150px) + 10px)}
+  .viac-me{display:flex;align-items:center;gap:13px;background:linear-gradient(135deg,#0C1E35 0%,#13294B 55%,#0C1E35 100%);
+    border-radius:14px;padding:15px 16px;margin-bottom:14px;color:#fff;
+    box-shadow:0 12px 32px rgba(12,30,53,.30),inset 0 1px 0 rgba(255,255,255,.08)}
+  .viac-me-av{width:48px;height:48px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-display);font-size:18px;font-weight:700;overflow:hidden;background:linear-gradient(135deg,#1E40AF,#3B82F6);
+    box-shadow:0 0 0 2px rgba(255,255,255,.16)}
+  .viac-me-txt{min-width:0;flex:1}
+  .viac-me-name{font-family:var(--font-display);font-size:16px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .viac-me-sub{font-size:11.5px;color:#9FB6D4;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .viac-me-btn{flex-shrink:0;background:rgba(255,255,255,.13);border:none;border-radius:10px;padding:8px 12px;
+    color:#fff;font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .viac-list{background:#fff;border-radius:14px;overflow:hidden;
+    box-shadow:0 4px 16px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.04),0 0 0 1px rgba(15,23,42,.04)}
+  .viac-item{display:flex;align-items:center;gap:12px;width:100%;background:none;border:none;
+    padding:13px 16px;border-bottom:1px solid #F1F5F9;font-family:inherit;text-align:left;cursor:pointer;
+    -webkit-tap-highlight-color:transparent}
+  .viac-item:last-child{border-bottom:none}
+  .viac-item:active{background:#F8FAFC}
+  .viac-item-ic{font-size:19px;line-height:1;flex-shrink:0;width:24px;text-align:center}
+  .viac-item-txt{min-width:0;flex:1;display:block}
+  .viac-item-t{display:block;font-size:14.5px;font-weight:700;color:#1A2A3A;line-height:1.25}
+  .viac-item-s{display:block;font-size:11.5px;color:#94A3B8;line-height:1.35;margin-top:2px}
+  .viac-item-ch{font-size:13px;color:#CBD5E1;flex-shrink:0}
+  .viac-sec{font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.07em;margin:18px 2px 8px}
   .dnes-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#EAECF2;z-index:1500;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   .dnes-overlay.show{display:block}
   .dnes-inner{max-width:660px;margin:0 auto;padding:82px 16px 48px}
@@ -1893,6 +1957,7 @@
   /* ═══ Nový header — pozdrav + meniny ═══ */
   .hdr-greeting{font-size:13.5px;color:#BFD4E8;font-weight:600;margin-top:4px;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .hdr-nameday{font-size:11px;color:#7AABCC;margin-top:3px;font-weight:500;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.3}
+  .hdr-sviatok{font-size:11px;color:#FCD34D;margin-top:3px;font-weight:700;line-height:1.3}
   .hdr-nameday.hdr-nameday-celebrate{color:#FCD34D;font-weight:800;font-size:12px;text-shadow:0 1px 6px rgba(251,191,36,.45);animation:ndayGlow 2s ease-in-out infinite;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.3}
   @keyframes ndayGlow{0%,100%{text-shadow:0 1px 6px rgba(251,191,36,.35)}50%{text-shadow:0 1px 12px rgba(251,191,36,.75)}}
   @media(prefers-reduced-motion:reduce){.hdr-nameday.hdr-nameday-celebrate{animation:none}}
@@ -2976,8 +3041,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     <div style="flex:1;min-width:0">
       <div class="hdr-title" id="hdr-line-name">Golem</div>
       <div class="hdr-greeting" id="hdr-greeting"></div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
-  <div class="hdr-nameday" id="hdr-nameday"></div>
+      <div style="display:flex;justify-content:flex-end;align-items:center;margin-top:6px">
   <div style="display:flex;align-items:center;gap:10px">
   <div class="gear-wrap" id="gear-wrap">
     <button class="gear-btn" onclick="openSettings()" aria-label="Nastavenia" title="Nastavenia"><svg viewBox="0 0 24 24" width="21" height="21" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
@@ -2990,9 +3054,22 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   <div id="hdr-badge-wrap" style="display:none"><div class="hdr-badge" id="hdr-badge"></div></div>
   </div>
     </div>
-  </div>
+    <!-- Dátum, meniny a sviatok na plnú šírku POD riadkom s ozubeným kolieskom —
+         vedľa neho by sa text zalomil pod tlačidlá. -->
+    <div class="hdr-nameday" id="hdr-nameday"></div>
+    <div class="hdr-sviatok" id="hdr-sviatok" style="display:none"></div>
+    </div>
   </div>
 </div>
+
+<!-- ═══ SPODNÁ LIŠTA — Dnes / Lekári / Plnenie / Nástenka / Viac (Golem reprezentant) ═══ -->
+<nav class="tabbar" id="rep-tabbar" aria-label="Hlavná navigácia">
+  <button type="button" class="tb-btn active" id="tb-dnes" onclick="openDnes()"><span class="tb-ic">🏠</span><span class="tb-lbl">Dnes</span></button>
+  <button type="button" class="tb-btn" id="tb-hist" onclick="openHistory()"><span class="tb-ic">📋</span><span class="tb-lbl">Lekári</span></button>
+  <button type="button" class="tb-btn" id="tb-plnenie" onclick="openRepPlnenie()"><span class="tb-ic">💊</span><span class="tb-lbl">Plnenie</span></button>
+  <button type="button" class="tb-btn" id="tb-nastenka" onclick="openNastenka()"><span class="tb-ic">📌</span><span class="tb-lbl">Nástenka</span></button>
+  <button type="button" class="tb-btn" id="tb-viac" onclick="openViac()"><span class="tb-ic">☰</span><span class="tb-lbl">Viac</span></button>
+</nav>
 
 <!-- ═══ REP NAV BAR — Formulár / História / Rebríček / Plnenie / Lekárne (len reprezentant, skryté v manažérskom móde) ═══ -->
 <div class="rep-nav" id="rep-nav">
@@ -3489,11 +3566,17 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     </div>
   </div>
 
+  <div class="viac-overlay" id="viac-overlay">
+    <div class="viac-inner">
+      <div class="viac-me" id="viac-me"></div>
+      <div id="viac-body"></div>
+    </div>
+  </div>
+
   <div class="dnes-overlay" id="dnes-overlay">
     <div class="dnes-inner">
       <div class="dnes-hdr">
         <div class="dnes-title">Dnes</div>
-        <div class="dnes-date" id="dnes-date"></div>
       </div>
       <button type="button" class="dnes-cta" onclick="repNavToForm()">
         <span class="dnes-cta-ic">＋</span><span>Zapísať návštevu</span>
@@ -7475,7 +7558,7 @@ function filterHistoryDebounced(){
 
 var _panelCurrent = null;
 var _panelStack = []; // navigačný stack — pamätá odkiaľ sme prišli (pre Android back button)
-var _PANEL_ORDER = { 'dnes-overlay': -1, 'hist-overlay': 0, 'lb-overlay': 1, 'rep-plnenie-overlay': 2, 'lk-overlay': 3, 'okresy-overlay': 4, 'tuyory-overlay': 5, 'lonelix-overlay': 6, 'apixaban-overlay': 7, 'golem-cal-overlay': 8 };
+var _PANEL_ORDER = { 'dnes-overlay': -1, 'viac-overlay': 9, 'hist-overlay': 0, 'lb-overlay': 1, 'rep-plnenie-overlay': 2, 'lk-overlay': 3, 'okresy-overlay': 4, 'tuyory-overlay': 5, 'lonelix-overlay': 6, 'apixaban-overlay': 7, 'golem-cal-overlay': 8 };
 
 function _panelShow(newId, isBack) {
   // Ak je ten istý panel už otvorený — nerob nič (ochrana pred dvojitým kliknutím)
@@ -7504,6 +7587,7 @@ function _panelShow(newId, isBack) {
   // Persistentný topbar — zvýrazni aktívnu záložku v rep-nav
   if (!document.body.classList.contains('manager-mode')) {
     repNavSetActive(newId);
+    try { repTabSetActive(newId); } catch (e) {}
   }
   // Nový panel ide dopredu (nad starý), aby počas animácie nebolo vidieť pozadie
   newEl.style.zIndex = '1600';
@@ -7526,13 +7610,14 @@ function _panelShow(newId, isBack) {
 }
 
 function closeAllPanels() {
-  ['dnes-overlay','hist-overlay','lb-overlay','rep-plnenie-overlay','lk-overlay','okresy-overlay','tuyory-overlay','lonelix-overlay','apixaban-overlay','golem-cal-overlay','lk-detail','pharma-ms-overlay','pharma-okres-overlay'].forEach(function(id){
+  ['dnes-overlay','viac-overlay','hist-overlay','lb-overlay','rep-plnenie-overlay','lk-overlay','okresy-overlay','tuyory-overlay','lonelix-overlay','apixaban-overlay','golem-cal-overlay','lk-detail','pharma-ms-overlay','pharma-okres-overlay'].forEach(function(id){
     var el = document.getElementById(id);
     if(el) el.classList.remove('show');
   });
   _panelCurrent = null;
   _panelStack = [];
   document.body.style.overflow = '';
+  try { repTabSetActive(null); } catch (e) {}
   var snav = document.getElementById('shared-panel-nav');
   if(snav) snav.style.display = 'none';
   repNavSetActive(null);
@@ -7785,6 +7870,108 @@ function dnesRender() {
   // Skratky sa vykreslia až po vložení kontajnera do DOM.
   try { gpRecentRender('dnes-recent'); } catch (e) {}
 }
+
+// ── VIAC — zvyšok appky ─────────────────────────────────────────────────
+// Zoznam s názvom a jednoriadkovým popisom, nie mriežka ikon. Nič sa nemaže:
+// všetko, čo appka vie, tu je — len o jedno ťuknutie ďalej.
+var VIAC_POLOZKY = [
+  { sec: 'Prehľady' },
+  { ic: '🏆', t: 'Rebríček',  s: 'Ako je na tom tím v plnení',        fn: 'openLeaderboard()' },
+  { ic: '🏪', t: 'Lekárne',   s: 'Krém, dobropisy, spiace lekárne',   fn: 'openLekarne()' },
+  { ic: '📍', t: 'Okresy',    s: 'Trhový podiel podľa okresu',        fn: 'openOkresy()' },
+  { ic: '📅', t: 'Kalendár',  s: 'Plán návštev a sviatky',            fn: 'openGolemKalendar()' },
+  { sec: 'Prieskumy' },
+  { ic: '🧬', t: 'Tuyory',    s: 'Prieskum tocilizumab',              fn: 'openTuyory()' },
+  { ic: '🛡️', t: 'Lonelix',   s: 'Prieskum inozín pranobex',          fn: 'openLonelix()' },
+  { ic: '🫀', t: 'Apixaban',  s: 'Prieskum apixaban',                 fn: 'openApixaban()', openFn: 'apxIsOpen' }
+];
+
+function viacRender() {
+  var me = document.getElementById('viac-me');
+  var body = document.getElementById('viac-body');
+  if (!body) return;
+  var sess = getSession() || {};
+  if (me) {
+    var meno = sess.name || sess.username || '—';
+    var av = '';
+    try {
+      var a = lbAvatarContent(sess.username, meno, 48);
+      av = a.html;
+    } catch (e) { av = appEsc(String(meno).trim().charAt(0).toUpperCase()); }
+    me.innerHTML =
+      '<div class="viac-me-av">' + av + '</div>' +
+      '<div class="viac-me-txt">' +
+        '<div class="viac-me-name">' + appEsc(meno) + '</div>' +
+        '<div class="viac-me-sub">' + appEsc(sess.region || 'Gedeon Richter Slovakia') + '</div>' +
+      '</div>' +
+      '<button type="button" class="viac-me-btn" onclick="openSettings()">Nastavenia</button>';
+  }
+  var html = '', open = false;
+  VIAC_POLOZKY.forEach(function (it) {
+    if (it.sec) {
+      if (open) { html += '</div>'; open = false; }
+      html += '<div class="viac-sec">' + it.sec + '</div><div class="viac-list">';
+      open = true;
+      return;
+    }
+    // Prieskum mimo termínu sa neponúka ako živá položka — appka to už vie
+    // (apxIsOpen), len to doteraz nikde nepovedala pred otvorením.
+    var zatvoreny = it.openFn && typeof window[it.openFn] === 'function' && !window[it.openFn]();
+    html += '<button type="button" class="viac-item" onclick="' + it.fn + '"' +
+              (zatvoreny ? ' style="opacity:.55"' : '') + '>' +
+              '<span class="viac-item-ic">' + it.ic + '</span>' +
+              '<span class="viac-item-txt">' +
+                '<span class="viac-item-t">' + appEsc(it.t) + '</span>' +
+                '<span class="viac-item-s">' + appEsc(zatvoreny ? 'Zadávanie zatiaľ nie je otvorené' : it.s) + '</span>' +
+              '</span>' +
+              '<span class="viac-item-ch">›</span>' +
+            '</button>';
+  });
+  if (open) html += '</div>';
+  body.innerHTML = html;
+}
+
+function openViac() {
+  usageSectionEnter('Viac');
+  _panelShow('viac-overlay');
+  viacRender();
+}
+
+// Zvýrazni aktívnu položku spodnej lišty. panelId=null → formulár, vtedy
+// nesvieti nič: formulár je akcia, nie miesto.
+var TABBAR_MAP = {
+  'dnes-overlay': 'tb-dnes',
+  'hist-overlay': 'tb-hist',
+  'rep-plnenie-overlay': 'tb-plnenie',
+  'nastenka-overlay': 'tb-nastenka',
+  'viac-overlay': 'tb-viac',
+  // Panely otvorené z „Viac" nechávajú svietiť Viac — používateľ vie, odkiaľ prišiel
+  'lb-overlay': 'tb-viac', 'lk-overlay': 'tb-viac', 'okresy-overlay': 'tb-viac',
+  'golem-cal-overlay': 'tb-viac', 'tuyory-overlay': 'tb-viac',
+  'lonelix-overlay': 'tb-viac', 'apixaban-overlay': 'tb-viac'
+};
+function repTabSetActive(panelId) {
+  var activeId = (panelId && TABBAR_MAP[panelId]) ? TABBAR_MAP[panelId] : '';
+  ['tb-dnes','tb-hist','tb-plnenie','tb-nastenka','tb-viac'].forEach(function (id) {
+    var b = document.getElementById(id);
+    if (b) b.classList.toggle('active', id === activeId);
+  });
+}
+
+// Výška lišty do CSS premennej — obsah panelov ani tlačidlo Potvrdiť pod ňou
+// nesmú skončiť.
+function repTabbarSync() {
+  try {
+    var bar = document.getElementById('rep-tabbar');
+    if (!bar) return;
+    var h = Math.round(bar.getBoundingClientRect().height);
+    document.documentElement.style.setProperty('--tabbar-h', (h || 62) + 'px');
+  } catch (e) {}
+}
+try {
+  window.addEventListener('resize', function () { repTabbarSync(); });
+  document.addEventListener('DOMContentLoaded', function () { repTabbarSync(); });
+} catch (e) {}
 
 function openDnes() {
   usageSectionEnter('Dnes');
@@ -10731,6 +10918,35 @@ function greetingForTime(){
   if(h < 18) return 'Dobrý deň';
   return 'Dobrý večer';
 }
+// Krátky dátum do hlavičky: „Streda 9. septembra".
+function hdrDateText(){
+  var d = new Date();
+  var den = DNES_DNI[d.getDay()];
+  return den.charAt(0).toUpperCase() + den.slice(1) + ' ' + d.getDate() + '. ' + DNES_MESIACE[d.getMonth()];
+}
+// Samotné meno bez vety — na zloženie riadku „Dnes Martina · zajtra Oleg".
+function nameDayName(d){
+  d = d || new Date();
+  var arr = (typeof MENINY !== 'undefined') ? MENINY[d.getMonth() + 1] : null;
+  var nm = (arr && arr[d.getDate()]) ? arr[d.getDate()] : '';
+  return (nm && nm !== '-') ? nm : '';
+}
+// Sviatok pre daný dátum (bez menín).
+function nameDaySviatok(d){
+  d = d || new Date();
+  try { return MENINY_SVIATKY[(d.getMonth() + 1) + '.' + d.getDate()] || ''; } catch (e) { return ''; }
+}
+// Riadok pod pozdravom. Zajtrajšie meniny sú tam preto, že reprezentant
+// chodí za lekármi dopredu — vie sa pripraviť a zagratulovať.
+function hdrInfoText(){
+  var dnes = nameDayName(new Date());
+  var zajtra = nameDayName(new Date(Date.now() + 86400000));
+  var parts = [hdrDateText()];
+  if (dnes) parts.push('meniny ' + dnes);
+  if (zajtra) parts.push('zajtra ' + zajtra);
+  return parts.join(' · ');
+}
+
 // Meniny / sviatok pre daný dátum
 function nameDayLabel(d){
   d = d || new Date();
@@ -10949,9 +11165,17 @@ function updateHdrForUser(user) {
       ndEl.innerHTML = '🎉 Dnes máš meniny, ' + settingsEsc(fnm) + ' — všetko najlepšie!';
       ndEl.classList.add('hdr-nameday-celebrate');
     } else {
-      ndEl.textContent = nameDayLabel(new Date());
+      ndEl.textContent = hdrInfoText();
       ndEl.classList.remove('hdr-nameday-celebrate');
     }
+  }
+  // Sviatok na samostatnom riadku — inak by sa riadok s dátumom natiahol
+  // a na mobile zalomil na tri riadky.
+  var svEl = document.getElementById('hdr-sviatok');
+  if(svEl){
+    var sv = nameDaySviatok(new Date());
+    svEl.textContent = sv ? ('🇸🇰 ' + sv) : '';
+    svEl.style.display = sv ? 'block' : 'none';
   }
   // Nastav region do skrytého poľa
   var regEl = document.getElementById('reprezentant');
@@ -10962,6 +11186,7 @@ function updateHdrForUser(user) {
   try { mgrRenderLineSwitch(); } catch(e){}
   // Prepočítaj výšku topbaru (pozdrav/meniny zmenili obsah)
   try { repTopbarSync(); setTimeout(repTopbarSync, 60); } catch(e){}
+  try { repTabbarSync(); setTimeout(repTabbarSync, 60); } catch(e){}
 }
 
 function updateHdrAvatar(user) {
@@ -36561,7 +36786,7 @@ if (typeof window !== 'undefined') window.addEventListener('resize', function(){
 
 function nstUpdateBadge(){
   var n = nstUnread();
-  ['rep-nav-nastenka-btn', 'spn-nastenka', 'gyn-nav-nastenka-btn', 'mgr-subtab-nastenka-btn'].forEach(function(id){
+  ['rep-nav-nastenka-btn', 'spn-nastenka', 'gyn-nav-nastenka-btn', 'mgr-subtab-nastenka-btn', 'tb-nastenka'].forEach(function(id){
     var btn = document.getElementById(id);
     if (!btn) return;
     var dot = btn.querySelector('.nst-navdot');
@@ -36600,6 +36825,7 @@ function openNastenka(){
   NST.loading = true;                 // kostra sa musí vykresliť už pri prvom renderi
   ov.classList.add('show');
   document.body.style.overflow = 'hidden';
+  try { repTabSetActive('nastenka-overlay'); } catch (e) {}
   nstRender();
   try { ov.scrollTop = 0; } catch(e){}
   nstFetch(function(){ NST.loading = false; nstRender(); nstMarkSeen(); });
@@ -36611,6 +36837,7 @@ function closeNastenka(){
   var ov = document.getElementById('nastenka-overlay');
   if (ov) ov.classList.remove('show');
   document.body.style.overflow = '';
+  try { repTabSetActive(_panelCurrent); } catch (e) {}
   nstMarkSeen();
 }
 
@@ -40339,7 +40566,11 @@ try { gsLpInit(); } catch(e){}
 <!-- ═══ NÁSTENKA — zdieľané poznámky repov v rámci línie (Golem / gyn / Reagila) ═══ -->
 <style>
   /* Panel */
-  #nastenka-overlay{display:none;position:fixed;inset:0;z-index:5900;background:#EAECF2;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  /* 2050 = vrstva záložkových panelov (Plnenie a Lekárne majú 2000). Predtým
+     bola Nástenka na 5900, teda nad všetkým — vrátane spodnej lišty, z ktorej
+     sa otvára; lišta by na nej zmizla. Modály (detail 2200, Nastavenia 2600,
+     dialógy 5000+, nový príspevok 6300) ju naďalej prekrývajú. */
+  #nastenka-overlay{display:none;position:fixed;inset:0;z-index:2050;background:#EAECF2;overflow-y:auto;-webkit-overflow-scrolling:touch}
   #nastenka-overlay.show{display:block;animation:nstIn .24s cubic-bezier(.16,1,.3,1) both}
   @keyframes nstIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
   .nst-inner{max-width:628px;margin:0 auto;padding:calc(12px + var(--sat)) 16px 90px}
