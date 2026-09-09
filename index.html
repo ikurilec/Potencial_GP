@@ -3721,6 +3721,17 @@ function appNorm(s) {
   try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (e) {}
   return s;
 }
+
+// ── appEsc — JEDINÝ escaper textu vkladaného do HTML ──
+// Appka skladá HTML reťazcami na 260 miestach, takže escapovanie musí byť jedno
+// a to isté. Predtým existovalo šesť funkcií s rovnakým telom; dve z nich mali
+// odlišnú prácu s nulou, čo je presne dôvod, prečo sa aliasy nižšie správajú
+// naďalej po svojom a nie sú len prepísané na appEsc.
+function appEsc(x) {
+  return String(x == null ? '' : x)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 // ╔══════════════════════════════════════════════════════════════╗
 // ║  VERZIA APLIKÁCIE                                              ║
 // ║  Pri každom nasadení novej verzie zmeniť:                     ║
@@ -5965,24 +5976,37 @@ function clearDraft() {
   try { localStorage.removeItem(SAVE_KEY); } catch(e) {}
 }
 
+// Nastav hodnotu poľa, ak pole existuje a hodnota nie je prázdna. Vracia true/false,
+// takže sa dá zistiť, či sa niečo naozaj obnovilo.
+function setFieldValue(id, value) {
+  if (value === undefined || value === null || value === '') return false;
+  var el = document.getElementById(id);
+  if (!el) return false;
+  el.value = value;
+  return true;
+}
+
 function restoreAccept() {
   document.getElementById('restore-overlay').className = 'restore-overlay';
   try {
     var saved = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}');
-    if(saved.lekar) document.getElementById('lekar').value = saved.lekar;
-    if(saved.mesto) document.getElementById('mesto').value = saved.mesto;
+    setFieldValue('lekar', saved.lekar);
+    setFieldValue('mesto', saved.mesto);
     if(saved.reprezentant) {
       // Ten istý zvyšok po <select> ako v setRegion() — obnova draftu tu tichým
       // TypeError prišla o všetky polia pod týmto riadkom (kapitácia, produkty, poznámka).
       var sel = document.getElementById('reprezentant');
       if (sel) sel.value = saved.reprezentant;
     }
-    if(saved.kapitacia) document.getElementById('kapitacia-n').value = saved.kapitacia;
-    if(saved.afl1) document.getElementById('afl1-n').value = saved.afl1;
-    if(saved.sup1) document.getElementById('sup1-n').value = saved.sup1;
-    if(saved.vid1) document.getElementById('vid1-n').value = saved.vid1;
-    if(saved.cav1) document.getElementById('cav-n').value = saved.cav1;
-    if(saved.poznamka) document.getElementById('poznamka').value = saved.poznamka;
+    // Cez pomocník, nie priamo: celý tento blok je v try{}catch(e){}, takže jediné
+    // chýbajúce pole by tichou výnimkou zahodilo všetko pod sebou. Presne to sa tu už
+    // raz stalo — obnova vracala len meno lekára a okres, čísla mizli bez hlásenia.
+    setFieldValue('kapitacia-n', saved.kapitacia);
+    setFieldValue('afl1-n',      saved.afl1);
+    setFieldValue('sup1-n',      saved.sup1);
+    setFieldValue('vid1-n',      saved.vid1);
+    setFieldValue('cav-n',       saved.cav1);
+    setFieldValue('poznamka',    saved.poznamka);
     restoreIcons();
   } catch(e) {}
 }
@@ -6179,9 +6203,13 @@ function acInput(el) {
   // má rovnakú dĺžku aj rovnaké pozície. Preto sa dá zvýrazniť priamo v origináli.
   function acRow(name, at, len) {
     var label = (at >= 0 && len > 0)
-      ? acEsc(name.slice(0, at)) + '<strong>' + acEsc(name.slice(at, at + len)) + '</strong>' + acEsc(name.slice(at + len))
-      : acEsc(name);
-    return '<div class="ac-item" onclick="acSelect(\'' + name.replace(/'/g, "\\'") + '\')">' + label + '</div>';
+      ? appEsc(name.slice(0, at)) + '<strong>' + appEsc(name.slice(at, at + len)) + '</strong>' + appEsc(name.slice(at + len))
+      : appEsc(name);
+    // Názov ide do data-atribútu, nie do skladaného JS reťazca v onclick. Apostrof
+    // v názve okresu by ten reťazec rozbil a úvodzovka by rozbila celý atribút;
+    // takto je to jedno, čo do zoznamu OKRESY raz niekto doplní. Kliknutie rieši
+    // jeden poslucháč na zozname (acListClick).
+    return '<div class="ac-item" data-okres="' + appEsc(name) + '">' + label + '</div>';
   }
   function acRenderAll() {
     list.innerHTML = pool.map(function(m) { return acRow(m, -1, 0); }).join('');
@@ -6218,20 +6246,14 @@ function acInput(el) {
     return a.name.length - b.name.length;               // potom kratší názov
   });
 
-  setIcon('mesto', appNorm(el.value).trim() === val && pool.some(function(o){ return appNorm(o) === val; }) ? 'ok' : 'none');
+  // Ikona „v poriadku" len pri presnej zhode s okresom (po odstránení diakritiky).
+  setIcon('mesto', pool.some(function(o){ return appNorm(o) === val; }) ? 'ok' : 'none');
 
   list.innerHTML = matches.map(function(m) { return acRow(m.name, m.at, val.length); }).join('');
   list.style.display = 'block';
 }
 
-// Escapovanie pre názvy okresov v ponuke. Dnes sú to konštanty zo zoznamu OKRESY,
-// ale ponuka sa skladá reťazcom do innerHTML — nech to nezávisí od toho, čo do
-// zoznamu raz niekto doplní.
-function acEsc(x) {
-  return String(x == null ? '' : x)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
+
 
 function acSelect(val) {
   haptic('selection');
@@ -6279,6 +6301,16 @@ function acBlur() {
   updateProgress();
 }
 
+// Jeden poslucháč pre celú ponuku — namiesto onclick na každom riadku.
+(function () {
+  var list = document.getElementById('ac-list');
+  if (!list) return;
+  list.addEventListener('click', function (ev) {
+    var row = ev.target.closest ? ev.target.closest('.ac-item') : null;
+    if (row && row.getAttribute('data-okres')) acSelect(row.getAttribute('data-okres'));
+  });
+})();
+
 function acKey(e) {
   var list = document.getElementById('ac-list');
   var items = list.querySelectorAll('.ac-item');
@@ -6292,7 +6324,7 @@ function acKey(e) {
     items.forEach(function(i,n){ i.classList.toggle('active', n===acIdx); });
     e.preventDefault();
   } else if(e.key === 'Enter' && acIdx >= 0) {
-    acSelect(items[acIdx].textContent);
+    acSelect(items[acIdx].getAttribute('data-okres') || items[acIdx].textContent);
     e.preventDefault();
   } else if(e.key === 'Escape') {
     list.style.display = 'none';
@@ -7275,8 +7307,10 @@ function closeHistory() {
 // NASTAVENIA — jednotná obrazovka pre rep / manažéra / admina (GP aj Gyn)
 // ═══════════════════════════════════════════════════════════════════
 function settingsEsc(x){
+  // Pozor: delegovalo na gynEsc, ktorý má inú prácu s nulou — ponechané, nech sa
+  // nezmení, čo sa v nastaveniach vykreslí pre hodnotu 0.
   if(typeof gynEsc === 'function') return gynEsc(x);
-  return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return appEsc(x);
 }
 // Rola → čitateľný label (zjednotené pre obe línie)
 function settingsRoleLabel(s){
@@ -11493,7 +11527,9 @@ function gynPreprocessData(data) {
 }
 
 function gynEsc(s) {
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  // POZOR na String(s||''): číslo 0 sa zámerne vykreslí ako prázdny reťazec.
+  // Preto to NIE JE len appEsc(s) — zmena by potichu zmenila vykreslené hodnoty.
+  return s ? appEsc(s) : '';
 }
 function gynFmtPct(pct) {
   if(pct === null || pct === undefined) return '—';
@@ -17603,7 +17639,8 @@ function mgrActClass(visits){
   if(days < 10) return 'warn';
   return 'stale';
 }
-function mgrEscape(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// Rovnaká výhrada ako pri gynEsc — 0 ostáva prázdna.
+function mgrEscape(s){ return s ? appEsc(s) : ''; }
 
 // ── Produktový panel pre kartu lekára (manažér) ──
 function mgrNum(n){
@@ -35515,7 +35552,7 @@ var NST_PRODUCTS = {
   reagila: ['Reagila', 'Cavinton', 'Boxarid', 'Fingolimod', 'DMF', 'Yaxwer', 'Pazopanib', 'Lunaldin']
 };
 
-function nstEsc(x){ return String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function nstEsc(x){ return appEsc(x); }
 function nstSession(){ try { return getSession(); } catch(e){ return null; } }
 function nstUser(){ var s = nstSession(); return (s && s.username) ? String(s.username).trim().toLowerCase() : ''; }
 function nstLine(){ var s = nstSession(); var l = String((s && s.line) || 'gp').toLowerCase(); return (l === 'gyn' || l === 'reagila') ? l : 'gp'; }
@@ -37948,7 +37985,7 @@ function lonelixOpenGpForm(r){
    ═══════════════════════════════════════════════════════════════════════════ */
 var GS = { items:[], flat:[], cur:0, _combos:[] };
 
-function gsEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function gsEsc(s){ return appEsc(s); }
 function gsNorm(s){ try { return lkNorm(s); } catch(e){ return String(s==null?'':s).toLowerCase(); } }
 function gsSession(){ try { return getSession(); } catch(e){ return null; } }
 /* Zapnuté/vypnuté globálne vyhľadávanie — preferencia sa ukladá do Sheetu
@@ -39796,13 +39833,21 @@ var _h2pState = 0;              // 0 = nenačítané, 1 = načítava sa, 2 = hot
 var _h2pWaiting = [];
 function rptEnsureHtml2pdf(cb) {
   if (typeof html2pdf !== 'undefined') { cb(true); return; }
+  // Stav 2 = skript sa už raz načítal, a html2pdf aj tak nie je k dispozícii (CDN vrátilo
+  // niečo iné, firemný proxy prepísal odpoveď…). Bez tejto vetvy by volajúci, ktorý po
+  // úspešnom onload zavolá sám seba znova, pridával ďalší <script> donekonečna.
+  if (_h2pState === 2) { cb(false); return; }
   _h2pWaiting.push(cb);
   if (_h2pState === 1) return;
   _h2pState = 1;
   var sc = document.createElement('script');
   sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-  sc.onload  = function(){ _h2pState = 2; var w=_h2pWaiting; _h2pWaiting=[]; w.forEach(function(f){ f(true); }); };
-  sc.onerror = function(){ _h2pState = 0; var w=_h2pWaiting; _h2pWaiting=[]; w.forEach(function(f){ f(false); }); };
+  function flush(ok) {
+    var w = _h2pWaiting; _h2pWaiting = [];
+    w.forEach(function(f){ try { f(ok); } catch(e) {} });
+  }
+  sc.onload  = function(){ _h2pState = 2; flush(typeof html2pdf !== 'undefined'); };
+  sc.onerror = function(){ _h2pState = 0; flush(false); };
   document.head.appendChild(sc);
 }
 </script>
