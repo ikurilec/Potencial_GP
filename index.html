@@ -2231,6 +2231,11 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .okr-prod-graf{width:26px;height:26px;border-radius:8px;background:#EFF6FF;color:#2563EB;display:flex;align-items:center;justify-content:center;flex-shrink:0}
   .okr-prod-na{font-size:10.5px;color:#B6C2D2;font-weight:600;font-style:italic}
   .okr-empty,.okr-loading{text-align:center;color:#94A3B8;font-size:12.5px;padding:26px 12px;font-weight:600}
+  /* Kým dobiehajú ďalšie produkty — inak by to vyzeralo, že okresu chýbajú. */
+  .okr-progress{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:600;color:#64748B;margin:0 2px 10px;padding:7px 11px;background:#fff;border:1px solid #E2E8F0;border-radius:12px}
+  .okr-progress-dot{width:8px;height:8px;border-radius:50%;background:#2563EB;flex-shrink:0;animation:okrPulse 1.1s ease-in-out infinite}
+  @keyframes okrPulse{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
+  @media(prefers-reduced-motion:reduce){.okr-progress-dot{animation:none;opacity:.8}}
   .okr-back{display:inline-flex;align-items:center;gap:7px;padding:9px 14px 9px 11px;margin:0 0 10px;background:#fff;border:1px solid #E2E8F0;border-radius:10px;color:#2563EB;font-size:12.5px;font-weight:750;font-family:var(--font-display);cursor:pointer;-webkit-tap-highlight-color:transparent;box-shadow:0 1px 2px rgba(15,23,42,.04)}
   .okr-back:active{background:#F1F5F9}
   .okr-detail-title{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;color:#0C1E35;font-family:var(--font-display);margin:0 2px 10px;padding:0 2px}
@@ -33897,6 +33902,22 @@ function okresyLoadAll(reqId, ver, cont, showLoading, forceNet, done) {
   if (showLoading && cont) cont.innerHTML = '<div class="okr-loading">Načítavam okresné dáta…</div>';
   var codes = okresyCodes();
   var fresh = {}, got = 0, finished = false;
+  // Predtým sa čakalo na všetkých deväť produktov a až potom sa vykreslilo —
+  // rýchlosť celej obrazovky sa tým rovnala rýchlosti najpomalšieho volania,
+  // s poistkou 20 sekúnd. Teraz sa vykresľuje priebežne: prvý produkt, ktorý
+  // dobehne, už niečo ukáže, ostatné sa dopĺňajú.
+  var paintQueued = false;
+  function paintPartial() {
+    if (finished || paintQueued || reqId !== OKRESY_STATE.reqId) return;
+    paintQueued = true;
+    // Jedno prekreslenie na snímku — deväť odpovedí môže doraziť takmer naraz.
+    requestAnimationFrame(function () {
+      paintQueued = false;
+      if (finished || reqId !== OKRESY_STATE.reqId) return;
+      OKRESY_STATE.byCode = fresh;
+      okresyRender();
+    });
+  }
   function finish() {
     if (finished) return;
     if (reqId !== OKRESY_STATE.reqId) { _fin(); return; }
@@ -33913,6 +33934,7 @@ function okresyLoadAll(reqId, ver, cont, showLoading, forceNet, done) {
       fresh[code] = { resp: resp, kvartal: rkv };
       got++;
       if (got >= codes.length) finish();
+      else paintPartial();
     }, false, forceNet);
   });
   // Poistka proti visiacemu requestu — po 20 s vyrenderuj čo máme
@@ -34120,7 +34142,12 @@ function okresyRender() {
 
   var chevron = '<svg class="okr-chevron" viewBox="0 0 20 20" fill="none"><path d="M5 8l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
-  var html = '<div class="okr-intro">Ťukni na okres a rozbalí sa so všetkými produktami. Ťuk na produkt zobrazí jeho tabuľku trhového podielu v okrese (graf otvoríš tlačidlom Graf).</div>';
+  // Kým nie sú všetky produkty, povedz to — inak by to vyzeralo, že okresu
+  // niektoré produkty chýbajú, hoci sa len ešte načítavajú.
+  var html = (done < total)
+    ? '<div class="okr-progress"><span class="okr-progress-dot"></span>Načítavam produkty — ' + done + ' z ' + total + '</div>'
+    : '';
+  html += '<div class="okr-intro">Ťukni na okres a rozbalí sa so všetkými produktami. Ťuk na produkt zobrazí jeho tabuľku trhového podielu v okrese (graf otvoríš tlačidlom Graf).</div>';
   html += '<div class="okr-list">';
 
   districts.forEach(function(d, dIdx) {
