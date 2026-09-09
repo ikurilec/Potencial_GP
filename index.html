@@ -4171,7 +4171,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.81.0';
+var APP_VERSION = '2.81.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8068,6 +8068,12 @@ function dnesRebricekGyn(me) {
              hodnota: plnenieFormatPct(rank[i].pct), popis: 'plnenie Q' + lastQ };
   } catch (e) { return null; }
 }
+// Čo sa v rebríčku vlastne počíta. V Goleme sú to zadaní lekári — ich
+// potenciál, nie návštevy; „40 návštev" hovorilo niečo iné, než čo je za
+// tým číslom. Ostatné línie ostávajú pri návštevách.
+function dnesRebricekJednotka(n) {
+  return (appLineTag() === 'gp') ? (n + " GP's potenciál") : (n + ' návštev');
+}
 function dnesRebricek() {
   try {
     var me = String(((getSession() || {}).username) || '').toLowerCase();
@@ -8091,9 +8097,12 @@ function dnesRebricek() {
     // presne ten, ktorý mu appka priradila podľa funkcie (lbScopeReps →
     // AM West/East svojich, BUM a admin všetkých).
     if (i < 0) return { kind: 'tim', total: rank.length,
-                        top: rank.filter(function (x) { return x.count > 0; }).slice(0, 5) };
+                        top: rank.filter(function (x) { return x.count > 0; }).slice(0, 5)
+                               .map(function (x) {
+                                 return { meno: x.meno, hodnota: dnesRebricekJednotka(x.count) };
+                               }) };
     return { kind: 'ja', rank: i + 1, total: rank.length,
-             hodnota: rank[i].count + ' návštev', popis: 'celkovo' };
+             hodnota: dnesRebricekJednotka(rank[i].count), popis: '' };
   } catch (e) { return null; }
 }
 
@@ -8257,7 +8266,7 @@ function dnesRender() {
         return '<div class="dnes-mini"' + (ix === 0 ? ' style="border-top:none"' : '') + '>' +
                  '<span class="dnes-rank-p">' + (medaily[ix] || (ix + 1) + '.') + '</span>' +
                  '<span class="dnes-mini-name">' + appEsc(x.meno) + '</span>' +
-                 '<span class="dnes-mini-meta">' + appEsc(x.hodnota !== undefined ? x.hodnota : (x.count + ' návštev')) + '</span>' +
+                 '<span class="dnes-mini-meta">' + appEsc(x.hodnota) + '</span>' +
                '</div>';
       }).join('');
       if (reb.total > (reb.top || []).length) {
