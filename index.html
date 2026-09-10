@@ -4201,7 +4201,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.84.0';
+var APP_VERSION = '2.84.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11294,7 +11294,7 @@ function mgrGetDual(){
 // v pamäti (nikam sa neukladá) a zanikne s prekreslením stránky.
 // Týka sa LEN línii so stavom `_failed` (server neodpovedal). Línia, ktorá login
 // priamo odmietla (iné heslo / účet tam nie je), sa neopätuje — nemá to zmysel.
-function lineRetryFailedSilently(username, pwd, dataMap){
+function lineRetryFailedSilently(username, pwd, dataMap, onLine, delayMs){
   try {
     if (!username || !pwd || !dataMap) return;
     var need = [];
@@ -11318,10 +11318,13 @@ function lineRetryFailedSilently(username, pwd, dataMap){
             else                         dual.reagila = mgrBuildReagilaUser(username, d);
             mgrSetDual(dual);
             try { mgrRenderLineSwitch(); } catch(e){}
+            try { if (onLine) onLine(n[0], d); } catch(e){}
           })
           .catch(function(){});
       });
-    }, 5000);   // po štarte appky, nech to nekonkuruje načítaniu dát
+    // Kým človek stojí na výbere rozhrania, nič iné sa nenačítava — vtedy
+    // netreba čakať 5 sekúnd, práve naopak.
+    }, (delayMs === undefined ? 5000 : delayMs));
   } catch(e){}
 }
 
@@ -11787,19 +11790,31 @@ function lineChooserMeta(line){
   return { label:'Golem', emoji:'🩺', desc:'Všeobecní lekári (GP)' };
 }
 var _lineChooserCtx = null;
-function showLineChooser(username, lines, dataMap){
-  _lineChooserCtx = { username: username, data: dataMap };
+// Línie, ktoré neodpovedali včas (cold start Apps Scriptu), sa doteraz do
+// výberu vôbec nedostali — a človek videl len tie, ktoré stihli. Admin tak
+// prišiel o Golem. Teraz sa ukážu ako „načítavam…" a keď dobehnú, samy sa
+// odomknú. Nikdy sa nestane, že línia z výberu ticho zmizne.
+function showLineChooser(username, lines, dataMap, pending){
+  _lineChooserCtx = { username: username, data: dataMap, lines: lines.slice(),
+                      pending: (pending || []).slice() };
   var ls = document.getElementById('login-screen'); if(ls) ls.classList.remove('show');
   var ov = document.getElementById('line-chooser-screen');
   if(!ov){ ov = document.createElement('div'); ov.id = 'line-chooser-screen'; ov.className = 'login-screen'; document.body.appendChild(ov); }
   var nm = (dataMap.gp && dataMap.gp.name) || (dataMap.gyn && dataMap.gyn.name) || (dataMap.reagila && dataMap.reagila.name) || username;
-  var btns = lines.map(function(ln){
+  var poradie = ['gp', 'gyn', 'reagila'];
+  var vsetky = poradie.filter(function (ln) {
+    return lines.indexOf(ln) !== -1 || (pending || []).indexOf(ln) !== -1;
+  });
+  var btns = vsetky.map(function(ln){
     var m = lineChooserMeta(ln);
-    return '<button type="button" class="line-choose-btn" onclick="pickLine(\'' + ln + '\')">' +
+    var caka = lines.indexOf(ln) === -1;
+    return '<button type="button" class="line-choose-btn' + (caka ? ' caka' : '') + '"' +
+             ' id="line-choose-' + ln + '"' +
+             (caka ? ' disabled' : ' onclick="pickLine(\'' + ln + '\')"') + '>' +
              '<span class="line-choose-emoji">' + m.emoji + '</span>' +
              '<span class="line-choose-txt"><span class="line-choose-lbl">' + lineChooserEsc(m.label) + '</span>' +
-             '<span class="line-choose-desc">' + lineChooserEsc(m.desc) + '</span></span>' +
-             '<span class="line-choose-arrow">→</span>' +
+             '<span class="line-choose-desc">' + lineChooserEsc(caka ? 'načítavam…' : m.desc) + '</span></span>' +
+             (caka ? '<span class="line-choose-spin"></span>' : '<span class="line-choose-arrow">→</span>') +
            '</button>';
   }).join('');
   ov.innerHTML =
@@ -11811,6 +11826,19 @@ function showLineChooser(username, lines, dataMap){
       '<div class="login-help" style="margin-top:14px">Voľbu kedykoľvek zmeníš v Nastaveniach.</div>' +
     '</div>';
   ov.classList.add('show');
+}
+// Línia dobehla na pozadí — doplň ju do už otvoreného výberu.
+function lineChooserAdd(line, data){
+  try {
+    var ctx = _lineChooserCtx;
+    if (!ctx || !data || !data.ok) return;
+    var ov = document.getElementById('line-chooser-screen');
+    if (!ov || !ov.classList.contains('show')) return;
+    ctx.data[line] = data;
+    if (ctx.lines.indexOf(line) === -1) ctx.lines.push(line);
+    ctx.pending = ctx.pending.filter(function (x) { return x !== line; });
+    showLineChooser(ctx.username, ctx.lines, ctx.data, ctx.pending);
+  } catch (e) {}
 }
 function pickLine(line){
   var ctx = _lineChooserCtx; if(!ctx) return;
@@ -11880,8 +11908,15 @@ function doLogin() {
     if(gynData.ok)     avail.push('gyn');
     if(reagilaData.ok) avail.push('reagila');
     var dataMap = { gp: gpData, gyn: gynData, reagila: reagilaData };
+    // Línie, ktoré neodpovedali včas (cold start) — nie zlé heslo. Tieto sa
+    // vo výbere ukážu ako „načítavam…" a doplnia sa, len čo dobehnú.
+    var caka = [];
+    if(!gpData.ok      && gpData._failed)      caka.push('gp');
+    if(!gynData.ok     && gynData._failed)     caka.push('gyn');
+    if(!reagilaData.ok && reagilaData._failed) caka.push('reagila');
     // Línia, ktorá nestihla odpovedať (cold start), sa dotiahne sama na pozadí
-    try { lineRetryFailedSilently(username, password, dataMap); } catch(e){}
+    try { lineRetryFailedSilently(username, password, dataMap, lineChooserAdd,
+                                  caka.length ? 300 : undefined); } catch(e){}
 
     if(avail.length === 0) {
       if(gpData._failed && gynData._failed && reagilaData._failed) {
@@ -11908,9 +11943,11 @@ function doLogin() {
       enterLineFromLogin(username, _pref, dataMap);
       return;
     }
-    // Viac línií (vrátane admina) → výber rozhrania
-    if(avail.length >= 2) {
-      showLineChooser(username, avail, dataMap);
+    // Viac línií (vrátane admina) → výber rozhrania. Ukáže sa aj vtedy, keď
+    // je hotová jedna línia a ďalšia sa ešte doťahuje — inak by človek vošiel
+    // do jedinej, ktorá stihla, a o druhej by sa nedozvedel.
+    if(avail.length + caka.length >= 2) {
+      showLineChooser(username, avail, dataMap, caka);
       return;
     }
     // Jedna línia → vstup priamo, priorita gp > gyn > reagila
@@ -41946,6 +41983,9 @@ try { gsLpInit(); } catch(e){}
   /* Načítavanie — kostra + spinner */
   .nst-loading,.nst-refresh{display:flex;align-items:center;justify-content:center;gap:8px;font-size:12.5px;font-weight:700;color:#64748B;padding:4px 0 12px}
   .nst-refresh{padding:0 0 10px}
+  .line-choose-btn.caka{opacity:.6;cursor:default}
+  .line-choose-spin{width:16px;height:16px;border:2px solid #E2E8F0;border-top-color:#2563EB;border-radius:50%;
+    animation:nstSpin .7s linear infinite;flex-shrink:0}
   .nst-spin{width:14px;height:14px;border:2px solid #E2E8F0;border-top-color:#2563EB;border-radius:50%;animation:nstSpin .7s linear infinite;flex-shrink:0}
   @keyframes nstSpin{to{transform:rotate(360deg)}}
   .nst-skel-post{pointer-events:none}
