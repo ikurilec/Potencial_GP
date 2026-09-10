@@ -4183,7 +4183,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.82.2';
+var APP_VERSION = '2.83.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7998,10 +7998,22 @@ function dnesPlnenie() {
 // Plnenie (agg.sk). Nič sa nedopočítava nanovo.
 function dnesPlnenieTim() {
   try {
-    var agg = PL_STATE && PL_STATE.aggregates;
+    var dp = plnenieDefaultPeriod();
+    var q = dp.q, year = dp.year;
+    var agg = null;
+    // Najprv pamäť, potom localStorage — karta musí byť na obrazovke hneď
+    // pri prvom vykreslení, nie až keď dobehne sieť.
+    if (PL_STATE.qCache && PL_STATE.qCache[q] && PL_STATE.qCache[q].aggregates) {
+      agg = PL_STATE.qCache[q].aggregates;
+    } else if (PL_STATE.aggregates && PL_STATE.q === q) {
+      agg = PL_STATE.aggregates;
+    } else {
+      var cached = _plLsLoad(_plLsKey(year, q));
+      if (cached && cached.agg) agg = cached.agg;
+    }
     if (!agg || !agg.sk) return null;
     if (!agg.sk.planEUR && !agg.sk.predajeEUR) return null;
-    return { q: PL_STATE.q, year: PL_STATE.year, pct: agg.sk.pct,
+    return { q: q, year: year, pct: agg.sk.pct,
              planEUR: agg.sk.planEUR, predajeEUR: agg.sk.predajeEUR };
   } catch (e) { return null; }
 }
@@ -8087,30 +8099,48 @@ function dnesRebricekGyn(me) {
              hodnota: plnenieFormatPct(rank[i].pct), popis: 'plnenie Q' + lastQ };
   } catch (e) { return null; }
 }
-// Rebríček na Domove ukazuje to isté, čo panel Rebríček: plnenie za posledný
-// uzavretý kvartál. Kým to boli návštevy, karta hovorila jedno a panel po
-// otvorení druhé — a číslo „koľko má kto lekárov v databáze" aj tak nikomu
-// nič nepovedalo.
+// Rebríček na Domove — poradie za AKTUÁLNY kvartál, ten istý, aký ukazuje
+// karta Plnenie. Panel Rebríček ráta posledný uzavretý kvartál (to je jeho
+// vec — porovnáva sa až uzavretý výsledok), ale na Domove má človek vidieť,
+// ako na tom tím je TERAZ.
+//
+// Dáta sa berú z tej istej cache ako Plnenie, vrátane localStorage — karta
+// je preto na obrazovke hneď pri prvom vykreslení, nie až keď dobehne sieť.
 function dnesRebricekPct(pct) {
   return (pct === null || pct === undefined) ? '—' : pct.toFixed(1).replace('.', ',') + ' %';
 }
+function dnesRebricekData() {
+  var dp = plnenieDefaultPeriod();
+  var q = dp.q, year = dp.year;
+  var data = null;
+  try {
+    if (appRole() === 'mgr') {
+      if (PL_STATE.qCache && PL_STATE.qCache[q] && PL_STATE.qCache[q].data) data = PL_STATE.qCache[q].data;
+      if (!data) { var c = _plLsLoad(_plLsKey(year, q)); if (c && c.data) data = c.data; }
+    } else {
+      var uname = (getSession() || {}).username;
+      if (REP_PL_STATE.qCache && REP_PL_STATE.qCache[q] && REP_PL_STATE.qCache[q].data) data = REP_PL_STATE.qCache[q].data;
+      if (!data && uname) { var c2 = _plLsLoad(_plRepLsKey(uname, year, q)); if (c2 && c2.data) data = c2.data; }
+    }
+  } catch (e) {}
+  return data ? { data: data, q: q, year: year } : null;
+}
 function dnesRebricekGyn(me) {
   try {
-    var lastQ = gynLbLastCompletedQ();
-    if (lastQ < 1) return null;
+    var dp = plnenieDefaultPeriod();
+    var q = dp.q, year = dp.year;
     var reps = gynLbScopeReps();
-    if (!reps.length) return null;
-    var data = GYN_LB.plCache[lastQ] ||
-               gynCacheRead(gynPlnenieCacheKey(GYN_APP.year, lastQ) + '|lb-fullLine');
-    if (!data) return null;
+    if (!reps.length) reps = GYN_STATE.repList || [];
+    var data = (GYN_APP.plCache && GYN_APP.plCache[q]) || gynCacheRead(gynPlnenieCacheKey(year, q));
+    if (!data || !reps.length) return null;
     try { gynPreprocessData(data); } catch (e) {}
     var rank = reps.map(function (r) {
       return { u: String(r.login || '').toLowerCase(), meno: r.meno || r.login,
-               pct: gynBuildRepAgg(r.login, data, lastQ).pct };
+               pct: gynBuildRepAgg(r.login, data, q).pct };
     }).filter(function (x) { return x.pct !== null; })
       .sort(function (a, b) { return b.pct - a.pct; });
-    if (!rank.length) return null;
-    var qLabel = 'Q' + lastQ + ' ' + GYN_APP.year;
+    if (rank.length < 2) return null;
+    var qLabel = 'Q' + q + ' ' + year;
     var i = -1;
     for (var k = 0; k < rank.length; k++) { if (rank[k].u === me) { i = k; break; } }
     if (i < 0) return { kind: 'tim', total: rank.length, qLabel: qLabel,
@@ -8127,29 +8157,21 @@ function dnesRebricek() {
     if (!me) return null;
     if (appRole() === 'gyn') return dnesRebricekGyn(me);
 
-    var lastQ = lbLastCompletedQ();
-    if (lastQ < 1) return null;
-    var cached = LB_PLNENIE_CACHE;
-    if (!cached) {
-      // Ešte sa nenačítalo — rozbehni to a karta pribudne pri prekreslení Domova.
-      try { if (!LB_PLNENIE_LOADING) lbPreloadPlnenie(); } catch (e) {}
-      return null;
-    }
+    var zdroj = dnesRebricekData();
+    if (!zdroj) return null;
     var scope = lbScopeReps();
-    var repsList = (cached.data && scope.length)
-      ? (plnenieBuildAggregates(cached.data, lastQ, scope).reps || [])
-      : ((cached.aggregates && cached.aggregates.reps) ? cached.aggregates.reps : []);
-    var vScope = {};
-    scope.forEach(function (u) { vScope[String(u).toLowerCase()] = true; });
-    var rank = repsList.filter(function (x) {
-      return (!scope.length || vScope[String(x.username || '').toLowerCase()]) && x.pct !== null;
-    }).map(function (x) {
-      var info = LB_REP_INFO[x.username] || LB_REP_INFO[String(x.username).toLowerCase()] || {};
-      return { u: String(x.username || '').toLowerCase(), meno: info.name || x.username, pct: x.pct };
-    }).sort(function (a, b) { return b.pct - a.pct; });
-    if (!rank.length) return null;
+    if (!scope.length) return null;
+    // Reprezentantova cache je zúžená na neho samého, ale surové dáta nesú celú
+    // líniu — poradie sa preto počíta nanovo cez celý zoznam.
+    var repsList = plnenieBuildAggregates(zdroj.data, zdroj.q, scope).reps || [];
+    var rank = repsList.filter(function (x) { return x.pct !== null && x.pct !== undefined; })
+      .map(function (x) {
+        var info = LB_REP_INFO[x.username] || LB_REP_INFO[String(x.username).toLowerCase()] || {};
+        return { u: String(x.username || '').toLowerCase(), meno: info.name || x.username, pct: x.pct };
+      }).sort(function (a, b) { return b.pct - a.pct; });
+    if (rank.length < 2) return null;
 
-    var qLabel = 'Q' + lastQ + ' ' + (new Date()).getFullYear();
+    var qLabel = 'Q' + zdroj.q + ' ' + zdroj.year;
     var i = -1;
     for (var k = 0; k < rank.length; k++) { if (rank[k].u === me) { i = k; break; } }
     if (i < 0) return { kind: 'tim', total: rank.length, qLabel: qLabel,
@@ -8159,6 +8181,23 @@ function dnesRebricek() {
     return { kind: 'ja', rank: i + 1, total: rank.length, qLabel: qLabel,
              hodnota: dnesRebricekPct(rank[i].pct), popis: 'plnenie' };
   } catch (e) { return null; }
+}
+
+// Rebríček z Domova — u manažéra a gyn je to ich vlastná záložka pod panelmi,
+// takže sa panely musia najprv zavrieť, inak sa navonok nestane nič.
+function appGoRebricek() {
+  appNavigaciaZaznam();
+  appNavReset();
+  var r = appRole();
+  try {
+    if (r === 'mgr' || r === 'gyn') {
+      try { closeAllPanels(); } catch (e) {}
+      if (r === 'mgr') mgrSwitchSubtab('leaderboard');
+      else gynNavTo('leaderboard');
+      return;
+    }
+    openLeaderboard();
+  } catch (e) {}
 }
 
 // Prieskumy s cieľom — koľko je hotových a koľko chýba. Všetko z localStorage,
@@ -8352,7 +8391,7 @@ function dnesRender() {
                  (reb.popis ? ' · ' + appEsc(reb.popis) : '') + '</div>';
       }
     }
-    html += '<div onclick="' + (rola === 'gyn' ? "gynNavTo(\'leaderboard\')" : (rola === 'mgr' ? "mgrSwitchSubtab(\'leaderboard\')" : 'openLeaderboard()')) + '" style="cursor:pointer">' +
+    html += '<div onclick="appGoRebricek()" style="cursor:pointer">' +
             dnesCardHtml('linear-gradient(90deg,#D97706,#FCD34D)',
                          (reb.kind === 'ja' ? 'Moje miesto v rebríčku' : 'Rebríček tímu') +
                          (reb.qLabel ? ' · ' + reb.qLabel : ''),
