@@ -975,6 +975,8 @@
   .hdr-avatar:active{transform:none}
   body.app-nav .hdr-avatar-wrap,body.app-nav .hdr-avatar{cursor:pointer}
   body.app-nav .hdr-avatar:active{transform:scale(.94)}
+  body.app-nav .hdr,body.app-nav .gyn-mgr-hdr{cursor:pointer}
+  [data-header-home]:focus-visible{outline:2px solid #fff;outline-offset:4px;border-radius:4px}
   .hdr-avatar:hover{border-color:rgba(255,255,255,.28)}
   .gear-wrap{display:inline-flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0}
   .gear-btn{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0;border:2px solid rgba(255,255,255,.30);background:rgba(255,255,255,.12);color:#fff;cursor:pointer;transition:background var(--t-base),transform var(--t-fast);-webkit-tap-highlight-color:transparent;flex-shrink:0;box-shadow:0 4px 12px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.12);position:relative}
@@ -3267,7 +3269,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.85.1 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.85.2 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -3279,7 +3281,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     <button type="button" class="hdr-burger" id="hdr-burger" onclick="openViac()" aria-label="Menu">
       <span></span><span></span><span></span>
     </button>
-    <div class="hdr-mid">
+    <div class="hdr-mid" role="link" tabindex="0" aria-label="Domov" data-header-home>
       <div class="hdr-title" id="hdr-line-name">Golem</div>
       <div class="hdr-greeting" id="hdr-greeting"></div>
     </div>
@@ -4242,7 +4244,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.1';
+var APP_VERSION = '2.85.2';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8812,13 +8814,20 @@ function appGoDomov() {
   try { openDnes(); } catch (e) {}
 }
 
-// Ťuknutie na avatara v hlavičke vedie na Domov — vo všetkých líniách aj rolách.
+// Banner aj avatar vedú na vlastný Domov; ovládacie prvky si nechajú svoju akciu.
 // Cez delegovanie, lebo gyn si hlavičku vykresľuje až po prihlásení.
 document.addEventListener('click', function (ev) {
   if (!document.body.classList.contains('app-nav')) return;
   var t = ev.target;
   if (!t || !t.closest) return;
-  if (!t.closest('.hdr-avatar-wrap')) return;
+  if (!t.closest('.hdr, .gyn-mgr-hdr')) return;
+  if (t.closest('button, a, input, select, textarea, [onclick], [role="button"]')) return;
+  ev.preventDefault();
+  appGoDomov();
+});
+document.addEventListener('keydown', function (ev) {
+  if (ev.key !== 'Enter' || !document.body.classList.contains('app-nav')) return;
+  if (!ev.target || !ev.target.matches('[data-header-home]')) return;
   ev.preventDefault();
   appGoDomov();
 });
@@ -14526,7 +14535,7 @@ function gynRenderShell(user) {
     '<div class="gyn-inner">' +
       '<div class="gyn-mgr-hdr">' +
         '<div class="hdr-row" style="position:relative;z-index:1">' +
-          '<div style="flex:1;min-width:0">' + hdrInnerHtml + '</div>' +
+          '<div style="flex:1;min-width:0" role="link" tabindex="0" aria-label="Domov" data-header-home>' + hdrInnerHtml + '</div>' +
           '<div style="display:flex;align-items:center;gap:10px">' +
             '<div class="gear-wrap" id="gyn-gear-wrap">' +
               '<button class="gear-btn" onclick="openSettings()" aria-label="Nastavenia" title="Nastavenia"><svg viewBox="0 0 24 24" width="21" height="21" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>' +
