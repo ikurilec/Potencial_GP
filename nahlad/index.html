@@ -918,6 +918,20 @@
   .dnes-mini-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
   .dnes-mini-name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .dnes-mini-meta{margin-left:auto;font-size:11px;color:#94A3B8;flex-shrink:0}
+  /* Riadok na dve úrovne — meno sa zalomí celé, dátum je pod ním. Pri
+     „Dovolenka — Viktória Hatinová · čaká" sa jednoriadkový tvar orezal
+     a manažér nevidel, o čo ide. */
+  .dnes-mini.dvojriadok{align-items:flex-start}
+  .dnes-mini-txt{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+  .dnes-mini-txt .dnes-mini-name{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.35}
+  .dnes-mini-when{font-size:11.5px;color:#94A3B8;font-weight:600}
+  /* Rozpis produktov v karte Plnenie */
+  .dnes-pl-sum{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:12.5px;font-weight:700}
+  .dnes-pl-sum span{display:inline-flex;align-items:center;gap:5px}
+  .dnes-pl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .dnes-pl-row{display:flex;align-items:baseline;gap:8px;padding:6px 0;border-top:1px solid #F1F5F9;font-size:13px}
+  .dnes-pl-row .n{font-weight:600;color:#0C1E35;flex:1;min-width:0;line-height:1.3}
+  .dnes-pl-row .v{font-weight:800;font-variant-numeric:tabular-nums;flex-shrink:0}
   .dnes-empty{font-size:13px;color:#64748B;line-height:1.5;margin-top:8px}
   .dnes-post{font-size:13.5px;font-weight:600;color:#1E293B;line-height:1.35;margin-top:9px;
     overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
@@ -3230,7 +3244,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.83.1 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.84.0 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -4195,7 +4209,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.83.1';
+var APP_VERSION = '2.84.0';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8111,6 +8125,44 @@ function dnesRebricekGyn(me) {
              hodnota: plnenieFormatPct(rank[i].pct), popis: 'plnenie Q' + lastQ };
   } catch (e) { return null; }
 }
+// Produkty podľa predikcie konca kvartálu — to isté číslo, aké ukazuje panel
+// Plnenie pri každom produkte. Karta na Domove má povedať, kde to nesedí,
+// nie len jedno súhrnné percento.
+function dnesPlnenieProdukty() {
+  try {
+    var dp = plnenieDefaultPeriod();
+    var q = dp.q, year = dp.year;
+    var agg = null;
+    if (appRole() === 'mgr') {
+      if (PL_STATE.qCache && PL_STATE.qCache[q] && PL_STATE.qCache[q].aggregates) agg = PL_STATE.qCache[q].aggregates;
+      else { var c = _plLsLoad(_plLsKey(year, q)); if (c && c.agg) agg = c.agg; }
+    } else {
+      var uname = (getSession() || {}).username;
+      if (REP_PL_STATE.qCache && REP_PL_STATE.qCache[q] && REP_PL_STATE.qCache[q].aggregates) agg = REP_PL_STATE.qCache[q].aggregates;
+      else if (uname) { var c2 = _plLsLoad(_plRepLsKey(uname, year, q)); if (c2 && c2.agg) agg = c2.agg; }
+    }
+    if (!agg || !agg.products || !agg.products.length) return null;
+    var von = [], maPredikciu = false;
+    agg.products.forEach(function (pr) {
+      if (!pr || !(pr.planEUR > 0)) return;
+      var pred = (pr.predPlanEURDone > 0)
+        ? plnenieCalcPredikciaSummary(pr.planEUR, pr.predajeEURDone, q, year, pr.predPlanEURDone)
+        : null;
+      if (pred !== null && pred !== undefined) maPredikciu = true;
+      // Na začiatku kvartálu sa predikcia ešte nedá spočítať (chýba dokončený
+      // mesiac). Vtedy rozpis nezmizne — ukáže plnenie k dnešku a povie to.
+      var v = (pred !== null && pred !== undefined) ? pred : pr.pct;
+      if (v === null || v === undefined) return;
+      von.push({ label: pr.label, pred: v });
+    });
+    if (!von.length) return null;
+    von.sort(function (a, b) { return a.pred - b.pred; });
+    return { nad: von.filter(function (x) { return x.pred >= 100; }),
+             pod: von.filter(function (x) { return x.pred < 100; }),
+             vsetky: von, predikcia: maPredikciu, q: q, year: year };
+  } catch (e) { return null; }
+}
+
 // Rebríček na Domove — poradie za AKTUÁLNY kvartál, ten istý, aký ukazuje
 // karta Plnenie. Panel Rebríček ráta posledný uzavretý kvartál (to je jeho
 // vec — porovnáva sa až uzavretý výsledok), ale na Domove má človek vidieť,
@@ -8326,11 +8378,14 @@ function dnesRender() {
             ? gynCalFmtRange(e.dateStart, e.dateEnd) : gynCalFmtDMY(e.dateStart);
           var dk2 = String(e.dateStart || '').replace(/[^0-9-]/g, '');
           var id2 = String(e.id || '').replace(/[^A-Za-z0-9_.:-]/g, '');
-          kBody += '<div class="dnes-mini"' + (ix === 0 ? ' style="border-top:none;margin-top:6px"' : '') +
+          kBody += '<div class="dnes-mini dvojriadok"' + (ix === 0 ? ' style="border-top:none;margin-top:6px"' : '') +
                      ' onclick="event.stopPropagation();gynCalOpenEvent(\'' + dk2 + '\',\'' + id2 + '\')">' +
-                     '<span class="dnes-mini-dot" style="background:#DC2626"></span>' +
-                     '<span class="dnes-mini-name">' + appEsc((tt.label || 'Absencia') + (kto ? ' — ' + kto : '')) + ' <span style="color:#DC2626;font-weight:800">čaká</span></span>' +
-                     '<span class="dnes-mini-meta">' + appEsc(kedy) + '</span>' +
+                     '<span class="dnes-mini-dot" style="background:#DC2626;margin-top:5px"></span>' +
+                     '<span class="dnes-mini-txt">' +
+                       '<span class="dnes-mini-name">' + appEsc((tt.label || 'Absencia') + (kto ? ' — ' + kto : '')) +
+                         ' <span style="color:#DC2626;font-weight:800">čaká na schválenie</span></span>' +
+                       '<span class="dnes-mini-when">' + appEsc(kedy) + '</span>' +
+                     '</span>' +
                    '</div>';
         });
         if (kal.pend > ziadosti.length) {
@@ -8344,10 +8399,20 @@ function dnesRender() {
       }
     }
     kal.evs.slice(0, 3).forEach(function (e) {
-      kBody += '<div class="dnes-mini">' +
-                 '<span class="dnes-mini-dot" style="background:#2563EB"></span>' +
-                 '<span class="dnes-mini-name">' + appEsc(e.title || e.type || 'Udalosť') + '</span>' +
-                 '<span class="dnes-mini-meta">' + appEsc(e.allDay ? 'celý deň' : (e.timeStart || '')) + '</span>' +
+      // Ťuknutie otvorí tú udalosť, nie celý kalendár — ten je za „Otvoriť ›".
+      var tt2 = gynCalTypeById(e.type) || {};
+      var dk3 = String(e.dateStart || '').replace(/[^0-9-]/g, '');
+      var id3 = String(e.id || '').replace(/[^A-Za-z0-9_.:-]/g, '');
+      var kedy2 = (e.dateStart && e.dateEnd && e.dateStart !== e.dateEnd)
+        ? gynCalFmtRange(e.dateStart, e.dateEnd)
+        : (e.allDay ? 'celý deň' : (e.timeStart ? e.timeStart + (e.timeEnd ? '–' + e.timeEnd : '') : ''));
+      kBody += '<div class="dnes-mini dvojriadok"' +
+                 (id3 ? ' onclick="event.stopPropagation();gynCalOpenEvent(\'' + dk3 + '\',\'' + id3 + '\')"' : '') + '>' +
+                 '<span class="dnes-mini-dot" style="background:' + (tt2.color || '#2563EB') + ';margin-top:5px"></span>' +
+                 '<span class="dnes-mini-txt">' +
+                   '<span class="dnes-mini-name">' + appEsc(e.title || tt2.label || 'Udalosť') + '</span>' +
+                   (kedy2 ? '<span class="dnes-mini-when">' + appEsc(kedy2) + '</span>' : '') +
+                 '</span>' +
                '</div>';
     });
     if (kBody) {
@@ -8386,6 +8451,31 @@ function dnesRender() {
           (pl.planEUR > 0 ? '<br>z plánu ' + plnenieFormatEUR(pl.planEUR) : '<br>plán zatiaľ nie je zadaný') + '</div>' +
       '</div>' +
       (stamp ? '<div class="dnes-post-meta">' + appEsc(stamp) + '</div>' : '');
+    // Rozpis podľa predikcie konca kvartálu — koľko produktov to stihne
+    // a ktoré nie. Vypíšu sa tie najhoršie; zvyšok je v paneli.
+    var prod = dnesPlnenieProdukty();
+    if (prod) {
+      plBody += '<div class="dnes-pl-sum">' +
+                  '<span><span class="dnes-pl-dot" style="background:#16A34A"></span>' +
+                    prod.nad.length + ' nad 100 %</span>' +
+                  '<span><span class="dnes-pl-dot" style="background:#DC2626"></span>' +
+                    prod.pod.length + ' pod 100 %</span>' +
+                  '<span style="color:#94A3B8;font-weight:600">' +
+                    (prod.predikcia ? 'predikcia konca Q' : 'plnenie k dnešku') + '</span>' +
+                '</div>';
+      prod.pod.slice(0, 3).forEach(function (x) {
+        plBody += '<div class="dnes-pl-row">' +
+                    '<span class="n">' + appEsc(x.label) + '</span>' +
+                    '<span class="v ' + plnenieColorClass(x.pred) + '">' + plnenieFormatPct(x.pred) + '</span>' +
+                  '</div>';
+      });
+      if (prod.pod.length > 3) {
+        plBody += '<div class="dnes-post-meta">a ďalšie ' + (prod.pod.length - 3) + ' pod plánom</div>';
+      }
+      if (!prod.pod.length) {
+        plBody += '<div class="dnes-pl-row"><span class="n" style="color:#16A34A">Všetky produkty stíhajú plán</span></div>';
+      }
+    }
     var plTitul = ((rola === 'mgr' || pl.tim) ? 'Plnenie tímu · ' : 'Plnenie · ') + plnenieQLabel(pl.q, pl.year);
     html += '<div onclick="appGoPlnenie()" style="cursor:pointer">' +
             dnesCardHtml('linear-gradient(90deg,#2563EB,#60A5FA)', plTitul,
