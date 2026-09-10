@@ -3267,7 +3267,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.85.0 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.85.1 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -4242,7 +4242,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.0';
+var APP_VERSION = '2.85.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8562,11 +8562,11 @@ function dnesRender() {
     if (prod) {
       plBody += '<div class="dnes-pl-sum">' +
                   '<span><span class="dnes-pl-dot" style="background:#16A34A"></span>' +
-                    prod.nad.length + ' nad 100 %</span>' +
+                    prod.nad.length + 'x nad 100 %</span>' +
                   '<span><span class="dnes-pl-dot" style="background:#D97706"></span>' +
-                    prod.stred.length + ' 95–100 %</span>' +
+                    prod.stred.length + 'x 95–100 %</span>' +
                   '<span><span class="dnes-pl-dot" style="background:#DC2626"></span>' +
-                    prod.pod.length + ' pod 95 %</span>' +
+                    prod.pod.length + 'x pod 95 %</span>' +
                 '</div>' +
                 // Popisok vpravo, nad stĺpcom percent — nech je jasné, že tie
                 // čísla pod ním sú predikcia, nie dnešné plnenie.
