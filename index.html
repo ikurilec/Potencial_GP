@@ -845,6 +845,10 @@
   .dnes-kam-cap{font-size:11.5px;color:#94A3B8;font-weight:600;margin-top:2px}
   .dnes-mini[onclick]{cursor:pointer;border-radius:8px;margin-left:-4px;margin-right:-4px;padding-left:4px;padding-right:4px}
   .dnes-mini[onclick]:active{background:#F1F5F9}
+  /* Nenápadný krúžok načítavania v karte — rovnaký ako na Nástenke. */
+  .dnes-load{display:flex;align-items:center;gap:9px;padding:8px 0 2px;color:#94A3B8;font-size:13px;font-weight:600}
+  .dnes-spin{width:14px;height:14px;border:2px solid #E2E8F0;border-top-color:#2563EB;border-radius:50%;
+    animation:nstSpin .7s linear infinite;flex-shrink:0}
   .dnes-rank-p{font-size:13px;font-weight:800;color:#64748B;min-width:22px;flex-shrink:0}
   .dnes-rank{display:flex;align-items:baseline;gap:6px}
   .dnes-rank-n{font-family:var(--font-display);font-size:34px;font-weight:800;color:#0C1E35;line-height:1}
@@ -4183,7 +4187,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.83.0';
+var APP_VERSION = '2.83.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8106,6 +8110,36 @@ function dnesRebricekGyn(me) {
 //
 // Dáta sa berú z tej istej cache ako Plnenie, vrátane localStorage — karta
 // je preto na obrazovke hneď pri prvom vykreslení, nie až keď dobehne sieť.
+// Keď dorazia dáta plnenia, Domov sa prekreslí — kým sú preč, karty držia
+// krúžok načítavania, aby bolo vidieť, že sa na nich pracuje.
+function dnesRefreshIfOpen() {
+  try {
+    var ov = document.getElementById('dnes-overlay');
+    if (ov && ov.classList.contains('show')) dnesRender();
+  } catch (e) {}
+}
+// Beží ešte načítavanie plnenia? Podľa toho karta ukáže krúžok alebo vetu,
+// že za tento kvartál dáta zatiaľ nie sú.
+var _domovStartTs = Date.now();
+function dnesPlnenieNacitava() {
+  try {
+    // Prvých dvadsať sekúnd po otvorení appky je „načítavam" vždy pravda —
+    // medzi prihlásením a spustením sťahovania je krátka diera, v ktorej ešte
+    // nič nebeží, a karta by v nej zbytočne tvrdila, že dáta nie sú.
+    if (Date.now() - _domovStartTs < 20000) return true;
+    var r = appRole();
+    if (r === 'gyn') {
+      var q = plnenieDefaultPeriod().q;
+      return !!(GYN_APP.plLoading && GYN_APP.plLoading[q]);
+    }
+    if (r === 'mgr') return !!PL_STATE.loading;
+    return !!REP_PL_STATE.loading;
+  } catch (e) { return false; }
+}
+function dnesSkeletonHtml(popis) {
+  return '<div class="dnes-load"><span class="dnes-spin"></span>' + appEsc(popis || 'Načítavam…') + '</div>';
+}
+
 function dnesRebricekPct(pct) {
   return (pct === null || pct === undefined) ? '—' : pct.toFixed(1).replace('.', ',') + ' %';
 }
@@ -8322,6 +8356,18 @@ function dnesRender() {
   var pl = (rola === 'mgr') ? dnesPlnenieTim()
          : (rola === 'gyn') ? dnesPlnenieGyn()
          : dnesPlnenie();
+  if (!pl) {
+    // Karta ostáva na svojom mieste aj kým dáta nie sú — inak Domov po
+    // prihlásení vyzerá, že plnenie v appke nie je.
+    var dpX = plnenieDefaultPeriod();
+    html += '<div onclick="appGoPlnenie()" style="cursor:pointer">' +
+            dnesCardHtml('linear-gradient(90deg,#2563EB,#60A5FA)',
+                         ((rola === 'mgr') ? 'Plnenie tímu · ' : 'Plnenie · ') + plnenieQLabel(dpX.q, dpX.year),
+                         '<span class="dnes-more">Otvoriť ›</span>',
+                         dnesSkeletonHtml(dnesPlnenieNacitava() ? 'Načítavam plnenie…'
+                                                               : 'Za tento kvartál zatiaľ nie sú dáta')) +
+            '</div>';
+  }
   if (pl) {
     var pct = (pl.pct === null || pl.pct === undefined) ? null : pl.pct;
     var cls = (pct === null) ? '' : plnenieDetailColorClass(pct);
@@ -8366,6 +8412,17 @@ function dnesRender() {
   // ── Moje miesto v rebríčku ──────────────────────────────────────────
   var reb = dnesRebricek();
   if (reb && reb.kind === 'tim' && !(reb.top && reb.top.length)) reb = null;
+  if (!reb) {
+    var dpR = plnenieDefaultPeriod();
+    var titulR = ((rola === 'mgr') ? 'Rebríček tímu · ' : 'Moje miesto v rebríčku · ') +
+                 'Q' + dpR.q + ' ' + dpR.year;
+    html += '<div onclick="appGoRebricek()" style="cursor:pointer">' +
+            dnesCardHtml('linear-gradient(90deg,#D97706,#FCD34D)', titulR,
+                         '<span class="dnes-more">Otvoriť ›</span>',
+                         dnesSkeletonHtml(dnesPlnenieNacitava() ? 'Načítavam rebríček…'
+                                                                : 'Za tento kvartál zatiaľ nie sú dáta')) +
+            '</div>';
+  }
   if (reb) {
     var rBody;
     if (reb.kind === 'ja') {
@@ -14114,6 +14171,7 @@ function gynBootstrap(user) {
           gynPreprocessData(d.plnenie);
           GYN_APP.plCache[q] = d.plnenie;
           gynCacheWrite(gynPlnenieCacheKey(rok, q), d.plnenie);
+          try { dnesRefreshIfOpen(); } catch(e){}
         } catch(e){}
       }
       // RepList → naplní stav + spraví plný render (jeho re-render logika)
@@ -14353,6 +14411,8 @@ function gynPreloadAllQuarters() {
         gynPreprocessData(data);
         var changed = !gynCacheSame(GYN_APP.plCache[q], data);
         GYN_APP.plCache[q] = data;
+      try { dnesRefreshIfOpen(); } catch(e){}
+        try { dnesRefreshIfOpen(); } catch(e){}
         gynCacheWrite(cacheKey, data);
         // Re-render aktuálneho Q keď dorazia čerstvé dáta na pozadí.
         // Ak ešte vidno len "Načítavam..." (nič nevyrenderované) → prvý render s animáciou;
@@ -14469,6 +14529,7 @@ function gynPlnenieShow(el, user, _attempt) {
       gynPreprocessData(data);
       var changed = !gynCacheSame(GYN_APP.plCache[q], data);
       GYN_APP.plCache[q] = data;
+      try { dnesRefreshIfOpen(); } catch(e){}
       gynCacheWrite(cacheKey, data);
       if(GYN_APP.nav === 'plnenie' && GYN_APP.q === q) {
         if(!cached) gynPlnenieRender(el, user, data);  // prvé zobrazenie — s animáciou
@@ -25405,6 +25466,7 @@ function plnenieLoadAllQuarters() {
         var prev = PL_STATE.qCache[q];
         var changed = !prev || prev.hash !== hash;
         PL_STATE.qCache[q] = { data: resp, aggregates: agg, hash: hash };
+        try { dnesRefreshIfOpen(); } catch(e){}
         if (q === PL_STATE.q) {
           PL_STATE.data = resp;
           PL_STATE.aggregates = agg;
@@ -25456,6 +25518,7 @@ function plnenieLoadAllQuarters() {
         var prev = PL_STATE.qCache[q];
         var changed = !prev || prev.hash !== hash;
         PL_STATE.qCache[q] = { data: resp, aggregates: agg, hash: hash };
+        try { dnesRefreshIfOpen(); } catch(e){}
         _plLsSave(_plLsKey(year, q), resp, agg, hash); // ulož do localStorage
         // Ak práve zobrazujeme tento Q, hneď renderuj
         if (q === PL_STATE.q) {
@@ -28347,6 +28410,7 @@ function repPlnenieLoad() {
         var prev = REP_PL_STATE.qCache[q];
         var changed = !prev || prev.hash !== hash;
         REP_PL_STATE.qCache[q] = { data: resp, aggregates: agg, hash: hash };
+        try { dnesRefreshIfOpen(); } catch(e){}
         _plLsSave(_plRepLsKey(uname, year, q), resp, agg, hash); // ulož do localStorage
         if (q === REP_PL_STATE.q) {
           var wasShowingData = !!REP_PL_STATE.loaded;
