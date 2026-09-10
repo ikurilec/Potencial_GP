@@ -3333,7 +3333,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.85.7 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.85.8 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -4308,7 +4308,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.7';
+var APP_VERSION = '2.85.8';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8345,13 +8345,8 @@ function dnesRefreshIfOpen() {
 }
 // Beží ešte načítavanie plnenia? Podľa toho karta ukáže krúžok alebo vetu,
 // že za tento kvartál dáta zatiaľ nie sú.
-var _domovStartTs = Date.now();
 function dnesPlnenieNacitava() {
   try {
-    // Prvých dvadsať sekúnd po otvorení appky je „načítavam" vždy pravda —
-    // medzi prihlásením a spustením sťahovania je krátka diera, v ktorej ešte
-    // nič nebeží, a karta by v nej zbytočne tvrdila, že dáta nie sú.
-    if (Date.now() - _domovStartTs < 20000) return true;
     var r = appRole();
     if (r === 'gyn') {
       var q = plnenieDefaultPeriod().q;
@@ -8860,6 +8855,16 @@ function dnesRender() {
     html += '<div onclick="appGoNastenka()" style="cursor:pointer">' +
             dnesCardHtml('linear-gradient(90deg,#7C3ABE,#C084FC)', 'Nástenka',
                          badge + '<span class="dnes-more">Otvoriť ›</span>', nstBody) +
+            '</div>';
+  } else {
+    // Karta musí byť na Domove od prvého vykreslenia. Bez nej obsah po
+    // prihlásení poskakoval, keď Nástenka o chvíľu dobehla zo servera.
+    var nstCaka = (typeof NST !== 'undefined') && (NST.loading || !NST.loaded);
+    html += '<div onclick="appGoNastenka()" style="cursor:pointer">' +
+            dnesCardHtml('linear-gradient(90deg,#7C3ABE,#C084FC)', 'Nástenka',
+                         '<span class="dnes-more">Otvoriť ›</span>',
+                         nstCaka ? dnesSkeletonHtml('Načítavam nástenku…')
+                                 : '<div class="dnes-empty">Zatiaľ tu nie sú žiadne príspevky.</div>') +
             '</div>';
   }
 
@@ -11611,6 +11616,17 @@ function mgrGetDual(){
 // v pamäti (nikam sa neukladá) a zanikne s prekreslením stránky.
 // Týka sa LEN línii so stavom `_failed` (server neodpovedal). Línia, ktorá login
 // priamo odmietla (iné heslo / účet tam nie je), sa neopätuje — nemá to zmysel.
+function lineMergeLoginSuccess(username, line, data){
+  if(!data || !data.ok) return;
+  var dual = (typeof mgrGetDual === 'function' && mgrGetDual()) || { username: username };
+  if (dual.username && String(dual.username).toLowerCase() !== String(username).toLowerCase()) return;
+  dual.username = username;
+  if (line === 'gp')           dual.gp      = mgrBuildGpUser(username, data);
+  else if (line === 'gyn')     dual.gyn     = mgrBuildGynUser(username, data);
+  else if (line === 'reagila') dual.reagila = mgrBuildReagilaUser(username, data);
+  mgrSetDual(dual);
+  try { mgrRenderLineSwitch(); } catch(e){}
+}
 function lineRetryFailedSilently(username, pwd, dataMap, onLine, delayMs){
   try {
     if (!username || !pwd || !dataMap) return;
@@ -11624,20 +11640,28 @@ function lineRetryFailedSilently(username, pwd, dataMap, onLine, delayMs){
              '&device_id=' + encodeURIComponent(authDeviceId());
     setTimeout(function(){
       need.forEach(function(n){
-        appFetchJson(n[1] + lp, undefined, 30000)
-          .then(function(d){
-            if (!d || !d.ok) return;
-            var dual = (typeof mgrGetDual === 'function' && mgrGetDual()) || { username: username };
-            if (String(dual.username || '').toLowerCase() !== String(username).toLowerCase()) return;  // medzičasom sa prihlásil niekto iný
-            dual.username = username;
-            if (n[0] === 'gp')           dual.gp      = mgrBuildGpUser(username, d);
-            else if (n[0] === 'gyn')     dual.gyn     = mgrBuildGynUser(username, d);
-            else                         dual.reagila = mgrBuildReagilaUser(username, d);
-            mgrSetDual(dual);
-            try { mgrRenderLineSwitch(); } catch(e){}
-            try { if (onLine) onLine(n[0], d); } catch(e){}
-          })
-          .catch(function(){});
+        function attempt(ix){
+          var limits=[18000,24000];
+          appFetchJson(n[1] + lp, undefined, limits[ix])
+            .then(function(d){
+              if(d && d.ok){
+                dataMap[n[0]]=d;
+                lineMergeLoginSuccess(username, n[0], d);
+                try { if(onLine) onLine(n[0], d); } catch(e){}
+                return;
+              }
+              // Explicitné zamietnutie už ďalší pokus nevyrieši.
+              dataMap[n[0]]=d || {ok:false};
+              try { if(onLine) onLine(n[0], dataMap[n[0]]); } catch(e){}
+            })
+            .catch(function(){
+              if(ix + 1 < limits.length){ attempt(ix + 1); return; }
+              var failed={ok:false,_failed:true,_done:true};
+              dataMap[n[0]]=failed;
+              try { if(onLine) onLine(n[0], failed); } catch(e){}
+            });
+        }
+        attempt(0);
       });
     // Kým človek stojí na výbere rozhrania, nič iné sa nenačítava — vtedy
     // netreba čakať 5 sekúnd, práve naopak.
@@ -11881,6 +11905,14 @@ function mgrLineResetSharedData(target){
     if(typeof MGR_STATE !== 'undefined'){
       MGR_STATE.reps={}; MGR_STATE.currentRep=null; MGR_STATE.repsLoaded=false;
     }
+    if(typeof GYN_APP !== 'undefined'){
+      // Zneplatni všetky odpovede z predošlého vstupu do Gyn. Samotné boolean
+      // plLoading nestačí: starý request sa môže vrátiť až po ďalšom prepnutí.
+      GYN_APP._bootstrapId=(GYN_APP._bootstrapId||0)+1;
+      GYN_APP._repListLoadId=(GYN_APP._repListLoadId||0)+1;
+      GYN_APP._plReqIds={}; GYN_APP.plLoading={}; GYN_APP._repListLoading=false;
+      GYN_APP.detailLogin=null;
+    }
     if(typeof NST !== 'undefined'){
       NST._reqId=(NST._reqId||0)+1;
       clearTimeout(NST._loadT);
@@ -12036,6 +12068,7 @@ function loginSuccess(username, name, role, region, extra) {
     }
   }
   setSession(user);
+  try { nstResetForActiveLine(); nstPrime(); } catch(e){}
   try { userPrefsApplyMirror(user); } catch(e){}
   // Kalendár (Golem) — spusti načítanie udalostí HNEĎ pri prihlásení, paralelne s init dátami,
   // nech sú udalosti pripravené ešte pred prvým otvorením (nie až po kliknutí na Kalendár).
@@ -12110,16 +12143,17 @@ function loginSuccess(username, name, role, region, extra) {
   checkNotifications();
   // Spusti polling — ak admin odošle kým je reprezentant prihlásený, banner vyskočí do 60s
   startNotifPolling();
-  // Preload rebríček + Plnenie Q (leaderboard) paralelne -- oba startuju po 2s
+  // Plnenie Domova spusti okamžite. Rebríček môže dobehnúť na pozadí o chvíľu,
+  // ale karta Plnenie už nesmie čakať na používateľovo otvorenie panelu.
+  if (!REP_PL_STATE.loading && !REP_PL_STATE.loaded) {
+    plnenieApplyDefaultPeriod(REP_PL_STATE, true);
+    repPlnenieLoad();
+  }
   setTimeout(function(){
     lbFetchApprovedQ(function(){
       lbLoadData();
       lbPreloadPlnenie();
     });
-    if (!REP_PL_STATE.loading && !REP_PL_STATE.loaded) {
-      plnenieApplyDefaultPeriod(REP_PL_STATE, true);
-      repPlnenieLoad();
-    }
   }, 2000);
   // Pharma preload na pozadí — hneď po prihlásení
   setTimeout(function(){
@@ -12216,27 +12250,31 @@ var _lineChooserCtx = null;
 // výberu vôbec nedostali — a človek videl len tie, ktoré stihli. Admin tak
 // prišiel o Golem. Teraz sa ukážu ako „načítavam…" a keď dobehnú, samy sa
 // odomknú. Nikdy sa nestane, že línia z výberu ticho zmizne.
-function showLineChooser(username, lines, dataMap, pending){
+function showLineChooser(username, lines, dataMap, pending, failed){
+  var keepRemember = false;
+  try { var oldCb=document.getElementById('line-remember-cb'); keepRemember=!!(oldCb&&oldCb.checked); } catch(e){}
   _lineChooserCtx = { username: username, data: dataMap, lines: lines.slice(),
-                      pending: (pending || []).slice() };
+                      pending: (pending || []).slice(), failed: (failed || []).slice() };
   var ls = document.getElementById('login-screen'); if(ls) ls.classList.remove('show');
   var ov = document.getElementById('line-chooser-screen');
   if(!ov){ ov = document.createElement('div'); ov.id = 'line-chooser-screen'; ov.className = 'login-screen'; document.body.appendChild(ov); }
   var nm = (dataMap.gp && dataMap.gp.name) || (dataMap.gyn && dataMap.gyn.name) || (dataMap.reagila && dataMap.reagila.name) || username;
   var poradie = ['gp', 'gyn', 'reagila'];
   var vsetky = poradie.filter(function (ln) {
-    return lines.indexOf(ln) !== -1 || (pending || []).indexOf(ln) !== -1;
+    return lines.indexOf(ln) !== -1 || (pending || []).indexOf(ln) !== -1 || (failed || []).indexOf(ln) !== -1;
   });
   var btns = vsetky.map(function(ln){
     var m = lineChooserMeta(ln);
     var caka = lines.indexOf(ln) === -1;
-    return '<button type="button" class="line-choose-btn' + (caka ? ' caka' : '') + '"' +
+    var zlyhala = (failed || []).indexOf(ln) !== -1;
+    caka = caka && !zlyhala;
+    return '<button type="button" class="line-choose-btn' + (caka ? ' caka' : '') + (zlyhala ? ' zlyhala' : '') + '"' +
              ' id="line-choose-' + ln + '"' +
-             (caka ? ' disabled' : ' onclick="pickLine(\'' + ln + '\')"') + '>' +
+             ((caka || zlyhala) ? ' disabled' : ' onclick="pickLine(\'' + ln + '\')"') + '>' +
              '<span class="line-choose-emoji">' + m.emoji + '</span>' +
              '<span class="line-choose-txt"><span class="line-choose-lbl">' + lineChooserEsc(m.label) + '</span>' +
-             '<span class="line-choose-desc">' + lineChooserEsc(caka ? 'načítavam…' : m.desc) + '</span></span>' +
-             (caka ? '<span class="line-choose-spin"></span>' : '<span class="line-choose-arrow">→</span>') +
+             '<span class="line-choose-desc">' + lineChooserEsc(caka ? 'načítavam…' : zlyhala ? 'server neodpovedal' : m.desc) + '</span></span>' +
+             (caka ? '<span class="line-choose-spin"></span>' : zlyhala ? '<span class="line-choose-arrow">!</span>' : '<span class="line-choose-arrow">→</span>') +
            '</button>';
   }).join('');
   ov.innerHTML =
@@ -12248,20 +12286,27 @@ function showLineChooser(username, lines, dataMap, pending){
       '<div class="login-help" style="margin-top:14px">Voľbu kedykoľvek zmeníš v Nastaveniach.</div>' +
     '</div>';
   ov.classList.add('show');
+  try { var newCb=document.getElementById('line-remember-cb'); if(newCb) newCb.checked=keepRemember; } catch(e){}
 }
-// Línia dobehla na pozadí — doplň ju do už otvoreného výberu.
-function lineChooserAdd(line, data){
+// Línia dobehla na pozadí — odomkni ju, alebo ukonči nekonečné koliesko.
+function lineChooserResolve(line, data){
   try {
     var ctx = _lineChooserCtx;
-    if (!ctx || !data || !data.ok) return;
+    if (!ctx || !data) return;
     var ov = document.getElementById('line-chooser-screen');
     if (!ov || !ov.classList.contains('show')) return;
     ctx.data[line] = data;
-    if (ctx.lines.indexOf(line) === -1) ctx.lines.push(line);
     ctx.pending = ctx.pending.filter(function (x) { return x !== line; });
-    showLineChooser(ctx.username, ctx.lines, ctx.data, ctx.pending);
+    ctx.failed = (ctx.failed || []).filter(function (x) { return x !== line; });
+    if(data.ok){
+      if (ctx.lines.indexOf(line) === -1) ctx.lines.push(line);
+    } else if(ctx.failed.indexOf(line) === -1){
+      ctx.failed.push(line);
+    }
+    showLineChooser(ctx.username, ctx.lines, ctx.data, ctx.pending, ctx.failed);
   } catch (e) {}
 }
+function lineChooserAdd(line, data){ lineChooserResolve(line, data); }
 function pickLine(line){
   var ctx = _lineChooserCtx; if(!ctx) return;
   var cb = document.getElementById('line-remember-cb');
@@ -12299,46 +12344,51 @@ function doLogin() {
   btn.textContent = 'Prihlasujem...';
 
   var loginParams = '?action=login&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password) + '&device_id=' + encodeURIComponent(authDeviceId());
-  // appFetchJson má tvrdý timeout (AbortController, ~16s) — keď Apps Script „visí",
-  // request sa ukončí, tlačidlo sa vráti a prihlasovanie nikdy nezostane zaseknuté
-  // na „Prihlasujem…". Per-fetch catch → Promise.all sa vždy dokončí v rámci timeoutu.
+  // Každú líniu overujeme nezávisle. Hneď ako jedna uspeje, počkáme iba krátke
+  // okno na ostatné a používateľa pustíme ďalej; pomalé servery dobehnú na pozadí.
   function loginFetch(url, tmo){
     return appFetchJson(url + loginParams, undefined, tmo).catch(function(){ return { ok:false, _failed:true }; });
   }
-  // Cold start Apps Scriptu → prvý login-fetch môže vypršať. Retry s dlhším timeoutom pre
-  // KAŽDÚ líniu — inak admin príde o gyn/reagila (a tým o prepínač línie) kvôli pomalému
-  // studenému volaniu. Predtým retry mal len Golem, preto gyn občas vypadla z prepínača.
-  function loginFetchRetry(url){
-    return loginFetch(url, 20000).then(function(d){
-      return (d && d._failed) ? loginFetch(url, 25000) : d;
-    });
-  }
+  var loginLines = [
+    {line:'gp', url:SCRIPT_URL}, {line:'gyn', url:GYN_SCRIPT_URL},
+    {line:'reagila', url:REAGILA_SCRIPT_URL}
+  ];
+  var dataMap = {gp:null,gyn:null,reagila:null};
+  var settled = {gp:false,gyn:false,reagila:false};
+  var retryStarted = {gp:false,gyn:false,reagila:false};
+  var uiFinished = false, successGraceTimer = null;
 
-  Promise.all([loginFetchRetry(SCRIPT_URL), loginFetchRetry(GYN_SCRIPT_URL), loginFetchRetry(REAGILA_SCRIPT_URL)]).then(function(results) {
+  function vals(){
+    return {
+      gp:dataMap.gp || {ok:false,_failed:true,_pending:true},
+      gyn:dataMap.gyn || {ok:false,_failed:true,_pending:true},
+      reagila:dataMap.reagila || {ok:false,_failed:true,_pending:true}
+    };
+  }
+  function availLines(){ return loginLines.map(function(x){return x.line;}).filter(function(line){return dataMap[line] && dataMap[line].ok;}); }
+  function pendingLines(){ return loginLines.map(function(x){return x.line;}).filter(function(line){return !settled[line] || (dataMap[line] && dataMap[line]._failed);}); }
+  function allSettled(){ return loginLines.every(function(x){return settled[x.line];}); }
+  function retryOne(line){
+    if(retryStarted[line] || !dataMap[line] || !dataMap[line]._failed) return;
+    retryStarted[line]=true;
+    var one={gp:{ok:false},gyn:{ok:false},reagila:{ok:false}};
+    one[line]=dataMap[line];
+    lineRetryFailedSilently(username,password,one,lineChooserResolve,300);
+  }
+  function finishUi(){
+    if(uiFinished) return;
+    var avail=availLines();
+    if(!avail.length && !allSettled()) return;
+    uiFinished=true;
+    clearTimeout(successGraceTimer);
     btn.disabled = false;
     btn.textContent = 'Prihlásiť sa →';
-    var gpData  = results[0];
-    var gynData = results[1];
-    var reagilaData = results[2];
+    var v=vals(), gpData=v.gp, gynData=v.gyn, reagilaData=v.reagila;
     // Ulož dostupné línie pre prepínač (ak ich má používateľ 2+)
     try { mgrCaptureLineDiag(username, gpData, gynData, reagilaData); } catch(e){}
     mgrStoreDualIfEligible(username, gpData, gynData, reagilaData);
-
-    // Ktoré línie má používateľ k dispozícii (rovnaké meno+heslo v danom Sheete)
-    var avail = [];
-    if(gpData.ok)      avail.push('gp');
-    if(gynData.ok)     avail.push('gyn');
-    if(reagilaData.ok) avail.push('reagila');
-    var dataMap = { gp: gpData, gyn: gynData, reagila: reagilaData };
-    // Línie, ktoré neodpovedali včas (cold start) — nie zlé heslo. Tieto sa
-    // vo výbere ukážu ako „načítavam…" a doplnia sa, len čo dobehnú.
-    var caka = [];
-    if(!gpData.ok      && gpData._failed)      caka.push('gp');
-    if(!gynData.ok     && gynData._failed)     caka.push('gyn');
-    if(!reagilaData.ok && reagilaData._failed) caka.push('reagila');
-    // Línia, ktorá nestihla odpovedať (cold start), sa dotiahne sama na pozadí
-    try { lineRetryFailedSilently(username, password, dataMap, lineChooserAdd,
-                                  caka.length ? 300 : undefined); } catch(e){}
+    var caka=pendingLines();
+    caka.forEach(retryOne);
 
     if(avail.length === 0) {
       if(gpData._failed && gynData._failed && reagilaData._failed) {
@@ -12369,16 +12419,29 @@ function doLogin() {
     // je hotová jedna línia a ďalšia sa ešte doťahuje — inak by človek vošiel
     // do jedinej, ktorá stihla, a o druhej by sa nedozvedel.
     if(avail.length + caka.length >= 2) {
-      showLineChooser(username, avail, dataMap, caka);
+      showLineChooser(username, avail, dataMap, caka, []);
       return;
     }
     // Jedna línia → vstup priamo, priorita gp > gyn > reagila
     enterLineFromLogin(username, avail[0], dataMap);
-  }).catch(function() {
-    btn.disabled = false;
-    btn.textContent = 'Prihlásiť sa →';
-    errEl.textContent = 'Nie je pripojenie na internet. Skontroluj sieť a skús znova.';
-    errEl.classList.add('show');
+  }
+  function onLineResult(line,data){
+    if(settled[line]) return;
+    settled[line]=true;
+    dataMap[line]=data || {ok:false};
+    if(uiFinished){
+      if(dataMap[line].ok){ lineMergeLoginSuccess(username,line,dataMap[line]); lineChooserResolve(line,dataMap[line]); }
+      else if(dataMap[line]._failed){ retryOne(line); }
+      else { lineChooserResolve(line,dataMap[line]); }
+      return;
+    }
+    if(availLines().length){
+      if(allSettled()) finishUi();
+      else if(!successGraceTimer) successGraceTimer=setTimeout(finishUi,700);
+    } else if(allSettled()) finishUi();
+  }
+  loginLines.forEach(function(item){
+    loginFetch(item.url,10000).then(function(data){ onLineResult(item.line,data); });
   });
 }
 
@@ -12889,7 +12952,7 @@ function initLogin() {
   if(session && session.username) usageTrack('app_open', '', 'štart appky · rola: ' + (session.role || ''));
   if(session && session.username && session.line === 'gyn') {
     document.querySelector('.app').style.visibility = 'visible';
-    try { setTimeout(nstPrime, 1200); } catch(e){}   // Nástenka — bodka s počtom nových
+    try { nstResetForActiveLine(); nstPrime(); } catch(e){}   // Nástenka — hneď aj so stavom načítania
     gynEnter(session);
     return;
   }
@@ -12903,7 +12966,7 @@ function initLogin() {
       setSession(session);
     }
     try { userPrefsApplyMirror(session); } catch(e){}
-    try { setTimeout(nstPrime, 1200); } catch(e){}   // Nástenka — bodka s počtom nových príspevkov
+    try { nstResetForActiveLine(); nstPrime(); } catch(e){}   // Nástenka — hneď aj so stavom načítania
     var mgrRole = mgrDetectRole(session);
     // Reagila línia → body classa pre line-aware CSS + vyprázdnenie statických Golem zoznamov
     if(_isReagilaR){ document.body.classList.add('reagila-line'); reagilaClearGolemStatics(); }
@@ -12939,16 +13002,15 @@ function initLogin() {
     setTimeout(function(){ updateHdrForUser(session); }, 300);
     setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(false);}else{checkMilestone();} }, 600);
     // refreshBadgeFromSheets nahradená loadInitData() vyššie
-    // Preload rebríček + Plnenie Q (leaderboard) paralelne -- oba startuju po 2s
+    if (!REP_PL_STATE.loading && !REP_PL_STATE.loaded) {
+      plnenieApplyDefaultPeriod(REP_PL_STATE, true);
+      repPlnenieLoad();
+    }
     setTimeout(function(){
       lbFetchApprovedQ(function(){
         lbLoadData();
         lbPreloadPlnenie();
       });
-      if (!REP_PL_STATE.loading && !REP_PL_STATE.loaded) {
-        plnenieApplyDefaultPeriod(REP_PL_STATE, true);
-        repPlnenieLoad();
-      }
     }, 2000);
     setTimeout(function(){
       plnenieApplyDefaultPeriod(REP_PL_STATE);
@@ -12977,7 +13039,8 @@ function initLogin() {
 
 var GYN_STATE   = { repList: [], userList: [] };
 var GYN_APP     = { nav: 'plnenie', q: 1, year: 2026, plCache: {}, plLoading: {},
-                    detailLogin: null, detailMeno: '', detailRegion: '' };
+                    detailLogin: null, detailMeno: '', detailRegion: '',
+                    _bootstrapId: 0, _repListLoadId: 0, _plReqIds: {} };
 var GYN_LINIA_LABEL = { pill: '💊 Pill', patch: '🩹 Patch' };
 var GYN_ROLE_LABEL  = { 'gyn-rep':'Reprezentant', 'gyn-am':'Area Manager', 'gyn-pm':'Produktový manažér', 'gyn-bum':'Business Unit Manager', 'gyn-asistent':'Asistent' };
 // Mapovanie produkt → línia (kľúč = lowercase názov produktu zo Sheets)
@@ -14527,6 +14590,7 @@ function gynLoginSuccess(username, data) {
   if (data.session_expires_at) user.session_expires_at = String(data.session_expires_at || '');
   if (data.device_id) user.device_id = String(data.device_id || '');
   setSession(user);
+  try { nstResetForActiveLine(); nstPrime(); } catch(e){}
   // Výber konkurentov pre MS graf — localStorage (instant) + zo Sheets (login response)
   try { gynMsHydrate(localStorage.getItem(gynMsLsKey())); } catch(e){}
   if (data.gyn_ms_vyber) gynMsHydrate(data.gyn_ms_vyber);
@@ -14540,6 +14604,11 @@ function gynLoginSuccess(username, data) {
 }
 
 function gynEnter(user) {
+  // Každý vstup je samostatná načítacia relácia. Po návrate z inej línie
+  // nesmie prežiť žiadny starý loading flag ani oneskorená odpoveď.
+  GYN_APP._bootstrapId=(GYN_APP._bootstrapId||0)+1;
+  GYN_APP._repListLoadId=(GYN_APP._repListLoadId||0)+1;
+  GYN_APP._plReqIds={}; GYN_APP.plLoading={}; GYN_APP._repListLoading=false;
   document.body.classList.remove('manager-mode', 'gp-rep', 'reagila-line');
   document.body.classList.add('gyn-line');   // line-aware CSS (tmavý notch pás)
   updateHdrForUser(user);
@@ -14694,14 +14763,22 @@ function gynLoadRepList(user, _attempt) {
   // Výber konkurentov pre MS graf — najprv localStorage (instant), Sheets prepíše nižšie
   try { gynMsHydrate(localStorage.getItem(gynMsLsKey())); } catch(e){}
   // Príznak, aby potiahnutie nadol vedelo, kedy zastaviť krúžok.
+  var loadId = ++GYN_APP._repListLoadId;
+  var loadCtx = appLineCapture();
+  function active(){ return loadId === GYN_APP._repListLoadId && appLineContextActive(loadCtx); }
   GYN_APP._repListLoading = true;
-  fetch(gynScriptUrl('action=getRepList'), { cache: 'no-store' })
-    .then(function(r){ return r.json(); })
-    .then(function(data){ GYN_APP._repListLoading = false; gynApplyRepListData(data, user); })
+  appFetchJson(gynScriptUrl('action=getRepList'), undefined, 12000)
+    .then(function(data){
+      if(!active()) return;
+      GYN_APP._repListLoading = false;
+      gynApplyRepListData(data, user);
+      try { dnesRefreshIfOpen(); } catch(e){}
+    })
     .catch(function(){
+      if(!active()) return;
       // Cold-start / session ešte nie je pripravená pri prvom logine → skús znova.
       var _a = _attempt || 0;
-      if(_a < 2) setTimeout(function(){ gynLoadRepList(user, _a + 1); }, _a === 0 ? 2000 : 4000);
+      if(_a < 2) setTimeout(function(){ if(active()) gynLoadRepList(user, _a + 1); }, _a === 0 ? 1200 : 2500);
       else GYN_APP._repListLoading = false;
     });
 }
@@ -14710,23 +14787,26 @@ function gynLoadRepList(user, _attempt) {
 function gynBootstrap(user) {
   var q = GYN_APP.q, rok = GYN_APP.year;
   if(typeof IS_DEV !== 'undefined' && IS_DEV){ try { gynLoadRepList(user); } catch(e){} return; }
+  var bootId = ++GYN_APP._bootstrapId;
+  var bootCtx = appLineCapture();
+  function active(){ return bootId === GYN_APP._bootstrapId && appLineContextActive(bootCtx); }
   // Zabráň, aby gynPlnenieShow spustil vlastný fetch — plnenie príde z bootstrapu.
-  var _wasLoading = GYN_APP.plLoading[q];
   GYN_APP.plLoading[q] = true;
   try { gynMsHydrate(localStorage.getItem(gynMsLsKey())); } catch(e){}
   // Okamžite ukáž cache (ak je) — bez vlastného fetchu (plLoading guard). Bootstrap ju obnoví.
   try { gynRenderContent(user); } catch(e){}
-  fetch(gynScriptUrl('action=bootstrap&rok=' + rok + '&Q=' + q), { cache: 'no-store' })
-    .then(function(r){ return r.json(); })
+  appFetchJson(gynScriptUrl('action=bootstrap&rok=' + rok + '&Q=' + q), undefined, 12000)
     .then(function(d){
+      if(!active()) return;
       if(!d || !d.ok) throw new Error('bootstrap fail');
+      var plReady = false;
       // Plnenie do cache (gynPlnenieShow ho potom vykreslí bez ďalšieho fetchu — plLoading drží guard)
       if(d.plnenie && d.plnenie.ok){
         try {
           gynPreprocessData(d.plnenie);
           GYN_APP.plCache[q] = d.plnenie;
           gynCacheWrite(gynPlnenieCacheKey(rok, q), d.plnenie);
-          try { dnesRefreshIfOpen(); } catch(e){}
+          plReady = true;
         } catch(e){}
       }
       // RepList → naplní stav + spraví plný render (jeho re-render logika)
@@ -14734,13 +14814,19 @@ function gynBootstrap(user) {
       // Poistka — ak repList nič nevykreslil, vykresli aspoň plnenie z cache
       var gc = document.getElementById('gyn-content');
       if(!(gc && gc.querySelector('.pl-sum-big, .mgr-plnenie-detail'))) { try { gynRenderContent(user); } catch(e){} }
-      if(!_wasLoading) delete GYN_APP.plLoading[q];   // až teraz povoľ ďalšie fetche
+      delete GYN_APP.plLoading[q];
+      // Bootstrap môže vrátiť roster, ale plnenie nie. Po uvoľnení guardu
+      // vtedy okamžite spusti samostatný odolný loader.
+      if(!plReady){ try { gynRenderContent(user); } catch(e){} }
+      try { dnesRefreshIfOpen(); } catch(e){}
     })
     .catch(function(){
+      if(!active()) return;
       // Fallback — pôvodné samostatné načítanie
-      if(!_wasLoading) delete GYN_APP.plLoading[q];
+      delete GYN_APP.plLoading[q];
       try { gynRenderContent(user); } catch(e){}   // gynPlnenieShow si dotiahne plnenie sám
       try { gynLoadRepList(user); } catch(e){}
+      try { dnesRefreshIfOpen(); } catch(e){}
     });
 }
 
@@ -14956,6 +15042,7 @@ function gynQTabsHtml() {
 // Preload — všetky 4 Q plnenia paralelne (cache GYN_APP.plCache)
 function gynPreloadAllQuarters() {
   var year = GYN_APP.year;
+  var preloadCtx = appLineCapture();
   [1,2,3,4].forEach(function(q){
     var cacheKey = gynPlnenieCacheKey(year, q);
     if(!GYN_APP.plCache[q]) {
@@ -14966,10 +15053,13 @@ function gynPreloadAllQuarters() {
       }
     }
     if(GYN_APP.plLoading[q]) return;     // už sa načítava (gynPlnenieShow)
+    var reqId = ((GYN_APP._plReqIds[q] || 0) + 1);
+    GYN_APP._plReqIds[q] = reqId;
+    function active(){ return appLineContextActive(preloadCtx) && GYN_APP._plReqIds[q] === reqId; }
     GYN_APP.plLoading[q] = true;
-    fetch(gynScriptUrl('action=getPlnenieAll&rok='+year+'&Q='+q), { cache:'no-store' })
-      .then(function(r){ return r.json(); })
+    appFetchJson(gynScriptUrl('action=getPlnenieAll&rok='+year+'&Q='+q), undefined, 12000)
       .then(function(data){
+        if(!active()) return;
         delete GYN_APP.plLoading[q];
         if(!data) return;
         gynPreprocessData(data);
@@ -14993,6 +15083,7 @@ function gynPreloadAllQuarters() {
         if(typeof gynRefreshAllTrends === 'function') gynRefreshAllTrends();
       })
       .catch(function(){
+        if(!active()) return;
         delete GYN_APP.plLoading[q];
       });
   });
@@ -15086,9 +15177,14 @@ function gynPlnenieShow(el, user, _attempt) {
       '<div style="padding:32px 0;text-align:center;color:#64748B;font-size:13px">Načítavam...</div>';
   }
   if(GYN_APP.plLoading[q]) return;
+  var reqId = ((GYN_APP._plReqIds[q] || 0) + 1);
+  GYN_APP._plReqIds[q] = reqId;
+  var reqCtx = appLineCapture();
+  function active(){ return appLineContextActive(reqCtx) && GYN_APP._plReqIds[q] === reqId; }
   GYN_APP.plLoading[q] = true;
-  appFetchJson(gynScriptUrl('action=getPlnenieAll&rok='+GYN_APP.year+'&Q='+q))
+  appFetchJson(gynScriptUrl('action=getPlnenieAll&rok='+GYN_APP.year+'&Q='+q), undefined, 12000)
     .then(function(data){
+      if(!active()) return;
       delete GYN_APP.plLoading[q];
       gynPreprocessData(data);
       var changed = !gynCacheSame(GYN_APP.plCache[q], data);
@@ -15103,13 +15199,14 @@ function gynPlnenieShow(el, user, _attempt) {
       }
     })
     .catch(function(){
+      if(!active()) return;
       delete GYN_APP.plLoading[q];
       if(!cached) {
         var _att = _attempt || 0;
         // Cold-start gyn backendu / session ešte nie je pripravená pri prvom logine →
         // automaticky skús znova (netreba manuálny reload). Až po pár pokusoch chybová karta.
         if(_att < 2) {
-          setTimeout(function(){ gynPlnenieShow(el, user, _att + 1); }, _att === 0 ? 1800 : 3500);
+          setTimeout(function(){ if(active()) gynPlnenieShow(el, user, _att + 1); }, _att === 0 ? 1200 : 2500);
           return; // ponechaj „Načítavam..."
         }
         appRegisterRetry('gyn-plnenie', function(){ gynPlnenieShow(el, user); });
@@ -23018,6 +23115,9 @@ function buildRepData(reps) {
       if (document.body.classList.contains('mgr-subtab-plnenie') && PL_STATE.loaded && typeof plnenieRenderAll === 'function') {
         plnenieRunSilentRender(plnenieRenderAll);
       }
+      // Domov mohol byť vyrenderovaný ešte pred rosterom. Po prepočte agregátov
+      // ho obnov aj vtedy, keď samotný panel Plnenie nie je otvorený.
+      try { dnesRefreshIfOpen(); } catch(e){}
     }
   } catch(e){}
 
@@ -38613,6 +38713,13 @@ function nstUpdateBadge(){
 }
 // Tiché načítanie na pozadí po prihlásení — nech bodka v navigácii sedí bez otvorenia panelu.
 // Ak appku otvorila notifikácia z Nástenky (?nst=1), rovno otvor panel.
+function nstResetForActiveLine(){
+  NST._reqId = (NST._reqId || 0) + 1;
+  clearTimeout(NST._loadT);
+  NST.posts = nstLoadLocal();
+  NST.loaded = false; NST.loading = false; NST.err = ''; NST._primed = false;
+  NST.open = {}; NST.likesOpen = {}; NST.votersOpen = {};
+}
 function nstPrime(){
   try {
     if (!nstUser()) return;
@@ -38690,14 +38797,18 @@ function nstFetch(cb){
     })
     .catch(function(){
       if (reqId !== NST._reqId || !appLineContextActive(reqCtx)) return;
-      NST.loading = false;
+      NST.loading = false; NST.loaded = true;
       if (!NST.posts.length) NST.err = 'offline';
       if (cb) cb();
     });
   // poistka — keby odpoveď nikdy neprišla, kostru nenechávaj visieť donekonečna
   clearTimeout(NST._loadT);
   NST._loadT = setTimeout(function(){
-    if (reqId === NST._reqId && appLineContextActive(reqCtx) && NST.loading){ NST.loading = false; nstRenderList(); }
+    if (reqId === NST._reqId && appLineContextActive(reqCtx) && NST.loading){
+      NST.loading = false; NST.loaded = true;
+      nstRenderList();
+      try { dnesRefreshIfOpen(); } catch(e){}
+    }
   }, 15000);
 }
 
@@ -42578,6 +42689,8 @@ try { gsLpInit(); } catch(e){}
   .nst-loading,.nst-refresh{display:flex;align-items:center;justify-content:center;gap:8px;font-size:12.5px;font-weight:700;color:#64748B;padding:4px 0 12px}
   .nst-refresh{padding:0 0 10px}
   .line-choose-btn.caka{opacity:.6;cursor:default}
+  .line-choose-btn.zlyhala{opacity:.72;cursor:default;border-color:#FECACA;background:#FFF7F7}
+  .line-choose-btn.zlyhala .line-choose-desc,.line-choose-btn.zlyhala .line-choose-arrow{color:#B91C1C}
   .line-choose-spin{width:16px;height:16px;border:2px solid #E2E8F0;border-top-color:#2563EB;border-radius:50%;
     animation:nstSpin .7s linear infinite;flex-shrink:0}
   .nst-spin{width:14px;height:14px;border:2px solid #E2E8F0;border-top-color:#2563EB;border-radius:50%;animation:nstSpin .7s linear infinite;flex-shrink:0}
