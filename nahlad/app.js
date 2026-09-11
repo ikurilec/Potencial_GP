@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.58';
+var APP_VERSION = '2.85.59';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -3522,7 +3522,7 @@ function buildHistItemHtml(item) {
   var oppHtml = (opp && opp.key !== 'ok') ?
     '<div class="hist-opp"><span class="hist-opp-badge" style="background:' + opp.bg + ';color:' + opp.tc + '">' + opp.emo + ' ' + opp.label + '</span>' +
       (opp.short ? '<span class="hist-opp-sub">' + mgrEscape(opp.short) + '</span>' : '') + '</div>' : '';
-  var catBadge = kat ? '<span class="hist-cat" style="background:' + cc.c + ';color:' + cc.txt + '">' + kat + '</span>' : '';
+  var catBadge = kat ? '<span class="hist-cat" style="background:' + cc.c + ';color:' + cc.txt + '">' + mgrEscape(kat) + '</span>' : '';
   var lonBadge = (typeof lonelixHasRecord === 'function' && lonelixHasRecord(item.lekar, item.okres)) ? ' <span class="hist-lon-badge" title="Má Lonelix záznam">🛡️</span>' : '';
   var idx = _histDetailItems.length;
   _histDetailItems.push(item);
@@ -6875,33 +6875,32 @@ function settingsRememberLine(){
 function settingsLoadGolemLine(){
   var s = (typeof getSession === 'function') ? getSession() : null;
   if(!s || !s.username){ alert('Nie si prihlásený.'); return; }
-  var pwd = prompt('Zadaj svoje heslo pre načítanie Golem línie:');
-  if(pwd === null) return;                 // zrušené
-  if(!pwd){ alert('Heslo je prázdne.'); return; }
-  var lp = '?action=login&username=' + encodeURIComponent(s.username) +
-           '&password=' + encodeURIComponent(pwd) +
-           '&device_id=' + encodeURIComponent(authDeviceId());
-  function tryGolem(tmo){
-    return appFetchJson(SCRIPT_URL + lp, undefined, tmo).catch(function(){ return { ok:false, _failed:true }; });
-  }
-  tryGolem(20000).then(function(gp){
-    return (gp && gp._failed) ? tryGolem(25000) : gp;   // cold start → druhý pokus
-  }).then(function(gp){
-    if(!gp || !gp.ok){
-      alert((gp && gp._failed)
-        ? 'Golem server neodpovedal včas. Skús to znova o chvíľu.'
-        : 'Golem prihlásenie zlyhalo — nesprávne heslo alebo nemáš Golem účet (rovnaké meno + heslo v Golem Sheets).');
-      return;
+  lkPrompt('Heslo', 'Zadaj svoje heslo pre načítanie Golem línie.', '', '', function(pwd){
+    var lp = '?action=login&username=' + encodeURIComponent(s.username) +
+             '&password=' + encodeURIComponent(pwd) +
+             '&device_id=' + encodeURIComponent(authDeviceId());
+    function tryGolem(tmo){
+      return appFetchJson(SCRIPT_URL + lp, undefined, tmo).catch(function(){ return { ok:false, _failed:true }; });
     }
-    var gpUser = mgrBuildGpUser(s.username, gp);
-    var d = (typeof mgrGetDual === 'function' && mgrGetDual()) || { username: s.username };
-    d.username = d.username || s.username;
-    d.gp = gpUser;
-    mgrSetDual(d);
-    try { mgrRenderLineSwitch(); } catch(e){}
-    if(typeof closeSettings === 'function') closeSettings();
-    try { mgrSwitchLine('gp'); } catch(e){}
-  });
+    tryGolem(20000).then(function(gp){
+      return (gp && gp._failed) ? tryGolem(25000) : gp;   // cold start → druhý pokus
+    }).then(function(gp){
+      if(!gp || !gp.ok){
+        alert((gp && gp._failed)
+          ? 'Golem server neodpovedal včas. Skús to znova o chvíľu.'
+          : 'Golem prihlásenie zlyhalo — nesprávne heslo alebo nemáš Golem účet (rovnaké meno + heslo v Golem Sheets).');
+        return;
+      }
+      var gpUser = mgrBuildGpUser(s.username, gp);
+      var d = (typeof mgrGetDual === 'function' && mgrGetDual()) || { username: s.username };
+      d.username = d.username || s.username;
+      d.gp = gpUser;
+      mgrSetDual(d);
+      try { mgrRenderLineSwitch(); } catch(e){}
+      if(typeof closeSettings === 'function') closeSettings();
+      try { mgrSwitchLine('gp'); } catch(e){}
+    });
+  }, 'password');
 }
 
 // Načítaj/obnov VŠETKY moje línie (Golem + Gyn + Reagila) cez heslo, bez odhlásenia.
@@ -6911,9 +6910,7 @@ function settingsLoadGolemLine(){
 function settingsReloadAllLines(){
   var s = (typeof getSession === 'function') ? getSession() : null;
   if(!s || !s.username){ alert('Nie si prihlásený.'); return; }
-  var pwd = prompt('Zadaj svoje heslo — appka overí všetky tvoje línie (Golem, Gyn, Reagila) a sprístupní prepínač:');
-  if(pwd === null) return;                 // zrušené
-  if(!pwd){ alert('Heslo je prázdne.'); return; }
+  lkPrompt('Heslo', 'Appka overí všetky tvoje línie (Golem, Gyn, Reagila) a sprístupní prepínač.', '', '', function(pwd){
   var lp = '?action=login&username=' + encodeURIComponent(s.username) +
            '&password=' + encodeURIComponent(pwd) +
            '&device_id=' + encodeURIComponent(authDeviceId());
@@ -6963,6 +6960,7 @@ function settingsReloadAllLines(){
       ? '\n\nPrepínač línie je teraz dostupný v hlavičke aj tu v Nastaveniach.'
       : '\n\nNašla sa len jedna línia. Skontroluj, či máš rovnaké meno + heslo aj v Google Sheets ostatných línií (hárok Pouzivatelia).'));
   }).catch(function(){ alert('Chyba siete pri prihlasovaní.'); try { haptic('error'); } catch(e){} });
+  }, 'password');
 }
 
 // Vymazať vyrovnávaciu pamäť (re-fetchovateľné cache; session ostáva)
@@ -8198,9 +8196,7 @@ function mgrEnableLineSwitch(targetLine){
     alert('Prepínač línie je dostupný len pre admina v Golem pohľade.');
     return;
   }
-  var pwd = prompt('Zadaj svoje heslo pre načítanie Gyn línie:');
-  if(pwd === null) return;            // zrušené
-  if(!pwd){ alert('Heslo je prázdne.'); return; }
+  lkPrompt('Heslo', 'Zadaj svoje heslo pre načítanie Gyn línie.', '', '', function(pwd){
   var lp = '?action=login&username=' + encodeURIComponent(s.username) +
            '&password=' + encodeURIComponent(pwd) +
            '&device_id=' + encodeURIComponent(authDeviceId());
@@ -8224,6 +8220,7 @@ function mgrEnableLineSwitch(targetLine){
     if(targetLine === 'gyn'){ mgrSwitchLine('gyn'); }   // tapol "Gyn" → rovno tam prepni
     else { mgrRenderLineSwitch(); }
   }).catch(function(){ alert('Chyba siete pri prihlasovaní.'); });
+  }, 'password');
 }
 // Či zobraziť prepínač línie: admin, ktorý má v dual session aspoň jednu ďalšiu líniu.
 function mgrShouldShowLineToggle(){
@@ -33897,18 +33894,30 @@ function lkFilterSnapshot() {
 }
 
 // Generický input-modal v štýle appky (namiesto prompt())
+// `type` je voliteľný — 'password' skryje vstup (heslo pri prepínaní línie
+// v Nastaveniach, F6-4: natívny sivý prompt() vyzerá presne ako phishing).
 var _lkPromptCb = null;
-function lkPrompt(title, sub, placeholder, prefill, onOk) {
+function lkPrompt(title, sub, placeholder, prefill, onOk, type) {
   _lkPromptCb = onOk || null;
+  var isPwd = (type === 'password');
   var t = document.getElementById('lk-prompt-title'); if (t) t.textContent = title || '';
   var s = document.getElementById('lk-prompt-sub');   if (s) s.textContent = sub || '';
+  var ic = document.getElementById('lk-prompt-icon'); if (ic) ic.textContent = isPwd ? '🔒' : '💾';
+  var ok = document.getElementById('lk-prompt-ok-btn'); if (ok) ok.textContent = isPwd ? 'Pokračovať' : 'Uložiť';
   var inp = document.getElementById('lk-prompt-input');
-  if (inp) { inp.value = prefill || ''; inp.placeholder = placeholder || ''; }
+  if (inp) {
+    inp.value = prefill || '';
+    inp.placeholder = placeholder || '';
+    inp.type = isPwd ? 'password' : 'text';
+    inp.autocomplete = isPwd ? 'current-password' : 'off';
+  }
   var ov = document.getElementById('lk-prompt-overlay'); if (ov) ov.classList.add('show');
   setTimeout(function() { if (inp) { inp.focus(); inp.select(); } }, 80);
 }
 function lkPromptClose() {
   var ov = document.getElementById('lk-prompt-overlay'); if (ov) ov.classList.remove('show');
+  var inp = document.getElementById('lk-prompt-input');
+  if (inp) { inp.type = 'text'; inp.autocomplete = 'off'; inp.value = ''; }   // nenechaj heslo v DOM po zatvorení
   _lkPromptCb = null;
 }
 function lkPromptOk() {

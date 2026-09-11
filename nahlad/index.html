@@ -38,7 +38,7 @@
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.85.58 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.85.59 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -993,7 +993,7 @@
 <div class="footer">Intern&#253; n&#225;stroj pre medic&#237;nskych reprezentantov<br><span style="font-size:10px;color:#B0BAC4">Designed &amp; developed by Ivan Kurilec &middot; Gedeon Richter Slovakia &middot; 2026</span></div>
 </div>
 
-<script src="dist/app.605107a5.js"></script>
+<script src="dist/app.83656109.js"></script>
 
 <!-- ── LOGOUT CONFIRM ── -->
 <div class="logout-overlay" id="logout-overlay">
@@ -1647,14 +1647,14 @@
 <!-- ── Zadanie názvu filtra (štýl appky) ── -->
 <div class="av-confirm-overlay" id="lk-prompt-overlay" style="z-index:6100" onclick="if(event.target===this)lkPromptClose()">
   <div class="av-confirm-box">
-    <div class="av-confirm-icon" style="background:linear-gradient(180deg,#DBEAFE,#BFDBFE)">💾</div>
+    <div class="av-confirm-icon" id="lk-prompt-icon" style="background:linear-gradient(180deg,#DBEAFE,#BFDBFE)">💾</div>
     <div class="av-confirm-title" id="lk-prompt-title">Uložiť filter</div>
     <div class="av-confirm-sub" id="lk-prompt-sub">Zadaj názov, pod ktorým si filter uložíš.</div>
     <input type="text" id="lk-prompt-input" class="lk-prompt-input" autocomplete="off" spellcheck="false"
            onkeydown="if(event.key==='Enter')lkPromptOk()" placeholder="Napr. Komárno – ponuka krému">
     <div class="av-confirm-btns" style="margin-top:18px">
       <button type="button" class="av-confirm-btn av-confirm-cancel" onclick="lkPromptClose()">Zrušiť</button>
-      <button type="button" class="av-confirm-btn lk-prompt-ok" onclick="lkPromptOk()">Uložiť</button>
+      <button type="button" class="av-confirm-btn lk-prompt-ok" id="lk-prompt-ok-btn" onclick="lkPromptOk()">Uložiť</button>
     </div>
   </div>
 </div>
