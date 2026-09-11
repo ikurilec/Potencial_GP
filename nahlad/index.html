@@ -3433,7 +3433,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.85.29 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.85.30 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -4422,7 +4422,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.29';
+var APP_VERSION = '2.85.30';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -15207,8 +15207,9 @@ function gynLoginSuccess(username, data) {
   if (data.gyn_ms_vyber) gynMsHydrate(data.gyn_ms_vyber);
   haptic('success');
   var appEl = document.querySelector('.app');
-  if(appEl){ appEl.style.visibility='visible'; appEl.classList.add('app-enter');
-             setTimeout(function(){ appEl.classList.remove('app-enter'); }, 500); }
+  // Gyn má vlastný shell. Starý Golem pohľad tu nesmie ani na okamih presvitať
+  // medzi loginom a gynEnter(), inak používateľ vidí nesprávnu načítaciu obrazovku.
+  if(appEl) appEl.style.display = 'none';
   document.getElementById('login-screen').classList.remove('show');
   pingLogin(username);
   gynEnter(user);
