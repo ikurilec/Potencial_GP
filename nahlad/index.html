@@ -3406,7 +3406,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.85.20 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.85.21 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -4395,7 +4395,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.20';
+var APP_VERSION = '2.85.21';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9395,7 +9395,17 @@ function appGoTab(kam, arg) {
     else if (kam === 'kalendar') openGolemKalendar();
   } catch (e) {}
 }
-function appGoPlnenie() { appGoTab('plnenie'); }
+function appGoPlnenie() {
+  // Opakovaný ťuk na aktívne Plnenie je návrat na koreň sekcie, nie
+  // ponechanie otvoreného detailu reprezentanta alebo produktu.
+  try {
+    if (typeof PL_PROD_SHEET_STATE !== 'undefined' && PL_PROD_SHEET_STATE.open && typeof closeProdSheet === 'function') closeProdSheet();
+  } catch (e) {}
+  try {
+    if (appRole() === 'mgr' && document.body.classList.contains('mgr-plnenie-detail-open') && typeof plnenieCloseDetail === 'function') plnenieCloseDetail();
+  } catch (e) {}
+  appGoTab('plnenie');
+}
 function appGoKalendar() { appGoTab('kalendar'); }
 function appGoNastenka(postId) { appGoTab('nastenka', postId); }
 var APP_PL_PRODUCT_FOCUS = null;
