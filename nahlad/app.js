@@ -31,7 +31,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.38';
+var APP_VERSION = '2.85.39';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -4109,6 +4109,13 @@ function dnesPlnenieFailed() {
   try { return appRole() === 'mgr' && PL_STATE._currentLoadFailed === true; }
   catch (e) { return false; }
 }
+function dnesRebricekFailed() {
+  try {
+    if(appRole() !== 'gyn') return false;
+    var q = plnenieDefaultPeriod().q;
+    return !!(GYN_LB.failed && GYN_LB.failed[q]);
+  } catch(e) { return false; }
+}
 function dnesSkeletonHtml(popis) {
   return '<div class="dnes-load"><span class="dnes-spin"></span>' + appEsc(popis || 'Načítavam…') + '</div>';
 }
@@ -4821,8 +4828,10 @@ function dnesRender() {
     html += '<div onclick="appGoRebricek()" style="cursor:pointer">' +
             dnesCardHtml('linear-gradient(90deg,#D97706,#FCD34D)', titulR,
                          '<span class="dnes-more">Otvoriť ›</span>',
-                         dnesHomeLoadHtml(dnesPlnenieNacitava() ? 'Načítavam rebríček…'
-                                                                 : 'Za tento kvartál zatiaľ nie sú dáta')) +
+                         dnesRebricekFailed()
+                           ? '<div class="dnes-load"><span aria-hidden="true" style="font-size:15px;line-height:1">⚠️</span>Dáta rebríčka sa nepodarilo načítať — otvor kartu a skús znova</div>'
+                           : dnesHomeLoadHtml(dnesPlnenieNacitava() ? 'Načítavam rebríček…'
+                                                                    : 'Za tento kvartál zatiaľ nie sú dáta')) +
             '</div>';
   }
   if (reb) {
@@ -14347,7 +14356,7 @@ function gynPlnenieRenderMgr(el, user, data) {
 // posledného ukončeného kvartálu (rovnaká logika ako Golem, vrátane admin
 // schválenia Q cez setConfig key lb_approved_q na gyn backende).
 // ═══════════════════════════════════════════════════════════════════
-var GYN_LB = { cat: 'all', approvedQ: null, qFetched: false, qResolved: false, showConfetti: false, dataReady: {}, plCache: {}, plLoading: {}, repList: [], repLoading: false, repFetched: false, _confT: null, _confWinT: null, _animated: false };
+var GYN_LB = { cat: 'all', approvedQ: null, qFetched: false, qResolved: false, showConfetti: false, dataReady: {}, plCache: {}, plLoading: {}, failed: {}, repList: [], repLoading: false, repFetched: false, _confT: null, _confWinT: null, _animated: false };
 
 function gynLbLastCompletedQ(){
   if(GYN_LB.approvedQ !== null) return GYN_LB.approvedQ;
@@ -14439,7 +14448,7 @@ function gynLbShow(el){
 
 // Stiahni ČERSTVÉ dáta plnenia pre daný Q (raz za session). Nerenderujeme zo stale cache —
 // render sa odblokuje (cez GYN_LB.dataReady[q]) až keď dorazia čerstvé dáta pre správny Q.
-function gynLbEnsureData(q, key){
+function gynLbEnsureData(q, key, _attempt){
   if(GYN_LB.dataReady[q] || GYN_LB.plLoading[q]) return;
   // Použi posledný výsledok okamžite, ale neoznač ho ako fresh: čerstvý fetch
   // pokračuje potichu a pri návrate nahradí čísla bez loading karty.
@@ -14448,25 +14457,35 @@ function gynLbEnsureData(q, key){
     try { gynPreprocessData(persisted); GYN_LB.plCache[q] = persisted; } catch(e){}
     try { gynOpenDnesWhenReady(); } catch(e){}
   }
+  delete GYN_LB.failed[q];
   GYN_LB.plLoading[q] = true;
   appQueuedFetchJson(gynScriptUrl('action=getPlnenieAll&rok=' + GYN_APP.year + '&Q=' + q + '&fullLine=1'), undefined, 12000, 'critical')
     .then(function(d){
       delete GYN_LB.plLoading[q];
-      if(!d) return;
+      // Apps Script pri chybe vracia HTTP 200 s {ok:false}. Táto odpoveď nie je
+      // výsledok rebríčka a nesmie zablokovať ďalší pokus ani zostať v cache.
+      if(!d || !d.ok) throw new Error('Gyn leaderboard data unavailable');
       gynPreprocessData(d);
       GYN_LB.plCache[q] = d;
       gynCacheWrite(key, d);
       GYN_LB.dataReady[q] = true;
+      delete GYN_LB.failed[q];
       if(GYN_APP.nav === 'leaderboard') gynLbRender();
       try { dnesRefreshIfOpen(); } catch(e){}
       try { gynOpenDnesWhenReady(); } catch(e){}
     })
     .catch(function(){
       delete GYN_LB.plLoading[q];
+      var attempts = _attempt || 0;
+      if(attempts < 2){
+        setTimeout(function(){ gynLbEnsureData(q, key, attempts + 1); }, attempts === 0 ? 1200 : 2500);
+        return;
+      }
+      GYN_LB.failed[q] = true;
       if(GYN_APP.nav === 'leaderboard'){
         var e2 = gynLbBody();
         if(e2){
-          appRegisterRetry('gyn-lb', function(){ gynLbEnsureData(q, key); gynLbRender(); });
+          appRegisterRetry('gyn-lb', function(){ delete GYN_LB.failed[q]; gynLbEnsureData(q, key); gynLbRender(); });
           e2.innerHTML = gynLbCard(gynLbCatTabsHtml() + appErrorCardHtml({
             id: 'gyn-lb',
             title: 'Nepodarilo sa načítať rebríček',
@@ -14475,6 +14494,8 @@ function gynLbEnsureData(q, key){
           }));
         }
       }
+      try { dnesRefreshIfOpen(); } catch(e){}
+      try { gynOpenDnesWhenReady(); } catch(e){}
     });
 }
 
