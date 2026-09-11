@@ -3419,7 +3419,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.85.26 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.85.27 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -4408,7 +4408,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.26';
+var APP_VERSION = '2.85.27';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8345,7 +8345,10 @@ function dnesPlnenieGyn() {
     var sess = getSession() || {};
     var dp = plnenieDefaultPeriod();
     var q = dp.q, year = dp.year;
-    var data = (GYN_APP.plCache && GYN_APP.plCache[q]) || gynCacheRead(gynPlnenieCacheKey(year, q));
+    // Rebríček potrebuje dáta celej línie. Po prihlásení sa prednačítajú do
+    // GYN_LB cache; bežná cache Plnenia reprezentanta obsahuje iba jeho región.
+    var data = (GYN_LB.plCache && GYN_LB.plCache[q]) ||
+               (GYN_APP.plCache && GYN_APP.plCache[q]) || gynCacheRead(gynPlnenieCacheKey(year, q));
     if (!data) return null;
     try { gynPreprocessData(data); } catch (e) {}
     var tim = (sess.role !== 'gyn-rep');
@@ -8508,7 +8511,8 @@ function dnesRebricekGyn(me) {
     var q = dp.q, year = dp.year;
     var reps = gynLbScopeReps();
     if (!reps.length) reps = GYN_STATE.repList || [];
-    var data = (GYN_APP.plCache && GYN_APP.plCache[q]) || gynCacheRead(gynPlnenieCacheKey(year, q));
+    var data = (GYN_LB.plCache && GYN_LB.plCache[q]) ||
+               (GYN_APP.plCache && GYN_APP.plCache[q]) || gynCacheRead(gynPlnenieCacheKey(year, q));
     if (!data || !reps.length) return null;
     try { gynPreprocessData(data); } catch (e) {}
     var rank = reps.map(function (r) {
@@ -15697,8 +15701,11 @@ function gynPreloadAllQuarters() {
 function gynLbPreload() {
   try {
     if(typeof gynLbEnsureRepList === 'function') gynLbEnsureRepList();
+    var currentQ = GYN_APP.q;
+    var currentKey = gynPlnenieCacheKey(GYN_APP.year, currentQ) + '|lb-fullLine';
+    gynLbEnsureData(currentQ, currentKey);
     var lastQ = gynLbLastCompletedQ();
-    if(lastQ < 1) return;
+    if(lastQ < 1 || lastQ === currentQ) return;
     var key = gynPlnenieCacheKey(GYN_APP.year, lastQ) + '|lb-fullLine';
     gynLbEnsureData(lastQ, key);
   } catch(e){}
