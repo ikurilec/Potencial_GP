@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.68';
+var APP_VERSION = '2.85.69';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -16843,14 +16843,19 @@ function mgrLoadReps(repList){
     return;
   }
 
+  // 'critical' priorita — zoznam reprezentantov je hlavný obsah obrazovky, nesmie
+  // čakať vo fronte za nahromadenými prednačítaniami z predošlých prepnutí línie
+  // (tie sa pri prepnutí nezrušia, len ďalej pribúdajú s 'background' prioritou —
+  // presne preto tento zoznam vedel ostať navždy na "Načítavam…", keď sa fronta
+  // pri opakovanom prepínaní línií nastrádala).
   var managersPromise = (MGR_STATE.role)
-    ? mgrFetchWithRetry(scriptUrl('action=getManagers')).catch(function(){ return []; })
+    ? mgrFetchWithRetry(scriptUrl('action=getManagers'), undefined, 'critical').catch(function(){ return []; })
     : Promise.resolve([]);
 
-  var loginPromise = mgrFetchWithRetry(scriptUrl('action=getLastLogins')).catch(function(){ return {}; });
+  var loginPromise = mgrFetchWithRetry(scriptUrl('action=getLastLogins'), undefined, 'critical').catch(function(){ return {}; });
 
   // Jeden request pre všetky histórie naraz — najrýchlejšie
-  var allHistPromise = mgrFetchWithRetry(scriptUrl('action=getAllHistory')).catch(function(){ return null; });
+  var allHistPromise = mgrFetchWithRetry(scriptUrl('action=getAllHistory'), undefined, 'critical').catch(function(){ return null; });
 
   Promise.all([loginPromise, managersPromise, allHistPromise]).then(function(meta){
     MGR_STATE.lastLogins = meta[0] || {};
@@ -16910,7 +16915,7 @@ function mgrLoadReps(repList){
           return;
         }
         var username = repList[idx++];
-        mgrFetchWithRetry(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username)))
+        mgrFetchWithRetry(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username)), undefined, 'critical')
           .then(function(rows){
             MGR_STATE.reps[username] = { visits: mgrNormalizeVisits(Array.isArray(rows)?rows:[]), error: false };
           })
