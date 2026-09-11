@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.64';
+var APP_VERSION = '2.85.65';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -4585,8 +4585,11 @@ function dnesOpenRepSummary(username) {
   DNES_REP_SUMMARY.open = true;
   DNES_REP_SUMMARY.username = String(username).toLowerCase();
   dnesRenderRepSummary();
+  var sheetEl = document.getElementById('dnes-rep-summary');
+  if (sheetEl) sheetEl.style.transform = '';   // zmaž prípadný zvyšok z prerušeného potiahnutia
   var bd = document.getElementById('dnes-rep-summary-bd');
   if (bd) { bd.classList.add('show'); bd.setAttribute('aria-hidden', 'false'); }
+  dnesRepSummaryInitSwipe();
   try { haptic('selection'); } catch (e) {}
   var m = DNES_REP_SUMMARY.model;
   if (m && !m.loading) {
@@ -4604,8 +4607,75 @@ function dnesOpenRepSummary(username) {
 function dnesCloseRepSummary() {
   DNES_REP_SUMMARY.open = false;
   clearInterval(DNES_REP_SUMMARY.timer); DNES_REP_SUMMARY.timer = null;
+  var sheetEl = document.getElementById('dnes-rep-summary');
+  if (sheetEl) sheetEl.style.transform = '';
   var bd = document.getElementById('dnes-rep-summary-bd');
   if (bd) { bd.classList.remove('show'); bd.setAttribute('aria-hidden', 'true'); }
+}
+
+// Potiahnutie nadol na zatvorenie — rovnaký mechanizmus ako pri karte produktu
+// (prodSheetInitSwipe). Predtým tento sheet potiahnutie nemal vôbec — jediný
+// spôsob zatvorenia bolo tlačidlo × alebo „← Späť" v pätičke.
+var _dnesRsSwipeInited = false;
+function dnesRepSummaryInitSwipe() {
+  var sheet = document.getElementById('dnes-rep-summary');
+  if (!sheet || _dnesRsSwipeInited) return;
+  _dnesRsSwipeInited = true;
+
+  var startY = 0, dragY = 0, dragging = false, mayDrag = false;
+  var THRESHOLD = 80;
+
+  function isHandleArea(target) {
+    return !!(target.closest('.dnes-rs-top'));
+  }
+
+  var bd = document.getElementById('dnes-rep-summary-bd');
+  if (bd) bd.addEventListener('touchmove', function(e){ e.preventDefault(); }, { passive: false });
+
+  sheet.addEventListener('touchstart', function(e) {
+    if (!DNES_REP_SUMMARY.open) return;
+    var body = document.getElementById('dnes-rs-content');
+    var atTop = body ? body.scrollTop <= 2 : true;
+    mayDrag = isHandleArea(e.target) || atTop;
+    dragging = false;
+    startY  = e.touches[0].clientY;
+    dragY   = 0;
+  }, { passive: true });
+
+  sheet.addEventListener('touchmove', function(e) {
+    if (!DNES_REP_SUMMARY.open) return;
+    var currentY = e.touches[0].clientY;
+    var delta = currentY - startY;
+
+    if (!dragging) {
+      if (!mayDrag) return;
+      if (delta <= 4) return;
+      dragging = true;
+      sheet.style.transition = 'none';
+    }
+
+    e.preventDefault();
+    if (delta < 0) delta = 0;
+    dragY = delta;
+    sheet.style.transform = 'translateY(' + delta + 'px)';
+  }, { passive: false });
+
+  function onTouchEnd() {
+    if (!dragging) return;
+    dragging = false;
+    sheet.style.transition = '';
+    if (dragY > THRESHOLD) {
+      dnesCloseRepSummary();
+    } else {
+      sheet.style.transform = '';
+    }
+  }
+  sheet.addEventListener('touchend',    onTouchEnd);
+  sheet.addEventListener('touchcancel', function() {
+    dragging = false;
+    sheet.style.transition = '';
+    sheet.style.transform  = '';
+  });
 }
 
 function dnesOpenFullRepDetail() {
