@@ -214,9 +214,10 @@
   body.manager-mode .app > .tutorial-overlay.show,
   body.manager-mode .wn-overlay.show{display:flex !important}
   body.manager-mode .settings-overlay.show{display:block !important}
-  /* Karty vo formulári manažér nevidí — ale Domov je z tých istých kariet
-     poskladaný, takže tie musia ostať. */
-  body.manager-mode #dnes-overlay .card{display:block !important}
+  /* Karty vo formulári manažér nevidí — ale Domov aj Nastavenia sú z tých
+     istých kariet poskladané, takže tie musia ostať. */
+  body.manager-mode #dnes-overlay .card,
+  body.manager-mode #settings-overlay .card{display:block !important}
   body.manager-mode .app > .lb-overlay.show{display:block !important}
   /* Leaderboard overlay */
 
@@ -1076,13 +1077,19 @@
   /* ═══ NASTAVENIA — obrazovka ═══ */
   .settings-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#EAECF2;z-index:2600;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
   .settings-overlay.show{display:block}
-  .settings-inner{max-width:660px;margin:0 auto;padding:24px 16px 48px}
-  .set-topbar{display:flex;align-items:center;gap:12px;margin-bottom:18px}
-  .set-back{border:none;background:#fff;color:#0F172A;font-size:14px;font-weight:700;font-family:inherit;padding:10px 15px;border-radius:12px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.06);-webkit-tap-highlight-color:transparent}
-  .set-back:active{transform:scale(.97)}
-  .set-title{font-size:20px;font-weight:800;color:#0F172A;font-family:var(--font-display);letter-spacing:-.01em}
-  .set-card{background:#fff;border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
-  .set-card-title{font-size:11px;font-weight:700;color:#64748B;letter-spacing:.07em;text-transform:uppercase;margin-bottom:12px}
+  .settings-inner{max-width:660px;margin:0 auto;padding:16px 16px 48px}
+  /* Rovnaký tmavomodrý pás ako všade v appke, nie samostatná sivá obrazovka */
+  .set-topbar{display:flex;align-items:center;gap:12px;margin-bottom:16px;
+    background:linear-gradient(135deg,#0C1E35 0%,#13294B 55%,#0C1E35 100%);
+    border-radius:18px;padding:14px 16px;
+    box-shadow:0 12px 32px rgba(12,30,53,.35),0 4px 12px rgba(37,99,235,.18),inset 0 1px 0 rgba(255,255,255,.08)}
+  .set-back{border:none;background:rgba(255,255,255,.14);color:#fff;width:38px;height:38px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;cursor:pointer;
+    flex-shrink:0;-webkit-tap-highlight-color:transparent;transition:background var(--t-fast)}
+  .set-back:active{background:rgba(255,255,255,.24);transform:scale(.94)}
+  .set-title{font-size:19px;font-weight:800;color:#fff;font-family:var(--font-display);letter-spacing:-.01em}
+  .set-card-title{font-size:15px;font-weight:700;color:#0C1E35;font-family:var(--font-display);letter-spacing:-.005em;margin-bottom:12px}
+  .set-logout-wrap{margin-top:2px}
   .set-profile{display:flex;align-items:center;gap:14px}
   .set-avatar-wrap{position:relative;flex-shrink:0}
   .set-action-pulse{animation:setBtnPulse 1.8s ease-in-out infinite}

@@ -31,7 +31,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.49';
+var APP_VERSION = '2.85.50';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5709,6 +5709,18 @@ function settingsRow(label, val){
          '</div><div class="set-row-val">' + settingsEsc(val) + '</div></div>';
 }
 
+// Karta v tom istom dizajne ako na Domove — farebný pásik hore, biela
+// zaoblená karta. Nastavenia si predtým žili vo vlastnom, staršom vzhľade.
+function settingsCardHtml(accent, title, body) {
+  return '<div class="card">' +
+    '<div class="card-accent" style="background:' + accent + '"></div>' +
+    '<div class="card-inner">' +
+      '<div class="set-card-title">' + settingsEsc(title) + '</div>' +
+      body +
+    '</div>' +
+  '</div>';
+}
+
 function openSettings(){
   var s = getSession(); if(!s) return;
   var overlay = document.getElementById('settings-overlay');
@@ -5746,28 +5758,27 @@ function renderSettings(s){
   rows += settingsRow('Línia', lineLbl);
   if(s.region) rows += settingsRow('Región', s.region);
 
-  body.innerHTML =
-    '<div class="set-card">' +
-      '<div class="set-card-title">Profil</div>' +
-      '<div class="set-profile">' +
-        '<div class="set-avatar-wrap">' +
-          '<div class="set-avatar" id="set-avatar" data-username="' + settingsEsc(s.username||'') + '"></div>' +
-        '</div>' +
-        '<div class="set-profile-info">' +
-          '<div class="set-name">' + settingsEsc(s.name || s.username || '') + '</div>' +
-        '</div>' +
+  var profilBody =
+    '<div class="set-profile">' +
+      '<div class="set-avatar-wrap">' +
+        '<div class="set-avatar" id="set-avatar" data-username="' + settingsEsc(s.username||'') + '"></div>' +
       '</div>' +
-      '<div style="margin-top:14px">' + rows + '</div>' +
-      (hasAvatar ? '' : '<div class="set-row-desc" style="margin-top:12px">Ešte nemáš vlastný avatar — vytvor si ho.</div>') +
-      '<button type="button" class="set-action-btn' + (hasAvatar ? '' : ' set-action-primary set-action-pulse') + '" onclick="settingsOpenAvatar()">🎨 ' + (hasAvatar ? 'Upraviť avatar' : 'Vytvoriť avatar') + '</button>' +
+      '<div class="set-profile-info">' +
+        '<div class="set-name">' + settingsEsc(s.name || s.username || '') + '</div>' +
+      '</div>' +
     '</div>' +
-    '<div class="set-card"><div class="set-card-title">Notifikácie</div>' +
-      settingsNotifHtml() + settingsCalNotifHtml(s) + settingsNstNotifHtml(s) + settingsBdayNotifHtml(s) + '</div>' +
-    '<div class="set-card"><div class="set-card-title">Aplikácia</div>' +
-      settingsAppHtml(s) + '</div>' +
+    '<div style="margin-top:14px">' + rows + '</div>' +
+    (hasAvatar ? '' : '<div class="set-row-desc" style="margin-top:12px">Ešte nemáš vlastný avatar — vytvor si ho.</div>') +
+    '<button type="button" class="set-action-btn' + (hasAvatar ? '' : ' set-action-primary set-action-pulse') + '" onclick="settingsOpenAvatar()">🎨 ' + (hasAvatar ? 'Upraviť avatar' : 'Vytvoriť avatar') + '</button>';
+
+  body.innerHTML =
+    settingsCardHtml('linear-gradient(90deg,#0C1E35,#1E3A5F)', 'Profil', profilBody) +
+    settingsCardHtml('linear-gradient(90deg,#2563EB,#60A5FA)', 'Notifikácie',
+      settingsNotifHtml() + settingsCalNotifHtml(s) + settingsNstNotifHtml(s) + settingsBdayNotifHtml(s)) +
+    settingsCardHtml('linear-gradient(90deg,#475569,#94A3B8)', 'Aplikácia', settingsAppHtml(s)) +
     settingsProdOrderCard(s) +
     settingsAdminPushCard(s) +
-    '<div class="set-card"><button type="button" class="set-logout-btn" onclick="settingsLogout()">Odhlásiť sa</button></div>';
+    '<div class="set-logout-wrap"><button type="button" class="set-logout-btn" onclick="settingsLogout()">Odhlásiť sa</button></div>';
 
   // Avatar (rovnaký pattern ako v hlavičke)
   var av = document.getElementById('set-avatar');
@@ -5962,14 +5973,14 @@ function settingsToggleBdayNotif(){
 function settingsAdminPushCard(s){
   if(!s || s.role !== 'admin') return '';
   var lineLbl = (s.line === 'gyn') ? 'Gyn' : (s.line === 'reagila') ? 'Reagila' : 'Golem';
-  return '<div class="set-card"><div class="set-card-title">📣 Odoslať upozornenie</div>' +
+  var body =
     '<div class="set-row-desc">Pošle natívne push upozornenie používateľom v línii <b>' + settingsEsc(lineLbl) + '</b> (podľa toho, kde si prepnutý). Najprv otestuj „len mne", potom odošli všetkým.</div>' +
     '<input id="set-push-title" class="set-push-input" type="text" placeholder="Nadpis" maxlength="60" value="Gedeon Richter Slovakia">' +
     '<textarea id="set-push-body" class="set-push-input set-push-area" placeholder="Text upozornenia…" maxlength="180" rows="3"></textarea>' +
     '<div id="set-push-result" class="set-push-result" style="display:none"></div>' +
     '<button type="button" class="set-action-btn" onclick="settingsPushTest()">📲 Poslať test (len mne)</button>' +
-    '<button type="button" class="set-action-btn set-action-primary" onclick="settingsPushSendAll()">📣 Odoslať všetkým</button>' +
-  '</div>';
+    '<button type="button" class="set-action-btn set-action-primary" onclick="settingsPushSendAll()">📣 Odoslať všetkým</button>';
+  return settingsCardHtml('linear-gradient(90deg,#DC2626,#FCA5A5)', '📣 Odoslať upozornenie', body);
 }
 function settingsPushCurUrlFn(){
   var s = getSession();
@@ -6262,7 +6273,7 @@ function settingsProdOrderCard(s){
     inner = '<div class="set-row-desc">' + desc + '</div>' + listHtml +
       '<span class="set-saved" id="po-saved" style="display:block;margin-top:8px">✓ Uložené</span>';
   }
-  return '<div class="set-card"><div class="set-card-title">Poradie produktov</div>' + inner + '</div>';
+  return settingsCardHtml('linear-gradient(90deg,#D97706,#FCD34D)', 'Poradie produktov', inner);
 }
 // Jeden presúvateľný zoznam (vlastné číslovanie 1..n)
 function poListHtml(items){
