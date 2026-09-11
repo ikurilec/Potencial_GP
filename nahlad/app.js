@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.60';
+var APP_VERSION = '2.85.61';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -22962,6 +22962,14 @@ function plnenieLoadAllQuarters() {
   // prerušení spojenia počas prechodu línie). Domov nesmie zostať donekonečna
   // v stave „Načítavam“. Po limite zneplatníme staré requesty a zobrazíme
   // chybovú kartu s opakovaním.
+  //
+  // Limit MUSÍ byť dlhší, než najhorší prípad fetchQuarter nižšie (mgrFetchWithRetry
+  // so 4 pokusmi × 16 s + odstupy 1,5/3/4,5 s = cca 73 s) — inak strážny časovač
+  // predčasne označí request za zlyhaný a zvýši _loadId, takže aj neskorší ÚSPEŠNÝ
+  // fetch sa v active() nerozpozná a jeho výsledok sa zahodí (dáta dorazia, ale
+  // Domov ostane na chybovej karte). Presne to sa dialo pri prepnutí na líniu so
+  // studeným Apps Scriptom (napr. Reagila po dlhšom čase) — 35 s bolo menej než
+  // polovica reálneho retry rozpočtu.
   function plnenieLoadWatchdog(){
     if (!active() || PL_STATE.loaded || !PL_STATE._currentLoading) return;
     PL_STATE._loadId += 1;
@@ -22972,7 +22980,7 @@ function plnenieLoadAllQuarters() {
     plnenieRenderAll();
     try { dnesRefreshIfOpen(); } catch(e) {}
   }
-  PL_STATE._loadWatchdog = setTimeout(plnenieLoadWatchdog, 35000);
+  PL_STATE._loadWatchdog = setTimeout(plnenieLoadWatchdog, 80000);
 
   function fetchQuarter(q) {
     var url = scriptUrl('action=getPlnenieAll&rok=' + year + '&Q=' + q);
