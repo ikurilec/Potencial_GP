@@ -31,7 +31,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.43';
+var APP_VERSION = '2.85.44';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -4863,7 +4863,7 @@ function dnesRender() {
     var rBody;
     if (reb.kind === 'ja') {
       rBody = '<div class="dnes-big-row">' +
-                '<div class="dnes-rank"><span class="dnes-rank-n">' + reb.rank + '.</span>' + lbMoveHtml(reb.pohyb) +
+                '<div class="dnes-rank"><span class="dnes-rank-n">' + reb.rank + '.</span>' +
                   '<span class="dnes-rank-z">z ' + reb.total + '</span></div>' +
                 '<div class="dnes-big-sub">' + appEsc(reb.hodnota) +
                   (reb.popis ? '<br>' + appEsc(reb.popis) : '') + '</div>' +
@@ -14403,6 +14403,7 @@ function gynLbRepListLoaded(data){
   GYN_LB.repFetched = true;
   try { gynHydrateRepMeta(data.reps); } catch(e){}
   if(typeof avatarRefreshAllInDom === 'function') avatarRefreshAllInDom();
+  try { dnesRefreshIfOpen(); } catch(e){}
 }
 function gynLbEnsureRepList(){
   if((GYN_LB.repList && GYN_LB.repList.length) || GYN_LB.repLoading) return;
@@ -14812,6 +14813,7 @@ function dnesCalendarOwnerUsername(owner, name){
     if(typeof LB_REP_INFO!=='undefined') for(var u in LB_REP_INFO){ if(norm(LB_REP_INFO[u] && LB_REP_INFO[u].name)===wanted) return String(u).toLowerCase(); }
     if(typeof MGR_REP_NAMES!=='undefined') for(var m in MGR_REP_NAMES){ if(norm(MGR_REP_NAMES[m])===wanted) return String(m).toLowerCase(); }
     if(typeof GYN_STATE!=='undefined' && GYN_STATE.repList) for(var i=0;i<GYN_STATE.repList.length;i++){ var r=GYN_STATE.repList[i]; if(norm(r.meno || r.name)===wanted) return String(r.login||'').toLowerCase(); }
+    if(typeof GYN_LB!=='undefined' && GYN_LB.repList) for(var k=0;k<GYN_LB.repList.length;k++){ var gl=GYN_LB.repList[k]; if(norm(gl.meno || gl.name)===wanted) return String(gl.login||'').toLowerCase(); }
     if(typeof MGR_STATE!=='undefined' && MGR_STATE.managers) for(var j=0;j<MGR_STATE.managers.length;j++){ var x=MGR_STATE.managers[j]; if(norm(x.name)===wanted) return String(x.username||'').toLowerCase(); }
   } catch(e) {}
   return '';
