@@ -31,7 +31,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.42';
+var APP_VERSION = '2.85.43';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -4147,10 +4147,13 @@ function dnesRebricekSusedia(rank, i, moves) {
 function dnesRebricekMoves(rank, q, line) {
   try {
     var moveKey = (line || 'gp') + '_q' + q;
+    // Domov používa stručný kľúč `u`, engine rebríčka autoritatívny `username`.
+    // Preveď ho pred porovnaním, inak snapshot nikdy nenájde zhodu.
+    var movementRank = rank.map(function(x){ return { username:x.u, pct:x.pct }; });
     var st = LB_MOVE_STATE[moveKey];
-    if (st && st.loaded) return lbMoveMap(rank, st.prevPct);
+    if (st && st.loaded) return lbMoveMap(movementRank, st.prevPct);
     var pctAll = {};
-    rank.forEach(function(x){ pctAll[x.u] = x.pct; });
+    movementRank.forEach(function(x){ pctAll[x.username] = x.pct; });
     var urlFn = line === 'gyn' ? gynScriptUrl : scriptUrl;
     lbMoveEnsure(urlFn, moveKey, q, pctAll, function(){ dnesRefreshIfOpen(); });
   } catch (e) {}
@@ -4680,7 +4683,7 @@ function dnesRender() {
           kBody += '<div class="dnes-mini dvojriadok"' + (ix === 0 ? ' style="border-top:none;margin-top:6px"' : '') +
                      ' onclick="event.stopPropagation();gynCalOpenEvent(\'' + dk2 + '\',\'' + id2 + '\')">' +
                      '<span class="dnes-mini-dot" style="background:#DC2626;margin-top:5px"></span>' +
-                     appRepAvatarHtml(e.owner, kto, 25, 'dnes-rep-avatar dnes-cal-avatar') +
+                     appRepAvatarHtml(dnesCalendarOwnerUsername(e.owner, kto), kto, 25, 'dnes-rep-avatar dnes-cal-avatar') +
                      '<span class="dnes-mini-txt">' +
                        '<span class="dnes-mini-name">' + appEsc((tt.label || 'Absencia') + (kto ? ' — ' + kto : '')) +
                          ' <span style="color:#DC2626;font-weight:800">čaká na schválenie</span></span>' +
@@ -4710,7 +4713,7 @@ function dnesRender() {
       kBody += '<div class="dnes-mini dvojriadok"' +
                  (id3 ? ' onclick="event.stopPropagation();gynCalOpenEvent(\'' + dk3 + '\',\'' + id3 + '\')"' : '') + '>' +
                  '<span class="dnes-mini-dot" style="background:' + (tt2.color || '#2563EB') + ';margin-top:5px"></span>' +
-                 (kto2 ? appRepAvatarHtml(e.owner, kto2, 25, 'dnes-rep-avatar') : '') +
+                 (kto2 ? appRepAvatarHtml(dnesCalendarOwnerUsername(e.owner, kto2), kto2, 25, 'dnes-rep-avatar') : '') +
                  '<span class="dnes-mini-txt">' +
                    '<span class="dnes-mini-name">' + appEsc(e.title || tt2.label || 'Udalosť') + '</span>' +
                    (kto2 ? '<span class="dnes-mini-owner">' + appEsc(kto2) + '</span>' : '') +
@@ -14797,6 +14800,22 @@ function gynCalNeedsApprovalFor(ownerLogin, group){
   return gynCalApproverLogins(ownerLogin).length>0;
 }
 // Meno osoby podľa loginu (Golem/Reagila roster). Fallback = login.
+// Nájde login k udalosti aj vtedy, keď starší záznam kalendára obsahuje iba meno.
+// Bez loginu by sa zobrazili len iniciály, hoci kolega má vlastný avatar.
+function dnesCalendarOwnerUsername(owner, name){
+  try {
+    var raw=String(owner||'').trim();
+    if(raw && !/\s/.test(raw)) return raw.toLowerCase();
+    var norm=function(v){ return String(v||'').trim().toLocaleLowerCase('sk').normalize('NFD').replace(/[\u0300-\u036f]/g,''); };
+    var wanted=norm(name || raw);
+    if(!wanted) return '';
+    if(typeof LB_REP_INFO!=='undefined') for(var u in LB_REP_INFO){ if(norm(LB_REP_INFO[u] && LB_REP_INFO[u].name)===wanted) return String(u).toLowerCase(); }
+    if(typeof MGR_REP_NAMES!=='undefined') for(var m in MGR_REP_NAMES){ if(norm(MGR_REP_NAMES[m])===wanted) return String(m).toLowerCase(); }
+    if(typeof GYN_STATE!=='undefined' && GYN_STATE.repList) for(var i=0;i<GYN_STATE.repList.length;i++){ var r=GYN_STATE.repList[i]; if(norm(r.meno || r.name)===wanted) return String(r.login||'').toLowerCase(); }
+    if(typeof MGR_STATE!=='undefined' && MGR_STATE.managers) for(var j=0;j<MGR_STATE.managers.length;j++){ var x=MGR_STATE.managers[j]; if(norm(x.name)===wanted) return String(x.username||'').toLowerCase(); }
+  } catch(e) {}
+  return '';
+}
 function gynCalPersonName(login){
   login=String(login||'').toLowerCase();
   try {
@@ -20606,10 +20625,12 @@ function lbMoveRound(m){
 }
 
 function lbMoveEnsure(urlFn, key, q, curPct, cb){
-  var st = LB_MOVE_STATE[key] || (LB_MOVE_STATE[key] = { loaded:false, loading:false, prevPct:null });
+  var st = LB_MOVE_STATE[key] || (LB_MOVE_STATE[key] = { loaded:false, loading:false, prevPct:null, callbacks:[] });
+  st.callbacks = st.callbacks || [];
   if(st.loaded){ if(cb) cb(st.prevPct); return; }
+  if(cb) st.callbacks.push(cb);
   if(st.loading) return;
-  if(typeof IS_DEV !== 'undefined' && IS_DEV){ st.loaded = true; st.prevPct = null; if(cb) cb(null); return; }
+  if(typeof IS_DEV !== 'undefined' && IS_DEV){ st.loaded = true; st.prevPct = null; var devCallbacks=st.callbacks.splice(0); devCallbacks.forEach(function(fn){ try { fn(null); } catch(e){} }); return; }
   st.loading = true;
   Promise.all([
     fetch(urlFn('action=getConfig&key=notif_predaje'), {cache:'no-store'}).then(function(r){return r.json();}).catch(function(){return null;}),
@@ -20630,11 +20651,16 @@ function lbMoveEnsure(urlFn, key, q, curPct, cb){
       prevPct = snap.prev || null;                 // naše dáta sú staršie — neprepisuj snapshot
     }
     st.prevPct = prevPct; st.loaded = true; st.loading = false;
+    var callbacks = st.callbacks.splice(0);
+    callbacks.forEach(function(fn){ try { fn(prevPct); } catch(e){} });
     if(commitObj){
       try { fetch(urlFn('action=setConfig&key=' + lbMoveConfigKey(q) + '&value=' + encodeURIComponent(JSON.stringify(commitObj))), {cache:'no-store'}).then(function(r){return r.json();}).catch(function(){}); } catch(e){}
     }
-    if(cb) cb(prevPct);
-  }).catch(function(){ st.loading = false; if(cb) cb(null); });
+  }).catch(function(){
+    st.loading = false;
+    var callbacks = st.callbacks.splice(0);
+    callbacks.forEach(function(fn){ try { fn(null); } catch(e){} });
+  });
 }
 
 // rankingArr: aktuálne zoradené pole {username,...}. Vráti mapu username -> delta
