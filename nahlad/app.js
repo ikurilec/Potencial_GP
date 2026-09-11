@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.54';
+var APP_VERSION = '2.85.55';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -5020,7 +5020,7 @@ function dnesRender() {
              '</div>';
     }).join('');
     var spolu = kam.reduce(function (n, c) { return n + (c.done || 0); }, 0);
-    html += dnesCardHtml('linear-gradient(90deg,#059669,#34D399)', 'Prieskumy',
+    html += dnesCardHtml('linear-gradient(90deg,#059669,#34D399)', 'Launche',
                          '<span class="dnes-badge" style="background:#059669">' + spolu +
                          (spolu === 1 ? ' záznam' : (spolu < 5 ? ' záznamy' : ' záznamov')) + '</span>', kamBody);
   }
@@ -17285,7 +17285,7 @@ function mgrSurveysLineRowsHtml(){
       '</div>';
     }
     var apxLocked = (!apx.length && typeof apxIsOpen === 'function' && !apxIsOpen());
-    return '<div class="gp-sum-prods-lbl">Prieskumy — celá línia</div>' +
+    return '<div class="gp-sum-prods-lbl">Launche — celá línia</div>' +
       '<div class="gp-sum-prods">' +
         row('🧬', 'Tuyory',   'potenciál <b>' + tuyPac + '</b> pac.', 'oslovených <b>' + tuy.length + '</b> lek.') +
         row('🛡️', 'Lonelix',  'potenciál <b>' + lonPac + '</b> pac./mes.', 'oslovených <b>' + lon.length + '</b> lek.') +
@@ -17347,7 +17347,7 @@ function mgrRepTuyHeaderHtml(username){
     '<div class="tuy-hero" style="margin-bottom:12px">' +
       '<div class="tuy-hero-top">' +
         '<div class="tuy-hero-badge">🧬</div>' +
-        '<div><div class="tuy-hero-title">Tuyory</div><div class="tuy-hero-sub">Prieskum trhu · tocilizumab · ' + mgrEscape(name) + '</div></div>' +
+        '<div><div class="tuy-hero-title">Tuyory</div><div class="tuy-hero-sub">Launch · tocilizumab · ' + mgrEscape(name) + '</div></div>' +
       '</div>' +
     '</div>' +
     '<div class="tuy-sum-lbl-top">Potenciál teritória</div>' +
@@ -17497,7 +17497,7 @@ function mgrRepApixHeaderHtml(username){
     '<div class="tuy-hero" style="margin-bottom:12px">' +
       '<div class="tuy-hero-top">' +
         '<div class="tuy-hero-badge">🫀</div>' +
-        '<div><div class="tuy-hero-title">Apixaban</div><div class="tuy-hero-sub">Prieskum trhu · apixaban · ' + mgrEscape(name) + '</div></div>' +
+        '<div><div class="tuy-hero-title">Apixaban</div><div class="tuy-hero-sub">Launch · apixaban · ' + mgrEscape(name) + '</div></div>' +
       '</div>' +
     '</div>' +
     apixSummaryBlocksHtml(st) +
@@ -34733,7 +34733,7 @@ function tuyoryRenderDashboard(){
     '<div class="tuy-hero">' +
       '<div class="tuy-hero-top">' +
         '<div class="tuy-hero-badge">🧬</div>' +
-        '<div><div class="tuy-hero-title">Tuyory</div><div class="tuy-hero-sub">Prieskum trhu · tocilizumab</div></div>' +
+        '<div><div class="tuy-hero-title">Tuyory</div><div class="tuy-hero-sub">Launch · tocilizumab</div></div>' +
       '</div>' +
       targetHtml +
     '</div>' +
@@ -35188,7 +35188,7 @@ function tuyoryHistDetail(item){
   var title = document.getElementById('tuy-detail-title');
   if (!ov || !body) return;
   if (title) title.textContent = r.meno || 'Tuyory záznam';
-  var _tbd = document.getElementById('tuy-detail-badge'); if (_tbd) _tbd.textContent = '🧬 Prieskum Tuyory';
+  var _tbd = document.getElementById('tuy-detail-badge'); if (_tbd) _tbd.textContent = '🧬 Launch Tuyory';
   function row(k, v){ return (v || v === 0) && v !== '' ? '<div class="tuy-dt-row"><span class="tuy-dt-k">' + k + '</span><span class="tuy-dt-v">' + tuyEsc(v) + '</span></div>' : ''; }
   var obd = tuyObdobieLabel(r.noviObdobie);
   var html = '';
@@ -35226,7 +35226,7 @@ function lonelixDoctorDetail(r, opts){
   _lonDetailRec = r;
   var canAdd = !!(opts && opts.canAddGp);
   if (title) title.textContent = r.meno || 'Lonelix záznam';
-  if (badge) badge.textContent = '🛡️ Prieskum Lonelix';
+  if (badge) badge.textContent = '🛡️ Launch Lonelix';
   function row(k, v){ return (v || v === 0) && v !== '' ? '<div class="tuy-dt-row"><span class="tuy-dt-k">' + k + '</span><span class="tuy-dt-v">' + tuyEsc(v) + '</span></div>' : ''; }
   var html = '';
   if (canAdd){
@@ -36429,7 +36429,7 @@ function apixRenderDashboard(){
     '<div class="tuy-hero">' +
       '<div class="tuy-hero-top">' +
         '<div class="tuy-hero-badge">🫀</div>' +
-        '<div><div class="tuy-hero-title">Apixaban</div><div class="tuy-hero-sub">Prieskum trhu · apixaban · Gedeon Richter</div></div>' +
+        '<div><div class="tuy-hero-title">Apixaban</div><div class="tuy-hero-sub">Launch · apixaban · Gedeon Richter</div></div>' +
       '</div>' +
       targetHtml +
     '</div>' +
@@ -36788,7 +36788,7 @@ function apixHistDetail(item){
   var title = document.getElementById('tuy-detail-title');
   if (!ov || !body) return;
   if (title) title.textContent = r.meno || 'Apixaban záznam';
-  var _tbd = document.getElementById('tuy-detail-badge'); if (_tbd) _tbd.textContent = '🫀 Prieskum Apixaban';
+  var _tbd = document.getElementById('tuy-detail-badge'); if (_tbd) _tbd.textContent = '🫀 Launch Apixaban';
   function row(k, v){ return (v || v === 0) && v !== '' ? '<div class="tuy-dt-row"><span class="tuy-dt-k">' + k + '</span><span class="tuy-dt-v">' + tuyEsc(v) + '</span></div>' : ''; }
   var html = '';
   html += row('Okres', r.okres);
@@ -37460,7 +37460,7 @@ function lonelixRenderDashboard(){
     '<div class="tuy-hero">' +
       '<div class="tuy-hero-top">' +
         '<div class="tuy-hero-badge">🛡️</div>' +
-        '<div><div class="tuy-hero-title">Lonelix</div><div class="tuy-hero-sub">Prieskum trhu · inozín pranobex (isoprinosín)</div></div>' +
+        '<div><div class="tuy-hero-title">Lonelix</div><div class="tuy-hero-sub">Launch · inozín pranobex (isoprinosín)</div></div>' +
       '</div>' +
       '<div class="tuy-target"><div class="tuy-target-lbl">Oslovených lekárov</div><div class="tuy-target-set"><span class="tuy-target-num">' + oslov + '</span><span class="tuy-target-cap">záznamov</span></div></div>' +
     '</div>' +
