@@ -31,7 +31,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.45';
+var APP_VERSION = '2.85.46';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11144,7 +11144,7 @@ function gynOpenDnesWhenReady(force) {
 
 // Helper: vráti HTML pre gyn avatar circle — buď <img> s DiceBear URL alebo iniciály
 function gynAvatarContent(login, name) {
-  var config = avatarGetConfig(login);
+  var config = avatarGetConfig(login) || avatarFallbackConfig(login, name);
   if (config) {
     var url = avatarUrl(config, 80);
     return { html: '<img src="' + url + '" alt="" class="avatar-img">', hasAvatar: true };
@@ -18704,6 +18704,19 @@ function avatarUrl(config, size) {
 // Kľúč: 'avatar_cfg_' + username → JSON string
 // Lookup avatar config — najprv z in-memory (LB_REP_INFO/USERS_LOCAL, naplnené zo Sheets),
 // potom z session (ak ide o prihláseného usera), potom z localStorage (offline cache).
+// Každý známy človek má ilustrovaný fallback. Je stabilný podľa loginu/mena,
+// takže sa nemení medzi obrazovkami ani zariadeniami. Uložený vlastný avatar má vždy prednosť.
+function avatarFallbackConfig(username, name){
+  var seed = String(username || name || 'user').toLowerCase();
+  var h = 0; for(var i=0;i<seed.length;i++) h = ((h * 31) + seed.charCodeAt(i)) >>> 0;
+  function pick(arr, n){ return arr && arr.length ? arr[(h + n * 17) % arr.length] : ''; }
+  var gender = (typeof avatarGetUserGender === 'function' && avatarGetUserGender(username)) || ((h % 2) ? 'female' : 'male');
+  var hairs = gender === 'male' ? ADVENTURER_HAIR_MALE : ADVENTURER_HAIR_FEMALE;
+  return { style:'adventurer', hair:pick(hairs,1), hairColor:pick(ADVENTURER_HAIR_COLOR,2),
+    eyes:pick(ADVENTURER_EYES,3), eyebrows:pick(ADVENTURER_EYEBROWS,4),
+    mouth:pick(ADVENTURER_MOUTH,5), skinColor:pick(ADVENTURER_SKIN_COLOR,6) };
+}
+
 function avatarGetConfig(username) {
   if (!username) return null;
   username = String(username).trim().toLowerCase();
@@ -18812,7 +18825,7 @@ function avatarHtml(opts) {
   var size = opts.size || 40;
   var color = opts.color || '#0C1E35';
   var cls = opts.cls || '';
-  var config = avatarGetConfig(username);
+  var config = avatarGetConfig(username) || avatarFallbackConfig(username, name);
   if (config) {
     var url = avatarUrl(config, size * 2); // 2× pre retina
     var bg = (config.backgroundColor) ? '#' + config.backgroundColor : 'transparent';
@@ -18836,7 +18849,7 @@ function avatarFillElement(el, opts) {
   var size = opts.size || el.offsetWidth || 40;
   var name = opts.name || '';
   var color = opts.color || el.style.background || '#0C1E35';
-  var config = avatarGetConfig(username);
+  var config = avatarGetConfig(username) || avatarFallbackConfig(username, name);
   if (config) {
     var url = avatarUrl(config, size * 2);
     var bg = (config.backgroundColor) ? '#' + config.backgroundColor : 'transparent';
@@ -21107,7 +21120,7 @@ function lbInitials(name){
 // Helper: vráti obsah avatar circle — buď <img> s DiceBear URL (ak má config),
 // alebo iniciály. Plus vráti správnu triedu (has-avatar) pre wrapping div.
 function lbAvatarContent(username, name, size) {
-  var config = avatarGetConfig(username);
+  var config = avatarGetConfig(username) || avatarFallbackConfig(username, name);
   if (config) {
     var url = avatarUrl(config, (size || 60) * 2);
     return { html: '<img src="' + url + '" alt="" class="avatar-img">', hasAvatar: true };

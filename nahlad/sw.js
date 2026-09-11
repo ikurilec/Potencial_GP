@@ -4,14 +4,14 @@
 // ║  cache-first pre ostatné assety (rýchly štart, offline ready).║
 // ╚══════════════════════════════════════════════════════════════╝
 
-var CACHE_NAME = 'potencial-nahlad-v28545';
+var CACHE_NAME = 'potencial-nahlad-v28546';
 // Aktuálna app shell verzia. Musí zodpovedať query parametrom v index.html,
 // aby nový service worker pripravil presne tie assety, ktoré bude nové HTML pýtať.
 var APP_SHELL = [
   './',
   './index.html',
-  './app.css?v=2.85.45',
-  './app.js?v=2.85.45'
+  './app.css?v=2.85.46',
+  './app.js?v=2.85.46'
 ];
 
 self.addEventListener('install', function(event){
