@@ -3433,7 +3433,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.85.32 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.85.33 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -4422,7 +4422,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.32';
+var APP_VERSION = '2.85.33';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5033,6 +5033,28 @@ function appFetchJson(url, opts, timeoutMs) {
       .then(function(r){ return r.json(); })
       .then(function(j){ if (settled) return; settled = true; clearTimeout(timer); resolve(j); })
       .catch(function(e){ if (settled) return; settled = true; clearTimeout(timer); reject(e); });
+  });
+}
+
+// Centrálna fronta čítacích požiadaviek. Apps Script zoraďuje súbežné volania,
+// preto viac paralelných prefetchov v skutočnosti spomaľovalo prvé dôležité dáta.
+// Dve aktívne požiadavky držia štart plynulý; critical úlohy idú pred preloadmi.
+var APP_REQUEST_QUEUE = { active: 0, max: 2, items: [] };
+function appRequestQueueDrain(){
+  while(APP_REQUEST_QUEUE.active < APP_REQUEST_QUEUE.max && APP_REQUEST_QUEUE.items.length){
+    var job = APP_REQUEST_QUEUE.items.shift();
+    APP_REQUEST_QUEUE.active++;
+    appFetchJson(job.url, job.opts, job.timeoutMs)
+      .then(job.resolve, job.reject)
+      .then(function(){ APP_REQUEST_QUEUE.active--; appRequestQueueDrain(); }, function(){ APP_REQUEST_QUEUE.active--; appRequestQueueDrain(); });
+  }
+}
+function appQueuedFetchJson(url, opts, timeoutMs, priority){
+  return new Promise(function(resolve, reject){
+    var job = { url:url, opts:opts || { cache:'no-store' }, timeoutMs:timeoutMs, resolve:resolve, reject:reject };
+    if(priority === 'critical') APP_REQUEST_QUEUE.items.unshift(job);
+    else APP_REQUEST_QUEUE.items.push(job);
+    appRequestQueueDrain();
   });
 }
 
@@ -15389,7 +15411,7 @@ function gynLoadRepList(user, _attempt) {
   var loadCtx = appLineCapture();
   function active(){ return loadId === GYN_APP._repListLoadId && appLineContextActive(loadCtx); }
   GYN_APP._repListLoading = true;
-  appFetchJson(gynScriptUrl('action=getRepList'), undefined, 12000)
+  appQueuedFetchJson(gynScriptUrl('action=getRepList'), undefined, 12000, 'critical')
     .then(function(data){
       if(!active()) return;
       GYN_APP._repListLoading = false;
@@ -15417,7 +15439,7 @@ function gynBootstrap(user) {
   try { gynMsHydrate(localStorage.getItem(gynMsLsKey())); } catch(e){}
   // Okamžite ukáž cache (ak je) — bez vlastného fetchu (plLoading guard). Bootstrap ju obnoví.
   try { gynRenderContent(user); } catch(e){}
-  appFetchJson(gynScriptUrl('action=bootstrap&rok=' + rok + '&Q=' + q), undefined, 12000)
+  appQueuedFetchJson(gynScriptUrl('action=bootstrap&rok=' + rok + '&Q=' + q), undefined, 12000, 'critical')
     .then(function(d){
       if(!active()) return;
       if(!d || !d.ok) throw new Error('bootstrap fail');
@@ -15779,13 +15801,12 @@ function gynPreloadAllPharma() {
     if(idx >= queue.length) return;
     var task = queue[idx++];
     GYN_PHARMA_STATE.loading[task.key] = true;
-    fetch(gynScriptUrl(
+    appQueuedFetchJson(gynScriptUrl(
       'action=getPharmaData' +
       '&oblast='  + encodeURIComponent(task.oblast) +
       '&produkt=' + encodeURIComponent(task.produkt) +
       '&kvartal=' + encodeURIComponent(task.kvartal)
-    ), { cache:'no-store' })
-      .then(function(r){ return r.json(); })
+    ), undefined, 12000, 'background')
       .then(function(resp){
         delete GYN_PHARMA_STATE.loading[task.key];
         if(resp && resp.ok) {
@@ -18732,8 +18753,7 @@ function gynLbRepListLoaded(data){
 function gynLbEnsureRepList(){
   if((GYN_LB.repList && GYN_LB.repList.length) || GYN_LB.repLoading) return;
   GYN_LB.repLoading = true;
-  fetch(gynScriptUrl('action=getRepList&fullLine=1'), { cache:'no-store' })
-    .then(function(r){ return r.json(); })
+  appQueuedFetchJson(gynScriptUrl('action=getRepList&fullLine=1'), undefined, 12000, 'critical')
     .then(function(d){
       GYN_LB.repLoading = false;
       gynLbRepListLoaded(d);
@@ -18773,8 +18793,7 @@ function gynLbShow(el){
   // Admin-schválený Q načítaj raz zo gyn configu, potom prerenderuj
   if(!GYN_LB.qFetched){
     GYN_LB.qFetched = true;
-    fetch(gynScriptUrl('action=getConfig&key=lb_approved_q'), { cache:'no-store' })
-      .then(function(r){ return r.json(); })
+    appQueuedFetchJson(gynScriptUrl('action=getConfig&key=lb_approved_q'), undefined, 12000, 'background')
       .then(function(d){
         var q = parseInt(d && d.value, 10);
         GYN_LB.approvedQ = (q >= 1 && q <= 4) ? q : null;
@@ -18795,7 +18814,7 @@ function gynLbShow(el){
 function gynLbEnsureData(q, key){
   if(GYN_LB.dataReady[q] || GYN_LB.plLoading[q]) return;
   GYN_LB.plLoading[q] = true;
-  appFetchJson(gynScriptUrl('action=getPlnenieAll&rok=' + GYN_APP.year + '&Q=' + q + '&fullLine=1'))
+  appQueuedFetchJson(gynScriptUrl('action=getPlnenieAll&rok=' + GYN_APP.year + '&Q=' + q + '&fullLine=1'), undefined, 12000, 'critical')
     .then(function(d){
       delete GYN_LB.plLoading[q];
       if(!d) return;
@@ -19238,8 +19257,7 @@ function gynCalSync(){
   var syncLine=gynCalLine();
   var syncCtx=appLineCapture();
   GYN_CAL._syncing=true;
-  fetch(gynCalScriptUrl('action=getCalEvents&_t='+Date.now()), { cache:'no-store' })
-    .then(function(r){ return r.json(); })
+  appQueuedFetchJson(gynCalScriptUrl('action=getCalEvents&_t='+Date.now()), undefined, 12000, 'background')
     .then(function(d){
       if(syncLine!==gynCalLine() || !appLineContextActive(syncCtx)) return;
       if(d && d.ok===true && Array.isArray(d.events)){
@@ -20762,24 +20780,17 @@ function mgrLoadData(){
   }
 }
 
-function mgrFetchWithRetry(url, retries){
+function mgrFetchWithRetry(url, retries, priority){
   retries = retries === undefined ? 3 : retries;
-  // Tvrdý timeout na pokus — zaseknutý request (bez odpovede) inak nikdy nezlyhá a load „visí".
-  var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-  var to = setTimeout(function(){ if(ctrl){ try { ctrl.abort(); } catch(e){} } }, APP_FETCH_TIMEOUT_MS);
-  return fetch(url, ctrl ? { cache: 'no-store', signal: ctrl.signal } : { cache: 'no-store' })
-    .then(function(r){
-      clearTimeout(to);
-      if(!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
-    })
+  // Všetky čítania manažérskej časti zdieľajú frontu. Aktuálny kvartál má
+  // critical prioritu; história a zvyšné Q sa spustia až za ním.
+  return appQueuedFetchJson(url, undefined, APP_FETCH_TIMEOUT_MS, priority || 'background')
     .catch(function(err){
-      clearTimeout(to);
       if(retries > 0){
         var delay = (4 - retries) * 1500; // 1.5s, 3s, 4.5s
         return new Promise(function(resolve, reject){
           setTimeout(function(){
-            mgrFetchWithRetry(url, retries - 1).then(resolve, reject);
+            mgrFetchWithRetry(url, retries - 1, priority).then(resolve, reject);
           }, delay);
         });
       }
@@ -24236,8 +24247,7 @@ function loadInitData(username, _attempt, _lineCtx) {
   var url = scriptUrl('action=getInitData&reprezentant=' + encodeURIComponent(username)
                       + '&rok=' + rok + '&Q=' + q);
 
-  return fetch(url, { cache: 'no-store' })
-    .then(function(r) { return r.ok ? r.json() : null; })
+  return appQueuedFetchJson(url, undefined, 20000, 'critical')
     .then(function(data) {
       if(!appLineContextActive(_lineCtx)) return null;
       if(!data || !data.ok) throw new Error('getInitData: no data');
@@ -26988,7 +26998,7 @@ function plnenieLoadAllQuarters() {
 
   function fetchQuarter(q) {
     var url = scriptUrl('action=getPlnenieAll&rok=' + year + '&Q=' + q);
-    mgrFetchWithRetry(url, 3)
+    mgrFetchWithRetry(url, 3, q === currentQ ? 'critical' : 'background')
       .then(function(resp) {
         if(!active()) return;
         if (!resp || !resp.ok) throw new Error('No data for Q' + q);
@@ -29923,9 +29933,10 @@ function repPlnenieLoad() {
   }
 
   var pending = qs.length;
-  qs.forEach(function(q) {
+  var loadOrder = [REP_PL_STATE.q].concat(qs.filter(function(q){ return q !== REP_PL_STATE.q; }));
+  loadOrder.forEach(function(q) {
     var url = scriptUrl('action=getPlnenieAll&rok=' + year + '&Q=' + q);
-    mgrFetchWithRetry(url, 3)
+    mgrFetchWithRetry(url, 3, q === REP_PL_STATE.q ? 'critical' : 'background')
       .then(function(resp) {
         if(!active()) return;
         if (!resp || !resp.ok) throw new Error('No data Q' + q);
