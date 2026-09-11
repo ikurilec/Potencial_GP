@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.57';
+var APP_VERSION = '2.85.58';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -18057,6 +18057,12 @@ function initAndroidBack() {
 function _handleAndroidBack() {
   // Poradie: od najvnútornejšieho overlaya po najvonkajší
   var el;
+
+  // -1. Globálne vyhľadávanie — z-index 3200, nad úplne všetkým vrátane
+  // bočného menu a Nastavení. Predtým tu chýbalo: systémové Späť ho
+  // nezatvorilo a namiesto toho zavrelo niečo pod ním (F3-2).
+  el = document.getElementById('gs-overlay');
+  if (el && el.classList.contains('show')) { gsClose(); return true; }
 
   // 0. Bočné menu — leží nad panelmi, takže sa zatvára ako prvé
   el = document.getElementById('viac-overlay');
