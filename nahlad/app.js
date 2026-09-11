@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.69';
+var APP_VERSION = '2.85.70';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -18178,6 +18178,23 @@ function initAndroidBack() {
 function _handleAndroidBack() {
   // Poradie: od najvnútornejšieho overlaya po najvonkajší
   var el;
+
+  // -2. Ešte vyššie vrstvy než globálne vyhľadávanie (z-index 6100–9600) —
+  // našlo sa pri prehľadaní VŠETKÝCH #...-overlay id v appke oproti tomuto
+  // zoznamu (rovnaký spôsob, akým sa našla chýbajúca F3-2 oprava vyššie).
+  // Zámerne vynechané: session-expired-overlay a rpt-progress-overlay —
+  // tie majú Späť ignorovať (vynútené prihlásenie / prebiehajúci PDF export).
+  el = document.getElementById('nday-overlay');            // z-index 9600 — meniny/narodeniny
+  if (el && el.classList.contains('show')) { ndayClose(); return true; }
+
+  el = document.getElementById('tuy-detail-overlay');      // z-index 6200 — detail Tuyory záznamu
+  if (el && el.classList.contains('show')) { tuyoryDetailClose(); return true; }
+
+  el = document.getElementById('lk-prompt-overlay');       // z-index 6100 — heslo / názov filtra
+  if (el && el.classList.contains('show')) { lkPromptClose(); return true; }
+
+  el = document.getElementById('lk-confirm-overlay');      // z-index 6100 — potvrdenie (lekárne)
+  if (el && el.classList.contains('show')) { lkConfirmClose(); return true; }
 
   // -1. Globálne vyhľadávanie — z-index 3200, nad úplne všetkým vrátane
   // bočného menu a Nastavení. Predtým tu chýbalo: systémové Späť ho
