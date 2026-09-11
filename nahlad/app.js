@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.67';
+var APP_VERSION = '2.85.68';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -4643,19 +4643,18 @@ function dnesRepSummaryInitSwipe() {
   }, { passive: true });
 
   sheet.addEventListener('touchmove', function(e) {
-    if (!DNES_REP_SUMMARY.open) return;
+    if (!DNES_REP_SUMMARY.open || !mayDrag) return;
     var currentY = e.touches[0].clientY;
     var delta = currentY - startY;
+    if (delta <= 0) return;   // pohyb nahor/žiadny — nechaj (nič sa nedeje, scrollovať už aj tak niet kam)
 
-    if (!dragging) {
-      if (!mayDrag) return;
-      if (delta <= 4) return;
-      dragging = true;
-      sheet.style.transition = 'none';
-    }
-
+    // preventDefault MUSÍ prísť na PRVOM touchmove gesta, nie až keď sa "potvrdí" ako
+    // drag (predtým delta>4) — iOS Safari si pri prvom touchmove zamkne, či gesto berie
+    // ako natívny scroll, a neskoršie preventDefault() už nič nezastaví. Presne preto sa
+    // ťahanie javilo ako "zaseknuté": pri pomalšom/kratšom prvom pohybe si telefón zamkol
+    // scroll skôr, než kód stihol prevziať kontrolu.
     e.preventDefault();
-    if (delta < 0) delta = 0;
+    if (!dragging) { dragging = true; sheet.style.transition = 'none'; }
     dragY = delta;
     sheet.style.transform = 'translateY(' + delta + 'px)';
   }, { passive: false });
@@ -23885,20 +23884,17 @@ function prodSheetInitSwipe() {
   }, { passive: true });
 
   sheet.addEventListener('touchmove', function(e) {
-    if (!PL_PROD_SHEET_STATE.open) return;
+    if (!PL_PROD_SHEET_STATE.open || !mayDrag) return;
     var currentY = e.touches[0].clientY;
     var delta = currentY - startY;
+    if (delta <= 0) return; // pohyb nahor/žiadny — nechaj (aj tak niet kam scrollovať)
 
-    if (!dragging) {
-      if (!mayDrag) return; // nie sme v drag zóne — nechaj scrollovať
-      if (delta <= 4) return; // pohyb nie je jednoznačne smerom dole — nechaj scrollovať
-      // Pohyb je smerom dole — začni drag, zablokuj scroll
-      dragging = true;
-      sheet.style.transition = 'none';
-    }
-
+    // preventDefault MUSÍ prísť na PRVOM touchmove gesta, nie až po "potvrdení" drag-u
+    // (predtým delta>4) — iOS Safari si pri prvom touchmove zamkne, či gesto berie ako
+    // natívny scroll, a neskoršie preventDefault() už nič nezastaví. To spôsobovalo
+    // občasné "zaseknutie" pri pomalšom prvom pohybe.
     e.preventDefault();
-    if (delta < 0) delta = 0;
+    if (!dragging) { dragging = true; sheet.style.transition = 'none'; }
     dragY = delta;
     sheet.style.transform = 'translateY(' + delta + 'px)';
   }, { passive: false });
