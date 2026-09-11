@@ -31,7 +31,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.51';
+var APP_VERSION = '2.85.52';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5850,8 +5850,8 @@ function settingsNotifHtml(){
     var on = !pushIsMuted();
     return '<div class="set-toggle-row">' +
         '<div class="set-toggle-info"><div class="set-toggle-lbl">🔔 Upozornenia</div><div class="set-row-desc">' +
-          (on ? 'Dostávaš push, keď pribudnú nové dáta (predaje, trhové podiely).'
-              : 'Odber je vypnutý — push nedostávaš. Zapni ho znova kedykoľvek.') + '</div></div>' +
+          (on ? 'Push pri nových dátach (predaje, trhové podiely).'
+              : 'Odber je vypnutý. Zapneš ho kedykoľvek.') + '</div></div>' +
         '<button type="button" id="set-pushsub-sw" class="gyn-cal-switch' + (on ? ' on' : '') + '" role="switch" aria-checked="' + (on ? 'true' : 'false') + '" onclick="settingsTogglePushSub()"><span class="gyn-cal-switch-kn"></span></button>' +
       '</div>';
   }
@@ -5859,7 +5859,7 @@ function settingsNotifHtml(){
     return '<div class="set-row-desc">Upozornenia sú zablokované v prehliadači.</div>' +
            '<button type="button" class="set-action-btn" onclick="settingsNotifHelp()">Ako povoliť</button>';
   }
-  return '<div class="set-row-desc">Dostávaj upozornenia, keď pribudnú nové dáta (predaje, trhové podiely).</div>' +
+  return '<div class="set-row-desc">Upozornenia pri nových dátach (predaje, trhové podiely).</div>' +
          '<button type="button" class="set-action-btn set-action-primary" onclick="settingsNotifEnable()">🔔 Zapnúť upozornenia</button>';
 }
 function settingsNotifEnable(){
@@ -5910,12 +5910,12 @@ function settingsCalNotifHtml(s){
   if(s.line === 'gyn'){
     var isAm  = (s.role === 'gyn-am' || s.role === 'admin');
     var isRep = (s.role === 'gyn-rep');
-    if(isAm)       rows.push({ key:'calNotifApprovals', label:'Žiadosti o schválenie absencií', desc:'Dostaneš push, keď reprezentant požiada o dovolenku alebo administratívu.' });
-    else if(isRep) rows.push({ key:'calNotifMine',      label:'Rozhodnutia o mojich absenciách', desc:'Dostaneš push, keď AM schváli alebo zamietne tvoju dovolenku/administratívu.' });
+    if(isAm)       rows.push({ key:'calNotifApprovals', label:'Žiadosti o schválenie absencií', desc:'Push, keď niekto požiada o dovolenku alebo administratívu.' });
+    else if(isRep) rows.push({ key:'calNotifMine',      label:'Rozhodnutia o mojich absenciách', desc:'Push, keď AM rozhodne o tvojej žiadosti.' });
   } else {
     // Golem aj Reagila — per-osoba schvaľovateľ zo stĺpca „Schvaľovateľ" (line-agnostic)
-    if(golemSettingsIsApprover()) rows.push({ key:'calNotifApprovals', label:'Žiadosti o schválenie absencií', desc:'Dostaneš push, keď ti niekto z tímu pošle žiadosť o dovolenku, administratívu alebo náhradné voľno na schválenie.' });
-    if(golemSettingsHasApprover()) rows.push({ key:'calNotifMine',      label:'Rozhodnutia o mojich absenciách', desc:'Dostaneš push, keď schvaľovateľ schváli alebo zamietne tvoju dovolenku, administratívu alebo náhradné voľno.' });
+    if(golemSettingsIsApprover()) rows.push({ key:'calNotifApprovals', label:'Žiadosti o schválenie absencií', desc:'Push, keď ti niekto pošle žiadosť na schválenie.' });
+    if(golemSettingsHasApprover()) rows.push({ key:'calNotifMine',      label:'Rozhodnutia o mojich absenciách', desc:'Push, keď schvaľovateľ rozhodne o tvojej žiadosti.' });
   }
   if(!rows.length) return '';
   var prefs = userPrefsGet();
@@ -5948,8 +5948,8 @@ function settingsNstNotifHtml(s){
   return '<div class="set-calnotif-sep"></div>' +
     '<div class="set-toggle-row">' +
       '<div class="set-toggle-info"><div class="set-toggle-lbl">📌 Príspevky na Nástenke</div><div class="set-row-desc">' +
-        (on ? 'Dostaneš push, keď niekto z tvojej línie pridá príspevok alebo odpovie na tvoj.'
-            : 'Push z Nástenky máš vypnutý — nové príspevky uvidíš len po otvorení appky (gulička pri Nástenke v spodnej lište).') + '</div></div>' +
+        (on ? 'Push pri novom príspevku alebo odpovedi na tvoj.'
+            : 'Vypnuté — nové uvidíš len v appke (gulička pri Nástenke).') + '</div></div>' +
       '<button type="button" id="set-nstnotif-sw" class="gyn-cal-switch' + (on ? ' on' : '') + '" role="switch" aria-checked="' + (on ? 'true' : 'false') + '" onclick="settingsToggleNstNotif()"><span class="gyn-cal-switch-kn"></span></button>' +
     '</div>';
 }
@@ -5961,8 +5961,8 @@ function settingsToggleNstNotif(){
   if(sw){ sw.classList.toggle('on', nv); sw.setAttribute('aria-checked', nv ? 'true' : 'false'); }
   var descEl = sw ? sw.parentNode.querySelector('.set-row-desc') : null;
   if(descEl) descEl.textContent = nv
-    ? 'Dostaneš push, keď niekto z tvojej línie pridá príspevok alebo odpovie na tvoj.'
-    : 'Push z Nástenky máš vypnutý — nové príspevky uvidíš len po otvorení appky (gulička pri Nástenke v spodnej lište).';
+    ? 'Push pri novom príspevku alebo odpovedi na tvoj.'
+    : 'Vypnuté — nové uvidíš len v appke (gulička pri Nástenke).';
   try { haptic('selection'); } catch(e){}
 }
 
@@ -5976,8 +5976,8 @@ function settingsBdayNotifHtml(s){
   return '<div class="set-calnotif-sep"></div>' +
     '<div class="set-toggle-row">' +
       '<div class="set-toggle-info"><div class="set-toggle-lbl">🎂 Meniny a narodeniny v tíme</div><div class="set-row-desc">' +
-        (on ? 'O polnoci dostaneš push, ak má v ten deň niekto z tímu meniny alebo narodeniny.'
-            : 'Zapni si push upozornenie, keď má niekto z tímu meniny alebo narodeniny.') + '</div></div>' +
+        (on ? 'Push o polnoci, keď má niekto z tímu meniny alebo narodeniny.'
+            : 'Push, keď má niekto z tímu meniny alebo narodeniny.') + '</div></div>' +
       '<button type="button" id="set-bdaynotif-sw" class="gyn-cal-switch' + (on ? ' on' : '') + '" role="switch" aria-checked="' + (on ? 'true' : 'false') + '" onclick="settingsToggleBdayNotif()"><span class="gyn-cal-switch-kn"></span></button>' +
     '</div>' +
     (on ? '<button type="button" class="set-action-btn" style="margin-top:8px" onclick="settingsBdayNotifTest()">📲 Poslať test (len mne)</button>' +
@@ -6003,7 +6003,7 @@ function settingsToggleBdayNotif(){
   var sw = document.getElementById('set-bdaynotif-sw');
   if(sw){ sw.classList.toggle('on', nv); sw.setAttribute('aria-checked', nv ? 'true' : 'false'); }
   var descEl = sw ? sw.parentNode.querySelector('.set-row-desc') : null;
-  if(descEl) descEl.textContent = nv ? 'O polnoci dostaneš push, ak má v ten deň niekto z tímu meniny alebo narodeniny.' : 'Zapni si push upozornenie, keď má niekto z tímu meniny alebo narodeniny.';
+  if(descEl) descEl.textContent = nv ? 'Push o polnoci, keď má niekto z tímu meniny alebo narodeniny.' : 'Push, keď má niekto z tímu meniny alebo narodeniny.';
   try { haptic('selection'); } catch(e){}
 }
 
