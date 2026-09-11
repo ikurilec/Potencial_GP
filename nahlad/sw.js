@@ -4,7 +4,7 @@
 // ║  cache-first pre ostatné assety (rýchly štart, offline ready).║
 // ╚══════════════════════════════════════════════════════════════╝
 
-var CACHE_NAME = 'potencial-nahlad-v28510';
+var CACHE_NAME = 'potencial-nahlad-v28511';
 
 self.addEventListener('install', function(event){
   self.skipWaiting();

@@ -999,6 +999,9 @@
   .dnes-rs-bar>span.o{background:linear-gradient(90deg,#FBBF24,#D97706);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 0 6px rgba(245,158,11,.25)}
   .dnes-rs-bar>span.r{background:linear-gradient(90deg,#F87171,#DC2626);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 0 6px rgba(220,38,38,.25)}
   .dnes-rs-bar>span.none{background:#CBD5E1}
+  .dnes-rs-prod-pred{font-size:11px;color:#94A3B8;margin:0 0 8px;text-align:center}
+  .dnes-rs-prod-pred strong{font-weight:800;margin-left:4px}
+  .dnes-rs-prod-pred strong.g{color:#059669}.dnes-rs-prod-pred strong.o{color:#D97706}.dnes-rs-prod-pred strong.r{color:#DC2626}.dnes-rs-prod-pred strong.none{color:#94A3B8}
   .dnes-rs-prod-meta{font-size:11.5px;color:#64748B;font-weight:600}
   .dnes-rs-ms{display:inline-flex;align-items:center;gap:4px;color:#2563EB;font-weight:800;white-space:nowrap}
   .dnes-rs-ms.up{color:#059669}.dnes-rs-ms.down{color:#DC2626}.dnes-rs-ms.wait{color:#94A3B8;font-weight:650}
@@ -3389,7 +3392,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.85.10 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.85.11 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -4378,7 +4381,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.10';
+var APP_VERSION = '2.85.11';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8634,20 +8637,19 @@ function dnesRepSummaryBuild(username) {
   }
 
   products.forEach(function(p) {
-    p.displayPct = p.prediction !== null && p.prediction !== undefined ? p.prediction : p.pct;
     p.ms = dnesRepSummaryMs(role, p, info.region, q, year);
     p.msSupported = dnesRepSummarySupportsMs(role, p);
   });
   products.sort(function(a,b) {
-    if (a.displayPct === null && b.displayPct === null) return a.name.localeCompare(b.name, 'sk');
-    if (a.displayPct === null) return 1;
-    if (b.displayPct === null) return -1;
-    return a.displayPct - b.displayPct;
+    if (a.pct === null && b.pct === null) return a.name.localeCompare(b.name, 'sk');
+    if (a.pct === null) return 1;
+    if (b.pct === null) return -1;
+    return a.pct - b.pct;
   });
   var bands = { g:0, o:0, r:0 };
   products.forEach(function(p) {
-    if (p.displayPct === null || p.displayPct === undefined) return;
-    if (p.displayPct >= 100) bands.g++; else if (p.displayPct >= 95) bands.o++; else bands.r++;
+    if (p.pct === null || p.pct === undefined) return;
+    if (p.pct >= 100) bands.g++; else if (p.pct >= 95) bands.o++; else bands.r++;
   });
   return { loading:false, role:role, username:u, name:info.name, region:info.region, q:q, year:year,
            overall:overall || {pct:null,plan:0,sales:0}, products:products, bands:bands };
@@ -8691,12 +8693,16 @@ function dnesRenderRepSummary() {
     html += '<div class="dnes-rs-list"><div class="dnes-rs-empty">Pre tohto reprezentanta zatiaľ nie sú produktové dáta.</div></div>';
   } else {
     html += '<div class="dnes-rs-list">' + m.products.map(function(p) {
-      var cls = plnenieDetailColorClass(p.displayPct), width = p.displayPct === null ? 0 : Math.min(100, Math.max(0, p.displayPct));
+      var cls = plnenieDetailColorClass(p.pct), width = p.pct === null ? 0 : Math.min(100, Math.max(0, p.pct));
+      var predCls = plnenieDetailColorClass(p.prediction);
+      var predHtml = p.prediction !== null && p.prediction !== undefined
+        ? '<div class="dnes-rs-prod-pred">predikcia konca Q <strong class="' + predCls + '">' + plnenieFormatPct(p.prediction) + '</strong></div>'
+        : '<div class="dnes-rs-prod-pred">predikcia konca Q <strong class="none">—</strong></div>';
       return '<div class="dnes-rs-prod"><div class="dnes-rs-prod-top"><span class="dnes-rs-prod-name">' + appEsc(p.name) + '</span>' +
-        '<span class="dnes-rs-prod-pct ' + cls + '">' + plnenieFormatPct(p.displayPct) + '</span></div>' +
+        '<span class="dnes-rs-prod-pct ' + cls + '">' + plnenieFormatPct(p.pct) + '</span></div>' +
         '<div class="dnes-rs-bar"><span class="' + cls + '" style="width:' + width + '%"></span></div>' +
-        '<div class="dnes-rs-prod-meta"><span>' + (p.prediction !== null ? 'predikcia konca Q' : 'plnenie k dnešku') +
-          (p.plan > 0 ? ' · ' + plnenieFormatEUR(p.sales) + ' / ' + plnenieFormatEUR(p.plan) : '') + '</span>' + dnesRepSummaryMsHtml(p) + '</div></div>';
+        predHtml + '<div class="dnes-rs-prod-meta"><span>predaje k dnešku' +
+          (p.plan > 0 ? ' · ' + plnenieFormatEUR(p.sales) + ' / ' + plnenieFormatEUR(p.plan) : p.sales > 0 ? ' · ' + plnenieFormatEUR(p.sales) : '') + '</span>' + dnesRepSummaryMsHtml(p) + '</div></div>';
     }).join('') + '</div>';
   }
   host.innerHTML = html;
