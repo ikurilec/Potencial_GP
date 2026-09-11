@@ -29,9 +29,61 @@ function appEsc(x) {
 // ║  k dispozícii aktualizácia.                                    ║
 // ║  Verzia v login pätičke sa dopĺňa sama z APP_VERSION, netreba  ║
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
-// ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
+// ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
+// ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.53';
+var APP_VERSION = '2.85.54';
+
+// ═══════════════════════════════════════════════════════════════════════════
+//   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
+//   Štyri čísla: čas do prvého vykreslenia, čas do použiteľnosti, trvanie
+//   backend volaní, počet zlyhaní podľa typu. Posiela sa tou istou cestou
+//   ako zvyšok štatistiky (usageTrack → action=logUsage) — žiadna nová
+//   infraštruktúra, žiadne osobné údaje, žiadny obsah polí.
+// ═══════════════════════════════════════════════════════════════════════════
+var PERF = {
+  t0: (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(),
+  paintMs: null,
+  usableMs: null,
+  calls: [],        // { a: 'action meno', ms, ok }
+  failCounts: {}     // { 'timeout': n, 'network': n, ... }
+};
+function perfNow(){ return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); }
+function perfMarkPaint(){ if (PERF.paintMs == null) PERF.paintMs = Math.round(perfNow() - PERF.t0); }
+function perfMarkUsable(){ if (PERF.usableMs == null) PERF.usableMs = Math.round(perfNow() - PERF.t0); }
+function perfActionFromUrl(url){
+  var m = String(url || '').match(/[?&]action=([^&]+)/);
+  return m ? decodeURIComponent(m[1]) : '?';
+}
+// Volá appFetchJson po každom volaní backendu — critical aj background.
+function perfRecordCall(url, ms, ok, errType){
+  try {
+    PERF.calls.push({ a: perfActionFromUrl(url), ms: Math.round(ms), ok: !!ok });
+    if (!ok) { var k = errType || 'error'; PERF.failCounts[k] = (PERF.failCounts[k] || 0) + 1; }
+    if (PERF.calls.length > 40) PERF.calls.shift();   // dlhá relácia nesmie rásť bez konca
+  } catch(e){}
+}
+// Súhrn za celú reláciu, poslaný RAZ, hneď ako je k dispozícii prihlásený
+// používateľ (usageTrack pred prihlásením aj tak nič neposiela — pozri nižšie).
+var _perfSent = false;
+function perfFlushOnce(){
+  if (_perfSent) return;
+  try {
+    var s = (typeof getSession === 'function') ? getSession() : null;
+    if (!s || !s.username) return;
+    _perfSent = true;
+    var avg = 0, slow = 0, sum = 0;
+    PERF.calls.forEach(function(c){ sum += c.ms; if (c.ms > 3000) slow++; });
+    if (PERF.calls.length) avg = Math.round(sum / PERF.calls.length);
+    var failTotal = 0;
+    Object.keys(PERF.failCounts).forEach(function(k){ failTotal += PERF.failCounts[k]; });
+    var detail = 'paint:' + (PERF.paintMs != null ? PERF.paintMs : '') +
+                 ',usable:' + (PERF.usableMs != null ? PERF.usableMs : '') +
+                 ',volani:' + PERF.calls.length + ',priemer:' + avg +
+                 ',pomale:' + slow + ',zlyhania:' + failTotal;
+    if (typeof usageTrack === 'function') usageTrack('perf', 'boot', detail, Math.round(perfNow() - PERF.t0));
+  } catch(e){}
+}
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -60,6 +112,7 @@ function mgrDedupUnique(){
 }
 // Spusti hneď po načítaní + znova po krátkej chvíli (pre prípad že JS pridá niečo neskôr)
 document.addEventListener('DOMContentLoaded', function(){
+  try { perfMarkPaint(); } catch(e){}
   try { mgrDedupUnique(); } catch(e){}
   setTimeout(function(){ try { mgrDedupUnique(); } catch(e){} }, 500);
   setTimeout(function(){ try { mgrDedupUnique(); } catch(e){} }, 1500);
@@ -84,9 +137,28 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 });
 
-// ── GLOBÁLNY ERROR HANDLER (iba log, neruší užívateľa) ──
+// ── GLOBÁLNY ERROR HANDLER (F1-4/F1-5 vo vykonávacom pláne) ──
+// Predtým iba do konzoly — chyby ako F0-2/F0-3 (pád pri výbere okresu, strata
+// draftu) existovali mesiace bez toho, aby o nich niekto vedel. Teraz idú aj
+// do usageTrack, tou istou cestou ako zvyšok štatistiky. Bez osobných údajov
+// a bez obsahu polí — len typ, miesto v kóde, verzia appky, čas.
+var _errReported = 0;
+var ERR_REPORT_MAX = 5;   // poistka proti zaplaveniu pri opakovanej/cyklickej chybe
+function appReportError(kind, msg, where){
+  try {
+    if(window.console && console.error) console.error('[' + kind + ']', msg, where || '');
+    if(_errReported >= ERR_REPORT_MAX) return;
+    _errReported++;
+    var detail = String(msg == null ? '' : msg).slice(0, 100) + (where ? ' @ ' + String(where).slice(0, 40) : '');
+    if(typeof usageTrack === 'function') usageTrack('error', kind, detail);
+  } catch(e){}
+}
 window.addEventListener('error', function(ev){
-  if(window.console && console.error) console.error('[global error]', ev.message, ev.filename+':'+ev.lineno);
+  appReportError('js-error', ev.message, ev.filename + ':' + ev.lineno);
+});
+window.addEventListener('unhandledrejection', function(ev){
+  var r = ev.reason;
+  appReportError('unhandled-rejection', (r && r.message) || String(r));
 });
 
 // ── localStorage QUOTA SPRÁVA ──
@@ -628,6 +700,7 @@ var APP_FETCH_TIMEOUT_MS = 16000;   // koľko čakať na Sheets/Apps Script (mô
 function appFetchJson(url, opts, timeoutMs) {
   opts = opts || { cache: 'no-store' };
   timeoutMs = timeoutMs || APP_FETCH_TIMEOUT_MS;
+  var _t0 = (typeof perfNow === 'function') ? perfNow() : 0;
   return new Promise(function(resolve, reject){
     var settled = false;
     var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
@@ -636,12 +709,23 @@ function appFetchJson(url, opts, timeoutMs) {
       if (settled) return;
       settled = true;
       if (ctrl) { try { ctrl.abort(); } catch(e){} }
+      try { perfRecordCall(url, perfNow() - _t0, false, 'timeout'); } catch(e){}
       reject(new Error('timeout'));
     }, timeoutMs);
     fetch(url, opts)
       .then(function(r){ return r.json(); })
-      .then(function(j){ if (settled) return; settled = true; clearTimeout(timer); resolve(j); })
-      .catch(function(e){ if (settled) return; settled = true; clearTimeout(timer); reject(e); });
+      .then(function(j){
+        if (settled) return;
+        settled = true; clearTimeout(timer);
+        try { perfRecordCall(url, perfNow() - _t0, true); } catch(e){}
+        resolve(j);
+      })
+      .catch(function(e){
+        if (settled) return;
+        settled = true; clearTimeout(timer);
+        try { perfRecordCall(url, perfNow() - _t0, false, (e && e.name === 'AbortError') ? 'abort' : 'network'); } catch(e2){}
+        reject(e);
+      });
   });
 }
 
@@ -1437,6 +1521,10 @@ function usageTrack(type, section, detail, durationS) {
     var s = (typeof getSession === 'function') ? getSession() : null;
     if (!s || !s.username) return;            // bez prihlásenia netrackujeme
     if (s.role === 'admin') return;           // admin sa netrackuje
+    // Meranie času (F1-4) čaká presne na tento moment — prvý usageTrack s
+    // platnou reláciou. Skôr sa poslať nedá (backend to zahodí bez session),
+    // neskôr už nemá zmysel (paint/usable značky by boli dávno hotové).
+    if (type !== 'perf' && typeof perfFlushOnce === 'function') perfFlushOnce();
     var ev = {
       ts:       new Date().toISOString(),
       login:    s.username,
@@ -19997,6 +20085,7 @@ function bootLoaderSet(pct){
   if(msg && pct >= 100) msg.textContent = 'Hotovo ✓';
 }
 function bootLoaderDone(){
+  try { perfMarkUsable(); } catch(e){}
   clearTimeout(_bootLoader.timer); clearTimeout(_bootLoader.failsafe);
   var el = document.getElementById('boot-loader');
   if(!el) return;

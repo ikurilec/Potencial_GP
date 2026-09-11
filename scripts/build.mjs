@@ -66,8 +66,8 @@ async function main() {
   const idxPath = resolve(NAHLAD, 'index.html');
   let idx = readFileSync(idxPath, 'utf8');
   const before = idx;
-  idx = idx.replace(/href="app\.(?:[0-9a-f]{8}\.)?css(?:\?v=[\d.]+)?"/, `href="dist/${cssName}"`);
-  idx = idx.replace(/src="app\.(?:[0-9a-f]{8}\.)?js(?:\?v=[\d.]+)?"/, `src="dist/${jsName}"`);
+  idx = idx.replace(/href="(?:dist\/)?app\.(?:[0-9a-f]{8}\.)?css(?:\?v=[\d.]+)?"/, `href="dist/${cssName}"`);
+  idx = idx.replace(/src="(?:dist\/)?app\.(?:[0-9a-f]{8}\.)?js(?:\?v=[\d.]+)?"/, `src="dist/${jsName}"`);
   if (idx === before) {
     console.error('POZOR: index.html sa nezmenil — odkaz na app.css/app.js sa nenašiel presným tvarom, skontroluj ručne.');
     process.exit(1);
@@ -77,8 +77,8 @@ async function main() {
   // ── sw.js — APP_SHELL + CACHE_NAME ──
   const swPath = resolve(NAHLAD, 'sw.js');
   let sw = readFileSync(swPath, 'utf8');
-  sw = sw.replace(/'\.\/app\.(?:[0-9a-f]{8}\.)?css(?:\?v=[\d.]+)?'/, `'./dist/${cssName}'`);
-  sw = sw.replace(/'\.\/app\.(?:[0-9a-f]{8}\.)?js(?:\?v=[\d.]+)?'/, `'./dist/${jsName}'`);
+  sw = sw.replace(/'\.\/(?:dist\/)?app\.(?:[0-9a-f]{8}\.)?css(?:\?v=[\d.]+)?'/, `'./dist/${cssName}'`);
+  sw = sw.replace(/'\.\/(?:dist\/)?app\.(?:[0-9a-f]{8}\.)?js(?:\?v=[\d.]+)?'/, `'./dist/${jsName}'`);
   const cacheTag = `${jsHash}${cssHash}`.slice(0, 12);
   sw = sw.replace(/var CACHE_NAME = '[^']*';/, `var CACHE_NAME = 'potencial-nahlad-v${cacheTag}';`);
   writeFileSync(swPath, sw);
