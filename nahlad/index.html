@@ -3433,7 +3433,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.85.33 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.85.34 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -4422,7 +4422,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.33';
+var APP_VERSION = '2.85.34';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -18752,11 +18752,20 @@ function gynLbRepListLoaded(data){
 }
 function gynLbEnsureRepList(){
   if((GYN_LB.repList && GYN_LB.repList.length) || GYN_LB.repLoading) return;
+  // Včerajší/posledný roster je bezpečný okamžitý základ pre Domov. Čerstvý
+  // fullLine fetch beží ďalej, ale nemusí blokovať prvé vykreslenie rebríčka.
+  var rosterKey = 'leaderboard|' + gynCacheUserScope() + '|fullLine|roster';
+  var cachedRoster = gynCacheRead(rosterKey);
+  if(cachedRoster && cachedRoster.ok && cachedRoster.reps && cachedRoster.reps.length){
+    gynLbRepListLoaded(cachedRoster);
+    try { gynOpenDnesWhenReady(); } catch(e){}
+  }
   GYN_LB.repLoading = true;
   appQueuedFetchJson(gynScriptUrl('action=getRepList&fullLine=1'), undefined, 12000, 'critical')
     .then(function(d){
       GYN_LB.repLoading = false;
       gynLbRepListLoaded(d);
+      if(d && d.ok && d.reps && d.reps.length) gynCacheWrite(rosterKey, d);
       if(GYN_APP.nav === 'leaderboard') gynLbRender();
       try { dnesRefreshIfOpen(); } catch(e){}
       try { gynOpenDnesWhenReady(); } catch(e){}
@@ -18813,6 +18822,13 @@ function gynLbShow(el){
 // render sa odblokuje (cez GYN_LB.dataReady[q]) až keď dorazia čerstvé dáta pre správny Q.
 function gynLbEnsureData(q, key){
   if(GYN_LB.dataReady[q] || GYN_LB.plLoading[q]) return;
+  // Použi posledný výsledok okamžite, ale neoznač ho ako fresh: čerstvý fetch
+  // pokračuje potichu a pri návrate nahradí čísla bez loading karty.
+  var persisted = gynCacheRead(key);
+  if(persisted && !GYN_LB.plCache[q]){
+    try { gynPreprocessData(persisted); GYN_LB.plCache[q] = persisted; } catch(e){}
+    try { gynOpenDnesWhenReady(); } catch(e){}
+  }
   GYN_LB.plLoading[q] = true;
   appQueuedFetchJson(gynScriptUrl('action=getPlnenieAll&rok=' + GYN_APP.year + '&Q=' + q + '&fullLine=1'), undefined, 12000, 'critical')
     .then(function(d){
