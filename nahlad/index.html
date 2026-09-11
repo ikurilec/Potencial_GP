@@ -3433,7 +3433,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.85.28 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.85.29 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -4422,7 +4422,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.28';
+var APP_VERSION = '2.85.29';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -18708,6 +18708,7 @@ function gynLbEnsureRepList(){
       GYN_LB.repLoading = false;
       gynLbRepListLoaded(d);
       if(GYN_APP.nav === 'leaderboard') gynLbRender();
+      try { dnesRefreshIfOpen(); } catch(e){}
     })
     .catch(function(){
       GYN_LB.repLoading = false;
@@ -18771,6 +18772,7 @@ function gynLbEnsureData(q, key){
       gynCacheWrite(key, d);
       GYN_LB.dataReady[q] = true;
       if(GYN_APP.nav === 'leaderboard') gynLbRender();
+      try { dnesRefreshIfOpen(); } catch(e){}
     })
     .catch(function(){
       delete GYN_LB.plLoading[q];
