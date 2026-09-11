@@ -31,7 +31,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.36';
+var APP_VERSION = '2.85.37';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7844,6 +7844,12 @@ function lineMergeLoginSuccess(username, line, data){
   else if (line === 'reagila') dual.reagila = mgrBuildReagilaUser(username, data);
   mgrSetDual(dual);
   try { mgrRenderLineSwitch(); } catch(e){}
+  // Ak je Menu práve otvorené, jeho obsah už je v DOM-e. Po neskorom úspechu
+  // Reagila loginu ho hneď prekresli, aby sa tretia línia objavila bez zatvorenia Menu.
+  try {
+    var viac = document.getElementById('viac-overlay');
+    if (viac && viac.classList.contains('show') && typeof viacRender === 'function') viacRender();
+  } catch(e){}
 }
 function lineRetryFailedSilently(username, pwd, dataMap, onLine, delayMs){
   try {
@@ -8597,10 +8603,14 @@ function doLogin() {
   function pendingLines(){ return loginLines.map(function(x){return x.line;}).filter(function(line){return !settled[line] || (dataMap[line] && dataMap[line]._failed);}); }
   function allSettled(){ return loginLines.every(function(x){return settled[x.line];}); }
   function retryOne(line){
-    if(retryStarted[line] || !dataMap[line] || !dataMap[line]._failed) return;
+    if(retryStarted[line] || !dataMap[line] || dataMap[line].ok) return;
+    // Reagila backend vie pri cold štarte vrátiť ok:false skôr, než je pripravený,
+    // hoci účet existuje. Pri prvom prihlásení ju preto ešte raz overíme na pozadí.
+    // Ostatné línie opakujeme iba pri skutočnom timeoute.
+    if(!dataMap[line]._failed && line !== 'reagila') return;
     retryStarted[line]=true;
     var one={gp:{ok:false},gyn:{ok:false},reagila:{ok:false}};
-    one[line]=dataMap[line];
+    one[line]=dataMap[line]._failed ? dataMap[line] : {ok:false,_failed:true,_retryExplicit:true};
     lineRetryFailedSilently(username,password,one,lineChooserResolve,300);
   }
   function finishUi(){
