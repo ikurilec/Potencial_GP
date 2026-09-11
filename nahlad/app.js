@@ -31,7 +31,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.48';
+var APP_VERSION = '2.85.49';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10899,6 +10899,10 @@ function gynEnter(user) {
   GYN_APP._plReqIds={}; GYN_APP.plLoading={}; GYN_APP._repListLoading=false;
   document.body.classList.remove('manager-mode', 'gp-rep', 'reagila-line');
   document.body.classList.add('gyn-line');   // line-aware CSS (tmavý notch pás)
+  // Manažéri/PM z minulej relácie — hneď z localStorage, ešte pred prvým
+  // renderom. Bez toho appka na avatar manažéra v kalendári/Domove čaká na
+  // sieť pri KAŽDOM otvorení, nie len pri prvom prihlásení.
+  try { gynUsersLoadLocal(); } catch(e){}
   updateHdrForUser(user);
   if (user.role !== 'gyn-rep') {
     document.getElementById('hdr-line-name').textContent = 'Manažérsky pohľad';
@@ -10980,6 +10984,39 @@ function gynHydrateRepMeta(reps) {
 }
 
 // Aplikuje dáta getRepList (zdieľané medzi gynLoadRepList a gynBootstrap).
+// Manažéri/PM/BUM (data.users) — appka ich potrebuje kvôli avataru/menu všade,
+// kde sa objavia bežnému reprezentantovi (napr. ako vlastník udalosti v kalendári).
+// Vytiahnuté zo spracovania odpovede, aby to isté vedela spustiť aj hydratácia
+// z localStorage cache (gynUsersLoadLocal) — bez čakania na sieť pri každom otvorení appky.
+function gynApplyUsersList(users) {
+  if (!(users && users.length)) return;
+  GYN_STATE.userList = users;
+  users.forEach(function(u) {
+    var rawG = String(u.pohlavie || u.gender || '').trim().toLowerCase();
+    var g = null;
+    if (rawG === 'm' || rawG === 'muz' || rawG === 'muž' || rawG === 'male') g = 'male';
+    else if (rawG === 'z' || rawG === 'f' || rawG === 'zena' || rawG === 'žena' || rawG === 'female') g = 'female';
+    var av = null;
+    var avRaw = String(u.avatar || '').trim();
+    if (avRaw) {
+      try { var pj = JSON.parse(avRaw); if (pj && pj.style && AVATAR_SCHEMAS[pj.style]) av = pj; } catch(e){}
+    }
+    var lk = String(u.login || '').toLowerCase();
+    if (lk && !USERS_LOCAL[lk]) USERS_LOCAL[lk] = { name: u.meno || u.name || lk, region: u.region, gender: g, avatar: av };
+    else if (lk) { if(!USERS_LOCAL[lk].name) USERS_LOCAL[lk].name = u.meno || u.name || lk; if(av && !USERS_LOCAL[lk].avatar) USERS_LOCAL[lk].avatar = av; }
+  });
+}
+function gynUsersLsKey() { return 'users|' + gynCacheUserScope(); }
+// Okamžitá hydratácia z localStorage — volaj hneď pri vstupe do gyn línie,
+// ešte pred prvým vykreslením Domova/kalendára. Bez toho appka na avatary
+// manažérov/PM čaká na sieť pri KAŽDOM otvorení, nie len pri prvom.
+function gynUsersLoadLocal() {
+  try {
+    var cached = gynCacheRead(gynUsersLsKey());
+    if (cached && cached.length) gynApplyUsersList(cached);
+  } catch(e){}
+}
+
 function gynApplyRepListData(data, user) {
   if(!(data && data.ok && data.reps)) return;
       {
@@ -10995,23 +11032,11 @@ function gynApplyRepListData(data, user) {
         var wasEmpty = !GYN_STATE.repList.length;
         GYN_STATE.repList = data.reps;
         // Plný zoznam používateľov (vrátane manažérov AM/PM/BUM) — pre avatary/mená
-        // v Aktivite. Príde iba adminovi/manažérom (backend gating).
+        // vo všetkých render miestach. Posiela sa každému volajúcemu (nie len
+        // adminovi/manažérovi) — pozri getRepList v backende.
         if (data.users && data.users.length) {
-          GYN_STATE.userList = data.users;
-          data.users.forEach(function(u) {
-            var rawG = String(u.pohlavie || u.gender || '').trim().toLowerCase();
-            var g = null;
-            if (rawG === 'm' || rawG === 'muz' || rawG === 'muž' || rawG === 'male') g = 'male';
-            else if (rawG === 'z' || rawG === 'f' || rawG === 'zena' || rawG === 'žena' || rawG === 'female') g = 'female';
-            var av = null;
-            var avRaw = String(u.avatar || '').trim();
-            if (avRaw) {
-              try { var pj = JSON.parse(avRaw); if (pj && pj.style && AVATAR_SCHEMAS[pj.style]) av = pj; } catch(e){}
-            }
-            var lk = String(u.login || '').toLowerCase();
-            if (lk && !USERS_LOCAL[lk]) USERS_LOCAL[lk] = { name: u.meno || u.name || lk, region: u.region, gender: g, avatar: av };
-            else if (lk) { if(!USERS_LOCAL[lk].name) USERS_LOCAL[lk].name = u.meno || u.name || lk; if(av && !USERS_LOCAL[lk].avatar) USERS_LOCAL[lk].avatar = av; }
-          });
+          gynApplyUsersList(data.users);
+          try { gynCacheWrite(gynUsersLsKey(), data.users); } catch(e){}
         }
         // Naplň USERS_LOCAL — aby avatarGetConfig našiel avatary gyn reprezentantov vo všetkých render miestach
         data.reps.forEach(function(r) {
