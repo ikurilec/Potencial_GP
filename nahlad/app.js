@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.65';
+var APP_VERSION = '2.85.66';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -23866,7 +23866,7 @@ function prodSheetInitSwipe() {
   var THRESHOLD = 80;
 
   function isHandleArea(target) {
-    return !!(target.closest('.pl-ps-handle') || target.closest('.pl-ps-hdr') || target.closest('.pl-ps-divider'));
+    return !!(target.closest('.pl-ps-top') || target.closest('.pl-ps-profile') || target.closest('.pl-ps-divider'));
   }
 
   // Backdrop — zablokuj scroll stránky pod sheetom (iOS safe, neovplyvní scroll vnútri sheetu)
