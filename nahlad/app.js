@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.63';
+var APP_VERSION = '2.85.64';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -6913,11 +6913,13 @@ function settingsLoadLine(target){
       return (d && d._failed) ? tryLine(25000) : d;   // cold start → druhý pokus
     }).then(function(d){
       if(!d || !d.ok){
+        if(typeof lkPromptReset === 'function') lkPromptReset();   // späť na ďalší pokus, nie navždy "Overujem…"
         alert((d && d._failed)
           ? meta.label + ' server neodpovedal včas. Skús to znova o chvíľu.'
           : meta.label + ' prihlásenie zlyhalo — nesprávne heslo alebo nemáš tam účet (rovnaké meno + heslo v danom Sheete).');
         return;
       }
+      if(typeof lkPromptClose === 'function') lkPromptClose();
       var user = (target === 'gyn') ? mgrBuildGynUser(s.username, d)
                : (target === 'reagila') ? mgrBuildReagilaUser(s.username, d)
                : mgrBuildGpUser(s.username, d);
@@ -6960,12 +6962,14 @@ function settingsReloadAllLines(){
     if(rea && rea.ok) d.reagila = mgrBuildReagilaUser(s.username, rea);
     var n = (d.gp?1:0) + (d.gyn?1:0) + (d.reagila?1:0);
     if(n === 0){
+      if(typeof lkPromptReset === 'function') lkPromptReset();   // späť na ďalší pokus
       alert(badPwd
         ? 'Prihlásenie zamietnuté — nesprávne heslo.'
         : 'Servery neodpovedali včas. Skús to znova o chvíľu.');
       try { haptic('error'); } catch(e){}
       return;
     }
+    if(typeof lkPromptClose === 'function') lkPromptClose();
     // Rolu aktuálnej línie zafixuj zo ŽIVEJ session — login môže vrátiť 'rep' fallback pri
     // prázdnej bunke role v Sheets, a admin/manažér pohľad beží podľa živej session.
     var curU = (curLine === 'gyn') ? d.gyn : (curLine === 'reagila') ? d.reagila : d.gp;
@@ -6990,7 +6994,10 @@ function settingsReloadAllLines(){
     alert('Načítané línie: ' + have.join(', ') + '.' + (n >= 2
       ? '\n\nPrepínač línie je teraz dostupný v hlavičke aj tu v Nastaveniach.'
       : '\n\nNašla sa len jedna línia. Skontroluj, či máš rovnaké meno + heslo aj v Google Sheets ostatných línií (hárok Pouzivatelia).'));
-  }).catch(function(){ alert('Chyba siete pri prihlasovaní.'); try { haptic('error'); } catch(e){} });
+  }).catch(function(){
+    if(typeof lkPromptReset === 'function') lkPromptReset();
+    alert('Chyba siete pri prihlasovaní.'); try { haptic('error'); } catch(e){}
+  });
   }, 'password');
 }
 
@@ -8235,8 +8242,9 @@ function mgrEnableLineSwitch(targetLine){
   var gynF = fetch(GYN_SCRIPT_URL + lp).then(function(r){ return r.json(); }).catch(function(){ return {ok:false}; });
   Promise.all([gpF, gynF]).then(function(res){
     var gp = res[0], gyn = res[1];
-    if(!gp.ok){ alert('Golem login zlyhal — nesprávne heslo?'); return; }
-    if(!gyn.ok){ alert('Gyn login zlyhal — skontroluj, či máš v GYN Google Sheets (hárok Pouzivatelia) rovnaké meno + heslo.'); return; }
+    if(!gp.ok){ if(typeof lkPromptReset === 'function') lkPromptReset(); alert('Golem login zlyhal — nesprávne heslo?'); return; }
+    if(!gyn.ok){ if(typeof lkPromptReset === 'function') lkPromptReset(); alert('Gyn login zlyhal — skontroluj, či máš v GYN Google Sheets (hárok Pouzivatelia) rovnaké meno + heslo.'); return; }
+    if(typeof lkPromptClose === 'function') lkPromptClose();
     // GP dual = aktuálna admin session (rola admin je istá) + čerstvé tokeny z gp re-loginu
     var gpUser;
     try { gpUser = JSON.parse(JSON.stringify(s)); } catch(e){ gpUser = { username: s.username, name: s.name, role: s.role, region: s.region }; }
@@ -8250,7 +8258,7 @@ function mgrEnableLineSwitch(targetLine){
     setSession(gpUser);      // obnov aktuálnu session čerstvým gp tokenom, ostávame admin
     if(targetLine === 'gyn'){ mgrSwitchLine('gyn'); }   // tapol "Gyn" → rovno tam prepni
     else { mgrRenderLineSwitch(); }
-  }).catch(function(){ alert('Chyba siete pri prihlasovaní.'); });
+  }).catch(function(){ if(typeof lkPromptReset === 'function') lkPromptReset(); alert('Chyba siete pri prihlasovaní.'); });
   }, 'password');
 }
 // Či zobraziť prepínač línie: admin, ktorý má v dual session aspoň jednu ďalšiu líniu.
@@ -33946,16 +33954,27 @@ function lkFilterSnapshot() {
 // Generický input-modal v štýle appky (namiesto prompt())
 // `type` je voliteľný — 'password' skryje vstup (heslo pri prepínaní línie
 // v Nastaveniach, F6-4: natívny sivý prompt() vyzerá presne ako phishing).
+//
+// Heslo ide na sieť (login proti Apps Scriptu — pri studenom štarte to vie trvať
+// desiatky sekúnd, pozri F1-3/F2-1 poznámky vyššie). Preto sa modál pri type
+// 'password' po kliknutí NEZATVORÍ hneď — ukáže "Overujem…" a čaká, kým ho
+// zavolajúca funkcia sama nezatvorí (lkPromptClose, úspech) alebo nevráti do
+// pôvodného stavu na ďalší pokus (lkPromptReset, zlyhanie). Bez toho appka po
+// zadaní hesla niekoľko sekúnd mlčala — nebolo vidno, že sa vôbec niečo deje.
 var _lkPromptCb = null;
+var _lkPromptOkLabel = 'Uložiť';
 function lkPrompt(title, sub, placeholder, prefill, onOk, type) {
   _lkPromptCb = onOk || null;
   var isPwd = (type === 'password');
+  _lkPromptOkLabel = isPwd ? 'Pokračovať' : 'Uložiť';
   var t = document.getElementById('lk-prompt-title'); if (t) t.textContent = title || '';
   var s = document.getElementById('lk-prompt-sub');   if (s) s.textContent = sub || '';
   var ic = document.getElementById('lk-prompt-icon'); if (ic) ic.textContent = isPwd ? '🔒' : '💾';
-  var ok = document.getElementById('lk-prompt-ok-btn'); if (ok) ok.textContent = isPwd ? 'Pokračovať' : 'Uložiť';
+  var ok = document.getElementById('lk-prompt-ok-btn'); if (ok) { ok.textContent = _lkPromptOkLabel; ok.disabled = false; }
+  var cn = document.getElementById('lk-prompt-cancel-btn'); if (cn) cn.disabled = false;
   var inp = document.getElementById('lk-prompt-input');
   if (inp) {
+    inp.disabled = false;
     inp.value = prefill || '';
     inp.placeholder = placeholder || '';
     inp.type = isPwd ? 'password' : 'text';
@@ -33967,14 +33986,32 @@ function lkPrompt(title, sub, placeholder, prefill, onOk, type) {
 function lkPromptClose() {
   var ov = document.getElementById('lk-prompt-overlay'); if (ov) ov.classList.remove('show');
   var inp = document.getElementById('lk-prompt-input');
-  if (inp) { inp.type = 'text'; inp.autocomplete = 'off'; inp.value = ''; }   // nenechaj heslo v DOM po zatvorení
+  if (inp) { inp.type = 'text'; inp.autocomplete = 'off'; inp.value = ''; inp.disabled = false; }   // nenechaj heslo v DOM po zatvorení
+  var ok = document.getElementById('lk-prompt-ok-btn'); if (ok) { ok.disabled = false; ok.textContent = _lkPromptOkLabel; }
+  var cn = document.getElementById('lk-prompt-cancel-btn'); if (cn) cn.disabled = false;
   _lkPromptCb = null;
+}
+// Zlyhal pokus s heslom (zlé heslo, server neodpovedal) — vráť modál do pôvodného
+// stavu na ďalší pokus, namiesto toho, aby zostal navždy v stave "Overujem…".
+function lkPromptReset() {
+  var inp = document.getElementById('lk-prompt-input');
+  if (inp) inp.disabled = false;
+  var ok = document.getElementById('lk-prompt-ok-btn'); if (ok) { ok.disabled = false; ok.textContent = _lkPromptOkLabel; }
+  var cn = document.getElementById('lk-prompt-cancel-btn'); if (cn) cn.disabled = false;
+  setTimeout(function() { if (inp) { inp.focus(); inp.select(); } }, 80);
 }
 function lkPromptOk() {
   var inp = document.getElementById('lk-prompt-input');
   var v = inp ? String(inp.value || '').trim() : '';
   if (!v) { if (inp) inp.focus(); return; }
   var cb = _lkPromptCb;
+  if (inp.type === 'password') {
+    var ok = document.getElementById('lk-prompt-ok-btn'); if (ok) { ok.disabled = true; ok.textContent = 'Overujem…'; }
+    var cn = document.getElementById('lk-prompt-cancel-btn'); if (cn) cn.disabled = true;
+    inp.disabled = true;
+    if (cb) cb(v);
+    return;
+  }
   lkPromptClose();
   if (cb) cb(v);
 }
