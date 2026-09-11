@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.59';
+var APP_VERSION = '2.85.60';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -6712,12 +6712,26 @@ function settingsAppHtml(s){
 
   // ── Línie — len keď je čo riešiť (jedna alebo viac línií naraz pre managera/admina) ──
   var linesHtml = '';
-  if(typeof mgrShouldShowLineToggle === 'function' && mgrShouldShowLineToggle()){
-    var _tgts = (typeof mgrLineTargets === 'function') ? mgrLineTargets() : [];
-    if(_tgts.length){
+  // Riadok „Prepnúť líniu" ukazuje VŠETKY ostatné línie, nielen tie, ktoré sú už
+  // v dual session — chýbajúca línia (🔒) sa dá rovno kliknutím dotiahnuť cez heslo,
+  // namiesto toho, aby jednoducho zo zoznamu zmizla.
+  if((typeof mgrDetectRole === 'function') && mgrDetectRole(s)){
+    var _cur = (typeof mgrCurrentLine === 'function') ? mgrCurrentLine() : 'gp';
+    var _dual = (typeof mgrGetDual === 'function') ? mgrGetDual() : null;
+    var _allLines = [
+      { line:'gp',      has: !!(_dual && _dual.gp) },
+      { line:'gyn',     has: !!(_dual && _dual.gyn) },
+      { line:'reagila', has: !!(_dual && _dual.reagila) }
+    ].filter(function(t){ return t.line !== _cur; });
+    if(_allLines.length){
       linesHtml += '<div class="set-row"><div class="set-row-label">Prepnúť líniu</div>' +
                 '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">' +
-                _tgts.map(function(t){ return '<button type="button" class="set-mini-btn" onclick="settingsSwitchLineTo(\'' + t.line + '\')">→ ' + settingsEsc(t.label) + '</button>'; }).join('') +
+                _allLines.map(function(t){
+                  var lbl = (typeof lineChooserMeta === 'function') ? lineChooserMeta(t.line).label : t.line;
+                  return t.has
+                    ? '<button type="button" class="set-mini-btn" onclick="settingsSwitchLineTo(\'' + t.line + '\')">→ ' + settingsEsc(lbl) + '</button>'
+                    : '<button type="button" class="set-mini-btn" onclick="settingsLoadLine(\'' + t.line + '\')">🔒 ' + settingsEsc(lbl) + '</button>';
+                }).join('') +
               '</div></div>';
     }
     // Zapamätanie úvodnej línie po prihlásení
@@ -6872,36 +6886,45 @@ function settingsRememberLine(){
 // Načítaj chýbajúcu Golem líniu cez heslo (bez odhlásenia) a prepni do nej.
 // Rieši stav, keď Golem login pri štarte zlyhal (cold start Apps Scriptu / pomalá sieť /
 // druhé zariadenie) a admin uviazol v Gyn/Reagile bez Golemu. Golem skúsime dvakrát.
-function settingsLoadGolemLine(){
+// Načítaj JEDNU chýbajúcu líniu (Golem, Gyn alebo Reagila) cez heslo, bez odhlásenia,
+// a rovno do nej prepni. Zovšeobecnené zo settingsLoadGolemLine — rovnaký mechanizmus
+// (retry pri cold starte) teraz funguje pre ktorúkoľvek líniu, nielen Golem.
+function settingsLoadLine(target){
   var s = (typeof getSession === 'function') ? getSession() : null;
   if(!s || !s.username){ alert('Nie si prihlásený.'); return; }
-  lkPrompt('Heslo', 'Zadaj svoje heslo pre načítanie Golem línie.', '', '', function(pwd){
+  var url = (target === 'gyn') ? GYN_SCRIPT_URL : (target === 'reagila') ? REAGILA_SCRIPT_URL : SCRIPT_URL;
+  var meta = (typeof lineChooserMeta === 'function') ? lineChooserMeta(target) : { label: target };
+  lkPrompt('Heslo', 'Zadaj svoje heslo pre načítanie línie ' + meta.label + '.', '', '', function(pwd){
     var lp = '?action=login&username=' + encodeURIComponent(s.username) +
              '&password=' + encodeURIComponent(pwd) +
              '&device_id=' + encodeURIComponent(authDeviceId());
-    function tryGolem(tmo){
-      return appFetchJson(SCRIPT_URL + lp, undefined, tmo).catch(function(){ return { ok:false, _failed:true }; });
+    function tryLine(tmo){
+      return appFetchJson(url + lp, undefined, tmo).catch(function(){ return { ok:false, _failed:true }; });
     }
-    tryGolem(20000).then(function(gp){
-      return (gp && gp._failed) ? tryGolem(25000) : gp;   // cold start → druhý pokus
-    }).then(function(gp){
-      if(!gp || !gp.ok){
-        alert((gp && gp._failed)
-          ? 'Golem server neodpovedal včas. Skús to znova o chvíľu.'
-          : 'Golem prihlásenie zlyhalo — nesprávne heslo alebo nemáš Golem účet (rovnaké meno + heslo v Golem Sheets).');
+    tryLine(20000).then(function(d){
+      return (d && d._failed) ? tryLine(25000) : d;   // cold start → druhý pokus
+    }).then(function(d){
+      if(!d || !d.ok){
+        alert((d && d._failed)
+          ? meta.label + ' server neodpovedal včas. Skús to znova o chvíľu.'
+          : meta.label + ' prihlásenie zlyhalo — nesprávne heslo alebo nemáš tam účet (rovnaké meno + heslo v danom Sheete).');
         return;
       }
-      var gpUser = mgrBuildGpUser(s.username, gp);
-      var d = (typeof mgrGetDual === 'function' && mgrGetDual()) || { username: s.username };
-      d.username = d.username || s.username;
-      d.gp = gpUser;
-      mgrSetDual(d);
+      var user = (target === 'gyn') ? mgrBuildGynUser(s.username, d)
+               : (target === 'reagila') ? mgrBuildReagilaUser(s.username, d)
+               : mgrBuildGpUser(s.username, d);
+      var dual = (typeof mgrGetDual === 'function' && mgrGetDual()) || { username: s.username };
+      dual.username = dual.username || s.username;
+      dual[target] = user;
+      mgrSetDual(dual);
       try { mgrRenderLineSwitch(); } catch(e){}
       if(typeof closeSettings === 'function') closeSettings();
-      try { mgrSwitchLine('gp'); } catch(e){}
+      try { mgrSwitchLine(target); } catch(e){}
     });
   }, 'password');
 }
+// Spätná kompatibilita — pôvodné volanie špecifické pre Golem.
+function settingsLoadGolemLine(){ settingsLoadLine('gp'); }
 
 // Načítaj/obnov VŠETKY moje línie (Golem + Gyn + Reagila) cez heslo, bez odhlásenia.
 // Rieši stav, keď pri prihlásení niektorá línia vypadla (cold start Apps Scriptu / timeout)
