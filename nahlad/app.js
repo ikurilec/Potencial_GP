@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.62';
+var APP_VERSION = '2.85.63';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -8813,8 +8813,19 @@ function doLogin() {
   var loginParams = '?action=login&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password) + '&device_id=' + encodeURIComponent(authDeviceId());
   // Každú líniu overujeme nezávisle. Hneď ako jedna uspeje, počkáme iba krátke
   // okno na ostatné a používateľa pustíme ďalej; pomalé servery dobehnú na pozadí.
+  //
+  // Jeden pokus s 10 s limitom bez opakovania stačí za bežných podmienok, ale nie
+  // pri studenom Apps Scripte — a presne to sa deje hneď po aktualizácii appky
+  // (nútené odhlásenie vyžiada nové prihlásenie od každého naraz). Ostatné miesta
+  // v appke (settingsLoadLine, mgrEnableLineSwitch…) preto pri chýbajúcej línii
+  // skúšajú druhý pokus s dlhším limitom — prihlásenie samotné to doteraz nerobilo.
   function loginFetch(url, tmo){
-    return appFetchJson(url + loginParams, undefined, tmo).catch(function(){ return { ok:false, _failed:true }; });
+    function attempt(t){
+      return appFetchJson(url + loginParams, undefined, t).catch(function(){ return { ok:false, _failed:true }; });
+    }
+    return attempt(tmo).then(function(d){
+      return (d && d._failed) ? attempt(20000) : d;   // cold start → druhý pokus, dlhší limit
+    });
   }
   var loginLines = [
     {line:'gp', url:SCRIPT_URL}, {line:'gyn', url:GYN_SCRIPT_URL},
