@@ -3419,7 +3419,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.85.25 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.85.26 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -4408,7 +4408,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.25';
+var APP_VERSION = '2.85.26';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -15218,6 +15218,9 @@ function gynEnter(user) {
   gynRenderShell(user);
   gynApplyDefaultNav(user);   // úvodná obrazovka podľa nastavení používateľa (default = Plnenie)
   gynBootstrap(user);   // repList + plnenie (aktuálny Q) v JEDNOM volaní; vykreslí obsah (fallback vnútri)
+  // Domov používa rovnaké dáta ako bootstrap. Rebríček preto začni ťahať hneď
+  // popri ním, nie až keď už používateľ pozerá na prázdne karty.
+  try { gynLbPreload(); } catch(e){}
   // Loader ostáva kým sa plnenie reálne nevykreslí (dáta alebo chybová karta) — pokryje aj
   // pomalý „studený" prvý fetch peknou obrazovkou namiesto holého „Načítavam...". Cap 15 s.
   (function(){
@@ -15242,8 +15245,6 @@ function gynEnter(user) {
   }, 800);
   // Preload na pozadí — všetky Q plnenie + pharma dáta (aby switching Q bol instant)
   setTimeout(function(){ gynPreloadAllQuarters(); }, 1500);
-  // Preload rebríčka (roster + plnenie posledného Q, fullLine) — nech je po otvorení hneď vyplnený
-  setTimeout(function(){ try { gynLbPreload(); } catch(e){} }, 1800);
   setTimeout(function(){ gynPreloadAllPharma(); }, 2500);
   // Update avatar hint hneď + one-time onboarding tip skoro
   // (ak je otvorený WN/satori modal, hdrAvatarShowTipIfNeeded počká kým sa zatvorí)
@@ -15412,6 +15413,7 @@ function gynBootstrap(user) {
       // vtedy okamžite spusti samostatný odolný loader.
       if(!plReady){ try { gynRenderContent(user); } catch(e){} }
       try { dnesRefreshIfOpen(); } catch(e){}
+      gynOpenDnesWhenReady();
     })
     .catch(function(){
       if(!active()) return;
@@ -15420,7 +15422,14 @@ function gynBootstrap(user) {
       try { gynRenderContent(user); } catch(e){}   // gynPlnenieShow si dotiahne plnenie sám
       try { gynLoadRepList(user); } catch(e){}
       try { dnesRefreshIfOpen(); } catch(e){}
+      gynOpenDnesWhenReady();
     });
+}
+
+function gynOpenDnesWhenReady() {
+  if (!GYN_APP._openDnesWhenReady) return;
+  GYN_APP._openDnesWhenReady = false;
+  try { openDnes(); } catch(e){}
 }
 
 // Helper: vráti HTML pre gyn avatar circle — buď <img> s DiceBear URL alebo iniciály
@@ -15519,7 +15528,7 @@ function gynApplyDefaultNav(user) {
     var def = appDefaultTab();
     // Domov je obrazovka nad líniami — otvorí sa nad gyn pohľadom.
     // Bez vlastnej voľby je domovom Domov, rovnako ako u reprezentanta.
-    if (!def || def === 'dnes') { setTimeout(function(){ try { openDnes(); } catch(e){} }, 350); }
+    if (!def || def === 'dnes') GYN_APP._openDnesWhenReady = true;
     var allowed = ['plnenie','kalendar','visits','leaderboard'];
     if (gynActivityAllowed(user)) allowed.push('activity');
     if (def && def !== 'plnenie' && allowed.indexOf(def) >= 0) {
