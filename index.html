@@ -786,6 +786,12 @@
   /* Dlaždice v dvoch stĺpcoch — na malej ploche sa čítajú rýchlejšie než
      dlhý zoznam a je na ne ľahšie trafiť. */
   .viac-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:6px}
+  .viac-lines{display:flex;flex-wrap:wrap;gap:6px;padding:6px;background:#fff;border:1px solid #DCE1EB;border-radius:16px;box-shadow:0 3px 12px rgba(12,30,53,.04)}
+  .viac-line{display:flex;align-items:center;justify-content:space-between;gap:6px;flex:1 1 95px;min-width:0;min-height:46px;padding:10px 11px;border:0;border-radius:11px;background:#F0F3F8;color:#48627E;font-family:var(--font-display);font-size:12px;font-weight:700;cursor:pointer;transition:background var(--t-fast),color var(--t-fast)}
+  .viac-line.active{background:#13294B;color:#fff;box-shadow:0 2px 6px rgba(12,30,53,.16)}
+  .viac-line:not(.active):hover{background:#E4EBF5;color:#13294B}
+  .viac-line-mark{font-size:16px;line-height:1;flex-shrink:0}
+  .viac-line:focus-visible{outline:2px solid #2563EB;outline-offset:2px}
   .viac-tile{display:flex;flex-direction:column;align-items:flex-start;gap:9px;background:#fff;
     border:1px solid #E2E8F0;border-radius:12px;padding:13px 12px;font-family:inherit;text-align:left;
     cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .15s,border-color .15s}
@@ -905,7 +911,37 @@
   .gpp-empty{text-align:center;color:#64748B;font-size:13.5px;padding:30px 16px;line-height:1.5}
   .dnes-cta .dnes-cta-ic{font-size:19px;line-height:1}
   .dnes-card-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
+  .dnes-card-hd .prod-name{font-size:16px;font-weight:800;line-height:1.3}
+  .dnes-hd-right{flex-shrink:0}
+  .line-switch-transition{position:fixed;inset:0;z-index:100001;display:flex;align-items:center;justify-content:center;
+    padding:24px;background:#EAECF2;
+    opacity:0;pointer-events:auto;transition:opacity .16s ease}
+  .line-switch-transition.show{opacity:1}
+  .line-switch-transition.leave{opacity:0;pointer-events:none}
+  .line-switch-transition-card{width:min(330px,100%);text-align:center;color:#0C1E35}
+  .line-switch-transition-brand{font-family:var(--font-display);font-size:11px;font-weight:800;letter-spacing:.28em;color:#94A3B8;margin-bottom:34px}
+  .line-switch-route{display:grid;grid-template-columns:88px 1fr 88px;align-items:center;margin-bottom:32px}
+  .line-switch-node{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0}
+  .line-switch-node-dot{width:54px;height:54px;border-radius:18px;display:flex;align-items:center;justify-content:center;
+    background:#fff;border:1px solid #DCE1EB;box-shadow:0 6px 18px rgba(12,30,53,.08);font-family:var(--font-display);font-size:18px;font-weight:850;color:#48627E}
+  .line-switch-node.target .line-switch-node-dot{background:#0C1E35;border-color:#0C1E35;color:#fff;box-shadow:0 8px 22px rgba(12,30,53,.22)}
+  .line-switch-node.target .line-switch-node-dot[data-line="gyn"]{background:#7C3AED;border-color:#7C3AED}
+  .line-switch-node.target .line-switch-node-dot[data-line="reagila"]{background:#B45309;border-color:#B45309}
+  .line-switch-node-label{font-size:11px;font-weight:750;color:#64748B;white-space:nowrap}
+  .line-switch-track{height:2px;background:#CBD5E1;position:relative;margin:0 6px 27px;overflow:hidden}
+  .line-switch-track::after{content:'';position:absolute;inset:0;width:42%;background:#2563EB;animation:lineSwitchMove .9s ease-in-out infinite}
+  .line-switch-track-arrow{position:absolute;right:-2px;top:50%;transform:translateY(-52%);font-size:18px;color:#2563EB;background:#EAECF2;padding-left:4px}
+  @keyframes lineSwitchMove{0%{transform:translateX(-110%)}100%{transform:translateX(350%)}}
+  .line-switch-transition-cap{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#64748B}
+  .line-switch-transition-name{font-family:var(--font-display);font-size:24px;font-weight:850;line-height:1.15;margin-top:5px;color:#0C1E35}
+  .line-switch-transition-msg{font-size:12px;font-weight:600;color:#94A3B8;margin-top:8px}
+  @media(prefers-reduced-motion:reduce){.line-switch-transition{transition:none}.line-switch-track::after{animation:none;width:100%}}
   .dnes-more{font-size:11.5px;font-weight:700;color:#2563EB;white-space:nowrap}
+  .dnes-rank-more{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;margin:7px 0 1px;padding:10px 12px;min-height:38px;box-sizing:border-box;border:1px solid #DCE1EB;border-radius:12px;background:#F8FAFC;color:#2563EB;font-family:var(--font-display);font-size:12px;font-weight:700;letter-spacing:-.01em;cursor:pointer;-webkit-tap-highlight-color:transparent;box-shadow:0 1px 2px rgba(12,30,53,.04);transition:background .15s,border-color .15s,transform .15s,box-shadow .15s}
+  .dnes-rank-more:hover{background:#EFF6FF;border-color:#BFDBFE;box-shadow:0 2px 6px rgba(37,99,235,.10)}
+  .dnes-rank-more:focus-visible{outline:3px solid rgba(37,99,235,.22);outline-offset:2px}
+  .dnes-rank-more:active{background:#EFF6FF;border-color:#93C5FD;transform:scale(.99);box-shadow:none}
+  .dnes-rank-more .arr{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#EFF6FF;font-size:14px;line-height:1;color:#1D4ED8}
   .dnes-hd-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
   .dnes-big{font-family:var(--font-display);font-size:32px;font-weight:800;letter-spacing:-.02em;line-height:1;color:#0C1E35;font-variant-numeric:tabular-nums}
   .dnes-big.g{color:#16A34A}
@@ -918,6 +954,74 @@
   .dnes-mini-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
   .dnes-mini-name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .dnes-mini-meta{margin-left:auto;font-size:11px;color:#94A3B8;flex-shrink:0}
+  .app-rep-avatar{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;border-radius:50%;
+    overflow:hidden;color:#fff;font-family:var(--font-display);font-weight:800;line-height:1;box-shadow:0 0 0 1px rgba(148,163,184,.22)}
+  .app-rep-avatar.has-avatar{background:transparent!important}
+  .app-rep-avatar .avatar-img,.app-rep-avatar .avatar-fallback{width:100%;height:100%;border-radius:50%}
+  .dnes-rep-avatar{font-size:9px}
+  /* Rýchly manažérsky súhrn reprezentanta z rebríčka na Domove. */
+  .dnes-rs-bd{position:fixed;inset:0;z-index:5200;display:flex;align-items:flex-end;justify-content:center;
+    background:rgba(8,23,42,.46);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+    opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility .2s}
+  .dnes-rs-bd.show{opacity:1;visibility:visible;pointer-events:auto}
+  .dnes-rs-sheet{width:min(100%,560px);max-height:min(84dvh,760px);display:flex;flex-direction:column;
+    background:#EAECF2;border-radius:24px 24px 0 0;box-shadow:0 -18px 55px rgba(12,30,53,.24);
+    transform:translateY(102%);transition:transform .32s cubic-bezier(.2,.8,.2,1);overflow:hidden}
+  .dnes-rs-bd.show .dnes-rs-sheet{transform:translateY(0)}
+  .dnes-rs-top{position:relative;flex:0 0 auto;padding:8px 16px 0;background:#fff}
+  .dnes-rs-handle{width:42px;height:5px;border-radius:99px;background:#CBD5E1;margin:0 auto 8px}
+  .dnes-rs-close{position:absolute;right:14px;top:17px;width:36px;height:36px;border:0;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;background:#F1F5F9;color:#475569;font:700 21px/1 var(--font-display);
+    cursor:pointer;-webkit-tap-highlight-color:transparent;z-index:2}
+  .dnes-rs-scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:0 16px 12px}
+  .dnes-rs-profile{display:flex;align-items:center;gap:12px;padding:3px 42px 14px 0}
+  .dnes-rs-avatar{font-size:16px;box-shadow:0 0 0 3px #fff,0 4px 14px rgba(15,23,42,.13)}
+  .dnes-rs-name{font-family:var(--font-display);font-size:18px;font-weight:850;color:#0C1E35;line-height:1.15}
+  .dnes-rs-sub{font-size:11.5px;color:#64748B;font-weight:600;margin-top:4px}
+  .dnes-rs-total{background:linear-gradient(135deg,#0C1E35 0%,#13294B 55%,#0C1E35 100%);border-radius:14px;padding:18px 18px 16px;
+    color:#fff;display:flex;align-items:center;justify-content:space-between;gap:14px;
+    box-shadow:0 12px 32px rgba(12,30,53,.30),0 4px 12px rgba(37,99,235,.15),inset 0 1px 0 rgba(255,255,255,.08)}
+  .dnes-rs-total-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#8FB6D3;font-weight:800}
+  .dnes-rs-total-money{font-size:11px;color:#CBD5E1;margin-top:4px;line-height:1.35}
+  .dnes-rs-total-val{font-family:var(--font-display);font-size:32px;font-weight:850;line-height:1;white-space:nowrap}
+  .dnes-rs-total-val.g{color:#34D399}.dnes-rs-total-val.o{color:#FBBF24}.dnes-rs-total-val.r{color:#F87171}.dnes-rs-total-val.none{color:#94A3B8}
+  .dnes-rs-bands{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:10px 0 14px}
+  .dnes-rs-bands-caption{text-align:center;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#94A3B8;margin:12px 0 -3px}
+  .dnes-rs-band{background:#fff;border:1px solid #E7EAF0;border-radius:11px;padding:8px 7px;text-align:center}
+  .dnes-rs-band strong{display:block;font-family:var(--font-display);font-size:16px;color:#0C1E35}
+  .dnes-rs-band span{display:block;font-size:9.5px;color:#64748B;font-weight:700;margin-top:1px;white-space:nowrap}
+  .dnes-rs-band::before{content:'';display:block;width:7px;height:7px;border-radius:50%;margin:0 auto 4px}
+  .dnes-rs-band.g::before{background:#16A34A}.dnes-rs-band.o::before{background:#D97706}.dnes-rs-band.r::before{background:#DC2626}
+  .dnes-rs-section{font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.07em;margin:14px 2px 8px}
+  .dnes-rs-list{background:transparent;border:0;box-shadow:none;overflow:visible}
+  .dnes-rs-prod{background:#fff;border-radius:12px;padding:13px 14px;margin-bottom:9px;box-shadow:0 4px 14px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.04),0 0 0 1px rgba(15,23,42,.04)}
+  .dnes-rs-prod.is-link{cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform var(--t-fast),box-shadow var(--t-base)}
+  .dnes-rs-prod.is-link:active{transform:scale(.99);box-shadow:0 2px 8px rgba(15,23,42,.10),0 0 0 1px rgba(37,99,235,.12)}
+  .dnes-rs-prod-top,.dnes-rs-prod-meta{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .dnes-rs-prod-name{font-family:var(--font-display);font-size:13.5px;font-weight:700;color:#0F172A;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .dnes-rs-prod-pct{font-family:var(--font-display);font-size:17px;font-weight:800;line-height:1;white-space:nowrap}
+  .dnes-rs-prod-pct.g{color:#059669}.dnes-rs-prod-pct.o{color:#D97706}.dnes-rs-prod-pct.r{color:#DC2626}.dnes-rs-prod-pct.none{color:#94A3B8}
+  .dnes-rs-bar{height:12px;background:#F1F5F9;border-radius:6px;overflow:hidden;margin:10px 0 7px;box-shadow:inset 0 1px 2px rgba(15,23,42,.06)}
+  .dnes-rs-bar>span{display:block;height:100%;border-radius:6px;transition:width .9s cubic-bezier(.16,1,.3,1);box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
+  .dnes-rs-bar>span.g{background:linear-gradient(90deg,#10B981,#059669);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 0 6px rgba(16,185,129,.30)}
+  .dnes-rs-bar>span.o{background:linear-gradient(90deg,#FBBF24,#D97706);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 0 6px rgba(245,158,11,.25)}
+  .dnes-rs-bar>span.r{background:linear-gradient(90deg,#F87171,#DC2626);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 0 6px rgba(220,38,38,.25)}
+  .dnes-rs-bar>span.none{background:#CBD5E1}
+  .dnes-rs-prod-pred{font-size:11px;color:#94A3B8;margin:0 0 8px;text-align:center}
+  .dnes-rs-prod-pred strong{font-weight:800;margin-left:4px}
+  .dnes-rs-prod-pred strong.g{color:#059669}.dnes-rs-prod-pred strong.o{color:#D97706}.dnes-rs-prod-pred strong.r{color:#DC2626}.dnes-rs-prod-pred strong.none{color:#94A3B8}
+  .dnes-rs-prod-meta{font-size:11.5px;color:#64748B;font-weight:600}
+  .dnes-rs-ms{display:inline-flex;align-items:center;gap:4px;color:#2563EB;font-weight:800;white-space:nowrap}
+  .dnes-rs-ms.up{color:#059669}.dnes-rs-ms.down{color:#DC2626}.dnes-rs-ms.wait{color:#94A3B8;font-weight:650}
+  .dnes-rs-ms-spin{width:10px;height:10px;border:1.5px solid #D7DFEA;border-top-color:#2563EB;border-radius:50%;animation:nstSpin .7s linear infinite}
+  .dnes-rs-empty{padding:24px 16px;text-align:center;color:#64748B;font-size:13px;line-height:1.45}
+  .dnes-rs-actions{display:flex;gap:8px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid #E2E8F0;flex:0 0 auto}
+  .dnes-rs-btn{min-height:46px;border-radius:12px;font-family:inherit;font-size:13.5px;font-weight:800;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .dnes-rs-btn.secondary{width:46px;flex:0 0 46px;background:#F1F5F9;border:1px solid #E2E8F0;color:#475569}
+  .dnes-rs-btn.primary{flex:1;background:#0C1E35;border:1px solid #0C1E35;color:#fff;box-shadow:0 6px 16px rgba(12,30,53,.20)}
+  .dnes-rs-btn:active{transform:scale(.98)}
+  @media(prefers-reduced-motion:reduce){.dnes-rs-bd,.dnes-rs-sheet,.dnes-rs-bar>span{transition:none}}
+  .dnes-cal-avatar{font-size:8px;margin-top:1px;box-shadow:0 0 0 2px #FEE2E2}
   /* Riadok na dve úrovne — meno sa zalomí celé, dátum je pod ním. Pri
      „Dovolenka — Viktória Hatinová · čaká" sa jednoriadkový tvar orezal
      a manažér nevidel, o čo ide. */
@@ -925,12 +1029,16 @@
   .dnes-mini-txt{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
   .dnes-mini-txt .dnes-mini-name{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.35}
   .dnes-mini-when{font-size:11.5px;color:#94A3B8;font-weight:600}
+  .dnes-mini-owner{font-size:11.5px;color:#94A3B8;font-weight:600;line-height:1.25}
   /* Rozpis produktov v karte Plnenie */
   .dnes-pl-sum{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:12.5px;font-weight:700}
   .dnes-pl-sum span{display:inline-flex;align-items:center;gap:5px}
   .dnes-pl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
   .dnes-pl-hint{text-align:right;font-size:11.5px;font-weight:600;color:#94A3B8;margin-top:6px}
   .dnes-pl-row{display:flex;align-items:baseline;gap:8px;padding:6px 0;border-top:1px solid #F1F5F9;font-size:13px}
+  .dnes-pl-row.is-link{width:100%;border-right:0;border-bottom:0;border-left:0;background:transparent;color:inherit;font-family:inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;border-radius:7px;padding-right:2px;transition:background .15s ease}
+  .dnes-pl-row.is-link:active{background:#F8FAFC}
+  .dnes-pl-row.is-link::after{content:'›';font-size:17px;line-height:1;color:#2563EB;font-weight:800;flex:0 0 auto;margin-left:2px;transform:translateY(1px)}
   .dnes-pl-row .n{font-weight:600;color:#0C1E35;flex:1;min-width:0;line-height:1.3}
   .dnes-pl-row .v{font-weight:800;font-variant-numeric:tabular-nums;flex-shrink:0}
   .dnes-empty{font-size:13px;color:#64748B;line-height:1.5;margin-top:8px}
@@ -942,6 +1050,7 @@
   .dnes-post{font-size:13.5px;font-weight:600;color:#1E293B;line-height:1.35;margin-top:9px;
     overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
   .dnes-post-meta{font-size:11px;color:#94A3B8;margin-top:4px}
+  .dnes-post-meta-row{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:11px;color:#94A3B8}
   .dnes-kam-sip{margin-left:6px;color:#94A3B8;font-weight:600}
   .dnes-sus.ja{background:#FFFBEB;border-radius:8px;margin-left:-6px;margin-right:-6px;padding-left:6px;padding-right:6px}
   .dnes-sus.ja .dnes-mini-name,.dnes-sus.ja .dnes-mini-meta{color:#B45309;font-weight:800}
@@ -951,17 +1060,10 @@
   .dnes-post-item:active{background:#F8FAFC}
   .dnes-post-item .dnes-post{margin-top:0}
   .dnes-post-pin{margin-right:5px}
-  .dnes-post-hd2{display:flex;align-items:center;gap:8px;margin-bottom:6px}
-  .dnes-nst-av{width:28px;height:28px;font-size:11px}
-  .dnes-post-who{display:flex;flex-direction:column;min-width:0;flex:1}
-  .dnes-post-autor{font-size:12.5px;font-weight:800;color:#0F172A;font-family:var(--font-display);
-    line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .dnes-post-kedy{font-size:10.5px;color:#94A3B8;margin-top:1px}
-  .dnes-post-odp{margin-top:7px;padding:7px 9px;background:#F8FAFC;border-radius:9px;
-    display:flex;align-items:flex-start;gap:7px}
-  .dnes-post-odp .dnes-nst-av{width:20px;height:20px;font-size:9px;margin-top:1px}
-  .dnes-post-odp-txt{font-size:12px;color:#475569;line-height:1.4;min-width:0;flex:1;
-    overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .dnes-post-odp{display:flex;align-items:flex-start;gap:7px;margin-top:6px;padding:7px 9px;background:#F8FAFC;border-radius:9px;font-size:12px;
+    color:#475569;line-height:1.4;overflow:hidden}
+  .dnes-post-odp-txt{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;
+    -webkit-line-clamp:2;-webkit-box-orient:vertical}
   .dnes-post-odp-kto{font-weight:700;color:#1E293B}
   .dnes-post-odp-n{display:block;margin-top:3px;font-size:11px;font-weight:700;color:#7C3ABE}
   .dnes-badge{font-size:10.5px;font-weight:700;color:#fff;background:#2563EB;border-radius:20px;padding:2px 8px;white-space:nowrap}
@@ -983,6 +1085,8 @@
   .hdr-avatar:active{transform:none}
   body.app-nav .hdr-avatar-wrap,body.app-nav .hdr-avatar{cursor:pointer}
   body.app-nav .hdr-avatar:active{transform:scale(.94)}
+  body.app-nav .hdr,body.app-nav .gyn-mgr-hdr{cursor:pointer}
+  [data-header-home]:focus-visible{outline:2px solid #fff;outline-offset:4px;border-radius:4px}
   .hdr-avatar:hover{border-color:rgba(255,255,255,.28)}
   .gear-wrap{display:inline-flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0}
   .gear-btn{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0;border:2px solid rgba(255,255,255,.30);background:rgba(255,255,255,.12);color:#fff;cursor:pointer;transition:background var(--t-base),transform var(--t-fast);-webkit-tap-highlight-color:transparent;flex-shrink:0;box-shadow:0 4px 12px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.12);position:relative}
@@ -1206,6 +1310,9 @@
   .edit-save-btn:disabled{background:#94A3B8;cursor:default}
   .edit-open-btn{width:100%;padding:11px;background:#F1F5F9;border:1.5px solid #E2E8F0;border-radius:10px;font-size:13px;font-weight:600;color:#475569;cursor:pointer;font-family:inherit;transition:background .15s}
   .edit-open-btn:active{background:#E2E8F0}
+  .edit-open-btn.update-attention{background:#FFF7F7;border-color:#DC2626;color:#B91C1C;font-weight:800;animation:detailUpdatePulse .82s ease-in-out 5}
+  @keyframes detailUpdatePulse{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,0)}50%{box-shadow:0 0 0 4px rgba(220,38,38,.20),0 5px 14px rgba(220,38,38,.18)}}
+  @media (prefers-reduced-motion:reduce){.edit-open-btn.update-attention{animation:none;box-shadow:0 0 0 3px rgba(220,38,38,.20)}}
   .send-popup{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,.55);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:5000;align-items:center;justify-content:center}
   .send-popup.show{display:flex}
   .send-box{background:#fff;border-radius:18px;padding:32px 28px 26px;max-width:320px;width:88%;text-align:center;box-shadow:0 24px 64px rgba(15,23,42,.30),0 8px 24px rgba(15,23,42,.15),0 0 0 1px rgba(15,23,42,.04);animation:slideUp .4s cubic-bezier(.16,1,.3,1)}
@@ -2175,6 +2282,16 @@
      a to je o zlomok sekundy neskôr, ako to človek uvidí. */
   body.manager-mode.app-nav .app,
   body.gyn-line.app-nav .app{padding:0 !important}
+  /* Golem formulár je po presune z hlavičky tiež mimo .app. Prázdny
+     .app preto nesmie držať starú výšku topbaru ani spodnú rezervu — tú
+     nahradí sentinel priamo pred formulárom. */
+  body.gp-rep.app-nav .app{padding:0 !important}
+  body.gp-rep.app-nav #progress-sentinel{height:calc(var(--rep-top-h,150px) + 4px) !important}
+  /* Keď je tlačidlo v prirodzenom toku na konci formulára, nesmie si ponechať
+     fixed bottom offset zo všeobecného pravidla pre prilepenú akciu. */
+  body.gp-rep.app-nav .submit-wrap.at-bottom{bottom:auto}
+  /* Pätu nechajme celú nad fixnou spodnou navigáciou. */
+  body.gp-rep.app-nav .footer{margin-bottom:calc(var(--tabbar-h,62px) + env(safe-area-inset-bottom))}
   body.manager-mode.app-nav #mgr-view{padding-top:calc(var(--rep-top-h,150px) + 4px)}
   /* Progress bar: pri reprezentantovi vždy prilepený pod headerom (nezmizne pri scrollovaní) */
   body.gp-rep .progress-wrap{position:sticky;top:var(--rep-top-h,150px);z-index:997}
@@ -2232,14 +2349,30 @@ body.gp-rep .lk-sticky-controls{top:var(--rep-top-h,150px)}
   body.gyn-line .lk-inner,
   body.gyn-line .rep-pl-inner,
   body.gyn-line .nst-inner,
-  body.gyn-line .golem-cal-inner{padding-top:calc(var(--sat,0px) + 22px)}
+  body.gyn-line .golem-cal-inner{padding-top:calc(var(--rep-top-h,150px) + 4px)}
+  body.gyn-line.app-nav #gyn-view{padding-top:calc(var(--rep-top-h,150px) + 4px)}
+  body.gyn-line.app-nav #gyn-view .gyn-mgr-hdr{display:none}
+  body.gyn-line.app-nav .app{display:none !important}
+  body.gyn-line.app-nav #mgr-view{display:none !important}
+  /* GP formulár má v aktuálnom DOM aj súrodencov .app priamo pod body. */
+  body.gyn-line > .progress-wrap,
+  body.gyn-line > .info-card,
+  body.gyn-line > .rec,
+  body.gyn-line > .card,
+  body.gyn-line > .submit-wrap,
+  body.gyn-line > .thankyou,
+  body.gyn-line > .footer,
+  body.gyn-line > #progress-sentinel,
+  body.gyn-line > #submit-sentinel{display:none !important}
+  body.gyn-line.app-nav .dnes-hdr{display:none}
+  .gyn-pl-view-toggle{margin-top:14px}
   /* Prilepené ovládanie (hľadanie, filtre) sa lepí presne pod hlavičku */
   body.app-nav:not(.gyn-line) .nst-topbar,
   body.app-nav:not(.gyn-line) .hist-search-wrap,
   body.app-nav:not(.gyn-line) .lk-sticky-controls{top:var(--rep-top-h,150px)}
   body.gyn-line .nst-topbar,
   body.gyn-line .hist-search-wrap,
-  body.gyn-line .lk-sticky-controls{top:var(--sat,0px)}
+  body.gyn-line .lk-sticky-controls{top:var(--rep-top-h,150px)}
   body.app-nav .nst-topbar{padding-top:2px}
   /* Tlačidlo „Späť" nad Nástenkou je pri spodnej lište zbytočné — späť aj
      inam sa chodí ňou. Celý pás tak odpadá a Nástenka začína obsahom. */
@@ -2636,6 +2769,20 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .gyn-district-block-row span{display:block;min-width:0;margin:0;color:#64748B;font-size:11px;font-weight:750;text-transform:uppercase;letter-spacing:.025em}
   .gyn-district-block-row strong{font-size:14px;color:#0F172A;font-weight:850;text-align:right;white-space:nowrap;letter-spacing:0}
   .gyn-district-block-row strong.miss{color:#DC2626}
+  /* Okresné plnenie — rovnaké svetlé karty a hierarchia ako zvyšok Plnenia. */
+  #pharma-ms-overlay.gyn-district-view{background:#EAECF2}
+  #pharma-ms-overlay.gyn-district-view .pharma-ms-card{background:#fff;border:1px solid #E2E8F0;box-shadow:0 3px 12px rgba(15,23,42,.08);padding:15px;border-radius:16px}
+  #pharma-ms-overlay.gyn-district-view .pharma-ms-card-title{color:#0C1E35;font-size:15px}
+  #pharma-ms-overlay.gyn-district-view .gyn-district-summary-grid>div{background:#F8FAFC;border-color:#E2E8F0;padding:10px}
+  #pharma-ms-overlay.gyn-district-view .pharma-ms-district{background:#fff;border:1px solid #E2E8F0;border-radius:16px;box-shadow:0 3px 12px rgba(15,23,42,.07);overflow:hidden;margin-bottom:10px}
+  #pharma-ms-overlay.gyn-district-view .pharma-ms-district-hdr{background:#fff;border-bottom:1px solid #E2E8F0;padding:11px 13px}
+  #pharma-ms-overlay.gyn-district-view .pharma-ms-district-name{color:#0C1E35;padding:0;font-size:13px}
+  #pharma-ms-overlay.gyn-district-view .gyn-district-trh-badge{color:#64748B;background:#F8FAFC;border-color:#E2E8F0}
+  #pharma-ms-overlay.gyn-district-view .gyn-district-pct-badge.g{background:#ECFDF5;color:#047857}
+  #pharma-ms-overlay.gyn-district-view .gyn-district-pct-badge.o{background:#FFFBEB;color:#B45309}
+  #pharma-ms-overlay.gyn-district-view .gyn-district-pct-badge.r{background:#FEF2F2;color:#B91C1C}
+  #pharma-ms-overlay.gyn-district-view .pharma-ms-district-meta{padding:12px}
+  #pharma-ms-overlay.gyn-district-view .gyn-district-summary-grid.compact{background:transparent;border:0;padding:0;gap:9px}
   .gyn-district-block-row strong.g{color:#059669}.gyn-district-block-row strong.o{color:#D97706}.gyn-district-block-row strong.r{color:#DC2626}
   .gyn-dc-wrap{padding:10px 12px 0;display:flex;flex-direction:column;gap:8px}
   .gyn-dc-prog{display:flex;flex-direction:column;gap:4px}
@@ -2709,6 +2856,8 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .rep-pl-inner .pl-action-text strong{color:#0F172A;font-weight:850}
   .rep-pl-inner .pl-action-sub{font-size:10px;color:#64748B;margin-top:2px;font-weight:600}
   .rep-pl-inner .prod-item-adv{background:#fff;border-radius:12px;padding:13px 14px;margin-bottom:9px;box-shadow:0 4px 14px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.04),0 0 0 1px rgba(15,23,42,.04);transition:box-shadow var(--t-base),transform var(--t-fast)}
+  @keyframes plProductFocusPulse{0%,100%{background:#fff;box-shadow:0 4px 14px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.04),0 0 0 1px rgba(15,23,42,.04)}12%,72%{background:#FFF7F7;box-shadow:0 0 0 3px #DC2626,0 8px 22px rgba(220,38,38,.24)}}
+  .prod-item-adv.pl-product-focus{animation:plProductFocusPulse 2.4s ease both}
   .prod-item-adv:hover{box-shadow:0 8px 20px rgba(15,23,42,.08),0 2px 4px rgba(15,23,42,.05),0 0 0 1px rgba(37,99,235,.10)}
   .rep-pl-inner .prod-adv-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
   .rep-pl-inner .prod-adv-name{display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:700;color:#0F172A;font-family:var(--font-display)}
@@ -2952,17 +3101,26 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .gyn-cal-agenda-empty{text-align:center;padding:14px 12px 6px;color:#94A3B8;font-size:13px;font-weight:500}
   .gyn-cal-vtoggle-n{display:inline-block;margin-left:6px;min-width:18px;padding:0 5px;border-radius:9px;
     background:#F1F5F9;color:#64748B;font-size:10.5px;font-weight:800;line-height:17px;text-align:center}
-  .gyn-cal-vtoggle-btn.active .gyn-cal-vtoggle-n{background:rgba(255,255,255,.22);color:#fff}
+  .gyn-cal-vtoggle-btn.active .gyn-cal-vtoggle-n{background:#EEF2F7;color:#64748B}
   /* prepínač Akcie ↔ Absencie */
   .gyn-cal-vtoggle{display:flex;gap:4px;background:#F1F5F9;padding:4px;border-radius:12px;box-shadow:inset 0 1px 2px rgba(15,23,42,.06);margin-bottom:14px}
-  .gyn-cal-vtoggle-btn{flex:1;background:transparent;border:none;color:#64748B;font-size:12.5px;font-weight:700;font-family:inherit;padding:9px 8px;border-radius:9px;cursor:pointer;transition:background var(--t-fast),color var(--t-fast)}
+  .gyn-cal-vtoggle-btn{position:relative;flex:1;background:transparent;border:none;color:#64748B;font-size:12.5px;font-weight:700;font-family:inherit;padding:9px 8px;border-radius:9px;cursor:pointer;transition:background var(--t-fast),color var(--t-fast)}
   .gyn-cal-vtoggle-btn.active{background:#fff;color:#0C1E35;box-shadow:0 1px 3px rgba(15,23,42,.12)}
   .gyn-cal-vtoggle-btn:active{transform:scale(.98)}
+  .gyn-cal-vtoggle-alert{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;margin-left:5px;border-radius:999px;
+    background:#DC2626;color:#fff;font-size:10px;font-weight:800;line-height:1;box-shadow:0 0 0 2px #F1F5F9,0 2px 5px rgba(220,38,38,.35);animation:gynCalAlertPulse 1.8s ease-in-out infinite}
+  .gyn-cal-vtoggle-btn.active .gyn-cal-vtoggle-alert{box-shadow:0 0 0 2px #fff,0 2px 5px rgba(220,38,38,.35)}
+  @keyframes gynCalAlertPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.09)}}
   /* Absencie tímu — riadky po osobách */
   .gyn-cal-team-row{display:flex;flex-direction:column;gap:8px;padding:11px 8px;margin:0 -8px;border-radius:10px;border-bottom:1px solid var(--color-border-light);cursor:pointer;transition:background var(--t-fast)}
   .gyn-cal-team-row:last-child{border-bottom:none}
   .gyn-cal-team-row:active{background:#F8FAFC}
   .gyn-cal-team-row.past{opacity:.5}
+  .gyn-cal-team-row.has-pending{background:#FFFBEB;border-bottom-color:#FDE68A;box-shadow:inset 3px 0 #F59E0B,0 3px 10px rgba(217,119,6,.08)}
+  .gyn-cal-team-row.has-pending .gyn-cal-team-av{box-shadow:0 0 0 2px #FBBF24}
+  .gyn-cal-team-row.has-pending .gyn-cal-abs-chip.pending{background:#FEF3C7;border:1px solid #F59E0B;color:#92400E}
+  .gyn-cal-team-pending{display:inline-flex;align-items:center;margin-left:auto;border-radius:999px;padding:3px 7px;background:#FEE2E2;color:#B91C1C;
+    font-size:9.5px;font-weight:800;line-height:1.2;white-space:nowrap}
   .gyn-cal-abs-chip.past{opacity:.55;filter:grayscale(.3)}
   .gyn-cal-team-divider{display:flex;align-items:center;gap:8px;margin:12px 0 6px;color:#94A3B8;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
   .gyn-cal-team-divider::before,.gyn-cal-team-divider::after{content:"";flex:1;height:1px;background:var(--color-border-light)}
@@ -2977,7 +3135,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .gyn-cal-abs-chip-ic{font-size:12px}
   .gyn-cal-agenda-empty-icon{font-size:26px;display:block;margin-bottom:7px;filter:drop-shadow(0 3px 8px rgba(15,23,42,.08))}
   .gyn-cal-loadspin{display:block;width:22px;height:22px;margin:0 auto 9px;border:2.5px solid #E2E8F0;border-top-color:#2563EB;border-radius:50%;animation:gynCalSpin .7s linear infinite}
-  @media(prefers-reduced-motion:reduce){.gyn-cal-loadspin{animation:none}}
+  @media(prefers-reduced-motion:reduce){.gyn-cal-loadspin,.gyn-cal-vtoggle-alert{animation:none}}
   .gyn-cal-day{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--color-border-light)}
   .gyn-cal-day:last-child{border-bottom:none}
   .gyn-cal-day-chip{flex-shrink:0;width:42px;text-align:center}
@@ -3279,7 +3437,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     <button type="button" class="hdr-burger" id="hdr-burger" onclick="openViac()" aria-label="Menu">
       <span></span><span></span><span></span>
     </button>
-    <div class="hdr-mid">
+    <div class="hdr-mid" role="link" tabindex="0" aria-label="Domov" data-header-home>
       <div class="hdr-title" id="hdr-line-name">Golem</div>
       <div class="hdr-greeting" id="hdr-greeting"></div>
     </div>
@@ -3832,7 +3990,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
         <button type="button" class="gpp-back" onclick="closeGpPicker()" aria-label="Späť">←</button>
         <div>
           <div class="gpp-title">Aktualizovať potenciál</div>
-          <div class="gpp-sub">Vyber lekára, ktorý už v databáze je</div>
+          <div class="gpp-sub">Vyber GP lekára alebo záznam Len Lonelix</div>
         </div>
       </div>
       <div class="gpp-search-wrap">
@@ -3860,6 +4018,20 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
       </div>
       <div id="dnes-body"></div>
     </div>
+  </div>
+
+  <div class="dnes-rs-bd" id="dnes-rep-summary-bd" aria-hidden="true" onclick="if(event.target===this)dnesCloseRepSummary()">
+    <section class="dnes-rs-sheet" id="dnes-rep-summary" role="dialog" aria-modal="true" aria-labelledby="dnes-rs-dialog-title">
+      <div class="dnes-rs-top">
+        <div class="dnes-rs-handle" aria-hidden="true"></div>
+        <button type="button" class="dnes-rs-close" onclick="dnesCloseRepSummary()" aria-label="Zavrieť">×</button>
+      </div>
+      <div class="dnes-rs-scroll" id="dnes-rs-content"></div>
+      <div class="dnes-rs-actions">
+        <button type="button" class="dnes-rs-btn secondary" onclick="dnesCloseRepSummary()" aria-label="Zavrieť">←</button>
+        <button type="button" class="dnes-rs-btn primary" onclick="dnesOpenFullRepDetail()">Otvoriť celé plnenie ›</button>
+      </div>
+    </section>
   </div>
 
   <div class="hist-overlay" id="hist-overlay">
@@ -3979,7 +4151,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
         <div id="detail-note-wrap"></div>
         <hr style="border:none;border-top:1px solid #E2E8F0;margin:4px 0 14px">
         <div id="detail-edit-wrap" style="display:none;margin-bottom:10px">
-          <button type="button" class="edit-open-btn" onclick="openEditRecord()">✏️ Aktualizovať záznam</button>
+          <button type="button" class="edit-open-btn" onclick="openEditRecord()">✏️ Aktualizovať potenciál</button>
         </div>
         <div class="confirm-btns" style="grid-template-columns:1fr">
           <button type="button" class="confirm-yes" onclick="closeDetail()">Zavrieť</button>
@@ -3994,7 +4166,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   <div class="edit-inner">
     <div class="edit-hdr">
       <button class="edit-close-btn" onclick="closeEditOverlay()">×</button>
-      <div class="edit-hdr-title">✏️ Aktualizovať záznam</div>
+      <div class="edit-hdr-title">✏️ Aktualizovať potenciál</div>
       <div class="edit-hdr-sub" id="edit-hdr-sub"></div>
     </div>
     <div class="edit-form">
@@ -4242,7 +4414,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.1';
+var APP_VERSION = '2.85.32';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7887,6 +8059,7 @@ function _panelShow(newId, isBack) {
 }
 
 function closeAllPanels() {
+  try { dnesCloseRepSummary(); } catch (e) {}
   ['dnes-overlay','hist-overlay','lb-overlay','rep-plnenie-overlay','lk-overlay','okresy-overlay','tuyory-overlay','lonelix-overlay','apixaban-overlay','golem-cal-overlay','lk-detail','pharma-ms-overlay','pharma-okres-overlay'].forEach(function(id){
     var el = document.getElementById(id);
     if(el) el.classList.remove('show');
@@ -8178,7 +8351,10 @@ function dnesPlnenieGyn() {
     var sess = getSession() || {};
     var dp = plnenieDefaultPeriod();
     var q = dp.q, year = dp.year;
-    var data = (GYN_APP.plCache && GYN_APP.plCache[q]) || gynCacheRead(gynPlnenieCacheKey(year, q));
+    // Rebríček potrebuje dáta celej línie. Po prihlásení sa prednačítajú do
+    // GYN_LB cache; bežná cache Plnenia reprezentanta obsahuje iba jeho región.
+    var data = (GYN_LB.plCache && GYN_LB.plCache[q]) ||
+               (GYN_APP.plCache && GYN_APP.plCache[q]) || gynCacheRead(gynPlnenieCacheKey(year, q));
     if (!data) return null;
     try { gynPreprocessData(data); } catch (e) {}
     var tim = (sess.role !== 'gyn-rep');
@@ -8208,7 +8384,28 @@ function dnesPlnenieProdukty() {
     var dp = plnenieDefaultPeriod();
     var q = dp.q, year = dp.year;
     var agg = null;
-    if (appRole() === 'mgr') {
+    if (appRole() === 'gyn') {
+      var data = (GYN_APP.plCache && GYN_APP.plCache[q]) || gynCacheRead(gynPlnenieCacheKey(year, q));
+      if (!data) return null;
+      gynPreprocessData(data);
+      var sess = getSession() || {};
+      var logins = sess.role === 'gyn-rep' ? [sess.username] : (GYN_STATE.repList || []).map(function(r) { return r.login; });
+      if (!logins.length && sess.role !== 'gyn-rep') logins = Object.keys(data.plan || {});
+      var products = {};
+      logins.forEach(function(login) {
+        gynBuildRepAgg(login, data, q).prods.forEach(function(p) {
+          var key = p.name.trim().toLowerCase();
+          if (GYN_EXCLUDE_FROM_TOTALS[key] || !(p.plan > 0)) return;
+          var a = products[key] || (products[key] = {label:p.name,planEUR:0,predajeEUR:0,predajeEURDone:0,predPlanEURDone:0});
+          var basis = gynPredictionBasisForRep(login, data, q, year, key);
+          a.planEUR += p.plan; a.predajeEUR += p.predaj;
+          a.predajeEURDone += basis.actual; a.predPlanEURDone += basis.planBasis;
+        });
+      });
+      agg = {products:Object.keys(products).map(function(key) {
+        var p = products[key]; p.key = key; p.pct = p.planEUR > 0 ? p.predajeEUR / p.planEUR * 100 : null; return p;
+      })};
+    } else if (appRole() === 'mgr') {
       if (PL_STATE.qCache && PL_STATE.qCache[q] && PL_STATE.qCache[q].aggregates) agg = PL_STATE.qCache[q].aggregates;
       else { var c = _plLsLoad(_plLsKey(year, q)); if (c && c.agg) agg = c.agg; }
     } else {
@@ -8228,7 +8425,7 @@ function dnesPlnenieProdukty() {
       // mesiac). Vtedy rozpis nezmizne — ukáže plnenie k dnešku a povie to.
       var v = (pred !== null && pred !== undefined) ? pred : pr.pct;
       if (v === null || v === undefined) return;
-      von.push({ label: pr.label, pred: v });
+      von.push({ key: pr.key || plnenieNormalizeKey(pr.label), label: pr.label, pred: v });
     });
     if (!von.length) return null;
     von.sort(function (a, b) { return a.pred - b.pred; });
@@ -8258,33 +8455,39 @@ function dnesRefreshIfOpen() {
 }
 // Beží ešte načítavanie plnenia? Podľa toho karta ukáže krúžok alebo vetu,
 // že za tento kvartál dáta zatiaľ nie sú.
-var _domovStartTs = Date.now();
 function dnesPlnenieNacitava() {
   try {
-    // Prvých dvadsať sekúnd po otvorení appky je „načítavam" vždy pravda —
-    // medzi prihlásením a spustením sťahovania je krátka diera, v ktorej ešte
-    // nič nebeží, a karta by v nej zbytočne tvrdila, že dáta nie sú.
-    if (Date.now() - _domovStartTs < 20000) return true;
     var r = appRole();
     if (r === 'gyn') {
       var q = plnenieDefaultPeriod().q;
       return !!(GYN_APP.plLoading && GYN_APP.plLoading[q]);
     }
-    if (r === 'mgr') return !!PL_STATE.loading;
+    if (r === 'mgr') return PL_STATE._currentLoading === true;
     return !!REP_PL_STATE.loading;
   } catch (e) { return false; }
 }
+function dnesPlnenieFailed() {
+  try { return appRole() === 'mgr' && PL_STATE._currentLoadFailed === true; }
+  catch (e) { return false; }
+}
 function dnesSkeletonHtml(popis) {
   return '<div class="dnes-load"><span class="dnes-spin"></span>' + appEsc(popis || 'Načítavam…') + '</div>';
+}
+function dnesHomeLoadHtml(popis) {
+  if (dnesPlnenieFailed()) {
+    return '<div class="dnes-load"><span aria-hidden="true" style="font-size:15px;line-height:1">⚠️</span>' +
+      appEsc('Dáta sa nepodarilo načítať — otvor kartu a skús znova') + '</div>';
+  }
+  return dnesSkeletonHtml(popis);
 }
 
 // Sused nado mnou a podo mnou — nech sa reprezentant vie porovnať s tým,
 // koho doháňa, aj s tým, kto dobieha jeho.
 function dnesRebricekSusedia(rank, i) {
   var out = [];
-  if (i > 0) out.push({ poradie: i, meno: rank[i - 1].meno, hodnota: dnesRebricekPct(rank[i - 1].pct), kde: 'nado' });
-  out.push({ poradie: i + 1, meno: rank[i].meno, hodnota: dnesRebricekPct(rank[i].pct), kde: 'ja' });
-  if (i < rank.length - 1) out.push({ poradie: i + 2, meno: rank[i + 1].meno, hodnota: dnesRebricekPct(rank[i + 1].pct), kde: 'podo' });
+  if (i > 0) out.push({ poradie: i, u: rank[i - 1].u, meno: rank[i - 1].meno, hodnota: dnesRebricekPct(rank[i - 1].pct), kde: 'nado' });
+  out.push({ poradie: i + 1, u: rank[i].u, meno: rank[i].meno, hodnota: dnesRebricekPct(rank[i].pct), kde: 'ja' });
+  if (i < rank.length - 1) out.push({ poradie: i + 2, u: rank[i + 1].u, meno: rank[i + 1].meno, hodnota: dnesRebricekPct(rank[i + 1].pct), kde: 'podo' });
   return out;
 }
 
@@ -8314,7 +8517,8 @@ function dnesRebricekGyn(me) {
     var q = dp.q, year = dp.year;
     var reps = gynLbScopeReps();
     if (!reps.length) reps = GYN_STATE.repList || [];
-    var data = (GYN_APP.plCache && GYN_APP.plCache[q]) || gynCacheRead(gynPlnenieCacheKey(year, q));
+    var data = (GYN_LB.plCache && GYN_LB.plCache[q]) ||
+               (GYN_APP.plCache && GYN_APP.plCache[q]) || gynCacheRead(gynPlnenieCacheKey(year, q));
     if (!data || !reps.length) return null;
     try { gynPreprocessData(data); } catch (e) {}
     var rank = reps.map(function (r) {
@@ -8327,8 +8531,8 @@ function dnesRebricekGyn(me) {
     var i = -1;
     for (var k = 0; k < rank.length; k++) { if (rank[k].u === me) { i = k; break; } }
     if (i < 0) return { kind: 'tim', total: rank.length, qLabel: qLabel,
-                        top: rank.slice(0, 6).map(function (x) {
-                          return { meno: x.meno, hodnota: dnesRebricekPct(x.pct) };
+                        top: rank.map(function (x) {
+                          return { u: x.u, meno: x.meno, hodnota: dnesRebricekPct(x.pct) };
                         }) };
     return { kind: 'ja', rank: i + 1, total: rank.length, qLabel: qLabel,
              hodnota: dnesRebricekPct(rank[i].pct), popis: 'plnenie',
@@ -8359,8 +8563,8 @@ function dnesRebricek() {
     var i = -1;
     for (var k = 0; k < rank.length; k++) { if (rank[k].u === me) { i = k; break; } }
     if (i < 0) return { kind: 'tim', total: rank.length, qLabel: qLabel,
-                        top: rank.slice(0, 6).map(function (x) {
-                          return { meno: x.meno, hodnota: dnesRebricekPct(x.pct) };
+                        top: rank.map(function (x) {
+                          return { u: x.u, meno: x.meno, hodnota: dnesRebricekPct(x.pct) };
                         }) };
     return { kind: 'ja', rank: i + 1, total: rank.length, qLabel: qLabel,
              hodnota: dnesRebricekPct(rank[i].pct), popis: 'plnenie',
@@ -8384,6 +8588,285 @@ function appGoRebricek() {
     openLeaderboard();
   } catch (e) {}
 }
+
+// ── Rýchly súhrn reprezentanta z manažérskeho rebríčka na Domove ─────
+var DNES_REP_SUMMARY = { open:false, username:'', model:null, timer:null, watch:0 };
+
+function dnesRepSummaryInfo(username, role) {
+  var u = String(username || '').toLowerCase();
+  var info = (typeof LB_REP_INFO !== 'undefined' && (LB_REP_INFO[u] || LB_REP_INFO[username])) ||
+             (typeof USERS_LOCAL !== 'undefined' && (USERS_LOCAL[u] || USERS_LOCAL[username])) || {};
+  if (role === 'gyn') {
+    var reps = (typeof GYN_STATE !== 'undefined' && GYN_STATE.repList) || [];
+    for (var i = 0; i < reps.length; i++) {
+      if (String(reps[i].login || '').toLowerCase() === u) {
+        return { name: reps[i].meno || reps[i].name || u, region: reps[i].region || info.region || '', raw: reps[i] };
+      }
+    }
+  }
+  return { name: info.name || info.meno || (typeof MGR_REP_NAMES !== 'undefined' && MGR_REP_NAMES[u]) || username,
+           region: info.region || '', raw: info };
+}
+
+function dnesRepSummaryLastGynMs(productName, region, q, year) {
+  if (!productName || !region || typeof GYN_PHARMA_STATE === 'undefined') return null;
+  var oblast = gynPharmaNormalizeOblast(productName, String(region).toUpperCase());
+  var kv = gynPharmaKvartal(year, q), prevKv = pharmaKvartalPrev(kv);
+  var keys = [productName + '|' + oblast + '|' + kv, productName + '|' + oblast + '|' + prevKv];
+  var resp = null;
+  for (var i = 0; i < keys.length && !resp; i++) {
+    resp = GYN_PHARMA_STATE.cache[keys[i]] || null;
+    if (!resp && typeof gynCacheRead === 'function') {
+      var keyKv = i === 0 ? kv : prevKv;
+      resp = gynCacheRead(gynPharmaCacheKey(productName, oblast, keyKv));
+      if (resp) GYN_PHARMA_STATE.cache[keys[i]] = resp;
+    }
+  }
+  var rows = resp && Array.isArray(resp.summary) ? resp.summary.filter(function(r){ return r && r.mesiac; }).slice() : [];
+  rows.sort(function(a,b){ return String(a.mesiac).localeCompare(String(b.mesiac)); });
+  if (!rows.length) return null;
+  var cur = pharmaToNum(rows[rows.length - 1].terit_ms);
+  var before = rows.length > 1 ? pharmaToNum(rows[rows.length - 2].terit_ms) : null;
+  if (cur === null) return null;
+  return { value:cur, delta:before === null ? null : +(cur - before).toFixed(2), unit:resp.metric === 'packs' ? 'bal.' : '%' };
+}
+
+function dnesRepSummaryMs(role, product, region, q, year) {
+  if (!product || !region) return null;
+  if (role === 'gyn') return dnesRepSummaryLastGynMs(product.name, region, q, year);
+  var codes = (typeof PHARMA_CODES !== 'undefined' && PHARMA_CODES[product.key]) || [];
+  if (!codes.length || typeof plneniePharmaLatestForInsight !== 'function') return null;
+  var d = plneniePharmaLatestForInsight(codes[0], region, q, year);
+  return d && d.cur !== null ? { value:d.cur, delta:d.delta, unit:'%' } : null;
+}
+
+function dnesRepSummarySupportsMs(role, product) {
+  if (!product) return false;
+  if (role === 'gyn') return !!(typeof GYN_PHARMA_PRODUCTS !== 'undefined' && GYN_PHARMA_PRODUCTS[String(product.name || '').trim().toLowerCase()]);
+  return !!(typeof PHARMA_CODES !== 'undefined' && PHARMA_CODES[product.key] && PHARMA_CODES[product.key].length);
+}
+
+// Počas rozbehnutého kvartálu triedime pásma podľa predikcie konca Q.
+// Keď je kvartál uzavretý (alebo predikcia ešte nie je možná), použijeme
+// skutočné plnenie — tým sa po skončení Q zobrazí finálny výsledok.
+function dnesRepSummaryBandPct(p, q, year) {
+  var now = (typeof plneniePredictionNow === 'function') ? plneniePredictionNow() : new Date();
+  var activeQ = Math.ceil((now.getMonth() + 1) / 3);
+  var activeYear = now.getFullYear();
+  var inForecastPeriod = q === activeQ && year === activeYear;
+  return inForecastPeriod && p.prediction !== null && p.prediction !== undefined ? p.prediction : p.pct;
+}
+
+function dnesRepSummaryBuild(username) {
+  var role = appRole();
+  var u = String(username || '').toLowerCase();
+  var dp = plnenieDefaultPeriod(), q = dp.q, year = dp.year;
+  var info = dnesRepSummaryInfo(u, role), data = null, overall = null, products = [];
+
+  if (role === 'gyn') {
+    data = (GYN_APP.plCache && GYN_APP.plCache[q]) || gynCacheRead(gynPlnenieCacheKey(year, q));
+    if (!data) return { loading:true, role:role, username:u, name:info.name, region:info.region, q:q, year:year, products:[] };
+    try { gynPreprocessData(data); } catch (e) {}
+    var ga = gynBuildRepAgg(u, data, q);
+    overall = { pct:ga.pct, plan:ga.totalPlan, sales:ga.totalPred };
+    (ga.prods || []).forEach(function(p) {
+      var key = String(p.name || '').trim().toLowerCase();
+      var basis = p.plan > 0 ? gynPredictionBasisForRep(u, data, q, year, key) : null;
+      var pred = basis && basis.planBasis > 0
+        ? plnenieCalcPredikciaSummary(p.plan, basis.actual, q, year, basis.planBasis) : null;
+      products.push({ key:key, name:p.name, plan:p.plan, sales:p.predaj, pct:p.pct, prediction:pred });
+    });
+  } else {
+    var source = dnesRebricekData();
+    if (!source || !source.data) return { loading:true, role:role, username:u, name:info.name, region:info.region, q:q, year:year, products:[] };
+    data = source.data; q = source.q; year = source.year;
+    var pa = plnenieBuildAggregates(data, q, [u]);
+    var rr = pa.reps && pa.reps[0];
+    overall = { pct:rr ? rr.pct : null, plan:rr ? rr.planEUR : 0, sales:rr ? rr.predajeEUR : 0 };
+    var plan = (data.plan && (data.plan[u] || data.plan[username])) || {};
+    var salesRoot = (data.predaje && (data.predaje[u] || data.predaje[username])) || {};
+    var sales = salesRoot.total || {}, byMonth = salesRoot.byMonth || {};
+    (data.planProducts || []).forEach(function(raw) {
+      var key = plnenieNormalizeKey(raw), pv = parseFloat(plan[key]) || 0, sv = parseFloat(sales[key]) || 0;
+      if (pv <= 0 && sv <= 0) return;
+      var pct = pv > 0 ? sv / pv * 100 : null;
+      var pred = pv > 0 ? plnenieCalcPredikcia(q, year, pv, byMonth, key) : null;
+      products.push({ key:key, name:plnenieDisplayName(raw), plan:pv, sales:sv, pct:pct, prediction:pred });
+    });
+  }
+
+  products.forEach(function(p) {
+    p.ms = dnesRepSummaryMs(role, p, info.region, q, year);
+    p.msSupported = dnesRepSummarySupportsMs(role, p);
+  });
+  products.sort(function(a,b) {
+    if (a.pct === null && b.pct === null) return a.name.localeCompare(b.name, 'sk');
+    if (a.pct === null) return 1;
+    if (b.pct === null) return -1;
+    return a.pct - b.pct;
+  });
+  var bands = { g:0, o:0, r:0 };
+  var bandsForecast = false;
+  var nowForBands = (typeof plneniePredictionNow === 'function') ? plneniePredictionNow() : new Date();
+  var activePeriod = q === Math.ceil((nowForBands.getMonth() + 1) / 3) && year === nowForBands.getFullYear();
+  products.forEach(function(p) {
+    p.bandPct = dnesRepSummaryBandPct(p, q, year);
+    if (p.bandPct === null || p.bandPct === undefined) return;
+    if (activePeriod && p.prediction !== null && p.prediction !== undefined) bandsForecast = true;
+    if (p.bandPct >= 100) bands.g++; else if (p.bandPct >= 95) bands.o++; else bands.r++;
+  });
+  var bandsCaption = bandsForecast ? 'Predikcia konca Q' : (activePeriod ? 'Aktuálne plnenie' : 'Výsledok po skončení Q');
+  return { loading:false, role:role, username:u, name:info.name, region:info.region, q:q, year:year,
+           overall:overall || {pct:null,plan:0,sales:0}, products:products, bands:bands,
+           bandsForecast:bandsForecast, bandsCaption:bandsCaption };
+}
+
+function dnesRepSummaryMsHtml(p) {
+  if (p.ms) {
+    var cls = p.ms.delta === null ? '' : p.ms.delta > 0 ? ' up' : p.ms.delta < 0 ? ' down' : '';
+    var arrow = p.ms.delta === null || p.ms.delta === 0 ? '' : (p.ms.delta > 0 ? ' ↑' : ' ↓');
+    var val = p.ms.unit === '%' ? plnenieFormatPct(p.ms.value) : Math.round(p.ms.value).toLocaleString('sk-SK') + ' ' + p.ms.unit;
+    return '<span class="dnes-rs-ms' + cls + '">' + (p.ms.unit === '%' ? 'MS ' : '') + val + arrow + '</span>';
+  }
+  return p.msSupported ? '<span class="dnes-rs-ms wait"><span class="dnes-rs-ms-spin"></span>MS načítavam</span>' : '';
+}
+
+function dnesRenderRepSummary() {
+  if (!DNES_REP_SUMMARY.open) return;
+  var host = document.getElementById('dnes-rs-content');
+  if (!host) return;
+  var oldScroll = host.scrollTop;
+  var m = dnesRepSummaryBuild(DNES_REP_SUMMARY.username);
+  DNES_REP_SUMMARY.model = m;
+  var av = appRepAvatarHtml(m.username, m.name, 52, 'dnes-rs-avatar');
+  var profile = '<div class="dnes-rs-profile">' + av + '<div><div class="dnes-rs-name" id="dnes-rs-dialog-title">' + appEsc(m.name) + '</div>' +
+    '<div class="dnes-rs-sub">' + appEsc(m.region || 'Teritórium neuvedené') + ' · Q' + m.q + ' ' + m.year + '</div></div></div>';
+  if (m.loading) {
+    host.innerHTML = profile + '<div class="dnes-rs-list"><div class="dnes-rs-empty">' + dnesSkeletonHtml('Načítavam plnenie reprezentanta…') + '</div></div>';
+    return;
+  }
+  var o = m.overall, totalCls = plnenieDetailColorClass(o.pct);
+  var html = profile +
+    '<div class="dnes-rs-total"><div><div class="dnes-rs-total-lbl">Celkové plnenie · Q' + m.q + ' ' + m.year + '</div>' +
+      '<div class="dnes-rs-total-money"><strong>' + plnenieFormatEUR(o.sales) + '</strong>' + (o.plan > 0 ? ' z plánu ' + plnenieFormatEUR(o.plan) : ' · plán nie je zadaný') + '</div></div>' +
+      '<div class="dnes-rs-total-val ' + totalCls + '">' + plnenieFormatPct(o.pct) + '</div></div>' +
+    '<div class="dnes-rs-bands-caption">' + appEsc(m.bandsCaption || 'Aktuálne plnenie') + '</div>' +
+    '<div class="dnes-rs-bands">' +
+      '<div class="dnes-rs-band g"><strong>' + m.bands.g + '×</strong><span>nad 100 %</span></div>' +
+      '<div class="dnes-rs-band o"><strong>' + m.bands.o + '×</strong><span>95–100 %</span></div>' +
+      '<div class="dnes-rs-band r"><strong>' + m.bands.r + '×</strong><span>pod 95 %</span></div>' +
+    '</div><div class="dnes-rs-section">Produkty · najslabšie navrchu</div>';
+  if (!m.products.length) {
+    html += '<div class="dnes-rs-list"><div class="dnes-rs-empty">Pre tohto reprezentanta zatiaľ nie sú produktové dáta.</div></div>';
+  } else {
+    html += '<div class="dnes-rs-list">' + m.products.map(function(p) {
+      var cls = plnenieDetailColorClass(p.pct), width = p.pct === null ? 0 : Math.min(100, Math.max(0, p.pct));
+      var predCls = plnenieDetailColorClass(p.prediction);
+      var repArg = String(m.username || '').replace(/'/g, "\\'");
+      var productArg = String(p.key || '').replace(/'/g, "\\'");
+      var productAttrs = p.key
+        ? ' class="dnes-rs-prod is-link" role="button" tabindex="0" onclick="event.stopPropagation();dnesOpenRepProduct(\'' + repArg + '\',\'' + productArg + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();event.stopPropagation();dnesOpenRepProduct(\'' + repArg + '\',\'' + productArg + '\')}"'
+        : ' class="dnes-rs-prod"';
+      var predHtml = p.prediction !== null && p.prediction !== undefined
+        ? '<div class="dnes-rs-prod-pred">predikcia konca Q <strong class="' + predCls + '">' + plnenieFormatPct(p.prediction) + '</strong></div>'
+        : '<div class="dnes-rs-prod-pred">predikcia konca Q <strong class="none">—</strong></div>';
+      return '<div' + productAttrs + '><div class="dnes-rs-prod-top"><span class="dnes-rs-prod-name">' + appEsc(p.name) + '</span>' +
+        '<span class="dnes-rs-prod-pct ' + cls + '">' + plnenieFormatPct(p.pct) + '</span></div>' +
+        '<div class="dnes-rs-bar"><span class="' + cls + '" style="width:' + width + '%"></span></div>' +
+        predHtml + '<div class="dnes-rs-prod-meta"><span>predaje k dnešku' +
+          (p.plan > 0 ? ' · ' + plnenieFormatEUR(p.sales) + ' / ' + plnenieFormatEUR(p.plan) : p.sales > 0 ? ' · ' + plnenieFormatEUR(p.sales) : '') + '</span>' + dnesRepSummaryMsHtml(p) + '</div></div>';
+    }).join('') + '</div>';
+  }
+  host.innerHTML = html;
+  host.scrollTop = oldScroll;
+}
+
+function dnesRepSummaryStartMsWatch() {
+  clearInterval(DNES_REP_SUMMARY.timer);
+  DNES_REP_SUMMARY.watch = 0;
+  DNES_REP_SUMMARY.timer = setInterval(function() {
+    if (!DNES_REP_SUMMARY.open || ++DNES_REP_SUMMARY.watch > 18) {
+      clearInterval(DNES_REP_SUMMARY.timer); DNES_REP_SUMMARY.timer = null; return;
+    }
+    dnesRenderRepSummary();
+    var m = DNES_REP_SUMMARY.model;
+    if (m && !m.loading && !m.products.some(function(p){ return p.msSupported && !p.ms; })) {
+      clearInterval(DNES_REP_SUMMARY.timer); DNES_REP_SUMMARY.timer = null;
+    }
+  }, 850);
+}
+
+function dnesOpenRepSummary(username) {
+  if (!username) return;
+  DNES_REP_SUMMARY.open = true;
+  DNES_REP_SUMMARY.username = String(username).toLowerCase();
+  dnesRenderRepSummary();
+  var bd = document.getElementById('dnes-rep-summary-bd');
+  if (bd) { bd.classList.add('show'); bd.setAttribute('aria-hidden', 'false'); }
+  try { haptic('selection'); } catch (e) {}
+  var m = DNES_REP_SUMMARY.model;
+  if (m && !m.loading) {
+    if (m.role === 'gyn') {
+      gynEnsureRepPharma(m.region, m.products.map(function(p){ return { name:p.name, key:p.key }; }), function(){ if (DNES_REP_SUMMARY.open) dnesRenderRepSummary(); });
+    } else {
+      var src = dnesRebricekData();
+      plneniePreloadProductInsights(m.region, m.q, m.year, (src && src.data && src.data.planProducts) || [], false);
+    }
+  }
+  dnesRepSummaryStartMsWatch();
+  setTimeout(function(){ var b = document.querySelector('#dnes-rep-summary .dnes-rs-close'); if (b) b.focus(); }, 340);
+}
+
+function dnesCloseRepSummary() {
+  DNES_REP_SUMMARY.open = false;
+  clearInterval(DNES_REP_SUMMARY.timer); DNES_REP_SUMMARY.timer = null;
+  var bd = document.getElementById('dnes-rep-summary-bd');
+  if (bd) { bd.classList.remove('show'); bd.setAttribute('aria-hidden', 'true'); }
+}
+
+function dnesOpenFullRepDetail() {
+  var m = DNES_REP_SUMMARY.model;
+  if (!m || !m.username) return;
+  dnesCloseRepSummary();
+  appGoPlnenie();
+  setTimeout(function() {
+    if (m.role === 'gyn') {
+      gynOpenRepDetail(m.username, m.name, m.region);
+      return;
+    }
+    PL_STATE.year = m.year; PL_STATE.q = m.q;
+    var cached = PL_STATE.qCache && PL_STATE.qCache[m.q];
+    if (cached) { PL_STATE.data = cached.data; PL_STATE.aggregates = cached.aggregates; PL_STATE.loaded = true; }
+    plnenieOpenDetail(m.username);
+  }, 80);
+}
+
+// Manažérsky súhrn → detail reprezentanta → konkrétny produkt.
+// Karta produktu sa môže vyrenderovať až po načítaní detailu, preto cieľ
+// držíme v spoločnom focus helperi, ktorý čaká najviac niekoľko sekúnd.
+function dnesOpenRepProduct(username, productKey) {
+  var m = DNES_REP_SUMMARY.model;
+  if (!username || !productKey || !m) return;
+  var key = plnenieNormalizeKey(productKey);
+  APP_PL_PRODUCT_FOCUS = { key:key, until:Date.now() + 9000 };
+  dnesCloseRepSummary();
+  appGoPlnenie();
+  setTimeout(function() {
+    if (m.role === 'gyn') {
+      gynOpenRepDetail(m.username, m.name, m.region);
+    } else {
+      PL_STATE.year = m.year; PL_STATE.q = m.q;
+      var cached = PL_STATE.qCache && PL_STATE.qCache[m.q];
+      if (cached) { PL_STATE.data = cached.data; PL_STATE.aggregates = cached.aggregates; PL_STATE.loaded = true; }
+      plnenieOpenDetail(m.username);
+    }
+    appFocusPendingProduct();
+  }, 80);
+}
+
+document.addEventListener('keydown', function(ev) {
+  if (ev.key === 'Escape' && DNES_REP_SUMMARY.open) dnesCloseRepSummary();
+});
 
 // Prieskumy s cieľom — koľko je hotových a koľko chýba. Všetko z localStorage,
 // rovnaké čísla, aké ukazuje dashboard v samotnom prieskume.
@@ -8430,21 +8913,6 @@ function dnesNastenka() {
   } catch (e) { return null; }
 }
 
-// Avatar autora — tá istá značka, akú používa samotná Nástenka, len menšia.
-function dnesNstAvatar(rep, meno, velkost) {
-  var v = velkost || 28;
-  var farba = (typeof mgrAvatarColor === 'function') ? mgrAvatarColor(meno) : '#0C1E35';
-  try {
-    if (typeof lbAvatarContent === 'function') {
-      var a = lbAvatarContent(rep, meno, v);
-      return '<div class="nst-av dnes-nst-av' + (a.hasAvatar ? ' has-avatar' : '') +
-             '" data-username="' + appEsc(rep || '') + '" style="background:' + farba + '">' + a.html + '</div>';
-    }
-  } catch (e) {}
-  return '<div class="nst-av dnes-nst-av" style="background:' + farba + '">' +
-         appEsc(String(meno || '—').trim().charAt(0).toUpperCase()) + '</div>';
-}
-
 // Posledná odpoveď pod príspevkom — na Domove sa ukazuje ako náhľad diskusie.
 function dnesPoslednaOdpoved(p) {
   var c = (p && p.comments) || [];
@@ -8468,9 +8936,52 @@ function dnesCardHtml(accent, title, moreLbl, body) {
   '</div>';
 }
 
+var DNES_HOME_RANK_STATE = { line:'', expanded:false };
+function dnesHomeRankLineKey() {
+  try { return String(appLineTag ? appLineTag() : ((getSession() || {}).line || 'gp')); } catch (e) { return 'gp'; }
+}
+function dnesHomeRankExpanded() {
+  var line = dnesHomeRankLineKey();
+  if (DNES_HOME_RANK_STATE.line !== line) {
+    DNES_HOME_RANK_STATE.line = line;
+    DNES_HOME_RANK_STATE.expanded = false;
+  }
+  return DNES_HOME_RANK_STATE.expanded;
+}
+function dnesToggleHomeRanking(ev) {
+  if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+  dnesHomeRankExpanded();
+  DNES_HOME_RANK_STATE.expanded = !DNES_HOME_RANK_STATE.expanded;
+  dnesRender();
+}
+
+// Každé prepnutie línie vytvorí novú dátovú reláciu. Odpovede zo staršej
+// relácie sa môžu zo servera vrátiť neskôr, ale už nesmú meniť živý stav UI.
+var APP_LINE_EPOCH = 0;
+function appLineBumpEpoch(){ APP_LINE_EPOCH += 1; return APP_LINE_EPOCH; }
+function appLineCapture(){ return { line: appLineTag(), epoch: APP_LINE_EPOCH }; }
+function appLineContextActive(ctx){
+  return !!ctx && ctx.epoch === APP_LINE_EPOCH && ctx.line === appLineTag();
+}
+
+// Jeden vzhľad avatara pre mená reprezentantov v kompaktných kartách.
+// data-name zachová správne iniciály aj pri neskoršom doplnení rosteru.
+function appRepAvatarHtml(username, name, size, extraClass) {
+  var u = String(username || '').trim();
+  var n = String(name || username || '—');
+  var px = Number(size) || 26;
+  var av = lbAvatarContent(u, n, px);
+  var color = '#0C1E35';
+  try { if (typeof mgrAvatarColor === 'function') color = mgrAvatarColor(n); } catch (e) {}
+  return '<span class="app-rep-avatar ' + (extraClass || '') + (av.hasAvatar ? ' has-avatar' : '') + '"' +
+    ' data-username="' + appEsc(u) + '" data-name="' + appEsc(n) + '"' +
+    ' style="width:' + px + 'px;height:' + px + 'px;background:' + color + '">' + av.html + '</span>';
+}
+
 function dnesRender() {
   var body = document.getElementById('dnes-body');
   if (!body) return;
+  var homeRankExpanded = dnesHomeRankExpanded();
   var rola = appRole();
   var sub = document.getElementById('dnes-sub');
   if (sub) { try { sub.textContent = hdrInfoText(); } catch (e) { sub.textContent = ''; } }
@@ -8501,6 +9012,7 @@ function dnesRender() {
           kBody += '<div class="dnes-mini dvojriadok"' + (ix === 0 ? ' style="border-top:none;margin-top:6px"' : '') +
                      ' onclick="event.stopPropagation();gynCalOpenEvent(\'' + dk2 + '\',\'' + id2 + '\')">' +
                      '<span class="dnes-mini-dot" style="background:#DC2626;margin-top:5px"></span>' +
+                     appRepAvatarHtml(e.owner, kto, 25, 'dnes-rep-avatar dnes-cal-avatar') +
                      '<span class="dnes-mini-txt">' +
                        '<span class="dnes-mini-name">' + appEsc((tt.label || 'Absencia') + (kto ? ' — ' + kto : '')) +
                          ' <span style="color:#DC2626;font-weight:800">čaká na schválenie</span></span>' +
@@ -8523,14 +9035,17 @@ function dnesRender() {
       var tt2 = gynCalTypeById(e.type) || {};
       var dk3 = String(e.dateStart || '').replace(/[^0-9-]/g, '');
       var id3 = String(e.id || '').replace(/[^A-Za-z0-9_.:-]/g, '');
+      var kto2 = e.ownerName || ((typeof gynCalPersonName === 'function') ? gynCalPersonName(e.owner) : '') || e.owner || '';
       var kedy2 = (e.dateStart && e.dateEnd && e.dateStart !== e.dateEnd)
         ? gynCalFmtRange(e.dateStart, e.dateEnd)
         : (e.allDay ? 'celý deň' : (e.timeStart ? e.timeStart + (e.timeEnd ? '–' + e.timeEnd : '') : ''));
       kBody += '<div class="dnes-mini dvojriadok"' +
                  (id3 ? ' onclick="event.stopPropagation();gynCalOpenEvent(\'' + dk3 + '\',\'' + id3 + '\')"' : '') + '>' +
                  '<span class="dnes-mini-dot" style="background:' + (tt2.color || '#2563EB') + ';margin-top:5px"></span>' +
+                 (kto2 ? appRepAvatarHtml(e.owner, kto2, 25, 'dnes-rep-avatar') : '') +
                  '<span class="dnes-mini-txt">' +
                    '<span class="dnes-mini-name">' + appEsc(e.title || tt2.label || 'Udalosť') + '</span>' +
+                   (kto2 ? '<span class="dnes-mini-owner">' + appEsc(kto2) + '</span>' : '') +
                    (kedy2 ? '<span class="dnes-mini-when">' + appEsc(kedy2) + '</span>' : '') +
                  '</span>' +
                '</div>';
@@ -8557,8 +9072,8 @@ function dnesRender() {
             dnesCardHtml('linear-gradient(90deg,#2563EB,#60A5FA)',
                          ((rola === 'mgr') ? 'Plnenie tímu · ' : 'Plnenie · ') + plnenieQLabel(dpX.q, dpX.year),
                          '<span class="dnes-more">Otvoriť ›</span>',
-                         dnesSkeletonHtml(dnesPlnenieNacitava() ? 'Načítavam plnenie…'
-                                                               : 'Za tento kvartál zatiaľ nie sú dáta')) +
+                         dnesHomeLoadHtml(dnesPlnenieNacitava() ? 'Načítavam plnenie…'
+                                                                : 'Za tento kvartál zatiaľ nie sú dáta')) +
             '</div>';
   }
   if (pl) {
@@ -8575,13 +9090,18 @@ function dnesRender() {
     // a ktoré nie. Vypíšu sa tie najhoršie; zvyšok je v paneli.
     var prod = dnesPlnenieProdukty();
     if (prod) {
+      var sessForProduct = getSession() || {};
+      var repProductLinks = rola === 'gp' || rola === 'reagila' ||
+        (rola === 'gyn' && sessForProduct.role === 'gyn-rep');
+      var teamProductLinks = rola === 'mgr' ||
+        (rola === 'gyn' && sessForProduct.role !== 'gyn-rep');
       plBody += '<div class="dnes-pl-sum">' +
                   '<span><span class="dnes-pl-dot" style="background:#16A34A"></span>' +
-                    prod.nad.length + '× nad 100 %</span>' +
+                    prod.nad.length + 'x nad 100 %</span>' +
                   '<span><span class="dnes-pl-dot" style="background:#D97706"></span>' +
-                    prod.stred.length + '× 95–100 %</span>' +
+                    prod.stred.length + 'x 95–100 %</span>' +
                   '<span><span class="dnes-pl-dot" style="background:#DC2626"></span>' +
-                    prod.pod.length + '× pod 95 %</span>' +
+                    prod.pod.length + 'x pod 95 %</span>' +
                 '</div>' +
                 // Popisok vpravo, nad stĺpcom percent — nech je jasné, že tie
                 // čísla pod ním sú predikcia, nie dnešné plnenie.
@@ -8589,7 +9109,14 @@ function dnesRender() {
                   (prod.predikcia ? 'predikcia konca Q' : 'plnenie k dnešku') + '</div>';
       if (prod.pod.length) {
         prod.pod.slice(0, 4).forEach(function (x) {
-          plBody += '<div class="dnes-pl-row">' +
+          var productKey = String(x.key || '').replace(/'/g, "\\'");
+          var productLabel = String(x.label || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/[\r\n]/g, ' ');
+          var productOpen = productKey && (repProductLinks || teamProductLinks)
+            ? (teamProductLinks
+              ? ' onclick="event.stopPropagation();dnesOpenTeamProduct(\'' + productKey + '\',\'' + productLabel + '\')" role="button" tabindex="0"'
+              : ' onclick="event.stopPropagation();appGoPlnenieProduct(\'' + productKey + '\')" role="button" tabindex="0"')
+            : '';
+          plBody += '<div class="dnes-pl-row' + (productOpen ? ' is-link' : '') + '"' + productOpen + '>' +
                       '<span class="n">' + appEsc(x.label) + '</span>' +
                       '<span class="v ' + plnenieColorClass(x.pred) + '">' + plnenieFormatPct(x.pred) + '</span>' +
                     '</div>';
@@ -8655,8 +9182,8 @@ function dnesRender() {
     html += '<div onclick="appGoRebricek()" style="cursor:pointer">' +
             dnesCardHtml('linear-gradient(90deg,#D97706,#FCD34D)', titulR,
                          '<span class="dnes-more">Otvoriť ›</span>',
-                         dnesSkeletonHtml(dnesPlnenieNacitava() ? 'Načítavam rebríček…'
-                                                                : 'Za tento kvartál zatiaľ nie sú dáta')) +
+                         dnesHomeLoadHtml(dnesPlnenieNacitava() ? 'Načítavam rebríček…'
+                                                                 : 'Za tento kvartál zatiaľ nie sú dáta')) +
             '</div>';
   }
   if (reb) {
@@ -8674,6 +9201,7 @@ function dnesRender() {
           return '<div class="dnes-mini dnes-sus' + (x.kde === 'ja' ? ' ja' : '') + '"' +
                    (ix === 0 ? ' style="border-top:none"' : '') + '>' +
                    '<span class="dnes-rank-p">' + x.poradie + '.</span>' +
+                   appRepAvatarHtml(x.u, x.meno, 27, 'dnes-rep-avatar') +
                    '<span class="dnes-mini-name">' + appEsc(x.kde === 'ja' ? 'Ja' : x.meno) + '</span>' +
                    '<span class="dnes-mini-meta">' + appEsc(x.hodnota) + '</span>' +
                  '</div>';
@@ -8683,14 +9211,21 @@ function dnesRender() {
       // Manažér: poradie jeho ľudí. Medaily pre prvé tri, ako v samotnom
       // rebríčku — nech je to na prvý pohľad tá istá vec.
       var medaily = ['🥇', '🥈', '🥉'];
-      rBody = (reb.top || []).map(function (x, ix) {
-        return '<div class="dnes-mini"' + (ix === 0 ? ' style="border-top:none"' : '') + '>' +
+      var visibleTop = homeRankExpanded ? (reb.top || []) : (reb.top || []).slice(0, 6);
+      rBody = visibleTop.map(function (x, ix) {
+        var repClick = "event.stopPropagation();dnesOpenRepSummary('" + String(x.u || '').replace(/'/g,"\\'") + "')";
+        return '<div class="dnes-mini" role="button" tabindex="0" aria-label="Zobraziť plnenie reprezentanta ' + appEsc(x.meno) + '" onclick="' + repClick + '" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();' + repClick + '}"' + (ix === 0 ? ' style="border-top:none"' : '') + '>' +
                  '<span class="dnes-rank-p">' + (medaily[ix] || (ix + 1) + '.') + '</span>' +
+                 appRepAvatarHtml(x.u, x.meno, 27, 'dnes-rep-avatar') +
                  '<span class="dnes-mini-name">' + appEsc(x.meno) + '</span>' +
-                 '<span class="dnes-mini-meta">' + appEsc(x.hodnota) + '</span>' +
+                 '<span class="dnes-mini-meta">' + appEsc(x.hodnota) + ' ›</span>' +
                '</div>';
       }).join('');
-      if (reb.total > (reb.top || []).length) {
+      if (reb.total > 6) {
+        rBody += '<button type="button" class="dnes-rank-more" onclick="dnesToggleHomeRanking(event)" aria-expanded="' + (homeRankExpanded ? 'true' : 'false') + '">' +
+                 (homeRankExpanded ? 'Zbaliť zoznam' : 'Zobraziť všetkých ' + reb.total) +
+                 ' <span class="arr">' + (homeRankExpanded ? '⌃' : '⌄') + '</span></button>';
+      } else if (reb.total > 0) {
         rBody += '<div class="dnes-post-meta">z ' + reb.total + ' reprezentantov' +
                  (reb.popis ? ' · ' + appEsc(reb.popis) : '') + '</div>';
       }
@@ -8745,31 +9280,33 @@ function dnesRender() {
       var odpHtml = '';
       if (odp) {
         odpHtml = '<div class="dnes-post-odp">' +
-                    dnesNstAvatar(odp.rep, odp.meno || odp.rep, 20) +
-                    '<div class="dnes-post-odp-txt">' +
-                      '<span class="dnes-post-odp-kto">' + appEsc(odp.meno || odp.rep || '—') + ':</span> ' +
-                      appEsc(odp.text || '') +
-                      (pocet > 1 ? '<span class="dnes-post-odp-n">' + pocet +
-                        (pocet < 5 ? ' odpovede' : ' odpovedí') + '</span>' : '') +
-                    '</div>' +
+                    appRepAvatarHtml(odp.rep, odp.meno || odp.rep, 24, 'dnes-rep-avatar') +
+                    '<span class="dnes-post-odp-txt"><span class="dnes-post-odp-kto">' + appEsc(odp.meno || odp.rep || '—') + ':</span> ' +
+                    appEsc(odp.text || '') +
+                    (pocet > 1 ? '<span class="dnes-post-odp-n">' + pocet + ' odpovedí</span>' : '') + '</span>' +
                   '</div>';
       }
       return '<div class="dnes-post-item' + (pix === 0 ? ' prvy' : '') + '"' +
                ' onclick="event.stopPropagation();appGoNastenka(' + (pid ? '\'' + pid + '\'' : '') + ')">' +
-               '<div class="dnes-post-hd2">' +
-                 dnesNstAvatar(post.rep, post.meno || post.rep, 28) +
-                 '<div class="dnes-post-who">' +
-                   '<span class="dnes-post-autor">' + pin + autor + '</span>' +
-                   (kedy ? '<span class="dnes-post-kedy">' + appEsc(kedy) + '</span>' : '') +
-                 '</div>' +
-               '</div>' +
-               '<div class="dnes-post">' + appEsc(post.text || '') + '</div>' +
+               '<div class="dnes-post">' + pin + appEsc(post.text || '') + '</div>' +
+               '<div class="dnes-post-meta-row">' + appRepAvatarHtml(post.rep, post.meno || post.rep, 22, 'dnes-rep-avatar') +
+                 '<span>' + autor + (kedy ? ' · ' + appEsc(kedy) : '') + '</span></div>' +
                odpHtml +
              '</div>';
     }).join('');
     html += '<div onclick="appGoNastenka()" style="cursor:pointer">' +
             dnesCardHtml('linear-gradient(90deg,#7C3ABE,#C084FC)', 'Nástenka',
                          badge + '<span class="dnes-more">Otvoriť ›</span>', nstBody) +
+            '</div>';
+  } else {
+    // Karta musí byť na Domove od prvého vykreslenia. Bez nej obsah po
+    // prihlásení poskakoval, keď Nástenka o chvíľu dobehla zo servera.
+    var nstCaka = (typeof NST !== 'undefined') && (NST.loading || !NST.loaded);
+    html += '<div onclick="appGoNastenka()" style="cursor:pointer">' +
+            dnesCardHtml('linear-gradient(90deg,#7C3ABE,#C084FC)', 'Nástenka',
+                         '<span class="dnes-more">Otvoriť ›</span>',
+                         nstCaka ? dnesSkeletonHtml('Načítavam nástenku…')
+                                 : '<div class="dnes-empty">Zatiaľ tu nie sú žiadne príspevky.</div>') +
             '</div>';
   }
 
@@ -8837,13 +9374,20 @@ function appGoDomov() {
   try { openDnes(); } catch (e) {}
 }
 
-// Ťuknutie na avatara v hlavičke vedie na Domov — vo všetkých líniách aj rolách.
+// Banner aj avatar vedú na vlastný Domov; ovládacie prvky si nechajú svoju akciu.
 // Cez delegovanie, lebo gyn si hlavičku vykresľuje až po prihlásení.
 document.addEventListener('click', function (ev) {
   if (!document.body.classList.contains('app-nav')) return;
   var t = ev.target;
   if (!t || !t.closest) return;
-  if (!t.closest('.hdr-avatar-wrap')) return;
+  if (!t.closest('.hdr, .gyn-mgr-hdr')) return;
+  if (t.closest('button, a, input, select, textarea, [onclick], [role="button"]')) return;
+  ev.preventDefault();
+  appGoDomov();
+});
+document.addEventListener('keydown', function (ev) {
+  if (ev.key !== 'Enter' || !document.body.classList.contains('app-nav')) return;
+  if (!ev.target || !ev.target.matches('[data-header-home]')) return;
   ev.preventDefault();
   appGoDomov();
 });
@@ -8874,9 +9418,88 @@ function appGoTab(kam, arg) {
     else if (kam === 'kalendar') openGolemKalendar();
   } catch (e) {}
 }
-function appGoPlnenie() { appGoTab('plnenie'); }
+function appGoPlnenie() {
+  // Opakovaný ťuk na aktívne Plnenie je návrat na koreň sekcie, nie
+  // ponechanie otvoreného detailu reprezentanta alebo produktu.
+  try {
+    if (typeof PL_PROD_SHEET_STATE !== 'undefined' && PL_PROD_SHEET_STATE.open && typeof closeProdSheet === 'function') closeProdSheet();
+  } catch (e) {}
+  try {
+    if (appRole() === 'mgr' && document.body.classList.contains('mgr-plnenie-detail-open') && typeof plnenieCloseDetail === 'function') plnenieCloseDetail();
+  } catch (e) {}
+  appGoTab('plnenie');
+}
 function appGoKalendar() { appGoTab('kalendar'); }
 function appGoNastenka(postId) { appGoTab('nastenka', postId); }
+var APP_PL_PRODUCT_FOCUS = null;
+// Otvor Plnenie a po vykreslení zameraj konkrétnu produktovú kartu.
+// Render môže dobehnúť zo siete neskôr, preto focus krátko opakujeme.
+function appGoPlnenieProduct(productKey) {
+  var key = plnenieNormalizeKey(productKey);
+  if (!key) { appGoPlnenie(); return; }
+  APP_PL_PRODUCT_FOCUS = { key:key, until:Date.now() + 9000 };
+  appGoPlnenie();
+  appFocusPendingProduct();
+}
+// Manažérsky klik na produkt na Domove otvorí existujúci produktový detail.
+// Gyn používa vlastné dáta a render, Golem/Reagila zdieľajú PL product sheet.
+// Ak sa Domov vykreslil z cache skôr než sa prepol aktívny panel, krátko počkáme
+// na pripravený stav namiesto toho, aby klik skončil iba na prázdnom Plnení.
+function dnesOpenTeamProduct(productKey, productLabel) {
+  var key = plnenieNormalizeKey(productKey);
+  var label = String(productLabel || productKey || '').trim();
+  if (!key || !label) { appGoPlnenie(); return; }
+  try { if (typeof haptic === 'function') haptic('selection'); } catch (e) {}
+
+  var tries = 0;
+  function openWhenReady() {
+    tries++;
+    try {
+      if (appRole() === 'gyn') {
+        if (typeof gynOpenProdSheet === 'function' && GYN_APP && GYN_APP.plCache && GYN_APP.plCache[GYN_APP.q]) {
+          gynOpenProdSheet(label);
+          return;
+        }
+      } else {
+        var dp = plnenieDefaultPeriod();
+        var cached = (typeof PL_STATE !== 'undefined' && PL_STATE.qCache) ? PL_STATE.qCache[dp.q] : null;
+        if (cached && cached.data && cached.aggregates) {
+          PL_STATE.year = dp.year;
+          PL_STATE.q = dp.q;
+          PL_STATE.data = cached.data;
+          PL_STATE.aggregates = cached.aggregates;
+          PL_STATE.loaded = true;
+        }
+        if (typeof openProdSheet === 'function' && typeof PL_STATE !== 'undefined' && PL_STATE.data && PL_STATE.aggregates) {
+          openProdSheet(key, label);
+          return;
+        }
+      }
+    } catch (e) {}
+    if (tries < 30) { setTimeout(openWhenReady, 100); return; }
+    appGoPlnenie();
+  }
+  openWhenReady();
+}
+function appFocusPendingProduct() {
+  var pending = APP_PL_PRODUCT_FOCUS;
+  if (!pending) return;
+  var found = null;
+  document.querySelectorAll('[data-pl-product]').forEach(function(el) {
+    if (found || el.getAttribute('data-pl-product') !== pending.key || !el.getClientRects().length) return;
+    found = el;
+  });
+  if (!found) {
+    if (Date.now() < pending.until) setTimeout(appFocusPendingProduct, 140);
+    return;
+  }
+  APP_PL_PRODUCT_FOCUS = null;
+  try { found.scrollIntoView({ behavior:'smooth', block:'center' }); } catch(e) { found.scrollIntoView(); }
+  found.classList.remove('pl-product-focus');
+  void found.offsetWidth;
+  found.classList.add('pl-product-focus');
+  setTimeout(function(){ if (found) found.classList.remove('pl-product-focus'); }, 2400);
+}
 // Manažér a gyn neprepínajú panely, ale vlastné záložky — lišta sa musí
 // zvýrazniť aj podľa nich.
 function appTabSyncFromTab(tab) {
@@ -8894,7 +9517,7 @@ function appTabSyncFromTab(tab) {
 // golemovského .app — gyn pohľad .app skrýva a spolu s ňou by zmizli aj ony.
 (function () {
   function presun() {
-    ['rep-tabbar', 'dnes-overlay', 'viac-bd', 'viac-overlay', 'gpp-overlay'].forEach(function (id) {
+    ['rep-topbar', 'rep-tabbar', 'dnes-overlay', 'dnes-rep-summary-bd', 'viac-bd', 'viac-overlay', 'gpp-overlay'].forEach(function (id) {
       var el = document.getElementById(id);
       if (el && el.parentNode !== document.body) document.body.appendChild(el);
     });
@@ -8954,6 +9577,25 @@ function viacDlazdice() {
   ];
 }
 
+function viacLinesHtml() {
+  if (!mgrLineSwitchAvailable()) return '';
+  var dual = mgrGetDual();
+  var current = mgrCurrentLine();
+  var lines = [{line:'gp',label:'Golem'}, {line:'gyn',label:'Gynekológia'}, {line:'reagila',label:'Reagila'}];
+  return '<div class="viac-sec" id="viac-lines-label">Línia</div>' +
+    '<div class="viac-lines" role="group" aria-labelledby="viac-lines-label">' +
+    lines.filter(function (it) { return !!dual[it.line]; }).map(function (it) {
+      var active = it.line === current;
+      return '<button type="button" class="viac-line' + (active ? ' active' : '') + '" data-viac-line="' + it.line + '" aria-pressed="' + active + '" onclick="viacSwitchLine(\'' + it.line + '\')">' +
+        '<span>' + it.label + '</span><span class="viac-line-mark" aria-hidden="true">' + (active ? '✓' : '›') + '</span></button>';
+    }).join('') + '</div>';
+}
+function viacSwitchLine(line) {
+  if (!mgrLineSwitchAvailable() || line === mgrCurrentLine()) return;
+  if (!mgrLineTargets().some(function (it) { return it.line === line; })) return;
+  mgrSwitchLine(line);
+}
+
 function viacRender() {
   var me = document.getElementById('viac-me');
   var body = document.getElementById('viac-body');
@@ -8980,7 +9622,7 @@ function viacRender() {
              '<span class="viac-tile-t">' + appEsc(it.t) + (zatvoreny ? '<br><span style="font-weight:600;font-size:10.5px;color:#94A3B8">zatiaľ zatvorené</span>' : '') + '</span>' +
            '</button>';
   }).join('');
-  body.innerHTML =
+  body.innerHTML = viacLinesHtml() +
     '<div class="viac-sec">' + (appRole() === 'gp' ? 'Prehľady a prieskumy' : 'Prehľady') + '</div>' +
     '<div class="viac-grid">' + tiles + '</div>' +
     '<div class="viac-list">' +
@@ -9022,6 +9664,8 @@ function closeViac() {
 document.addEventListener('click', function (ev) {
   var t = ev.target && ev.target.closest ? ev.target.closest('#viac-overlay [onclick]') : null;
   if (!t) return;
+  // Prepínač sám uprace starú líniu; oneskorený cleanup by zavrel nový Domov.
+  if (t.hasAttribute('data-viac-line')) return;
   // Manažér a gyn prepínajú z menu vlastné záložky vo svojom pohľade — ten
   // je pod panelmi, takže sa musia zavrieť, inak sa navonok nestane nič.
   var r = (typeof appRole === 'function') ? appRole() : 'gp';
@@ -9106,15 +9750,19 @@ try {
 // zadať nového GP a aktualizovať potenciál toho, kto už v databáze je.
 //
 // Hľadá sa cez appNorm(), takže „safarik" nájde „Šafárik" — rovnako ako
-// v zozname Lekári. Ťuknutie otvorí detail a hneď nad ním aktualizáciu hodnôt.
+// v zozname Lekári. Patria sem aj lekári s jediným Lonelix záznamom: pred
+// doplnením GP potenciálu si reprezentant najprv pozrie ich aktuálne údaje.
+var GP_PICKER = { items: [] };
 function gpPickerItems() {
   var q = appNorm(((document.getElementById('gpp-search') || {}).value) || '').trim();
   var all = [];
   try { all = _histCombined(); } catch (e) { all = []; }
-  // Len GP záznamy — potenciál majú len tie. Prieskumy a nezistení lekári nie.
+  // GP záznamy plus lekári, ktorí majú zatiaľ iba Lonelix. Tuyory a Apixaban
+  // nie sú GP lekári, preto do tejto aktualizácie nepatria.
   var gp = all.filter(function (it) {
-    return it && it.row !== undefined && it.row !== null && it.row !== '' &&
-           it.type !== 'tuyory' && it.type !== 'apixaban' && it.type !== 'lonelix-new';
+    if (!it || it.type === 'tuyory' || it.type === 'apixaban') return false;
+    if (it.type === 'lonelix-new') return true;
+    return it.row !== undefined && it.row !== null && it.row !== '';
   });
   if (q) {
     gp = gp.filter(function (it) {
@@ -9147,13 +9795,20 @@ function gpPickerRender() {
   // Najviac 60 riadkov — pri dlhšom zozname je rýchlejšie dopísať meno než
   // scrollovať, a prekresľovanie na každý znak by inak bolo cítiť.
   var zobraz = items.slice(0, 60);
-  body.innerHTML = '<div class="gpp-list">' + zobraz.map(function (it) {
+  GP_PICKER.items = zobraz;
+  body.innerHTML = '<div class="gpp-list">' + zobraz.map(function (it, idx) {
     var kat = String(it.kategoria || '').toUpperCase().trim();
-    return '<button type="button" class="gpp-item" data-gpp-row="' + appEsc(it.row) + '">' +
-             '<span class="gpp-dot" style="background:' + gpCatColor(kat).c + '"></span>' +
+    var isLonelixOnly = it.type === 'lonelix-new';
+    var lon = it.lon || {};
+    var meta = isLonelixOnly
+      ? (appEsc(it.okres || '') + ' · Len Lonelix' + (lon.pocet !== '' && lon.pocet != null ? ' · ' + appEsc(lon.pocet) + ' pac./mes. v sezóne' : ''))
+      : (appEsc(it.okres || '') + (it.dateStr ? ' · zadaný ' + appEsc(it.dateStr) : ''));
+    var target = isLonelixOnly ? ' data-gpp-lon="' + idx + '"' : ' data-gpp-row="' + appEsc(it.row) + '"';
+    return '<button type="button" class="gpp-item"' + target + '>' +
+             '<span class="gpp-dot" style="background:' + (isLonelixOnly ? '#059669' : gpCatColor(kat).c) + '"></span>' +
              '<span class="gpp-txt">' +
                '<span class="gpp-name">' + appEsc(it.lekar || '—') + '</span>' +
-               '<span class="gpp-meta">' + appEsc(it.okres || '') + (it.dateStr ? ' · zadaný ' + appEsc(it.dateStr) : '') + '</span>' +
+               '<span class="gpp-meta">' + meta + '</span>' +
              '</span>' +
              '<span class="gpp-ch">›</span>' +
            '</button>';
@@ -9169,10 +9824,18 @@ function openGpPicker() {
   usageSectionEnter('Aktualizácia potenciálu');
   var sb = document.getElementById('gpp-search');
   if (sb) sb.value = '';
+  try { if (!(LONELIX.records && LONELIX.records.length)) LONELIX.records = lonelixLoadLocal(); } catch (e) {}
   gpPickerRender();
   ov.classList.add('show');
   ov.scrollTop = 0;
   document.body.style.overflow = 'hidden';
+  // Lokálna cache dá zoznam hneď; čerstvý Lonelix zo servera ho po doručení
+  // doplní bez toho, aby používateľ musel picker zavrieť a otvoriť znova.
+  try {
+    lonelixFetchServer(function () {
+      if (ov.classList.contains('show')) gpPickerRender();
+    });
+  } catch (e) {}
 }
 function closeGpPicker() {
   var ov = document.getElementById('gpp-overlay');
@@ -9185,6 +9848,15 @@ function closeGpPicker() {
 // Cez openDetail(), aby sa _currentDetailItem aj obnovenie po uložení
 // nastavili presne tak, ako to saveEditRecord() očakáva.
 document.addEventListener('click', function (ev) {
+  var lonBtn = ev.target && ev.target.closest ? ev.target.closest('[data-gpp-lon]') : null;
+  if (lonBtn) {
+    var lonItem = GP_PICKER.items[Number(lonBtn.getAttribute('data-gpp-lon'))];
+    closeGpPicker();
+    if (lonItem && lonItem.lon && typeof lonelixDoctorDetail === 'function') {
+      lonelixDoctorDetail(lonItem.lon, { canAddGp: true });
+    }
+    return;
+  }
   var btn = ev.target && ev.target.closest ? ev.target.closest('[data-gpp-row]') : null;
   if (!btn) return;
   var row = btn.getAttribute('data-gpp-row');
@@ -9196,11 +9868,40 @@ document.addEventListener('click', function (ev) {
     i = gpDetailIdxByRow(row);
   }
   if (i < 0) return;
+  // Najprv ukáž aktuálnu kapitáciu a počty produktov. Používateľ sa až potom
+  // vedome rozhodne, či chce údaje upraviť cez tlačidlo v detaile.
   openDetail(i);
-  setTimeout(function () { try { openEditRecord(); } catch (e) {} }, 220);
+  detailGuideToUpdate();
 });
 
+var _detailUpdateGuideTimer = null;
+function detailGuideToUpdate() {
+  var scrollBox = document.getElementById('confirm-box-scroll');
+  var button = document.querySelector('#detail-edit-wrap .edit-open-btn');
+  if (!scrollBox || !button) return;
+  if (_detailUpdateGuideTimer) clearTimeout(_detailUpdateGuideTimer);
+  button.classList.remove('update-attention');
+  void button.offsetWidth;
+  button.classList.add('update-attention');
+  // Detail je po otvorení na vrchu; výber z aktualizácie má používateľa hneď
+  // doviesť k jedinému ďalšiemu kroku bez hľadania v obsahu karty.
+  scrollBox.scrollTop = scrollBox.scrollHeight;
+  setTimeout(function () { scrollBox.scrollTop = scrollBox.scrollHeight; }, 80);
+  _detailUpdateGuideTimer = setTimeout(function () {
+    button.classList.remove('update-attention');
+    _detailUpdateGuideTimer = null;
+  }, 4300);
+}
+
+function detailClearUpdateGuide() {
+  if (_detailUpdateGuideTimer) clearTimeout(_detailUpdateGuideTimer);
+  _detailUpdateGuideTimer = null;
+  var button = document.querySelector('#detail-edit-wrap .edit-open-btn');
+  if (button) button.classList.remove('update-attention');
+}
+
 function openDnes() {
+  appNavEnsure();
   usageSectionEnter('Dnes');
   _panelShow('dnes-overlay');
   dnesRender();
@@ -10748,7 +11449,7 @@ function openDetail(idx) {
     saveNote(item, item.poznamka);
   }
   renderNoteSection(item);
-  // Zobraz tlačidlo "Aktualizovať záznam" — pre repa, manažéra aj admina
+  // Zobraz tlačidlo "Aktualizovať potenciál" — pre repa, manažéra aj admina
   // (každý prihlásený so záznamom, ktorý má číslo riadku). Aktualizácia sa
   // NEZAPÍŠE do Sheetu — ide do vrstvy zmien (override), Sheet ostáva baseline.
   var editWrap = document.getElementById('detail-edit-wrap');
@@ -10775,6 +11476,7 @@ function openDetail(idx) {
 }
 
 function closeDetail() {
+  detailClearUpdateGuide();
   var overlay = document.getElementById('detail-overlay');
   if(!overlay) return;
   overlay.classList.add('closing');
@@ -11493,6 +12195,17 @@ function mgrGetDual(){
 // v pamäti (nikam sa neukladá) a zanikne s prekreslením stránky.
 // Týka sa LEN línii so stavom `_failed` (server neodpovedal). Línia, ktorá login
 // priamo odmietla (iné heslo / účet tam nie je), sa neopätuje — nemá to zmysel.
+function lineMergeLoginSuccess(username, line, data){
+  if(!data || !data.ok) return;
+  var dual = (typeof mgrGetDual === 'function' && mgrGetDual()) || { username: username };
+  if (dual.username && String(dual.username).toLowerCase() !== String(username).toLowerCase()) return;
+  dual.username = username;
+  if (line === 'gp')           dual.gp      = mgrBuildGpUser(username, data);
+  else if (line === 'gyn')     dual.gyn     = mgrBuildGynUser(username, data);
+  else if (line === 'reagila') dual.reagila = mgrBuildReagilaUser(username, data);
+  mgrSetDual(dual);
+  try { mgrRenderLineSwitch(); } catch(e){}
+}
 function lineRetryFailedSilently(username, pwd, dataMap, onLine, delayMs){
   try {
     if (!username || !pwd || !dataMap) return;
@@ -11506,20 +12219,28 @@ function lineRetryFailedSilently(username, pwd, dataMap, onLine, delayMs){
              '&device_id=' + encodeURIComponent(authDeviceId());
     setTimeout(function(){
       need.forEach(function(n){
-        appFetchJson(n[1] + lp, undefined, 30000)
-          .then(function(d){
-            if (!d || !d.ok) return;
-            var dual = (typeof mgrGetDual === 'function' && mgrGetDual()) || { username: username };
-            if (String(dual.username || '').toLowerCase() !== String(username).toLowerCase()) return;  // medzičasom sa prihlásil niekto iný
-            dual.username = username;
-            if (n[0] === 'gp')           dual.gp      = mgrBuildGpUser(username, d);
-            else if (n[0] === 'gyn')     dual.gyn     = mgrBuildGynUser(username, d);
-            else                         dual.reagila = mgrBuildReagilaUser(username, d);
-            mgrSetDual(dual);
-            try { mgrRenderLineSwitch(); } catch(e){}
-            try { if (onLine) onLine(n[0], d); } catch(e){}
-          })
-          .catch(function(){});
+        function attempt(ix){
+          var limits=[18000,24000];
+          appFetchJson(n[1] + lp, undefined, limits[ix])
+            .then(function(d){
+              if(d && d.ok){
+                dataMap[n[0]]=d;
+                lineMergeLoginSuccess(username, n[0], d);
+                try { if(onLine) onLine(n[0], d); } catch(e){}
+                return;
+              }
+              // Explicitné zamietnutie už ďalší pokus nevyrieši.
+              dataMap[n[0]]=d || {ok:false};
+              try { if(onLine) onLine(n[0], dataMap[n[0]]); } catch(e){}
+            })
+            .catch(function(){
+              if(ix + 1 < limits.length){ attempt(ix + 1); return; }
+              var failed={ok:false,_failed:true,_done:true};
+              dataMap[n[0]]=failed;
+              try { if(onLine) onLine(n[0], failed); } catch(e){}
+            });
+        }
+        attempt(0);
       });
     // Kým človek stojí na výbere rozhrania, nič iné sa nenačítava — vtedy
     // netreba čakať 5 sekúnd, práve naopak.
@@ -11676,6 +12397,112 @@ function mgrToggleLine(){
   var t = mgrLineTargets()[0];
   if(t) mgrSwitchLine(t.line);
 }
+function mgrLineLabel(line){
+  return line === 'gyn' ? 'Gynekológia' : line === 'reagila' ? 'Reagila' : 'Golem';
+}
+function mgrLineTransitionStart(target){
+  var source = mgrCurrentLine();
+  var codes = { gp:'Gol', gyn:'Gyn', reagila:'Rea' };
+  var old = document.getElementById('line-switch-transition');
+  if(old && old.parentNode) old.parentNode.removeChild(old);
+  var el = document.createElement('div');
+  el.id = 'line-switch-transition';
+  el.className = 'line-switch-transition';
+  el.setAttribute('role', 'status');
+  el.setAttribute('aria-live', 'polite');
+  el.innerHTML = '<div class="line-switch-transition-card">' +
+    '<div class="line-switch-transition-brand">SATORI</div>' +
+    '<div class="line-switch-route" aria-hidden="true">' +
+      '<div class="line-switch-node"><span class="line-switch-node-dot" data-line="' + source + '">' + codes[source] + '</span><span class="line-switch-node-label">' + mgrLineLabel(source) + '</span></div>' +
+      '<div class="line-switch-track"><span class="line-switch-track-arrow">›</span></div>' +
+      '<div class="line-switch-node target"><span class="line-switch-node-dot" data-line="' + target + '">' + codes[target] + '</span><span class="line-switch-node-label">' + mgrLineLabel(target) + '</span></div>' +
+    '</div>' +
+    '<div class="line-switch-transition-cap">Prepínam líniu</div>' +
+    '<div class="line-switch-transition-name">' + mgrLineLabel(target) + '</div>' +
+    '<div class="line-switch-transition-msg">Načítavam čistý pohľad a aktuálne dáta…</div></div>';
+  document.body.appendChild(el);
+  requestAnimationFrame(function(){ el.classList.add('show'); });
+  clearTimeout(window._lineSwitchTransitionTimer);
+  var started = Date.now();
+  function finishWhenReady(){
+    if(!el.parentNode) return;
+    // Prihlasovací loader môže vzniknúť pri načítaní ktorejkoľvek línie.
+    // Kým je v DOM, nechaj nad ním túto line-switch obrazovku, aby sa pri
+    // Golem ↔ Gyn ↔ Reagila nikdy neukázala obrazovka určená pre login.
+    var boot = document.getElementById('boot-loader');
+    var waiting = !!boot;
+    // História môže byť v cache, takže boot loader sa nevytvorí, hoci sa ešte
+    // len načítava aktuálny kvartál Domova. Aj vtedy nech prechod ostane celistvý.
+    try {
+      if(target === 'gyn'){
+        var gq = GYN_APP.q;
+        waiting = waiting || !!(GYN_APP.plLoading && GYN_APP.plLoading[gq] && !(GYN_APP.plCache && GYN_APP.plCache[gq]));
+      } else {
+        var ts = getSession();
+        var tr = ts ? mgrDetectRole(ts) : null;
+        waiting = waiting || (tr
+          ? (PL_STATE._currentLoading === true && !PL_STATE.loaded)
+          : (REP_PL_STATE.loading === true && !REP_PL_STATE.loaded));
+      }
+    } catch(e){}
+    if(waiting && Date.now() - started < 16000){
+      window._lineSwitchTransitionTimer = setTimeout(finishWhenReady, 120);
+      return;
+    }
+    el.classList.add('leave');
+    setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 190);
+  }
+  window._lineSwitchTransitionTimer = setTimeout(finishWhenReady, 700);
+}
+function mgrLineCleanupBeforeSwitch(){
+  try { closeSettings(); } catch(e){}
+  try { appNavReset(); } catch(e){}
+  try { closeAllPanels(); } catch(e){}
+  try { if(typeof GYN_APP !== 'undefined') GYN_APP.detailLogin = null; } catch(e){}
+}
+function mgrLineResetSharedData(target){
+  // Golem a Reagila používajú spoločné renderery. Ich pracovná pamäť sa preto
+  // pri každom prepnutí vynuluje; line-scoped offline cache sa načíta nanovo.
+  try {
+    if(typeof PL_STATE !== 'undefined'){
+      clearTimeout(PL_STATE._loadWatchdog);
+      PL_STATE._loadId=(PL_STATE._loadId||0)+1;
+      PL_STATE.loading=false; PL_STATE.loaded=false; PL_STATE.data=null;
+      PL_STATE._currentLoading=false; PL_STATE._currentLoadFailed=false; PL_STATE._loadWatchdog=null;
+      PL_STATE.aggregates=null; PL_STATE.detailRep=null; PL_STATE.qCache={};
+    }
+    if(typeof REP_PL_STATE !== 'undefined'){
+      REP_PL_STATE._loadId=(REP_PL_STATE._loadId||0)+1;
+      REP_PL_STATE.loading=false; REP_PL_STATE.loaded=false; REP_PL_STATE.data=null;
+      REP_PL_STATE.aggregates=null; REP_PL_STATE.qCache={};
+    }
+    if(typeof LB_STATE !== 'undefined'){
+      LB_STATE.line=target; LB_STATE.data=null; LB_STATE.loading=false;
+      LB_STATE.period='all'; LB_STATE.mode='plnenie';
+    }
+    if(typeof LB_PLNENIE_LOAD_ID !== 'undefined') LB_PLNENIE_LOAD_ID++;
+    if(typeof LB_PLNENIE_CACHE !== 'undefined') LB_PLNENIE_CACHE=null;
+    if(typeof LB_PLNENIE_LOADING !== 'undefined') LB_PLNENIE_LOADING=false;
+    if(typeof MGR_STATE !== 'undefined'){
+      MGR_STATE.reps={}; MGR_STATE.currentRep=null; MGR_STATE.repsLoaded=false;
+    }
+    if(typeof GYN_APP !== 'undefined'){
+      // Zneplatni všetky odpovede z predošlého vstupu do Gyn. Samotné boolean
+      // plLoading nestačí: starý request sa môže vrátiť až po ďalšom prepnutí.
+      GYN_APP._bootstrapId=(GYN_APP._bootstrapId||0)+1;
+      GYN_APP._repListLoadId=(GYN_APP._repListLoadId||0)+1;
+      GYN_APP._plReqIds={}; GYN_APP.plLoading={}; GYN_APP._repListLoading=false;
+      GYN_APP.detailLogin=null;
+    }
+    if(typeof NST !== 'undefined'){
+      NST._reqId=(NST._reqId||0)+1;
+      clearTimeout(NST._loadT);
+      NST.posts=(typeof nstLoadLocal==='function') ? nstLoadLocal() : [];
+      NST.loaded=false; NST.loading=false; NST.err=''; NST._primed=false;
+      NST.open={}; NST.likesOpen={}; NST.votersOpen={};
+    }
+  } catch(e){}
+}
 // Prepnutie línie IN-PLACE bez reloadu (iOS PWA reload = biela obrazovka).
 // Golem aj Reagila bežia v .app (líšia sa body.reagila-line + dátami), Gyn má #gyn-view.
 function mgrSwitchLine(target){
@@ -11686,7 +12513,12 @@ function mgrSwitchLine(target){
   var u = (target === 'gyn') ? d.gyn : (target === 'reagila') ? d.reagila : d.gp;
   if(!u) return;
   try { haptic('selection'); } catch(e){}
+  mgrLineTransitionStart(target);
+  mgrLineCleanupBeforeSwitch();
+  appLineBumpEpoch();
   setSession(u);            // dual store ostáva v localStorage
+  mgrLineResetSharedData(target);
+  try { gynCalResetForActiveLine(); gynCalPrefetch(); } catch(e){}
   try {
     if(target === 'gyn'){
       document.body.classList.remove('manager-mode','mgr-subtab-plnenie','mgr-subtab-visits','mgr-subtab-leaderboard','mgr-subtab-kalendar','mgr-subtab-activity','reagila-line','gp-rep');
@@ -11694,9 +12526,11 @@ function mgrSwitchLine(target){
       gynEnter(u);
     } else {
       // Golem alebo Reagila → .app
+      document.body.classList.remove('gyn-line', 'manager-mode', 'gp-rep');
       var gynV = document.getElementById('gyn-view'); if(gynV) gynV.classList.remove('show');
       var appEl2 = document.querySelector('.app'); if(appEl2){ appEl2.style.display = ''; appEl2.style.visibility = 'visible'; }
       var role = mgrDetectRole(u);
+      if (!role) document.body.classList.add('gp-rep');
       if(target === 'reagila'){
         document.body.classList.add('reagila-line');
         if(!role) document.body.classList.add('gp-rep');
@@ -11720,6 +12554,8 @@ function mgrSwitchLine(target){
       }
     }
     try { mgrRenderLineSwitch(); } catch(e){}   // prekresli tlačidlá pre novú aktuálnu líniu
+    try { appGoDomov(); } catch(e){}
+    try { nstPrime(); } catch(e){}              // načítaj výhradne Nástenku cieľovej línie
     window.scrollTo(0, 0);
   } catch(e){
     // Fallback — keby in-place zlyhalo, skús čistú navigáciu
@@ -11769,6 +12605,7 @@ function reagilaRevealApp(){
 // Odkry appku až po vykreslení prvej Reagila obrazovky (2× rAF = po nátere),
 // plus poistka, aby appka nikdy neostala skrytá natrvalo.
 function reagilaRevealAfterPaint(){
+  if(document.getElementById('boot-loader')) return;
   try { requestAnimationFrame(function(){ requestAnimationFrame(reagilaRevealApp); }); } catch(e){ reagilaRevealApp(); }
   setTimeout(reagilaRevealApp, 1500);
 }
@@ -11813,6 +12650,7 @@ function loginSuccess(username, name, role, region, extra) {
     }
   }
   setSession(user);
+  try { nstResetForActiveLine(); nstPrime(); } catch(e){}
   try { userPrefsApplyMirror(user); } catch(e){}
   // Kalendár (Golem) — spusti načítanie udalostí HNEĎ pri prihlásení, paralelne s init dátami,
   // nech sú udalosti pripravené ešte pred prvým otvorením (nie až po kliknutí na Kalendár).
@@ -11827,8 +12665,9 @@ function loginSuccess(username, name, role, region, extra) {
   haptic('success');
   var _isReagila = (user.line === 'reagila');
   var _appEl = document.querySelector('.app');
-  // Reagila: appku NEodkrývaj hneď — odkryje sa až po vykreslení prvej obrazovky (gate-and-reveal)
-  if (_appEl && !_isReagila) { _appEl.style.visibility = 'visible'; _appEl.classList.add('app-enter'); setTimeout(function(){ _appEl.classList.remove('app-enter'); }, 500); }
+  // Spoločná nepriehľadná boot clona: pri žiadnej línii nesmie presvitať starý Domov.
+  try { bootLoaderShow(true); } catch(e){}
+  if (_appEl) { _appEl.style.visibility = 'hidden'; _appEl.classList.remove('app-enter'); }
   document.getElementById('login-screen').classList.remove('show');
   try { mgrDedupUnique(); } catch(e){}
   updateHdrForUser(user);
@@ -11875,6 +12714,7 @@ function loginSuccess(username, name, role, region, extra) {
     setTimeout(function(){ try { pushMaybePrompt(); } catch(e){} }, 3500);
     // One-time onboarding tip pre avatar — 4s delay aby WN/satori modal stihli skončiť
     setTimeout(function(){ try { hdrAvatarShowTipIfNeeded(); } catch(e){} }, 1500);
+    appBootWaitForHomeData(user);
     return;
   }
   if(localStorage.getItem(TUTORIAL_KEY)){
@@ -11887,16 +12727,17 @@ function loginSuccess(username, name, role, region, extra) {
   checkNotifications();
   // Spusti polling — ak admin odošle kým je reprezentant prihlásený, banner vyskočí do 60s
   startNotifPolling();
-  // Preload rebríček + Plnenie Q (leaderboard) paralelne -- oba startuju po 2s
+  // Plnenie Domova spusti okamžite. Rebríček môže dobehnúť na pozadí o chvíľu,
+  // ale karta Plnenie už nesmie čakať na používateľovo otvorenie panelu.
+  if (!REP_PL_STATE.loading && !REP_PL_STATE.loaded) {
+    plnenieApplyDefaultPeriod(REP_PL_STATE, true);
+    repPlnenieLoad();
+  }
   setTimeout(function(){
     lbFetchApprovedQ(function(){
       lbLoadData();
       lbPreloadPlnenie();
     });
-    if (!REP_PL_STATE.loading && !REP_PL_STATE.loaded) {
-      plnenieApplyDefaultPeriod(REP_PL_STATE, true);
-      repPlnenieLoad();
-    }
   }, 2000);
   // Pharma preload na pozadí — hneď po prihlásení
   setTimeout(function(){
@@ -11914,6 +12755,7 @@ function loginSuccess(username, name, role, region, extra) {
   window.scrollTo({top: 0, behavior: 'instant'});
   // Predvolená záložka po prihlásení (ak si rep zvolil inú ako Formulár)
   try { applyDefaultTabIfRep(); } catch(e){}
+  appBootWaitForHomeData(user);
 }
 
 // ── Výber línie po prihlásení (používatelia s účtom vo viacerých líniách) ──
@@ -11988,32 +12830,40 @@ function lineChooserMeta(line){
   if(line === 'reagila') return { label:'Reagila',     emoji:'💊', desc:'Reagila línia' };
   return { label:'Golem', emoji:'🩺', desc:'Všeobecní lekári (GP)' };
 }
+// Výber línie je zmysluplný až vtedy, keď máme potvrdené aspoň dva účty.
+// Neoverené timeouty nesmú používateľa dostať na obrazovku s nekonečným
+// „načítavam…“ — pomalá línia sa doplní do dual session na pozadí.
+function lineShouldShowChooser(avail){ return (avail || []).length >= 2; }
 var _lineChooserCtx = null;
 // Línie, ktoré neodpovedali včas (cold start Apps Scriptu), sa doteraz do
 // výberu vôbec nedostali — a človek videl len tie, ktoré stihli. Admin tak
 // prišiel o Golem. Teraz sa ukážu ako „načítavam…" a keď dobehnú, samy sa
 // odomknú. Nikdy sa nestane, že línia z výberu ticho zmizne.
-function showLineChooser(username, lines, dataMap, pending){
+function showLineChooser(username, lines, dataMap, pending, failed){
+  var keepRemember = false;
+  try { var oldCb=document.getElementById('line-remember-cb'); keepRemember=!!(oldCb&&oldCb.checked); } catch(e){}
   _lineChooserCtx = { username: username, data: dataMap, lines: lines.slice(),
-                      pending: (pending || []).slice() };
+                      pending: (pending || []).slice(), failed: (failed || []).slice() };
   var ls = document.getElementById('login-screen'); if(ls) ls.classList.remove('show');
   var ov = document.getElementById('line-chooser-screen');
   if(!ov){ ov = document.createElement('div'); ov.id = 'line-chooser-screen'; ov.className = 'login-screen'; document.body.appendChild(ov); }
   var nm = (dataMap.gp && dataMap.gp.name) || (dataMap.gyn && dataMap.gyn.name) || (dataMap.reagila && dataMap.reagila.name) || username;
   var poradie = ['gp', 'gyn', 'reagila'];
   var vsetky = poradie.filter(function (ln) {
-    return lines.indexOf(ln) !== -1 || (pending || []).indexOf(ln) !== -1;
+    return lines.indexOf(ln) !== -1 || (pending || []).indexOf(ln) !== -1 || (failed || []).indexOf(ln) !== -1;
   });
   var btns = vsetky.map(function(ln){
     var m = lineChooserMeta(ln);
     var caka = lines.indexOf(ln) === -1;
-    return '<button type="button" class="line-choose-btn' + (caka ? ' caka' : '') + '"' +
+    var zlyhala = (failed || []).indexOf(ln) !== -1;
+    caka = caka && !zlyhala;
+    return '<button type="button" class="line-choose-btn' + (caka ? ' caka' : '') + (zlyhala ? ' zlyhala' : '') + '"' +
              ' id="line-choose-' + ln + '"' +
-             (caka ? ' disabled' : ' onclick="pickLine(\'' + ln + '\')"') + '>' +
+             ((caka || zlyhala) ? ' disabled' : ' onclick="pickLine(\'' + ln + '\')"') + '>' +
              '<span class="line-choose-emoji">' + m.emoji + '</span>' +
              '<span class="line-choose-txt"><span class="line-choose-lbl">' + lineChooserEsc(m.label) + '</span>' +
-             '<span class="line-choose-desc">' + lineChooserEsc(caka ? 'načítavam…' : m.desc) + '</span></span>' +
-             (caka ? '<span class="line-choose-spin"></span>' : '<span class="line-choose-arrow">→</span>') +
+             '<span class="line-choose-desc">' + lineChooserEsc(caka ? 'načítavam…' : zlyhala ? 'server neodpovedal' : m.desc) + '</span></span>' +
+             (caka ? '<span class="line-choose-spin"></span>' : zlyhala ? '<span class="line-choose-arrow">!</span>' : '<span class="line-choose-arrow">→</span>') +
            '</button>';
   }).join('');
   ov.innerHTML =
@@ -12025,20 +12875,27 @@ function showLineChooser(username, lines, dataMap, pending){
       '<div class="login-help" style="margin-top:14px">Voľbu kedykoľvek zmeníš v Nastaveniach.</div>' +
     '</div>';
   ov.classList.add('show');
+  try { var newCb=document.getElementById('line-remember-cb'); if(newCb) newCb.checked=keepRemember; } catch(e){}
 }
-// Línia dobehla na pozadí — doplň ju do už otvoreného výberu.
-function lineChooserAdd(line, data){
+// Línia dobehla na pozadí — odomkni ju, alebo ukonči nekonečné koliesko.
+function lineChooserResolve(line, data){
   try {
     var ctx = _lineChooserCtx;
-    if (!ctx || !data || !data.ok) return;
+    if (!ctx || !data) return;
     var ov = document.getElementById('line-chooser-screen');
     if (!ov || !ov.classList.contains('show')) return;
     ctx.data[line] = data;
-    if (ctx.lines.indexOf(line) === -1) ctx.lines.push(line);
     ctx.pending = ctx.pending.filter(function (x) { return x !== line; });
-    showLineChooser(ctx.username, ctx.lines, ctx.data, ctx.pending);
+    ctx.failed = (ctx.failed || []).filter(function (x) { return x !== line; });
+    if(data.ok){
+      if (ctx.lines.indexOf(line) === -1) ctx.lines.push(line);
+    } else if(ctx.failed.indexOf(line) === -1){
+      ctx.failed.push(line);
+    }
+    showLineChooser(ctx.username, ctx.lines, ctx.data, ctx.pending, ctx.failed);
   } catch (e) {}
 }
+function lineChooserAdd(line, data){ lineChooserResolve(line, data); }
 function pickLine(line){
   var ctx = _lineChooserCtx; if(!ctx) return;
   var cb = document.getElementById('line-remember-cb');
@@ -12076,46 +12933,51 @@ function doLogin() {
   btn.textContent = 'Prihlasujem...';
 
   var loginParams = '?action=login&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password) + '&device_id=' + encodeURIComponent(authDeviceId());
-  // appFetchJson má tvrdý timeout (AbortController, ~16s) — keď Apps Script „visí",
-  // request sa ukončí, tlačidlo sa vráti a prihlasovanie nikdy nezostane zaseknuté
-  // na „Prihlasujem…". Per-fetch catch → Promise.all sa vždy dokončí v rámci timeoutu.
+  // Každú líniu overujeme nezávisle. Hneď ako jedna uspeje, počkáme iba krátke
+  // okno na ostatné a používateľa pustíme ďalej; pomalé servery dobehnú na pozadí.
   function loginFetch(url, tmo){
     return appFetchJson(url + loginParams, undefined, tmo).catch(function(){ return { ok:false, _failed:true }; });
   }
-  // Cold start Apps Scriptu → prvý login-fetch môže vypršať. Retry s dlhším timeoutom pre
-  // KAŽDÚ líniu — inak admin príde o gyn/reagila (a tým o prepínač línie) kvôli pomalému
-  // studenému volaniu. Predtým retry mal len Golem, preto gyn občas vypadla z prepínača.
-  function loginFetchRetry(url){
-    return loginFetch(url, 20000).then(function(d){
-      return (d && d._failed) ? loginFetch(url, 25000) : d;
-    });
-  }
+  var loginLines = [
+    {line:'gp', url:SCRIPT_URL}, {line:'gyn', url:GYN_SCRIPT_URL},
+    {line:'reagila', url:REAGILA_SCRIPT_URL}
+  ];
+  var dataMap = {gp:null,gyn:null,reagila:null};
+  var settled = {gp:false,gyn:false,reagila:false};
+  var retryStarted = {gp:false,gyn:false,reagila:false};
+  var uiFinished = false, successGraceTimer = null;
 
-  Promise.all([loginFetchRetry(SCRIPT_URL), loginFetchRetry(GYN_SCRIPT_URL), loginFetchRetry(REAGILA_SCRIPT_URL)]).then(function(results) {
+  function vals(){
+    return {
+      gp:dataMap.gp || {ok:false,_failed:true,_pending:true},
+      gyn:dataMap.gyn || {ok:false,_failed:true,_pending:true},
+      reagila:dataMap.reagila || {ok:false,_failed:true,_pending:true}
+    };
+  }
+  function availLines(){ return loginLines.map(function(x){return x.line;}).filter(function(line){return dataMap[line] && dataMap[line].ok;}); }
+  function pendingLines(){ return loginLines.map(function(x){return x.line;}).filter(function(line){return !settled[line] || (dataMap[line] && dataMap[line]._failed);}); }
+  function allSettled(){ return loginLines.every(function(x){return settled[x.line];}); }
+  function retryOne(line){
+    if(retryStarted[line] || !dataMap[line] || !dataMap[line]._failed) return;
+    retryStarted[line]=true;
+    var one={gp:{ok:false},gyn:{ok:false},reagila:{ok:false}};
+    one[line]=dataMap[line];
+    lineRetryFailedSilently(username,password,one,lineChooserResolve,300);
+  }
+  function finishUi(){
+    if(uiFinished) return;
+    var avail=availLines();
+    if(!avail.length && !allSettled()) return;
+    uiFinished=true;
+    clearTimeout(successGraceTimer);
     btn.disabled = false;
     btn.textContent = 'Prihlásiť sa →';
-    var gpData  = results[0];
-    var gynData = results[1];
-    var reagilaData = results[2];
+    var v=vals(), gpData=v.gp, gynData=v.gyn, reagilaData=v.reagila;
     // Ulož dostupné línie pre prepínač (ak ich má používateľ 2+)
     try { mgrCaptureLineDiag(username, gpData, gynData, reagilaData); } catch(e){}
     mgrStoreDualIfEligible(username, gpData, gynData, reagilaData);
-
-    // Ktoré línie má používateľ k dispozícii (rovnaké meno+heslo v danom Sheete)
-    var avail = [];
-    if(gpData.ok)      avail.push('gp');
-    if(gynData.ok)     avail.push('gyn');
-    if(reagilaData.ok) avail.push('reagila');
-    var dataMap = { gp: gpData, gyn: gynData, reagila: reagilaData };
-    // Línie, ktoré neodpovedali včas (cold start) — nie zlé heslo. Tieto sa
-    // vo výbere ukážu ako „načítavam…" a doplnia sa, len čo dobehnú.
-    var caka = [];
-    if(!gpData.ok      && gpData._failed)      caka.push('gp');
-    if(!gynData.ok     && gynData._failed)     caka.push('gyn');
-    if(!reagilaData.ok && reagilaData._failed) caka.push('reagila');
-    // Línia, ktorá nestihla odpovedať (cold start), sa dotiahne sama na pozadí
-    try { lineRetryFailedSilently(username, password, dataMap, lineChooserAdd,
-                                  caka.length ? 300 : undefined); } catch(e){}
+    var caka=pendingLines();
+    caka.forEach(retryOne);
 
     if(avail.length === 0) {
       if(gpData._failed && gynData._failed && reagilaData._failed) {
@@ -12133,10 +12995,12 @@ function doLogin() {
       return;
     }
 
-    // Zapamätaná voľba (Sheet má prednosť pred localStorage) → vstup rovno, bez pýtania.
+    // Zapamätaná voľba: miestna voľba je zámer používateľa z posledného nastavenia
+    // na tomto zariadení a musí mať prednosť pred oneskoreným/stale údajom zo Sheetu.
+    // Remote nastavenie použijeme ako fallback pri novom zariadení bez localStorage.
     // Admin už nemá výnimku „vždy Golem" — s prístupom do viacerých línií dostane
     // rovnaký výber rozhrania ako ostatní a môže si ho zapamätať.
-    var _pref = lineReadPrefFromLogin(dataMap) || lineGetPref(username);
+    var _pref = lineGetPref(username) || lineReadPrefFromLogin(dataMap);
     if(_pref && avail.indexOf(_pref) !== -1) {
       lineSetPref(username, _pref);   // zrkadli do localStorage pre rýchle/offline čítanie
       enterLineFromLogin(username, _pref, dataMap);
@@ -12145,17 +13009,30 @@ function doLogin() {
     // Viac línií (vrátane admina) → výber rozhrania. Ukáže sa aj vtedy, keď
     // je hotová jedna línia a ďalšia sa ešte doťahuje — inak by človek vošiel
     // do jedinej, ktorá stihla, a o druhej by sa nedozvedel.
-    if(avail.length + caka.length >= 2) {
-      showLineChooser(username, avail, dataMap, caka);
+    if(lineShouldShowChooser(avail)) {
+      showLineChooser(username, avail, dataMap, caka, []);
       return;
     }
     // Jedna línia → vstup priamo, priorita gp > gyn > reagila
     enterLineFromLogin(username, avail[0], dataMap);
-  }).catch(function() {
-    btn.disabled = false;
-    btn.textContent = 'Prihlásiť sa →';
-    errEl.textContent = 'Nie je pripojenie na internet. Skontroluj sieť a skús znova.';
-    errEl.classList.add('show');
+  }
+  function onLineResult(line,data){
+    if(settled[line]) return;
+    settled[line]=true;
+    dataMap[line]=data || {ok:false};
+    if(uiFinished){
+      if(dataMap[line].ok){ lineMergeLoginSuccess(username,line,dataMap[line]); lineChooserResolve(line,dataMap[line]); }
+      else if(dataMap[line]._failed){ retryOne(line); }
+      else { lineChooserResolve(line,dataMap[line]); }
+      return;
+    }
+    if(availLines().length){
+      if(allSettled()) finishUi();
+      else if(!successGraceTimer) successGraceTimer=setTimeout(finishUi,700);
+    } else if(allSettled()) finishUi();
+  }
+  loginLines.forEach(function(item){
+    loginFetch(item.url,10000).then(function(data){ onLineResult(item.line,data); });
   });
 }
 
@@ -12478,6 +13355,22 @@ try {
 } catch(e){}
 try { window.addEventListener('orientationchange', function(){ setTimeout(repTopbarSync, 200); }); } catch(e){}
 
+// Prihlásenie môže skončiť s focusom ešte na hesle. Vtedy focus handler
+// schová spodnú lištu cez kb-open, hoci login obrazovka už zmizla. Tento
+// guard sa volá pri každom návrate na Domov aj pri obnove hlavičky a vráti
+// navigáciu do konzistentného stavu.
+function appNavEnsure(user) {
+  var sess = user || (typeof getSession === 'function' ? getSession() : null);
+  if (!sess || !sess.username) return false;
+  document.body.classList.add('app-nav');
+  document.body.classList.remove('kb-open');
+  var bar = document.getElementById('rep-tabbar');
+  if (bar) { bar.removeAttribute('hidden'); bar.style.removeProperty('display'); }
+  try { tabbarSyncAvatar(sess); } catch (e) {}
+  try { repTabbarSync(); } catch (e) {}
+  return true;
+}
+
 // Poistka na úvodnú obrazovku. Každá línia si ju otvára vlastnou cestou
 // (applyDefaultTabIfRep / mgrApplyDefaultSubtab / gynApplyDefaultNav) a stačí,
 // aby jedna z nich nedobehla — a človek skončí tam, kde bol domov kedysi.
@@ -12543,7 +13436,7 @@ function updateHdrForUser(user) {
   // rolám. Trieda sa pridáva tu, lebo updateHdrForUser() beží po prihlásení
   // v každej línii.
   if (user && user.username) {
-    document.body.classList.add('app-nav');
+    appNavEnsure(user);
     try { appAppPaddingSync(); } catch (e) {}
     try { appOpenDefaultScreen(); } catch (e) {}
   }
@@ -12666,7 +13559,7 @@ function initLogin() {
   if(session && session.username) usageTrack('app_open', '', 'štart appky · rola: ' + (session.role || ''));
   if(session && session.username && session.line === 'gyn') {
     document.querySelector('.app').style.visibility = 'visible';
-    try { setTimeout(nstPrime, 1200); } catch(e){}   // Nástenka — bodka s počtom nových
+    try { nstResetForActiveLine(); nstPrime(); } catch(e){}   // Nástenka — hneď aj so stavom načítania
     gynEnter(session);
     return;
   }
@@ -12680,7 +13573,7 @@ function initLogin() {
       setSession(session);
     }
     try { userPrefsApplyMirror(session); } catch(e){}
-    try { setTimeout(nstPrime, 1200); } catch(e){}   // Nástenka — bodka s počtom nových príspevkov
+    try { nstResetForActiveLine(); nstPrime(); } catch(e){}   // Nástenka — hneď aj so stavom načítania
     var mgrRole = mgrDetectRole(session);
     // Reagila línia → body classa pre line-aware CSS + vyprázdnenie statických Golem zoznamov
     if(_isReagilaR){ document.body.classList.add('reagila-line'); reagilaClearGolemStatics(); }
@@ -12716,16 +13609,15 @@ function initLogin() {
     setTimeout(function(){ updateHdrForUser(session); }, 300);
     setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(false);}else{checkMilestone();} }, 600);
     // refreshBadgeFromSheets nahradená loadInitData() vyššie
-    // Preload rebríček + Plnenie Q (leaderboard) paralelne -- oba startuju po 2s
+    if (!REP_PL_STATE.loading && !REP_PL_STATE.loaded) {
+      plnenieApplyDefaultPeriod(REP_PL_STATE, true);
+      repPlnenieLoad();
+    }
     setTimeout(function(){
       lbFetchApprovedQ(function(){
         lbLoadData();
         lbPreloadPlnenie();
       });
-      if (!REP_PL_STATE.loading && !REP_PL_STATE.loaded) {
-        plnenieApplyDefaultPeriod(REP_PL_STATE, true);
-        repPlnenieLoad();
-      }
     }, 2000);
     setTimeout(function(){
       plnenieApplyDefaultPeriod(REP_PL_STATE);
@@ -12754,7 +13646,8 @@ function initLogin() {
 
 var GYN_STATE   = { repList: [], userList: [] };
 var GYN_APP     = { nav: 'plnenie', q: 1, year: 2026, plCache: {}, plLoading: {},
-                    detailLogin: null, detailMeno: '', detailRegion: '' };
+                    detailLogin: null, detailMeno: '', detailRegion: '',
+                    _bootstrapId: 0, _repListLoadId: 0, _plReqIds: {} };
 var GYN_LINIA_LABEL = { pill: '💊 Pill', patch: '🩹 Patch' };
 var GYN_ROLE_LABEL  = { 'gyn-rep':'Reprezentant', 'gyn-am':'Area Manager', 'gyn-pm':'Produktový manažér', 'gyn-bum':'Business Unit Manager', 'gyn-asistent':'Asistent' };
 // Mapovanie produkt → línia (kľúč = lowercase názov produktu zo Sheets)
@@ -14304,22 +15197,35 @@ function gynLoginSuccess(username, data) {
   if (data.session_expires_at) user.session_expires_at = String(data.session_expires_at || '');
   if (data.device_id) user.device_id = String(data.device_id || '');
   setSession(user);
+  try { nstResetForActiveLine(); nstPrime(); } catch(e){}
   // Výber konkurentov pre MS graf — localStorage (instant) + zo Sheets (login response)
   try { gynMsHydrate(localStorage.getItem(gynMsLsKey())); } catch(e){}
   if (data.gyn_ms_vyber) gynMsHydrate(data.gyn_ms_vyber);
   haptic('success');
   var appEl = document.querySelector('.app');
-  if(appEl){ appEl.style.visibility='visible'; appEl.classList.add('app-enter');
-             setTimeout(function(){ appEl.classList.remove('app-enter'); }, 500); }
+  // Gyn má vlastný shell. Starý Golem pohľad tu nesmie ani na okamih presvitať
+  // medzi loginom a gynEnter(), inak používateľ vidí nesprávnu načítaciu obrazovku.
+  if(appEl) appEl.style.display = 'none';
   document.getElementById('login-screen').classList.remove('show');
   pingLogin(username);
   gynEnter(user);
 }
 
 function gynEnter(user) {
+  // Každý vstup je samostatná načítacia relácia. Po návrate z inej línie
+  // nesmie prežiť žiadny starý loading flag ani oneskorená odpoveď.
+  GYN_APP._bootstrapId=(GYN_APP._bootstrapId||0)+1;
+  GYN_APP._repListLoadId=(GYN_APP._repListLoadId||0)+1;
+  GYN_APP._plReqIds={}; GYN_APP.plLoading={}; GYN_APP._repListLoading=false;
+  document.body.classList.remove('manager-mode', 'gp-rep', 'reagila-line');
   document.body.classList.add('gyn-line');   // line-aware CSS (tmavý notch pás)
+  updateHdrForUser(user);
+  if (user.role !== 'gyn-rep') {
+    document.getElementById('hdr-line-name').textContent = 'Manažérsky pohľad';
+    document.getElementById('hdr-greeting').textContent = (user.name || user.username) + ' · Gynekológia';
+  }
   try { setTimeout(gynNavBalance, 60); setTimeout(gynNavBalance, 400); } catch(e){}
-  try { bootLoaderShow(); } catch(e){}       // načítacia obrazovka (avatar + oslovenie)
+  try { bootLoaderShow(true); } catch(e){}   // spoločná boot clona aj pri warm cache
   var appEl = document.querySelector('.app');
   if(appEl) appEl.style.display = 'none';
   plnenieApplyDefaultPeriod(GYN_APP, true);
@@ -14327,19 +15233,27 @@ function gynEnter(user) {
   gynRenderShell(user);
   gynApplyDefaultNav(user);   // úvodná obrazovka podľa nastavení používateľa (default = Plnenie)
   gynBootstrap(user);   // repList + plnenie (aktuálny Q) v JEDNOM volaní; vykreslí obsah (fallback vnútri)
+  // Domov používa rovnaké dáta ako bootstrap. Rebríček preto začni ťahať hneď
+  // popri ním, nie až keď už používateľ pozerá na prázdne karty.
+  try { gynLbPreload(); } catch(e){}
   // Loader ostáva kým sa plnenie reálne nevykreslí (dáta alebo chybová karta) — pokryje aj
   // pomalý „studený" prvý fetch peknou obrazovkou namiesto holého „Načítavam...". Cap 15 s.
   (function(){
     var _t0 = Date.now();
     var _iv = setInterval(function(){
       var gc = document.getElementById('gyn-content');
-      var ready = gc && gc.querySelector('.pl-sum-big, .mgr-plnenie-detail, .app-err-card');
-      if(ready || !document.getElementById('boot-loader') || Date.now() - _t0 > 15000){
-        clearInterval(_iv); try { bootLoaderDone(); } catch(e){}
+      var waitingHome = !!GYN_APP._openDnesWhenReady;
+      var ready = waitingHome ? gynHomeBootstrapReady() :
+        (gc && gc.querySelector('.pl-sum-big, .mgr-plnenie-detail, .app-err-card'));
+      if(ready || !document.getElementById('boot-loader') || Date.now() - _t0 > 12000){
+        clearInterval(_iv);
+        // Po limite otvorí Domov len s chybovým/retry stavom; nikdy nie s nekonečným spinnerom.
+        if(waitingHome) gynOpenDnesWhenReady(!ready);
+        try { bootLoaderDone(); } catch(e){}
       }
     }, 150);
   })();
-  setTimeout(function(){ try { gynCalPrefetch(); } catch(e){} }, 900);   // kalendár načítaj na pozadí hneď po prihlásení
+  try { gynCalPrefetch(); } catch(e){}  // kalendár beží paralelne počas boot obrazovky
   // Úplne prvý login → potlač WN changelog backlog, nech nový rep vidí len Satori uvítací overlay
   wnSuppressBacklogForFirstLogin();
   // Satori → WN → milestone cascade (rovnaký pattern ako Golem login)
@@ -14351,8 +15265,6 @@ function gynEnter(user) {
   }, 800);
   // Preload na pozadí — všetky Q plnenie + pharma dáta (aby switching Q bol instant)
   setTimeout(function(){ gynPreloadAllQuarters(); }, 1500);
-  // Preload rebríčka (roster + plnenie posledného Q, fullLine) — nech je po otvorení hneď vyplnený
-  setTimeout(function(){ try { gynLbPreload(); } catch(e){} }, 1800);
   setTimeout(function(){ gynPreloadAllPharma(); }, 2500);
   // Update avatar hint hneď + one-time onboarding tip skoro
   // (ak je otvorený WN/satori modal, hdrAvatarShowTipIfNeeded počká kým sa zatvorí)
@@ -14465,14 +15377,22 @@ function gynLoadRepList(user, _attempt) {
   // Výber konkurentov pre MS graf — najprv localStorage (instant), Sheets prepíše nižšie
   try { gynMsHydrate(localStorage.getItem(gynMsLsKey())); } catch(e){}
   // Príznak, aby potiahnutie nadol vedelo, kedy zastaviť krúžok.
+  var loadId = ++GYN_APP._repListLoadId;
+  var loadCtx = appLineCapture();
+  function active(){ return loadId === GYN_APP._repListLoadId && appLineContextActive(loadCtx); }
   GYN_APP._repListLoading = true;
-  fetch(gynScriptUrl('action=getRepList'), { cache: 'no-store' })
-    .then(function(r){ return r.json(); })
-    .then(function(data){ GYN_APP._repListLoading = false; gynApplyRepListData(data, user); })
+  appFetchJson(gynScriptUrl('action=getRepList'), undefined, 12000)
+    .then(function(data){
+      if(!active()) return;
+      GYN_APP._repListLoading = false;
+      gynApplyRepListData(data, user);
+      try { dnesRefreshIfOpen(); } catch(e){}
+    })
     .catch(function(){
+      if(!active()) return;
       // Cold-start / session ešte nie je pripravená pri prvom logine → skús znova.
       var _a = _attempt || 0;
-      if(_a < 2) setTimeout(function(){ gynLoadRepList(user, _a + 1); }, _a === 0 ? 2000 : 4000);
+      if(_a < 2) setTimeout(function(){ if(active()) gynLoadRepList(user, _a + 1); }, _a === 0 ? 1200 : 2500);
       else GYN_APP._repListLoading = false;
     });
 }
@@ -14481,23 +15401,26 @@ function gynLoadRepList(user, _attempt) {
 function gynBootstrap(user) {
   var q = GYN_APP.q, rok = GYN_APP.year;
   if(typeof IS_DEV !== 'undefined' && IS_DEV){ try { gynLoadRepList(user); } catch(e){} return; }
+  var bootId = ++GYN_APP._bootstrapId;
+  var bootCtx = appLineCapture();
+  function active(){ return bootId === GYN_APP._bootstrapId && appLineContextActive(bootCtx); }
   // Zabráň, aby gynPlnenieShow spustil vlastný fetch — plnenie príde z bootstrapu.
-  var _wasLoading = GYN_APP.plLoading[q];
   GYN_APP.plLoading[q] = true;
   try { gynMsHydrate(localStorage.getItem(gynMsLsKey())); } catch(e){}
   // Okamžite ukáž cache (ak je) — bez vlastného fetchu (plLoading guard). Bootstrap ju obnoví.
   try { gynRenderContent(user); } catch(e){}
-  fetch(gynScriptUrl('action=bootstrap&rok=' + rok + '&Q=' + q), { cache: 'no-store' })
-    .then(function(r){ return r.json(); })
+  appFetchJson(gynScriptUrl('action=bootstrap&rok=' + rok + '&Q=' + q), undefined, 12000)
     .then(function(d){
+      if(!active()) return;
       if(!d || !d.ok) throw new Error('bootstrap fail');
+      var plReady = false;
       // Plnenie do cache (gynPlnenieShow ho potom vykreslí bez ďalšieho fetchu — plLoading drží guard)
       if(d.plnenie && d.plnenie.ok){
         try {
           gynPreprocessData(d.plnenie);
           GYN_APP.plCache[q] = d.plnenie;
           gynCacheWrite(gynPlnenieCacheKey(rok, q), d.plnenie);
-          try { dnesRefreshIfOpen(); } catch(e){}
+          plReady = true;
         } catch(e){}
       }
       // RepList → naplní stav + spraví plný render (jeho re-render logika)
@@ -14505,14 +15428,38 @@ function gynBootstrap(user) {
       // Poistka — ak repList nič nevykreslil, vykresli aspoň plnenie z cache
       var gc = document.getElementById('gyn-content');
       if(!(gc && gc.querySelector('.pl-sum-big, .mgr-plnenie-detail'))) { try { gynRenderContent(user); } catch(e){} }
-      if(!_wasLoading) delete GYN_APP.plLoading[q];   // až teraz povoľ ďalšie fetche
+      delete GYN_APP.plLoading[q];
+      // Bootstrap môže vrátiť roster, ale plnenie nie. Po uvoľnení guardu
+      // vtedy okamžite spusti samostatný odolný loader.
+      if(!plReady){ try { gynRenderContent(user); } catch(e){} }
+      try { dnesRefreshIfOpen(); } catch(e){}
+      gynOpenDnesWhenReady();
     })
     .catch(function(){
+      if(!active()) return;
       // Fallback — pôvodné samostatné načítanie
-      if(!_wasLoading) delete GYN_APP.plLoading[q];
+      delete GYN_APP.plLoading[q];
       try { gynRenderContent(user); } catch(e){}   // gynPlnenieShow si dotiahne plnenie sám
       try { gynLoadRepList(user); } catch(e){}
+      try { dnesRefreshIfOpen(); } catch(e){}
+      gynOpenDnesWhenReady();
     });
+}
+
+// Domov v Gyn potrebuje rovnaký základ ako jeho prvé dve karty: vlastné
+// plnenie, plný roster a plnenie celej línie pre rebríček.
+function gynHomeBootstrapReady(){
+  try {
+    var q = GYN_APP.q;
+    return !!(GYN_APP.plCache && GYN_APP.plCache[q] &&
+      GYN_LB.plCache && GYN_LB.plCache[q] && gynLbScopeReps().length);
+  } catch(e){ return false; }
+}
+function gynOpenDnesWhenReady(force) {
+  if (!GYN_APP._openDnesWhenReady) return false;
+  if (!force && !gynHomeBootstrapReady()) return false;
+  GYN_APP._openDnesWhenReady = false;
+  try { openDnes(); return true; } catch(e){ return false; }
 }
 
 // Helper: vráti HTML pre gyn avatar circle — buď <img> s DiceBear URL alebo iniciály
@@ -14551,7 +15498,7 @@ function gynRenderShell(user) {
     '<div class="gyn-inner">' +
       '<div class="gyn-mgr-hdr">' +
         '<div class="hdr-row" style="position:relative;z-index:1">' +
-          '<div style="flex:1;min-width:0">' + hdrInnerHtml + '</div>' +
+          '<div style="flex:1;min-width:0" role="link" tabindex="0" aria-label="Domov" data-header-home>' + hdrInnerHtml + '</div>' +
           '<div style="display:flex;align-items:center;gap:10px">' +
             '<div class="gear-wrap" id="gyn-gear-wrap">' +
               '<button class="gear-btn" onclick="openSettings()" aria-label="Nastavenia" title="Nastavenia"><svg viewBox="0 0 24 24" width="21" height="21" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>' +
@@ -14611,7 +15558,7 @@ function gynApplyDefaultNav(user) {
     var def = appDefaultTab();
     // Domov je obrazovka nad líniami — otvorí sa nad gyn pohľadom.
     // Bez vlastnej voľby je domovom Domov, rovnako ako u reprezentanta.
-    if (!def || def === 'dnes') { setTimeout(function(){ try { openDnes(); } catch(e){} }, 350); }
+    if (!def || def === 'dnes') GYN_APP._openDnesWhenReady = true;
     var allowed = ['plnenie','kalendar','visits','leaderboard'];
     if (gynActivityAllowed(user)) allowed.push('activity');
     if (def && def !== 'plnenie' && allowed.indexOf(def) >= 0) {
@@ -14638,6 +15585,14 @@ function gynActivityAllowed(u) {
 
 // ── Navigácia medzi tabmi ──
 function gynNavTo(tab) {
+  // Obnov aktívny povrch aj po prepnutí línie alebo oneskorenom GP callbacku.
+  var session = getSession();
+  if (!session || session.line !== 'gyn') return;
+  document.body.classList.remove('manager-mode', 'gp-rep', 'reagila-line');
+  document.body.classList.add('gyn-line', 'app-nav');
+  document.querySelector('.app').style.display = 'none';
+  document.getElementById('gyn-view').classList.add('show');
+  if (!document.getElementById('gyn-content')) gynRenderShell(session);
   try { setTimeout(gynNavBalance, 0); } catch(e){}
   // Aktivita (usage analytics) — admin + gyn manažéri
   if (tab === 'activity') { var _gs = getSession(); if (!gynActivityAllowed(_gs)) return; }
@@ -14665,6 +15620,7 @@ function gynNavTo(tab) {
     b.classList.toggle('active', b.getAttribute('data-tab') === tab);
   });
   gynRenderContent(getSession());
+  window.scrollTo(0, 0);
 }
 
 function gynSwitchQ(q) {
@@ -14718,6 +15674,7 @@ function gynQTabsHtml() {
 // Preload — všetky 4 Q plnenia paralelne (cache GYN_APP.plCache)
 function gynPreloadAllQuarters() {
   var year = GYN_APP.year;
+  var preloadCtx = appLineCapture();
   [1,2,3,4].forEach(function(q){
     var cacheKey = gynPlnenieCacheKey(year, q);
     if(!GYN_APP.plCache[q]) {
@@ -14728,10 +15685,13 @@ function gynPreloadAllQuarters() {
       }
     }
     if(GYN_APP.plLoading[q]) return;     // už sa načítava (gynPlnenieShow)
+    var reqId = ((GYN_APP._plReqIds[q] || 0) + 1);
+    GYN_APP._plReqIds[q] = reqId;
+    function active(){ return appLineContextActive(preloadCtx) && GYN_APP._plReqIds[q] === reqId; }
     GYN_APP.plLoading[q] = true;
-    fetch(gynScriptUrl('action=getPlnenieAll&rok='+year+'&Q='+q), { cache:'no-store' })
-      .then(function(r){ return r.json(); })
+    appFetchJson(gynScriptUrl('action=getPlnenieAll&rok='+year+'&Q='+q), undefined, 12000)
       .then(function(data){
+        if(!active()) return;
         delete GYN_APP.plLoading[q];
         if(!data) return;
         gynPreprocessData(data);
@@ -14755,6 +15715,7 @@ function gynPreloadAllQuarters() {
         if(typeof gynRefreshAllTrends === 'function') gynRefreshAllTrends();
       })
       .catch(function(){
+        if(!active()) return;
         delete GYN_APP.plLoading[q];
       });
   });
@@ -14766,8 +15727,11 @@ function gynPreloadAllQuarters() {
 function gynLbPreload() {
   try {
     if(typeof gynLbEnsureRepList === 'function') gynLbEnsureRepList();
+    var currentQ = GYN_APP.q;
+    var currentKey = gynPlnenieCacheKey(GYN_APP.year, currentQ) + '|lb-fullLine';
+    gynLbEnsureData(currentQ, currentKey);
     var lastQ = gynLbLastCompletedQ();
-    if(lastQ < 1) return;
+    if(lastQ < 1 || lastQ === currentQ) return;
     var key = gynPlnenieCacheKey(GYN_APP.year, lastQ) + '|lb-fullLine';
     gynLbEnsureData(lastQ, key);
   } catch(e){}
@@ -14831,6 +15795,17 @@ function gynPreloadAllPharma() {
 }
 
 // ── PLNENIE ──
+// Prvý vstup do Q bez cache nesmie vyzerať ako prázdne plnenie. Karta drží
+// rovnakú hierarchiu ako hotový súhrn a jasne hovorí, že dáta práve prichádzajú.
+function gynPlnenieLoadingHtml(q){
+  return gynQTabsHtml() +
+    '<section class="gyn-pl-loading" role="status" aria-live="polite" style="margin:14px 0 18px;padding:26px 20px;border-radius:18px;background:#10294B;box-shadow:0 12px 28px rgba(15,38,70,.18);text-align:center">' +
+      '<div style="display:flex;justify-content:center;align-items:center;gap:9px;color:#F8FAFC;font-weight:700;font-size:15px"><span class="dnes-spin" style="border-color:rgba(255,255,255,.28);border-top-color:#53A3FF;width:18px;height:18px"></span>Načítavam plnenie</div>' +
+      '<div style="margin-top:7px;color:#A9C5E5;font-size:13px">Pripravujem výsledky za ' + plnenieQLabel(q, GYN_APP.year) + '…</div>' +
+      '<div style="display:flex;gap:8px;margin-top:20px"><span style="height:8px;flex:1;border-radius:999px;background:rgba(255,255,255,.15)"></span><span style="height:8px;flex:1;border-radius:999px;background:rgba(255,255,255,.10)"></span><span style="height:8px;flex:1;border-radius:999px;background:rgba(255,255,255,.08)"></span></div>' +
+    '</section>' +
+    '<div style="padding:4px 0 20px;text-align:center;color:#8FA4C1;font-size:12px">Načítavam produkty a predikciu konca kvartálu…</div>';
+}
 function gynPlnenieShow(el, user, _attempt) {
   // Primárne otvorenie Plnenia (login / prepnutie tabu / zmena Q) → vždy povoľ animáciu barov,
   // aj keby nejaký background tichý re-render predtým nechal aktívny suppress flag.
@@ -14844,13 +15819,17 @@ function gynPlnenieShow(el, user, _attempt) {
     GYN_APP.plCache[q] = cached;
     gynPlnenieRender(el, user, cached);
   } else {
-    el.innerHTML = gynQTabsHtml() +
-      '<div style="padding:32px 0;text-align:center;color:#64748B;font-size:13px">Načítavam...</div>';
+    el.innerHTML = gynPlnenieLoadingHtml(q);
   }
   if(GYN_APP.plLoading[q]) return;
+  var reqId = ((GYN_APP._plReqIds[q] || 0) + 1);
+  GYN_APP._plReqIds[q] = reqId;
+  var reqCtx = appLineCapture();
+  function active(){ return appLineContextActive(reqCtx) && GYN_APP._plReqIds[q] === reqId; }
   GYN_APP.plLoading[q] = true;
-  appFetchJson(gynScriptUrl('action=getPlnenieAll&rok='+GYN_APP.year+'&Q='+q))
+  appFetchJson(gynScriptUrl('action=getPlnenieAll&rok='+GYN_APP.year+'&Q='+q), undefined, 12000)
     .then(function(data){
+      if(!active()) return;
       delete GYN_APP.plLoading[q];
       gynPreprocessData(data);
       var changed = !gynCacheSame(GYN_APP.plCache[q], data);
@@ -14865,13 +15844,14 @@ function gynPlnenieShow(el, user, _attempt) {
       }
     })
     .catch(function(){
+      if(!active()) return;
       delete GYN_APP.plLoading[q];
       if(!cached) {
         var _att = _attempt || 0;
         // Cold-start gyn backendu / session ešte nie je pripravená pri prvom logine →
         // automaticky skús znova (netreba manuálny reload). Až po pár pokusoch chybová karta.
         if(_att < 2) {
-          setTimeout(function(){ gynPlnenieShow(el, user, _att + 1); }, _att === 0 ? 1800 : 3500);
+          setTimeout(function(){ if(active()) gynPlnenieShow(el, user, _att + 1); }, _att === 0 ? 1200 : 2500);
           return; // ponechaj „Načítavam..."
         }
         appRegisterRetry('gyn-plnenie', function(){ gynPlnenieShow(el, user); });
@@ -15527,6 +16507,7 @@ function gynOpenDistrictFulfillment(productName, oblast, keysPipe, login) {
   var subtabsEl = document.getElementById('pharma-ms-subtabs');
   var bodyEl = document.getElementById('pharma-ms-body');
   var overlay = document.getElementById('pharma-ms-overlay');
+  if (overlay) overlay.classList.add('gyn-district-view');
   var backBtn = overlay && overlay.querySelector('.pharma-ms-back');
   if(backBtn) backBtn.setAttribute('onclick', 'gynClosePharma()');
   if(titleEl) titleEl.textContent = 'Plnenie po okresoch · Q' + GYN_APP.q + ' ' + GYN_APP.year + ' · ' + productName;
@@ -17130,7 +18111,7 @@ function gynPlnenieRenderRepDetail(el, data) {
       var distBtnHtml = distRows.length && (p.district || GYN_PHARMA_PRODUCTS[pkLow])
         ? '<button type="button" class="prod-district-link" onclick="gynOpenDistrictFulfillment(\''+p.name.replace(/\'/g,"\\\'")+'\',\''+(GYN_APP.detailRegion||'').replace(/\'/g,"\\\'")+'\',\''+metricKeys.join('|').replace(/\'/g,"\\\'")+'\',\''+login.replace(/\'/g,"\\\'")+'\')">Plnenie po okresoch</button>'
         : '';
-      html += '<div class="prod-item-adv">' +
+      html += '<div class="prod-item-adv" data-pl-product="' + appEsc(p.key) + '">' +
         '<div class="prod-adv-top">' +
           '<div class="prod-adv-name">' + gynEsc(p.name) + '</div>' +
           '<div class="prod-adv-pct ' + prodColorCls + '">' + plnenieFormatPct(pPct) + '</div>' +
@@ -17309,7 +18290,7 @@ function gynPlnenieRenderRep(el, user, data) {
         ? '<button type="button" class="prod-district-link" onclick="gynOpenDistrictFulfillment(\''+p.name.replace(/\'/g,"\\\'")+'\',\''+region.replace(/\'/g,"\\\'")+'\',\''+metricKeys.join('|').replace(/\'/g,"\\\'")+'\',\''+login.replace(/\'/g,"\\\'")+'\')">Plnenie po okresoch</button>'
         : '';
 
-      html += '<div class="prod-item-adv">' +
+      html += '<div class="prod-item-adv" data-pl-product="' + appEsc(p.key) + '">' +
         '<div class="prod-adv-top">' +
           '<div class="prod-adv-name">' + gynEsc(p.name) + '</div>' +
           '<div class="prod-adv-pct ' + prodColorCls + '">' + plnenieFormatPct(pPct) + '</div>' +
@@ -17342,6 +18323,27 @@ function gynPlnenieRenderRep(el, user, data) {
     var totEl = el.querySelector('.total-card .total-val');
     if(totEl && typeof plnenieCountUp === 'function') plnenieCountUp(totEl, repPct);
   }
+}
+
+function gynPlnenieViewTabsHtml() {
+  return '<div class="gyn-cal-vtoggle gyn-pl-view-toggle" role="group" aria-label="Zobrazenie plnenia">' +
+    ['products', 'reps'].map(function(view) {
+      var active = (GYN_APP.plView || 'products') === view;
+      return '<button type="button" class="gyn-cal-vtoggle-btn' + (active ? ' active' : '') + '" data-gyn-pl-view="' + view + '" aria-pressed="' + active + '" onclick="gynPlnenieSetView(\'' + view + '\')">' + (view === 'products' ? 'Podľa produktov' : 'Podľa reprezentantov') + '</button>';
+    }).join('') + '</div>';
+}
+function gynPlnenieSetView(view) {
+  if (view !== 'products' && view !== 'reps') return;
+  GYN_APP.plView = view;
+  ['products', 'reps'].forEach(function(key) {
+    var el = document.getElementById('gyn-pl-' + key);
+    if (el) el.hidden = key !== view;
+  });
+  document.querySelectorAll('[data-gyn-pl-view]').forEach(function(btn) {
+    var active = btn.getAttribute('data-gyn-pl-view') === view;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', String(active));
+  });
 }
 
 function gynPlnenieRenderMgr(el, user, data) {
@@ -17467,7 +18469,7 @@ function gynPlnenieRenderMgr(el, user, data) {
 
   var clsTot = plnenieColorClass(totPct);
   var totPctAttr = (totPct !== null && !isNaN(totPct)) ? totPct : '';
-  var html = gynQTabsHtml() +
+  var html = gynQTabsHtml() + gynPlnenieViewTabsHtml() +
     '<div class="pl-sum-big">' +
         '<div class="pl-sum-big-row">' +
           '<div>' +
@@ -17480,6 +18482,7 @@ function gynPlnenieRenderMgr(el, user, data) {
           '</div>' +
         '</div>';
 
+  html += '<div id="gyn-pl-products"' + (GYN_APP.plView === 'reps' ? ' hidden' : '') + '>';
   if(prodAggs.length) {
     var pillP = [], patchP = [], otherP = [];
     prodAggs.forEach(function(p){
@@ -17535,6 +18538,7 @@ function gynPlnenieRenderMgr(el, user, data) {
     if(patchP.length) html += '<div class="pl-section-lbl" style="'+sectStyle+'"><span style="color:#3B82F6;margin-right:2px">🩹</span> Patch</div>' + renderProdCards(patchP);
     if(otherP.length) html += '<div class="pl-section-lbl" style="'+sectStyle+'">Ostatné</div>'   + renderProdCards(otherP);
   }
+  html += '</div>'; // gyn-pl-products
   // Predikcia konca Q v hlavnej karte (pod produktami, pred zatvorením pl-sum-big)
   if(totPredikcia !== null) {
     html += '<div style="border-top:1px solid #E2E8F0;margin-top:10px;padding-top:10px;text-align:center;font-size:11.5px;color:#64748B">' +
@@ -17543,6 +18547,7 @@ function gynPlnenieRenderMgr(el, user, data) {
   }
   html += '</div>'; // pl-sum-big
 
+  html += '<div id="gyn-pl-reps"' + (GYN_APP.plView !== 'reps' ? ' hidden' : '') + '>';
   // Pill / Patch karty s predikciou
   function regionCardHtml(label, pct, pred, predikcia, plan) {
     var predHtml = (predikcia !== null)
@@ -17637,6 +18642,7 @@ function gynPlnenieRenderMgr(el, user, data) {
     html += '</div>'; // pl-rep-list
   });
 
+  html += '</div>'; // gyn-pl-reps
   // Trend graf cez kvartály — Slovensko aggregate
   html += '<div class="mgr-plnenie-detail" style="display:block;margin-top:18px"><div id="gyn-mgr-trend" class="trend"></div></div>';
 
@@ -17724,6 +18730,8 @@ function gynLbEnsureRepList(){
       GYN_LB.repLoading = false;
       gynLbRepListLoaded(d);
       if(GYN_APP.nav === 'leaderboard') gynLbRender();
+      try { dnesRefreshIfOpen(); } catch(e){}
+      try { gynOpenDnesWhenReady(); } catch(e){}
     })
     .catch(function(){
       GYN_LB.repLoading = false;
@@ -17733,6 +18741,7 @@ function gynLbEnsureRepList(){
         GYN_LB.repFetched = true;
         if(GYN_APP.nav === 'leaderboard') gynLbRender();
       }
+      try { gynOpenDnesWhenReady(); } catch(e){}
     });
 }
 function gynLbCatTabsHtml(){
@@ -17787,6 +18796,8 @@ function gynLbEnsureData(q, key){
       gynCacheWrite(key, d);
       GYN_LB.dataReady[q] = true;
       if(GYN_APP.nav === 'leaderboard') gynLbRender();
+      try { dnesRefreshIfOpen(); } catch(e){}
+      try { gynOpenDnesWhenReady(); } catch(e){}
     })
     .catch(function(){
       delete GYN_LB.plLoading[q];
@@ -18157,7 +19168,9 @@ function gynCalLsKey(){
   var s=(typeof getSession==='function')?getSession():null;
   var login=String((s&&s.username)||'').toLowerCase();
   var line=String((s&&s.line)||'gp').toLowerCase();
-  return login ? ('gyn_cal_events_v2_'+line+'_'+login) : 'gyn_cal_events_v2';
+  // v3 začína čistým, jednoznačne line-scoped zrkadlom. Staré v2 kľúče mohli
+  // byť pri rýchlom prepnutí zapísané odpoveďou z inej línie.
+  return login ? ('gyn_cal_events_v3_'+line+'_'+login) : 'gyn_cal_events_v3';
 }
 // Bezpečnostná normalizácia dátumov/časov — keď backend (Sheets) vráti dátum ako
 // ISO ('2026-06-10T22:00:00.000Z' = midnight v SK), prevedieme späť na lokálny
@@ -18185,14 +19198,20 @@ function gynCalLoadLocal(){
   try {
     var key=gynCalLsKey();
     var raw=localStorage.getItem(key);
-    if(!raw){
-      // Migrácia zo starého globálneho kľúča (pred v2.32.6) → priraď aktuálnemu používateľovi,
-      // nech sú eventy v kalendári HNEĎ aj po prvom prihlásení po update (kým dobehne sync).
-      var old=localStorage.getItem('gyn_cal_events_v2');
-      if(old){ raw=old; try { localStorage.setItem(key, old); } catch(e){} }
-    }
+    GYN_CAL.events=[];
     if(raw){ var a=JSON.parse(raw); if(Array.isArray(a)) GYN_CAL.events=a.map(gynCalNormEvent); }
   } catch(e){}
+}
+// Spoločný calendar engine drží stav v pamäti. Pri zmene línie ho prepneme
+// na line-scoped cache ešte pred vykreslením Domova, aby ani na okamih neukázal cudzie udalosti.
+function gynCalResetForActiveLine(){
+  var t=new Date();
+  GYN_CAL.events=[];
+  GYN_CAL.y=t.getFullYear(); GYN_CAL.m=t.getMonth();
+  GYN_CAL._init=true; GYN_CAL._synced=false; GYN_CAL._syncing=false; GYN_CAL._everSyncedOk=false;
+  GYN_CAL._formEditId=null; GYN_CAL._rejecting=null;
+  gynCalLoadLocal();
+  try { gynCalUpdateBadge(); } catch(e){}
 }
 function gynCalPersist(){
   try { localStorage.setItem(gynCalLsKey(), JSON.stringify(GYN_CAL.events)); } catch(e){}
@@ -18208,10 +19227,13 @@ function gynCalSig(arr){
 }
 function gynCalSync(){
   if(!gynCalRemoteOn() || GYN_CAL._syncing) return;
+  var syncLine=gynCalLine();
+  var syncCtx=appLineCapture();
   GYN_CAL._syncing=true;
   fetch(gynCalScriptUrl('action=getCalEvents&_t='+Date.now()), { cache:'no-store' })
     .then(function(r){ return r.json(); })
     .then(function(d){
+      if(syncLine!==gynCalLine() || !appLineContextActive(syncCtx)) return;
       if(d && d.ok===true && Array.isArray(d.events)){
         var fresh=d.events.map(gynCalNormEvent);          // normalizuj ISO dátumy zo Sheets
         var wasFirstOk=!GYN_CAL._everSyncedOk;
@@ -18230,7 +19252,7 @@ function gynCalSync(){
       }
     })
     .catch(function(){})                                   // offline / backend nenasadený → lokál ostáva
-    .then(function(){ GYN_CAL._syncing=false; });
+    .then(function(){ if(syncLine===gynCalLine() && appLineContextActive(syncCtx)) GYN_CAL._syncing=false; });
 }
 // Manuálny sync — ↻ tlačidlo v hlavičke. Krátka animácia + načítanie zo Sheets.
 function gynCalManualSync(btn){
@@ -18326,6 +19348,19 @@ function gynCalAgendaView(){
 }
 function gynCalSetAgendaView(v){
   GYN_CAL._agendaView=v;
+  // Ak je upozornenie z iného mesiaca, po otvorení Absencií manažéra rovno
+  // presuň na najbližšiu čakajúcu žiadosť. Odznak tak nikdy nevedie do prázdna.
+  if(v==='absencie'){
+    var pending=gynCalPendingEventsForMe();
+    var inShownMonth=pending.some(function(e){
+      var p=String(e.dateStart||'').split('-');
+      return +p[0]===GYN_CAL.y && (+p[1]-1)===GYN_CAL.m;
+    });
+    if(pending.length && !inShownMonth){
+      var d=String(pending[0].dateStart||'').split('-');
+      if(d.length===3){ GYN_CAL.y=+d[0]; GYN_CAL.m=(+d[1])-1; }
+    }
+  }
   var el=gynCalHost();
   if(el) gynKalShow(el, getSession());
   try { haptic('selection'); } catch(e){}
@@ -18368,7 +19403,9 @@ function gynCalTeamHtml(y,m){
   // Vyrenderuj jeden riadok osoby. rowPast = celá osoba je minulá (sivá); minulé čipy aj
   // u aktuálnej osoby sa stmavia samostatne (.past).
   function renderRow(o, rowPast){
-    var first=o.items[0];
+    var pendingItems=o.items.filter(function(e){ return e.status==='pending' && gynCalIsApproverOf(getSession(),e); });
+    // Klik na zvýraznenú osobu otvorí priamo žiadosť, ktorá čaká na rozhodnutie.
+    var first=pendingItems[0]||o.items[0];
     var firstOpen=(first.dateStart<monthFirst?monthFirst:first.dateStart);
     var chips=o.items.map(function(e){
       var t=gynCalTypeById(e.type)||{icon:'•',color:'#64748B'};
@@ -18379,8 +19416,9 @@ function gynCalTeamHtml(y,m){
         ' onclick="event.stopPropagation();gynCalOpenEvent(\''+open+'\',\''+e.id+'\')">'+
         '<span class="gyn-cal-abs-chip-ic">'+t.icon+'</span>'+gynCalAbsChipLabel(e)+(pend?' ⏳':'')+'</span>';
     }).join('');
-    return '<div class="gyn-cal-team-row'+(rowPast?' past':'')+'" onclick="gynCalOpenEvent(\''+firstOpen+'\',\''+first.id+'\')">'+
-      '<div class="gyn-cal-team-person"><span class="gyn-cal-team-av avatar-fallback" data-username="'+gynEsc(o.login)+'" data-name="'+gynEsc(o.name)+'"></span><span class="gyn-cal-team-name">'+gynEsc(o.name)+'</span></div>'+
+    return '<div class="gyn-cal-team-row'+(rowPast?' past':'')+(pendingItems.length?' has-pending':'')+'" onclick="gynCalOpenEvent(\''+firstOpen+'\',\''+first.id+'\')">'+
+      '<div class="gyn-cal-team-person"><span class="gyn-cal-team-av avatar-fallback" data-username="'+gynEsc(o.login)+'" data-name="'+gynEsc(o.name)+'"></span><span class="gyn-cal-team-name">'+gynEsc(o.name)+'</span>'+
+        (pendingItems.length?'<span class="gyn-cal-team-pending">Čaká na schválenie'+(pendingItems.length>1?' · '+pendingItems.length:'')+'</span>':'')+'</div>'+
       '<div class="gyn-cal-team-chips">'+chips+'</div>'+
     '</div>';
   }
@@ -18513,14 +19551,20 @@ function gynCalRevert(id){
   gynCalPersist(); gynCalPushEvent(ev); gynCalOpenDetail(GYN_CAL._sheetDate, id); gynCalRefreshBehind(); gynCalUpdateBadge();
   try { haptic('selection'); } catch(e){}
 }
-function gynCalPendingForMe(){
+function gynCalPendingEventsForMe(){
   var s=(typeof getSession==='function'&&getSession())||{};
+  var out=[];
   if(gynCalIsGyn()){
-    if(!gynCalIsApprover(s)) return 0;
-    return GYN_CAL.events.filter(function(e){ return e.status==='pending'; }).length;
+    if(!gynCalIsApprover(s)) return [];
+    out=GYN_CAL.events.filter(function(e){ return e.status==='pending'; });
+  } else {
+    // Golem/Reagila: počítaj len žiadosti, ktoré schvaľujem ja (alebo admin = všetky).
+    out=GYN_CAL.events.filter(function(e){ return e.status==='pending' && gynCalIsApproverOf(s, e); });
   }
-  // Golem/Reagila: počítaj len žiadosti, ktoré schvaľujem ja (alebo admin = všetky).
-  return GYN_CAL.events.filter(function(e){ return e.status==='pending' && gynCalIsApproverOf(s, e); }).length;
+  return out.slice().sort(function(a,b){ return String(a.dateStart||'')<String(b.dateStart||'')?-1:1; });
+}
+function gynCalPendingForMe(){
+  return gynCalPendingEventsForMe().length;
 }
 // Absencia „po termíne" — stále čaká na schválenie, hoci jej posledný deň už prešiel.
 function gynCalIsOverduePending(ev){
@@ -18743,10 +19787,12 @@ function gynKalShow(el, user) {
   // Otvára sa vždy na Akciách: to je to, čo sa deje. Kto má kedy dovolenku
   // je otázka na inokedy, preto je za druhou záložkou.
   var aview = gynCalAgendaView();
+  var pendingApprovalCount = gynCalPendingForMe();
   agendaInner='<div class="gyn-cal-vtoggle">'+
       '<button class="gyn-cal-vtoggle-btn'+(aview==='akcie'?' active':'')+'" onclick="gynCalSetAgendaView(\'akcie\')">Akcie</button>'+
       '<button class="gyn-cal-vtoggle-btn'+(aview==='absencie'?' active':'')+'" onclick="gynCalSetAgendaView(\'absencie\')">Absencie'+
-        (absCount?'<span class="gyn-cal-vtoggle-n">'+absCount+'</span>':'')+'</button>'+
+        (absCount?'<span class="gyn-cal-vtoggle-n">'+absCount+'</span>':'')+
+        (pendingApprovalCount?'<span class="gyn-cal-vtoggle-alert" aria-label="'+pendingApprovalCount+' čaká na schválenie">'+(pendingApprovalCount>9?'9+':pendingApprovalCount)+'</span>':'')+'</button>'+
     '</div>'+
     (aview==='absencie' ? gynCalTeamHtml(y,m)
                         : '<div class="gyn-cal-agenda-title">'+GYN_CAL_MONTHS[m]+' '+y+'</div>'+agenda);
@@ -19605,14 +20651,19 @@ function golemActivityAllowed(roleKey){
 function mgrEnter(roleKey){
   var cfg = MGR_ROLE_CFG[roleKey];
   if(!cfg) return;
+  try { appNavEnsure(); } catch (e) {}
   MGR_STATE.role = roleKey;
   // v2.3.1 — Plnenie je default sub-tab pri otvorení
   MGR_STATE.subtab = 'plnenie';
   document.body.classList.add('mgr-subtab-plnenie');
   usageSectionEnter('Manažér · Plnenie');
   plnenieApplyDefaultPeriod(PL_STATE, true);
+  clearTimeout(PL_STATE._loadWatchdog);
+  PL_STATE._loadWatchdog = null;
   PL_STATE.loaded = false;
   PL_STATE.loading = false;
+  PL_STATE._currentLoading = false;
+  PL_STATE._currentLoadFailed = false;
   PL_STATE.data = null;
   PL_STATE.aggregates = null;
   PL_STATE.qCache = {};
@@ -19669,7 +20720,7 @@ function mgrApplyDefaultSubtab(){
     var def = appDefaultTab();
     // Domov je obrazovka nad líniami — otvorí sa nad manažérskym pohľadom.
     // Bez vlastnej voľby je domovom Domov, rovnako ako u reprezentanta.
-    if (!def || def === 'dnes') { setTimeout(function(){ try { openDnes(); } catch(e){} }, 350); return; }
+    if (!def || def === 'dnes') { MGR_STATE._openDnesWhenReady = true; appBootFinishIfReady(); return; }
     var allowed = ['plnenie','kalendar','visits','leaderboard'];
     if (golemActivityAllowed(MGR_STATE.role)) allowed.push('activity');
     if (!def || def === 'plnenie' || allowed.indexOf(def) < 0) return;
@@ -21789,6 +22840,7 @@ function satoriVote(vote) {
 var LB_STATE = { period: 'all', mode: 'plnenie', data: null, loading: false, showConfetti: false, line: 'gp' };
 var LB_PLNENIE_CACHE = null;
 var LB_PLNENIE_LOADING = false;
+var LB_PLNENIE_LOAD_ID = 0;
 var LB_APPROVED_Q = null; // admin schvaleny Q pre rebricek plnenie, null = auto (currentQ-1)
 
 function lbCurrentLine() {
@@ -22719,6 +23771,9 @@ function buildRepData(reps) {
       if (document.body.classList.contains('mgr-subtab-plnenie') && PL_STATE.loaded && typeof plnenieRenderAll === 'function') {
         plnenieRunSilentRender(plnenieRenderAll);
       }
+      // Domov mohol byť vyrenderovaný ešte pred rosterom. Po prepočte agregátov
+      // ho obnov aj vtedy, keď samotný panel Plnenie nie je otvorený.
+      try { dnesRefreshIfOpen(); } catch(e){}
     }
   } catch(e){}
 
@@ -22928,7 +23983,7 @@ function hdrAvatarDismissTip() {
 function avatarRefreshAllInDom() {
   if (typeof avatarFillElement !== 'function') return;
   var classes = ['lb-p-avatar','lb-avatar','mgr-avatar','mgr-davatar','dhdr-avatar',
-                 'pl-ps-avatar','pl-rep-avatar','gyn-rep-avatar','hdr-avatar','set-avatar'];
+                 'pl-ps-avatar','pl-rep-avatar','gyn-rep-avatar','hdr-avatar','set-avatar','app-rep-avatar'];
   classes.forEach(function(cls){
     var nodes = document.querySelectorAll('.' + cls + '[data-username]');
     Array.prototype.forEach.call(nodes, function(el){
@@ -22942,7 +23997,7 @@ function avatarRefreshAllInDom() {
         } else if (typeof MGR_REP_NAMES !== 'undefined' && MGR_REP_NAMES[u]) {
           name = MGR_REP_NAMES[u];
         }
-        avatarFillElement(el, { username: u, name: name, color: color });
+        avatarFillElement(el, { username: u, name: el.getAttribute('data-name') || name, color: color });
       } catch(e){}
     });
   });
@@ -22969,6 +24024,45 @@ function loadRepList(forceFullRoster) {
       }
     })
     .catch(function(){ REP_LIST_STATE.loading = false; });
+}
+
+// Pri prihlásení sa Domov neotvára podľa časovača. Zostane za boot obrazovkou,
+// kým je pripravený aktuálny kvartál a roster, z ktorých kreslí Plnenie aj Rebríček.
+var APP_BOOT = { waitTimer: null, deadline: 0, line: '', username: '' };
+function appHomeOpenWhenReady(force){
+  try {
+    if(!MGR_STATE._openDnesWhenReady) return false;
+    if(!force && !(PL_STATE.loaded && REP_LIST_STATE.loaded)) return false;
+    MGR_STATE._openDnesWhenReady = false;
+    openDnes();
+    return true;
+  } catch(e){ return false; }
+}
+function appBootDataReady(user){
+  var isMgr = !!mgrDetectRole(user || getSession() || {});
+  return isMgr ? !!(PL_STATE.loaded && REP_LIST_STATE.loaded) : !!REP_PL_STATE.loaded;
+}
+function appBootFinishIfReady(force){
+  var user = getSession() || {};
+  if(user.line === 'gyn') return false;
+  if(!force && !appBootDataReady(user)) return false;
+  try { appHomeOpenWhenReady(force); } catch(e){}
+  try { bootLoaderDone(); } catch(e){}
+  return true;
+}
+function appBootWaitForHomeData(user){
+  clearInterval(APP_BOOT.waitTimer);
+  APP_BOOT.line = (user && user.line) || 'gp';
+  APP_BOOT.username = (user && user.username) || '';
+  APP_BOOT.deadline = Date.now() + 12000;
+  APP_BOOT.waitTimer = setInterval(function(){
+    var active = getSession() || {};
+    if(active.username !== APP_BOOT.username || (active.line || 'gp') !== APP_BOOT.line){ clearInterval(APP_BOOT.waitTimer); return; }
+    if(appBootFinishIfReady(false) || Date.now() >= APP_BOOT.deadline){
+      clearInterval(APP_BOOT.waitTimer);
+      appBootFinishIfReady(true);
+    }
+  }, 80);
 }
 
 // ── INIT DATA — načíta repList + históriu + milestoneStats v jedinom HTTP requeste ──
@@ -23014,12 +24108,13 @@ function bootHasCachedData() {
   } catch (e) { return false; }
 }
 
-function bootLoaderShow(){
+function bootLoaderShow(force){
   if(typeof document === 'undefined' || !document.body) return;
   // Appka dáta väčšinou už má — história v localStorage, lekárne v IndexedDB,
   // plnenie v cache. Prekryv cez ne nič nepridá, len ich schová. Ukáž ho len
   // vtedy, keď naozaj niet čo vykresliť: prvé prihlásenie alebo vymazaná cache.
-  if (bootHasCachedData()) return;
+  // Pri prihlásení je loader bezpečná clona medzi líniami; force ho ukáže aj pri cache.
+  if (!force && bootHasCachedData()) return;
   var el = document.getElementById('boot-loader');
   if(!el){
     var st = document.createElement('style');
@@ -23084,6 +24179,14 @@ function bootLoaderDone(){
   var el = document.getElementById('boot-loader');
   if(!el) return;
   bootLoaderSet(100);
+  try {
+    var bootApp = document.querySelector('.app');
+    if(bootApp && bootApp.style.display !== 'none') {
+      bootApp.style.visibility = 'visible';
+      bootApp.classList.add('app-enter');
+      setTimeout(function(){ bootApp.classList.remove('app-enter'); }, 500);
+    }
+  } catch(e){}
   setTimeout(function(){
     el.classList.add('boot-hide');
     setTimeout(function(){
@@ -23094,8 +24197,10 @@ function bootLoaderDone(){
   }, 320);
 }
 
-function loadInitData(username, _attempt) {
+function loadInitData(username, _attempt, _lineCtx) {
   _attempt = _attempt || 0;
+  _lineCtx = _lineCtx || appLineCapture();
+  if(!appLineContextActive(_lineCtx)) return Promise.resolve(null);
 
   // DEV mode — mock dáta, žiadny fetch
   if(typeof IS_DEV !== 'undefined' && IS_DEV) {
@@ -23126,6 +24231,7 @@ function loadInitData(username, _attempt) {
   return fetch(url, { cache: 'no-store' })
     .then(function(r) { return r.ok ? r.json() : null; })
     .then(function(data) {
+      if(!appLineContextActive(_lineCtx)) return null;
       if(!data || !data.ok) throw new Error('getInitData: no data');
 
       // História — naplní cache, História panel bude okamžitá
@@ -23172,21 +24278,24 @@ function loadInitData(username, _attempt) {
         var lbq = parseInt(data.configs.lb_approved_q);
         if(!isNaN(lbq)) LB_APPROVED_Q = lbq;
       }
-      try { bootLoaderDone(); } catch(e){}
+      try { appBootFinishIfReady(); } catch(e){}
     })
     .catch(function() {
+      if(!appLineContextActive(_lineCtx)) return null;
       // Exponenciálne odstupy s náhodným rozptylom. Pevné hodnoty spôsobili, že po
       // výpadku backendu sa naň všetci prihlásení vrhli v tú istú sekundu a výpadok
       // tým predĺžili. Rozptyl 0,5x–1,5x ich rozloží v čase.
       var delays = [3000, 9000, 27000];
       if(_attempt < delays.length) {
         var wait = Math.round(delays[_attempt] * (0.5 + Math.random()));
-        setTimeout(function() { loadInitData(username, _attempt + 1); }, wait);
+        setTimeout(function() {
+          if(appLineContextActive(_lineCtx)) loadInitData(username, _attempt + 1, _lineCtx);
+        }, wait);
       } else {
         // Po 3 pokusoch — fallback na pôvodné funkcie
         loadRepList();
         refreshBadgeFromSheets(username);
-        try { bootLoaderDone(); } catch(e){}
+        try { appBootFinishIfReady(true); } catch(e){}
       }
     });
 }
@@ -23666,18 +24775,24 @@ function lbPreloadPlnenie() {
   if (lastQ < 1) return;
   if (LB_PLNENIE_LOADING || LB_PLNENIE_CACHE) return;
   LB_PLNENIE_LOADING = true;
+  var loadId = ++LB_PLNENIE_LOAD_ID;
+  var loadCtx = appLineCapture();
+  function active(){ return loadId === LB_PLNENIE_LOAD_ID && appLineContextActive(loadCtx); }
   var year = (new Date()).getFullYear();
   var url = scriptUrl('action=getPlnenieAll&rok=' + year + '&Q=' + lastQ);
   mgrFetchWithRetry(url, 3)
     .then(function(resp) {
+      if(!active()) return;
       if (!resp || !resp.ok) throw new Error('No data');
       var agg = plnenieBuildAggregates(resp, lastQ, lbScopeReps());
       LB_PLNENIE_CACHE = { q: lastQ, data: resp, aggregates: agg };
     })
     .catch(function() {
+      if(!active()) return;
       LB_PLNENIE_CACHE = null;
     })
     .then(function() {
+      if(!active()) return;
       LB_PLNENIE_LOADING = false;
       var b = lbGetBody();
       if (b && LB_STATE.mode === 'plnenie') lbRenderPlnenie(b);
@@ -24557,6 +25672,10 @@ var PL_STATE = {
   year: 2026,
   q: 1,
   loading: false,
+  _currentLoading: false,
+  _currentLoadFailed: false,
+  _loadWatchdog: null,
+  _loadId: 0,
   loaded: false,
   data: null,
   aggregates: null,
@@ -25776,7 +26895,14 @@ function plnenieUpdateQTabs() {
 
 function plnenieLoadAllQuarters() {
   if (PL_STATE.loading) return;
+  clearTimeout(PL_STATE._loadWatchdog);
+  PL_STATE._loadWatchdog = null;
+  PL_STATE._currentLoadFailed = false;
   PL_STATE.loading = true;
+  PL_STATE._currentLoading = true;
+  var loadId = ++PL_STATE._loadId;
+  var loadCtx = appLineCapture();
+  function active(){ return loadId === PL_STATE._loadId && appLineContextActive(loadCtx); }
   PL_STATE.loaded = false;
   PL_STATE.data = null;
   PL_STATE.aggregates = null;
@@ -25801,6 +26927,7 @@ function plnenieLoadAllQuarters() {
       }
     });
     PL_STATE.loading = false;
+    PL_STATE._currentLoading = false;
     plnenieUpdateQTabs();
     plnenieRenderSummaryEmpty();
     plnenieRenderAll();
@@ -25833,11 +26960,29 @@ function plnenieLoadAllQuarters() {
   }
 
   var pending = qs.length;
+  var currentQ = PL_STATE.q;
 
-  qs.forEach(function(q) {
+  // Apps Script môže zostať visieť aj napriek retry timeoutom (napr. pri
+  // prerušení spojenia počas prechodu línie). Domov nesmie zostať donekonečna
+  // v stave „Načítavam“. Po limite zneplatníme staré requesty a zobrazíme
+  // chybovú kartu s opakovaním.
+  function plnenieLoadWatchdog(){
+    if (!active() || PL_STATE.loaded || !PL_STATE._currentLoading) return;
+    PL_STATE._loadId += 1;
+    PL_STATE.loading = false;
+    PL_STATE._currentLoading = false;
+    PL_STATE._currentLoadFailed = true;
+    PL_STATE._loadWatchdog = null;
+    plnenieRenderAll();
+    try { dnesRefreshIfOpen(); } catch(e) {}
+  }
+  PL_STATE._loadWatchdog = setTimeout(plnenieLoadWatchdog, 35000);
+
+  function fetchQuarter(q) {
     var url = scriptUrl('action=getPlnenieAll&rok=' + year + '&Q=' + q);
     mgrFetchWithRetry(url, 3)
       .then(function(resp) {
+        if(!active()) return;
         if (!resp || !resp.ok) throw new Error('No data for Q' + q);
         var agg = plnenieBuildAggregates(resp, q);
         var hash = _plHashData(resp);
@@ -25855,18 +27000,29 @@ function plnenieLoadAllQuarters() {
           if (changed) {
             if (!wasShowingData) plnenieRenderAll();  // prvé zobrazenie — s animáciou
             else setTimeout(function(){               // čerstvé dáta — ticho prepíš čísla (bez animácie/bliknutia)
-              if (PL_STATE.q === q && document.body.classList.contains('mgr-subtab-plnenie')) plnenieRunSilentRender(plnenieRenderAll);
+              if (active() && PL_STATE.q === q && document.body.classList.contains('mgr-subtab-plnenie')) plnenieRunSilentRender(plnenieRenderAll);
             }, 1000);
           }
         }
       })
       .catch(function() {
+        if(!active()) return;
         PL_STATE.qCache[q] = PL_STATE.qCache[q] || null; // zachovaj cache pri chybe fetchu
       })
       .then(function() {
+        if(!active()) return;
+        if(q === currentQ){
+          PL_STATE._currentLoading = false;
+          if (!PL_STATE.loaded) PL_STATE._currentLoadFailed = true;
+          try { dnesRefreshIfOpen(); } catch(e){}
+          // Najprv dokonči aktuálny kvartál pre Domov; ostatné Q doplň potom.
+          qs.filter(function(x){ return x !== currentQ; }).forEach(fetchQuarter);
+        }
         pending--;
         if (pending === 0) {
           // Všetky Q fetche skončili
+          clearTimeout(PL_STATE._loadWatchdog);
+          PL_STATE._loadWatchdog = null;
           PL_STATE.loading = false;
           // Ak current Q sa stále nenačítal (error), renderuj z cache alebo error stav
           if (!PL_STATE.loaded) {
@@ -25874,7 +27030,8 @@ function plnenieLoadAllQuarters() {
           }
         }
       });
-  });
+  }
+  fetchQuarter(currentQ);
 }
 
 // Agregácia — Slovensko / West / East / per-produkt / per-rep
@@ -28573,7 +29730,7 @@ function plnenieRenderDetail() {
       oblast: mgrOblast
     });
 
-    return '<div class="prod-item-adv">' +
+    return '<div class="prod-item-adv" data-pl-product="' + appEsc(key) + '">' +
       '<div class="prod-adv-top">' +
         '<div class="prod-adv-name"><div class="prod-dot" style="background:' + dotColor + '"></div>' + mgrEscape(label) + '</div>' +
         '<div class="prod-adv-pct ' + prodColorCls + '">' + plnenieFormatPct(pPct) + '</div>' +
@@ -28589,7 +29746,7 @@ function plnenieRenderDetail() {
       insightHtml +
     '</div>';
   });
-  mgrFamCards.forEach(function(fc){ _mgrCards.splice(plnenieFamilyInsertIndex(_mgrSortedKeys, fc.key), 0, fc.html); });
+  mgrFamCards.forEach(function(fc){ fc.html = fc.html.replace('<div class="prod-item-adv"', '<div class="prod-item-adv" data-pl-product="' + appEsc(fc.key) + '"'); _mgrCards.splice(plnenieFamilyInsertIndex(_mgrSortedKeys, fc.key), 0, fc.html); });
   prodsEl.innerHTML = mgrActionHtml + _mgrCards.join('');
   animatePlanBars(prodsEl);
 
@@ -28681,6 +29838,7 @@ var REP_PL_STATE = {
   q: 1,
   year: (new Date()).getFullYear(),
   loading: false,
+  _loadId: 0,
   loaded: false,
   data: null,
   aggregates: null,
@@ -28727,6 +29885,9 @@ function closeRepPlnenie() {
 function repPlnenieLoad() {
   if (REP_PL_STATE.loading) return;
   REP_PL_STATE.loading = true;
+  var loadId = ++REP_PL_STATE._loadId;
+  var loadCtx = appLineCapture();
+  function active(){ return loadId === REP_PL_STATE._loadId && appLineContextActive(loadCtx); }
   REP_PL_STATE.loaded = false;
   REP_PL_STATE.data = null;
   REP_PL_STATE.aggregates = null;
@@ -28758,6 +29919,7 @@ function repPlnenieLoad() {
     var url = scriptUrl('action=getPlnenieAll&rok=' + year + '&Q=' + q);
     mgrFetchWithRetry(url, 3)
       .then(function(resp) {
+        if(!active()) return;
         if (!resp || !resp.ok) throw new Error('No data Q' + q);
         var agg = plnenieBuildAggregates(resp, q, [uname]);
         var hash = _plHashData(resp);
@@ -28775,13 +29937,14 @@ function repPlnenieLoad() {
           if (changed && overlay && overlay.classList.contains('show')) {
             if (!wasShowingData) repPlnenieRender();  // prvé zobrazenie — s animáciou
             else setTimeout(function(){               // čerstvé dáta — ticho prepíš čísla (bez animácie/bliknutia)
-              if (REP_PL_STATE.q === q && overlay && overlay.classList.contains('show')) plnenieRunSilentRender(repPlnenieRender);
+              if (active() && REP_PL_STATE.q === q && overlay && overlay.classList.contains('show')) plnenieRunSilentRender(repPlnenieRender);
             }, 1000);
           }
         }
       })
-      .catch(function() { REP_PL_STATE.qCache[q] = REP_PL_STATE.qCache[q] || null; })
+      .catch(function() { if(active()) REP_PL_STATE.qCache[q] = REP_PL_STATE.qCache[q] || null; })
       .then(function() {
+        if(!active()) return;
         pending--;
         if (pending === 0) {
           REP_PL_STATE.loading = false;
@@ -29376,7 +30539,7 @@ function repPlnenieRender() {
       oblast: repOblast
     });
 
-    return '<div class="prod-item-adv">' +
+    return '<div class="prod-item-adv" data-pl-product="' + appEsc(key) + '">' +
       '<div class="prod-adv-top">' +
         '<div class="prod-adv-name"><div class="prod-dot" style="background:' + dotColor + '"></div>' + mgrEscape(label) + '</div>' +
         '<div class="prod-adv-pct ' + prodColorCls + '">' + plnenieFormatPct(pPct) + '</div>' +
@@ -29392,7 +30555,7 @@ function repPlnenieRender() {
       insightHtml +
     '</div>';
   });
-  repFamCards.forEach(function(fc){ _cards.splice(plnenieFamilyInsertIndex(_sortedKeys, fc.key), 0, fc.html); });
+  repFamCards.forEach(function(fc){ fc.html = fc.html.replace('<div class="prod-item-adv"', '<div class="prod-item-adv" data-pl-product="' + appEsc(fc.key) + '"'); _cards.splice(plnenieFamilyInsertIndex(_sortedKeys, fc.key), 0, fc.html); });
   prodsEl.innerHTML = actionHtml + _cards.join('');
   animatePlanBars(prodsEl);
 
@@ -38199,7 +39362,9 @@ function nstIsMgr(){
 function nstPinned(p){ return String(p && p.pin) === '1' || (p && p.pin) === true; }
 
 // ── Lokálna cache (panel naskočí okamžite aj offline) ──
-function nstLocalKey(){ return 'nastenka_' + nstLine(); }
+// v2 oddeľuje čisté cache po oprave race condition pri prepínaní línií.
+// Staré kľúče mohli už obsahovať príspevky zapísané oneskorenou odpoveďou inej línie.
+function nstLocalKey(){ return 'nastenka_v2_' + nstLine(); }
 function nstSeenKey(){ return 'nastenka_seen_' + nstLine() + '_' + nstUser(); }
 function nstLoadLocal(){
   try { var raw = localStorage.getItem(nstLocalKey()); var a = raw ? JSON.parse(raw) : []; return Array.isArray(a) ? a : []; }
@@ -38276,6 +39441,13 @@ function nstUpdateBadge(){
 }
 // Tiché načítanie na pozadí po prihlásení — nech bodka v navigácii sedí bez otvorenia panelu.
 // Ak appku otvorila notifikácia z Nástenky (?nst=1), rovno otvor panel.
+function nstResetForActiveLine(){
+  NST._reqId = (NST._reqId || 0) + 1;
+  clearTimeout(NST._loadT);
+  NST.posts = nstLoadLocal();
+  NST.loaded = false; NST.loading = false; NST.err = ''; NST._primed = false;
+  NST.open = {}; NST.likesOpen = {}; NST.votersOpen = {};
+}
 function nstPrime(){
   try {
     if (!nstUser()) return;
@@ -38283,7 +39455,7 @@ function nstPrime(){
     NST._primed = true;
     NST.posts = nstLoadLocal();
     nstUpdateBadge();
-    nstFetch(function(){ nstUpdateBadge(); });
+    nstFetch(function(){ nstUpdateBadge(); try { dnesRefreshIfOpen(); } catch(e){} });
     var fromPush = false;
     try { fromPush = (new URLSearchParams(window.location.search)).get('nst') === '1'; } catch(e){}
     if (fromPush && !NST._opened){
@@ -38338,28 +39510,33 @@ function nstFetch(cb){
   }
   if (!nstUser()){ if (cb) cb(); return; }
   var reqId = (++NST._reqId);
+  var reqCtx = appLineCapture();
   NST.loading = true;
   var url;
   try { url = nstUrl('action=getNastenka'); } catch(e){ NST.loading = false; if (cb) cb(); return; }
   fetch(url, { cache: 'no-store' })
     .then(function(r){ return r.json(); })
     .then(function(d){
-      if (reqId !== NST._reqId) return;
+      if (reqId !== NST._reqId || !appLineContextActive(reqCtx)) return;
       NST.loading = false;
       if (d && d.ok && Array.isArray(d.posts)){ NST.err = ''; nstApply(d.posts); }
       else NST.err = (d && d.error) ? String(d.error) : '';
       if (cb) cb();
     })
     .catch(function(){
-      if (reqId !== NST._reqId) return;
-      NST.loading = false;
+      if (reqId !== NST._reqId || !appLineContextActive(reqCtx)) return;
+      NST.loading = false; NST.loaded = true;
       if (!NST.posts.length) NST.err = 'offline';
       if (cb) cb();
     });
   // poistka — keby odpoveď nikdy neprišla, kostru nenechávaj visieť donekonečna
   clearTimeout(NST._loadT);
   NST._loadT = setTimeout(function(){
-    if (reqId === NST._reqId && NST.loading){ NST.loading = false; nstRenderList(); }
+    if (reqId === NST._reqId && appLineContextActive(reqCtx) && NST.loading){
+      NST.loading = false; NST.loaded = true;
+      nstRenderList();
+      try { dnesRefreshIfOpen(); } catch(e){}
+    }
   }, 15000);
 }
 
@@ -38560,6 +39737,32 @@ function nstNamesOrdered(logins){
     return am - bm;
   }).map(nstNameFor);
 }
+function nstLoginsOrdered(logins){
+  var me = nstUser();
+  return (logins || []).slice().sort(function(a, b){
+    var am = String(a || '').toLowerCase() === me ? 0 : 1;
+    var bm = String(b || '').toLowerCase() === me ? 0 : 1;
+    return am - bm;
+  });
+}
+function nstAvatarNameFor(login){
+  if(String(login || '').toLowerCase()===nstUser()){
+    var s=(typeof getSession==='function'&&getSession())||{};
+    return s.name||s.meno||login;
+  }
+  return nstNameFor(login);
+}
+function nstAvatarStackHtml(logins, max, extraClass){
+  return '<span class="nst-avatar-stack">'+nstLoginsOrdered(logins).slice(0,max||3).map(function(login){
+    return appRepAvatarHtml(login,nstAvatarNameFor(login),19,extraClass||'');
+  }).join('')+'</span>';
+}
+function nstPeopleChipsHtml(logins){
+  return nstLoginsOrdered(logins).map(function(login){
+    return '<span class="nst-person-chip">'+appRepAvatarHtml(login,nstAvatarNameFor(login),20,'nst-voter-avatar')+
+      '<span>'+nstEsc(nstNameFor(login))+'</span></span>';
+  }).join('');
+}
 // „Ty a Zuzana Leščišinová", „Zuzana a 3 ďalší" — klik rozbalí celý zoznam
 function nstLikesLineHtml(p){
   var likes = (p.likes || []).filter(function(x){ return !!String(x || '').trim(); });
@@ -38584,7 +39787,8 @@ function nstLikesLineHtml(p){
   var clickable = names.length > 2;
   return '<div class="nst-likes' + (clickable ? ' is-click' : '') + '"' +
     (clickable ? ' onclick="nstToggleLikes(\'' + id.replace(/'/g, "\\'") + '\')"' : '') + '>' +
-    '<span class="nst-likes-ico">👍</span><span class="nst-likes-txt">' + nstEsc(txt) + '</span></div>';
+    '<span class="nst-likes-ico">👍</span>'+nstAvatarStackHtml(ordered,3,'nst-like-avatar')+
+    '<span class="nst-likes-txt">' + nstEsc(txt) + '</span></div>';
 }
 function nstToggleLikes(id){ NST.likesOpen[id] = !NST.likesOpen[id]; nstRenderList(); }
 
@@ -38657,7 +39861,8 @@ function nstPostHtml(p){
     var cDel = (nstIsMgr() || String(cm.rep || '').toLowerCase() === me)
       ? '<button type="button" class="nst-cdel" onclick="nstDelete(\'' + String(cm.id || '').replace(/'/g, "\\'") + '\')" aria-label="Zmazať">✕</button>' : '';
     return '<div class="nst-comment">' +
-      '<div class="nst-comment-hd"><span class="nst-comment-who">' + nstEsc(cm.meno || cm.rep || '—') + '</span>' +
+      '<div class="nst-comment-hd">' + appRepAvatarHtml(cm.rep, cm.meno || cm.rep, 25, 'nst-comment-avatar') +
+        '<span class="nst-comment-who">' + nstEsc(cm.meno || cm.rep || '—') + '</span>' +
         '<span class="nst-comment-when">' + nstEsc(cwhen) + '</span>' + cDel + '</div>' +
       '<div class="nst-comment-txt">' + nstEsc(cm.text || '').replace(/\n/g, '<br>') + '</div>' +
     '</div>';
@@ -38742,7 +39947,7 @@ function nstPollHtml(p){
         if (!list.length) return '';
         return '<div class="nst-voters-row">' +
           '<span class="nst-voters-opt">' + nstEsc(opts[i]) + '</span>' +
-          '<span class="nst-voters-names">' + nstEsc(nstNamesOrdered(list).join(', ')) + '</span>' +
+          '<span class="nst-voters-names">' + nstPeopleChipsHtml(list) + '</span>' +
         '</div>';
       }).join('') +
     '</div>';
@@ -42198,6 +43403,7 @@ try { gsLpInit(); } catch(e){}
   .nst-cmore:active{opacity:.6}
   .nst-comment{background:#F8FAFC;border-radius:10px;padding:9px 11px;margin-bottom:7px}
   .nst-comment-hd{display:flex;align-items:center;gap:8px}
+  .nst-comment-avatar{font-size:8px}
   .nst-comment-who{font-size:12px;font-weight:800;color:#334155}
   .nst-comment-when{font-size:10.5px;color:#94A3B8;flex:1}
   .nst-cdel{background:transparent;border:none;color:#CBD5E1;font-size:12px;cursor:pointer;padding:0 2px;-webkit-tap-highlight-color:transparent}
@@ -42211,6 +43417,8 @@ try { gsLpInit(); } catch(e){}
   .nst-loading,.nst-refresh{display:flex;align-items:center;justify-content:center;gap:8px;font-size:12.5px;font-weight:700;color:#64748B;padding:4px 0 12px}
   .nst-refresh{padding:0 0 10px}
   .line-choose-btn.caka{opacity:.6;cursor:default}
+  .line-choose-btn.zlyhala{opacity:.72;cursor:default;border-color:#FECACA;background:#FFF7F7}
+  .line-choose-btn.zlyhala .line-choose-desc,.line-choose-btn.zlyhala .line-choose-arrow{color:#B91C1C}
   .line-choose-spin{width:16px;height:16px;border:2px solid #E2E8F0;border-top-color:#2563EB;border-radius:50%;
     animation:nstSpin .7s linear infinite;flex-shrink:0}
   .nst-spin{width:14px;height:14px;border:2px solid #E2E8F0;border-top-color:#2563EB;border-radius:50%;animation:nstSpin .7s linear infinite;flex-shrink:0}
@@ -42232,6 +43440,8 @@ try { gsLpInit(); } catch(e){}
   .nst-likes.is-click{cursor:pointer;-webkit-tap-highlight-color:transparent}
   .nst-likes.is-click:active{opacity:.7}
   .nst-likes-ico{width:20px;height:20px;border-radius:50%;background:linear-gradient(180deg,#3B82F6,#2563EB);display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;flex-shrink:0;box-shadow:0 1px 3px rgba(37,99,235,.35)}
+  .nst-avatar-stack{display:inline-flex;align-items:center;padding-left:3px;flex-shrink:0}
+  .nst-avatar-stack .app-rep-avatar{margin-left:-4px;border:2px solid #fff;box-sizing:border-box;font-size:6.5px}
   .nst-likes-txt{font-weight:600;line-height:1.35}
 
   /* Anketa v príspevku */
@@ -42247,9 +43457,11 @@ try { gsLpInit(); } catch(e){}
   .nst-poll-foot{font-size:11.5px;color:#94A3B8;font-weight:600;padding:2px 2px 0}
   .nst-poll-clear{background:none;border:none;color:#2563EB;font-size:11.5px;font-weight:800;font-family:inherit;padding:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
   .nst-voters{margin-top:8px;padding-top:8px;border-top:1px dashed #E2E8F0;display:flex;flex-direction:column;gap:6px;animation:nstIn .2s ease both}
-  .nst-voters-row{display:flex;gap:8px;align-items:baseline}
+  .nst-voters-row{display:flex;gap:8px;align-items:flex-start}
   .nst-voters-opt{font-size:11.5px;font-weight:800;color:#1D4ED8;flex-shrink:0;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .nst-voters-names{font-size:11.5px;font-weight:600;color:#64748B;line-height:1.4}
+  .nst-voters-names{display:flex;flex-wrap:wrap;gap:5px;font-size:11.5px;font-weight:600;color:#64748B;line-height:1.4}
+  .nst-person-chip{display:inline-flex;align-items:center;gap:5px;padding:2px 7px 2px 2px;border-radius:999px;background:#F8FAFC;border:1px solid #E2E8F0;white-space:nowrap}
+  .nst-voter-avatar{font-size:6.5px}
   /* Možnosti vo formulári */
   .nst-opts{display:flex;flex-direction:column;gap:7px}
   .nst-opt-row{display:flex;align-items:center;gap:8px}
