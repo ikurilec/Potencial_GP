@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.71';
+var APP_VERSION = '2.85.72';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -2590,6 +2590,64 @@ function initAutosave() {
   });
 }
 
+// ── Domov: zoznam VŠETKÝCH rozpracovaných formulárov (F4-3, pokračovanie) ──
+// initAutosave() ponúkne pri otvorení formulára len ten najnovší — staršie by
+// inak čakali, kým sa k danému lekárovi rep vráti znova napísaním mena. Tento
+// zoznam ich sprístupní priamo z Domova, s výberom, ktorý pokračovať.
+function dnesDraftsListData() {
+  var out = [];
+  allDraftKeys().forEach(function(k){
+    try {
+      var f = JSON.parse(localStorage.getItem(k) || 'null');
+      if (f && hasAnyData(f)) out.push({ key: k, lekar: f.lekar || 'Bez mena', mesto: f.mesto || '', ts: f._ts || 0 });
+    } catch(e){}
+  });
+  out.sort(function(a, b){ return b.ts - a.ts; });
+  return out;
+}
+function dnesDraftsHtml() {
+  var rola = appRole();
+  if (rola !== 'gp' && rola !== 'reagila') return '';   // formulár má len Golem a Reagila
+  var drafts = dnesDraftsListData();
+  if (!drafts.length) return '';
+  var rows = drafts.map(function(d){
+    return '<div class="dnes-mini dvojriadok" data-draft-key="' + appEsc(d.key) + '" style="cursor:pointer">' +
+      '<span class="dnes-mini-dot" style="background:#F59E0B"></span>' +
+      '<span class="dnes-mini-txt">' +
+        '<span class="dnes-mini-name">' + appEsc(d.lekar) + '</span>' +
+        (d.mesto ? '<span class="dnes-mini-when">' + appEsc(d.mesto) + '</span>' : '') +
+      '</span>' +
+      '<button type="button" class="dnes-draft-discard" data-draft-discard="' + appEsc(d.key) + '" aria-label="Zahodiť rozpracovaný záznam">×</button>' +
+    '</div>';
+  }).join('');
+  return dnesCardHtml('linear-gradient(90deg,#F59E0B,#FCD34D)', 'Rozpracované (' + drafts.length + ')', '', rows);
+}
+// data-atribút + jeden delegovaný listener namiesto skladania mena lekára do
+// onclick reťazca — apostrof v mene (napr. „O'Brien") by inak rozbil atribút
+// presne ako pri chybe F0-7 (ponuka okresov).
+document.addEventListener('click', function(ev){
+  var t = ev.target;
+  if (!t || !t.closest) return;
+  var discardEl = t.closest('[data-draft-discard]');
+  if (discardEl) {
+    ev.stopPropagation();
+    var dk = discardEl.getAttribute('data-draft-discard');
+    try { localStorage.removeItem(dk); } catch(e){}
+    try { haptic('selection'); } catch(e){}
+    try { dnesRender(); } catch(e){}
+    return;
+  }
+  var rowEl = t.closest('[data-draft-key]');
+  if (rowEl) {
+    var rk = rowEl.getAttribute('data-draft-key');
+    if (rk) {
+      _pendingRestoreKey = rk;
+      try { repNavToForm(); } catch(e){}
+      restoreAccept();
+    }
+  }
+});
+
 // Clear draft after successful send
 // Disable beforeunload after send
 var _formSubmitted = false;
@@ -4895,6 +4953,9 @@ function dnesRender() {
   // Akcie má len Golem reprezentant — ostatní GP formulár nemajú.
   var akcie = document.getElementById('dnes-akcie');
   if (akcie) akcie.style.display = (rola === 'gp') ? 'block' : 'none';
+
+  // ── Rozpracované — hneď pod tlačidlami na zadanie, F4-3 pokračovanie ──
+  html += dnesDraftsHtml();
 
   // ── Kalendár · dnes ─────────────────────────────────────────────────
   // Hore, lebo je jediná karta viazaná na čas: keď má človek dnes o druhej
