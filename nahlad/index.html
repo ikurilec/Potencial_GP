@@ -954,6 +954,59 @@
   .app-rep-avatar.has-avatar{background:transparent!important}
   .app-rep-avatar .avatar-img,.app-rep-avatar .avatar-fallback{width:100%;height:100%;border-radius:50%}
   .dnes-rep-avatar{font-size:9px}
+  /* Rýchly manažérsky súhrn reprezentanta z rebríčka na Domove. */
+  .dnes-rs-bd{position:fixed;inset:0;z-index:5200;display:flex;align-items:flex-end;justify-content:center;
+    background:rgba(8,23,42,.46);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+    opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility .2s}
+  .dnes-rs-bd.show{opacity:1;visibility:visible;pointer-events:auto}
+  .dnes-rs-sheet{width:min(100%,560px);max-height:min(84dvh,760px);display:flex;flex-direction:column;
+    background:#F3F5F9;border-radius:24px 24px 0 0;box-shadow:0 -18px 55px rgba(12,30,53,.24);
+    transform:translateY(102%);transition:transform .32s cubic-bezier(.2,.8,.2,1);overflow:hidden}
+  .dnes-rs-bd.show .dnes-rs-sheet{transform:translateY(0)}
+  .dnes-rs-top{position:relative;flex:0 0 auto;padding:8px 16px 0;background:#fff}
+  .dnes-rs-handle{width:42px;height:5px;border-radius:99px;background:#CBD5E1;margin:0 auto 8px}
+  .dnes-rs-close{position:absolute;right:14px;top:17px;width:36px;height:36px;border:0;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;background:#F1F5F9;color:#475569;font:700 21px/1 var(--font-display);
+    cursor:pointer;-webkit-tap-highlight-color:transparent;z-index:2}
+  .dnes-rs-scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:0 16px 12px}
+  .dnes-rs-profile{display:flex;align-items:center;gap:12px;padding:3px 42px 14px 0}
+  .dnes-rs-avatar{font-size:16px;box-shadow:0 0 0 3px #fff,0 4px 14px rgba(15,23,42,.13)}
+  .dnes-rs-name{font-family:var(--font-display);font-size:18px;font-weight:850;color:#0C1E35;line-height:1.15}
+  .dnes-rs-sub{font-size:11.5px;color:#64748B;font-weight:600;margin-top:4px}
+  .dnes-rs-total{background:linear-gradient(135deg,#0C1E35,#17365C);border-radius:16px;padding:15px 16px;
+    color:#fff;display:flex;align-items:center;justify-content:space-between;gap:14px;
+    box-shadow:0 10px 26px rgba(12,30,53,.22),inset 0 1px 0 rgba(255,255,255,.08)}
+  .dnes-rs-total-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#8FB6D3;font-weight:800}
+  .dnes-rs-total-money{font-size:11px;color:#CBD5E1;margin-top:4px;line-height:1.35}
+  .dnes-rs-total-val{font-family:var(--font-display);font-size:32px;font-weight:850;line-height:1;white-space:nowrap}
+  .dnes-rs-total-val.g{color:#34D399}.dnes-rs-total-val.o{color:#FBBF24}.dnes-rs-total-val.r{color:#F87171}.dnes-rs-total-val.none{color:#94A3B8}
+  .dnes-rs-bands{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:10px 0 14px}
+  .dnes-rs-band{background:#fff;border:1px solid #E7EAF0;border-radius:11px;padding:8px 7px;text-align:center}
+  .dnes-rs-band strong{display:block;font-family:var(--font-display);font-size:16px;color:#0C1E35}
+  .dnes-rs-band span{display:block;font-size:9.5px;color:#64748B;font-weight:700;margin-top:1px;white-space:nowrap}
+  .dnes-rs-band::before{content:'';display:block;width:7px;height:7px;border-radius:50%;margin:0 auto 4px}
+  .dnes-rs-band.g::before{background:#16A34A}.dnes-rs-band.o::before{background:#D97706}.dnes-rs-band.r::before{background:#DC2626}
+  .dnes-rs-section{font-family:var(--font-display);font-size:13px;font-weight:850;color:#0C1E35;margin:0 2px 8px}
+  .dnes-rs-list{background:#fff;border-radius:15px;overflow:hidden;border:1px solid #E5E9F0;box-shadow:0 5px 18px rgba(15,23,42,.05)}
+  .dnes-rs-prod{padding:12px 13px;border-top:1px solid #EEF2F7}.dnes-rs-prod:first-child{border-top:0}
+  .dnes-rs-prod-top,.dnes-rs-prod-meta{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .dnes-rs-prod-name{font-size:13.5px;font-weight:750;color:#17283C;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .dnes-rs-prod-pct{font-family:var(--font-display);font-size:14px;font-weight:850;white-space:nowrap}
+  .dnes-rs-prod-pct.g{color:#059669}.dnes-rs-prod-pct.o{color:#D97706}.dnes-rs-prod-pct.r{color:#DC2626}.dnes-rs-prod-pct.none{color:#94A3B8}
+  .dnes-rs-bar{height:6px;border-radius:99px;background:#EEF2F6;overflow:hidden;margin:8px 0 7px}
+  .dnes-rs-bar>span{display:block;height:100%;border-radius:inherit;transition:width .55s ease}
+  .dnes-rs-bar>span.g{background:#16A34A}.dnes-rs-bar>span.o{background:#D97706}.dnes-rs-bar>span.r{background:#DC2626}.dnes-rs-bar>span.none{background:#CBD5E1}
+  .dnes-rs-prod-meta{font-size:10.5px;color:#94A3B8;font-weight:600}
+  .dnes-rs-ms{display:inline-flex;align-items:center;gap:4px;color:#2563EB;font-weight:800;white-space:nowrap}
+  .dnes-rs-ms.up{color:#059669}.dnes-rs-ms.down{color:#DC2626}.dnes-rs-ms.wait{color:#94A3B8;font-weight:650}
+  .dnes-rs-ms-spin{width:10px;height:10px;border:1.5px solid #D7DFEA;border-top-color:#2563EB;border-radius:50%;animation:nstSpin .7s linear infinite}
+  .dnes-rs-empty{padding:24px 16px;text-align:center;color:#64748B;font-size:13px;line-height:1.45}
+  .dnes-rs-actions{display:flex;gap:8px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid #E2E8F0;flex:0 0 auto}
+  .dnes-rs-btn{min-height:46px;border-radius:12px;font-family:inherit;font-size:13.5px;font-weight:800;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .dnes-rs-btn.secondary{width:46px;flex:0 0 46px;background:#F1F5F9;border:1px solid #E2E8F0;color:#475569}
+  .dnes-rs-btn.primary{flex:1;background:#0C1E35;border:1px solid #0C1E35;color:#fff;box-shadow:0 6px 16px rgba(12,30,53,.20)}
+  .dnes-rs-btn:active{transform:scale(.98)}
+  @media(prefers-reduced-motion:reduce){.dnes-rs-bd,.dnes-rs-sheet,.dnes-rs-bar>span{transition:none}}
   .dnes-cal-avatar{font-size:8px;margin-top:1px;box-shadow:0 0 0 2px #FEE2E2}
   /* Riadok na dve úrovne — meno sa zalomí celé, dátum je pod ním. Pri
      „Dovolenka — Viktória Hatinová · čaká" sa jednoriadkový tvar orezal
@@ -3333,7 +3386,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.85.8 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.85.9 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -3928,6 +3981,20 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     </div>
   </div>
 
+  <div class="dnes-rs-bd" id="dnes-rep-summary-bd" aria-hidden="true" onclick="if(event.target===this)dnesCloseRepSummary()">
+    <section class="dnes-rs-sheet" id="dnes-rep-summary" role="dialog" aria-modal="true" aria-labelledby="dnes-rs-dialog-title">
+      <div class="dnes-rs-top">
+        <div class="dnes-rs-handle" aria-hidden="true"></div>
+        <button type="button" class="dnes-rs-close" onclick="dnesCloseRepSummary()" aria-label="Zavrieť">×</button>
+      </div>
+      <div class="dnes-rs-scroll" id="dnes-rs-content"></div>
+      <div class="dnes-rs-actions">
+        <button type="button" class="dnes-rs-btn secondary" onclick="dnesCloseRepSummary()" aria-label="Zavrieť">←</button>
+        <button type="button" class="dnes-rs-btn primary" onclick="dnesOpenFullRepDetail()">Otvoriť celé plnenie ›</button>
+      </div>
+    </section>
+  </div>
+
   <div class="hist-overlay" id="hist-overlay">
     <div class="hist-inner">
       <div class="hist-header">
@@ -4308,7 +4375,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.8';
+var APP_VERSION = '2.85.9';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7953,6 +8020,7 @@ function _panelShow(newId, isBack) {
 }
 
 function closeAllPanels() {
+  try { dnesCloseRepSummary(); } catch (e) {}
   ['dnes-overlay','hist-overlay','lb-overlay','rep-plnenie-overlay','lk-overlay','okresy-overlay','tuyory-overlay','lonelix-overlay','apixaban-overlay','golem-cal-overlay','lk-detail','pharma-ms-overlay','pharma-okres-overlay'].forEach(function(id){
     var el = document.getElementById(id);
     if(el) el.classList.remove('show');
@@ -8467,6 +8535,235 @@ function appGoRebricek() {
   } catch (e) {}
 }
 
+// ── Rýchly súhrn reprezentanta z manažérskeho rebríčka na Domove ─────
+var DNES_REP_SUMMARY = { open:false, username:'', model:null, timer:null, watch:0 };
+
+function dnesRepSummaryInfo(username, role) {
+  var u = String(username || '').toLowerCase();
+  var info = (typeof LB_REP_INFO !== 'undefined' && (LB_REP_INFO[u] || LB_REP_INFO[username])) ||
+             (typeof USERS_LOCAL !== 'undefined' && (USERS_LOCAL[u] || USERS_LOCAL[username])) || {};
+  if (role === 'gyn') {
+    var reps = (typeof GYN_STATE !== 'undefined' && GYN_STATE.repList) || [];
+    for (var i = 0; i < reps.length; i++) {
+      if (String(reps[i].login || '').toLowerCase() === u) {
+        return { name: reps[i].meno || reps[i].name || u, region: reps[i].region || info.region || '', raw: reps[i] };
+      }
+    }
+  }
+  return { name: info.name || info.meno || (typeof MGR_REP_NAMES !== 'undefined' && MGR_REP_NAMES[u]) || username,
+           region: info.region || '', raw: info };
+}
+
+function dnesRepSummaryLastGynMs(productName, region, q, year) {
+  if (!productName || !region || typeof GYN_PHARMA_STATE === 'undefined') return null;
+  var oblast = gynPharmaNormalizeOblast(productName, String(region).toUpperCase());
+  var kv = gynPharmaKvartal(year, q), prevKv = pharmaKvartalPrev(kv);
+  var keys = [productName + '|' + oblast + '|' + kv, productName + '|' + oblast + '|' + prevKv];
+  var resp = null;
+  for (var i = 0; i < keys.length && !resp; i++) {
+    resp = GYN_PHARMA_STATE.cache[keys[i]] || null;
+    if (!resp && typeof gynCacheRead === 'function') {
+      var keyKv = i === 0 ? kv : prevKv;
+      resp = gynCacheRead(gynPharmaCacheKey(productName, oblast, keyKv));
+      if (resp) GYN_PHARMA_STATE.cache[keys[i]] = resp;
+    }
+  }
+  var rows = resp && Array.isArray(resp.summary) ? resp.summary.filter(function(r){ return r && r.mesiac; }).slice() : [];
+  rows.sort(function(a,b){ return String(a.mesiac).localeCompare(String(b.mesiac)); });
+  if (!rows.length) return null;
+  var cur = pharmaToNum(rows[rows.length - 1].terit_ms);
+  var before = rows.length > 1 ? pharmaToNum(rows[rows.length - 2].terit_ms) : null;
+  if (cur === null) return null;
+  return { value:cur, delta:before === null ? null : +(cur - before).toFixed(2), unit:resp.metric === 'packs' ? 'bal.' : '%' };
+}
+
+function dnesRepSummaryMs(role, product, region, q, year) {
+  if (!product || !region) return null;
+  if (role === 'gyn') return dnesRepSummaryLastGynMs(product.name, region, q, year);
+  var codes = (typeof PHARMA_CODES !== 'undefined' && PHARMA_CODES[product.key]) || [];
+  if (!codes.length || typeof plneniePharmaLatestForInsight !== 'function') return null;
+  var d = plneniePharmaLatestForInsight(codes[0], region, q, year);
+  return d && d.cur !== null ? { value:d.cur, delta:d.delta, unit:'%' } : null;
+}
+
+function dnesRepSummarySupportsMs(role, product) {
+  if (!product) return false;
+  if (role === 'gyn') return !!(typeof GYN_PHARMA_PRODUCTS !== 'undefined' && GYN_PHARMA_PRODUCTS[String(product.name || '').trim().toLowerCase()]);
+  return !!(typeof PHARMA_CODES !== 'undefined' && PHARMA_CODES[product.key] && PHARMA_CODES[product.key].length);
+}
+
+function dnesRepSummaryBuild(username) {
+  var role = appRole();
+  var u = String(username || '').toLowerCase();
+  var dp = plnenieDefaultPeriod(), q = dp.q, year = dp.year;
+  var info = dnesRepSummaryInfo(u, role), data = null, overall = null, products = [];
+
+  if (role === 'gyn') {
+    data = (GYN_APP.plCache && GYN_APP.plCache[q]) || gynCacheRead(gynPlnenieCacheKey(year, q));
+    if (!data) return { loading:true, role:role, username:u, name:info.name, region:info.region, q:q, year:year, products:[] };
+    try { gynPreprocessData(data); } catch (e) {}
+    var ga = gynBuildRepAgg(u, data, q);
+    overall = { pct:ga.pct, plan:ga.totalPlan, sales:ga.totalPred };
+    (ga.prods || []).forEach(function(p) {
+      var key = String(p.name || '').trim().toLowerCase();
+      var basis = p.plan > 0 ? gynPredictionBasisForRep(u, data, q, year, key) : null;
+      var pred = basis && basis.planBasis > 0
+        ? plnenieCalcPredikciaSummary(p.plan, basis.actual, q, year, basis.planBasis) : null;
+      products.push({ key:key, name:p.name, plan:p.plan, sales:p.predaj, pct:p.pct, prediction:pred });
+    });
+  } else {
+    var source = dnesRebricekData();
+    if (!source || !source.data) return { loading:true, role:role, username:u, name:info.name, region:info.region, q:q, year:year, products:[] };
+    data = source.data; q = source.q; year = source.year;
+    var pa = plnenieBuildAggregates(data, q, [u]);
+    var rr = pa.reps && pa.reps[0];
+    overall = { pct:rr ? rr.pct : null, plan:rr ? rr.planEUR : 0, sales:rr ? rr.predajeEUR : 0 };
+    var plan = (data.plan && (data.plan[u] || data.plan[username])) || {};
+    var salesRoot = (data.predaje && (data.predaje[u] || data.predaje[username])) || {};
+    var sales = salesRoot.total || {}, byMonth = salesRoot.byMonth || {};
+    (data.planProducts || []).forEach(function(raw) {
+      var key = plnenieNormalizeKey(raw), pv = parseFloat(plan[key]) || 0, sv = parseFloat(sales[key]) || 0;
+      if (pv <= 0 && sv <= 0) return;
+      var pct = pv > 0 ? sv / pv * 100 : null;
+      var pred = pv > 0 ? plnenieCalcPredikcia(q, year, pv, byMonth, key) : null;
+      products.push({ key:key, name:plnenieDisplayName(raw), plan:pv, sales:sv, pct:pct, prediction:pred });
+    });
+  }
+
+  products.forEach(function(p) {
+    p.displayPct = p.prediction !== null && p.prediction !== undefined ? p.prediction : p.pct;
+    p.ms = dnesRepSummaryMs(role, p, info.region, q, year);
+    p.msSupported = dnesRepSummarySupportsMs(role, p);
+  });
+  products.sort(function(a,b) {
+    if (a.displayPct === null && b.displayPct === null) return a.name.localeCompare(b.name, 'sk');
+    if (a.displayPct === null) return 1;
+    if (b.displayPct === null) return -1;
+    return a.displayPct - b.displayPct;
+  });
+  var bands = { g:0, o:0, r:0 };
+  products.forEach(function(p) {
+    if (p.displayPct === null || p.displayPct === undefined) return;
+    if (p.displayPct >= 100) bands.g++; else if (p.displayPct >= 95) bands.o++; else bands.r++;
+  });
+  return { loading:false, role:role, username:u, name:info.name, region:info.region, q:q, year:year,
+           overall:overall || {pct:null,plan:0,sales:0}, products:products, bands:bands };
+}
+
+function dnesRepSummaryMsHtml(p) {
+  if (p.ms) {
+    var cls = p.ms.delta === null ? '' : p.ms.delta > 0 ? ' up' : p.ms.delta < 0 ? ' down' : '';
+    var arrow = p.ms.delta === null || p.ms.delta === 0 ? '' : (p.ms.delta > 0 ? ' ↑' : ' ↓');
+    var val = p.ms.unit === '%' ? plnenieFormatPct(p.ms.value) : Math.round(p.ms.value).toLocaleString('sk-SK') + ' ' + p.ms.unit;
+    return '<span class="dnes-rs-ms' + cls + '">' + (p.ms.unit === '%' ? 'MS ' : '') + val + arrow + '</span>';
+  }
+  return p.msSupported ? '<span class="dnes-rs-ms wait"><span class="dnes-rs-ms-spin"></span>MS načítavam</span>' : '';
+}
+
+function dnesRenderRepSummary() {
+  if (!DNES_REP_SUMMARY.open) return;
+  var host = document.getElementById('dnes-rs-content');
+  if (!host) return;
+  var oldScroll = host.scrollTop;
+  var m = dnesRepSummaryBuild(DNES_REP_SUMMARY.username);
+  DNES_REP_SUMMARY.model = m;
+  var av = appRepAvatarHtml(m.username, m.name, 52, 'dnes-rs-avatar');
+  var profile = '<div class="dnes-rs-profile">' + av + '<div><div class="dnes-rs-name" id="dnes-rs-dialog-title">' + appEsc(m.name) + '</div>' +
+    '<div class="dnes-rs-sub">' + appEsc(m.region || 'Teritórium neuvedené') + ' · Q' + m.q + ' ' + m.year + '</div></div></div>';
+  if (m.loading) {
+    host.innerHTML = profile + '<div class="dnes-rs-list"><div class="dnes-rs-empty">' + dnesSkeletonHtml('Načítavam plnenie reprezentanta…') + '</div></div>';
+    return;
+  }
+  var o = m.overall, totalCls = plnenieDetailColorClass(o.pct);
+  var html = profile +
+    '<div class="dnes-rs-total"><div><div class="dnes-rs-total-lbl">Celkové plnenie · Q' + m.q + ' ' + m.year + '</div>' +
+      '<div class="dnes-rs-total-money"><strong>' + plnenieFormatEUR(o.sales) + '</strong>' + (o.plan > 0 ? ' z plánu ' + plnenieFormatEUR(o.plan) : ' · plán nie je zadaný') + '</div></div>' +
+      '<div class="dnes-rs-total-val ' + totalCls + '">' + plnenieFormatPct(o.pct) + '</div></div>' +
+    '<div class="dnes-rs-bands">' +
+      '<div class="dnes-rs-band g"><strong>' + m.bands.g + '×</strong><span>nad 100 %</span></div>' +
+      '<div class="dnes-rs-band o"><strong>' + m.bands.o + '×</strong><span>95–100 %</span></div>' +
+      '<div class="dnes-rs-band r"><strong>' + m.bands.r + '×</strong><span>pod 95 %</span></div>' +
+    '</div><div class="dnes-rs-section">Produkty · najslabšie navrchu</div>';
+  if (!m.products.length) {
+    html += '<div class="dnes-rs-list"><div class="dnes-rs-empty">Pre tohto reprezentanta zatiaľ nie sú produktové dáta.</div></div>';
+  } else {
+    html += '<div class="dnes-rs-list">' + m.products.map(function(p) {
+      var cls = plnenieDetailColorClass(p.displayPct), width = p.displayPct === null ? 0 : Math.min(100, Math.max(0, p.displayPct));
+      return '<div class="dnes-rs-prod"><div class="dnes-rs-prod-top"><span class="dnes-rs-prod-name">' + appEsc(p.name) + '</span>' +
+        '<span class="dnes-rs-prod-pct ' + cls + '">' + plnenieFormatPct(p.displayPct) + '</span></div>' +
+        '<div class="dnes-rs-bar"><span class="' + cls + '" style="width:' + width + '%"></span></div>' +
+        '<div class="dnes-rs-prod-meta"><span>' + (p.prediction !== null ? 'predikcia konca Q' : 'plnenie k dnešku') +
+          (p.plan > 0 ? ' · ' + plnenieFormatEUR(p.sales) + ' / ' + plnenieFormatEUR(p.plan) : '') + '</span>' + dnesRepSummaryMsHtml(p) + '</div></div>';
+    }).join('') + '</div>';
+  }
+  host.innerHTML = html;
+  host.scrollTop = oldScroll;
+}
+
+function dnesRepSummaryStartMsWatch() {
+  clearInterval(DNES_REP_SUMMARY.timer);
+  DNES_REP_SUMMARY.watch = 0;
+  DNES_REP_SUMMARY.timer = setInterval(function() {
+    if (!DNES_REP_SUMMARY.open || ++DNES_REP_SUMMARY.watch > 18) {
+      clearInterval(DNES_REP_SUMMARY.timer); DNES_REP_SUMMARY.timer = null; return;
+    }
+    dnesRenderRepSummary();
+    var m = DNES_REP_SUMMARY.model;
+    if (m && !m.loading && !m.products.some(function(p){ return p.msSupported && !p.ms; })) {
+      clearInterval(DNES_REP_SUMMARY.timer); DNES_REP_SUMMARY.timer = null;
+    }
+  }, 850);
+}
+
+function dnesOpenRepSummary(username) {
+  if (!username) return;
+  DNES_REP_SUMMARY.open = true;
+  DNES_REP_SUMMARY.username = String(username).toLowerCase();
+  dnesRenderRepSummary();
+  var bd = document.getElementById('dnes-rep-summary-bd');
+  if (bd) { bd.classList.add('show'); bd.setAttribute('aria-hidden', 'false'); }
+  try { haptic('selection'); } catch (e) {}
+  var m = DNES_REP_SUMMARY.model;
+  if (m && !m.loading) {
+    if (m.role === 'gyn') {
+      gynEnsureRepPharma(m.region, m.products.map(function(p){ return { name:p.name, key:p.key }; }), function(){ if (DNES_REP_SUMMARY.open) dnesRenderRepSummary(); });
+    } else {
+      var src = dnesRebricekData();
+      plneniePreloadProductInsights(m.region, m.q, m.year, (src && src.data && src.data.planProducts) || [], false);
+    }
+  }
+  dnesRepSummaryStartMsWatch();
+  setTimeout(function(){ var b = document.querySelector('#dnes-rep-summary .dnes-rs-close'); if (b) b.focus(); }, 340);
+}
+
+function dnesCloseRepSummary() {
+  DNES_REP_SUMMARY.open = false;
+  clearInterval(DNES_REP_SUMMARY.timer); DNES_REP_SUMMARY.timer = null;
+  var bd = document.getElementById('dnes-rep-summary-bd');
+  if (bd) { bd.classList.remove('show'); bd.setAttribute('aria-hidden', 'true'); }
+}
+
+function dnesOpenFullRepDetail() {
+  var m = DNES_REP_SUMMARY.model;
+  if (!m || !m.username) return;
+  dnesCloseRepSummary();
+  appGoPlnenie();
+  setTimeout(function() {
+    if (m.role === 'gyn') {
+      gynOpenRepDetail(m.username, m.name, m.region);
+      return;
+    }
+    PL_STATE.year = m.year; PL_STATE.q = m.q;
+    var cached = PL_STATE.qCache && PL_STATE.qCache[m.q];
+    if (cached) { PL_STATE.data = cached.data; PL_STATE.aggregates = cached.aggregates; PL_STATE.loaded = true; }
+    plnenieOpenDetail(m.username);
+  }, 80);
+}
+
+document.addEventListener('keydown', function(ev) {
+  if (ev.key === 'Escape' && DNES_REP_SUMMARY.open) dnesCloseRepSummary();
+});
+
 // Prieskumy s cieľom — koľko je hotových a koľko chýba. Všetko z localStorage,
 // rovnaké čísla, aké ukazuje dashboard v samotnom prieskume.
 function dnesKampane() {
@@ -8776,11 +9073,12 @@ function dnesRender() {
       // rebríčku — nech je to na prvý pohľad tá istá vec.
       var medaily = ['🥇', '🥈', '🥉'];
       rBody = (reb.top || []).map(function (x, ix) {
-        return '<div class="dnes-mini"' + (ix === 0 ? ' style="border-top:none"' : '') + '>' +
+        var repClick = "event.stopPropagation();dnesOpenRepSummary('" + String(x.u || '').replace(/'/g,"\\'") + "')";
+        return '<div class="dnes-mini" role="button" tabindex="0" aria-label="Zobraziť plnenie reprezentanta ' + appEsc(x.meno) + '" onclick="' + repClick + '" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();' + repClick + '}"' + (ix === 0 ? ' style="border-top:none"' : '') + '>' +
                  '<span class="dnes-rank-p">' + (medaily[ix] || (ix + 1) + '.') + '</span>' +
                  appRepAvatarHtml(x.u, x.meno, 27, 'dnes-rep-avatar') +
                  '<span class="dnes-mini-name">' + appEsc(x.meno) + '</span>' +
-                 '<span class="dnes-mini-meta">' + appEsc(x.hodnota) + '</span>' +
+                 '<span class="dnes-mini-meta">' + appEsc(x.hodnota) + ' ›</span>' +
                '</div>';
       }).join('');
       if (reb.total > (reb.top || []).length) {
@@ -8996,7 +9294,7 @@ function appTabSyncFromTab(tab) {
 // golemovského .app — gyn pohľad .app skrýva a spolu s ňou by zmizli aj ony.
 (function () {
   function presun() {
-    ['rep-topbar', 'rep-tabbar', 'dnes-overlay', 'viac-bd', 'viac-overlay', 'gpp-overlay'].forEach(function (id) {
+    ['rep-topbar', 'rep-tabbar', 'dnes-overlay', 'dnes-rep-summary-bd', 'viac-bd', 'viac-overlay', 'gpp-overlay'].forEach(function (id) {
       var el = document.getElementById(id);
       if (el && el.parentNode !== document.body) document.body.appendChild(el);
     });
