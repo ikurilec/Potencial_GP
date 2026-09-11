@@ -31,7 +31,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.46';
+var APP_VERSION = '2.85.47';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -11144,7 +11144,7 @@ function gynOpenDnesWhenReady(force) {
 
 // Helper: vráti HTML pre gyn avatar circle — buď <img> s DiceBear URL alebo iniciály
 function gynAvatarContent(login, name) {
-  var config = avatarGetConfig(login) || avatarFallbackConfig(login, name);
+  var config = avatarGetConfig(login);
   if (config) {
     var url = avatarUrl(config, 80);
     return { html: '<img src="' + url + '" alt="" class="avatar-img">', hasAvatar: true };
@@ -18700,12 +18700,12 @@ function avatarUrl(config, size) {
   return 'https://api.dicebear.com/7.x/' + schema.endpoint + '/svg?' + params.toString();
 }
 
-// Lokálne uloženie avatar configu (zatiaľ bez Apps Scriptu, neskôr presunieme na backend)
-// Kľúč: 'avatar_cfg_' + username → JSON string
-// Lookup avatar config — najprv z in-memory (LB_REP_INFO/USERS_LOCAL, naplnené zo Sheets),
-// potom z session (ak ide o prihláseného usera), potom z localStorage (offline cache).
-// Každý známy človek má ilustrovaný fallback. Je stabilný podľa loginu/mena,
-// takže sa nemení medzi obrazovkami ani zariadeniami. Uložený vlastný avatar má vždy prednosť.
+// Generovaný ilustrovaný avatar pre človeka, ktorý si vlastný nevytvoril.
+// ZÁMERNE SA NEPOUŽÍVA pri renderovaní — Ivan chce, aby ten, kto avatara
+// nemá, ukazoval iniciály, nie vymyslenú postavičku. Funkcia ostáva len pre
+// prípad, že by sa niekedy jasne dohodlo inak; nevoľaj ju z avatarHtml(),
+// avatarFillElement(), gynAvatarContent() ani lbAvatarContent() bez toho,
+// aby si sa s Ivanom dohodol, že to naozaj chce.
 function avatarFallbackConfig(username, name){
   var seed = String(username || name || 'user').toLowerCase();
   var h = 0; for(var i=0;i<seed.length;i++) h = ((h * 31) + seed.charCodeAt(i)) >>> 0;
@@ -18717,6 +18717,11 @@ function avatarFallbackConfig(username, name){
     mouth:pick(ADVENTURER_MOUTH,5), skinColor:pick(ADVENTURER_SKIN_COLOR,6) };
 }
 
+// Lokálne uloženie avatar configu (zatiaľ bez Apps Scriptu, neskôr presunieme na backend)
+// Kľúč: 'avatar_cfg_' + username → JSON string
+// Lookup avatar config — najprv z in-memory (LB_REP_INFO/USERS_LOCAL, naplnené zo Sheets),
+// potom z session (ak ide o prihláseného usera), potom z localStorage (offline cache).
+// Vráti null, keď človek vlastný avatar nemá — vtedy volajúci ukáže iniciály.
 function avatarGetConfig(username) {
   if (!username) return null;
   username = String(username).trim().toLowerCase();
@@ -18825,7 +18830,7 @@ function avatarHtml(opts) {
   var size = opts.size || 40;
   var color = opts.color || '#0C1E35';
   var cls = opts.cls || '';
-  var config = avatarGetConfig(username) || avatarFallbackConfig(username, name);
+  var config = avatarGetConfig(username);
   if (config) {
     var url = avatarUrl(config, size * 2); // 2× pre retina
     var bg = (config.backgroundColor) ? '#' + config.backgroundColor : 'transparent';
@@ -18849,7 +18854,7 @@ function avatarFillElement(el, opts) {
   var size = opts.size || el.offsetWidth || 40;
   var name = opts.name || '';
   var color = opts.color || el.style.background || '#0C1E35';
-  var config = avatarGetConfig(username) || avatarFallbackConfig(username, name);
+  var config = avatarGetConfig(username);
   if (config) {
     var url = avatarUrl(config, size * 2);
     var bg = (config.backgroundColor) ? '#' + config.backgroundColor : 'transparent';
@@ -21120,7 +21125,7 @@ function lbInitials(name){
 // Helper: vráti obsah avatar circle — buď <img> s DiceBear URL (ak má config),
 // alebo iniciály. Plus vráti správnu triedu (has-avatar) pre wrapping div.
 function lbAvatarContent(username, name, size) {
-  var config = avatarGetConfig(username) || avatarFallbackConfig(username, name);
+  var config = avatarGetConfig(username);
   if (config) {
     var url = avatarUrl(config, (size || 60) * 2);
     return { html: '<img src="' + url + '" alt="" class="avatar-img">', hasAvatar: true };
