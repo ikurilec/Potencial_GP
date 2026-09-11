@@ -937,6 +937,9 @@
   .line-switch-transition-msg{font-size:12px;font-weight:600;color:#94A3B8;margin-top:8px}
   @media(prefers-reduced-motion:reduce){.line-switch-transition{transition:none}.line-switch-track::after{animation:none;width:100%}}
   .dnes-more{font-size:11.5px;font-weight:700;color:#2563EB;white-space:nowrap}
+  .dnes-rank-more{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin:5px 0 0;padding:9px 10px;border:1px solid #E2E8F0;border-radius:9px;background:#F8FAFC;color:#2563EB;font:700 11.5px/1.2 inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .15s,transform .15s}
+  .dnes-rank-more:active{background:#EFF6FF;transform:scale(.99)}
+  .dnes-rank-more .arr{font-size:14px;line-height:1}
   .dnes-hd-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
   .dnes-big{font-family:var(--font-display);font-size:32px;font-weight:800;letter-spacing:-.02em;line-height:1;color:#0C1E35;font-variant-numeric:tabular-nums}
   .dnes-big.g{color:#16A34A}
@@ -3399,7 +3402,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.85.14 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.85.15 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -4388,7 +4391,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.14';
+var APP_VERSION = '2.85.15';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8490,7 +8493,7 @@ function dnesRebricekGyn(me) {
     var i = -1;
     for (var k = 0; k < rank.length; k++) { if (rank[k].u === me) { i = k; break; } }
     if (i < 0) return { kind: 'tim', total: rank.length, qLabel: qLabel,
-                        top: rank.slice(0, 6).map(function (x) {
+                        top: rank.map(function (x) {
                           return { u: x.u, meno: x.meno, hodnota: dnesRebricekPct(x.pct) };
                         }) };
     return { kind: 'ja', rank: i + 1, total: rank.length, qLabel: qLabel,
@@ -8522,7 +8525,7 @@ function dnesRebricek() {
     var i = -1;
     for (var k = 0; k < rank.length; k++) { if (rank[k].u === me) { i = k; break; } }
     if (i < 0) return { kind: 'tim', total: rank.length, qLabel: qLabel,
-                        top: rank.slice(0, 6).map(function (x) {
+                        top: rank.map(function (x) {
                           return { u: x.u, meno: x.meno, hodnota: dnesRebricekPct(x.pct) };
                         }) };
     return { kind: 'ja', rank: i + 1, total: rank.length, qLabel: qLabel,
@@ -8895,6 +8898,25 @@ function dnesCardHtml(accent, title, moreLbl, body) {
   '</div>';
 }
 
+var DNES_HOME_RANK_STATE = { line:'', expanded:false };
+function dnesHomeRankLineKey() {
+  try { return String(appLineTag ? appLineTag() : ((getSession() || {}).line || 'gp')); } catch (e) { return 'gp'; }
+}
+function dnesHomeRankExpanded() {
+  var line = dnesHomeRankLineKey();
+  if (DNES_HOME_RANK_STATE.line !== line) {
+    DNES_HOME_RANK_STATE.line = line;
+    DNES_HOME_RANK_STATE.expanded = false;
+  }
+  return DNES_HOME_RANK_STATE.expanded;
+}
+function dnesToggleHomeRanking(ev) {
+  if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+  dnesHomeRankExpanded();
+  DNES_HOME_RANK_STATE.expanded = !DNES_HOME_RANK_STATE.expanded;
+  dnesRender();
+}
+
 // Každé prepnutie línie vytvorí novú dátovú reláciu. Odpovede zo staršej
 // relácie sa môžu zo servera vrátiť neskôr, ale už nesmú meniť živý stav UI.
 var APP_LINE_EPOCH = 0;
@@ -8921,6 +8943,7 @@ function appRepAvatarHtml(username, name, size, extraClass) {
 function dnesRender() {
   var body = document.getElementById('dnes-body');
   if (!body) return;
+  var homeRankExpanded = dnesHomeRankExpanded();
   var rola = appRole();
   var sub = document.getElementById('dnes-sub');
   if (sub) { try { sub.textContent = hdrInfoText(); } catch (e) { sub.textContent = ''; } }
@@ -9141,7 +9164,8 @@ function dnesRender() {
       // Manažér: poradie jeho ľudí. Medaily pre prvé tri, ako v samotnom
       // rebríčku — nech je to na prvý pohľad tá istá vec.
       var medaily = ['🥇', '🥈', '🥉'];
-      rBody = (reb.top || []).map(function (x, ix) {
+      var visibleTop = homeRankExpanded ? (reb.top || []) : (reb.top || []).slice(0, 6);
+      rBody = visibleTop.map(function (x, ix) {
         var repClick = "event.stopPropagation();dnesOpenRepSummary('" + String(x.u || '').replace(/'/g,"\\'") + "')";
         return '<div class="dnes-mini" role="button" tabindex="0" aria-label="Zobraziť plnenie reprezentanta ' + appEsc(x.meno) + '" onclick="' + repClick + '" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();' + repClick + '}"' + (ix === 0 ? ' style="border-top:none"' : '') + '>' +
                  '<span class="dnes-rank-p">' + (medaily[ix] || (ix + 1) + '.') + '</span>' +
@@ -9150,7 +9174,11 @@ function dnesRender() {
                  '<span class="dnes-mini-meta">' + appEsc(x.hodnota) + ' ›</span>' +
                '</div>';
       }).join('');
-      if (reb.total > (reb.top || []).length) {
+      if (reb.total > 6) {
+        rBody += '<button type="button" class="dnes-rank-more" onclick="dnesToggleHomeRanking(event)" aria-expanded="' + (homeRankExpanded ? 'true' : 'false') + '">' +
+                 (homeRankExpanded ? 'Zbaliť zoznam' : 'Zobraziť všetkých ' + reb.total) +
+                 ' <span class="arr">' + (homeRankExpanded ? '⌃' : '⌄') + '</span></button>';
+      } else if (reb.total > 0) {
         rBody += '<div class="dnes-post-meta">z ' + reb.total + ' reprezentantov' +
                  (reb.popis ? ' · ' + appEsc(reb.popis) : '') + '</div>';
       }
