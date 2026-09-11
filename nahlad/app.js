@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.55';
+var APP_VERSION = '2.85.56';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -231,6 +231,31 @@ function lsSafeSet(key, val) {
     try { localStorage.setItem(key, val); return true; } catch (e2) {}
   }
   return false;
+}
+
+// ── dataStore: jedno miesto pre JSON cache s vekom (F2-1) ──
+// Predtým šesť takmer identických párov *LsSave/*LsLoad (história, gyn,
+// pharma, pharma-graf, plnenie, rebríček) — každý vlastný
+// JSON.parse/stringify + lsSafeSet + ts. Pri kópii triedy chyby ako F0-4
+// (diakritika trikrát) stačí, aby sa jedna z nich zabudla opraviť.
+// Teraz je parse/stringify/ts na jednom mieste; každý pár si drží len
+// vlastný tvar dát (items/data/resp/...), nie mechaniku uloženia.
+function dsRead(key) {
+  try {
+    var p = JSON.parse(localStorage.getItem(key) || 'null');
+    return (p && typeof p === 'object') ? p : null;
+  } catch (e) { return null; }
+}
+function dsWrite(key, value) {
+  var wrapped = (value && typeof value === 'object') ? value : { v: value };
+  wrapped.ts = Date.now();
+  lsSafeSet(key, JSON.stringify(wrapped));
+}
+function dsAge(ts) {
+  return ts ? (Date.now() - Number(ts)) : Infinity;
+}
+function dsIsStale(ts, maxAgeMs) {
+  return dsAge(ts) > maxAgeMs;
 }
 
 // ── PUSH NOTIFIKÁCIE (Firebase Cloud Messaging) ──
@@ -10073,15 +10098,17 @@ function gynCacheUserScope() {
   return [s.username || 'anon', s.role || '', s.region || '', s.linia || ''].join('|');
 }
 function gynCacheRead(key) {
-  try {
-    var raw = localStorage.getItem(GYN_CACHE_PREFIX + key);
-    if(!raw) return null;
-    var item = JSON.parse(raw);
-    return item && item.data ? item.data : null;
-  } catch(e) { return null; }
+  var item = dsRead(GYN_CACHE_PREFIX + key);
+  return item && item.data ? item.data : null;
 }
 function gynCacheWrite(key, data) {
-  lsSafeSet(GYN_CACHE_PREFIX + key, JSON.stringify({ ts: Date.now(), data: data }));
+  dsWrite(GYN_CACHE_PREFIX + key, { data: data });
+}
+// Vek gyn cache záznamu v ms, alebo Infinity ak neexistuje — predtým sa ts
+// ukladal, ale nikdy nečítal, takže sa dáta reálne nedali označiť za staré.
+function gynCacheAge(key) {
+  var item = dsRead(GYN_CACHE_PREFIX + key);
+  return item ? dsAge(item.ts) : Infinity;
 }
 function gynCacheSame(a, b) {
   try { return JSON.stringify(a || null) === JSON.stringify(b || null); }
@@ -21645,14 +21672,12 @@ function _plHashData(data) {
   catch(e) { return String(Date.now()); }
 }
 function _plLsLoad(key) {
-  try {
-    var p = JSON.parse(localStorage.getItem(key) || 'null');
-    if (p && p.data && !p.hash) p.hash = _plHashData(p.data);
-    return (p && p.data) ? p : null;
-  } catch(e) { return null; }
+  var p = dsRead(key);
+  if (p && p.data && !p.hash) p.hash = _plHashData(p.data);
+  return (p && p.data) ? p : null;
 }
 function _plLsSave(key, data, agg, hash) {
-  lsSafeSet(key, JSON.stringify({ data: data, agg: agg, hash: hash || _plHashData(data), ts: Date.now() }));
+  dsWrite(key, { data: data, agg: agg, hash: hash || _plHashData(data) });
 }
 
 function plnenieDisplayName(rawKey) {
@@ -26656,55 +26681,46 @@ var PHARMA_OKRES_STATE = { cache: {}, loading: {}, current: null };
 var _LB_LS_V = 'v1';
 function _lbHsKey() { return 'lb_allhist_' + _LB_LS_V + '_' + ((typeof appLineTag === 'function') ? appLineTag() : 'gp'); }
 function _lbHsSave(data) {
-  lsSafeSet(_lbHsKey(), JSON.stringify({ data: data, ts: Date.now() }));
+  dsWrite(_lbHsKey(), { data: data });
 }
 function _lbHsLoad() {
-  try {
-    var p = JSON.parse(localStorage.getItem(_lbHsKey()) || 'null');
-    return (p && p.data && typeof p.data === 'object') ? p.data : null;
-  } catch(e) { return null; }
+  var p = dsRead(_lbHsKey());
+  return (p && p.data && typeof p.data === 'object') ? p.data : null;
 }
 
 // ── Per-rep history localStorage SWR ──────────────────────────────
 var _HIST_LS_V = 'v1';
 function _histLsKey(username) { return 'hist_' + _HIST_LS_V + '_' + ((typeof appLineTag === 'function') ? appLineTag() : 'gp') + '_' + (username || '').toLowerCase(); }
 function _histLsSave(username, items) {
-  lsSafeSet(_histLsKey(username), JSON.stringify({ items: items, ts: Date.now() }));
+  dsWrite(_histLsKey(username), { items: items });
 }
 function _histLsLoad(username) {
-  try {
-    var p = JSON.parse(localStorage.getItem(_histLsKey(username)) || 'null');
-    return (p && Array.isArray(p.items)) ? p.items : null;
-  } catch(e) { return null; }
+  var p = dsRead(_histLsKey(username));
+  return (p && Array.isArray(p.items)) ? p.items : null;
 }
 
 // ── PharmaGraf localStorage SWR ────────────────────────────────────
 var _PG_LS_V = 'v1';
 function _pgLsKey(code, oblast) { return 'ph_graf_' + _PG_LS_V + '_' + code + '_' + oblast; }
 function _pgLsSave(code, oblast, resp) {
-  // lsSafeSet — pri plnom localStorage (admin preload) uvoľní cache namiesto tichého zlyhania
-  lsSafeSet(_pgLsKey(code, oblast), JSON.stringify({ resp: resp, ts: Date.now() }));
+  dsWrite(_pgLsKey(code, oblast), { resp: resp });
 }
 function _pgLsLoad(code, oblast) {
-  try {
-    var p = JSON.parse(localStorage.getItem(_pgLsKey(code, oblast)) || 'null');
-    return (p && p.resp) ? p.resp : null;
-  } catch(e) { return null; }
+  var p = dsRead(_pgLsKey(code, oblast));
+  return (p && p.resp) ? p.resp : null;
 }
 
 // ── Pharma localStorage SWR ───────────────────────────────────────
 var _PH_LS_V = 'v1';
 function _phLsKey(code, oblast, kvartal) { return 'ph_c_' + _PH_LS_V + '_' + code + '_' + oblast + '_' + kvartal; }
 function _phLsLoad(code, oblast, kvartal) {
-  try {
-    var p = JSON.parse(localStorage.getItem(_phLsKey(code, oblast, kvartal)) || 'null');
-    return (p && p.resp) ? p.resp : null;
-  } catch(e) { return null; }
+  var p = dsRead(_phLsKey(code, oblast, kvartal));
+  return (p && p.resp) ? p.resp : null;
 }
 function _phLsSave(code, oblast, kvartal, resp) {
-  // lsSafeSet — PharmaData je hlavný vinník zaplnenia localStorage pri admin preloade.
+  // PharmaData je hlavný vinník zaplnenia localStorage pri admin preloade.
   // Dáta sú aj v IndexedDB (väčšia kapacita), takže localStorage je len rýchly bonus tier.
-  lsSafeSet(_phLsKey(code, oblast, kvartal), JSON.stringify({ resp: resp, ts: Date.now() }));
+  dsWrite(_phLsKey(code, oblast, kvartal), { resp: resp });
 }
 
 var _PH_IDB_NAME = 'potencial_gp_pharma_cache';
