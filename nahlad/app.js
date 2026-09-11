@@ -31,7 +31,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.50';
+var APP_VERSION = '2.85.51';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -5721,6 +5721,33 @@ function settingsCardHtml(accent, title, body) {
   '</div>';
 }
 
+// Zbaliteľná skupina vnútri karty — na jednotlivosti, ktoré tam byť musia
+// (nič sa nestráca), ale nepozerajú sa na ne každý deň. Zbalené šetria
+// miesto, rozbalené sú presne to, čo bolo predtým vždy vidno.
+function settingsCollapseHtml(id, label, bodyHtml, defaultOpen) {
+  if (!bodyHtml) return '';
+  var open = !!defaultOpen;
+  return '<div class="set-collapse' + (open ? ' open' : '') + '" id="set-collapse-' + id + '">' +
+    '<button type="button" class="set-collapse-btn" onclick="settingsToggleCollapse(\'' + id + '\')" aria-expanded="' + (open ? 'true' : 'false') + '">' +
+      '<span>' + settingsEsc(label) + '</span><span class="arr">' + (open ? '⌃' : '⌄') + '</span>' +
+    '</button>' +
+    '<div class="set-collapse-body" style="display:' + (open ? 'block' : 'none') + '">' + bodyHtml + '</div>' +
+  '</div>';
+}
+function settingsToggleCollapse(id) {
+  var wrap = document.getElementById('set-collapse-' + id);
+  if (!wrap) return;
+  var btn = wrap.querySelector('.set-collapse-btn');
+  var body = wrap.querySelector('.set-collapse-body');
+  if (!btn || !body) return;
+  var open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  wrap.classList.toggle('open', !open);
+  btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+  var arr = btn.querySelector('.arr'); if (arr) arr.textContent = open ? '⌄' : '⌃';
+  try { haptic('selection'); } catch(e){}
+}
+
 function openSettings(){
   var s = getSession(); if(!s) return;
   var overlay = document.getElementById('settings-overlay');
@@ -5735,6 +5762,17 @@ function closeSettings(){
   if(overlay) overlay.classList.remove('show');
   document.body.style.overflow = '';
   try { usageSectionClose(); } catch(e){}
+}
+// Tlačidlo Späť / systémové späť z Nastavení — na rozdiel od closeSettings()
+// (tú volajú aj prepínanie línie a iné toky, ktoré si samy riadia, kam idú
+// ďalej) toto vždy pristáva na Domove. Nastavenia sa otvárajú odkiaľkoľvek
+// cez ozubené koliesko v hlavičke, takže „to, čo náhodou zostalo pod nimi"
+// nie je predvídateľné miesto na návrat.
+function settingsBack(){
+  closeSettings();
+  if(document.body.classList.contains('app-nav') && typeof appGoDomov === 'function'){
+    try { appGoDomov(); } catch(e){}
+  }
 }
 function settingsLogout(){
   var s = getSession();
@@ -6270,8 +6308,11 @@ function settingsProdOrderCard(s){
     } else {
       listHtml = poListHtml(items);
     }
-    inner = '<div class="set-row-desc">' + desc + '</div>' + listHtml +
+    var poBody = '<div class="set-row-desc">' + desc + '</div>' + listHtml +
       '<span class="set-saved" id="po-saved" style="display:block;margin-top:8px">✓ Uložené</span>';
+    // Zoznam vie byť dlhý (gyn rozdelený na Pill/Patch/Ostatné) — nastavuje sa
+    // raz a potom sa na to nepozerá, tak nech na Nastaveniach nezaberá miesto.
+    inner = settingsCollapseHtml('poradie', 'Zobraziť poradie (' + items.length + ')', poBody, false);
   }
   return settingsCardHtml('linear-gradient(90deg,#D97706,#FCD34D)', 'Poradie produktov', inner);
 }
@@ -6533,16 +6574,16 @@ function settingsDefaultTabHtml(s){
 }
 
 // ── Aplikácia — sekcia (dáta, haptika, prepínač línie pre admina, cache) ──
+// Karta Aplikácia má tri veci, ktoré sa menia takmer nikdy (línie, dáta,
+// riešenie problémov) a tri, ktoré sa nastavujú bežne (haptika, vyhľadávanie,
+// úvodná obrazovka). Bežné veci sú vždy vidno, zvyšok je zbalený — nič
+// z appky nezmizlo, len sa to nemusí pozerať každému na očiach zakaždým.
 function settingsAppHtml(s){
   var html = '';
-  // Kedy admin naposledy odoslal aktualizáciu dát
-  html += '<div class="set-card-sub">Aktuálnosť dát</div>';
-  html += settingsDataDateRow('📊 Predaje', 'predaje');
-  html += settingsDataDateRow('📈 PharmaData', 'pharma');
 
   // Haptická odozva
   var hOn = settingsHapticsOn();
-  html += '<div class="set-row" style="margin-top:6px"><div class="set-row-label">Haptická odozva</div>' +
+  html += '<div class="set-row"><div class="set-row-label">Haptická odozva</div>' +
             '<button type="button" class="set-switch' + (hOn ? ' on' : '') + '" role="switch" aria-checked="' + (hOn ? 'true' : 'false') + '" aria-label="Haptická odozva" onclick="settingsToggleHaptics()"></button>' +
           '</div>';
 
@@ -6556,11 +6597,12 @@ function settingsAppHtml(s){
   // Predvolená (úvodná) obrazovka po prihlásení — reprezentant aj manažér, GP aj Gyn
   html += settingsDefaultTabHtml(s);
 
-  // Prepínač línie — iba admin. Tlačidlo pre každú ďalšiu líniu (Golem / Gynekológia / Reagila).
+  // ── Línie — len keď je čo riešiť (jedna alebo viac línií naraz pre managera/admina) ──
+  var linesHtml = '';
   if(typeof mgrShouldShowLineToggle === 'function' && mgrShouldShowLineToggle()){
     var _tgts = (typeof mgrLineTargets === 'function') ? mgrLineTargets() : [];
     if(_tgts.length){
-      html += '<div class="set-row"><div class="set-row-label">Prepnúť líniu</div>' +
+      linesHtml += '<div class="set-row"><div class="set-row-label">Prepnúť líniu</div>' +
                 '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">' +
                 _tgts.map(function(t){ return '<button type="button" class="set-mini-btn" onclick="settingsSwitchLineTo(\'' + t.line + '\')">→ ' + settingsEsc(t.label) + '</button>'; }).join('') +
               '</div></div>';
@@ -6570,29 +6612,27 @@ function settingsAppHtml(s){
     var _pref = (typeof lineGetPref === 'function') ? lineGetPref(_uname) : '';
     if(_pref){
       var _plbl = lineChooserMeta(_pref).label;
-      html += '<div class="set-row"><div class="set-row-label">Po prihlásení otvárať<br>' +
+      linesHtml += '<div class="set-row"><div class="set-row-label">Po prihlásení otvárať<br>' +
                 '<span style="font-weight:600;color:#64748B">' + settingsEsc(_plbl) + '</span></div>' +
                 '<button type="button" class="set-mini-btn" onclick="settingsClearLinePref()">Zrušiť</button></div>';
     } else {
       var _curLbl = lineChooserMeta(mgrCurrentLine()).label;
-      html += '<div class="set-row"><div class="set-row-label">Po prihlásení<br>' +
+      linesHtml += '<div class="set-row"><div class="set-row-label">Po prihlásení<br>' +
                 '<span style="font-weight:600;color:#64748B">vždy sa opýtať</span></div>' +
                 '<button type="button" class="set-mini-btn" onclick="settingsRememberLine()">Zapamätať ' + settingsEsc(_curLbl) + '</button></div>';
     }
   }
-
   // „Načítať línie" — pre manažéra/admina. Ak pri prihlásení niektorá línia vypadla
   // (cold start Apps Scriptu / timeout), v dual session ostane len časť línií a prepínač
   // sa nezobrazí. Týmto sa dá kedykoľvek doplniť/obnoviť celá dual session cez heslo.
   var _isMgrLines = (typeof mgrDetectRole === 'function') && !!mgrDetectRole(s);
   if(_isMgrLines){
     var _switchOn = (typeof mgrShouldShowLineToggle === 'function') && mgrShouldShowLineToggle();
-    html += '<div class="set-row"><div class="set-row-label">Moje línie<br>' +
+    linesHtml += '<div class="set-row"><div class="set-row-label">Moje línie<br>' +
               '<span style="font-weight:600;color:#64748B">' +
                 (_switchOn ? 'prepínač je aktívny' : 'chýba ti prepínač línie?') + '</span></div>' +
               '<button type="button" class="set-mini-btn" onclick="settingsReloadAllLines()">↻ Načítať línie</button></div>';
   }
-
   // Záchrana chýbajúcej Golem línie — ak Golem login pri štarte zlyhal (cold start / pomalé
   // pripojenie / druhé zariadenie), používateľ uviazne v Gyn/Reagile bez Golemu a prepínač
   // línie sa vôbec nezobrazí. Tu ho vie načítať cez heslo, bez odhlásenia.
@@ -6602,21 +6642,28 @@ function settingsAppHtml(s){
   // bez Golemu a bez prepínača. Ukazujeme to len tomu, kto práve NIE JE v Goleme a Golem
   // mu v dual session chýba; Golem-only reprezentanti (väčšina) to nikdy neuvidia.
   if(typeof mgrCurrentLine === 'function' && mgrCurrentLine() !== 'gp' && !(_dualNow && _dualNow.gp)){
-    html += '<div style="border-top:1px solid #F1F5F9;margin-top:6px;padding-top:14px">' +
+    linesHtml += '<div class="set-collapse-sub">' +
               '<div class="set-card-sub">Chýba ti Golem línia?</div>' +
               '<div class="set-row-desc">Ak sa Golem pri prihlásení nenačítal (cold start servera, pomalé pripojenie alebo druhé zariadenie), môžeš ho doplniť <strong>bez odhlásenia</strong>. Zadáš heslo, appka načíta Golem líniu a prepne sa do nej.</div>' +
               '<button type="button" class="set-action-btn" onclick="settingsLoadGolemLine()">⬇️ Načítať Golem líniu</button>' +
               '<div style="margin-top:8px"><button type="button" class="set-mini-btn" onclick="mgrShowLineDiag()">Diagnostika prihlásenia línií</button></div>' +
             '</div>';
   }
+  html += settingsCollapseHtml('lines', 'Línie', linesHtml, false);
 
-  // Čistenie vyrovnávacej pamäte
-  html += '<div style="border-top:1px solid #F1F5F9;margin-top:6px;padding-top:14px">' +
-            '<div class="set-card-sub">Riešenie problémov</div>' +
-            '<div class="set-row-desc">Appka sa správa divne, dáta sa načítali nesprávne, niečo sa nezobrazuje alebo je appka pomalá? Skús vymazať vyrovnávaciu pamäť — je to bezpečné. Vymažú sa len dočasne uložené dáta (predaje, trhové podiely, história, lekárne), ktoré sa vzápätí znova načítajú zo servera. <strong>Zostávaš prihlásený a o nič neprídeš.</strong></div>' +
-            '<button type="button" class="set-action-btn" onclick="settingsClearCache()">🧹 Vymazať vyrovnávaciu pamäť</button>' +
-            '<div class="set-cache-status" id="set-cache-status"></div>' +
-          '</div>';
+  // ── Údržba a dáta — aktuálnosť dát + čistenie vyrovnávacej pamäte ──
+  var maintHtml =
+    '<div class="set-card-sub">Aktuálnosť dát</div>' +
+    settingsDataDateRow('📊 Predaje', 'predaje') +
+    settingsDataDateRow('📈 PharmaData', 'pharma') +
+    '<div class="set-collapse-sub">' +
+      '<div class="set-card-sub">Riešenie problémov</div>' +
+      '<div class="set-row-desc">Appka sa správa divne, dáta sa načítali nesprávne, niečo sa nezobrazuje alebo je appka pomalá? Skús vymazať vyrovnávaciu pamäť — je to bezpečné. Vymažú sa len dočasne uložené dáta (predaje, trhové podiely, história, lekárne), ktoré sa vzápätí znova načítajú zo servera. <strong>Zostávaš prihlásený a o nič neprídeš.</strong></div>' +
+      '<button type="button" class="set-action-btn" onclick="settingsClearCache()">🧹 Vymazať vyrovnávaciu pamäť</button>' +
+      '<div class="set-cache-status" id="set-cache-status"></div>' +
+    '</div>';
+  html += settingsCollapseHtml('maint', 'Údržba a dáta', maintHtml, false);
+
   return html;
 }
 
@@ -17915,7 +17962,7 @@ function _handleAndroidBack() {
 
   // Nastavenia (gyn aj Golem) — avatar editor sa otvára nad nimi, preto až po ňom
   el = document.getElementById('settings-overlay');
-  if (el && el.classList.contains('show')) { closeSettings(); return true; }
+  if (el && el.classList.contains('show')) { settingsBack(); return true; }
 
   el = document.getElementById('edit-overlay');
   if (el && el.classList.contains('show')) { closeEditOverlay(); return true; }
