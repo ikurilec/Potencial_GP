@@ -3416,7 +3416,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.85.23 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.85.24 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -4142,7 +4142,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
         <div id="detail-note-wrap"></div>
         <hr style="border:none;border-top:1px solid #E2E8F0;margin:4px 0 14px">
         <div id="detail-edit-wrap" style="display:none;margin-bottom:10px">
-          <button type="button" class="edit-open-btn" onclick="openEditRecord()">✏️ Aktualizovať záznam</button>
+          <button type="button" class="edit-open-btn" onclick="openEditRecord()">✏️ Aktualizovať potenciál</button>
         </div>
         <div class="confirm-btns" style="grid-template-columns:1fr">
           <button type="button" class="confirm-yes" onclick="closeDetail()">Zavrieť</button>
@@ -4157,7 +4157,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   <div class="edit-inner">
     <div class="edit-hdr">
       <button class="edit-close-btn" onclick="closeEditOverlay()">×</button>
-      <div class="edit-hdr-title">✏️ Aktualizovať záznam</div>
+      <div class="edit-hdr-title">✏️ Aktualizovať potenciál</div>
       <div class="edit-hdr-sub" id="edit-hdr-sub"></div>
     </div>
     <div class="edit-form">
@@ -4405,7 +4405,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.23';
+var APP_VERSION = '2.85.24';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9855,8 +9855,9 @@ document.addEventListener('click', function (ev) {
     i = gpDetailIdxByRow(row);
   }
   if (i < 0) return;
+  // Najprv ukáž aktuálnu kapitáciu a počty produktov. Používateľ sa až potom
+  // vedome rozhodne, či chce údaje upraviť cez tlačidlo v detaile.
   openDetail(i);
-  setTimeout(function () { try { openEditRecord(); } catch (e) {} }, 220);
 });
 
 function openDnes() {
@@ -11408,7 +11409,7 @@ function openDetail(idx) {
     saveNote(item, item.poznamka);
   }
   renderNoteSection(item);
-  // Zobraz tlačidlo "Aktualizovať záznam" — pre repa, manažéra aj admina
+  // Zobraz tlačidlo "Aktualizovať potenciál" — pre repa, manažéra aj admina
   // (každý prihlásený so záznamom, ktorý má číslo riadku). Aktualizácia sa
   // NEZAPÍŠE do Sheetu — ide do vrstvy zmien (override), Sheet ostáva baseline.
   var editWrap = document.getElementById('detail-edit-wrap');
