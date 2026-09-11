@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.61';
+var APP_VERSION = '2.85.62';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -5364,14 +5364,22 @@ function viacDlazdice() {
 }
 
 function viacLinesHtml() {
-  if (!mgrLineSwitchAvailable()) return '';
-  var dual = mgrGetDual();
+  // Ukáže sa každému s manažérskou rolou (rovnaká podmienka ako v Nastaveniach),
+  // nie len tomu, kto už má 2+ línie potvrdené — chýbajúca línia (🔒) sa tu teraz
+  // dá rovno dotiahnuť heslom, namiesto toho, aby zo zoznamu jednoducho zmizla.
+  if (!(typeof mgrDetectRole === 'function' && mgrDetectRole(getSession()))) return '';
+  var dual = mgrGetDual() || {};
   var current = mgrCurrentLine();
   var lines = [{line:'gp',label:'Golem'}, {line:'gyn',label:'Gynekológia'}, {line:'reagila',label:'Reagila'}];
   return '<div class="viac-sec" id="viac-lines-label">Línia</div>' +
     '<div class="viac-lines" role="group" aria-labelledby="viac-lines-label">' +
-    lines.filter(function (it) { return !!dual[it.line]; }).map(function (it) {
+    lines.map(function (it) {
+      var has = !!dual[it.line];
       var active = it.line === current;
+      if (!has) {
+        return '<button type="button" class="viac-line" data-viac-line="' + it.line + '" onclick="settingsLoadLine(\'' + it.line + '\')">' +
+          '<span>' + it.label + '</span><span class="viac-line-mark" aria-hidden="true">🔒</span></button>';
+      }
       return '<button type="button" class="viac-line' + (active ? ' active' : '') + '" data-viac-line="' + it.line + '" aria-pressed="' + active + '" onclick="viacSwitchLine(\'' + it.line + '\')">' +
         '<span>' + it.label + '</span><span class="viac-line-mark" aria-hidden="true">' + (active ? '✓' : '›') + '</span></button>';
     }).join('') + '</div>';
