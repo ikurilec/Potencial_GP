@@ -3433,7 +3433,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.85.30 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.85.31 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -4422,7 +4422,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.30';
+var APP_VERSION = '2.85.31';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -12613,6 +12613,7 @@ function reagilaRevealApp(){
 // Odkry appku až po vykreslení prvej Reagila obrazovky (2× rAF = po nátere),
 // plus poistka, aby appka nikdy neostala skrytá natrvalo.
 function reagilaRevealAfterPaint(){
+  if(document.getElementById('boot-loader')) return;
   try { requestAnimationFrame(function(){ requestAnimationFrame(reagilaRevealApp); }); } catch(e){ reagilaRevealApp(); }
   setTimeout(reagilaRevealApp, 1500);
 }
@@ -12672,8 +12673,9 @@ function loginSuccess(username, name, role, region, extra) {
   haptic('success');
   var _isReagila = (user.line === 'reagila');
   var _appEl = document.querySelector('.app');
-  // Reagila: appku NEodkrývaj hneď — odkryje sa až po vykreslení prvej obrazovky (gate-and-reveal)
-  if (_appEl && !_isReagila) { _appEl.style.visibility = 'visible'; _appEl.classList.add('app-enter'); setTimeout(function(){ _appEl.classList.remove('app-enter'); }, 500); }
+  // Spoločná nepriehľadná boot clona: pri žiadnej línii nesmie presvitať starý Domov.
+  try { bootLoaderShow(true); } catch(e){}
+  if (_appEl) { _appEl.style.visibility = 'hidden'; _appEl.classList.remove('app-enter'); }
   document.getElementById('login-screen').classList.remove('show');
   try { mgrDedupUnique(); } catch(e){}
   updateHdrForUser(user);
@@ -12720,6 +12722,7 @@ function loginSuccess(username, name, role, region, extra) {
     setTimeout(function(){ try { pushMaybePrompt(); } catch(e){} }, 3500);
     // One-time onboarding tip pre avatar — 4s delay aby WN/satori modal stihli skončiť
     setTimeout(function(){ try { hdrAvatarShowTipIfNeeded(); } catch(e){} }, 1500);
+    appBootWaitForHomeData(user);
     return;
   }
   if(localStorage.getItem(TUTORIAL_KEY)){
@@ -12760,6 +12763,7 @@ function loginSuccess(username, name, role, region, extra) {
   window.scrollTo({top: 0, behavior: 'instant'});
   // Predvolená záložka po prihlásení (ak si rep zvolil inú ako Formulár)
   try { applyDefaultTabIfRep(); } catch(e){}
+  appBootWaitForHomeData(user);
 }
 
 // ── Výber línie po prihlásení (používatelia s účtom vo viacerých líniách) ──
@@ -15229,7 +15233,7 @@ function gynEnter(user) {
     document.getElementById('hdr-greeting').textContent = (user.name || user.username) + ' · Gynekológia';
   }
   try { setTimeout(gynNavBalance, 60); setTimeout(gynNavBalance, 400); } catch(e){}
-  try { bootLoaderShow(); } catch(e){}       // načítacia obrazovka (avatar + oslovenie)
+  try { bootLoaderShow(true); } catch(e){}   // spoločná boot clona aj pri warm cache
   var appEl = document.querySelector('.app');
   if(appEl) appEl.style.display = 'none';
   plnenieApplyDefaultPeriod(GYN_APP, true);
@@ -15246,13 +15250,18 @@ function gynEnter(user) {
     var _t0 = Date.now();
     var _iv = setInterval(function(){
       var gc = document.getElementById('gyn-content');
-      var ready = gc && gc.querySelector('.pl-sum-big, .mgr-plnenie-detail, .app-err-card');
-      if(ready || !document.getElementById('boot-loader') || Date.now() - _t0 > 15000){
-        clearInterval(_iv); try { bootLoaderDone(); } catch(e){}
+      var waitingHome = !!GYN_APP._openDnesWhenReady;
+      var ready = waitingHome ? gynHomeBootstrapReady() :
+        (gc && gc.querySelector('.pl-sum-big, .mgr-plnenie-detail, .app-err-card'));
+      if(ready || !document.getElementById('boot-loader') || Date.now() - _t0 > 12000){
+        clearInterval(_iv);
+        // Po limite otvorí Domov len s chybovým/retry stavom; nikdy nie s nekonečným spinnerom.
+        if(waitingHome) gynOpenDnesWhenReady(!ready);
+        try { bootLoaderDone(); } catch(e){}
       }
     }, 150);
   })();
-  setTimeout(function(){ try { gynCalPrefetch(); } catch(e){} }, 900);   // kalendár načítaj na pozadí hneď po prihlásení
+  try { gynCalPrefetch(); } catch(e){}  // kalendár beží paralelne počas boot obrazovky
   // Úplne prvý login → potlač WN changelog backlog, nech nový rep vidí len Satori uvítací overlay
   wnSuppressBacklogForFirstLogin();
   // Satori → WN → milestone cascade (rovnaký pattern ako Golem login)
@@ -15445,10 +15454,20 @@ function gynBootstrap(user) {
     });
 }
 
-function gynOpenDnesWhenReady() {
-  if (!GYN_APP._openDnesWhenReady) return;
+// Domov v Gyn potrebuje rovnaký základ ako jeho prvé dve karty: vlastné
+// plnenie, plný roster a plnenie celej línie pre rebríček.
+function gynHomeBootstrapReady(){
+  try {
+    var q = GYN_APP.q;
+    return !!(GYN_APP.plCache && GYN_APP.plCache[q] &&
+      GYN_LB.plCache && GYN_LB.plCache[q] && gynLbScopeReps().length);
+  } catch(e){ return false; }
+}
+function gynOpenDnesWhenReady(force) {
+  if (!GYN_APP._openDnesWhenReady) return false;
+  if (!force && !gynHomeBootstrapReady()) return false;
   GYN_APP._openDnesWhenReady = false;
-  try { openDnes(); } catch(e){}
+  try { openDnes(); return true; } catch(e){ return false; }
 }
 
 // Helper: vráti HTML pre gyn avatar circle — buď <img> s DiceBear URL alebo iniciály
@@ -18710,6 +18729,7 @@ function gynLbEnsureRepList(){
       gynLbRepListLoaded(d);
       if(GYN_APP.nav === 'leaderboard') gynLbRender();
       try { dnesRefreshIfOpen(); } catch(e){}
+      try { gynOpenDnesWhenReady(); } catch(e){}
     })
     .catch(function(){
       GYN_LB.repLoading = false;
@@ -18719,6 +18739,7 @@ function gynLbEnsureRepList(){
         GYN_LB.repFetched = true;
         if(GYN_APP.nav === 'leaderboard') gynLbRender();
       }
+      try { gynOpenDnesWhenReady(); } catch(e){}
     });
 }
 function gynLbCatTabsHtml(){
@@ -18774,6 +18795,7 @@ function gynLbEnsureData(q, key){
       GYN_LB.dataReady[q] = true;
       if(GYN_APP.nav === 'leaderboard') gynLbRender();
       try { dnesRefreshIfOpen(); } catch(e){}
+      try { gynOpenDnesWhenReady(); } catch(e){}
     })
     .catch(function(){
       delete GYN_LB.plLoading[q];
@@ -20696,7 +20718,7 @@ function mgrApplyDefaultSubtab(){
     var def = appDefaultTab();
     // Domov je obrazovka nad líniami — otvorí sa nad manažérskym pohľadom.
     // Bez vlastnej voľby je domovom Domov, rovnako ako u reprezentanta.
-    if (!def || def === 'dnes') { setTimeout(function(){ try { openDnes(); } catch(e){} }, 350); return; }
+    if (!def || def === 'dnes') { MGR_STATE._openDnesWhenReady = true; appBootFinishIfReady(); return; }
     var allowed = ['plnenie','kalendar','visits','leaderboard'];
     if (golemActivityAllowed(MGR_STATE.role)) allowed.push('activity');
     if (!def || def === 'plnenie' || allowed.indexOf(def) < 0) return;
@@ -24002,6 +24024,45 @@ function loadRepList(forceFullRoster) {
     .catch(function(){ REP_LIST_STATE.loading = false; });
 }
 
+// Pri prihlásení sa Domov neotvára podľa časovača. Zostane za boot obrazovkou,
+// kým je pripravený aktuálny kvartál a roster, z ktorých kreslí Plnenie aj Rebríček.
+var APP_BOOT = { waitTimer: null, deadline: 0, line: '', username: '' };
+function appHomeOpenWhenReady(force){
+  try {
+    if(!MGR_STATE._openDnesWhenReady) return false;
+    if(!force && !(PL_STATE.loaded && REP_LIST_STATE.loaded)) return false;
+    MGR_STATE._openDnesWhenReady = false;
+    openDnes();
+    return true;
+  } catch(e){ return false; }
+}
+function appBootDataReady(user){
+  var isMgr = !!mgrDetectRole(user || getSession() || {});
+  return isMgr ? !!(PL_STATE.loaded && REP_LIST_STATE.loaded) : !!REP_PL_STATE.loaded;
+}
+function appBootFinishIfReady(force){
+  var user = getSession() || {};
+  if(user.line === 'gyn') return false;
+  if(!force && !appBootDataReady(user)) return false;
+  try { appHomeOpenWhenReady(force); } catch(e){}
+  try { bootLoaderDone(); } catch(e){}
+  return true;
+}
+function appBootWaitForHomeData(user){
+  clearInterval(APP_BOOT.waitTimer);
+  APP_BOOT.line = (user && user.line) || 'gp';
+  APP_BOOT.username = (user && user.username) || '';
+  APP_BOOT.deadline = Date.now() + 12000;
+  APP_BOOT.waitTimer = setInterval(function(){
+    var active = getSession() || {};
+    if(active.username !== APP_BOOT.username || (active.line || 'gp') !== APP_BOOT.line){ clearInterval(APP_BOOT.waitTimer); return; }
+    if(appBootFinishIfReady(false) || Date.now() >= APP_BOOT.deadline){
+      clearInterval(APP_BOOT.waitTimer);
+      appBootFinishIfReady(true);
+    }
+  }, 80);
+}
+
 // ── INIT DATA — načíta repList + históriu + milestoneStats v jedinom HTTP requeste ──
 // Nahrádza loadRepList() + refreshBadgeFromSheets() pri logine.
 // Retry: pri zlyhaní skúsi znova po 3s a 8s, potom fallback na pôvodné funkcie.
@@ -24045,12 +24106,13 @@ function bootHasCachedData() {
   } catch (e) { return false; }
 }
 
-function bootLoaderShow(){
+function bootLoaderShow(force){
   if(typeof document === 'undefined' || !document.body) return;
   // Appka dáta väčšinou už má — história v localStorage, lekárne v IndexedDB,
   // plnenie v cache. Prekryv cez ne nič nepridá, len ich schová. Ukáž ho len
   // vtedy, keď naozaj niet čo vykresliť: prvé prihlásenie alebo vymazaná cache.
-  if (bootHasCachedData()) return;
+  // Pri prihlásení je loader bezpečná clona medzi líniami; force ho ukáže aj pri cache.
+  if (!force && bootHasCachedData()) return;
   var el = document.getElementById('boot-loader');
   if(!el){
     var st = document.createElement('style');
@@ -24115,6 +24177,14 @@ function bootLoaderDone(){
   var el = document.getElementById('boot-loader');
   if(!el) return;
   bootLoaderSet(100);
+  try {
+    var bootApp = document.querySelector('.app');
+    if(bootApp && bootApp.style.display !== 'none') {
+      bootApp.style.visibility = 'visible';
+      bootApp.classList.add('app-enter');
+      setTimeout(function(){ bootApp.classList.remove('app-enter'); }, 500);
+    }
+  } catch(e){}
   setTimeout(function(){
     el.classList.add('boot-hide');
     setTimeout(function(){
@@ -24206,7 +24276,7 @@ function loadInitData(username, _attempt, _lineCtx) {
         var lbq = parseInt(data.configs.lb_approved_q);
         if(!isNaN(lbq)) LB_APPROVED_Q = lbq;
       }
-      try { bootLoaderDone(); } catch(e){}
+      try { appBootFinishIfReady(); } catch(e){}
     })
     .catch(function() {
       if(!appLineContextActive(_lineCtx)) return null;
@@ -24223,7 +24293,7 @@ function loadInitData(username, _attempt, _lineCtx) {
         // Po 3 pokusoch — fallback na pôvodné funkcie
         loadRepList();
         refreshBadgeFromSheets(username);
-        try { bootLoaderDone(); } catch(e){}
+        try { appBootFinishIfReady(true); } catch(e){}
       }
     });
 }
