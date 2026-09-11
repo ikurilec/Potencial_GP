@@ -3402,7 +3402,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.85.15 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.85.16 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -4391,7 +4391,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.15';
+var APP_VERSION = '2.85.16';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8440,8 +8440,19 @@ function dnesPlnenieNacitava() {
     return !!REP_PL_STATE.loading;
   } catch (e) { return false; }
 }
+function dnesPlnenieFailed() {
+  try { return appRole() === 'mgr' && PL_STATE._currentLoadFailed === true; }
+  catch (e) { return false; }
+}
 function dnesSkeletonHtml(popis) {
   return '<div class="dnes-load"><span class="dnes-spin"></span>' + appEsc(popis || 'Načítavam…') + '</div>';
+}
+function dnesHomeLoadHtml(popis) {
+  if (dnesPlnenieFailed()) {
+    return '<div class="dnes-load"><span aria-hidden="true" style="font-size:15px;line-height:1">⚠️</span>' +
+      appEsc('Dáta sa nepodarilo načítať — otvor kartu a skús znova') + '</div>';
+  }
+  return dnesSkeletonHtml(popis);
 }
 
 // Sused nado mnou a podo mnou — nech sa reprezentant vie porovnať s tým,
@@ -9031,8 +9042,8 @@ function dnesRender() {
             dnesCardHtml('linear-gradient(90deg,#2563EB,#60A5FA)',
                          ((rola === 'mgr') ? 'Plnenie tímu · ' : 'Plnenie · ') + plnenieQLabel(dpX.q, dpX.year),
                          '<span class="dnes-more">Otvoriť ›</span>',
-                         dnesSkeletonHtml(dnesPlnenieNacitava() ? 'Načítavam plnenie…'
-                                                               : 'Za tento kvartál zatiaľ nie sú dáta')) +
+                         dnesHomeLoadHtml(dnesPlnenieNacitava() ? 'Načítavam plnenie…'
+                                                                : 'Za tento kvartál zatiaľ nie sú dáta')) +
             '</div>';
   }
   if (pl) {
@@ -9135,8 +9146,8 @@ function dnesRender() {
     html += '<div onclick="appGoRebricek()" style="cursor:pointer">' +
             dnesCardHtml('linear-gradient(90deg,#D97706,#FCD34D)', titulR,
                          '<span class="dnes-more">Otvoriť ›</span>',
-                         dnesSkeletonHtml(dnesPlnenieNacitava() ? 'Načítavam rebríček…'
-                                                                : 'Za tento kvartál zatiaľ nie sú dáta')) +
+                         dnesHomeLoadHtml(dnesPlnenieNacitava() ? 'Načítavam rebríček…'
+                                                                 : 'Za tento kvartál zatiaľ nie sú dáta')) +
             '</div>';
   }
   if (reb) {
@@ -9748,6 +9759,7 @@ document.addEventListener('click', function (ev) {
 });
 
 function openDnes() {
+  appNavEnsure();
   usageSectionEnter('Dnes');
   _panelShow('dnes-overlay');
   dnesRender();
@@ -12310,9 +12322,11 @@ function mgrLineResetSharedData(target){
   // pri každom prepnutí vynuluje; line-scoped offline cache sa načíta nanovo.
   try {
     if(typeof PL_STATE !== 'undefined'){
+      clearTimeout(PL_STATE._loadWatchdog);
       PL_STATE._loadId=(PL_STATE._loadId||0)+1;
       PL_STATE.loading=false; PL_STATE.loaded=false; PL_STATE.data=null;
-      PL_STATE._currentLoading=false; PL_STATE.aggregates=null; PL_STATE.detailRep=null; PL_STATE.qCache={};
+      PL_STATE._currentLoading=false; PL_STATE._currentLoadFailed=false; PL_STATE._loadWatchdog=null;
+      PL_STATE.aggregates=null; PL_STATE.detailRep=null; PL_STATE.qCache={};
     }
     if(typeof REP_PL_STATE !== 'undefined'){
       REP_PL_STATE._loadId=(REP_PL_STATE._loadId||0)+1;
@@ -13192,6 +13206,22 @@ try {
 } catch(e){}
 try { window.addEventListener('orientationchange', function(){ setTimeout(repTopbarSync, 200); }); } catch(e){}
 
+// Prihlásenie môže skončiť s focusom ešte na hesle. Vtedy focus handler
+// schová spodnú lištu cez kb-open, hoci login obrazovka už zmizla. Tento
+// guard sa volá pri každom návrate na Domov aj pri obnove hlavičky a vráti
+// navigáciu do konzistentného stavu.
+function appNavEnsure(user) {
+  var sess = user || (typeof getSession === 'function' ? getSession() : null);
+  if (!sess || !sess.username) return false;
+  document.body.classList.add('app-nav');
+  document.body.classList.remove('kb-open');
+  var bar = document.getElementById('rep-tabbar');
+  if (bar) { bar.removeAttribute('hidden'); bar.style.removeProperty('display'); }
+  try { tabbarSyncAvatar(sess); } catch (e) {}
+  try { repTabbarSync(); } catch (e) {}
+  return true;
+}
+
 // Poistka na úvodnú obrazovku. Každá línia si ju otvára vlastnou cestou
 // (applyDefaultTabIfRep / mgrApplyDefaultSubtab / gynApplyDefaultNav) a stačí,
 // aby jedna z nich nedobehla — a človek skončí tam, kde bol domov kedysi.
@@ -13257,7 +13287,7 @@ function updateHdrForUser(user) {
   // rolám. Trieda sa pridáva tu, lebo updateHdrForUser() beží po prihlásení
   // v každej línii.
   if (user && user.username) {
-    document.body.classList.add('app-nav');
+    appNavEnsure(user);
     try { appAppPaddingSync(); } catch (e) {}
     try { appOpenDefaultScreen(); } catch (e) {}
   }
@@ -20428,14 +20458,19 @@ function golemActivityAllowed(roleKey){
 function mgrEnter(roleKey){
   var cfg = MGR_ROLE_CFG[roleKey];
   if(!cfg) return;
+  try { appNavEnsure(); } catch (e) {}
   MGR_STATE.role = roleKey;
   // v2.3.1 — Plnenie je default sub-tab pri otvorení
   MGR_STATE.subtab = 'plnenie';
   document.body.classList.add('mgr-subtab-plnenie');
   usageSectionEnter('Manažér · Plnenie');
   plnenieApplyDefaultPeriod(PL_STATE, true);
+  clearTimeout(PL_STATE._loadWatchdog);
+  PL_STATE._loadWatchdog = null;
   PL_STATE.loaded = false;
   PL_STATE.loading = false;
+  PL_STATE._currentLoading = false;
+  PL_STATE._currentLoadFailed = false;
   PL_STATE.data = null;
   PL_STATE.aggregates = null;
   PL_STATE.qCache = {};
@@ -25397,6 +25432,8 @@ var PL_STATE = {
   q: 1,
   loading: false,
   _currentLoading: false,
+  _currentLoadFailed: false,
+  _loadWatchdog: null,
   _loadId: 0,
   loaded: false,
   data: null,
@@ -26617,6 +26654,9 @@ function plnenieUpdateQTabs() {
 
 function plnenieLoadAllQuarters() {
   if (PL_STATE.loading) return;
+  clearTimeout(PL_STATE._loadWatchdog);
+  PL_STATE._loadWatchdog = null;
+  PL_STATE._currentLoadFailed = false;
   PL_STATE.loading = true;
   PL_STATE._currentLoading = true;
   var loadId = ++PL_STATE._loadId;
@@ -26681,6 +26721,22 @@ function plnenieLoadAllQuarters() {
   var pending = qs.length;
   var currentQ = PL_STATE.q;
 
+  // Apps Script môže zostať visieť aj napriek retry timeoutom (napr. pri
+  // prerušení spojenia počas prechodu línie). Domov nesmie zostať donekonečna
+  // v stave „Načítavam“. Po limite zneplatníme staré requesty a zobrazíme
+  // chybovú kartu s opakovaním.
+  function plnenieLoadWatchdog(){
+    if (!active() || PL_STATE.loaded || !PL_STATE._currentLoading) return;
+    PL_STATE._loadId += 1;
+    PL_STATE.loading = false;
+    PL_STATE._currentLoading = false;
+    PL_STATE._currentLoadFailed = true;
+    PL_STATE._loadWatchdog = null;
+    plnenieRenderAll();
+    try { dnesRefreshIfOpen(); } catch(e) {}
+  }
+  PL_STATE._loadWatchdog = setTimeout(plnenieLoadWatchdog, 35000);
+
   function fetchQuarter(q) {
     var url = scriptUrl('action=getPlnenieAll&rok=' + year + '&Q=' + q);
     mgrFetchWithRetry(url, 3)
@@ -26716,6 +26772,7 @@ function plnenieLoadAllQuarters() {
         if(!active()) return;
         if(q === currentQ){
           PL_STATE._currentLoading = false;
+          if (!PL_STATE.loaded) PL_STATE._currentLoadFailed = true;
           try { dnesRefreshIfOpen(); } catch(e){}
           // Najprv dokonči aktuálny kvartál pre Domov; ostatné Q doplň potom.
           qs.filter(function(x){ return x !== currentQ; }).forEach(fetchQuarter);
@@ -26723,6 +26780,8 @@ function plnenieLoadAllQuarters() {
         pending--;
         if (pending === 0) {
           // Všetky Q fetche skončili
+          clearTimeout(PL_STATE._loadWatchdog);
+          PL_STATE._loadWatchdog = null;
           PL_STATE.loading = false;
           // Ak current Q sa stále nenačítal (error), renderuj z cache alebo error stav
           if (!PL_STATE.loaded) {
