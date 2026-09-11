@@ -3416,7 +3416,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.85.22 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.85.23 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -3981,7 +3981,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
         <button type="button" class="gpp-back" onclick="closeGpPicker()" aria-label="Späť">←</button>
         <div>
           <div class="gpp-title">Aktualizovať potenciál</div>
-          <div class="gpp-sub">Vyber lekára, ktorý už v databáze je</div>
+          <div class="gpp-sub">Vyber GP lekára alebo záznam Len Lonelix</div>
         </div>
       </div>
       <div class="gpp-search-wrap">
@@ -4405,7 +4405,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.22';
+var APP_VERSION = '2.85.23';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9737,15 +9737,19 @@ try {
 // zadať nového GP a aktualizovať potenciál toho, kto už v databáze je.
 //
 // Hľadá sa cez appNorm(), takže „safarik" nájde „Šafárik" — rovnako ako
-// v zozname Lekári. Ťuknutie otvorí detail a hneď nad ním aktualizáciu hodnôt.
+// v zozname Lekári. Patria sem aj lekári s jediným Lonelix záznamom: pred
+// doplnením GP potenciálu si reprezentant najprv pozrie ich aktuálne údaje.
+var GP_PICKER = { items: [] };
 function gpPickerItems() {
   var q = appNorm(((document.getElementById('gpp-search') || {}).value) || '').trim();
   var all = [];
   try { all = _histCombined(); } catch (e) { all = []; }
-  // Len GP záznamy — potenciál majú len tie. Prieskumy a nezistení lekári nie.
+  // GP záznamy plus lekári, ktorí majú zatiaľ iba Lonelix. Tuyory a Apixaban
+  // nie sú GP lekári, preto do tejto aktualizácie nepatria.
   var gp = all.filter(function (it) {
-    return it && it.row !== undefined && it.row !== null && it.row !== '' &&
-           it.type !== 'tuyory' && it.type !== 'apixaban' && it.type !== 'lonelix-new';
+    if (!it || it.type === 'tuyory' || it.type === 'apixaban') return false;
+    if (it.type === 'lonelix-new') return true;
+    return it.row !== undefined && it.row !== null && it.row !== '';
   });
   if (q) {
     gp = gp.filter(function (it) {
@@ -9778,13 +9782,20 @@ function gpPickerRender() {
   // Najviac 60 riadkov — pri dlhšom zozname je rýchlejšie dopísať meno než
   // scrollovať, a prekresľovanie na každý znak by inak bolo cítiť.
   var zobraz = items.slice(0, 60);
-  body.innerHTML = '<div class="gpp-list">' + zobraz.map(function (it) {
+  GP_PICKER.items = zobraz;
+  body.innerHTML = '<div class="gpp-list">' + zobraz.map(function (it, idx) {
     var kat = String(it.kategoria || '').toUpperCase().trim();
-    return '<button type="button" class="gpp-item" data-gpp-row="' + appEsc(it.row) + '">' +
-             '<span class="gpp-dot" style="background:' + gpCatColor(kat).c + '"></span>' +
+    var isLonelixOnly = it.type === 'lonelix-new';
+    var lon = it.lon || {};
+    var meta = isLonelixOnly
+      ? (appEsc(it.okres || '') + ' · Len Lonelix' + (lon.pocet !== '' && lon.pocet != null ? ' · ' + appEsc(lon.pocet) + ' pac./mes. v sezóne' : ''))
+      : (appEsc(it.okres || '') + (it.dateStr ? ' · zadaný ' + appEsc(it.dateStr) : ''));
+    var target = isLonelixOnly ? ' data-gpp-lon="' + idx + '"' : ' data-gpp-row="' + appEsc(it.row) + '"';
+    return '<button type="button" class="gpp-item"' + target + '>' +
+             '<span class="gpp-dot" style="background:' + (isLonelixOnly ? '#059669' : gpCatColor(kat).c) + '"></span>' +
              '<span class="gpp-txt">' +
                '<span class="gpp-name">' + appEsc(it.lekar || '—') + '</span>' +
-               '<span class="gpp-meta">' + appEsc(it.okres || '') + (it.dateStr ? ' · zadaný ' + appEsc(it.dateStr) : '') + '</span>' +
+               '<span class="gpp-meta">' + meta + '</span>' +
              '</span>' +
              '<span class="gpp-ch">›</span>' +
            '</button>';
@@ -9800,10 +9811,18 @@ function openGpPicker() {
   usageSectionEnter('Aktualizácia potenciálu');
   var sb = document.getElementById('gpp-search');
   if (sb) sb.value = '';
+  try { if (!(LONELIX.records && LONELIX.records.length)) LONELIX.records = lonelixLoadLocal(); } catch (e) {}
   gpPickerRender();
   ov.classList.add('show');
   ov.scrollTop = 0;
   document.body.style.overflow = 'hidden';
+  // Lokálna cache dá zoznam hneď; čerstvý Lonelix zo servera ho po doručení
+  // doplní bez toho, aby používateľ musel picker zavrieť a otvoriť znova.
+  try {
+    lonelixFetchServer(function () {
+      if (ov.classList.contains('show')) gpPickerRender();
+    });
+  } catch (e) {}
 }
 function closeGpPicker() {
   var ov = document.getElementById('gpp-overlay');
@@ -9816,6 +9835,15 @@ function closeGpPicker() {
 // Cez openDetail(), aby sa _currentDetailItem aj obnovenie po uložení
 // nastavili presne tak, ako to saveEditRecord() očakáva.
 document.addEventListener('click', function (ev) {
+  var lonBtn = ev.target && ev.target.closest ? ev.target.closest('[data-gpp-lon]') : null;
+  if (lonBtn) {
+    var lonItem = GP_PICKER.items[Number(lonBtn.getAttribute('data-gpp-lon'))];
+    closeGpPicker();
+    if (lonItem && lonItem.lon && typeof lonelixDoctorDetail === 'function') {
+      lonelixDoctorDetail(lonItem.lon, { canAddGp: true });
+    }
+    return;
+  }
   var btn = ev.target && ev.target.closest ? ev.target.closest('[data-gpp-row]') : null;
   if (!btn) return;
   var row = btn.getAttribute('data-gpp-row');
