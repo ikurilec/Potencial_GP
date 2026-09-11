@@ -31,7 +31,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.44';
+var APP_VERSION = '2.85.45';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10975,7 +10975,7 @@ function gynHydrateRepMeta(reps) {
         if (parsed && parsed.style && AVATAR_SCHEMAS[parsed.style]) av = parsed;
       } catch(e){}
     }
-    USERS_LOCAL[r.login] = { region: r.region, gender: g, avatar: av };
+    USERS_LOCAL[r.login] = { name: r.meno || r.name || r.login, region: r.region, gender: g, avatar: av };
   });
 }
 
@@ -11009,8 +11009,8 @@ function gynApplyRepListData(data, user) {
               try { var pj = JSON.parse(avRaw); if (pj && pj.style && AVATAR_SCHEMAS[pj.style]) av = pj; } catch(e){}
             }
             var lk = String(u.login || '').toLowerCase();
-            if (lk && !USERS_LOCAL[lk]) USERS_LOCAL[lk] = { region: u.region, gender: g, avatar: av };
-            else if (lk && av && !USERS_LOCAL[lk].avatar) USERS_LOCAL[lk].avatar = av;
+            if (lk && !USERS_LOCAL[lk]) USERS_LOCAL[lk] = { name: u.meno || u.name || lk, region: u.region, gender: g, avatar: av };
+            else if (lk) { if(!USERS_LOCAL[lk].name) USERS_LOCAL[lk].name = u.meno || u.name || lk; if(av && !USERS_LOCAL[lk].avatar) USERS_LOCAL[lk].avatar = av; }
           });
         }
         // Naplň USERS_LOCAL — aby avatarGetConfig našiel avatary gyn reprezentantov vo všetkých render miestach
@@ -11027,7 +11027,7 @@ function gynApplyRepListData(data, user) {
               if (parsed && parsed.style && AVATAR_SCHEMAS[parsed.style]) av = parsed;
             } catch(e){}
           }
-          USERS_LOCAL[r.login] = { region: r.region, gender: g, avatar: av };
+          USERS_LOCAL[r.login] = { name: r.meno || r.name || r.login, region: r.region, gender: g, avatar: av };
         });
         // Re-render iba ak repList bol prázdny (manažér/rebríček potrebuje zoznam repov na prvý render)
         // Inak stačí refresh avatarov — nespúšťame zbytočnú druhú animáciu
@@ -14811,8 +14811,10 @@ function dnesCalendarOwnerUsername(owner, name){
     var wanted=norm(name || raw);
     if(!wanted) return '';
     if(typeof LB_REP_INFO!=='undefined') for(var u in LB_REP_INFO){ if(norm(LB_REP_INFO[u] && LB_REP_INFO[u].name)===wanted) return String(u).toLowerCase(); }
+    if(typeof USERS_LOCAL!=='undefined') for(var lu in USERS_LOCAL){ if(norm(USERS_LOCAL[lu] && USERS_LOCAL[lu].name)===wanted) return String(lu).toLowerCase(); }
     if(typeof MGR_REP_NAMES!=='undefined') for(var m in MGR_REP_NAMES){ if(norm(MGR_REP_NAMES[m])===wanted) return String(m).toLowerCase(); }
     if(typeof GYN_STATE!=='undefined' && GYN_STATE.repList) for(var i=0;i<GYN_STATE.repList.length;i++){ var r=GYN_STATE.repList[i]; if(norm(r.meno || r.name)===wanted) return String(r.login||'').toLowerCase(); }
+    if(typeof GYN_STATE!=='undefined' && GYN_STATE.userList) for(var ui=0;ui<GYN_STATE.userList.length;ui++){ var gu=GYN_STATE.userList[ui]; if(norm(gu.meno || gu.name)===wanted) return String(gu.login||'').toLowerCase(); }
     if(typeof GYN_LB!=='undefined' && GYN_LB.repList) for(var k=0;k<GYN_LB.repList.length;k++){ var gl=GYN_LB.repList[k]; if(norm(gl.meno || gl.name)===wanted) return String(gl.login||'').toLowerCase(); }
     if(typeof MGR_STATE!=='undefined' && MGR_STATE.managers) for(var j=0;j<MGR_STATE.managers.length;j++){ var x=MGR_STATE.managers[j]; if(norm(x.name)===wanted) return String(x.username||'').toLowerCase(); }
   } catch(e) {}
@@ -19447,7 +19449,7 @@ function buildRepData(reps) {
     var schval = String(r.schvalovatel || r.approver || r['Schvaľovateľ'] || '').trim().toLowerCase();
     MGR_REP_NAMES[u] = r.meno;
     LB_REP_INFO[u]   = { name: r.meno, region: r.region, color: color, gender: gender, avatar: avatarConfig, schvalovatel: schval };
-    USERS_LOCAL[u]   = { region: r.region, gender: gender, avatar: avatarConfig, schvalovatel: schval };
+    USERS_LOCAL[u]   = { name: r.meno || r.name || u, region: r.region, gender: gender, avatar: avatarConfig, schvalovatel: schval };
     if (schval) GYN_CAL_APPROVERS[u] = schval;
     try {
       if (avatarConfig) localStorage.setItem('avatar_cfg_' + u, JSON.stringify(avatarConfig));
