@@ -31,7 +31,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.40';
+var APP_VERSION = '2.85.41';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -4129,12 +4129,27 @@ function dnesHomeLoadHtml(popis) {
 
 // Sused nado mnou a podo mnou — nech sa reprezentant vie porovnať s tým,
 // koho doháňa, aj s tým, kto dobieha jeho.
-function dnesRebricekSusedia(rank, i) {
+function dnesRebricekSusedia(rank, i, moves) {
   var out = [];
-  if (i > 0) out.push({ poradie: i, u: rank[i - 1].u, meno: rank[i - 1].meno, hodnota: dnesRebricekPct(rank[i - 1].pct), kde: 'nado' });
-  out.push({ poradie: i + 1, u: rank[i].u, meno: rank[i].meno, hodnota: dnesRebricekPct(rank[i].pct), kde: 'ja' });
-  if (i < rank.length - 1) out.push({ poradie: i + 2, u: rank[i + 1].u, meno: rank[i + 1].meno, hodnota: dnesRebricekPct(rank[i + 1].pct), kde: 'podo' });
+  if (i > 0) out.push({ poradie: i, u: rank[i - 1].u, meno: rank[i - 1].meno, hodnota: dnesRebricekPct(rank[i - 1].pct), pohyb: moves && moves[rank[i - 1].u], kde: 'nado' });
+  out.push({ poradie: i + 1, u: rank[i].u, meno: rank[i].meno, hodnota: dnesRebricekPct(rank[i].pct), pohyb: moves && moves[rank[i].u], kde: 'ja' });
+  if (i < rank.length - 1) out.push({ poradie: i + 2, u: rank[i + 1].u, meno: rank[i + 1].meno, hodnota: dnesRebricekPct(rank[i + 1].pct), pohyb: moves && moves[rank[i + 1].u], kde: 'podo' });
   return out;
+}
+
+// Pohyb na Domove používa ten istý snapshot poradia ako plný rebríček.
+// Zároveň je oddelený podľa línie, aby sa Golem, Gyn a Reagila nikdy nemiešali.
+function dnesRebricekMoves(rank, q, line) {
+  try {
+    var moveKey = (line || 'gp') + '_q' + q;
+    var st = LB_MOVE_STATE[moveKey];
+    if (st && st.loaded) return lbMoveMap(rank, st.prevPct);
+    var pctAll = {};
+    rank.forEach(function(x){ pctAll[x.u] = x.pct; });
+    var urlFn = line === 'gyn' ? gynScriptUrl : scriptUrl;
+    lbMoveEnsure(urlFn, moveKey, q, pctAll, function(){ dnesRefreshIfOpen(); });
+  } catch (e) {}
+  return null;
 }
 
 function dnesRebricekPct(pct) {
@@ -4173,16 +4188,17 @@ function dnesRebricekGyn(me) {
     }).filter(function (x) { return x.pct !== null; })
       .sort(function (a, b) { return b.pct - a.pct; });
     if (rank.length < 2) return null;
+    var moves = dnesRebricekMoves(rank, q, 'gyn');
     var qLabel = 'Q' + q + ' ' + year;
     var i = -1;
     for (var k = 0; k < rank.length; k++) { if (rank[k].u === me) { i = k; break; } }
     if (i < 0) return { kind: 'tim', total: rank.length, qLabel: qLabel,
                         top: rank.map(function (x) {
-                          return { u: x.u, meno: x.meno, hodnota: dnesRebricekPct(x.pct) };
+                          return { u: x.u, meno: x.meno, hodnota: dnesRebricekPct(x.pct), pohyb: moves && moves[x.u] };
                         }) };
     return { kind: 'ja', rank: i + 1, total: rank.length, qLabel: qLabel,
-             hodnota: dnesRebricekPct(rank[i].pct), popis: 'plnenie',
-             susedia: dnesRebricekSusedia(rank, i) };
+             hodnota: dnesRebricekPct(rank[i].pct), pohyb: moves && moves[rank[i].u], popis: 'plnenie',
+             susedia: dnesRebricekSusedia(rank, i, moves) };
   } catch (e) { return null; }
 }
 function dnesRebricek() {
@@ -4204,17 +4220,18 @@ function dnesRebricek() {
         return { u: String(x.username || '').toLowerCase(), meno: info.name || x.username, pct: x.pct };
       }).sort(function (a, b) { return b.pct - a.pct; });
     if (rank.length < 2) return null;
+    var moves = dnesRebricekMoves(rank, zdroj.q, appLineTag());
 
     var qLabel = 'Q' + zdroj.q + ' ' + zdroj.year;
     var i = -1;
     for (var k = 0; k < rank.length; k++) { if (rank[k].u === me) { i = k; break; } }
     if (i < 0) return { kind: 'tim', total: rank.length, qLabel: qLabel,
                         top: rank.map(function (x) {
-                          return { u: x.u, meno: x.meno, hodnota: dnesRebricekPct(x.pct) };
+                          return { u: x.u, meno: x.meno, hodnota: dnesRebricekPct(x.pct), pohyb: moves && moves[x.u] };
                         }) };
     return { kind: 'ja', rank: i + 1, total: rank.length, qLabel: qLabel,
-             hodnota: dnesRebricekPct(rank[i].pct), popis: 'plnenie',
-             susedia: dnesRebricekSusedia(rank, i) };
+             hodnota: dnesRebricekPct(rank[i].pct), pohyb: moves && moves[rank[i].u], popis: 'plnenie',
+             susedia: dnesRebricekSusedia(rank, i, moves) };
   } catch (e) { return null; }
 }
 
@@ -4838,7 +4855,7 @@ function dnesRender() {
     var rBody;
     if (reb.kind === 'ja') {
       rBody = '<div class="dnes-big-row">' +
-                '<div class="dnes-rank"><span class="dnes-rank-n">' + reb.rank + '.</span>' +
+                '<div class="dnes-rank"><span class="dnes-rank-n">' + reb.rank + '.</span>' + lbMoveHtml(reb.pohyb) +
                   '<span class="dnes-rank-z">z ' + reb.total + '</span></div>' +
                 '<div class="dnes-big-sub">' + appEsc(reb.hodnota) +
                   (reb.popis ? '<br>' + appEsc(reb.popis) : '') + '</div>' +
@@ -4850,7 +4867,7 @@ function dnesRender() {
                    (ix === 0 ? ' style="border-top:none"' : '') + '>' +
                    '<span class="dnes-rank-p">' + x.poradie + '.</span>' +
                    appRepAvatarHtml(x.u, x.meno, 27, 'dnes-rep-avatar') +
-                   '<span class="dnes-mini-name">' + appEsc(x.kde === 'ja' ? 'Ja' : x.meno) + '</span>' +
+                   '<span class="dnes-mini-name">' + appEsc(x.kde === 'ja' ? 'Ja' : x.meno) + lbMoveHtml(x.pohyb) + '</span>' +
                    '<span class="dnes-mini-meta">' + appEsc(x.hodnota) + '</span>' +
                  '</div>';
         }).join('');
@@ -4865,7 +4882,7 @@ function dnesRender() {
         return '<div class="dnes-mini" role="button" tabindex="0" aria-label="Zobraziť plnenie reprezentanta ' + appEsc(x.meno) + '" onclick="' + repClick + '" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();' + repClick + '}"' + (ix === 0 ? ' style="border-top:none"' : '') + '>' +
                  '<span class="dnes-rank-p">' + (medaily[ix] || (ix + 1) + '.') + '</span>' +
                  appRepAvatarHtml(x.u, x.meno, 27, 'dnes-rep-avatar') +
-                 '<span class="dnes-mini-name">' + appEsc(x.meno) + '</span>' +
+                 '<span class="dnes-mini-name">' + appEsc(x.meno) + lbMoveHtml(x.pohyb) + '</span>' +
                  '<span class="dnes-mini-meta">' + appEsc(x.hodnota) + ' ›</span>' +
                '</div>';
       }).join('');
