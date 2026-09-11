@@ -990,6 +990,8 @@
   .dnes-rs-section{font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.07em;margin:14px 2px 8px}
   .dnes-rs-list{background:transparent;border:0;box-shadow:none;overflow:visible}
   .dnes-rs-prod{background:#fff;border-radius:12px;padding:13px 14px;margin-bottom:9px;box-shadow:0 4px 14px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.04),0 0 0 1px rgba(15,23,42,.04)}
+  .dnes-rs-prod.is-link{cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform var(--t-fast),box-shadow var(--t-base)}
+  .dnes-rs-prod.is-link:active{transform:scale(.99);box-shadow:0 2px 8px rgba(15,23,42,.10),0 0 0 1px rgba(37,99,235,.12)}
   .dnes-rs-prod-top,.dnes-rs-prod-meta{display:flex;align-items:center;justify-content:space-between;gap:10px}
   .dnes-rs-prod-name{font-family:var(--font-display);font-size:13.5px;font-weight:700;color:#0F172A;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .dnes-rs-prod-pct{font-family:var(--font-display);font-size:17px;font-weight:800;line-height:1;white-space:nowrap}
@@ -3397,7 +3399,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.85.13 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.85.14 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -4386,7 +4388,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.13';
+var APP_VERSION = '2.85.14';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8719,10 +8721,15 @@ function dnesRenderRepSummary() {
     html += '<div class="dnes-rs-list">' + m.products.map(function(p) {
       var cls = plnenieDetailColorClass(p.pct), width = p.pct === null ? 0 : Math.min(100, Math.max(0, p.pct));
       var predCls = plnenieDetailColorClass(p.prediction);
+      var repArg = String(m.username || '').replace(/'/g, "\\'");
+      var productArg = String(p.key || '').replace(/'/g, "\\'");
+      var productAttrs = p.key
+        ? ' class="dnes-rs-prod is-link" role="button" tabindex="0" onclick="event.stopPropagation();dnesOpenRepProduct(\'' + repArg + '\',\'' + productArg + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();event.stopPropagation();dnesOpenRepProduct(\'' + repArg + '\',\'' + productArg + '\')}"'
+        : ' class="dnes-rs-prod"';
       var predHtml = p.prediction !== null && p.prediction !== undefined
         ? '<div class="dnes-rs-prod-pred">predikcia konca Q <strong class="' + predCls + '">' + plnenieFormatPct(p.prediction) + '</strong></div>'
         : '<div class="dnes-rs-prod-pred">predikcia konca Q <strong class="none">—</strong></div>';
-      return '<div class="dnes-rs-prod"><div class="dnes-rs-prod-top"><span class="dnes-rs-prod-name">' + appEsc(p.name) + '</span>' +
+      return '<div' + productAttrs + '><div class="dnes-rs-prod-top"><span class="dnes-rs-prod-name">' + appEsc(p.name) + '</span>' +
         '<span class="dnes-rs-prod-pct ' + cls + '">' + plnenieFormatPct(p.pct) + '</span></div>' +
         '<div class="dnes-rs-bar"><span class="' + cls + '" style="width:' + width + '%"></span></div>' +
         predHtml + '<div class="dnes-rs-prod-meta"><span>predaje k dnešku' +
@@ -8790,6 +8797,29 @@ function dnesOpenFullRepDetail() {
     var cached = PL_STATE.qCache && PL_STATE.qCache[m.q];
     if (cached) { PL_STATE.data = cached.data; PL_STATE.aggregates = cached.aggregates; PL_STATE.loaded = true; }
     plnenieOpenDetail(m.username);
+  }, 80);
+}
+
+// Manažérsky súhrn → detail reprezentanta → konkrétny produkt.
+// Karta produktu sa môže vyrenderovať až po načítaní detailu, preto cieľ
+// držíme v spoločnom focus helperi, ktorý čaká najviac niekoľko sekúnd.
+function dnesOpenRepProduct(username, productKey) {
+  var m = DNES_REP_SUMMARY.model;
+  if (!username || !productKey || !m) return;
+  var key = plnenieNormalizeKey(productKey);
+  APP_PL_PRODUCT_FOCUS = { key:key, until:Date.now() + 9000 };
+  dnesCloseRepSummary();
+  appGoPlnenie();
+  setTimeout(function() {
+    if (m.role === 'gyn') {
+      gynOpenRepDetail(m.username, m.name, m.region);
+    } else {
+      PL_STATE.year = m.year; PL_STATE.q = m.q;
+      var cached = PL_STATE.qCache && PL_STATE.qCache[m.q];
+      if (cached) { PL_STATE.data = cached.data; PL_STATE.aggregates = cached.aggregates; PL_STATE.loaded = true; }
+      plnenieOpenDetail(m.username);
+    }
+    appFocusPendingProduct();
   }, 80);
 }
 
