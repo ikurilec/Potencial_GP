@@ -2769,6 +2769,20 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .gyn-district-block-row span{display:block;min-width:0;margin:0;color:#64748B;font-size:11px;font-weight:750;text-transform:uppercase;letter-spacing:.025em}
   .gyn-district-block-row strong{font-size:14px;color:#0F172A;font-weight:850;text-align:right;white-space:nowrap;letter-spacing:0}
   .gyn-district-block-row strong.miss{color:#DC2626}
+  /* Okresné plnenie — rovnaké svetlé karty a hierarchia ako zvyšok Plnenia. */
+  #pharma-ms-overlay.gyn-district-view{background:#EAECF2}
+  #pharma-ms-overlay.gyn-district-view .pharma-ms-card{background:#fff;border:1px solid #E2E8F0;box-shadow:0 3px 12px rgba(15,23,42,.08);padding:15px;border-radius:16px}
+  #pharma-ms-overlay.gyn-district-view .pharma-ms-card-title{color:#0C1E35;font-size:15px}
+  #pharma-ms-overlay.gyn-district-view .gyn-district-summary-grid>div{background:#F8FAFC;border-color:#E2E8F0;padding:10px}
+  #pharma-ms-overlay.gyn-district-view .pharma-ms-district{background:#fff;border:1px solid #E2E8F0;border-radius:16px;box-shadow:0 3px 12px rgba(15,23,42,.07);overflow:hidden;margin-bottom:10px}
+  #pharma-ms-overlay.gyn-district-view .pharma-ms-district-hdr{background:#fff;border-bottom:1px solid #E2E8F0;padding:11px 13px}
+  #pharma-ms-overlay.gyn-district-view .pharma-ms-district-name{color:#0C1E35;padding:0;font-size:13px}
+  #pharma-ms-overlay.gyn-district-view .gyn-district-trh-badge{color:#64748B;background:#F8FAFC;border-color:#E2E8F0}
+  #pharma-ms-overlay.gyn-district-view .gyn-district-pct-badge.g{background:#ECFDF5;color:#047857}
+  #pharma-ms-overlay.gyn-district-view .gyn-district-pct-badge.o{background:#FFFBEB;color:#B45309}
+  #pharma-ms-overlay.gyn-district-view .gyn-district-pct-badge.r{background:#FEF2F2;color:#B91C1C}
+  #pharma-ms-overlay.gyn-district-view .pharma-ms-district-meta{padding:12px}
+  #pharma-ms-overlay.gyn-district-view .gyn-district-summary-grid.compact{background:transparent;border:0;padding:0;gap:9px}
   .gyn-district-block-row strong.g{color:#059669}.gyn-district-block-row strong.o{color:#D97706}.gyn-district-block-row strong.r{color:#DC2626}
   .gyn-dc-wrap{padding:10px 12px 0;display:flex;flex-direction:column;gap:8px}
   .gyn-dc-prog{display:flex;flex-direction:column;gap:4px}
@@ -3419,7 +3433,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.85.27 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.85.28 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -4408,7 +4422,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.27';
+var APP_VERSION = '2.85.28';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -16471,6 +16485,7 @@ function gynOpenDistrictFulfillment(productName, oblast, keysPipe, login) {
   var subtabsEl = document.getElementById('pharma-ms-subtabs');
   var bodyEl = document.getElementById('pharma-ms-body');
   var overlay = document.getElementById('pharma-ms-overlay');
+  if (overlay) overlay.classList.add('gyn-district-view');
   var backBtn = overlay && overlay.querySelector('.pharma-ms-back');
   if(backBtn) backBtn.setAttribute('onclick', 'gynClosePharma()');
   if(titleEl) titleEl.textContent = 'Plnenie po okresoch · Q' + GYN_APP.q + ' ' + GYN_APP.year + ' · ' + productName;
