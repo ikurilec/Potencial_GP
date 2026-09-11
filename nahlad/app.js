@@ -31,7 +31,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.41';
+var APP_VERSION = '2.85.42';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -4106,8 +4106,13 @@ function dnesPlnenieNacitava() {
   } catch (e) { return false; }
 }
 function dnesPlnenieFailed() {
-  try { return appRole() === 'mgr' && PL_STATE._currentLoadFailed === true; }
-  catch (e) { return false; }
+  try {
+    var r = appRole();
+    if (r === 'mgr') return PL_STATE._currentLoadFailed === true;
+    if (r === 'gyn') return GYN_APP._currentLoadFailed === true;
+    if (r === 'reagila' || r === 'gp') return REP_PL_STATE._currentLoadFailed === true;
+    return false;
+  } catch (e) { return false; }
 }
 function dnesRebricekFailed() {
   try {
@@ -9317,7 +9322,7 @@ function initLogin() {
 // ═══════════════════════════════════════════════════════════
 
 var GYN_STATE   = { repList: [], userList: [] };
-var GYN_APP     = { nav: 'plnenie', q: 1, year: 2026, plCache: {}, plLoading: {},
+var GYN_APP     = { nav: 'plnenie', q: 1, year: 2026, plCache: {}, plLoading: {}, _currentLoadFailed: false,
                     detailLogin: null, detailMeno: '', detailRegion: '',
                     _bootstrapId: 0, _repListLoadId: 0, _plReqIds: {} };
 var GYN_LINIA_LABEL = { pill: '💊 Pill', patch: '🩹 Patch' };
@@ -11482,6 +11487,7 @@ function gynPlnenieShow(el, user, _attempt) {
   // aj keby nejaký background tichý re-render predtým nechal aktívny suppress flag.
   PL_SUPPRESS_COUNT_ANIM = false;
   PL_SUPPRESS_COUNT_ANIM_UNTIL = 0;
+  if(!_attempt) GYN_APP._currentLoadFailed = false;
   var q = GYN_APP.q;
   var cacheKey = gynPlnenieCacheKey(GYN_APP.year, q);
   var cached = GYN_APP.plCache[q] || gynCacheRead(cacheKey);
@@ -11502,6 +11508,7 @@ function gynPlnenieShow(el, user, _attempt) {
     .then(function(data){
       if(!active()) return;
       delete GYN_APP.plLoading[q];
+      GYN_APP._currentLoadFailed = false;
       gynPreprocessData(data);
       var changed = !gynCacheSame(GYN_APP.plCache[q], data);
       GYN_APP.plCache[q] = data;
@@ -11525,6 +11532,8 @@ function gynPlnenieShow(el, user, _attempt) {
           setTimeout(function(){ if(active()) gynPlnenieShow(el, user, _att + 1); }, _att === 0 ? 1200 : 2500);
           return; // ponechaj „Načítavam..."
         }
+        GYN_APP._currentLoadFailed = true;
+        try { dnesRefreshIfOpen(); } catch(e) {}
         appRegisterRetry('gyn-plnenie', function(){ gynPlnenieShow(el, user); });
         el.innerHTML = gynQTabsHtml() + appErrorCardHtml({
           id: 'gyn-plnenie',
@@ -25556,6 +25565,7 @@ var REP_PL_STATE = {
   year: (new Date()).getFullYear(),
   loading: false,
   _loadId: 0,
+  _currentLoadFailed: false,
   loaded: false,
   data: null,
   aggregates: null,
@@ -25602,6 +25612,7 @@ function closeRepPlnenie() {
 function repPlnenieLoad() {
   if (REP_PL_STATE.loading) return;
   REP_PL_STATE.loading = true;
+  REP_PL_STATE._currentLoadFailed = false;
   var loadId = ++REP_PL_STATE._loadId;
   var loadCtx = appLineCapture();
   function active(){ return loadId === REP_PL_STATE._loadId && appLineContextActive(loadCtx); }
@@ -25651,6 +25662,7 @@ function repPlnenieLoad() {
           REP_PL_STATE.data = resp;
           REP_PL_STATE.aggregates = agg;
           REP_PL_STATE.loaded = true;
+          REP_PL_STATE._currentLoadFailed = false;
           var overlay = document.getElementById('rep-plnenie-overlay');
           if (changed && overlay && overlay.classList.contains('show')) {
             if (!wasShowingData) repPlnenieRender();  // prvé zobrazenie — s animáciou
@@ -25666,6 +25678,8 @@ function repPlnenieLoad() {
         pending--;
         if (pending === 0) {
           REP_PL_STATE.loading = false;
+          REP_PL_STATE._currentLoadFailed = !REP_PL_STATE.loaded;
+          try { dnesRefreshIfOpen(); } catch(e) {}
           var overlay = document.getElementById('rep-plnenie-overlay');
           if (!REP_PL_STATE.loaded && overlay && overlay.classList.contains('show')) {
             var cached = REP_PL_STATE.qCache[REP_PL_STATE.q];
