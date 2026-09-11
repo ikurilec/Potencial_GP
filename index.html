@@ -951,9 +951,17 @@
   .dnes-post-item:active{background:#F8FAFC}
   .dnes-post-item .dnes-post{margin-top:0}
   .dnes-post-pin{margin-right:5px}
-  .dnes-post-odp{margin-top:6px;padding:7px 9px;background:#F8FAFC;border-radius:9px;font-size:12px;
-    color:#475569;line-height:1.4;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;
-    -webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .dnes-post-hd2{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .dnes-nst-av{width:28px;height:28px;font-size:11px}
+  .dnes-post-who{display:flex;flex-direction:column;min-width:0;flex:1}
+  .dnes-post-autor{font-size:12.5px;font-weight:800;color:#0F172A;font-family:var(--font-display);
+    line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dnes-post-kedy{font-size:10.5px;color:#94A3B8;margin-top:1px}
+  .dnes-post-odp{margin-top:7px;padding:7px 9px;background:#F8FAFC;border-radius:9px;
+    display:flex;align-items:flex-start;gap:7px}
+  .dnes-post-odp .dnes-nst-av{width:20px;height:20px;font-size:9px;margin-top:1px}
+  .dnes-post-odp-txt{font-size:12px;color:#475569;line-height:1.4;min-width:0;flex:1;
+    overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
   .dnes-post-odp-kto{font-weight:700;color:#1E293B}
   .dnes-post-odp-n{display:block;margin-top:3px;font-size:11px;font-weight:700;color:#7C3ABE}
   .dnes-badge{font-size:10.5px;font-weight:700;color:#fff;background:#2563EB;border-radius:20px;padding:2px 8px;white-space:nowrap}
@@ -4234,7 +4242,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.0';
+var APP_VERSION = '2.85.1';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -8422,6 +8430,21 @@ function dnesNastenka() {
   } catch (e) { return null; }
 }
 
+// Avatar autora — tá istá značka, akú používa samotná Nástenka, len menšia.
+function dnesNstAvatar(rep, meno, velkost) {
+  var v = velkost || 28;
+  var farba = (typeof mgrAvatarColor === 'function') ? mgrAvatarColor(meno) : '#0C1E35';
+  try {
+    if (typeof lbAvatarContent === 'function') {
+      var a = lbAvatarContent(rep, meno, v);
+      return '<div class="nst-av dnes-nst-av' + (a.hasAvatar ? ' has-avatar' : '') +
+             '" data-username="' + appEsc(rep || '') + '" style="background:' + farba + '">' + a.html + '</div>';
+    }
+  } catch (e) {}
+  return '<div class="nst-av dnes-nst-av" style="background:' + farba + '">' +
+         appEsc(String(meno || '—').trim().charAt(0).toUpperCase()) + '</div>';
+}
+
 // Posledná odpoveď pod príspevkom — na Domove sa ukazuje ako náhľad diskusie.
 function dnesPoslednaOdpoved(p) {
   var c = (p && p.comments) || [];
@@ -8554,11 +8577,11 @@ function dnesRender() {
     if (prod) {
       plBody += '<div class="dnes-pl-sum">' +
                   '<span><span class="dnes-pl-dot" style="background:#16A34A"></span>' +
-                    prod.nad.length + ' nad 100 %</span>' +
+                    prod.nad.length + '× nad 100 %</span>' +
                   '<span><span class="dnes-pl-dot" style="background:#D97706"></span>' +
-                    prod.stred.length + ' 95–100 %</span>' +
+                    prod.stred.length + '× 95–100 %</span>' +
                   '<span><span class="dnes-pl-dot" style="background:#DC2626"></span>' +
-                    prod.pod.length + ' pod 95 %</span>' +
+                    prod.pod.length + '× pod 95 %</span>' +
                 '</div>' +
                 // Popisok vpravo, nad stĺpcom percent — nech je jasné, že tie
                 // čísla pod ním sú predikcia, nie dnešné plnenie.
@@ -8722,15 +8745,25 @@ function dnesRender() {
       var odpHtml = '';
       if (odp) {
         odpHtml = '<div class="dnes-post-odp">' +
-                    '<span class="dnes-post-odp-kto">' + appEsc(odp.meno || odp.rep || '—') + ':</span> ' +
-                    appEsc(odp.text || '') +
-                    (pocet > 1 ? '<span class="dnes-post-odp-n">' + pocet + ' odpovedí</span>' : '') +
+                    dnesNstAvatar(odp.rep, odp.meno || odp.rep, 20) +
+                    '<div class="dnes-post-odp-txt">' +
+                      '<span class="dnes-post-odp-kto">' + appEsc(odp.meno || odp.rep || '—') + ':</span> ' +
+                      appEsc(odp.text || '') +
+                      (pocet > 1 ? '<span class="dnes-post-odp-n">' + pocet +
+                        (pocet < 5 ? ' odpovede' : ' odpovedí') + '</span>' : '') +
+                    '</div>' +
                   '</div>';
       }
       return '<div class="dnes-post-item' + (pix === 0 ? ' prvy' : '') + '"' +
                ' onclick="event.stopPropagation();appGoNastenka(' + (pid ? '\'' + pid + '\'' : '') + ')">' +
-               '<div class="dnes-post">' + pin + appEsc(post.text || '') + '</div>' +
-               '<div class="dnes-post-meta">' + autor + (kedy ? ' · ' + appEsc(kedy) : '') + '</div>' +
+               '<div class="dnes-post-hd2">' +
+                 dnesNstAvatar(post.rep, post.meno || post.rep, 28) +
+                 '<div class="dnes-post-who">' +
+                   '<span class="dnes-post-autor">' + pin + autor + '</span>' +
+                   (kedy ? '<span class="dnes-post-kedy">' + appEsc(kedy) + '</span>' : '') +
+                 '</div>' +
+               '</div>' +
+               '<div class="dnes-post">' + appEsc(post.text || '') + '</div>' +
                odpHtml +
              '</div>';
     }).join('');
