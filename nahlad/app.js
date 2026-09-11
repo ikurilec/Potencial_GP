@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.70';
+var APP_VERSION = '2.85.71';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -2432,6 +2432,29 @@ function restoreIcons() {
 // ── autosave ──
 var SAVE_KEY = 'potencial_vl_draft';
 var saveTimer = null;
+// F4-3 — rozpracovaných formulárov môže byť viac naraz. Predtým jeden pevný
+// kľúč (SAVE_KEY) znamenal, že druhý rozpísaný lekár ticho prepísal prvého —
+// presne trieda straty dát ako F0-3. Draft sa teraz ukladá pod kľúč podľa
+// mena lekára; kým meno nie je vyplnené, ide pod pôvodný SAVE_KEY (spätná
+// kompatibilita s existujúcimi uloženými draftmi zo starších verzií).
+var DRAFT_KEY_PREFIX = SAVE_KEY + '::';
+var _currentDraftKey = null;   // kľúč, pod ktorým sa PRÁVE ukladá rozpracovaný formulár
+var _pendingRestoreKey = null; // kľúč draftu ponúknutého na obnovenie pri otvorení formulára
+
+function draftKeyForName(name) {
+  var n = String(name || '').trim().toLowerCase();
+  return n ? (DRAFT_KEY_PREFIX + n) : SAVE_KEY;
+}
+function allDraftKeys() {
+  var out = [];
+  try {
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (k === SAVE_KEY || (k && k.indexOf(DRAFT_KEY_PREFIX) === 0)) out.push(k);
+    }
+  } catch (e) {}
+  return out;
+}
 
 function getAllFields() {
   return {
@@ -2455,15 +2478,23 @@ function hasAnyData(fields) {
 
 function saveDraft() {
   var fields = getAllFields();
-  if(hasAnyData(fields)) {
-    try {
-      localStorage.setItem(SAVE_KEY, JSON.stringify(fields));
-    } catch(e) {}
-  }
+  if(!hasAnyData(fields)) return;
+  var newKey = draftKeyForName(fields.lekar);
+  try {
+    // Meno lekára sa medzičasom zmenilo (doplnené/opravené) — presuň draft pod
+    // nový kľúč namiesto toho, aby ostali dva (jeden pod starým, prázdny).
+    if (_currentDraftKey && _currentDraftKey !== newKey) {
+      localStorage.removeItem(_currentDraftKey);
+    }
+    fields._ts = Date.now();
+    localStorage.setItem(newKey, JSON.stringify(fields));
+    _currentDraftKey = newKey;
+  } catch(e) {}
 }
 
 function clearDraft() {
-  try { localStorage.removeItem(SAVE_KEY); } catch(e) {}
+  try { localStorage.removeItem(_currentDraftKey || SAVE_KEY); } catch(e) {}
+  _currentDraftKey = null;
 }
 
 // Nastav hodnotu poľa, ak pole existuje a hodnota nie je prázdna. Vracia true/false,
@@ -2479,7 +2510,10 @@ function setFieldValue(id, value) {
 function restoreAccept() {
   document.getElementById('restore-overlay').className = 'restore-overlay';
   try {
-    var saved = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}');
+    var key = _pendingRestoreKey || SAVE_KEY;
+    var saved = JSON.parse(localStorage.getItem(key) || '{}');
+    _currentDraftKey = key;   // pokračuj v ukladaní pod tým istým kľúčom, nie pod novým
+    _pendingRestoreKey = null;
     setFieldValue('lekar', saved.lekar);
     setFieldValue('mesto', saved.mesto);
     if(saved.reprezentant) {
@@ -2503,19 +2537,37 @@ function restoreAccept() {
 
 function restoreDecline() {
   document.getElementById('restore-overlay').className = 'restore-overlay';
-  clearDraft();
+  try { localStorage.removeItem(_pendingRestoreKey || SAVE_KEY); } catch(e) {}
+  _pendingRestoreKey = null;
 }
 
 function initAutosave() {
-  // Check for saved draft on load
+  // Nájdi NAJNOVŠÍ rozpracovaný draft spomedzi všetkých (viac lekárov naraz sa dá
+  // rozpísať súbežne, F4-3) a ponúkni ho na obnovenie. Staršie drafty ostávajú
+  // uložené — nezobrazia sa tu, ale nezmažú sa; dá sa k nim vrátiť, keď sa
+  // vyplní meno toho istého lekára znova (draftKeyForName ich nájde).
   try {
-    var saved = localStorage.getItem(SAVE_KEY);
-    if(saved) {
-      var fields = JSON.parse(saved);
-      if(hasAnyData(fields)) {
-        document.getElementById('restore-overlay').className = 'restore-overlay show';
-        return;
+    var keys = allDraftKeys();
+    var bestKey = null, bestTs = -1, bestFields = null;
+    keys.forEach(function(k){
+      try {
+        var f = JSON.parse(localStorage.getItem(k) || 'null');
+        // >= nie > : pri zhodnom milisekundovom čase (rýchle po sebe idúce uloženia)
+        // má vyhrať neskôr uložený, nie ten, čo bol v localStorage skôr enumerovaný.
+        if (f && hasAnyData(f) && (f._ts || 0) >= bestTs) { bestTs = f._ts || 0; bestKey = k; bestFields = f; }
+      } catch(e){}
+    });
+    if (bestKey) {
+      _pendingRestoreKey = bestKey;
+      var subEl = document.getElementById('restore-sub');
+      if (subEl) {
+        var extra = keys.length > 1 ? (' (a ešte ' + (keys.length - 1) + ' rozpracovaný u iného lekára)') : '';
+        subEl.textContent = (bestFields.lekar
+          ? 'Rozpracovaný záznam pre ' + bestFields.lekar + '.'
+          : 'Máš uložený rozpracovaný formulár.') + ' Chceš pokračovať tam, kde si skončil?' + extra;
       }
+      document.getElementById('restore-overlay').className = 'restore-overlay show';
+      return;
     }
   } catch(e) {}
 
