@@ -31,7 +31,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.47';
+var APP_VERSION = '2.85.48';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -10975,7 +10975,7 @@ function gynHydrateRepMeta(reps) {
         if (parsed && parsed.style && AVATAR_SCHEMAS[parsed.style]) av = parsed;
       } catch(e){}
     }
-    USERS_LOCAL[r.login] = { name: r.meno || r.name || r.login, region: r.region, gender: g, avatar: av };
+    USERS_LOCAL[String(r.login || '').toLowerCase()] = { name: r.meno || r.name || r.login, region: r.region, gender: g, avatar: av };
   });
 }
 
@@ -11027,7 +11027,7 @@ function gynApplyRepListData(data, user) {
               if (parsed && parsed.style && AVATAR_SCHEMAS[parsed.style]) av = parsed;
             } catch(e){}
           }
-          USERS_LOCAL[r.login] = { name: r.meno || r.name || r.login, region: r.region, gender: g, avatar: av };
+          USERS_LOCAL[String(r.login || '').toLowerCase()] = { name: r.meno || r.name || r.login, region: r.region, gender: g, avatar: av };
         });
         // Re-render iba ak repList bol prázdny (manažér/rebríček potrebuje zoznam repov na prvý render)
         // Inak stačí refresh avatarov — nespúšťame zbytočnú druhú animáciu
