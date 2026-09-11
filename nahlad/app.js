@@ -31,7 +31,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.39';
+var APP_VERSION = '2.85.40';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -7841,8 +7841,8 @@ function mgrGetDual(){
 // vyprchá — používateľ potom uviazne bez nej (napr. admin bez Golemu). Tu ju doťaháme
 // ešte raz na pozadí, už bez čakania používateľa. Heslo drží len táto uzávierka
 // v pamäti (nikam sa neukladá) a zanikne s prekreslením stránky.
-// Týka sa LEN línii so stavom `_failed` (server neodpovedal). Línia, ktorá login
-// priamo odmietla (iné heslo / účet tam nie je), sa neopätuje — nemá to zmysel.
+// Pri prvom ok:false označí volajúci líniu ako `_failed`, aby ju overil ešte raz.
+// Tým sa zjednotí správanie Golemu, Gyn a Reagily pri krátkom cold štarte backendu.
 function lineMergeLoginSuccess(username, line, data){
   if(!data || !data.ok) return;
   var dual = (typeof mgrGetDual === 'function' && mgrGetDual()) || { username: username };
@@ -8613,10 +8613,8 @@ function doLogin() {
   function allSettled(){ return loginLines.every(function(x){return settled[x.line];}); }
   function retryOne(line){
     if(retryStarted[line] || !dataMap[line] || dataMap[line].ok) return;
-    // Reagila backend vie pri cold štarte vrátiť ok:false skôr, než je pripravený,
-    // hoci účet existuje. Pri prvom prihlásení ju preto ešte raz overíme na pozadí.
-    // Ostatné línie opakujeme iba pri skutočnom timeoute.
-    if(!dataMap[line]._failed && line !== 'reagila') return;
+    // Každý backend môže pri cold štarte krátko vrátiť ok:false, hoci účet existuje.
+    // Každú chýbajúcu líniu preto pri prihlásení ešte raz overíme na pozadí.
     retryStarted[line]=true;
     var one={gp:{ok:false},gyn:{ok:false},reagila:{ok:false}};
     one[line]=dataMap[line]._failed ? dataMap[line] : {ok:false,_failed:true,_retryExplicit:true};
@@ -8635,7 +8633,7 @@ function doLogin() {
     try { mgrCaptureLineDiag(username, gpData, gynData, reagilaData); } catch(e){}
     mgrStoreDualIfEligible(username, gpData, gynData, reagilaData);
     var caka=pendingLines();
-    caka.forEach(retryOne);
+    loginLines.forEach(function(item){ if(dataMap[item.line] && !dataMap[item.line].ok) retryOne(item.line); });
 
     if(avail.length === 0) {
       if(gpData._failed && gynData._failed && reagilaData._failed) {
@@ -8680,8 +8678,7 @@ function doLogin() {
     dataMap[line]=data || {ok:false};
     if(uiFinished){
       if(dataMap[line].ok){ lineMergeLoginSuccess(username,line,dataMap[line]); lineChooserResolve(line,dataMap[line]); }
-      else if(dataMap[line]._failed){ retryOne(line); }
-      else { lineChooserResolve(line,dataMap[line]); }
+      else { retryOne(line); lineChooserResolve(line,dataMap[line]); }
       return;
     }
     if(availLines().length){
