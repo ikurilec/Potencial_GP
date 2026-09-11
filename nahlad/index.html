@@ -1029,6 +1029,7 @@
   .dnes-mini-txt{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
   .dnes-mini-txt .dnes-mini-name{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.35}
   .dnes-mini-when{font-size:11.5px;color:#94A3B8;font-weight:600}
+  .dnes-mini-owner{font-size:11.5px;color:#94A3B8;font-weight:600;line-height:1.25}
   /* Rozpis produktov v karte Plnenie */
   .dnes-pl-sum{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:12.5px;font-weight:700}
   .dnes-pl-sum span{display:inline-flex;align-items:center;gap:5px}
@@ -3405,7 +3406,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.85.19 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.85.20 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -4394,7 +4395,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.19';
+var APP_VERSION = '2.85.20';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9011,14 +9012,17 @@ function dnesRender() {
       var tt2 = gynCalTypeById(e.type) || {};
       var dk3 = String(e.dateStart || '').replace(/[^0-9-]/g, '');
       var id3 = String(e.id || '').replace(/[^A-Za-z0-9_.:-]/g, '');
+      var kto2 = e.ownerName || ((typeof gynCalPersonName === 'function') ? gynCalPersonName(e.owner) : '') || e.owner || '';
       var kedy2 = (e.dateStart && e.dateEnd && e.dateStart !== e.dateEnd)
         ? gynCalFmtRange(e.dateStart, e.dateEnd)
         : (e.allDay ? 'celý deň' : (e.timeStart ? e.timeStart + (e.timeEnd ? '–' + e.timeEnd : '') : ''));
       kBody += '<div class="dnes-mini dvojriadok"' +
                  (id3 ? ' onclick="event.stopPropagation();gynCalOpenEvent(\'' + dk3 + '\',\'' + id3 + '\')"' : '') + '>' +
                  '<span class="dnes-mini-dot" style="background:' + (tt2.color || '#2563EB') + ';margin-top:5px"></span>' +
+                 (kto2 ? appRepAvatarHtml(e.owner, kto2, 25, 'dnes-rep-avatar') : '') +
                  '<span class="dnes-mini-txt">' +
                    '<span class="dnes-mini-name">' + appEsc(e.title || tt2.label || 'Udalosť') + '</span>' +
+                   (kto2 ? '<span class="dnes-mini-owner">' + appEsc(kto2) + '</span>' : '') +
                    (kedy2 ? '<span class="dnes-mini-when">' + appEsc(kedy2) + '</span>' : '') +
                  '</span>' +
                '</div>';
