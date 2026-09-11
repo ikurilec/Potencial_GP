@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.56';
+var APP_VERSION = '2.85.57';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -11567,7 +11567,7 @@ function gynPreloadAllQuarters() {
     GYN_APP._plReqIds[q] = reqId;
     function active(){ return appLineContextActive(preloadCtx) && GYN_APP._plReqIds[q] === reqId; }
     GYN_APP.plLoading[q] = true;
-    appFetchJson(gynScriptUrl('action=getPlnenieAll&rok='+year+'&Q='+q), undefined, 12000)
+    appQueuedFetchJson(gynScriptUrl('action=getPlnenieAll&rok='+year+'&Q='+q), undefined, 12000, 'background')
       .then(function(data){
         if(!active()) return;
         delete GYN_APP.plLoading[q];
@@ -20416,8 +20416,7 @@ function lbFetchApprovedQ(callback) {
     return;
   }
   var url = scriptUrl('action=getConfig&key=lb_approved_q');
-  fetch(url)
-    .then(function(r){ return r.json(); })
+  appQueuedFetchJson(url, undefined, undefined, 'background')
     .then(function(d){
       if (d && d.ok && d.value !== null) {
         var q = parseInt(d.value, 10);
@@ -32739,7 +32738,7 @@ function lkFetch(login, cb) {
     });
   }
   var url = scriptUrl('action=getLekarne&login=' + encodeURIComponent(cacheKey === '__all__' ? '' : cacheKey) + '&creamMonth=' + encodeURIComponent(lkCreamContactMonthKey()) + '&_t=' + Date.now());
-  fetch(url, { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(data) {
+  appQueuedFetchJson(url, { cache: 'no-store' }, undefined, 'background').then(function(data) {
     var rows = (data.ok && data.rows) ? data.rows : [];
     lkReconcileCreamContactLocal(cacheKey, rows);
     var changed = lkSetCache(cacheKey, rows, cacheKey !== '__all__');
