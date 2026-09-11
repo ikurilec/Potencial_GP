@@ -3433,7 +3433,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.85.31 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.85.32 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -4422,7 +4422,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.31';
+var APP_VERSION = '2.85.32';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -15803,6 +15803,17 @@ function gynPreloadAllPharma() {
 }
 
 // ── PLNENIE ──
+// Prvý vstup do Q bez cache nesmie vyzerať ako prázdne plnenie. Karta drží
+// rovnakú hierarchiu ako hotový súhrn a jasne hovorí, že dáta práve prichádzajú.
+function gynPlnenieLoadingHtml(q){
+  return gynQTabsHtml() +
+    '<section class="gyn-pl-loading" role="status" aria-live="polite" style="margin:14px 0 18px;padding:26px 20px;border-radius:18px;background:#10294B;box-shadow:0 12px 28px rgba(15,38,70,.18);text-align:center">' +
+      '<div style="display:flex;justify-content:center;align-items:center;gap:9px;color:#F8FAFC;font-weight:700;font-size:15px"><span class="dnes-spin" style="border-color:rgba(255,255,255,.28);border-top-color:#53A3FF;width:18px;height:18px"></span>Načítavam plnenie</div>' +
+      '<div style="margin-top:7px;color:#A9C5E5;font-size:13px">Pripravujem výsledky za ' + plnenieQLabel(q, GYN_APP.year) + '…</div>' +
+      '<div style="display:flex;gap:8px;margin-top:20px"><span style="height:8px;flex:1;border-radius:999px;background:rgba(255,255,255,.15)"></span><span style="height:8px;flex:1;border-radius:999px;background:rgba(255,255,255,.10)"></span><span style="height:8px;flex:1;border-radius:999px;background:rgba(255,255,255,.08)"></span></div>' +
+    '</section>' +
+    '<div style="padding:4px 0 20px;text-align:center;color:#8FA4C1;font-size:12px">Načítavam produkty a predikciu konca kvartálu…</div>';
+}
 function gynPlnenieShow(el, user, _attempt) {
   // Primárne otvorenie Plnenia (login / prepnutie tabu / zmena Q) → vždy povoľ animáciu barov,
   // aj keby nejaký background tichý re-render predtým nechal aktívny suppress flag.
@@ -15816,8 +15827,7 @@ function gynPlnenieShow(el, user, _attempt) {
     GYN_APP.plCache[q] = cached;
     gynPlnenieRender(el, user, cached);
   } else {
-    el.innerHTML = gynQTabsHtml() +
-      '<div style="padding:32px 0;text-align:center;color:#64748B;font-size:13px">Načítavam...</div>';
+    el.innerHTML = gynPlnenieLoadingHtml(q);
   }
   if(GYN_APP.plLoading[q]) return;
   var reqId = ((GYN_APP._plReqIds[q] || 0) + 1);
