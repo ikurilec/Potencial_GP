@@ -1033,8 +1033,9 @@
   .dnes-pl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
   .dnes-pl-hint{text-align:right;font-size:11.5px;font-weight:600;color:#94A3B8;margin-top:6px}
   .dnes-pl-row{display:flex;align-items:baseline;gap:8px;padding:6px 0;border-top:1px solid #F1F5F9;font-size:13px}
-  .dnes-pl-row.is-link{width:100%;border-right:0;border-bottom:0;border-left:0;background:transparent;color:inherit;font-family:inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .dnes-pl-row.is-link{width:100%;border-right:0;border-bottom:0;border-left:0;background:transparent;color:inherit;font-family:inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;border-radius:7px;padding-right:2px;transition:background .15s ease}
   .dnes-pl-row.is-link:active{background:#F8FAFC}
+  .dnes-pl-row.is-link::after{content:'›';font-size:17px;line-height:1;color:#2563EB;font-weight:800;flex:0 0 auto;margin-left:2px;transform:translateY(1px)}
   .dnes-pl-row .n{font-weight:600;color:#0C1E35;flex:1;min-width:0;line-height:1.3}
   .dnes-pl-row .v{font-weight:800;font-variant-numeric:tabular-nums;flex-shrink:0}
   .dnes-empty{font-size:13px;color:#64748B;line-height:1.5;margin-top:8px}
@@ -3402,7 +3403,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.85.16 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.85.17 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -4391,7 +4392,7 @@ function appEsc(x) {
 // ║  ju meniť ručne (poznámka to roky tvrdila, hoci to už neplatí).║
 // ║  Pri zmene CSS alebo JS zmeniť aj CACHE_NAME v sw.js.          ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.16';
+var APP_VERSION = '2.85.17';
 
 // ── ODSTRÁŇ DUPLICITNÉ UNIKÁTNE ELEMENTY ──
 // Ak sa v DOM objaví viac .hdr / .progress-wrap / .info-card / .mgr-view (kvôli auto-heal bug
@@ -9060,8 +9061,11 @@ function dnesRender() {
     // a ktoré nie. Vypíšu sa tie najhoršie; zvyšok je v paneli.
     var prod = dnesPlnenieProdukty();
     if (prod) {
+      var sessForProduct = getSession() || {};
       var repProductLinks = rola === 'gp' || rola === 'reagila' ||
-        (rola === 'gyn' && (getSession() || {}).role === 'gyn-rep');
+        (rola === 'gyn' && sessForProduct.role === 'gyn-rep');
+      var teamProductLinks = rola === 'mgr' ||
+        (rola === 'gyn' && sessForProduct.role !== 'gyn-rep');
       plBody += '<div class="dnes-pl-sum">' +
                   '<span><span class="dnes-pl-dot" style="background:#16A34A"></span>' +
                     prod.nad.length + 'x nad 100 %</span>' +
@@ -9077,8 +9081,11 @@ function dnesRender() {
       if (prod.pod.length) {
         prod.pod.slice(0, 4).forEach(function (x) {
           var productKey = String(x.key || '').replace(/'/g, "\\'");
-          var productOpen = repProductLinks && productKey
-            ? ' onclick="event.stopPropagation();appGoPlnenieProduct(\'' + productKey + '\')" role="button" tabindex="0"'
+          var productLabel = String(x.label || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/[\r\n]/g, ' ');
+          var productOpen = productKey && (repProductLinks || teamProductLinks)
+            ? (teamProductLinks
+              ? ' onclick="event.stopPropagation();dnesOpenTeamProduct(\'' + productKey + '\',\'' + productLabel + '\')" role="button" tabindex="0"'
+              : ' onclick="event.stopPropagation();appGoPlnenieProduct(\'' + productKey + '\')" role="button" tabindex="0"')
             : '';
           plBody += '<div class="dnes-pl-row' + (productOpen ? ' is-link' : '') + '"' + productOpen + '>' +
                       '<span class="n">' + appEsc(x.label) + '</span>' +
@@ -9394,6 +9401,46 @@ function appGoPlnenieProduct(productKey) {
   APP_PL_PRODUCT_FOCUS = { key:key, until:Date.now() + 9000 };
   appGoPlnenie();
   appFocusPendingProduct();
+}
+// Manažérsky klik na produkt na Domove otvorí existujúci produktový detail.
+// Gyn používa vlastné dáta a render, Golem/Reagila zdieľajú PL product sheet.
+// Ak sa Domov vykreslil z cache skôr než sa prepol aktívny panel, krátko počkáme
+// na pripravený stav namiesto toho, aby klik skončil iba na prázdnom Plnení.
+function dnesOpenTeamProduct(productKey, productLabel) {
+  var key = plnenieNormalizeKey(productKey);
+  var label = String(productLabel || productKey || '').trim();
+  if (!key || !label) { appGoPlnenie(); return; }
+  try { if (typeof haptic === 'function') haptic('selection'); } catch (e) {}
+
+  var tries = 0;
+  function openWhenReady() {
+    tries++;
+    try {
+      if (appRole() === 'gyn') {
+        if (typeof gynOpenProdSheet === 'function' && GYN_APP && GYN_APP.plCache && GYN_APP.plCache[GYN_APP.q]) {
+          gynOpenProdSheet(label);
+          return;
+        }
+      } else {
+        var dp = plnenieDefaultPeriod();
+        var cached = (typeof PL_STATE !== 'undefined' && PL_STATE.qCache) ? PL_STATE.qCache[dp.q] : null;
+        if (cached && cached.data && cached.aggregates) {
+          PL_STATE.year = dp.year;
+          PL_STATE.q = dp.q;
+          PL_STATE.data = cached.data;
+          PL_STATE.aggregates = cached.aggregates;
+          PL_STATE.loaded = true;
+        }
+        if (typeof openProdSheet === 'function' && typeof PL_STATE !== 'undefined' && PL_STATE.data && PL_STATE.aggregates) {
+          openProdSheet(key, label);
+          return;
+        }
+      }
+    } catch (e) {}
+    if (tries < 30) { setTimeout(openWhenReady, 100); return; }
+    appGoPlnenie();
+  }
+  openWhenReady();
 }
 function appFocusPendingProduct() {
   var pending = APP_PL_PRODUCT_FOCUS;
