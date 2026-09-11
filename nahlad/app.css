@@ -1984,7 +1984,7 @@
   /* ── PRODUCT DRILL-DOWN BOTTOM SHEET ── */
   #pl-prod-sheet-bd{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000}
   #pl-prod-sheet-bd.show{display:block}
-  #pl-prod-sheet{position:fixed;bottom:0;left:0;right:0;background:#fff;border-radius:24px 24px 0 0;z-index:3001;max-height:82vh;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1)}
+  #pl-prod-sheet{position:fixed;bottom:0;left:0;right:0;background:#EAECF2;border-radius:24px 24px 0 0;z-index:3001;max-height:82vh;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1)}
   #pl-prod-sheet.show{transform:translateY(0)}
   /* Rovnaká STAVBA ako rep-detail hlavička (.dnes-rs-top + .dnes-rs-profile), nielen
      písmo — biely pásik s handle a kruhovým × navrchu (× umiestnené absolútne, nie
@@ -2001,12 +2001,15 @@
   .pl-ps-sub-pct{font-weight:700}
   .pl-ps-subtabs{display:none;gap:6px;padding:0 16px 10px;flex-shrink:0}
   .pl-ps-subtabs.show{display:flex}
-  .pl-ps-subtab{flex:1;padding:8px 4px;border:none;background:#F1F5F9;font-size:12px;font-weight:700;color:#64748B;cursor:pointer;border-radius:8px;font-family:inherit;transition:all .15s}
+  .pl-ps-subtab{flex:1;padding:8px 4px;border:none;background:#fff;font-size:12px;font-weight:700;color:#64748B;cursor:pointer;border-radius:8px;font-family:inherit;transition:all .15s;box-shadow:0 1px 3px rgba(15,23,42,.04),0 0 0 1px rgba(15,23,42,.04)}
   .pl-ps-subtab.active{background:#0C1E35;color:#fff}
-  .pl-ps-divider{height:0.5px;background:#E2E8F0;flex-shrink:0}
+  .pl-ps-divider{height:0.5px;background:transparent;flex-shrink:0}
   .pl-ps-body{overflow-y:scroll;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;flex:1;min-height:0;padding:4px 16px 40px}
-  .pl-ps-rep{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #E2E8F0}
-  .pl-ps-rep:last-child{border-bottom:none}
+  /* Biele plávajúce karty na sivom pozadí — rovnaký vizuál ako .dnes-rs-prod
+     v detaile reprezentanta, namiesto plochých riadkov oddelených čiarou. */
+  .pl-ps-rep{display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:10px 12px;margin-bottom:8px;
+    box-shadow:0 4px 14px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.04),0 0 0 1px rgba(15,23,42,.04)}
+  .pl-ps-rep:last-child{margin-bottom:0}
   .pl-ps-medal{width:26px;text-align:center;font-size:18px;flex-shrink:0;line-height:1}
   .pl-ps-rank{width:26px;text-align:center;font-size:12px;font-weight:700;color:#94A3B8;flex-shrink:0}
   .pl-ps-avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
