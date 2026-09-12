@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.16';
+var APP_VERSION = '2.87.17';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -12106,6 +12106,7 @@ function gynPreloadAllQuarters() {
 function gynLbPreload() {
   try {
     if(typeof gynLbEnsureRepList === 'function') gynLbEnsureRepList();
+    if(typeof gynLbEnsureApprovedQ === 'function') gynLbEnsureApprovedQ();
     var currentQ = GYN_APP.q;
     var currentKey = gynPlnenieCacheKey(GYN_APP.year, currentQ) + '|lb-fullLine';
     gynLbEnsureData(currentQ, currentKey);
@@ -15162,24 +15163,33 @@ function gynLbSetCat(cat){
 }
 function gynLbBody(){ return document.getElementById('gyn-content'); }
 
+// Admin-schválený Q pre rebríček — načítaj raz zo gyn configu. Volané aj z
+// gynLbPreload() (hneď pri vstupe do línie), nie len z gynLbShow() (až pri
+// otvorení rebríčka) — predtým bol toto jediný krok, ktorý sa nepreloadoval
+// popri plCache/repList, takže aj keď mal používateľ všetko ostatné už
+// pripravené (prednačítané pri prihlásení), prvé otvorenie Rebríčka aj tak
+// čakalo na tento jeden fetch. Odtiaľ dojem "raz sa nenačíta, druhýkrát hneď
+// je hotový" (nahlásené Ivanom).
+function gynLbEnsureApprovedQ(){
+  if(GYN_LB.qFetched) return;
+  GYN_LB.qFetched = true;
+  appQueuedFetchJson(gynScriptUrl('action=getConfig&key=lb_approved_q'), undefined, APP_FETCH_TIMEOUT_PRELOAD_MS, 'background')
+    .then(function(d){
+      var q = parseInt(d && d.value, 10);
+      GYN_LB.approvedQ = (q >= 1 && q <= 4) ? q : null;
+    })
+    .catch(function(){})
+    .then(function(){
+      // Až teraz poznáme správny (admin-schválený) Q — odblokuj render rebríčka.
+      // Dovtedy gynLbRender drží "Načítavam…" (žiadny medzistav so zlým Q).
+      GYN_LB.qResolved = true;
+      if(GYN_APP.nav === 'leaderboard') gynLbRender();
+    });
+}
+
 function gynLbShow(el){
   gynLbEnsureRepList();
-  // Admin-schválený Q načítaj raz zo gyn configu, potom prerenderuj
-  if(!GYN_LB.qFetched){
-    GYN_LB.qFetched = true;
-    appQueuedFetchJson(gynScriptUrl('action=getConfig&key=lb_approved_q'), undefined, APP_FETCH_TIMEOUT_PRELOAD_MS, 'background')
-      .then(function(d){
-        var q = parseInt(d && d.value, 10);
-        GYN_LB.approvedQ = (q >= 1 && q <= 4) ? q : null;
-      })
-      .catch(function(){})
-      .then(function(){
-        // Až teraz poznáme správny (admin-schválený) Q — odblokuj render rebríčka.
-        // Dovtedy gynLbRender drží "Načítavam…" (žiadny medzistav so zlým Q).
-        GYN_LB.qResolved = true;
-        if(GYN_APP.nav === 'leaderboard') gynLbRender();
-      });
-  }
+  gynLbEnsureApprovedQ();
   gynLbRender(el);
 }
 
