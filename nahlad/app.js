@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.85';
+var APP_VERSION = '2.85.86';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -8671,7 +8671,6 @@ function mgrSwitchLine(target){
       else if(target === 'reagila' && appDefaultTab() === 'plnenie'){ try { openRepPlnenie(); } catch(e){} }
       if(target === 'reagila'){
         setTimeout(function(){ try { lbFetchApprovedQ(function(){ lbLoadData(); lbPreloadPlnenie(); }); } catch(e){} }, 600);
-        setTimeout(function(){ try { preloadAllPharmaData(); } catch(e){} }, 800);
         setTimeout(function(){ try { lkPreload(); } catch(e){} }, 300);
       }
     }
@@ -8824,7 +8823,6 @@ function loginSuccess(username, name, role, region, extra) {
     }, 2000);
     setTimeout(function(){
       plnenieApplyDefaultPeriod(REP_PL_STATE);
-      preloadAllPharmaData();
     }, 2500);
     setTimeout(lkPreload, 300);
     // Notifikácie pre manažérov (nie admin)
@@ -8861,10 +8859,8 @@ function loginSuccess(username, name, role, region, extra) {
       lbPreloadPlnenie();
     });
   }, 2000);
-  // Pharma preload na pozadí — hneď po prihlásení
   setTimeout(function(){
     plnenieApplyDefaultPeriod(REP_PL_STATE);
-    preloadAllPharmaData();
   }, 1500);
   setTimeout(lkPreload, 300);
   // Agresívny dedup po prihlásení — eliminácia prípadných duplicitov
@@ -9700,10 +9696,8 @@ document.addEventListener('visibilitychange', function() {
     var s = getSession();
     if(s) {
       refreshSession();
-      // Doplniť pharma cache ak bola vyčistená (napr. OS vyhodil tab)
       if(Object.keys(PHARMA_STATE.cache).length === 0) {
         plnenieApplyDefaultPeriod(REP_PL_STATE);
-        preloadAllPharmaData();
       }
     }
   }
@@ -9762,7 +9756,6 @@ function initLogin() {
       }, 2000);
       setTimeout(function(){
         plnenieApplyDefaultPeriod(REP_PL_STATE);
-        preloadAllPharmaData();
       }, 2500);
       // One-time onboarding tip pre avatar — 4s delay aby modal-y stihli skončiť
       setTimeout(function(){ try { hdrAvatarShowTipIfNeeded(); } catch(e){} }, 1500);
@@ -9784,7 +9777,6 @@ function initLogin() {
     }, 2000);
     setTimeout(function(){
       plnenieApplyDefaultPeriod(REP_PL_STATE);
-      preloadAllPharmaData();
     }, 1500);
     setTimeout(lkPreload, 300);
     // One-time onboarding tip pre avatar — 4s delay
@@ -20049,7 +20041,6 @@ function buildRepData(reps) {
   if (document.body.classList.contains('manager-mode')) {
     if (MGR_ALL.length && typeof mgrLoadReps === 'function') mgrLoadReps(MGR_ALL.slice());
     else if (typeof mgrRenderList === 'function') mgrRenderList();
-    preloadAllPharmaData();
   }
 
   // Plnenie sa renderuje z MGR_ALL (plnenieGetActiveReps). Keď sa roster zmení až po
@@ -20317,8 +20308,6 @@ function loadRepList(forceFullRoster) {
         if (lbEl && lbEl.classList.contains('show')) lbRender();
         var mgrLb = document.getElementById('mgr-lb-body');
         if (mgrLb && document.body.classList.contains('mgr-subtab-leaderboard')) lbRender();
-        // Pharma preload s čerstvými oblasťami zo Sheets (oprava race condition)
-        preloadAllPharmaData();
       }
     })
     .catch(function(){ REP_LIST_STATE.loading = false; });
@@ -20594,7 +20583,6 @@ function loadInitData(username, _attempt, _lineCtx) {
         // Prerender ak je rebríček práve otvorený
         var lbEl2 = document.getElementById('lb-overlay');
         if(lbEl2 && lbEl2.classList.contains('show')) lbRender();
-        preloadAllPharmaData();
       }
 
       // MilestoneStats — uloží pre checkMilestone, vyhne sa extra fetchu
@@ -22361,7 +22349,6 @@ function mgrSwitchSubtab(tab) {
   if (prevTab !== tab) mgrAnimateSubtab(tab, dir);
   if (tab === 'plnenie') {
     if (!PL_STATE.loaded && !PL_STATE.loading) plnenieLoadAllQuarters();
-    preloadAllPharmaData();
   }
   if (tab === 'leaderboard') {
     LB_STATE.showConfetti = true;
@@ -26208,7 +26195,6 @@ function openRepPlnenie() {
     repPlnenieRenderLoading();
     if (!REP_PL_STATE.loading) repPlnenieLoad();
   }
-  preloadAllPharmaData();
 }
 
 function closeRepPlnenie() {
@@ -28775,13 +28761,6 @@ function closePharmaMs() {
     overlay.classList.remove('show', 'pl-detail-exit-r');
     PHARMA_STATE.open = false;
   }, 230);
-}
-
-function preloadAllPharmaData() {
-  // Normalized PharmaData_Okresy stores the full market and can be large.
-  // Preloading every product/territory would fan out into many Apps Script scans,
-  // so market-share data is loaded lazily when the user opens a specific product.
-  return;
 }
 
 // ══════════════════════════════════════════════════════════════════════════
