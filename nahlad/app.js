@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.77';
+var APP_VERSION = '2.85.78';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -35496,15 +35496,19 @@ function tuyMenoBlur(el){
   tuyMenoDupCheck();
 }
 // Poistka proti dvojitému Tuyory záznamu (normalizované meno bez titulu + okres)
-function tuyoryDoctorHasRecord(meno, okres){
+// F3-4 krok 3: zdieľaná kontrola "má tento lekár už záznam v prieskume?" —
+// identická logika pre všetky tri (Tuyory/Apixaban/Lonelix), líšiaca sa
+// len stavovým poľom records.
+function surveyDoctorHasRecord(state, meno, okres){
   var n = (typeof lonNormName === 'function') ? lonNormName(meno) : String(meno || '').trim().toLowerCase();
   var o = String(okres || '').trim().toLowerCase();
   if (!n) return false;
-  return (TUYORY.records || []).some(function(r){
+  return (state.records || []).some(function(r){
     var rn = (typeof lonNormName === 'function') ? lonNormName(r.meno) : String(r.meno || '').trim().toLowerCase();
     return rn === n && String(r.okres || '').trim().toLowerCase() === o;
   });
 }
+function tuyoryDoctorHasRecord(meno, okres){ return surveyDoctorHasRecord(TUYORY, meno, okres); }
 function tuyMenoDupCheck(){
   var dup = document.getElementById('tuy-meno-dup');
   var submit = document.getElementById('tuy-submit');
@@ -37063,15 +37067,7 @@ function apxMenoBlur(el){
   apxMenoDupCheck();
 }
 // Poistka proti dvojitému Apixaban záznamu (normalizované meno bez titulu + okres)
-function apixDoctorHasRecord(meno, okres){
-  var n = (typeof lonNormName === 'function') ? lonNormName(meno) : String(meno || '').trim().toLowerCase();
-  var o = String(okres || '').trim().toLowerCase();
-  if (!n) return false;
-  return (APIX.records || []).some(function(r){
-    var rn = (typeof lonNormName === 'function') ? lonNormName(r.meno) : String(r.meno || '').trim().toLowerCase();
-    return rn === n && String(r.okres || '').trim().toLowerCase() === o;
-  });
-}
+function apixDoctorHasRecord(meno, okres){ return surveyDoctorHasRecord(APIX, meno, okres); }
 function apxMenoDupCheck(){
   var dup = document.getElementById('apx-meno-dup');
   var submit = document.getElementById('apx-submit');
@@ -37741,11 +37737,7 @@ function lonNormName(s){
   return s.replace(/\s+/g, ' ').trim();
 }
 // Má už tento lekár (meno+okres) Lonelix záznam? — poistka proti dvojitému zadaniu
-function lonelixDoctorHasRecord(meno, okres){
-  var n = lonNormName(meno), o = String(okres || '').trim().toLowerCase();
-  if (!n) return false;
-  return (LONELIX.records || []).some(function(r){ return lonNormName(r.meno) === n && String(r.okres || '').trim().toLowerCase() === o; });
-}
+function lonelixDoctorHasRecord(meno, okres){ return surveyDoctorHasRecord(LONELIX, meno, okres); }
 
 // ── Načítanie záznamov zo Sheetu (getLonelix) ──
 function lonelixApplyRecords(records){ surveyApplyRecords(LONELIX, lonelixSaveLocal, records); }
