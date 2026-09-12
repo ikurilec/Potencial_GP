@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.80';
+var APP_VERSION = '2.85.81';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -6962,6 +6962,7 @@ function settingsAppHtml(s){
     // Zapamätanie úvodnej línie po prihlásení
     var _uname = (s && s.username) || '';
     var _pref = (typeof lineGetPref === 'function') ? lineGetPref(_uname) : '';
+    if(_pref === LINE_PREF_NONE) _pref = '';
     if(_pref){
       var _plbl = lineChooserMeta(_pref).label;
       linesHtml += '<div class="set-row"><div class="set-row-label">Po prihlásení otvárať<br>' +
@@ -8874,9 +8875,17 @@ function loginSuccess(username, name, role, region, extra) {
 // ── Výber línie po prihlásení (používatelia s účtom vo viacerých líniách) ──
 function lineChooserEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 // Zapamätaná úvodná línia (per používateľ) — prežije odhlásenie (nie je v session/dual store).
+// LINE_PREF_NONE = explicitne zrušené na TOMTO zariadení (tlačidlo "Zrušiť").
+// Zápis "zabudni" do Sheetu (lineForgetAllLines) je fire-and-forget cez 3 nezávislé
+// Apps Scripty naraz — ak jeden zápis nestihne/zlyhá, zostane tam stará hodnota a appka
+// by po prihlásení náhodne skočila do tej línie namiesto opýtania sa. Sentinel to rieši:
+// keď je na tomto zariadení explicitne zrušené, na server sa vôbec nepozeráme (viď doLogin).
+// Prázdny reťazec ('' — kľúč nikdy nebol nastavený) naďalej znamená "over si server"
+// (nové zariadenie bez localStorage).
+var LINE_PREF_NONE = '__none__';
 function lineGetPref(username){ try { return localStorage.getItem('line_pref_' + String(username||'').toLowerCase()) || ''; } catch(e){ return ''; } }
 function lineSetPref(username, line){ try { if(line) localStorage.setItem('line_pref_' + String(username||'').toLowerCase(), line); } catch(e){} }
-function lineClearPref(username){ try { localStorage.removeItem('line_pref_' + String(username||'').toLowerCase()); } catch(e){} }
+function lineClearPref(username){ try { localStorage.setItem('line_pref_' + String(username||'').toLowerCase(), LINE_PREF_NONE); } catch(e){} }
 // Báza URL + API token pre danú líniu
 function lineBackend(line){
   if(line === 'gyn')     return { base: GYN_SCRIPT_URL,     token: GYN_API_TOKEN };
@@ -9126,7 +9135,10 @@ function doLogin() {
     // Remote nastavenie použijeme ako fallback pri novom zariadení bez localStorage.
     // Admin už nemá výnimku „vždy Golem" — s prístupom do viacerých línií dostane
     // rovnaký výber rozhrania ako ostatní a môže si ho zapamätať.
-    var _pref = lineGetPref(username) || lineReadPrefFromLogin(dataMap);
+    var _localPref = lineGetPref(username);
+    // Explicitne zrušené na TOMTO zariadení → nikdy nepozeraj na server (ten môže mať
+    // stále starú hodnotu, ak sa "zabudni" nestihlo zapísať do všetkých línií — F6-x).
+    var _pref = (_localPref === LINE_PREF_NONE) ? '' : (_localPref || lineReadPrefFromLogin(dataMap));
     if(_pref && avail.indexOf(_pref) !== -1) {
       lineSetPref(username, _pref);   // zrkadli do localStorage pre rýchle/offline čítanie
       enterLineFromLogin(username, _pref, dataMap);
