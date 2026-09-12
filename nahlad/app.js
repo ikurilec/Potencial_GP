@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.86.1';
+var APP_VERSION = '2.86.2';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -5183,7 +5183,12 @@ function dnesRender() {
   if (reb && reb.kind === 'tim' && !(reb.top && reb.top.length)) reb = null;
   if (!reb) {
     var dpR = plnenieDefaultPeriod();
-    var titulR = ((rola === 'mgr') ? 'Rebríček tímu · ' : 'Moje miesto v rebríčku · ') +
+    // rola==='mgr' závisí od triedy 'manager-mode' na <body>, ktorú nastaví až
+    // mgrEnter() — pri prvom vykreslení Domova z cache (pred jej dobehnutím)
+    // to u manažéra/admina ešte nemusí byť nastavené. mgrDetectRole() číta
+    // rolu priamo zo session a funguje aj v tomto medzičase.
+    var jeManazer = (rola === 'mgr') || !!(typeof mgrDetectRole === 'function' && mgrDetectRole(getSession()));
+    var titulR = (jeManazer ? 'Rebríček tímu · ' : 'Moje miesto v rebríčku · ') +
                  'Q' + dpR.q + ' ' + dpR.year;
     html += '<div onclick="appGoRebricek()" style="cursor:pointer">' +
             dnesCardHtml('linear-gradient(90deg,#D97706,#FCD34D)', titulR,
