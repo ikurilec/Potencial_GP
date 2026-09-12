@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.13';
+var APP_VERSION = '2.87.14';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -17122,6 +17122,14 @@ function mgrEnter(roleKey){
   var session = getSession() || {};
   if(titleEl) titleEl.textContent = 'Manažérsky pohľad';
   if(subEl) subEl.textContent = (session.name || session.username || '') + ' · ' + cfg.label + ' · ' + cfg.title;
+
+  // gp-rep vetva v loginSuccess() volá repTopbarSync() hneď po tom, čo nastaví
+  // hlavičku — manažérska vetva to nerobila, takže --rep-top-h ostávalo na
+  // predvolenej 150px hodnote (namiesto skutočnej výšky hlavičky) dovtedy, kým
+  // to nedobehol ResizeObserver — čo je asynchrónne a na reálnom telefóne nie
+  // vždy stihne prv, než si používateľ prepne záložku. Výsledok: veľká prázdna
+  // medzera pod hlavičkou na Kalendári/Plnení (nahlásené Ivanom).
+  try { repTopbarSync(); setTimeout(repTopbarSync, 120); } catch(e){}
 
   // Skroluj na vrch
   window.scrollTo(0, 0);
