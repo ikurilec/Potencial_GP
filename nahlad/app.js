@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.96';
+var APP_VERSION = '2.85.97';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -34920,6 +34920,14 @@ function lkMgrRenderBody(lekarne, searchQ) {
       var key = card.getAttribute('data-lk-key');
       if (key) lkOpenDetail(key);
     });
+    body.addEventListener('keydown', function(ev) {
+      if (ev.key !== 'Enter' && ev.key !== ' ') return;
+      var card = ev.target && ev.target.closest ? ev.target.closest('.lk-item[data-lk-key]') : null;
+      if (!card || !body.contains(card)) return;
+      ev.preventDefault();
+      var key = card.getAttribute('data-lk-key');
+      if (key) lkOpenDetail(key);
+    });
   }
   lkMgrSyncTabs();
   if (LK_MGR_STATE.loading && (!lekarne || lekarne.length === 0)) {
@@ -35021,7 +35029,7 @@ function lkMgrItem(l, tab) {
   var creamSummary = lkCreamSummaryHtml(l, tab);
   var contactBtn = lkCreamContactButtonHtml(l, tab, 'manager');
   var recHtml = lkRecommendationHtml(lkRecommendation(l, tab));
-  return '<div class="lk-item ' + cls + '" data-lk-key="' + lkEscAttr(l.key) + '" style="cursor:pointer">' +
+  return '<div class="lk-item ' + cls + '" data-lk-key="' + lkEscAttr(l.key) + '" role="button" tabindex="0" aria-label="Zobraziť lekáreň ' + lkEscAttr(lkEsc(l.lekaren)) + '" style="cursor:pointer">' +
     '<div class="lk-item-name">' + lkEsc(l.lekaren) + '</div>' +
     '<div class="lk-item-sub">' + subHtml + (trendHtml ? ' · ' + trendHtml : '') + '</div>' +
     actionChip + creamSummary + chipsHtml + contactBtn + recHtml +
