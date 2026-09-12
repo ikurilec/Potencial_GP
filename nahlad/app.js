@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.97';
+var APP_VERSION = '2.85.98';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -14736,7 +14736,7 @@ function gynPlnenieRenderMgr(el, user, data) {
         var pctAttr  = (p.pct !== null && !isNaN(p.pct)) ? p.pct : '';
         var initVal  = (p.pct !== null && !isNaN(p.pct)) ? '0,00%' : gynFmtPctOrEur(p.pct, p.predaj);
         var safeName = (p.name || '').replace(/\'/g,"&#39;").replace(/"/g,"&quot;");
-        out += '<div class="pl-sum-prod pl-sum-prod-c" style="cursor:pointer" onclick="gynOpenProdSheet(\''+safeName+'\')">' +
+        out += '<div class="pl-sum-prod pl-sum-prod-c" role="button" tabindex="0" aria-label="Zobraziť produkt '+safeName+'" style="cursor:pointer" onclick="gynOpenProdSheet(\''+safeName+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();gynOpenProdSheet(\''+safeName+'\')}">' +
           '<div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px">' +
             '<span class="pl-sum-prod-name">' + gynEsc(p.name) + '</span>' +
             predHtml +
@@ -14841,7 +14841,7 @@ function gynPlnenieRenderMgr(el, user, data) {
         : '';
 
       var avGpr = gynAvatarContent(a.rep.login || loginAttr, a.rep.meno);
-      html += '<div class="pl-rep-card pl-rep-clickable" onclick="gynOpenRepDetail(\''+loginAttr+'\',\''+menoAttr+'\',\''+regionAttr+'\')">' +
+      html += '<div class="pl-rep-card pl-rep-clickable" role="button" tabindex="0" aria-label="Zobraziť plnenie '+gynEsc(a.rep.meno)+'" onclick="gynOpenRepDetail(\''+loginAttr+'\',\''+menoAttr+'\',\''+regionAttr+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();gynOpenRepDetail(\''+loginAttr+'\',\''+menoAttr+'\',\''+regionAttr+'\')}">' +
         medalHtml +
         '<div class="pl-rep-avatar' + (avGpr.hasAvatar ? ' has-avatar' : '') + '" data-username="' + (a.rep.login || loginAttr) + '" style="background:'+avatarColor+'">' + avGpr.html + '</div>' +
         '<div class="pl-rep-body">' +
@@ -22657,7 +22657,7 @@ function usageRenderTeam(data) {
     var hp = usageHealth(r.last);
     var hcolor = { g:'#16A34A', o:'#D97706', r:'#DC2626', n:'#94A3B8' }[hp.cls] || '#94A3B8';
     var healthChip = '<span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:700;color:' + hcolor + ';background:' + hcolor + '1A">' + hp.label + '</span>';
-    html += '<div class="act-rep" onclick="usageOpenRepActivity(\'' + l + '\')">' +
+    html += '<div class="act-rep" role="button" tabindex="0" aria-label="Zobraziť aktivitu ' + mgrEscape(name) + '" onclick="usageOpenRepActivity(\'' + l + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();usageOpenRepActivity(\'' + l + '\')}">' +
       '<div class="act-rep-avatar" data-username="' + l + '" style="background:' + color + '">' + (typeof mgrInitials==='function'?mgrInitials(name):'') + '</div>' +
       '<div class="act-rep-main"><div class="act-rep-name"><span class="act-rep-nametxt">' + mgrEscape(name) + '</span>' + roleChip + healthChip + pushChip + '</div><div class="act-rep-meta">' + meta + '</div></div>' +
       '<div class="act-rep-status"><span class="act-dot ' + st + '"></span><span class="act-ago">' + usageAgo(r.last) + '</span></div>' +
@@ -23726,7 +23726,7 @@ function plnenieRenderSummary() {
         var tempoHtml = (!noPlan && p.tempoPct !== null && p.tempoPct !== undefined && p.expectedPct > 0)
           ? '<span class="pl-sum-prod-tempo ' + tempoCls.replace('pl-', '') + '">aktuálne má byť <strong>' + plnenieFormatPct(p.expectedPct) + '</strong></span>'
           : '';
-        return '<div class="pl-sum-prod pl-sum-prod-c' + famClass + '" onclick="openProdSheet(\'' + safeKey + '\',\'' + safeLbl + '\')">' +
+        return '<div class="pl-sum-prod pl-sum-prod-c' + famClass + '" role="button" tabindex="0" aria-label="Zobraziť produkt ' + mgrEscape(p.label) + '" onclick="openProdSheet(\'' + safeKey + '\',\'' + safeLbl + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openProdSheet(\'' + safeKey + '\',\'' + safeLbl + '\')}">' +
                '<div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px">' +
                  '<span class="pl-sum-prod-name">' + mgrEscape(p.label) + '</span>' +
                  predHtml +
@@ -24417,7 +24417,7 @@ function plnenieRenderRepList() {
 
     // Všetci reps sú klikateľní — aj bez dát (detail ukáže "Žiadne dáta")
     var clickable = true;
-    var clickAttr = clickable ? ' onclick="plnenieOpenDetail(\'' + r.username.replace(/'/g, "\\'") + '\')"' : '';
+    var clickAttr = clickable ? ' onclick="plnenieOpenDetail(\'' + r.username.replace(/'/g, "\\'") + '\')" role="button" tabindex="0" aria-label="Zobraziť plnenie ' + mgrEscape(info.name) + '" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();plnenieOpenDetail(\'' + r.username.replace(/'/g, "\\'") + '\')}"' : '';
     var extraClass = clickable ? ' pl-rep-clickable' : '';
     var chevronHtml = clickable ? '<div class="pl-rep-chev">›</div>' : '';
 
