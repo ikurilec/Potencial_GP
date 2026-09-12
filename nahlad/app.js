@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.15';
+var APP_VERSION = '2.87.16';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -27842,7 +27842,11 @@ function loadPharmaGrafData(code, oblast, callback) {
       }, function(err) { delete PHARMA_GRAF_STATE.loading[cacheKey]; throw err; });
     },
     maxAgeMs: DS_CACHE_MAX_AGE_MS,
-    onFresh: function(resp) { PHARMA_GRAF_STATE.cache[cacheKey] = resp; if (callback) callback(resp); }
+    onFresh: function(resp) { PHARMA_GRAF_STATE.cache[cacheKey] = resp; if (callback) callback(resp); },
+    // Predtým sa pri zlyhaní fetchu nestalo NIČ — žiadny callback, žiadna chybová
+    // hláška. fillGrafChart() po 6s len ticho skryl "Načítavam trend…" a graf sa
+    // stratil bez vysvetlenia (nahlásené Ivanom: "v Goleme niekde nenačíta graf").
+    onError: function(){ if (callback) callback(null); }
   });
   if (r.data) {
     PHARMA_GRAF_STATE.cache[cacheKey] = r.data;
@@ -27894,21 +27898,27 @@ function fillGrafChart(code, oblast) {
     return;
   }
 
-  // Nie je v cache — skús načítať; ak sa nepodarí (žiadne dáta), skry placeholder
-  loadPharmaGrafData(code, oblast, function() {
+  // Nie je v cache — skús načítať; ak sa nepodarí, ukáž chybovú kartu s retry
+  // namiesto tichého zmiznutia (predtým: žiadny signál o zlyhaní, graf sa po
+  // 6s len skryl bez vysvetlenia — nahlásené Ivanom: "v Goleme niekde
+  // nenačíta graf").
+  function onResult(resp) {
     if (PHARMA_STATE.activeCode !== code || PHARMA_STATE.oblast !== oblast) return;
-    var el2 = document.getElementById('pharma-graf-chart');
-    if (!el2) return;
-    el2.innerHTML = buildGrafChartHtml(code, oblast);
-    pharmaTrendAnimate(el2);
-  });
-
-  // Ak po 6 sekundách stále nič — skry loading placeholder
-  setTimeout(function() {
-    if (PHARMA_GRAF_STATE.cache[cacheKey]) return; // už načítané, ok
-    var el3 = document.getElementById('pharma-graf-chart');
-    if (el3 && el3.innerHTML.indexOf('Načítavam') !== -1) el3.style.display = 'none';
-  }, 6000);
+    var target = document.getElementById('pharma-graf-chart');
+    if (!target) return;
+    if (!resp) {
+      appShowErrorCard(target, { id: 'pharma-graf', title: 'Graf sa nepodarilo načítať', desc: 'Skús to znova.' }, retry);
+      return;
+    }
+    target.innerHTML = buildGrafChartHtml(code, oblast);
+    pharmaTrendAnimate(target);
+  }
+  function retry() {
+    var target = document.getElementById('pharma-graf-chart');
+    if (target) target.innerHTML = '<div class="pharma-ms-loading" style="padding:16px 0;font-size:12px;text-align:center;color:#64748b">Načítavam trend…</div>';
+    loadPharmaGrafDataFresh(code, oblast, onResult);
+  }
+  loadPharmaGrafData(code, oblast, onResult);
 }
 
 function pharmaToNum(v) {
