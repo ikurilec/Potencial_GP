@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.92';
+var APP_VERSION = '2.85.93';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -27588,8 +27588,13 @@ function loadPharmaDataNetwork(code, oblast, kvartal) {
     .catch(function() {
       delete PHARMA_STATE.loading[cacheKey];
       if (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal) {
-        var bodyEl = document.getElementById('pharma-ms-body');
-        if (bodyEl) bodyEl.innerHTML = '<div class="pharma-ms-loading">Chyba načítania.</div>';
+        // F6-5: holá hláška bez akcie nahradená zdieľanou kartou s "Skúsiť znova"
+        appShowErrorCard('pharma-ms-body', {
+          id: 'pharma-ms',
+          title: 'Nepodarilo sa načítať trhový podiel',
+          desc: 'Skontroluj pripojenie a skús to znova.',
+          retryLabel: 'Načítať znova'
+        }, function () { loadPharmaDataNetwork(code, oblast, kvartal); });
       }
     });
 }
