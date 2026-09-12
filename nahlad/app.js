@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.86.2';
+var APP_VERSION = '2.86.3';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -23377,7 +23377,28 @@ function plnenieLoadAllQuarters() {
         }
       });
   }
-  fetchQuarter(currentQ);
+
+  // Predaje sa aktualizujú len niekoľkokrát mesačne (a pharma dáta raz mesačne) —
+  // keď máme lokálne všetky štyri kvartály a lacný timestamp (notif_predaje)
+  // hovorí, že sa od posledného fetchu nič nezmenilo, ťažký getPlnenieAll pre
+  // všetky Q je zbytočný. Ak čokoľvek chýba alebo sa dátum zmenil, fetchuje sa
+  // presne ako doteraz — toto je len skratka pre bežný prípad „nič nové".
+  var haveAllQ = qs.every(function(q){ return !!PL_STATE.qCache[q]; });
+  if (haveAllQ && PL_STATE.loaded && typeof plnenieDataTsFetch === 'function') {
+    plnenieDataTsFetch(function(changed){
+      if (!active()) return;
+      if (!changed) {
+        clearTimeout(PL_STATE._loadWatchdog);
+        PL_STATE._loadWatchdog = null;
+        PL_STATE.loading = false;
+        PL_STATE._currentLoading = false;
+        return;
+      }
+      fetchQuarter(currentQ);
+    });
+  } else {
+    fetchQuarter(currentQ);
+  }
 }
 
 // Agregácia — Slovensko / West / East / per-produkt / per-rep
