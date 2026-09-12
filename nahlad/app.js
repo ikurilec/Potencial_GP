@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.74';
+var APP_VERSION = '2.85.75';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -2487,7 +2487,13 @@ function saveDraft() {
       localStorage.removeItem(_currentDraftKey);
     }
     fields._ts = Date.now();
-    localStorage.setItem(newKey, JSON.stringify(fields));
+    // lsSafeSet, nie priamy setItem — draft je nenahraditeľné rozpísané dáta
+    // reprezentanta. Pri zaplnenom úložisku (typicky admin s preloadnutými
+    // PharmaData) by priamy setItem draft ticho zahodil — presne trieda
+    // chyby, ktorú F2-2 riešila pre ostatné cache. lsSafeSet namiesto toho
+    // uvoľní miesto z bezpečne znovu-stiahnuteľných cache (pharma, lekárne…),
+    // nikdy nie z draftov — tie do LS_CACHE_PREFIXES zámerne nepatria.
+    lsSafeSet(newKey, JSON.stringify(fields));
     _currentDraftKey = newKey;
   } catch(e) {}
 }
