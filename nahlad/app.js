@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.86.4';
+var APP_VERSION = '2.86.5';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -20800,6 +20800,10 @@ function lbFetchApprovedQ(callback) {
       } else {
         LB_APPROVED_Q = null;
       }
+      // Tab "💊 Plnenie QX" ukazuje lbLastCompletedQ(), ktoré čita LB_APPROVED_Q — bez
+      // tohto by popisok ostal na predvolenom (kalendárnom) kvartáli, kým sa appka
+      // nabudúce neotvorí nanovo, hoci telo Plnenia už dávno ukazuje správne dáta.
+      try { if (typeof lbSyncTabs === 'function') lbSyncTabs(); } catch(e){}
       if (callback) callback();
     })
     .catch(function(){ if (callback) callback(); });
