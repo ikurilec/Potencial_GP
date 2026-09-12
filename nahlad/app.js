@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.90';
+var APP_VERSION = '2.85.91';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -18478,6 +18478,21 @@ _backRegister('logout-overlay', closeLogoutConfirm);
 // 8. Lekáreň detail je vnútorná vrstva aj v manažérskom detaile repa.
 _backRegister('lk-detail', closeLkarneDetail);
 
+// F3-2 krok 3: ďalšie tri vrstvy z pôvodných pozícií 9–11 — stále "jedno
+// ID/podmienka → jedna funkcia", teraz už v tom istom registri.
+
+// 9. Manager plnenie detail (← Späť na zoznam) — nemá vlastné ID, len
+// príznak na <body>, preto vlastný isOpen namiesto predvoleného.
+_backRegister('mgr-plnenie-detail-open', plnenieCloseDetail, function () {
+  return document.body.classList.contains('mgr-plnenie-detail-open');
+});
+
+// 10. Manager rep detail (← Späť na zoznam)
+_backRegister('mgr-detail', mgrCloseRep);
+
+// 11. Zdieľaný Golem/Reagila kalendár overlay
+_backRegister('golem-cal-overlay', closeGolemKalendar);
+
 function _handleAndroidBack() {
   // Poradie: od najvnútornejšieho overlaya po najvonkajší
   var el;
@@ -18486,17 +18501,6 @@ function _handleAndroidBack() {
     var _layer = _backLayers[_bi];
     if (_layer.isOpen()) { _layer.close(); return true; }
   }
-
-  // 9. Manager plnenie detail (← Späť na zoznam)
-  if (document.body.classList.contains('mgr-plnenie-detail-open')) { plnenieCloseDetail(); return true; }
-
-  // 10. Manager rep detail (← Späť na zoznam)
-  el = document.getElementById('mgr-detail');
-  if (el && el.classList.contains('show')) { mgrCloseRep(); return true; }
-
-  // 11. Zdieľaný Golem/Reagila kalendár overlay
-  el = document.getElementById('golem-cal-overlay');
-  if (el && el.classList.contains('show')) { closeGolemKalendar(); return true; }
 
   // 12. Manager subtab — Návštevy / Rebríček / Aktivita → späť na predchádzajúci tab (alebo Plnenie)
   if (document.body.classList.contains('manager-mode') && MGR_STATE.subtab && MGR_STATE.subtab !== 'plnenie') {
