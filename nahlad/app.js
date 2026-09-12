@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.8';
+var APP_VERSION = '2.87.9';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -831,6 +831,10 @@ function reagilaScriptUrl(params) {
 //   pôvodný loader. Text karty vždy prispôsob konkrétnemu miestu (rebríček, plnenie…).
 // ═══════════════════════════════════════════════════════════════════════════
 var APP_FETCH_TIMEOUT_MS = 16000;   // koľko čakať na Sheets/Apps Script (môže byť pomalé pri „studenom" volaní)
+// Kratší timeout pre preload/background volania (nekritické, netreba čakať
+// plných 16s) — predtým rovnaká hodnota 12000 ručne skopírovaná na ~9
+// miestach ako natvrdo zapísané číslo (F0, boot audit, krok 4).
+var APP_FETCH_TIMEOUT_PRELOAD_MS = 12000;
 
 // fetch + JSON s tvrdým timeoutom (AbortController). Reject pri timeoute, sieti aj nevalidnom JSON.
 function appFetchJson(url, opts, timeoutMs) {
@@ -885,6 +889,42 @@ function appQueuedFetchJson(url, opts, timeoutMs, priority){
     else APP_REQUEST_QUEUE.items.push(job);
     appRequestQueueDrain();
   });
+}
+
+// Jednotný retry mechanizmus nad appQueuedFetchJson (F0, boot audit) — predtým
+// mali mgrFetchWithRetry a loadInitData dve nezávisle napísané kópie tej istej
+// "skús, pri zlyhaní počkaj a skús znova" slučky. Zjednotený je MECHANIZMUS
+// (kód), nie časovanie — Plnenie (rýchle zotavenie pre už prihláseného
+// používateľa) a prihlásenie (rozptýliť nápor po výpadku servera, aby sa naň
+// všetci nevrhli naraz) majú zámerne odlišné odstupy medzi pokusmi, to
+// zostáva na volajúcom cez opts.delayFn.
+//
+// opts: { retries (default 3), timeoutMs, priority, delayFn(attempt)->ms
+//         (povinné ak retries>0), active()->bool (voliteľná kontrola, či má
+//         zmysel pokračovať — napr. appLineContextActive), fetcher()->Promise
+//         (voliteľné — vlastný fetch namiesto default appQueuedFetchJson(url,...);
+//         použi keď treba považovať aj „200 OK, ale nezmyselné dáta" za dôvod
+//         na retry — fetcher nech taký prípad sám odmietne/throwne) }
+function appFetchWithRetry(url, opts){
+  opts = opts || {};
+  var retries = opts.retries == null ? 3 : opts.retries;
+  var attempt = opts._attempt || 0;
+  var doFetch = opts.fetcher || function(){ return appQueuedFetchJson(url, undefined, opts.timeoutMs, opts.priority || 'background'); };
+  return doFetch()
+    .catch(function(err){
+      if(opts.active && !opts.active()) throw err;
+      if(attempt >= retries) throw err;
+      var delay = opts.delayFn ? opts.delayFn(attempt) : 1500;
+      return new Promise(function(resolve, reject){
+        setTimeout(function(){
+          if(opts.active && !opts.active()) { reject(err); return; }
+          var nextOpts = {};
+          for(var k in opts){ if(opts.hasOwnProperty(k)) nextOpts[k] = opts[k]; }
+          nextOpts._attempt = attempt + 1;
+          appFetchWithRetry(url, nextOpts).then(resolve, reject);
+        }, delay);
+      });
+    });
 }
 
 // Registry retry callbackov — tlačidlo v karte volá appRetry('<id>').
@@ -11713,7 +11753,7 @@ function gynLoadRepList(user, _attempt) {
   var loadCtx = appLineCapture();
   function active(){ return loadId === GYN_APP._repListLoadId && appLineContextActive(loadCtx); }
   GYN_APP._repListLoading = true;
-  appQueuedFetchJson(gynScriptUrl('action=getRepList'), undefined, 12000, 'critical')
+  appQueuedFetchJson(gynScriptUrl('action=getRepList'), undefined, APP_FETCH_TIMEOUT_PRELOAD_MS, 'critical')
     .then(function(data){
       if(!active()) return;
       GYN_APP._repListLoading = false;
@@ -11741,7 +11781,7 @@ function gynBootstrap(user) {
   try { gynMsHydrate(localStorage.getItem(gynMsLsKey())); } catch(e){}
   // Okamžite ukáž cache (ak je) — bez vlastného fetchu (plLoading guard). Bootstrap ju obnoví.
   try { gynRenderContent(user); } catch(e){}
-  appQueuedFetchJson(gynScriptUrl('action=bootstrap&rok=' + rok + '&Q=' + q), undefined, 12000, 'critical')
+  appQueuedFetchJson(gynScriptUrl('action=bootstrap&rok=' + rok + '&Q=' + q), undefined, APP_FETCH_TIMEOUT_PRELOAD_MS, 'critical')
     .then(function(d){
       if(!active()) return;
       if(!d || !d.ok) throw new Error('bootstrap fail');
@@ -12021,7 +12061,7 @@ function gynPreloadAllQuarters() {
     GYN_APP._plReqIds[q] = reqId;
     function active(){ return appLineContextActive(preloadCtx) && GYN_APP._plReqIds[q] === reqId; }
     GYN_APP.plLoading[q] = true;
-    appQueuedFetchJson(gynScriptUrl('action=getPlnenieAll&rok='+year+'&Q='+q), undefined, 12000, 'background')
+    appQueuedFetchJson(gynScriptUrl('action=getPlnenieAll&rok='+year+'&Q='+q), undefined, APP_FETCH_TIMEOUT_PRELOAD_MS, 'background')
       .then(function(data){
         if(!active()) return;
         delete GYN_APP.plLoading[q];
@@ -12114,7 +12154,7 @@ function gynPreloadAllPharma() {
       '&oblast='  + encodeURIComponent(task.oblast) +
       '&produkt=' + encodeURIComponent(task.produkt) +
       '&kvartal=' + encodeURIComponent(task.kvartal)
-    ), undefined, 12000, 'background')
+    ), undefined, APP_FETCH_TIMEOUT_PRELOAD_MS, 'background')
       .then(function(resp){
         delete GYN_PHARMA_STATE.loading[task.key];
         if(!appLineContextActive(preloadCtx)) return;
@@ -15079,7 +15119,7 @@ function gynLbEnsureRepList(){
     try { gynOpenDnesWhenReady(); } catch(e){}
   }
   GYN_LB.repLoading = true;
-  appQueuedFetchJson(gynScriptUrl('action=getRepList&fullLine=1'), undefined, 12000, 'critical')
+  appQueuedFetchJson(gynScriptUrl('action=getRepList&fullLine=1'), undefined, APP_FETCH_TIMEOUT_PRELOAD_MS, 'critical')
     .then(function(d){
       GYN_LB.repLoading = false;
       gynLbRepListLoaded(d);
@@ -15120,7 +15160,7 @@ function gynLbShow(el){
   // Admin-schválený Q načítaj raz zo gyn configu, potom prerenderuj
   if(!GYN_LB.qFetched){
     GYN_LB.qFetched = true;
-    appQueuedFetchJson(gynScriptUrl('action=getConfig&key=lb_approved_q'), undefined, 12000, 'background')
+    appQueuedFetchJson(gynScriptUrl('action=getConfig&key=lb_approved_q'), undefined, APP_FETCH_TIMEOUT_PRELOAD_MS, 'background')
       .then(function(d){
         var q = parseInt(d && d.value, 10);
         GYN_LB.approvedQ = (q >= 1 && q <= 4) ? q : null;
@@ -15149,7 +15189,7 @@ function gynLbEnsureData(q, key, _attempt){
   }
   delete GYN_LB.failed[q];
   GYN_LB.plLoading[q] = true;
-  appQueuedFetchJson(gynScriptUrl('action=getPlnenieAll&rok=' + GYN_APP.year + '&Q=' + q + '&fullLine=1'), undefined, 12000, 'critical')
+  appQueuedFetchJson(gynScriptUrl('action=getPlnenieAll&rok=' + GYN_APP.year + '&Q=' + q + '&fullLine=1'), undefined, APP_FETCH_TIMEOUT_PRELOAD_MS, 'critical')
     .then(function(d){
       delete GYN_LB.plLoading[q];
       // Apps Script pri chybe vracia HTTP 200 s {ok:false}. Táto odpoveď nie je
@@ -15622,7 +15662,7 @@ function gynCalSync(){
   var syncLine=gynCalLine();
   var syncCtx=appLineCapture();
   GYN_CAL._syncing=true;
-  appQueuedFetchJson(gynCalScriptUrl('action=getCalEvents&_t='+Date.now()), undefined, 12000, 'background')
+  appQueuedFetchJson(gynCalScriptUrl('action=getCalEvents&_t='+Date.now()), undefined, APP_FETCH_TIMEOUT_PRELOAD_MS, 'background')
     .then(function(d){
       if(syncLine!==gynCalLine() || !appLineContextActive(syncCtx)) return;
       if(d && d.ok===true && Array.isArray(d.events)){
@@ -17148,18 +17188,18 @@ function mgrFetchWithRetry(url, retries, priority){
   retries = retries === undefined ? 3 : retries;
   // Všetky čítania manažérskej časti zdieľajú frontu. Aktuálny kvartál má
   // critical prioritu; história a zvyšné Q sa spustia až za ním.
-  return appQueuedFetchJson(url, undefined, APP_FETCH_TIMEOUT_MS, priority || 'background')
-    .catch(function(err){
-      if(retries > 0){
-        var delay = (4 - retries) * 1500; // 1.5s, 3s, 4.5s
-        return new Promise(function(resolve, reject){
-          setTimeout(function(){
-            mgrFetchWithRetry(url, retries - 1, priority).then(resolve, reject);
-          }, delay);
-        });
-      }
-      throw err;
-    });
+  // Rovnaký mechanizmus ako loadInitData (appFetchWithRetry), ale s vlastným,
+  // rýchlejším odstupom medzi pokusmi — rieši iný problém (rýchle zotavenie
+  // pre už prihláseného používateľa, nie rozptýlenie náporu po výpadku).
+  // Pozor: plnenieLoadWatchdog (80s) počíta s presne týmto najhorším prípadom
+  // (4 pokusy × 16s timeout + 1,5/3/4,5s odstupy ≈ 73s) — pri zmene delayFn
+  // alebo retries tu treba prepočítať aj watchdog.
+  return appFetchWithRetry(url, {
+    retries: retries,
+    timeoutMs: APP_FETCH_TIMEOUT_MS,
+    priority: priority || 'background',
+    delayFn: function(attempt){ return (attempt + 1) * 1500; } // 1,5s, 3s, 4,5s
+  });
 }
 
 function mgrDelay(ms){
@@ -20457,7 +20497,7 @@ function loadRepList(forceFullRoster) {
   if ((REP_LIST_STATE.loaded || REP_LIST_STATE.loading) && !forceFullRoster) return;
   if (forceFullRoster) REP_LIST_STATE.fullRosterRequested = true;
   REP_LIST_STATE.loading = true;
-  appQueuedFetchJson(scriptUrl('action=getRepList' + (forceFullRoster ? '&fullLine=1' : '')), { cache: 'no-store' }, 12000, 'critical')
+  appQueuedFetchJson(scriptUrl('action=getRepList' + (forceFullRoster ? '&fullLine=1' : '')), { cache: 'no-store' }, APP_FETCH_TIMEOUT_PRELOAD_MS, 'critical')
     .then(function(data){
       REP_LIST_STATE.loading = false;
       if (data.ok && data.reps && data.reps.length) {
@@ -20672,11 +20712,10 @@ function appWarmRosterFromCache(){
   } catch(e){ return false; }
 }
 
-function loadInitData(username, _attempt, _lineCtx) {
-  _attempt = _attempt || 0;
+function loadInitData(username, _lineCtx) {
   _lineCtx = _lineCtx || appLineCapture();
   if(!appLineContextActive(_lineCtx)) return Promise.resolve(null);
-  if(!_attempt) { try { appWarmRosterFromCache(); } catch(e){} }
+  try { appWarmRosterFromCache(); } catch(e){}
 
   // DEV mode — mock dáta, žiadny fetch
   if(typeof IS_DEV !== 'undefined' && IS_DEV) {
@@ -20694,20 +20733,39 @@ function loadInitData(username, _attempt, _lineCtx) {
     return Promise.resolve({ ok: true });
   }
 
-  if(!_attempt){ try {
+  try {
     var _bls = (typeof getSession === 'function') ? getSession() : null;
     var _blLine = _bls && _bls.line;
     if(_blLine !== 'gyn') bootLoaderShow(); // Golem + reagila (obe cez getInitData); gyn má vlastný v gynEnter
-  } catch(e){} }
+  } catch(e){}
   var rok = (new Date()).getFullYear();
   var q   = plnenieCurrentQ();
   var url = scriptUrl('action=getInitData&reprezentant=' + encodeURIComponent(username)
                       + '&rok=' + rok + '&Q=' + q);
 
-  return appQueuedFetchJson(url, undefined, 20000, 'critical')
+  // Rovnaký appFetchWithRetry mechanizmus ako mgrFetchWithRetry (pozri jeho
+  // komentár) — tu s vlastným, pomalším exponenciálnym odstupom s náhodným
+  // rozptylom: pevné hodnoty spôsobili, že po výpadku backendu sa naň všetci
+  // prihlásení vrhli v tú istú sekundu a výpadok tým predĺžili. Rozptyl
+  // 0,5x–1,5x ich rozloží v čase. fetcher validuje aj obsah odpovede
+  // (`data.ok`), nielen sieť — „200 OK, ale nezmyselné dáta" je rovnako dôvod
+  // na retry ako timeout.
+  return appFetchWithRetry(url, {
+    retries: 3,
+    active: function(){ return appLineContextActive(_lineCtx); },
+    delayFn: function(attempt){
+      var delays = [3000, 9000, 27000];
+      return Math.round(delays[attempt] * (0.5 + Math.random()));
+    },
+    fetcher: function(){
+      return appQueuedFetchJson(url, undefined, 20000, 'critical').then(function(data){
+        if(!data || !data.ok) throw new Error('getInitData: no data');
+        return data;
+      });
+    }
+  })
     .then(function(data) {
       if(!appLineContextActive(_lineCtx)) return null;
-      if(!data || !data.ok) throw new Error('getInitData: no data');
 
       // História — naplní cache, História panel bude okamžitá
       if(Array.isArray(data.history)) {
@@ -20757,21 +20815,10 @@ function loadInitData(username, _attempt, _lineCtx) {
     })
     .catch(function() {
       if(!appLineContextActive(_lineCtx)) return null;
-      // Exponenciálne odstupy s náhodným rozptylom. Pevné hodnoty spôsobili, že po
-      // výpadku backendu sa naň všetci prihlásení vrhli v tú istú sekundu a výpadok
-      // tým predĺžili. Rozptyl 0,5x–1,5x ich rozloží v čase.
-      var delays = [3000, 9000, 27000];
-      if(_attempt < delays.length) {
-        var wait = Math.round(delays[_attempt] * (0.5 + Math.random()));
-        setTimeout(function() {
-          if(appLineContextActive(_lineCtx)) loadInitData(username, _attempt + 1, _lineCtx);
-        }, wait);
-      } else {
-        // Po 3 pokusoch — fallback na pôvodné funkcie
-        loadRepList();
-        refreshBadgeFromSheets(username);
-        try { appBootFinishIfReady(true); } catch(e){}
-      }
+      // appFetchWithRetry už vyčerpal všetky pokusy — fallback na pôvodné funkcie
+      loadRepList();
+      refreshBadgeFromSheets(username);
+      try { appBootFinishIfReady(true); } catch(e){}
     });
 }
 
