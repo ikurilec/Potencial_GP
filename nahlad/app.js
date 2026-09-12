@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.79';
+var APP_VERSION = '2.85.80';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -7108,6 +7108,22 @@ function settingsRememberLine(){
   try { renderSettings(); } catch(e){}
 }
 
+// Cold-start Apps Script poistka pre heslové (re-)prihlásenie do jednej línie —
+// postupne rastúci timeout (20s → 25s → 30s = až 75s pri troch pokusoch),
+// rovnaký budget ako majú ostatné cold-start opravy v appke (mgrFetchWithRetry:
+// 4×16s + 1.5/3/4.5s ≈ 73s; plnenieLoadWatchdog: 80s). Predošlý dvojpokusový
+// budget (20+25=45s) nestačil — admin so zamknutou líniou dostal chybu na prvý
+// pokus a na druhý (appka je už "zohriata") to prešlo. Vráti buď odpoveď
+// servera, alebo {ok:false,_failed:true} pri vyčerpaní všetkých pokusov.
+function lineColdLoginFetch(url, lp){
+  function one(tmo){ return appFetchJson(url + lp, undefined, tmo).catch(function(){ return { ok:false, _failed:true }; }); }
+  return one(20000).then(function(d){
+    return (d && d._failed) ? one(25000) : d;
+  }).then(function(d){
+    return (d && d._failed) ? one(30000) : d;
+  });
+}
+
 // Načítaj chýbajúcu Golem líniu cez heslo (bez odhlásenia) a prepni do nej.
 // Rieši stav, keď Golem login pri štarte zlyhal (cold start Apps Scriptu / pomalá sieť /
 // druhé zariadenie) a admin uviazol v Gyn/Reagile bez Golemu. Golem skúsime dvakrát.
@@ -7123,12 +7139,7 @@ function settingsLoadLine(target){
     var lp = '?action=login&username=' + encodeURIComponent(s.username) +
              '&password=' + encodeURIComponent(pwd) +
              '&device_id=' + encodeURIComponent(authDeviceId());
-    function tryLine(tmo){
-      return appFetchJson(url + lp, undefined, tmo).catch(function(){ return { ok:false, _failed:true }; });
-    }
-    tryLine(20000).then(function(d){
-      return (d && d._failed) ? tryLine(25000) : d;   // cold start → druhý pokus
-    }).then(function(d){
+    lineColdLoginFetch(url, lp).then(function(d){
       if(!d || !d.ok){
         if(typeof lkPromptReset === 'function') lkPromptReset();   // späť na ďalší pokus, nie navždy "Overujem…"
         alert((d && d._failed)
@@ -7164,13 +7175,12 @@ function settingsReloadAllLines(){
   var lp = '?action=login&username=' + encodeURIComponent(s.username) +
            '&password=' + encodeURIComponent(pwd) +
            '&device_id=' + encodeURIComponent(authDeviceId());
-  // Každá línia: pokus s 20s, pri timeoute druhý pokus s 25s (cold start Apps Scriptu).
-  function tryLine(url){
-    function one(tmo){ return appFetchJson(url + lp, undefined, tmo).catch(function(){ return { ok:false, _failed:true }; }); }
-    return one(20000).then(function(d){ return (d && d._failed) ? one(25000) : d; });
-  }
   var curLine = (typeof mgrCurrentLine === 'function') ? mgrCurrentLine() : 'gp';
-  Promise.all([tryLine(SCRIPT_URL), tryLine(GYN_SCRIPT_URL), tryLine(REAGILA_SCRIPT_URL)]).then(function(res){
+  Promise.all([
+    lineColdLoginFetch(SCRIPT_URL, lp),
+    lineColdLoginFetch(GYN_SCRIPT_URL, lp),
+    lineColdLoginFetch(REAGILA_SCRIPT_URL, lp)
+  ]).then(function(res){
     var gp = res[0], gyn = res[1], rea = res[2];
     var badPwd = [gp,gyn,rea].some(function(d){ return d && !d.ok && !d._failed; });   // backend vrátil ok:false = zlé heslo/účet
     var d = { username: s.username };
@@ -8455,8 +8465,8 @@ function mgrEnableLineSwitch(targetLine){
   var lp = '?action=login&username=' + encodeURIComponent(s.username) +
            '&password=' + encodeURIComponent(pwd) +
            '&device_id=' + encodeURIComponent(authDeviceId());
-  var gpF  = fetch(SCRIPT_URL     + lp).then(function(r){ return r.json(); }).catch(function(){ return {ok:false}; });
-  var gynF = fetch(GYN_SCRIPT_URL + lp).then(function(r){ return r.json(); }).catch(function(){ return {ok:false}; });
+  var gpF  = lineColdLoginFetch(SCRIPT_URL, lp);
+  var gynF = lineColdLoginFetch(GYN_SCRIPT_URL, lp);
   Promise.all([gpF, gynF]).then(function(res){
     var gp = res[0], gyn = res[1];
     if(!gp.ok){ if(typeof lkPromptReset === 'function') lkPromptReset(); alert('Golem login zlyhal — nesprávne heslo?'); return; }
