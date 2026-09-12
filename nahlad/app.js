@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.87';
+var APP_VERSION = '2.85.88';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -36403,19 +36403,23 @@ function nstPin(id, on){
   try { haptic('success'); } catch(e){}
   nstSend({ action: 'nastenkaPin', id: id, on: on ? '1' : '0' });
 }
+// F6-4: natívny confirm() vyzerá ako systémové okno (nedôveryhodné, mimo
+// štýlu appky) — nahradený existujúcim vlastným modálom (lkConfirm), ktorý
+// appka už používa napr. pri mazaní uloženého filtra.
 function nstDelete(id){
-  if (!confirm('Naozaj zmazať tento príspevok?')) return;
-  var posts = [];
-  (NST.posts || []).forEach(function(p){
-    if (String(p.id) === String(id)) return;
-    p.comments = (p.comments || []).filter(function(c){ return String(c.id) !== String(id); });
-    posts.push(p);
+  lkConfirm('Zmazať príspevok?', 'Príspevok sa natrvalo odstráni.', 'Zmazať', function(){
+    var posts = [];
+    (NST.posts || []).forEach(function(p){
+      if (String(p.id) === String(id)) return;
+      p.comments = (p.comments || []).filter(function(c){ return String(c.id) !== String(id); });
+      posts.push(p);
+    });
+    NST.posts = posts;
+    nstSaveLocal(posts);
+    nstRenderList();
+    try { haptic('warning'); } catch(e){}
+    nstSend({ action: 'nastenkaDelete', id: id });
   });
-  NST.posts = posts;
-  nstSaveLocal(posts);
-  nstRenderList();
-  try { haptic('warning'); } catch(e){}
-  nstSend({ action: 'nastenkaDelete', id: id });
 }
 function nstAddComment(id){
   var el = document.getElementById('nst-c-' + id);
