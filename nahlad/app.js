@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.98';
+var APP_VERSION = '2.85.99';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -17453,7 +17453,7 @@ function mgrRenderList(){
 
     // TUYORY filter → len meno + počet nahodených Tuyory lekárov (bez GP údajov, 0 ak žiadne)
     if(filter === 'tuyory'){
-      return '<div class="mgr-card" onclick="mgrOpenRep(\''+u.replace(/\'/g,"\\'")+'\')">' +
+      return '<div class="mgr-card" role="button" tabindex="0" aria-label="Zobraziť reprezentanta '+nameEsc+'" onclick="mgrOpenRep(\''+u.replace(/\'/g,"\\'")+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();mgrOpenRep(\''+u.replace(/\'/g,"\\'")+'\')}">' +
         avatarHtml +
         '<div class="mgr-body">' +
           '<div class="mgr-namerow">' +
@@ -17477,7 +17477,7 @@ function mgrRenderList(){
     var apixCountU = (typeof mgrRepApix === 'function') ? mgrRepApix(u).length : 0;
     if (filter === 'all') tuyChip += '<span class="mgr-chip mgr-chip-apx">🫀 Apixaban '+apixCountU+'</span>';
 
-    return '<div class="mgr-card" onclick="mgrOpenRep(\''+u.replace(/\'/g,"\\'")+'\')">' +
+    return '<div class="mgr-card" role="button" tabindex="0" aria-label="Zobraziť reprezentanta '+nameEsc+'" onclick="mgrOpenRep(\''+u.replace(/\'/g,"\\'")+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();mgrOpenRep(\''+u.replace(/\'/g,"\\'")+'\')}">' +
       avatarHtml +
       '<div class="mgr-body">' +
         '<div class="mgr-namerow">' +
