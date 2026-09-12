@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.78';
+var APP_VERSION = '2.85.79';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -35415,19 +35415,14 @@ function tuyorySubmit(){
   try { document.getElementById('tuyory-overlay').scrollTo({ top: 0, behavior: 'smooth' }); } catch(e){ var o = document.getElementById('tuyory-overlay'); if (o) o.scrollTop = 0; }
 }
 
-function tuyorySendToSheet(rec){
+// F3-4 krok 4: zdieľaný transport pri odoslaní záznamu prieskumu do Sheetu
+// (skrytý iframe + query parametre) — identický pre všetky tri, líšia sa
+// len dátové polia. Mapovanie polí ostáva v každej *SendToSheet funkcii
+// nezmenené — mení sa len samotné odoslanie, nie obsah.
+function surveySendToSheet(data){
   try {
     if (typeof IS_DEV !== 'undefined' && IS_DEV) return;                                   // DEV → nepíš do Sheets
     if (typeof SCRIPT_URL === 'string' && SCRIPT_URL.indexOf('VLOZ_SEM') === 0) return;   // backend nenakonfigurovaný
-    var data = {
-      action: 'saveTuyory',
-      reprezentant: rec.rep, meno: rec.meno, okres: rec.okres, pracovisko: rec.pracovisko,
-      nastavuje: rec.nastavuje, pocet: rec.pocet,
-      switch_priestor: rec.switchP, switch_pocet: rec.switchPocet,
-      novi_priestor: rec.noviP, novi_pocet: rec.noviPocet, novi_obdobie: rec.noviObdobie,
-      znacka: rec.znacka, forma: rec.forma, bariera: rec.bariera, preco: rec.preco,
-      poznamka: rec.poznamka
-    };
     var params = Object.keys(data).map(function(k){ return encodeURIComponent(k) + '=' + encodeURIComponent(String(data[k])); }).join('&');
     var iframe = document.getElementById('gs_frame');
     if (!iframe){
@@ -35438,6 +35433,18 @@ function tuyorySendToSheet(rec){
     }
     iframe.src = scriptUrl(params);
   } catch(e){}
+}
+
+function tuyorySendToSheet(rec){
+  surveySendToSheet({
+    action: 'saveTuyory',
+    reprezentant: rec.rep, meno: rec.meno, okres: rec.okres, pracovisko: rec.pracovisko,
+    nastavuje: rec.nastavuje, pocet: rec.pocet,
+    switch_priestor: rec.switchP, switch_pocet: rec.switchPocet,
+    novi_priestor: rec.noviP, novi_pocet: rec.noviPocet, novi_obdobie: rec.noviObdobie,
+    znacka: rec.znacka, forma: rec.forma, bariera: rec.bariera, preco: rec.preco,
+    poznamka: rec.poznamka
+  });
 }
 
 // ── OKRES autocomplete (len okresy teritória repa, ako v GP formulári) ──
@@ -36999,27 +37006,14 @@ function apixSubmit(){
 }
 
 function apixSendToSheet(rec){
-  try {
-    if (typeof IS_DEV !== 'undefined' && IS_DEV) return;                                   // DEV → nepíš do Sheets
-    if (typeof SCRIPT_URL === 'string' && SCRIPT_URL.indexOf('VLOZ_SEM') === 0) return;   // backend nenakonfigurovaný
-    var data = {
-      action: 'saveApixaban',
-      reprezentant: rec.rep, meno: rec.meno, okres: rec.okres, specializacia: rec.spec,
-      nastavuje: rec.nastavuje, pocet: rec.pocet,
-      switch_ochota: rec.switchP, switch_mes: rec.switchMes,
-      novi: rec.novi, novi_mes: rec.noviMes,
-      poznamka: rec.poznamka
-    };
-    var params = Object.keys(data).map(function(k){ return encodeURIComponent(k) + '=' + encodeURIComponent(String(data[k])); }).join('&');
-    var iframe = document.getElementById('gs_frame');
-    if (!iframe){
-      iframe = document.createElement('iframe');
-      iframe.id = 'gs_frame';
-      iframe.style.cssText = 'display:none;width:0;height:0;border:0;position:absolute;left:-9999px';
-      document.body.appendChild(iframe);
-    }
-    iframe.src = scriptUrl(params);
-  } catch(e){}
+  surveySendToSheet({
+    action: 'saveApixaban',
+    reprezentant: rec.rep, meno: rec.meno, okres: rec.okres, specializacia: rec.spec,
+    nastavuje: rec.nastavuje, pocet: rec.pocet,
+    switch_ochota: rec.switchP, switch_mes: rec.switchMes,
+    novi: rec.novi, novi_mes: rec.noviMes,
+    poznamka: rec.poznamka
+  });
 }
 
 // ── OKRES autocomplete (reuse pool/validácia z Tuyory, len apx- ID) ──
@@ -38037,20 +38031,12 @@ function lonelixSubmit(){
 }
 
 function lonelixSendToSheet(rec){
-  try {
-    if (typeof IS_DEV !== 'undefined' && IS_DEV) return;
-    if (typeof SCRIPT_URL === 'string' && SCRIPT_URL.indexOf('VLOZ_SEM') === 0) return;
-    var data = {
-      action: 'saveLonelix',
-      reprezentant: rec.rep, meno: rec.meno, okres: rec.okres, existujuci: rec.existujuci,
-      pouziva: rec.pouziva, pocet_sezona: rec.pocet, pripravok: rec.pripravok,
-      ochota_lonelix: rec.ochota, zvazil_inozin: rec.zvazil, poznamka: rec.poznamka
-    };
-    var params = Object.keys(data).map(function(k){ return encodeURIComponent(k) + '=' + encodeURIComponent(String(data[k])); }).join('&');
-    var iframe = document.getElementById('gs_frame');
-    if (!iframe){ iframe = document.createElement('iframe'); iframe.id = 'gs_frame'; iframe.style.cssText = 'display:none;width:0;height:0;border:0;position:absolute;left:-9999px'; document.body.appendChild(iframe); }
-    iframe.src = scriptUrl(params);
-  } catch(e){}
+  surveySendToSheet({
+    action: 'saveLonelix',
+    reprezentant: rec.rep, meno: rec.meno, okres: rec.okres, existujuci: rec.existujuci,
+    pouziva: rec.pouziva, pocet_sezona: rec.pocet, pripravok: rec.pripravok,
+    ochota_lonelix: rec.ochota, zvazil_inozin: rec.zvazil, poznamka: rec.poznamka
+  });
 }
 
 // ── LONELIX v Histórii — naviazanie na kartu GP lekára + noví lekári ──
