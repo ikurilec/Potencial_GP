@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.2';
+var APP_VERSION = '2.87.3';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -27199,24 +27199,10 @@ function _histLsLoad(username) {
 }
 
 // ── PharmaGraf localStorage SWR ────────────────────────────────────
+// F2-1: read/write ide priamo cez DataStore.get()/refresh() (loadPharmaGrafData
+// nižšie) — _pgLsKey ostáva ako jediný zdroj kľúča, aby ho obe strany zdieľali.
 var _PG_LS_V = 'v1';
 function _pgLsKey(code, oblast) { return 'ph_graf_' + _PG_LS_V + '_' + code + '_' + oblast; }
-function _pgLsSave(code, oblast, resp) {
-  dsWrite(_pgLsKey(code, oblast), { resp: resp });
-}
-function _pgLsLoad(code, oblast) {
-  var p = dsRead(_pgLsKey(code, oblast));
-  return (p && p.resp) ? p.resp : null;
-}
-// F2-1: rovnaká oprava ako gynCacheReadFresh — pre miesta, kde nájdená cache
-// znamená "nefetchuj vôbec" (na rozdiel od loadPharmaData nižšie, ktoré aj
-// pri cache hit vždy revaliduje raz za reláciu — to netreba meniť).
-function _pgLsLoadFresh(code, oblast, maxAgeMs) {
-  var p = dsRead(_pgLsKey(code, oblast));
-  if (!p || !p.resp) return null;
-  if (maxAgeMs != null && dsIsStale(p.ts, maxAgeMs)) return null;
-  return p.resp;
-}
 
 // ── Pharma localStorage SWR ───────────────────────────────────────
 var _PH_LS_V = 'v1';
@@ -27714,77 +27700,74 @@ function loadPharmaGrafData(code, oblast, callback) {
     if (callback) callback(PHARMA_GRAF_STATE.cache[cacheKey]);
     return;
   }
-  // F2-1: napriek komentáru "SWR" toto nikdy nerevalidovalo — cache staršia
-  // ako 6h sa teraz berie ako chýbajúca, nech fetch nižšie skutočne prebehne.
-  var _lsPg = _pgLsLoadFresh(code, oblast, DS_CACHE_MAX_AGE_MS);
-  if (_lsPg) {
-    PHARMA_GRAF_STATE.cache[cacheKey] = _lsPg;
-    if (callback) callback(_lsPg);
-    return;
-  }
   if (PHARMA_GRAF_STATE.loading[cacheKey]) return;
-  PHARMA_GRAF_STATE.loading[cacheKey] = true;
 
   if (IS_DEV) {
     var mockEntry = MOCK_PHARMA_GRAF[code] || MOCK_PHARMA_GRAF['VID'];
     var resp = { ok: true, produkt: code, oblast: oblast, rows: mockEntry.rows.slice() };
-    delete PHARMA_GRAF_STATE.loading[cacheKey];
     PHARMA_GRAF_STATE.cache[cacheKey] = resp;
     if (callback) callback(resp);
     return;
   }
 
-  appQueuedFetchJson(
-    scriptUrl('action=getPharmaGraf'
-      + '&oblast='  + encodeURIComponent(oblast)
-      + '&produkt=' + encodeURIComponent(code)),
-    { cache: 'no-store' }, undefined, 'critical'
-  )
-    .then(function(resp) {
-      delete PHARMA_GRAF_STATE.loading[cacheKey];
-      if (resp.ok && resp.rows && resp.rows.length >= 1) {
-        PHARMA_GRAF_STATE.cache[cacheKey] = resp;
-        _pgLsSave(code, oblast, resp);
-        if (callback) callback(resp);
-      }
-      // Ak žiadne dáta — nezachovávame v cache, ďalšie otvorenie skúsi znova
-    })
-    .catch(function() {
-      delete PHARMA_GRAF_STATE.loading[cacheKey];
-    });
+  // F2-1: DataStore vráti cache OKAMŽITE aj keď je staršia než DS_CACHE_MAX_AGE_MS
+  // (predtým: cache staršia ako 6h sa brala ako chýbajúca, žiadna SWR napriek
+  // komentáru) a fetch na revalidáciu spustí na pozadí sám.
+  var r = DataStore.get(_pgLsKey(code, oblast), {
+    fetcher: function(){
+      PHARMA_GRAF_STATE.loading[cacheKey] = true;
+      return appQueuedFetchJson(
+        scriptUrl('action=getPharmaGraf'
+          + '&oblast='  + encodeURIComponent(oblast)
+          + '&produkt=' + encodeURIComponent(code)),
+        { cache: 'no-store' }, undefined, 'critical'
+      ).then(function(resp) {
+        delete PHARMA_GRAF_STATE.loading[cacheKey];
+        // Ak žiadne dáta — nezachovávame v cache, ďalšie otvorenie skúsi znova
+        if (!resp || !resp.ok || !resp.rows || resp.rows.length < 1) throw new Error('no pharma graf data');
+        return resp;
+      }, function(err) { delete PHARMA_GRAF_STATE.loading[cacheKey]; throw err; });
+    },
+    maxAgeMs: DS_CACHE_MAX_AGE_MS,
+    onFresh: function(resp) { PHARMA_GRAF_STATE.cache[cacheKey] = resp; if (callback) callback(resp); }
+  });
+  if (r.data) {
+    PHARMA_GRAF_STATE.cache[cacheKey] = r.data;
+    if (callback) callback(r.data);
+  }
 }
 
 function loadPharmaGrafDataFresh(code, oblast, callback) {
   var cacheKey = code + '_' + oblast;
   if (PHARMA_GRAF_STATE.loading[cacheKey]) return;
-  PHARMA_GRAF_STATE.loading[cacheKey] = true;
 
   if (IS_DEV) {
     var mockEntry = MOCK_PHARMA_GRAF[code] || MOCK_PHARMA_GRAF['VID'];
     var mockResp = { ok: true, produkt: code, oblast: oblast, rows: mockEntry.rows.slice() };
-    delete PHARMA_GRAF_STATE.loading[cacheKey];
     PHARMA_GRAF_STATE.cache[cacheKey] = mockResp;
     if (callback) callback(mockResp);
     return;
   }
 
-  appQueuedFetchJson(
-    scriptUrl('action=getPharmaGraf'
-      + '&oblast='  + encodeURIComponent(oblast)
-      + '&produkt=' + encodeURIComponent(code)),
-    { cache: 'no-store' }, undefined, 'critical'
-  )
-    .then(function(resp) {
-      delete PHARMA_GRAF_STATE.loading[cacheKey];
-      if (resp.ok && resp.rows && resp.rows.length >= 1) {
-        PHARMA_GRAF_STATE.cache[cacheKey] = resp;
-        _pgLsSave(code, oblast, resp);
-        if (callback) callback(resp);
-      }
-    })
-    .catch(function() {
-      delete PHARMA_GRAF_STATE.loading[cacheKey];
-    });
+  PHARMA_GRAF_STATE.loading[cacheKey] = true;
+  // Vynútený refresh (napr. retry po chybe) — DataStore.refresh() fetchne vždy,
+  // aj keby bola cache ešte fresh, ale zápis/diff ide rovnakou cestou ako get().
+  DataStore.refresh(_pgLsKey(code, oblast), {
+    fetcher: function(){
+      return appQueuedFetchJson(
+        scriptUrl('action=getPharmaGraf'
+          + '&oblast='  + encodeURIComponent(oblast)
+          + '&produkt=' + encodeURIComponent(code)),
+        { cache: 'no-store' }, undefined, 'critical'
+      ).then(function(resp) {
+        delete PHARMA_GRAF_STATE.loading[cacheKey];
+        if (!resp || !resp.ok || !resp.rows || resp.rows.length < 1) throw new Error('no pharma graf data');
+        return resp;
+      }, function(err) { delete PHARMA_GRAF_STATE.loading[cacheKey]; throw err; });
+    },
+    onFresh: function(resp) { PHARMA_GRAF_STATE.cache[cacheKey] = resp; if (callback) callback(resp); },
+    onError: function(){ delete PHARMA_GRAF_STATE.loading[cacheKey]; }
+  });
 }
 
 function fillGrafChart(code, oblast) {
