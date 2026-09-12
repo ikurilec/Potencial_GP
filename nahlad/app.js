@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.75';
+var APP_VERSION = '2.85.76';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -3877,6 +3877,19 @@ var _panelCurrent = null;
 var _panelStack = []; // navigačný stack — pamätá odkiaľ sme prišli (pre Android back button)
 var _PANEL_ORDER = { 'dnes-overlay': -1, 'hist-overlay': 0, 'lb-overlay': 1, 'rep-plnenie-overlay': 2, 'lk-overlay': 3, 'okresy-overlay': 4, 'tuyory-overlay': 5, 'lonelix-overlay': 6, 'apixaban-overlay': 7, 'golem-cal-overlay': 8 };
 
+// F3-1 (router, krok 1): adresa v URL len na orientáciu (kotva #panel),
+// NIKDY nie zdroj pravdy pre navigáciu a NIKDY nie cez pushState — tá
+// história patrí výhradne initAndroidBack()/_handleAndroidBack(). Preto
+// vždy len replaceState() so zachovaným pôvodným state objektom
+// ({pgApp:true,...}), aby sme nezasiahli do počtu history entries, na
+// ktorom stojí trik s hardvérovým Späť.
+function _routerSyncHash(name) {
+  try {
+    var url = location.pathname + location.search + (name ? ('#' + name) : '');
+    history.replaceState(history.state, '', url);
+  } catch (e) {}
+}
+
 function _panelShow(newId, isBack) {
   // Ak je ten istý panel už otvorený — nerob nič (ochrana pred dvojitým kliknutím)
   if (_panelCurrent === newId) {
@@ -3901,6 +3914,7 @@ function _panelShow(newId, isBack) {
   var newEl = document.getElementById(newId);
   if (!newEl) return;
   _panelCurrent = newId;
+  _routerSyncHash(newId.replace(/-overlay$/, ''));
   // Persistentný topbar — zvýrazni aktívnu záložku v rep-nav
   // Horná mriežka patrí len reprezentantovi, spodná lišta všetkým — preto sa
   // zvýrazňuje vždy, aj manažérovi.
@@ -3934,6 +3948,7 @@ function closeAllPanels() {
   });
   _panelCurrent = null;
   _panelStack = [];
+  _routerSyncHash(null);
   document.body.style.overflow = '';
   try { repTabSetActive(null); } catch (e) {}
   var snav = document.getElementById('shared-panel-nav');
