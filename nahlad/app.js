@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.17';
+var APP_VERSION = '2.87.18';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -17255,6 +17255,13 @@ function mgrLoadReps(repList){
     mgrRenderList();
     return;
   }
+
+  // Zoznam mien poznáme lokálne bez siete (cfg.reps) — vykresli hneď teraz
+  // pomenované "Načítavam..." riadky namiesto toho, aby používateľ celý čas
+  // sieťového čakania (pri zlom signáli pokojne desiatky sekúnd) pozeral na
+  // generickú statickú kostru z index.html, ktorá vôbec nenaznačuje, že sa
+  // niečo deje (nahlásené Ivanom — pri slabšom signáli to vyzeralo zaseknuté).
+  mgrRenderList();
 
   // 'critical' priorita — zoznam reprezentantov je hlavný obsah obrazovky, nesmie
   // čakať vo fronte za nahromadenými prednačítaniami z predošlých prepnutí línie
