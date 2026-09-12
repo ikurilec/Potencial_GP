@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.86.3';
+var APP_VERSION = '2.86.4';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -23378,16 +23378,38 @@ function plnenieLoadAllQuarters() {
       });
   }
 
-  // Predaje sa aktualizujú len niekoľkokrát mesačne (a pharma dáta raz mesačne) —
-  // keď máme lokálne všetky štyri kvartály a lacný timestamp (notif_predaje)
-  // hovorí, že sa od posledného fetchu nič nezmenilo, ťažký getPlnenieAll pre
-  // všetky Q je zbytočný. Ak čokoľvek chýba alebo sa dátum zmenil, fetchuje sa
-  // presne ako doteraz — toto je len skratka pre bežný prípad „nič nové".
-  var haveAllQ = qs.every(function(q){ return !!PL_STATE.qCache[q]; });
-  if (haveAllQ && PL_STATE.loaded && typeof plnenieDataTsFetch === 'function') {
-    plnenieDataTsFetch(function(changed){
+  // Skôr než sa čokoľvek fetchne, over si lacným timestampom (notif_predaje), či
+  // PL_STATE.q ešte sedí s aktuálnym dátovým kvartálom. plnenieApplyDefaultPeriod
+  // (volaná skôr pri vstupe do manažéra) mohla PL_STATE.q nastaviť podľa STARÉHO
+  // lokálneho ts (napr. cez noc pribudli nové predaje a appka sa medzitým
+  // nespustila) a jej vlastná oprava o 50 ms (plnenieRefreshDataTsAndRerender) beží
+  // AŽ PO tomto volaní — inak by sa tu vždy stihol zafetchovať starý (nesprávny)
+  // kvartál skôr, než ju niekto stihol opraviť. Overenie tu je autoritatívne a
+  // nezávislé od toho, kto "vyhrá" 50ms oneskorenú opravu inde.
+  //
+  // Predaje sa navyše aktualizujú len niekoľkokrát mesačne (pharma raz mesačne) —
+  // keď je Q v poriadku a máme lokálne všetky štyri kvartály, ťažký getPlnenieAll
+  // pre všetky Q je zbytočný a vôbec sa nevolá.
+  if (typeof plnenieDataTsFetch === 'function') {
+    plnenieDataTsFetch(function(){
       if (!active()) return;
-      if (!changed) {
+      var dp = (typeof plnenieDefaultPeriod === 'function') ? plnenieDefaultPeriod() : null;
+      var qOk = !dp || (dp.q === PL_STATE.q && dp.year === PL_STATE.year);
+      if (!qOk) {
+        PL_STATE.year = dp.year;
+        currentQ = dp.q;   // aj closure premenná nižšie (priorita/kaskáda vo fetchQuarter)
+        if (PL_STATE.qCache[dp.q] && typeof plnenieSwitchQ === 'function') {
+          // Správny kvartál už máme v cache — zobraz ho hneď, fetch nižšie len potichu overí.
+          try { plnenieSwitchQ(dp.q); } catch(e){}
+        } else {
+          PL_STATE.q = dp.q;
+          plnenieUpdateQTabs();
+          plnenieRenderLoading();
+        }
+      }
+      var haveAllQ = qs.every(function(q){ return !!PL_STATE.qCache[q]; });
+      if (qOk && haveAllQ && PL_STATE.loaded) {
+        // Kvartál sedí, nič nechýba, nič sa nezmenilo — žiadny fetch netreba.
         clearTimeout(PL_STATE._loadWatchdog);
         PL_STATE._loadWatchdog = null;
         PL_STATE.loading = false;
