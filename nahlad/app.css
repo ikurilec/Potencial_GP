@@ -960,7 +960,12 @@
   .dnes-rs-close{position:absolute;right:14px;top:17px;width:36px;height:36px;border:0;border-radius:50%;
     display:flex;align-items:center;justify-content:center;background:var(--color-border-light);color:#475569;font:700 21px/1 var(--font-display);
     cursor:pointer;-webkit-tap-highlight-color:transparent;z-index:2}
-  .dnes-rs-scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:0 16px 12px}
+  /* flex:1 + min-height:0 sú NUTNÉ, nie kozmetika — bez nich sa tento flex
+     item roztiahne na výšku obsahu (flex default), rodič .dnes-rs-sheet ho
+     orezal cez overflow:hidden namiesto toho, aby sa scrolloval, a produkty
+     pod "zálomom" boli nedosiahnuteľné (nahlásené Ivanom, dlhší zoznam
+     produktov u reprezentanta). */
+  .dnes-rs-scroll{flex:1 1 0;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:0 16px 12px}
   .dnes-rs-profile{display:flex;align-items:center;gap:12px;padding:3px 42px 14px 0}
   .dnes-rs-avatar{font-size:16px;box-shadow:0 0 0 3px #fff,0 4px 14px rgba(12,30,53,.13)}
   .dnes-rs-name{font-family:var(--font-display);font-size:18px;font-weight:850;color:var(--color-navy);line-height:1.15}
