@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.1';
+var APP_VERSION = '2.87.2';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -10519,31 +10519,10 @@ function gynCacheRead(key) {
 function gynCacheWrite(key, data) {
   dsWrite(GYN_CACHE_PREFIX + key, { data: data });
 }
-// Vek gyn cache záznamu v ms, alebo Infinity ak neexistuje — predtým sa ts
-// ukladal, ale nikdy nečítal, takže sa dáta reálne nedali označiť za staré.
-function gynCacheAge(key) {
-  var item = dsRead(GYN_CACHE_PREFIX + key);
-  return item ? dsAge(item.ts) : Infinity;
-}
-// F2-1: gynCacheRead() ktorá vráti null aj pre existujúci, ale prestarnutý
-// záznam — presne to, čo gynCacheAge() umožňovala, ale nikde sa nepoužívalo.
-// Určené pre miesta, kde je nájdená cache dôvod NEVOLAŤ fetch vôbec (na
-// rozdiel od "stale-while-revalidate" miest, ktoré fetchujú vždy a cache
-// je len pre okamžité vykreslenie — tie majú gynCacheRead() nechať tak).
-function gynCacheReadFresh(key, maxAgeMs) {
-  var item = dsRead(GYN_CACHE_PREFIX + key);
-  if (!item || !item.data) return null;
-  if (maxAgeMs != null && dsIsStale(item.ts, maxAgeMs)) return null;
-  return item.data;
-}
 // Predvolené okno platnosti pre lokálne uloženú cache (gyn aj Golem), ktorá
 // by inak zostala použitá naveky bez opätovného overenia zo servera
 // (Ivanovo rozhodnutie: 6h).
 var DS_CACHE_MAX_AGE_MS = 6 * 60 * 60 * 1000;
-function gynCacheSame(a, b) {
-  try { return JSON.stringify(a || null) === JSON.stringify(b || null); }
-  catch(e) { return false; }
-}
 function gynPlnenieCacheKey(year, q) {
   return 'plnenie|' + gynCacheUserScope() + '|' + year + '|Q' + q;
 }
@@ -11099,24 +11078,29 @@ function gynIsOcGroup(keys){
 function gynEnsureQuarterData(qq, onReady){
   if(!qq || qq < 1) return;
   if(GYN_APP.plCache && GYN_APP.plCache[qq]) return;
-  var key = gynPlnenieCacheKey(GYN_APP.year, qq);
-  // F2-1: cache staršia ako DS_CACHE_MAX_AGE_MS sa berie ako chýbajúca —
-  // predtým raz uložený záznam blokoval akékoľvek ďalšie overenie zo servera
-  // navždy (žiaden refetch nižšie by sa vôbec nespustil).
-  var cached = (typeof gynCacheReadFresh === 'function') ? gynCacheReadFresh(key, DS_CACHE_MAX_AGE_MS) : null;
-  if(cached){ gynPreprocessData(cached); GYN_APP.plCache[qq] = cached; if(onReady) setTimeout(onReady, 0); return; }
+  // plLoading je zdieľaný guard aj s gynPlnenieShow/gynPreloadAllQuarters/gynBootstrap
+  // (fetchujú tú istú vec inou cestou) — DataStore vie dedupovať len fetche, ktoré
+  // spustí sám, takže medzi-funkčný guard musí zostať.
   if(GYN_APP.plLoading[qq]) return;
-  GYN_APP.plLoading[qq] = true;
-  appQueuedFetchJson(gynScriptUrl('action=getPlnenieAll&rok=' + GYN_APP.year + '&Q=' + qq), { cache:'no-store' }, undefined, 'critical')
-    .then(function(d){
-      delete GYN_APP.plLoading[qq];
-      if(!d) return;
-      gynPreprocessData(d);
-      GYN_APP.plCache[qq] = d;
-      if(typeof gynCacheWrite === 'function') gynCacheWrite(key, d);
-      if(onReady) onReady();
-    })
-    .catch(function(){ delete GYN_APP.plLoading[qq]; });
+  // GYN_CACHE_PREFIX MUSÍ sedieť s gynCacheRead/gynCacheWrite — inak DataStore
+  // a gynBootstrap (ktorý cache zapisuje priamo cez gynCacheWrite) skončia na
+  // DVOCH rôznych localStorage kľúčoch pre tie isté dáta.
+  var key = GYN_CACHE_PREFIX + gynPlnenieCacheKey(GYN_APP.year, qq);
+  function populate(d){ gynPreprocessData(d); GYN_APP.plCache[qq] = d; }
+  // F2-1: DataStore vráti cache OKAMŽITE aj keď je staršia než DS_CACHE_MAX_AGE_MS
+  // (predtým raz uložený starý záznam blokoval akékoľvek ďalšie overenie zo servera
+  // navždy) a fetch na revalidáciu spustí na pozadí sám.
+  var r = DataStore.get(key, {
+    fetcher: function(){
+      GYN_APP.plLoading[qq] = true;
+      return appQueuedFetchJson(gynScriptUrl('action=getPlnenieAll&rok=' + GYN_APP.year + '&Q=' + qq), { cache:'no-store' }, undefined, 'critical')
+        .then(function(d){ delete GYN_APP.plLoading[qq]; return d; },
+              function(err){ delete GYN_APP.plLoading[qq]; throw err; });
+    },
+    maxAgeMs: DS_CACHE_MAX_AGE_MS,
+    onFresh: function(d){ populate(d); if(onReady) onReady(); }
+  });
+  if(r.data){ populate(r.data); if(onReady) setTimeout(onReady, 0); }
 }
 
 // Predošlá predikcia produktovej skupiny (na zobrazenie pohybu „posunula sa z … na …").
@@ -11445,10 +11429,12 @@ function gynEnsureRepPharma(region, products, onReady){
     kvs.forEach(function(kv){
       var key = prodLabel + '|' + oblast + '|' + kv;
       if(GYN_PHARMA_STATE.cache[key] || GYN_PHARMA_STATE.loading[key]) return;
-      // F2-1: rovnaká oprava ako gynEnsureQuarterData — stará cache sa berie
-      // ako chýbajúca, inak by tento riadok navždy blokoval nový fetch nižšie.
-      var persisted = (typeof gynCacheReadFresh === 'function') ? gynCacheReadFresh(gynPharmaCacheKey(prodLabel, oblast, kv), DS_CACHE_MAX_AGE_MS) : null;
-      if(persisted){ GYN_PHARMA_STATE.cache[key] = persisted; return; }  // render číta localStorage sám → netreba re-render
+      // F2-1: DataStore.get() bez fetchera = čisté čítanie fresh cache (rovnaké
+      // ako predtým gynCacheReadFresh) — stará cache sa berie ako chýbajúca,
+      // inak by tento riadok navždy blokoval nový fetch nižšie. GYN_CACHE_PREFIX
+      // MUSÍ sedieť s gynCacheRead/gynCacheWrite inde (napr. gynPreloadAllPharma).
+      var rd = DataStore.get(GYN_CACHE_PREFIX + gynPharmaCacheKey(prodLabel, oblast, kv), { maxAgeMs: DS_CACHE_MAX_AGE_MS });
+      if(rd.status === 'fresh'){ GYN_PHARMA_STATE.cache[key] = rd.data; return; }  // render číta localStorage sám → netreba re-render
       tasks.push({ key:key, produkt:prodLabel, oblast:oblast, kvartal:kv });
     });
   });
@@ -11457,7 +11443,7 @@ function gynEnsureRepPharma(region, products, onReady){
   tasks.forEach(function(t){
     GYN_PHARMA_STATE.loading[t.key] = true;
     appQueuedFetchJson(gynScriptUrl('action=getPharmaData&oblast=' + encodeURIComponent(t.oblast) + '&produkt=' + encodeURIComponent(t.produkt) + '&kvartal=' + encodeURIComponent(t.kvartal)), { cache:'no-store' }, undefined, 'background')
-      .then(function(resp){ delete GYN_PHARMA_STATE.loading[t.key]; if(resp && resp.ok){ GYN_PHARMA_STATE.cache[t.key] = resp; if(typeof gynCacheWrite === 'function') gynCacheWrite(gynPharmaCacheKey(t.produkt, t.oblast, t.kvartal), resp); any = true; } })
+      .then(function(resp){ delete GYN_PHARMA_STATE.loading[t.key]; if(resp && resp.ok){ GYN_PHARMA_STATE.cache[t.key] = resp; DataStore.set(GYN_CACHE_PREFIX + gynPharmaCacheKey(t.produkt, t.oblast, t.kvartal), resp); any = true; } })
       .catch(function(){ delete GYN_PHARMA_STATE.loading[t.key]; })
       .then(function(){ remaining--; if(remaining === 0 && any && onReady) onReady(); });
   });
@@ -12006,11 +11992,11 @@ function gynPreloadAllQuarters() {
         delete GYN_APP.plLoading[q];
         if(!data) return;
         gynPreprocessData(data);
-        var changed = !gynCacheSame(GYN_APP.plCache[q], data);
+        // GYN_CACHE_PREFIX MUSÍ sedieť s gynCacheRead(cacheKey) vyššie — inak by
+        // tento zápis skončil na inom localStorage kľúči než z akého sa číta.
+        var changed = DataStore.set(GYN_CACHE_PREFIX + cacheKey, data);
         GYN_APP.plCache[q] = data;
-      try { dnesRefreshIfOpen(); } catch(e){}
         try { dnesRefreshIfOpen(); } catch(e){}
-        gynCacheWrite(cacheKey, data);
         // Re-render aktuálneho Q keď dorazia čerstvé dáta na pozadí.
         // Ak ešte vidno len "Načítavam..." (nič nevyrenderované) → prvý render s animáciou;
         // inak prekresli TICHO (len prepíš čísla, bez opätovnej animácie barov).
@@ -12144,10 +12130,10 @@ function gynPlnenieShow(el, user, _attempt) {
       delete GYN_APP.plLoading[q];
       GYN_APP._currentLoadFailed = false;
       gynPreprocessData(data);
-      var changed = !gynCacheSame(GYN_APP.plCache[q], data);
+      // GYN_CACHE_PREFIX MUSÍ sedieť s gynCacheRead(cacheKey) vyššie.
+      var changed = DataStore.set(GYN_CACHE_PREFIX + cacheKey, data);
       GYN_APP.plCache[q] = data;
       try { dnesRefreshIfOpen(); } catch(e){}
-      gynCacheWrite(cacheKey, data);
       if(GYN_APP.nav === 'plnenie' && GYN_APP.q === q) {
         if(!cached) gynPlnenieRender(el, user, data);  // prvé zobrazenie — s animáciou
         else if(changed) setTimeout(function(){        // čerstvé dáta — ticho prepíš čísla (počká kým dobehne animácia)
@@ -13162,10 +13148,13 @@ function gynPharmaDistrictDisplayYymmsForQ(q, resp, currentKvartal, fallbackYymm
 
 function gynPharmaLoad() {
   var key = GYN_PHARMA_STATE.produkt + '|' + GYN_PHARMA_STATE.oblast + '|' + GYN_PHARMA_STATE.kvartal;
-  var persistentKey = gynPharmaCacheKey(GYN_PHARMA_STATE.produkt, GYN_PHARMA_STATE.oblast, GYN_PHARMA_STATE.kvartal);
+  // GYN_CACHE_PREFIX MUSÍ sedieť s gynCacheRead/gynCacheWrite (napr. gynPreloadAllPharma
+  // ukladá tie isté kľúče cez ne priamo) — inak DataStore skončí na inom zázname.
+  var persistentKey = GYN_CACHE_PREFIX + gynPharmaCacheKey(GYN_PHARMA_STATE.produkt, GYN_PHARMA_STATE.oblast, GYN_PHARMA_STATE.kvartal);
   // F2-1: rovnaká oprava — bez nej "kompletná" (má okresy pre trend) ale
   // stará persistovaná cache nižšie navždy zablokuje nový fetch.
-  var cached = GYN_PHARMA_STATE.cache[key] || gynCacheReadFresh(persistentKey, DS_CACHE_MAX_AGE_MS);
+  var _dsFresh = DataStore.get(persistentKey, { maxAgeMs: DS_CACHE_MAX_AGE_MS });
+  var cached = GYN_PHARMA_STATE.cache[key] || (_dsFresh.status === 'fresh' ? _dsFresh.data : null);
   if(cached && !GYN_PHARMA_STATE.cache[key]) GYN_PHARMA_STATE.cache[key] = cached;
 
   // Cache hit je kompletný až vtedy, keď má okresy pre všetky kvartály zobrazené v 6-mesačnom trende.
@@ -13231,7 +13220,7 @@ function gynPharmaLoad() {
         console.log('[gyn-pharma] trend kvartály:', neededKvartals.join(', '), 'extra=', Object.keys(extra).join(', '));
       }
       GYN_PHARMA_STATE.cache[key] = resp;
-      gynCacheWrite(persistentKey, resp);
+      DataStore.set(persistentKey, resp);
       if(GYN_PHARMA_STATE.open && GYN_PHARMA_STATE.produkt + '|' + GYN_PHARMA_STATE.oblast + '|' + GYN_PHARMA_STATE.kvartal === key) {
         gynPharmaRender(resp);
       }
