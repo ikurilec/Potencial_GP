@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.95';
+var APP_VERSION = '2.85.96';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -13983,7 +13983,7 @@ function gynLkItemHtml(ph, idx){
       var pe = ph.prods[p];
       return '<span class="lk-prod-chip'+(pe.oslovena?'':'')+'">'+gynEsc(p)+': '+Math.round(pe.total)+' ks'+(pe.oslovena?' ✓':'')+'</span>';
     }).join('') + '</div>';
-    return '<div class="lk-item" onclick="gynLkOpenDetail('+idx+')">' +
+    return '<div class="lk-item" role="button" tabindex="0" aria-label="Zobraziť lekáreň '+gynEsc(gynLkDispName(ph))+'" onclick="gynLkOpenDetail('+idx+')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();gynLkOpenDetail('+idx+')}">' +
       '<div class="lk-item-name">'+gynEsc(gynLkDispName(ph))+'</div>' +
       (gynLkHasAlias(ph)?'<div class="lk-item-orig">pôvodne: '+gynEsc(ph.lekaren)+'</div>':'') +
       '<div class="lk-item-sub">'+sub+'</div>' + pchips +
@@ -14000,7 +14000,7 @@ function gynLkItemHtml(ph, idx){
     ? '<div class="lk-contact-status">🔁 Dvojička '+gynEsc(pe.twinMeno)+' oslovila'+(pe.twinOslovenaAt?' dňa '+gynEsc(pe.twinOslovenaAt):'')+'</div>'
     : '';
   var contact = gynLkContactHtml(pe, 'gynLkMark('+idx+')');
-  return '<div class="lk-item'+(pe.oslovena?' done':'')+'" onclick="gynLkOpenDetail('+idx+')">' +
+  return '<div class="lk-item'+(pe.oslovena?' done':'')+'" role="button" tabindex="0" aria-label="Zobraziť lekáreň '+gynEsc(gynLkDispName(ph))+'" onclick="gynLkOpenDetail('+idx+')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();gynLkOpenDetail('+idx+')}">' +
     '<div class="lk-item-name">'+gynEsc(gynLkDispName(ph))+'</div>' +
     (gynLkHasAlias(ph)?'<div class="lk-item-orig">pôvodne: '+gynEsc(ph.lekaren)+'</div>':'') +
     '<div class="lk-item-sub">'+sub+'</div>' +
@@ -34664,7 +34664,7 @@ function lkRender() {
     var creamSummary = lkCreamSummaryHtml(l, tab);
     var contactBtn = lkCreamContactButtonHtml(l, tab, 'rep');
     var recHtml = lkRecommendationHtml(lkRecommendation(l, tab));
-    return '<div class="lk-item ' + cls + '" onclick="lkOpenDetail(\'' + lkEscAttr(l.key) + '\')">' +
+    return '<div class="lk-item ' + cls + '" role="button" tabindex="0" aria-label="Zobraziť lekáreň ' + lkEscAttr(lkEsc(l.lekaren)) + '" onclick="lkOpenDetail(\'' + lkEscAttr(l.key) + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();lkOpenDetail(\'' + lkEscAttr(l.key) + '\')}">' +
       '<div class="lk-item-name">' + lkEsc(l.lekaren) + '</div>' +
       '<div class="lk-item-sub">' + subHtml + (trendHtml ? ' · ' + trendHtml : '') + '</div>' +
       actionChip + creamSummary + chipsHtml + contactBtn + recHtml +
