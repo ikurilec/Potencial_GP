@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.83';
+var APP_VERSION = '2.85.84';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -513,6 +513,7 @@ function pushShowDeniedHelp(){
 
 // ── SERVICE WORKER ──
 var _swUpdatePending = false;
+var _swRegistration = null;   // F1-2: uchováme registráciu, aby checkForUpdate() vedel vynútiť reg.update()
 
 function _isAppBusy(){
   return !!document.querySelector(
@@ -561,7 +562,7 @@ if('serviceWorker' in navigator){
     } catch(e){}
   } else {
   try {
-    navigator.serviceWorker.register('./sw.js').catch(function(){});
+    navigator.serviceWorker.register('./sw.js').then(function(reg){ _swRegistration = reg; }).catch(function(){});
     // POZN.: zámerne NEreloadujeme z controllerchange. Aktualizáciu rieši VÝHRADNE
     // version.json polling (checkForUpdate). Predtým reloadovali oba → dvojitý toast,
     // strata zelenej hlášky a sivá obrazovka (SW chytený v polovici aktivácie).
@@ -590,6 +591,13 @@ function showSwToast(msg, ms){
 // Ak je otvorený overlay → fallback na banner (reprezentant musí ťuknúť).
 function checkForUpdate(){
   if(!navigator.onLine) return;
+  // F1-2: popri kontrole version.json vynúť aj kontrolu samotného sw.js —
+  // ak sa zmenil (nový build = nový CACHE_NAME + nové hashované súbory),
+  // prehliadač spustí jeho install() a nová verzia app.js/app.css sa stiahne
+  // na pozadí HNEĎ, nie až keď to prehliadač sám uzná za vhodné (typicky
+  // až pri ďalšej navigácii). Reload nižšie (_applySwUpdate) tak väčšinou
+  // nájde novú verziu už pripravenú v cache.
+  if(_swRegistration){ try { _swRegistration.update(); } catch(e){} }
   try {
     fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
       .then(function(r){ return r && r.ok ? r.json() : null; })
