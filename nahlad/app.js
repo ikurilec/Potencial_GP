@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.89';
+var APP_VERSION = '2.85.90';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -18394,106 +18394,98 @@ function initAndroidBack() {
   });
 }
 
+// F3-2 krok 2: register vrstiev namiesto samostatných if-ov — pre prvý,
+// mechanický blok reťazca (jednoduché overlaye s jedným ID a jednou close
+// funkciou). Poradie registrácie = presne to isté poradie, v akom boli
+// predtým if-y pod sebou — priorita sa NEMENÍ, len sa mechanizmus
+// zjednodušuje. Zvyšok reťazca (manažérske stavy, Reagila, panely, gyn
+// in-place navigácia — veci bez jednotného tvaru "jedno ID → jedna funkcia")
+// zatiaľ ostáva v pôvodnom tvare nižšie; register sa skúša ako prvý.
+var _backLayers = [];
+function _backRegister(id, closeFn, isOpenFn) {
+  _backLayers.push({
+    id: id,
+    close: closeFn,
+    isOpen: isOpenFn || function () {
+      var el = document.getElementById(id);
+      return !!(el && el.classList.contains('show'));
+    }
+  });
+}
+
+// -2. Ešte vyššie vrstvy než globálne vyhľadávanie (z-index 6100–9600) —
+// našlo sa pri prehľadaní VŠETKÝCH #...-overlay id v appke oproti tomuto
+// zoznamu (rovnaký spôsob, akým sa našla chýbajúca F3-2 oprava vyššie).
+// Zámerne vynechané: session-expired-overlay a rpt-progress-overlay —
+// tie majú Späť ignorovať (vynútené prihlásenie / prebiehajúci PDF export).
+_backRegister('nday-overlay', ndayClose);                  // z-index 9600 — meniny/narodeniny
+_backRegister('tuy-detail-overlay', tuyoryDetailClose);     // z-index 6200 — detail Tuyory záznamu
+_backRegister('lk-prompt-overlay', lkPromptClose);          // z-index 6100 — heslo / názov filtra
+_backRegister('lk-confirm-overlay', lkConfirmClose);        // z-index 6100 — potvrdenie (lekárne)
+
+// -1. Globálne vyhľadávanie — z-index 3200, nad úplne všetkým vrátane
+// bočného menu a Nastavení. Predtým tu chýbalo: systémové Späť ho
+// nezatvorilo a namiesto toho zavrelo niečo pod ním (F3-2).
+_backRegister('gs-overlay', gsClose);
+
+// 0. Bočné menu — leží nad panelmi, takže sa zatvára ako prvé
+_backRegister('viac-overlay', closeViac);
+_backRegister('gpp-overlay', closeGpPicker);
+
+// 1. Top modal vrstvy, ktoré môžu sedieť nad hociktorou obrazovkou
+_backRegister('gyn-ms-picker-overlay', gynMsClosePicker);
+_backRegister('av-confirm-overlay', avatarConfirmCancel);
+_backRegister('av-overlay', avatarCloseCustomizer);
+// Nastavenia (gyn aj Golem) — avatar editor sa otvára nad nimi, preto až po ňom
+_backRegister('settings-overlay', settingsBack);
+_backRegister('edit-overlay', closeEditOverlay);
+_backRegister('detail-overlay', closeDetail);
+_backRegister('satori-overlay', satoriClose);
+_backRegister('wn-overlay', wnClose);
+
+// 2. Tutorial — krok späť, na kroku 1 zatvoriť tutoriál
+_backRegister('tutorial-overlay', function () {
+  if (_tutorialCurrent > 1) window.tutorialBack(_tutorialCurrent - 1);
+  else tutorialSkip();
+});
+
+// 3. District chart overlay (pharma → okres graf)
+_backRegister('pharma-okres-overlay', closePharmaOkresChart);
+
+// 4. Pharma trhový podiel panel — catchneme aj keď animácia zatvárania
+// práve beží (pl-detail-exit-r bez show), aby ďalší stisk back nepadol
+// do neskoršej vrstvy a nezavrel rep-plnenie-overlay predčasne.
+_backRegister('pharma-ms-overlay', closePharmaMs, function () {
+  var el = document.getElementById('pharma-ms-overlay');
+  return !!(el && (el.classList.contains('show') || el.classList.contains('pl-detail-exit-r')));
+});
+
+// 4b. Product sheet (spodný panel produktu) — GP aj gyn
+_backRegister('pl-prod-sheet', closeProdSheet);
+
+// 5. Milestone overlay (celebrácia 200 lekárov)
+_backRegister('milestone-overlay', closeMilestone);
+
+// 6. Thankyou obrazovka (po uložení záznamu)
+_backRegister('thankyou', function () {
+  var el = document.getElementById('thankyou');
+  if (el) el.classList.remove('show');
+});
+
+// 7. Odhlásenie confirm dialog
+_backRegister('logout-overlay', closeLogoutConfirm);
+
+// 8. Lekáreň detail je vnútorná vrstva aj v manažérskom detaile repa.
+_backRegister('lk-detail', closeLkarneDetail);
+
 function _handleAndroidBack() {
   // Poradie: od najvnútornejšieho overlaya po najvonkajší
   var el;
 
-  // -2. Ešte vyššie vrstvy než globálne vyhľadávanie (z-index 6100–9600) —
-  // našlo sa pri prehľadaní VŠETKÝCH #...-overlay id v appke oproti tomuto
-  // zoznamu (rovnaký spôsob, akým sa našla chýbajúca F3-2 oprava vyššie).
-  // Zámerne vynechané: session-expired-overlay a rpt-progress-overlay —
-  // tie majú Späť ignorovať (vynútené prihlásenie / prebiehajúci PDF export).
-  el = document.getElementById('nday-overlay');            // z-index 9600 — meniny/narodeniny
-  if (el && el.classList.contains('show')) { ndayClose(); return true; }
-
-  el = document.getElementById('tuy-detail-overlay');      // z-index 6200 — detail Tuyory záznamu
-  if (el && el.classList.contains('show')) { tuyoryDetailClose(); return true; }
-
-  el = document.getElementById('lk-prompt-overlay');       // z-index 6100 — heslo / názov filtra
-  if (el && el.classList.contains('show')) { lkPromptClose(); return true; }
-
-  el = document.getElementById('lk-confirm-overlay');      // z-index 6100 — potvrdenie (lekárne)
-  if (el && el.classList.contains('show')) { lkConfirmClose(); return true; }
-
-  // -1. Globálne vyhľadávanie — z-index 3200, nad úplne všetkým vrátane
-  // bočného menu a Nastavení. Predtým tu chýbalo: systémové Späť ho
-  // nezatvorilo a namiesto toho zavrelo niečo pod ním (F3-2).
-  el = document.getElementById('gs-overlay');
-  if (el && el.classList.contains('show')) { gsClose(); return true; }
-
-  // 0. Bočné menu — leží nad panelmi, takže sa zatvára ako prvé
-  el = document.getElementById('viac-overlay');
-  if (el && el.classList.contains('show')) { closeViac(); return true; }
-
-  el = document.getElementById('gpp-overlay');
-  if (el && el.classList.contains('show')) { closeGpPicker(); return true; }
-
-  // 1. Top modal vrstvy, ktoré môžu sedieť nad hociktorou obrazovkou
-  el = document.getElementById('gyn-ms-picker-overlay');
-  if (el && el.classList.contains('show')) { gynMsClosePicker(); return true; }
-
-  el = document.getElementById('av-confirm-overlay');
-  if (el && el.classList.contains('show')) { avatarConfirmCancel(); return true; }
-
-  el = document.getElementById('av-overlay');
-  if (el && el.classList.contains('show')) { avatarCloseCustomizer(); return true; }
-
-  // Nastavenia (gyn aj Golem) — avatar editor sa otvára nad nimi, preto až po ňom
-  el = document.getElementById('settings-overlay');
-  if (el && el.classList.contains('show')) { settingsBack(); return true; }
-
-  el = document.getElementById('edit-overlay');
-  if (el && el.classList.contains('show')) { closeEditOverlay(); return true; }
-
-  el = document.getElementById('detail-overlay');
-  if (el && el.classList.contains('show')) { closeDetail(); return true; }
-
-  el = document.getElementById('satori-overlay');
-  if (el && el.classList.contains('show')) { satoriClose(); return true; }
-
-  el = document.getElementById('wn-overlay');
-  if (el && el.classList.contains('show')) { wnClose(); return true; }
-
-  // 2. Tutorial — krok späť, na kroku 1 zatvoriť tutoriál
-  el = document.getElementById('tutorial-overlay');
-  if (el && el.classList.contains('show')) {
-    if (_tutorialCurrent > 1) {
-      window.tutorialBack(_tutorialCurrent - 1);
-    } else {
-      tutorialSkip();
-    }
-    return true;
+  for (var _bi = 0; _bi < _backLayers.length; _bi++) {
+    var _layer = _backLayers[_bi];
+    if (_layer.isOpen()) { _layer.close(); return true; }
   }
-
-  // 3. District chart overlay (pharma → okres graf)
-  el = document.getElementById('pharma-okres-overlay');
-  if (el && el.classList.contains('show')) { closePharmaOkresChart(); return true; }
-
-  // 4. Pharma trhový podiel panel
-  // Catchneme aj keď animácia zatvárania práve beží (pl-detail-exit-r bez show) —
-  // aby ďalší stisk back nepadol do step 10 a nezavrel rep-plnenie-overlay predčasne.
-  el = document.getElementById('pharma-ms-overlay');
-  if (el && (el.classList.contains('show') || el.classList.contains('pl-detail-exit-r'))) { closePharmaMs(); return true; }
-
-  // 4b. Product sheet (spodný panel produktu) — GP aj gyn
-  el = document.getElementById('pl-prod-sheet');
-  if (el && el.classList.contains('show')) { closeProdSheet(); return true; }
-
-  // 5. Milestone overlay (celebrácia 200 lekárov)
-  el = document.getElementById('milestone-overlay');
-  if (el && el.classList.contains('show')) { closeMilestone(); return true; }
-
-  // 6. Thankyou obrazovka (po uložení záznamu)
-  el = document.getElementById('thankyou');
-  if (el && el.classList.contains('show')) { el.classList.remove('show'); return true; }
-
-  // 7. Odhlásenie confirm dialog
-  el = document.getElementById('logout-overlay');
-  if (el && el.classList.contains('show')) { closeLogoutConfirm(); return true; }
-
-  // 8. Lekáreň detail je vnútorná vrstva aj v manažérskom detaile repa.
-  el = document.getElementById('lk-detail');
-  if (el && el.classList.contains('show')) { closeLkarneDetail(); return true; }
 
   // 9. Manager plnenie detail (← Späť na zoznam)
   if (document.body.classList.contains('mgr-plnenie-detail-open')) { plnenieCloseDetail(); return true; }
