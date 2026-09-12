@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.86';
+var APP_VERSION = '2.85.87';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -7024,6 +7024,14 @@ function settingsAppHtml(s){
       '<div class="set-cache-status" id="set-cache-status"></div>' +
     '</div>';
   html += settingsCollapseHtml('maint', 'Údržba a dáta', maintHtml, false);
+
+  // F7-5: transparentnosť namiesto ticha — appka meria, ktoré sekcie kto otvára
+  // a ako dlho (modul "Usage analytics"), a manažér to vidí v Aktivite. Predtým
+  // o tom v Nastaveniach nebola ani veta.
+  var privacyHtml =
+    '<div class="set-row-desc">Appka si zaznamenáva, ktoré obrazovky otváraš a ako dlho — napríklad že si mal otvorené Plnenie 40 sekúnd. Vidí to tvoj manažér v záložke Aktivita. Slúži to na to, aby sme vedeli, ktoré časti appky reálne používate, a podľa toho ich vylepšovali. Nezaznamenávajú sa obsahy polí ani to, čo do formulára napíšeš.</div>' +
+    '<div style="margin-top:8px"><a class="set-mini-btn" href="../pravne.html" target="_blank" rel="noopener" style="display:inline-block;text-decoration:none">📄 Právne informácie a GDPR</a></div>';
+  html += settingsCollapseHtml('privacy', 'Čo appka zaznamenáva', privacyHtml, false);
 
   return html;
 }
