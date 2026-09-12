@@ -8198,7 +8198,8 @@ function getSession() {
     // Priorita: sessionStorage (zatvorenie prehliadača = odhlásenie)
     var data = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null');
     if(!data) {
-      // Fallback na localStorage — ale len ak nie je starší ako 8 hodín
+      // Fallback na localStorage — vek sa kontroluje nižšie (12h neaktivity),
+      // rovnako pre oba zdroje. Tu žiadna vlastná kontrola veku nie je.
       data = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
     }
     if(!data) return null;
