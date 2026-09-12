@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.18';
+var APP_VERSION = '2.87.19';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -6287,6 +6287,95 @@ function settingsLogout(){
   if(typeof doLogout === 'function') doLogout();
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+//   ZMENA HESLA (z Nastavení, karta Bezpečnosť)
+//   Backend endpoint action=changePassword zatiaľ NEEXISTUJE — Apps Script
+//   nie je v tomto repozitári (pozri CLAUDE.md). Frontend je pripravený,
+//   backend dorobíme spolu s Ivanom, keď pošle .txt súbory na redeploy.
+// ═══════════════════════════════════════════════════════════════════════════
+function openPasswordChange(){
+  var overlay = document.getElementById('pwd-change-overlay');
+  if(!overlay) return;
+  ['pwd-change-old','pwd-change-new','pwd-change-confirm'].forEach(function(id){
+    var el = document.getElementById(id); if(el) el.value = '';
+  });
+  var msgEl = document.getElementById('pwd-change-msg');
+  if(msgEl){ msgEl.style.display = 'none'; msgEl.className = 'pwd-change-err'; }
+  overlay.classList.add('show');
+}
+function closePasswordChange(){
+  var overlay = document.getElementById('pwd-change-overlay');
+  if(overlay) overlay.classList.remove('show');
+  // Heslá nesmú prežiť v poliach po zavretí — ani po neúspešnom pokuse.
+  ['pwd-change-old','pwd-change-new','pwd-change-confirm'].forEach(function(id){
+    var el = document.getElementById(id); if(el) el.value = '';
+  });
+}
+function settingsSubmitPasswordChange(){
+  var s = getSession(); if(!s) return;
+  var oldEl = document.getElementById('pwd-change-old');
+  var newEl = document.getElementById('pwd-change-new');
+  var confEl = document.getElementById('pwd-change-confirm');
+  var msgEl = document.getElementById('pwd-change-msg');
+  var btn = document.getElementById('pwd-change-submit-btn');
+  var oldPwd = oldEl ? oldEl.value : '';
+  var newPwd = newEl ? newEl.value : '';
+  var confPwd = confEl ? confEl.value : '';
+
+  function showMsg(text, ok){
+    if(!msgEl) return;
+    msgEl.textContent = text;
+    msgEl.className = ok ? 'pwd-change-ok' : 'pwd-change-err';
+    msgEl.style.display = 'block';
+  }
+
+  if(!oldPwd){ showMsg('Zadaj súčasné heslo.'); return; }
+  if(newPwd.length < 8){ showMsg('Nové heslo musí mať aspoň 8 znakov.'); return; }
+  if(newPwd !== confPwd){ showMsg('Nové heslo sa v oboch poliach nezhoduje.'); return; }
+  if(newPwd === oldPwd){ showMsg('Nové heslo musí byť iné ako súčasné.'); return; }
+
+  if(btn){ btn.disabled = true; btn.textContent = 'Mením…'; }
+  if(msgEl) msgEl.style.display = 'none';
+
+  // Heslo NEJDE v query stringu (na rozdiel od action=login, ktorý je
+  // existujúci vzor v celej appke) — POST telo, aby sa nové/staré heslo
+  // neobjavilo v Apps Script execution logu. Toto je prvý POST v appke;
+  // backend zajtra potrebuje zodpovedajúci doPost() handler.
+  // scriptUrl() pripojí username/device_id/session_token sám (authSessionParams) —
+  // netreba ho duplikovať tu.
+  var url = scriptUrl('action=changePassword');
+  appQueuedFetchJson(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // text/plain = bez CORS preflightu
+    body: JSON.stringify({ oldPassword: oldPwd, newPassword: newPwd }),
+    cache: 'no-store'
+  }, APP_FETCH_TIMEOUT_MS, 'critical')
+    .then(function(resp){
+      oldPwd = newPwd = confPwd = null; // nedrž heslo v pamäti dlhšie, než treba
+      if(resp && resp.ok){
+        showMsg('Heslo bolo zmenené. Prihlás sa prosím znova.', true);
+        if(btn) btn.style.display = 'none';
+        setTimeout(function(){
+          closePasswordChange();
+          closeSettings();
+          if(typeof clearSession === 'function') clearSession();
+          if(typeof doLogout === 'function') doLogout(); else location.reload();
+        }, 1800);
+      } else {
+        var err = (resp && resp.error === 'wrong_password')
+          ? 'Súčasné heslo nie je správne.'
+          : 'Zmena hesla sa nepodarila. Skús to prosím neskôr.';
+        showMsg(err);
+        if(btn){ btn.disabled = false; btn.textContent = 'Zmeniť heslo'; }
+      }
+    })
+    .catch(function(){
+      oldPwd = newPwd = confPwd = null;
+      showMsg('Zmena hesla sa nepodarila — skontroluj pripojenie a skús znova.');
+      if(btn){ btn.disabled = false; btn.textContent = 'Zmeniť heslo'; }
+    });
+}
+
 function renderSettings(s){
   s = s || getSession(); if(!s) return;
   var body = document.getElementById('settings-body');
@@ -6318,6 +6407,7 @@ function renderSettings(s){
     settingsCardHtml('linear-gradient(90deg,#2563EB,#60A5FA)', 'Notifikácie',
       settingsNotifHtml() + settingsCalNotifHtml(s) + settingsNstNotifHtml(s) + settingsBdayNotifHtml(s)) +
     settingsCardHtml('linear-gradient(90deg,#475569,#94A3B8)', 'Aplikácia', settingsAppHtml(s)) +
+    settingsCardHtml('linear-gradient(90deg,#0C1E35,#334155)', 'Bezpečnosť', settingsSecurityHtml()) +
     settingsProdOrderCard(s) +
     settingsAdminPushCard(s) +
     '<div class="set-logout-wrap"><button type="button" class="set-logout-btn" onclick="settingsLogout()">Odhlásiť sa</button></div>';
@@ -7082,6 +7172,16 @@ function settingsDefaultTabHtml(s){
 // riešenie problémov) a tri, ktoré sa nastavujú bežne (haptika, vyhľadávanie,
 // úvodná obrazovka). Bežné veci sú vždy vidno, zvyšok je zbalený — nič
 // z appky nezmizlo, len sa to nemusí pozerať každému na očiach zakaždým.
+// Bezpečnosť — zmena vlastného hesla (audit z 12.9.2026: appka nemala žiadny
+// spôsob, ako si používateľ mohol sám zmeniť heslo — jediná cesta bola
+// kontaktovať manažéra). Reset zabudnutého hesla zámerne nepridávame ako
+// samoobslužný tok bez overenia (appka nemá e-mail/SMS infraštruktúru na
+// overenie totožnosti) — zostáva "kontaktuj manažéra", čo je bezpečnejšie.
+function settingsSecurityHtml(){
+  return '<div class="set-row-desc" style="margin-bottom:10px">Zmeň si heslo, ktorým sa prihlasuješ do appky.</div>' +
+    '<button type="button" class="set-action-btn" onclick="openPasswordChange()">🔒 Zmeniť heslo</button>';
+}
+
 function settingsAppHtml(s){
   var html = '';
 
