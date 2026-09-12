@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.9';
+var APP_VERSION = '2.87.10';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -11588,7 +11588,10 @@ function gynEnter(user) {
   // popri ním, nie až keď už používateľ pozerá na prázdne karty.
   try { gynLbPreload(); } catch(e){}
   // Loader ostáva kým sa plnenie reálne nevykreslí (dáta alebo chybová karta) — pokryje aj
-  // pomalý „studený" prvý fetch peknou obrazovkou namiesto holého „Načítavam...". Cap 15 s.
+  // pomalý „studený" prvý fetch peknou obrazovkou namiesto holého „Načítavam...".
+  // Rovnaký strop ako appBootWaitForHomeData/bootLoaderShow (F0, boot audit
+  // krok 5) — predtým tu bolo natvrdo 12000 popri komentári hovoriacom "15 s",
+  // dva nezávisle sa rozchádzajúce čísla pre tú istú vec.
   (function(){
     var _t0 = Date.now();
     var _iv = setInterval(function(){
@@ -11596,7 +11599,7 @@ function gynEnter(user) {
       var waitingHome = !!GYN_APP._openDnesWhenReady;
       var ready = waitingHome ? gynHomeBootstrapReady() :
         (gc && gc.querySelector('.pl-sum-big, .mgr-plnenie-detail, .app-err-card'));
-      if(ready || !document.getElementById('boot-loader') || Date.now() - _t0 > 12000){
+      if(ready || !document.getElementById('boot-loader') || Date.now() - _t0 > APP_BOOT_MAX_WAIT_MS){
         clearInterval(_iv);
         // Po limite otvorí Domov len s chybovým/retry stavom; nikdy nie s nekonečným spinnerom.
         if(waitingHome) gynOpenDnesWhenReady(!ready);
@@ -20516,6 +20519,19 @@ function loadRepList(forceFullRoster) {
 // Pri prihlásení sa Domov neotvára podľa časovača. Zostane za boot obrazovkou,
 // kým je pripravený aktuálny kvartál a roster, z ktorých kreslí Plnenie aj Rebríček.
 var APP_BOOT = { waitTimer: null, deadline: 0, line: '', username: '' };
+// F0 (boot audit) krok 5: appBootWaitForHomeData (deadline pre polling) a
+// bootLoaderShow (failsafe pre samotný loader) mali dve NEZÁVISLE vymyslené
+// čísla (12000 / 15000) pre tú istú otázku — "ako dlho smie appka nechať
+// používateľa čakať za plnou obrazovkou, kým ho pustí ďalej s tým, čo má".
+// Teraz jedna hodnota pre obe miesta. Toto ZÁMERNE nie je nastavené na
+// skutočný najhorší prípad retry reťazca (loadInitData môže pri opakovanom
+// zlyhaní bežať na pozadí ešte desiatky sekúnd po tomto limite) — appka má
+// používateľa pustiť ďalej s tým, čo má (cache/čiastočné dáta), nie ho držať
+// za plnou obrazovkou 2+ minúty len preto, že server je pomalý. Keď dáta
+// doletia neskôr, obrazovky sa už samé obnovia (buildRepData, História —
+// pozri loadInitData vyššie), takže krátky limit tu nie je stratou dát,
+// len rozhodnutím nedržať používateľa zbytočne dlho za clonou.
+var APP_BOOT_MAX_WAIT_MS = 15000;
 function appHomeOpenWhenReady(force){
   try {
     if(!MGR_STATE._openDnesWhenReady) return false;
@@ -20541,7 +20557,7 @@ function appBootWaitForHomeData(user){
   clearInterval(APP_BOOT.waitTimer);
   APP_BOOT.line = (user && user.line) || 'gp';
   APP_BOOT.username = (user && user.username) || '';
-  APP_BOOT.deadline = Date.now() + 12000;
+  APP_BOOT.deadline = Date.now() + APP_BOOT_MAX_WAIT_MS;
   APP_BOOT.waitTimer = setInterval(function(){
     var active = getSession() || {};
     if(active.username !== APP_BOOT.username || (active.line || 'gp') !== APP_BOOT.line){ clearInterval(APP_BOOT.waitTimer); return; }
@@ -20655,7 +20671,7 @@ function bootLoaderShow(force){
     if (m) m.textContent = 'Server sa prebúdza — prvé načítanie po dlhšom čase trvá dlhšie.';
   }, 8000);
   clearTimeout(_bootLoader.failsafe);
-  _bootLoader.failsafe = setTimeout(bootLoaderDone, 15000); // poistka — nikdy nezasekni appku
+  _bootLoader.failsafe = setTimeout(bootLoaderDone, APP_BOOT_MAX_WAIT_MS); // poistka — nikdy nezasekni appku
 }
 function bootLoaderSet(pct){
   var msg = document.getElementById('boot-loader-msg');
@@ -20791,6 +20807,11 @@ function loadInitData(username, _lineCtx) {
         _histAllItems = processedHistory;
         _histPromise  = Promise.resolve(processedHistory);
         updateBadge(_histAllItems.length, false);
+        // F0 (boot audit) krok 5: ak si používateľ otvoril História PRED tým,
+        // než tento (možno opakovaný) fetch doletel, panel dovtedy ukazoval
+        // prázdny/starý zoznam a nikdy sa neobnovil — presne trieda bugu, akú
+        // rieši aj buildRepData nižšie pre roster/Plnenie/Domov.
+        try { if (document.getElementById('hist-overlay').classList.contains('show')) histRender(); } catch (e) {}
       }
 
       // RepList
