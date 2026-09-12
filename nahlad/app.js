@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.88';
+var APP_VERSION = '2.85.89';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -10434,9 +10434,10 @@ function gynCacheReadFresh(key, maxAgeMs) {
   if (maxAgeMs != null && dsIsStale(item.ts, maxAgeMs)) return null;
   return item.data;
 }
-// Predvolené okno platnosti pre gyn cache, ktorá by inak zostala použitá
-// naveky bez opätovného overenia zo servera (Ivanovo rozhodnutie: 6h).
-var GYN_CACHE_MAX_AGE_MS = 6 * 60 * 60 * 1000;
+// Predvolené okno platnosti pre lokálne uloženú cache (gyn aj Golem), ktorá
+// by inak zostala použitá naveky bez opätovného overenia zo servera
+// (Ivanovo rozhodnutie: 6h).
+var DS_CACHE_MAX_AGE_MS = 6 * 60 * 60 * 1000;
 function gynCacheSame(a, b) {
   try { return JSON.stringify(a || null) === JSON.stringify(b || null); }
   catch(e) { return false; }
@@ -10997,10 +10998,10 @@ function gynEnsureQuarterData(qq, onReady){
   if(!qq || qq < 1) return;
   if(GYN_APP.plCache && GYN_APP.plCache[qq]) return;
   var key = gynPlnenieCacheKey(GYN_APP.year, qq);
-  // F2-1: cache staršia ako GYN_CACHE_MAX_AGE_MS sa berie ako chýbajúca —
+  // F2-1: cache staršia ako DS_CACHE_MAX_AGE_MS sa berie ako chýbajúca —
   // predtým raz uložený záznam blokoval akékoľvek ďalšie overenie zo servera
   // navždy (žiaden refetch nižšie by sa vôbec nespustil).
-  var cached = (typeof gynCacheReadFresh === 'function') ? gynCacheReadFresh(key, GYN_CACHE_MAX_AGE_MS) : null;
+  var cached = (typeof gynCacheReadFresh === 'function') ? gynCacheReadFresh(key, DS_CACHE_MAX_AGE_MS) : null;
   if(cached){ gynPreprocessData(cached); GYN_APP.plCache[qq] = cached; if(onReady) setTimeout(onReady, 0); return; }
   if(GYN_APP.plLoading[qq]) return;
   GYN_APP.plLoading[qq] = true;
@@ -11345,7 +11346,7 @@ function gynEnsureRepPharma(region, products, onReady){
       if(GYN_PHARMA_STATE.cache[key] || GYN_PHARMA_STATE.loading[key]) return;
       // F2-1: rovnaká oprava ako gynEnsureQuarterData — stará cache sa berie
       // ako chýbajúca, inak by tento riadok navždy blokoval nový fetch nižšie.
-      var persisted = (typeof gynCacheReadFresh === 'function') ? gynCacheReadFresh(gynPharmaCacheKey(prodLabel, oblast, kv), GYN_CACHE_MAX_AGE_MS) : null;
+      var persisted = (typeof gynCacheReadFresh === 'function') ? gynCacheReadFresh(gynPharmaCacheKey(prodLabel, oblast, kv), DS_CACHE_MAX_AGE_MS) : null;
       if(persisted){ GYN_PHARMA_STATE.cache[key] = persisted; return; }  // render číta localStorage sám → netreba re-render
       tasks.push({ key:key, produkt:prodLabel, oblast:oblast, kvartal:kv });
     });
@@ -13065,7 +13066,7 @@ function gynPharmaLoad() {
   var persistentKey = gynPharmaCacheKey(GYN_PHARMA_STATE.produkt, GYN_PHARMA_STATE.oblast, GYN_PHARMA_STATE.kvartal);
   // F2-1: rovnaká oprava — bez nej "kompletná" (má okresy pre trend) ale
   // stará persistovaná cache nižšie navždy zablokuje nový fetch.
-  var cached = GYN_PHARMA_STATE.cache[key] || gynCacheReadFresh(persistentKey, GYN_CACHE_MAX_AGE_MS);
+  var cached = GYN_PHARMA_STATE.cache[key] || gynCacheReadFresh(persistentKey, DS_CACHE_MAX_AGE_MS);
   if(cached && !GYN_PHARMA_STATE.cache[key]) GYN_PHARMA_STATE.cache[key] = cached;
 
   // Cache hit je kompletný až vtedy, keď má okresy pre všetky kvartály zobrazené v 6-mesačnom trende.
@@ -27069,6 +27070,15 @@ function _pgLsLoad(code, oblast) {
   var p = dsRead(_pgLsKey(code, oblast));
   return (p && p.resp) ? p.resp : null;
 }
+// F2-1: rovnaká oprava ako gynCacheReadFresh — pre miesta, kde nájdená cache
+// znamená "nefetchuj vôbec" (na rozdiel od loadPharmaData nižšie, ktoré aj
+// pri cache hit vždy revaliduje raz za reláciu — to netreba meniť).
+function _pgLsLoadFresh(code, oblast, maxAgeMs) {
+  var p = dsRead(_pgLsKey(code, oblast));
+  if (!p || !p.resp) return null;
+  if (maxAgeMs != null && dsIsStale(p.ts, maxAgeMs)) return null;
+  return p.resp;
+}
 
 // ── Pharma localStorage SWR ───────────────────────────────────────
 var _PH_LS_V = 'v1';
@@ -27076,6 +27086,12 @@ function _phLsKey(code, oblast, kvartal) { return 'ph_c_' + _PH_LS_V + '_' + cod
 function _phLsLoad(code, oblast, kvartal) {
   var p = dsRead(_phLsKey(code, oblast, kvartal));
   return (p && p.resp) ? p.resp : null;
+}
+function _phLsLoadFresh(code, oblast, kvartal, maxAgeMs) {
+  var p = dsRead(_phLsKey(code, oblast, kvartal));
+  if (!p || !p.resp) return null;
+  if (maxAgeMs != null && dsIsStale(p.ts, maxAgeMs)) return null;
+  return p.resp;
 }
 function _phLsSave(code, oblast, kvartal, resp) {
   // PharmaData je hlavný vinník zaplnenia localStorage pri admin preloade.
@@ -27557,8 +27573,9 @@ function loadPharmaGrafData(code, oblast, callback) {
     if (callback) callback(PHARMA_GRAF_STATE.cache[cacheKey]);
     return;
   }
-  // SWR: localStorage fallback
-  var _lsPg = _pgLsLoad(code, oblast);
+  // F2-1: napriek komentáru "SWR" toto nikdy nerevalidovalo — cache staršia
+  // ako 6h sa teraz berie ako chýbajúca, nech fetch nižšie skutočne prebehne.
+  var _lsPg = _pgLsLoadFresh(code, oblast, DS_CACHE_MAX_AGE_MS);
   if (_lsPg) {
     PHARMA_GRAF_STATE.cache[cacheKey] = _lsPg;
     if (callback) callback(_lsPg);
@@ -33514,7 +33531,10 @@ function okresyFetchCode(code, oblast, kvartal, reqId, cb, isPrev, forceNet) {
   if (!forceNet) {
     var cached = PHARMA_STATE.cache[cacheKey];
     if (!cached) {
-      var ls = _phLsLoad(code, oblast, kvartal);
+      // F2-1: persistovaná cache staršia ako DS_CACHE_MAX_AGE_MS sa berie ako
+      // chýbajúca — predtým mohla "kompletná" (hasReal) cache blokovať
+      // akékoľvek ďalšie overenie zo servera navždy.
+      var ls = _phLsLoadFresh(code, oblast, kvartal, DS_CACHE_MAX_AGE_MS);
       if (ls) { PHARMA_STATE.cache[cacheKey] = ls; cached = ls; }
     }
     if (cached && (hasReal(cached) || isPrev)) { deliver(cached); return; }
