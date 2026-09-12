@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.93';
+var APP_VERSION = '2.85.94';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -3650,7 +3650,7 @@ function buildHistItemHtml(item) {
   var lonBadge = (typeof lonelixHasRecord === 'function' && lonelixHasRecord(item.lekar, item.okres)) ? ' <span class="hist-lon-badge" title="Má Lonelix záznam">🛡️</span>' : '';
   var idx = _histDetailItems.length;
   _histDetailItems.push(item);
-  return '<div class="hist-item" data-idx="' + idx + '" onclick="openDetail(' + idx + ')" style="cursor:pointer;border-left:4px solid ' + cc.c + '">' +
+  return '<div class="hist-item" data-idx="' + idx + '" role="button" tabindex="0" aria-label="Zobraziť záznam ' + mgrEscape(item.lekar || '') + '" onclick="openDetail(' + idx + ')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openDetail(' + idx + ')}" style="cursor:pointer;border-left:4px solid ' + cc.c + '">' +
     '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' +
       '<div class="hist-item-name">' + mgrEscape(item.lekar || '—') + lonBadge + '</div>' +
       '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0">' + gpTrendBadgeHtml(item) + catBadge + '<span style="font-size:11px;color:#94A3B8">›</span></div>' +
@@ -35663,7 +35663,7 @@ function tuyoryHistCardHtml(item){
   if (r.switchP === 'ano') parts.push('switch: ' + (r.switchPocet ? (r.switchPocet + ' pac.') : 'áno'));
   if (r.noviP === 'ano') parts.push('noví: ' + (r.noviPocet ? (r.noviPocet + '/' + (tuyObdobieShort(r.noviObdobie))) : 'áno'));
   var extra = parts.length ? (' · ' + parts.join(' · ')) : '';
-  return '<div class="hist-item hist-item-tuy" data-idx="' + idx + '" onclick="openDetail(' + idx + ')" style="cursor:pointer">' +
+  return '<div class="hist-item hist-item-tuy" data-idx="' + idx + '" role="button" tabindex="0" aria-label="Zobraziť záznam ' + mgrEscape(r.meno || '') + '" onclick="openDetail(' + idx + ')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openDetail(' + idx + ')}" style="cursor:pointer">' +
     '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' +
       '<div class="hist-item-name">' + mgrEscape(r.meno || '—') + (r.poznamka ? ' <span title="Obsahuje poznámku">📝</span>' : '') + '</div>' +
       '<span class="hist-tuy-badge">🧬 Tuyory</span>' +
@@ -37202,7 +37202,7 @@ function apixHistCardHtml(item){
   var idx = _histDetailItems.length;
   _histDetailItems.push(item);
   var r = item.apx || {};
-  return '<div class="hist-item hist-item-apx" data-idx="' + idx + '" onclick="openDetail(' + idx + ')" style="cursor:pointer">' +
+  return '<div class="hist-item hist-item-apx" data-idx="' + idx + '" role="button" tabindex="0" aria-label="Zobraziť záznam ' + mgrEscape(r.meno || '') + '" onclick="openDetail(' + idx + ')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openDetail(' + idx + ')}" style="cursor:pointer">' +
     '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' +
       '<div class="hist-item-name">' + mgrEscape(r.meno || '—') + (r.poznamka ? ' <span title="Obsahuje poznámku">📝</span>' : '') + '</div>' +
       '<span class="hist-apx-badge">🫀 Apixaban</span>' +
@@ -38200,7 +38200,7 @@ function lonelixOnlyHistItems(){
 function lonelixNewCardHtml(item){
   var idx = _histDetailItems.length; _histDetailItems.push(item);
   var r = item.lon || {};
-  return '<div class="hist-item hist-item-lonnew" data-idx="' + idx + '" onclick="openDetail(' + idx + ')" style="cursor:pointer">' +
+  return '<div class="hist-item hist-item-lonnew" data-idx="' + idx + '" role="button" tabindex="0" aria-label="Zobraziť záznam ' + mgrEscape(r.meno || '') + '" onclick="openDetail(' + idx + ')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openDetail(' + idx + ')}" style="cursor:pointer">' +
     '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' +
       '<div class="hist-item-name">' + mgrEscape(r.meno || '—') + '</div>' +
       '<span class="hist-lonnew-badge">＋ Doplniť GP</span>' +
