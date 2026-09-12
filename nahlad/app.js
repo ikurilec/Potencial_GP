@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.91';
+var APP_VERSION = '2.85.92';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -18493,71 +18493,102 @@ _backRegister('mgr-detail', mgrCloseRep);
 // 11. Zdieľaný Golem/Reagila kalendár overlay
 _backRegister('golem-cal-overlay', closeGolemKalendar);
 
+// F3-2 krok 4: zvyšná (zložitejšia) časť reťazca — vetvy s viacerými
+// podmienkami, nie jednoduché "jedno ID → jedna funkcia". Každá je teraz
+// jeden register s isOpen(), ktorý si rozhodnutie ULOŽÍ (aby sa rovnaká
+// DOM/stavová logika nekontrolovala dvakrát), a close(), ktorý podľa
+// uloženého rozhodnutia vykoná presne to, čo pôvodný if reťazec.
+
+// 12. Manager subtab — Návštevy / Rebríček / Aktivita → späť na predchádzajúci tab (alebo Plnenie)
+_backRegister('mgr-subtab', function () {
+  var backTab = _mgrPrevSubtab || 'plnenie';
+  _mgrPrevSubtab = null;
+  mgrSwitchSubtab(backTab);
+}, function () {
+  return document.body.classList.contains('manager-mode') && !!MGR_STATE.subtab && MGR_STATE.subtab !== 'plnenie';
+});
+
+// Reagila (KAM reprezentant): domov = Plnenie, NIE Golem formulár.
+// Back z Lekární/Rebríčka → Plnenie; back z Plnenia → nič (neodkrývaj formulár pod ním).
+var _reagilaBackDecision = null;
+_backRegister('reagila-nav', function () {
+  var d = _reagilaBackDecision;
+  _reagilaBackDecision = null;
+  if (d === 'lk-detail') { closeLkarneDetail(); return; }
+  if (d === 'to-plnenie') { try { openRepPlnenie(); } catch (e) {} return; }
+  // d === 'noop' → Plnenie je domov, Späť nerobí nič (ale je "handled")
+}, function () {
+  if (!(document.body.classList.contains('reagila-line') && !document.body.classList.contains('manager-mode'))) {
+    _reagilaBackDecision = null; return false;
+  }
+  var _rLkDetail = document.getElementById('lk-detail');
+  if (_rLkDetail && _rLkDetail.classList.contains('show')) { _reagilaBackDecision = 'lk-detail'; return true; }
+  var _rLk = document.getElementById('lk-overlay');
+  var _rLb = document.getElementById('lb-overlay');
+  var _rHi = document.getElementById('hist-overlay');
+  var _rCal = document.getElementById('golem-cal-overlay');
+  if ((_rLk && _rLk.classList.contains('show')) || (_rLb && _rLb.classList.contains('show')) || (_rHi && _rHi.classList.contains('show')) || (_rCal && _rCal.classList.contains('show'))) {
+    _reagilaBackDecision = 'to-plnenie'; return true;
+  }
+  var _rPl = document.getElementById('rep-plnenie-overlay');
+  if (_rPl && _rPl.classList.contains('show')) { _reagilaBackDecision = 'noop'; return true; }
+  _reagilaBackDecision = null;
+  return false;
+});
+
+// 13. Lekárne overlay
+_backRegister('lk-overlay', closeLekarne);
+
+// 14. Nástenka (priorita pred panelmi) + panely — História / Rebríček /
+// Plnenie / Okresy / Tuyory / Lonelix / Kalendár (reprezentant).
+var _panelsBackTargetId = null;
+_backRegister('nastenka-or-panels', function () {
+  var nst = document.getElementById('nastenka-overlay');
+  if (nst && nst.classList.contains('show')) { closeNastenka(); return; }
+  var id = _panelsBackTargetId;
+  _panelsBackTargetId = null;
+  if (!id) return;
+  var prevPanel = _panelStack.pop();
+  if (prevPanel) {
+    _panelShow(prevPanel, true); // isBack=true — neplní stack, naviguje späť
+  } else {
+    closeAllPanels();
+  }
+}, function () {
+  var nst = document.getElementById('nastenka-overlay');
+  if (nst && nst.classList.contains('show')) { _panelsBackTargetId = null; return true; }
+  //     (Okresy, Tuyory a Lonelix tu predtým chýbali → systémové „späť" ich nevedelo zavrieť.)
+  var panels = ['hist-overlay', 'lb-overlay', 'rep-plnenie-overlay', 'okresy-overlay', 'tuyory-overlay', 'lonelix-overlay', 'apixaban-overlay', 'golem-cal-overlay'];
+  for (var i = 0; i < panels.length; i++) {
+    var el = document.getElementById(panels[i]);
+    if (el && el.classList.contains('show')) { _panelsBackTargetId = panels[i]; return true; }
+  }
+  _panelsBackTargetId = null;
+  return false;
+});
+
+// 15. Gyn línia — in-place navigácia (gyn nepoužíva .app overlaye, renderuje do #gyn-content)
+var _gynBackDecision = null;
+_backRegister('gyn-view-nav', function () {
+  var d = _gynBackDecision;
+  _gynBackDecision = null;
+  if (d === 'detail') { gynCloseRepDetail(); return; }      // Detail reprezentanta (manažér) → späť na zoznam
+  if (d === 'tab') { gynNavTo('plnenie'); return; }         // Iný tab než Plnenie → späť na Plnenie
+}, function () {
+  var _gv = document.getElementById('gyn-view');
+  if (!(_gv && _gv.classList.contains('show'))) { _gynBackDecision = null; return false; }
+  if (typeof GYN_APP !== 'undefined' && GYN_APP && GYN_APP.detailLogin) { _gynBackDecision = 'detail'; return true; }
+  if (typeof GYN_APP !== 'undefined' && GYN_APP && GYN_APP.nav && GYN_APP.nav !== 'plnenie') { _gynBackDecision = 'tab'; return true; }
+  _gynBackDecision = null;
+  return false;
+});
+
 function _handleAndroidBack() {
   // Poradie: od najvnútornejšieho overlaya po najvonkajší
-  var el;
-
   for (var _bi = 0; _bi < _backLayers.length; _bi++) {
     var _layer = _backLayers[_bi];
     if (_layer.isOpen()) { _layer.close(); return true; }
   }
-
-  // 12. Manager subtab — Návštevy / Rebríček / Aktivita → späť na predchádzajúci tab (alebo Plnenie)
-  if (document.body.classList.contains('manager-mode') && MGR_STATE.subtab && MGR_STATE.subtab !== 'plnenie') {
-    var backTab = _mgrPrevSubtab || 'plnenie';
-    _mgrPrevSubtab = null;
-    mgrSwitchSubtab(backTab);
-    return true;
-  }
-
-  // Reagila (KAM reprezentant): domov = Plnenie, NIE Golem formulár.
-  // Back z Lekární/Rebríčka → Plnenie; back z Plnenia → nič (neodkrývaj formulár pod ním).
-  if (document.body.classList.contains('reagila-line') && !document.body.classList.contains('manager-mode')) {
-    var _rPl = document.getElementById('rep-plnenie-overlay');
-    var _rLk = document.getElementById('lk-overlay');
-    var _rLb = document.getElementById('lb-overlay');
-    var _rHi = document.getElementById('hist-overlay');
-    var _rLkDetail = document.getElementById('lk-detail');
-    if (_rLkDetail && _rLkDetail.classList.contains('show')) { closeLkarneDetail(); return true; }
-    var _rCal = document.getElementById('golem-cal-overlay');
-    if ((_rLk && _rLk.classList.contains('show')) || (_rLb && _rLb.classList.contains('show')) || (_rHi && _rHi.classList.contains('show')) || (_rCal && _rCal.classList.contains('show'))) {
-      try { openRepPlnenie(); } catch(e){}     // späť na domovské Plnenie
-      return true;
-    }
-    if (_rPl && _rPl.classList.contains('show')) { return true; }  // Plnenie je domov — back nič
-  }
-
-  // 13. Lekárne overlay
-  el = document.getElementById('lk-overlay');
-  if (el && el.classList.contains('show')) { closeLekarne(); return true; }
-
-  // 14. Panely — História / Rebríček / Plnenie / Okresy / Tuyory / Lonelix / Kalendár (reprezentant)
-  //     (Okresy, Tuyory a Lonelix tu predtým chýbali → systémové „späť" ich nevedelo zavrieť.)
-  var panels = ['hist-overlay', 'lb-overlay', 'rep-plnenie-overlay', 'okresy-overlay', 'tuyory-overlay', 'lonelix-overlay', 'apixaban-overlay', 'golem-cal-overlay'];
-  // Nástenka je samostatný overlay (všetky línie) — systémové „späť“ ju zavrie ako prvú
-  try { var _nstOv = document.getElementById('nastenka-overlay'); if (_nstOv && _nstOv.classList.contains('show')) { closeNastenka(); return; } } catch(e){}
-  for (var i = 0; i < panels.length; i++) {
-    el = document.getElementById(panels[i]);
-    if (el && el.classList.contains('show')) {
-      var prevPanel = _panelStack.pop();
-      if (prevPanel) {
-        _panelShow(prevPanel, true); // isBack=true — neplní stack, naviguje späť
-      } else {
-        closeAllPanels();
-      }
-      return true;
-    }
-  }
-
-  // 15. Gyn línia — in-place navigácia (gyn nepoužíva .app overlaye, renderuje do #gyn-content)
-  var _gv = document.getElementById('gyn-view');
-  if (_gv && _gv.classList.contains('show')) {
-    // 14a. Detail reprezentanta (manažér) → späť na zoznam
-    if (typeof GYN_APP !== 'undefined' && GYN_APP && GYN_APP.detailLogin) { gynCloseRepDetail(); return true; }
-    // 14b. Iný tab než Plnenie (Návštevy/Rebríček/Lekárne/Aktivita) → späť na Plnenie
-    if (typeof GYN_APP !== 'undefined' && GYN_APP && GYN_APP.nav && GYN_APP.nav !== 'plnenie') { gynNavTo('plnenie'); return true; }
-  }
-
   return false;
 }
 
