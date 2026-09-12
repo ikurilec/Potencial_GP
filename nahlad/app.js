@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.7';
+var APP_VERSION = '2.87.8';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -4499,6 +4499,13 @@ function dnesHomeLoadHtml(popis) {
   }
   return dnesSkeletonHtml(popis);
 }
+// Zoznam reprezentantov ešte bez dát (plnenie/roster sa načítava) — predtým
+// rovnaký blok skopírovaný na dvoch miestach (manažér aj gyn zoznam repov).
+function mgrRepListLoadingHtml() {
+  return '<div style="text-align:center;padding:44px 16px;color:#94A3B8">' +
+    '<div style="width:30px;height:30px;border:3px solid #E2E8F0;border-top-color:#0C1E35;border-radius:50%;animation:gynCalSpin .8s linear infinite;margin:0 auto 12px"></div>' +
+    '<div style="font-size:14px;font-weight:600">Načítavam reprezentantov…</div></div>';
+}
 
 // Sused nado mnou a podo mnou — nech sa reprezentant vie porovnať s tým,
 // koho doháňa, aj s tým, kto dobieha jeho.
@@ -8320,12 +8327,14 @@ function getSession() {
       return null;
     }
     if(data.session_expires_at && Date.parse(data.session_expires_at) <= Date.now()) {
+      try { localStorage.setItem('potencial_gp_session_expired_msg', '1'); } catch(e){}
       clearSession();
       return null;
     }
     // Kontrola 12 hodin necinnosti
     var maxAge = 12 * 60 * 60 * 1000; // 12 hodin v ms
     if(data.loginTime && (Date.now() - data.loginTime) > maxAge) {
+      try { localStorage.setItem('potencial_gp_session_expired_msg', '1'); } catch(e){}
       clearSession();
       return null;
     }
@@ -8844,6 +8853,19 @@ function reagilaRevealAfterPaint(){
   setTimeout(reagilaRevealApp, 1500);
 }
 
+// Časovanie „vedľajších" úloh po prihlásení (modaly, rebríček, preload) —
+// zdieľané medzi manažérskou a reprezentantskou vetvou loginSuccess() nižšie,
+// aby budúca úprava jedného čísla nezabudla na súrodenca. `plnenieApplyDefaultPeriod`
+// (2500 mgr / 1500 rep) a avatar tip (1500 mgr / 4000 rep) sa medzi vetvami
+// zámerne LÍŠIA a nie sú v tomto zozname — nie je isté, že ide o chybu (mohli
+// byť ladené zvlášť pre iné množstvo modalov v tej-ktorej vetve), takže sa
+// neunifikujú naslepo bez merania na skutočnom zariadení.
+var LOGIN_FOLLOWUP_DELAY_MS = {
+  satoriWn: 600,
+  rebricek: 2000,
+  lkPreload: 300,
+  push: 3500
+};
 function loginSuccess(username, name, role, region, extra) {
   var user = { username: username, name: name, role: role, region: region || '' };
   // Reagila líniu označ (gp ostáva bez line). Golem render beží rovnako (kontroly sú !== 'gyn'),
@@ -8927,31 +8949,31 @@ function loginSuccess(username, name, role, region, extra) {
     mgrEnter(mgrRole);
     if(_isReagila) reagilaRevealAfterPaint();
     try { mgrDedupUnique(); } catch(e){}
-    setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(true);}else{checkMilestone();} }, 600);
+    setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(true);}else{checkMilestone();} }, LOGIN_FOLLOWUP_DELAY_MS.satoriWn);
     setTimeout(function(){
       lbFetchApprovedQ(function(){
         lbLoadData();
         lbPreloadPlnenie();
       });
-    }, 2000);
+    }, LOGIN_FOLLOWUP_DELAY_MS.rebricek);
     setTimeout(function(){
       plnenieApplyDefaultPeriod(REP_PL_STATE);
     }, 2500);
-    setTimeout(lkPreload, 300);
+    setTimeout(lkPreload, LOGIN_FOLLOWUP_DELAY_MS.lkPreload);
     // Notifikácie pre manažérov (nie admin)
     if (user.role !== 'admin') {
       checkNotifications();
       startNotifPolling();
     }
     // Ponuka push notifikácií (nie admin) — s odstupom aby neprekryla modaly
-    setTimeout(function(){ try { pushMaybePrompt(); } catch(e){} }, 3500);
+    setTimeout(function(){ try { pushMaybePrompt(); } catch(e){} }, LOGIN_FOLLOWUP_DELAY_MS.push);
     // One-time onboarding tip pre avatar — 4s delay aby WN/satori modal stihli skončiť
     setTimeout(function(){ try { hdrAvatarShowTipIfNeeded(); } catch(e){} }, 1500);
     appBootWaitForHomeData(user);
     return;
   }
   if(localStorage.getItem(TUTORIAL_KEY)){
-    setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(false);}else{checkMilestone();} }, 600);
+    setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(false);}else{checkMilestone();} }, LOGIN_FOLLOWUP_DELAY_MS.satoriWn);
   }
   usageEnterGolemHome(user);   // zaznamenaj úvodnú obrazovku (fix „0 s · nič nepozeral")
   initTutorial();
@@ -8971,18 +8993,18 @@ function loginSuccess(username, name, role, region, extra) {
       lbLoadData();
       lbPreloadPlnenie();
     });
-  }, 2000);
+  }, LOGIN_FOLLOWUP_DELAY_MS.rebricek);
   setTimeout(function(){
     plnenieApplyDefaultPeriod(REP_PL_STATE);
   }, 1500);
-  setTimeout(lkPreload, 300);
+  setTimeout(lkPreload, LOGIN_FOLLOWUP_DELAY_MS.lkPreload);
   // Agresívny dedup po prihlásení — eliminácia prípadných duplicitov
   setTimeout(function(){ try { mgrDedupUnique(); } catch(e){} }, 100);
   setTimeout(function(){ try { mgrDedupUnique(); } catch(e){} }, 600);
   // One-time onboarding tip pre avatar — 4s delay aby WN/satori modal stihli skončiť
   setTimeout(function(){ try { hdrAvatarShowTipIfNeeded(); } catch(e){} }, 4000);
   // Ponuka push notifikácií reprezentantovi
-  setTimeout(function(){ try { pushMaybePrompt(); } catch(e){} }, 3500);
+  setTimeout(function(){ try { pushMaybePrompt(); } catch(e){} }, LOGIN_FOLLOWUP_DELAY_MS.push);
   window.scrollTo({top: 0, behavior: 'instant'});
   // Predvolená záložka po prihlásení (ak si rep zvolil inú ako Formulár)
   try { applyDefaultTabIfRep(); } catch(e){}
@@ -9826,6 +9848,17 @@ function initLogin() {
     }
   }
   var session = getSession();
+  // Predtým sa vypršaná session (12h neaktivita / session_expires_at) vrátila
+  // na login OBRAZOVKU TICHO — človek nevedel, prečo sa zrazu musí prihlásiť
+  // znova. getSession() teraz pri vypršaní nastaví príznak, tu ho premeníme
+  // na krátku správu (rovnaký vzor ako správa o aktualizácii vyššie).
+  if(!session && localStorage.getItem('potencial_gp_session_expired_msg') === '1') {
+    localStorage.removeItem('potencial_gp_session_expired_msg');
+    var expSubEl = document.getElementById('login-card-sub');
+    if(expSubEl) {
+      expSubEl.innerHTML = '<span style="color:#94A3B8;font-weight:700">⏱️ Prihlásenie vypršalo</span><br><span style="color:#94A3B8;font-size:11px">Prihlás sa znova pre pokračovanie</span>';
+    }
+  }
   if(session && session.username) usageTrack('app_open', '', 'štart appky · rola: ' + (session.role || ''));
   if(session && session.username && session.line === 'gyn') {
     document.querySelector('.app').style.visibility = 'visible';
@@ -12038,6 +12071,11 @@ function gynLbPreload() {
 
 // Preload — pharma dáta pre všetky kombinácie produkt × oblast × Q
 function gynPreloadAllPharma() {
+  // F0 (boot audit): predtým chýbal appLineCapture/active guard, ktorý má
+  // sesterská gynPreloadAllQuarters vyššie — 240 požiadaviek bežalo ďalej aj
+  // po prepnutí línie, zapratávalo spoločnú frontu (APP_REQUEST_QUEUE, max 2
+  // súbežné) cudzími požiadavkami z línie, ktorú používateľ už opustil.
+  var preloadCtx = appLineCapture();
   var productNames = {
     'escapelle':'Escapelle','levosert':'Levosert','ryeqo':'Ryeqo','lenzetto':'Lenzetto',
     'drovelis':'Drovelis','belara':'Belara','daylette':'Daylette','daylla':'Daylla',
@@ -12067,6 +12105,7 @@ function gynPreloadAllPharma() {
   var concurrency = 5;
   var idx = 0;
   function next() {
+    if(!appLineContextActive(preloadCtx)) return;   // používateľ medzičasom opustil túto líniu
     if(idx >= queue.length) return;
     var task = queue[idx++];
     GYN_PHARMA_STATE.loading[task.key] = true;
@@ -12078,6 +12117,7 @@ function gynPreloadAllPharma() {
     ), undefined, 12000, 'background')
       .then(function(resp){
         delete GYN_PHARMA_STATE.loading[task.key];
+        if(!appLineContextActive(preloadCtx)) return;
         if(resp && resp.ok) {
           GYN_PHARMA_STATE.cache[task.key] = resp;
           gynCacheWrite(gynPharmaCacheKey(task.produkt, task.oblast, task.kvartal), resp);
@@ -12086,6 +12126,7 @@ function gynPreloadAllPharma() {
       })
       .catch(function(){
         delete GYN_PHARMA_STATE.loading[task.key];
+        if(!appLineContextActive(preloadCtx)) return;
         next();
       });
   }
@@ -17508,7 +17549,7 @@ function mgrRenderList(){
     var nameEsc = mgrEscape(name);
     var data = MGR_STATE.reps[u];
     if(!data){
-      return '<div class="mgr-card" style="opacity:.6"><div class="mgr-avatar" style="background:#CBD5E1">'+mgrInitials(name)+'</div><div class="mgr-body"><div class="mgr-name">'+nameEsc+'</div><div class="mgr-meta"><span class="mgr-dot none"></span>Načítavam...</div></div><div class="mgr-chev">›</div></div>';
+      return '<div class="mgr-card" style="opacity:.6"><div class="mgr-avatar" style="background:#CBD5E1">'+mgrInitials(name)+'</div><div class="mgr-body"><div class="mgr-name">'+nameEsc+'</div><div class="mgr-meta"><span class="dnes-spin" style="width:9px;height:9px;margin-right:4px"></span>Načítavam...</div></div><div class="mgr-chev">›</div></div>';
     }
     if(data.error){
       return '<div class="mgr-card"><div class="mgr-avatar" style="background:linear-gradient(135deg,#DC2626,#991B1B)">'+mgrInitials(name)+'</div><div class="mgr-body"><div class="mgr-name">'+nameEsc+'</div><div class="mgr-meta"><span class="mgr-dot err"></span>Chyba pri načítaní zo Sheets</div><div class="mgr-counts">Skontroluj pripojenie a skús obnoviť</div></div><div class="mgr-chev">›</div></div>';
@@ -17583,9 +17624,7 @@ function mgrRenderList(){
     _mgrListEl.innerHTML = html;
   } else if (!MGR_STATE.repsLoaded || !REP_LIST_STATE.loaded) {
     // Dáta sa ešte načítavajú → loading (nie prázdne „Žiadni reprezentanti")
-    _mgrListEl.innerHTML = '<div style="text-align:center;padding:44px 16px;color:#94A3B8">' +
-      '<div style="width:30px;height:30px;border:3px solid #E2E8F0;border-top-color:#0C1E35;border-radius:50%;animation:gynCalSpin .8s linear infinite;margin:0 auto 12px"></div>' +
-      '<div style="font-size:14px;font-weight:600">Načítavam reprezentantov…</div></div>';
+    _mgrListEl.innerHTML = mgrRepListLoadingHtml();
   } else {
     _mgrListEl.innerHTML = mkEmpty('people', 'Žiadni reprezentanti', '');
   }
@@ -24498,9 +24537,7 @@ function plnenieRenderRepList() {
   if (reps.length === 0) {
     // Dáta (plnenie alebo roster) sa ešte načítavajú → loading namiesto „Žiadni reprezentanti".
     if (!PL_STATE.loaded || !MGR_STATE.repsLoaded) {
-      listEl.innerHTML = '<div style="text-align:center;padding:44px 16px;color:#94A3B8">' +
-        '<div style="width:30px;height:30px;border:3px solid #E2E8F0;border-top-color:#0C1E35;border-radius:50%;animation:gynCalSpin .8s linear infinite;margin:0 auto 12px"></div>' +
-        '<div style="font-size:14px;font-weight:600">Načítavam reprezentantov…</div></div>';
+      listEl.innerHTML = mgrRepListLoadingHtml();
     } else {
       listEl.innerHTML = mkEmpty('people', 'Žiadni reprezentanti', '');
     }
@@ -26835,7 +26872,7 @@ function repPlnenieRenderLoading() {
   var prodsEl = document.getElementById('rep-pl-prods');
   if (prodsEl) prodsEl.innerHTML = skelRepPl();
   var totalCardEl = document.getElementById('rep-pl-total-card');
-  if (totalCardEl) totalCardEl.innerHTML = '<div class="total-lbl">Môj plán · ' + plnenieQLabel(REP_PL_STATE.q, REP_PL_STATE.year) + '</div><div class="total-val none">—</div><div class="total-money">Načítavam...</div>';
+  if (totalCardEl) totalCardEl.innerHTML = '<div class="total-lbl">Môj plán · ' + plnenieQLabel(REP_PL_STATE.q, REP_PL_STATE.year) + '</div><div class="total-val none">—</div><div class="total-money"><span class="dnes-spin" style="width:9px;height:9px;margin-right:4px;vertical-align:-1px"></span>Načítavam...</div>';
 }
 
 function repPlnenieRender() {
