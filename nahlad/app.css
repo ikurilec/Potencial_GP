@@ -114,10 +114,16 @@
   /* Gyn má tmavú hlavičku → pás cez notch tiež tmavý (biele hodiny/batéria ostanú čitateľné) */
   body.gyn-line{--sat-bg:var(--color-navy)}
   .app{max-width:660px;margin:0 auto;visibility:hidden}
-  .hdr{background:linear-gradient(135deg,var(--color-navy) 0%,#13294B 55%,var(--color-navy) 100%);border-radius:var(--radius-xl);padding:10px 20px 10px;margin-bottom:10px;box-shadow:0 12px 32px rgba(12,30,53,.35),0 4px 12px rgba(37,99,235,.18),inset 0 1px 0 rgba(255,255,255,.08);position:relative;overflow:hidden;min-height:60px}
+  /* F6 krok 5: .hdr a .gyn-mgr-hdr mali BYTOVO identický vonkajší kontajner
+     (gradient/radius/padding/shadow/pseudo-elementy) v dvoch paralelných CSS
+     blokoch — zdieľaný selektor, žiadna vizuálna zmena. Vnútorný layout
+     (.hdr-row vs .gyn-mgr-hdr-row) sa NEZLUČUJE — ten sa reálne líši
+     (gyn má meniny/narodeniny v hlavičke, iný flex layout), to je zámerné
+     a vyžaduje vlastné testovacie kolo, nie mechanický krok. */
+  .hdr,.gyn-mgr-hdr{background:linear-gradient(135deg,var(--color-navy) 0%,#13294B 55%,var(--color-navy) 100%);border-radius:var(--radius-xl);padding:10px 20px 10px;margin-bottom:10px;box-shadow:0 12px 32px rgba(12,30,53,.35),0 4px 12px rgba(37,99,235,.18),inset 0 1px 0 rgba(255,255,255,.08);position:relative;overflow:hidden;min-height:60px}
   .hdr-logo-wrap{background:rgba(255,255,255,0.12);border-radius:var(--radius-base);padding:8px 10px;display:flex;align-items:center;justify-content:center;position:absolute;right:-1px;top:50%;transform:translateY(-50%);z-index:10}
-  .hdr::before{content:'';position:absolute;top:-100px;right:-60px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(59,130,246,.18),transparent 65%);pointer-events:none}
-  .hdr::after{content:'';position:absolute;bottom:-80px;left:-40px;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(91,141,184,.10),transparent 65%);pointer-events:none}
+  .hdr::before,.gyn-mgr-hdr::before{content:'';position:absolute;top:-100px;right:-60px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(59,130,246,.18),transparent 65%);pointer-events:none}
+  .hdr::after,.gyn-mgr-hdr::after{content:'';position:absolute;bottom:-80px;left:-40px;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(91,141,184,.10),transparent 65%);pointer-events:none}
   /* Tri stĺpce: menu vľavo, informácie v strede, nastavenia a avatar vpravo.
      Stredný stĺpec je centrovaný v rámci hlavičky, nie zarovnaný doľava. */
   .hdr-row{display:flex;align-items:center;gap:10px;position:relative;z-index:1;min-height:60px}
@@ -2969,9 +2975,7 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   .gyn-lb-card{background:#fff;border-radius:var(--radius-lg);overflow:hidden;margin-top:4px;box-shadow:0 2px 8px rgba(12,30,53,.06),0 0 0 1px rgba(12,30,53,.04)}
   .gyn-coming{background:#fff;border-radius:var(--radius-lg);padding:32px 16px;text-align:center;box-shadow:0 1px 3px rgba(12,30,53,.07)}
   .gyn-coming p{font-size:14px;color:var(--color-text-muted);margin:8px 0 0}
-  .gyn-mgr-hdr{background:linear-gradient(135deg,var(--color-navy) 0%,#13294B 55%,var(--color-navy) 100%);border-radius:var(--radius-xl);padding:10px 20px 10px;margin:0 0 10px;box-shadow:0 12px 32px rgba(12,30,53,.35),0 4px 12px rgba(37,99,235,.18),inset 0 1px 0 rgba(255,255,255,.08);position:relative;overflow:hidden;min-height:60px}
-  .gyn-mgr-hdr::before{content:'';position:absolute;top:-100px;right:-60px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(59,130,246,.18),transparent 65%);pointer-events:none}
-  .gyn-mgr-hdr::after{content:'';position:absolute;bottom:-80px;left:-40px;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(91,141,184,.10),transparent 65%);pointer-events:none}
+  /* .gyn-mgr-hdr vonkajší kontajner presunutý hore, zdieľaný s .hdr (F6 krok 5). */
   .gyn-mgr-hdr-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;position:relative;z-index:1}
   .gyn-mgr-hdr-title{font-size:19px;font-weight:700;color:#fff;line-height:1.1;letter-spacing:.01em;font-family:var(--font-display);text-shadow:0 1px 2px rgba(0,0,0,.25)}
   .gyn-mgr-hdr-sub{font-size:10px;color:#7AABCC;margin-top:2px;letter-spacing:.04em;font-weight:500}
