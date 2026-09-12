@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.73';
+var APP_VERSION = '2.85.74';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -32079,11 +32079,11 @@ function downloadAllReportsPdf() {
 
   // Kontrola či sú dáta načítané
   if (!MGR_STATE.repsLoaded) {
-    alert('Dáta návštev sa ešte načítavajú. Počkaj chvíľu a skús znova.');
+    mgrShowToast('Dáta návštev sa ešte načítavajú. Počkaj chvíľu a skús znova.');
     return;
   }
   if (!PL_STATE.qCache[p.q]) {
-    alert('Dáta plnenia za Q' + p.q + ' sa ešte načítavajú. Počkaj chvíľu a skús znova.');
+    mgrShowToast('Dáta plnenia za Q' + p.q + ' sa ešte načítavajú. Počkaj chvíľu a skús znova.');
     return;
   }
 
@@ -34232,7 +34232,7 @@ function lkPromptOk() {
 }
 
 function lkFilterSavePreset() {
-  if (lkFilterActiveCount() === 0) { alert('Najprv navoľ aspoň jedno kritérium, potom ho môžeš uložiť.'); return; }
+  if (lkFilterActiveCount() === 0) { mgrShowToast('Najprv navoľ aspoň jedno kritérium, potom ho môžeš uložiť.'); return; }
   lkPrompt('Uložiť filter', 'Zadaj názov, pod ktorým si filter uložíš.', 'Napr. Komárno – ponuka krému', '', function(name) {
     var snap = lkFilterSnapshot();
     var arr = lkPresetLoad().filter(function(p) { return p.name !== name; });
