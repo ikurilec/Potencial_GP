@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.0';
+var APP_VERSION = '2.87.1';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -282,6 +282,11 @@ function dsIsStale(ts, maxAgeMs) {
 // cache chýba, je staršia než maxAgeMs, alebo si niekto vyžiadal refresh().
 // Jeden kľúč = najviac jeden bežiaci fetch naraz (duplicitné volania počas
 // toho istého fetchu sa nezdvojujú).
+//
+// Pre miesta, ktoré si fetch riadia samé (napr. Plnenie — viac kvartálov
+// naraz, vlastný watchdog a poradie priorít, o ktoré sa DataStore nestará),
+// slúži DataStore.set(key, data, {extra}) — zapíše dáta a vráti true/false,
+// či sa oproti predošlému stavu reálne zmenili (rovnaký diff ako get()).
 var DataStore = (function () {
   var inFlight = {}; // kľúč -> true, kým preň beží fetch
 
@@ -297,21 +302,34 @@ var DataStore = (function () {
     return { status: stale ? 'stale' : 'fresh', data: entry.data };
   }
 
+  // Zapíš dáta, ktoré appka získala VLASTNÝM fetchom (napr. Plnenie — má vlastný
+  // watchdog a poradie kvartálov, o ktoré sa DataStore nestará). Detekcia zmeny
+  // je rovnaká ako pri get()/fetchAndStore (JSON.stringify voči predošlému
+  // stavu) — jeden diff mechanizmus pre celú appku, nie kópia v každom module.
+  // Vráti true, ak sa dáta oproti predošlému stavu zmenili. opts.extra sa
+  // pripojí k uloženému záznamu (napr. predpočítané agregáty, ktoré Domov
+  // číta priamo z localStorage bez prechodu cez stavový objekt modulu).
+  function set(key, data, opts) {
+    opts = opts || {};
+    var before = readEntry(key);
+    var changed = !before || JSON.stringify(before.data) !== JSON.stringify(data);
+    var envelope = { data: data };
+    if (opts.extra) { for (var k in opts.extra) { if (opts.extra.hasOwnProperty(k)) envelope[k] = opts.extra[k]; } }
+    dsWrite(key, envelope);
+    return changed;
+  }
+
   function fetchAndStore(key, opts) {
     if (inFlight[key]) return;
     inFlight[key] = true;
-    var before = readEntry(key);
+    var wasEmpty = !readEntry(key);
     Promise.resolve()
       .then(function () { return opts.fetcher(); })
       .then(function (data) {
         delete inFlight[key];
         if (data === undefined || data === null) return;
-        // Hash namiesto plného JSON reťazca pri veľkých payloadoch by bol rýchlejší,
-        // ale JSON.stringify porovnanie je presne to, čo appka na tento účel používa
-        // už inde (_plHashData a pod.) — jednotné, overené správanie, nie nová trieda chyby.
-        var changed = !before || JSON.stringify(before.data) !== JSON.stringify(data);
-        dsWrite(key, { data: data });
-        if (changed && opts.onFresh) opts.onFresh(data, { wasEmpty: !before });
+        var changed = set(key, data);
+        if (changed && opts.onFresh) opts.onFresh(data, { wasEmpty: wasEmpty });
       })
       .catch(function (err) {
         delete inFlight[key];
@@ -340,7 +358,7 @@ var DataStore = (function () {
     try { localStorage.removeItem(key); } catch (e) {}
   }
 
-  return { get: get, refresh: refresh, invalidate: invalidate };
+  return { get: get, set: set, refresh: refresh, invalidate: invalidate };
 })();
 
 // ── PUSH NOTIFIKÁCIE (Firebase Cloud Messaging) ──
@@ -22127,17 +22145,15 @@ var _PL_LS_V = 'v1';
 function _plLineTag() { var s = (typeof getSession==='function') ? getSession() : null; return (s && s.line) ? s.line : 'gp'; }
 function _plLsKey(year, q) { return 'pl_c_' + _PL_LS_V + '_' + _plLineTag() + '_' + year + '_' + q; }
 function _plRepLsKey(uname, year, q) { return 'pl_rc_' + _PL_LS_V + '_' + _plLineTag() + '_' + (uname || '_') + '_' + year + '_' + q; }
-function _plHashData(data) {
-  try { return JSON.stringify(data || null); }
-  catch(e) { return String(Date.now()); }
-}
 function _plLsLoad(key) {
   var p = dsRead(key);
-  if (p && p.data && !p.hash) p.hash = _plHashData(p.data);
   return (p && p.data) ? p : null;
 }
-function _plLsSave(key, data, agg, hash) {
-  dsWrite(key, { data: data, agg: agg, hash: hash || _plHashData(data) });
+// Zmena dát sa deteguje priamym JSON.stringify porovnaním voči tomu, čo už je
+// v pamäti (PL_STATE.qCache[q].data) — rovnaký princíp ako DataStore.set nižšie,
+// bez samostatného hash poľa (jedna menej vec, ktorú treba držať v synchrone).
+function _plLsSave(key, data, agg) {
+  dsWrite(key, { data: data, agg: agg });
 }
 
 function plnenieDisplayName(rawKey) {
@@ -23341,10 +23357,7 @@ function plnenieLoadAllQuarters() {
       var resp = MOCK_PLNENIE['Q' + q];
       if (resp) {
         var agg = plnenieBuildAggregates(resp, q);
-        var hash = _plHashData(resp);
-        var prev = PL_STATE.qCache[q];
-        var changed = !prev || prev.hash !== hash;
-        PL_STATE.qCache[q] = { data: resp, aggregates: agg, hash: hash };
+        PL_STATE.qCache[q] = { data: resp, aggregates: agg };
         try { dnesRefreshIfOpen(); } catch(e){}
         if (q === PL_STATE.q) {
           PL_STATE.data = resp;
@@ -23369,7 +23382,7 @@ function plnenieLoadAllQuarters() {
     if (PL_STATE.qCache[q]) return; // už máme z predchádzajúceho loadu
     var cached = _plLsLoad(_plLsKey(year, q));
     if (cached) {
-      PL_STATE.qCache[q] = { data: cached.data, aggregates: plnenieBuildAggregates(cached.data, q), hash: cached.hash };
+      PL_STATE.qCache[q] = { data: cached.data, aggregates: plnenieBuildAggregates(cached.data, q) };
       if (q === PL_STATE.q) {
         PL_STATE.data = cached.data;
         PL_STATE.aggregates = PL_STATE.qCache[q].aggregates;
@@ -23420,12 +23433,9 @@ function plnenieLoadAllQuarters() {
         if(!active()) return;
         if (!resp || !resp.ok) throw new Error('No data for Q' + q);
         var agg = plnenieBuildAggregates(resp, q);
-        var hash = _plHashData(resp);
-        var prev = PL_STATE.qCache[q];
-        var changed = !prev || prev.hash !== hash;
-        PL_STATE.qCache[q] = { data: resp, aggregates: agg, hash: hash };
+        var changed = DataStore.set(_plLsKey(year, q), resp, { extra: { agg: agg } });
+        PL_STATE.qCache[q] = { data: resp, aggregates: agg };
         try { dnesRefreshIfOpen(); } catch(e){}
-        _plLsSave(_plLsKey(year, q), resp, agg, hash); // ulož do localStorage
         // Ak práve zobrazujeme tento Q, hneď renderuj
         if (q === PL_STATE.q) {
           var wasShowingData = !!PL_STATE.loaded;
@@ -26376,7 +26386,7 @@ function repPlnenieLoad() {
   qs.forEach(function(q) {
     var cached = _plLsLoad(_plRepLsKey(uname, year, q));
     if (cached) {
-      REP_PL_STATE.qCache[q] = { data: cached.data, aggregates: plnenieBuildAggregates(cached.data, q, [uname]), hash: cached.hash };
+      REP_PL_STATE.qCache[q] = { data: cached.data, aggregates: plnenieBuildAggregates(cached.data, q, [uname]) };
       if (q === REP_PL_STATE.q) {
         REP_PL_STATE.data = cached.data;
         REP_PL_STATE.aggregates = REP_PL_STATE.qCache[q].aggregates;
@@ -26399,12 +26409,9 @@ function repPlnenieLoad() {
         if(!active()) return;
         if (!resp || !resp.ok) throw new Error('No data Q' + q);
         var agg = plnenieBuildAggregates(resp, q, [uname]);
-        var hash = _plHashData(resp);
-        var prev = REP_PL_STATE.qCache[q];
-        var changed = !prev || prev.hash !== hash;
-        REP_PL_STATE.qCache[q] = { data: resp, aggregates: agg, hash: hash };
+        var changed = DataStore.set(_plRepLsKey(uname, year, q), resp, { extra: { agg: agg } });
+        REP_PL_STATE.qCache[q] = { data: resp, aggregates: agg };
         try { dnesRefreshIfOpen(); } catch(e){}
-        _plLsSave(_plRepLsKey(uname, year, q), resp, agg, hash); // ulož do localStorage
         if (q === REP_PL_STATE.q) {
           var wasShowingData = !!REP_PL_STATE.loaded;
           REP_PL_STATE.data = resp;
