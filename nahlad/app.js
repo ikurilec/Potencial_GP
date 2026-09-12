@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.86.5';
+var APP_VERSION = '2.87.0';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -257,6 +257,91 @@ function dsAge(ts) {
 function dsIsStale(ts, maxAgeMs) {
   return dsAge(ts) > maxAgeMs;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  DataStore — JEDNA dátová vrstva (F2-1 z vykonávacieho plánu)
+// ═══════════════════════════════════════════════════════════════════════════
+// Nahrádza šesť nezávislých SWR implementácií (história, gyn, plnenie, pharma
+// graf, pharma okresy, lekárne roster) — každá vznikla zvlášť, keď niečo
+// bolelo, s drobnými (a niekedy chybnými) rozdielmi medzi kópiami. Presne
+// trieda chyby, akú appka už raz mala s diakritikou (F0-4, tri nezávislé
+// kópie) — a akú sme dnes naživo opravovali pri kvartáli v Plnení, keď
+// dve nezávislé miesta kontrolovali tú istú vec na pretekoch.
+//
+// Použitie:
+//   var r = DataStore.get('plnenie_2026_3', {
+//     fetcher:  function(){ return appQueuedFetchJson(url, undefined, undefined, 'critical'); },
+//     maxAgeMs: 30 * 60 * 1000,
+//     onFresh:  function(data, meta){ ...prekresli... }   // zavolá sa LEN keď dáta reálne prišli/zmenili sa
+//   });
+//   // r.status: 'empty' | 'stale' | 'fresh'   r.data: čo je v cache (alebo null)
+//
+// Vždy vráti cache OKAMŽITE (synchrónne), bez ohľadu na vek — žiadny "Načítavam"
+// skeleton, ak niečo existuje. Fetch beží na pozadí (cez appQueuedFetchJson,
+// takže rešpektuje frontu a prioritu critical/background) len keď treba:
+// cache chýba, je staršia než maxAgeMs, alebo si niekto vyžiadal refresh().
+// Jeden kľúč = najviac jeden bežiaci fetch naraz (duplicitné volania počas
+// toho istého fetchu sa nezdvojujú).
+var DataStore = (function () {
+  var inFlight = {}; // kľúč -> true, kým preň beží fetch
+
+  function readEntry(key) {
+    var raw = dsRead(key);
+    return (raw && raw.data !== undefined) ? raw : null;
+  }
+
+  function resultFor(key, maxAgeMs) {
+    var entry = readEntry(key);
+    if (!entry) return { status: 'empty', data: null };
+    var stale = dsIsStale(entry.ts, (maxAgeMs == null) ? 0 : maxAgeMs);
+    return { status: stale ? 'stale' : 'fresh', data: entry.data };
+  }
+
+  function fetchAndStore(key, opts) {
+    if (inFlight[key]) return;
+    inFlight[key] = true;
+    var before = readEntry(key);
+    Promise.resolve()
+      .then(function () { return opts.fetcher(); })
+      .then(function (data) {
+        delete inFlight[key];
+        if (data === undefined || data === null) return;
+        // Hash namiesto plného JSON reťazca pri veľkých payloadoch by bol rýchlejší,
+        // ale JSON.stringify porovnanie je presne to, čo appka na tento účel používa
+        // už inde (_plHashData a pod.) — jednotné, overené správanie, nie nová trieda chyby.
+        var changed = !before || JSON.stringify(before.data) !== JSON.stringify(data);
+        dsWrite(key, { data: data });
+        if (changed && opts.onFresh) opts.onFresh(data, { wasEmpty: !before });
+      })
+      .catch(function (err) {
+        delete inFlight[key];
+        if (opts.onError) opts.onError(err);
+      });
+  }
+
+  // Hlavné čítanie — SWR. Cache sa vráti hneď; fetch (ak treba) beží na pozadí.
+  function get(key, opts) {
+    opts = opts || {};
+    var res = resultFor(key, opts.maxAgeMs);
+    var needsFetch = opts.fetcher && (res.status !== 'fresh');
+    if (needsFetch) fetchAndStore(key, opts);
+    return res;
+  }
+
+  // Vynúti fetch bez ohľadu na vek cache (napr. potiahnutie nadol / manuálny refresh).
+  // Cache sa aj tak vráti hneď — len sa fetch spustí, aj keby bol status 'fresh'.
+  function refresh(key, opts) {
+    var res = resultFor(key, opts && opts.maxAgeMs);
+    if (opts && opts.fetcher) fetchAndStore(key, opts);
+    return res;
+  }
+
+  function invalidate(key) {
+    try { localStorage.removeItem(key); } catch (e) {}
+  }
+
+  return { get: get, refresh: refresh, invalidate: invalidate };
+})();
 
 // ── PUSH NOTIFIKÁCIE (Firebase Cloud Messaging) ──
 // Reprezentant po prihlásení dostane jemnú ponuku zapnúť upozornenia. Po povolení
