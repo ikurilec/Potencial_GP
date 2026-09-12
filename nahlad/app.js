@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.86.0';
+var APP_VERSION = '2.86.1';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -3299,8 +3299,7 @@ function loadHistoryItems(username) {
     _histAllItems = _lsHist;
     updateBadge(_histAllItems.length, false);
     // Background refresh — aktualizuje _histAllItems a localStorage
-    fetch(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username)))
-      .then(function(r){ return r.json(); })
+    appQueuedFetchJson(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username)), undefined, undefined, 'background')
       .then(function(rows) {
         if (!Array.isArray(rows) || rows.length === 0) return;
         _histAllItems = _histParseRawRows(rows);
@@ -3311,8 +3310,7 @@ function loadHistoryItems(username) {
     return Promise.resolve(_histAllItems);
   }
 
-  _histPromise = fetch(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username)))
-    .then(function(r){ return r.json(); })
+  _histPromise = appQueuedFetchJson(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username)), undefined, undefined, 'critical')
     .then(function(rows) {
       _histAllItems = _histParseRawRows(rows);
       _histLsSave(username, _histAllItems);
@@ -3344,8 +3342,7 @@ function gpHistForceRefresh(username, done) {
   function finish(){ try { if (typeof done === 'function') done(); } catch (e) {} }
   if (!username) { finish(); return; }
   _histPromise = null;
-  fetch(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username)))
-    .then(function (r) { return r.json(); })
+  appQueuedFetchJson(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username)), undefined, undefined, 'critical')
     .then(function (rows) {
       if (Array.isArray(rows)) {
         _histAllItems = _histParseRawRows(rows);
@@ -7069,8 +7066,7 @@ function settingsLoadDataDates(){
     if(usePrefetch && (key in cache)){ show(cache[key]); return; }
     if(dev || typeof notifUrl !== 'function'){ show(null); return; }
     try {
-      fetch(notifUrl('action=getConfig&key=' + encodeURIComponent('notif_' + key)))
-        .then(function(r){ return r.json(); })
+      appQueuedFetchJson(notifUrl('action=getConfig&key=' + encodeURIComponent('notif_' + key)), undefined, undefined, 'critical')
         .then(function(d){
           var ts = (d && d.ok && d.value) ? d.value : null;
           if(usePrefetch){ try { cache[key] = ts; } catch(e){} }   // golemovskú prefetch cache aktualizuj len v Goleme
@@ -7721,9 +7717,7 @@ function pingLogin(username){
   if(!username) return;
   var session = getSession();
   var url = (session && session.line === 'gyn') ? gynScriptUrl('action=pingLogin&reprezentant=' + encodeURIComponent(username)) : scriptUrl('action=pingLogin&reprezentant=' + encodeURIComponent(username));
-  fetch(url, {
-    cache: 'no-store'
-  }).then(function(r){ return r.json(); }).then(function(data){
+  appQueuedFetchJson(url, { cache: 'no-store' }, undefined, 'background').then(function(data){
     // Uloži lekárne dáta do cache — eliminuje extra request pri otvorení
     if (data && data.lekarne && Array.isArray(data.lekarne)) {
       var lkUserKey = lkCacheKey(username);
@@ -11005,8 +10999,7 @@ function gynEnsureQuarterData(qq, onReady){
   if(cached){ gynPreprocessData(cached); GYN_APP.plCache[qq] = cached; if(onReady) setTimeout(onReady, 0); return; }
   if(GYN_APP.plLoading[qq]) return;
   GYN_APP.plLoading[qq] = true;
-  fetch(gynScriptUrl('action=getPlnenieAll&rok=' + GYN_APP.year + '&Q=' + qq), { cache:'no-store' })
-    .then(function(r){ return r.json(); })
+  appQueuedFetchJson(gynScriptUrl('action=getPlnenieAll&rok=' + GYN_APP.year + '&Q=' + qq), { cache:'no-store' }, undefined, 'critical')
     .then(function(d){
       delete GYN_APP.plLoading[qq];
       if(!d) return;
@@ -11355,8 +11348,7 @@ function gynEnsureRepPharma(region, products, onReady){
   var remaining = tasks.length, any = false;
   tasks.forEach(function(t){
     GYN_PHARMA_STATE.loading[t.key] = true;
-    fetch(gynScriptUrl('action=getPharmaData&oblast=' + encodeURIComponent(t.oblast) + '&produkt=' + encodeURIComponent(t.produkt) + '&kvartal=' + encodeURIComponent(t.kvartal)), { cache:'no-store' })
-      .then(function(r){ return r.json(); })
+    appQueuedFetchJson(gynScriptUrl('action=getPharmaData&oblast=' + encodeURIComponent(t.oblast) + '&produkt=' + encodeURIComponent(t.produkt) + '&kvartal=' + encodeURIComponent(t.kvartal)), { cache:'no-store' }, undefined, 'background')
       .then(function(resp){ delete GYN_PHARMA_STATE.loading[t.key]; if(resp && resp.ok){ GYN_PHARMA_STATE.cache[t.key] = resp; if(typeof gynCacheWrite === 'function') gynCacheWrite(gynPharmaCacheKey(t.produkt, t.oblast, t.kvartal), resp); any = true; } })
       .catch(function(){ delete GYN_PHARMA_STATE.loading[t.key]; })
       .then(function(){ remaining--; if(remaining === 0 && any && onReady) onReady(); });
@@ -12255,13 +12247,12 @@ function gynOpenProdSheet(prodLabel) {
         var key = prodLabel + '|' + oblast + '|' + kvartal;
         if(!GYN_PHARMA_STATE.cache[key] && !GYN_PHARMA_STATE.loading[key]) {
           GYN_PHARMA_STATE.loading[key] = true;
-          fetch(gynScriptUrl(
+          appQueuedFetchJson(gynScriptUrl(
             'action=getPharmaData' +
             '&oblast='  + encodeURIComponent(oblast) +
             '&produkt=' + encodeURIComponent(prodLabel) +
             '&kvartal=' + encodeURIComponent(kvartal)
-          ), { cache:'no-store' })
-            .then(function(r){ return r.json(); })
+          ), { cache:'no-store' }, undefined, 'critical')
             .then(function(resp){
               delete GYN_PHARMA_STATE.loading[key];
               if(resp && resp.ok) {
@@ -13080,12 +13071,12 @@ function gynPharmaLoad() {
   // Aktuálny Q: ak je v cache, znova nesťahuj — len doplníme chýbajúce kvartály pre trend.
   var fetchCurrent = cached
     ? Promise.resolve(cached)
-    : fetch(gynScriptUrl(
+    : appQueuedFetchJson(gynScriptUrl(
         'action=getPharmaData' +
         '&oblast='  + encodeURIComponent(GYN_PHARMA_STATE.oblast) +
         '&produkt=' + encodeURIComponent(GYN_PHARMA_STATE.produkt) +
         '&kvartal=' + encodeURIComponent(GYN_PHARMA_STATE.kvartal)
-      ), { cache:'no-store' }).then(function(r){ return r.json(); });
+      ), { cache:'no-store' }, undefined, 'critical');
 
   fetchCurrent.then(function(resp){
     if(!resp || !resp.ok) {
@@ -13100,12 +13091,12 @@ function gynPharmaLoad() {
       var existing = gynPharmaCachedOkresyForKvartal(resp, q, GYN_PHARMA_STATE.kvartal);
       return !(Array.isArray(existing) && existing.length > 0);
     }).map(function(q){
-      return fetch(gynScriptUrl(
+      return appQueuedFetchJson(gynScriptUrl(
         'action=getPharmaData' +
         '&oblast='  + encodeURIComponent(GYN_PHARMA_STATE.oblast) +
         '&produkt=' + encodeURIComponent(GYN_PHARMA_STATE.produkt) +
         '&kvartal=' + encodeURIComponent(q)
-      ), { cache:'no-store' }).then(function(r){ return r.json(); })
+      ), { cache:'no-store' }, undefined, 'background')
         .then(function(data){ return { kvartal: q, data: data }; })
         .catch(function(){ return { kvartal: q, data: null }; });
     });
@@ -13744,8 +13735,7 @@ function gynLkFetch(login, cb){
     if (cb) cb(mock);
     return;
   }
-  fetch(gynScriptUrl('action=getGynLekarne&login='+encodeURIComponent(login)+'&osloveneMonth='+encodeURIComponent(gynLkMonthKey())+'&_t='+Date.now()), { cache:'no-store' })
-    .then(function(r){ return r.json(); })
+  appQueuedFetchJson(gynScriptUrl('action=getGynLekarne&login='+encodeURIComponent(login)+'&osloveneMonth='+encodeURIComponent(gynLkMonthKey())+'&_t='+Date.now()), { cache:'no-store' }, undefined, 'critical')
     .then(function(d){ var rows=(d&&d.ok&&d.rows)?d.rows:[]; GYN_LK.cache[login]=rows; if(typeof gynCacheWrite==='function' && rows.length) gynCacheWrite('lk_'+login, rows); if(cb) cb(rows); })
     .catch(function(){ if(cb) cb(GYN_LK.cache[login]||[]); });
 }
@@ -16997,8 +16987,7 @@ function mgrLoadData(){
   // Pre AM West/East — najprv načítaj zoznam repov zo Sheets dynamicky
   if(MGR_STATE.dynamicRegion){
     var region = MGR_STATE.dynamicRegion; // 'west' alebo 'east'
-    fetch(scriptUrl('action=getReps&region=' + encodeURIComponent(region)))
-      .then(function(r){ return r.json(); })
+    appQueuedFetchJson(scriptUrl('action=getReps&region=' + encodeURIComponent(region)), undefined, undefined, 'critical')
       .then(function(reps){
         if(!Array.isArray(reps) || reps.length === 0){
           // Fallback na statický zoznam
@@ -17804,8 +17793,7 @@ function mgrApplyTuyoryAll(d){
 }
 function mgrLoadTuyory(){
   if (typeof IS_DEV !== 'undefined' && IS_DEV){ MGR_STATE.tuyoryByRep = MGR_STATE.tuyoryByRep || {}; return; }
-  fetch(scriptUrl('action=getAllTuyory'), { cache: 'no-store' })
-    .then(function(r){ return r.json(); })
+  appQueuedFetchJson(scriptUrl('action=getAllTuyory'), { cache: 'no-store' }, undefined, 'background')
     .then(function(d){ mgrApplyTuyoryAll(d); })
     .catch(function(){});
 }
@@ -17826,8 +17814,7 @@ function mgrApplyLonelixAll(d){
 }
 function mgrLoadLonelix(){
   if (typeof IS_DEV !== 'undefined' && IS_DEV){ MGR_STATE.lonelixByRep = MGR_STATE.lonelixByRep || {}; return; }
-  fetch(scriptUrl('action=getAllLonelix'), { cache: 'no-store' })
-    .then(function(r){ return r.json(); })
+  appQueuedFetchJson(scriptUrl('action=getAllLonelix'), { cache: 'no-store' }, undefined, 'background')
     .then(function(d){ mgrApplyLonelixAll(d); })
     .catch(function(){});
 }
@@ -17849,8 +17836,7 @@ function mgrApplyApixAll(d){
 }
 function mgrLoadApix(){
   if (typeof IS_DEV !== 'undefined' && IS_DEV){ MGR_STATE.apixByRep = MGR_STATE.apixByRep || {}; return; }
-  fetch(scriptUrl('action=getAllApixaban'), { cache: 'no-store' })
-    .then(function(r){ return r.json(); })
+  appQueuedFetchJson(scriptUrl('action=getAllApixaban'), { cache: 'no-store' }, undefined, 'background')
     .then(function(d){ mgrApplyApixAll(d); })
     .catch(function(){});
 }
@@ -20333,8 +20319,7 @@ function loadRepList(forceFullRoster) {
   if ((REP_LIST_STATE.loaded || REP_LIST_STATE.loading) && !forceFullRoster) return;
   if (forceFullRoster) REP_LIST_STATE.fullRosterRequested = true;
   REP_LIST_STATE.loading = true;
-  fetch(scriptUrl('action=getRepList' + (forceFullRoster ? '&fullLine=1' : '')), { cache: 'no-store' })
-    .then(function(r){ return r.json(); })
+  appQueuedFetchJson(scriptUrl('action=getRepList' + (forceFullRoster ? '&fullLine=1' : '')), { cache: 'no-store' }, 12000, 'critical')
     .then(function(data){
       REP_LIST_STATE.loading = false;
       if (data.ok && data.reps && data.reps.length) {
@@ -20961,8 +20946,7 @@ function prefetchNotifications() {
   NOTIF_TYPES.forEach(function(n) {
     var cfgKey = 'notif_' + n.key;
     var url = scriptUrl('action=getConfig&key=' + encodeURIComponent(cfgKey));
-    fetch(url)
-      .then(function(r){ return r.json(); })
+    appQueuedFetchJson(url, undefined, undefined, 'background')
       .then(function(d){
         NOTIF_PREFETCH_CACHE[n.key] = (d && d.ok && d.value) ? d.value : null;
       })
@@ -20987,8 +20971,7 @@ function checkNotifications() {
       }
       return;
     }
-    fetch(notifUrl('action=getConfig&key=' + encodeURIComponent('notif_' + n.key)))
-      .then(function(r){ return r.json(); })
+    appQueuedFetchJson(notifUrl('action=getConfig&key=' + encodeURIComponent('notif_' + n.key)), undefined, undefined, 'background')
       .then(function(d){
         var serverTs = (d && d.ok && d.value) ? d.value : null;
         // Zapamätaj dátum dát do localStorage (per línia) — používa ho plnenieDefaultPeriod
@@ -21017,8 +21000,7 @@ function startNotifPolling() {
     if (document.visibilityState !== 'visible') return;
     NOTIF_TYPES.forEach(function(n) {
       var lsKey = notifSeenKey(n.key);
-      fetch(notifUrl('action=getConfig&key=' + encodeURIComponent('notif_' + n.key)))
-        .then(function(r){ return r.json(); })
+      appQueuedFetchJson(notifUrl('action=getConfig&key=' + encodeURIComponent('notif_' + n.key)), undefined, undefined, 'background')
         .then(function(d){
           if (!d || !d.ok || !d.value) return;
           if (d.value !== (localStorage.getItem(lsKey) || '')) {
@@ -21039,8 +21021,7 @@ document.addEventListener('visibilitychange', function() {
   if (document.visibilityState === 'visible' && NOTIF_POLL_INTERVAL) {
     NOTIF_TYPES.forEach(function(n) {
       var lsKey = notifSeenKey(n.key);
-      fetch(notifUrl('action=getConfig&key=' + encodeURIComponent('notif_' + n.key)))
-        .then(function(r){ return r.json(); })
+      appQueuedFetchJson(notifUrl('action=getConfig&key=' + encodeURIComponent('notif_' + n.key)), undefined, undefined, 'background')
         .then(function(d){
           if (!d || !d.ok || !d.value) return;
           if (d.value !== (localStorage.getItem(lsKey) || '')) {
@@ -21239,8 +21220,8 @@ function lbMoveEnsure(urlFn, key, q, curPct, cb){
   if(typeof IS_DEV !== 'undefined' && IS_DEV){ st.loaded = true; st.prevPct = null; var devCallbacks=st.callbacks.splice(0); devCallbacks.forEach(function(fn){ try { fn(null); } catch(e){} }); return; }
   st.loading = true;
   Promise.all([
-    fetch(urlFn('action=getConfig&key=notif_predaje'), {cache:'no-store'}).then(function(r){return r.json();}).catch(function(){return null;}),
-    fetch(urlFn('action=getConfig&key=' + lbMoveConfigKey(q)), {cache:'no-store'}).then(function(r){return r.json();}).catch(function(){return null;})
+    appQueuedFetchJson(urlFn('action=getConfig&key=notif_predaje'), {cache:'no-store'}, undefined, 'critical').catch(function(){return null;}),
+    appQueuedFetchJson(urlFn('action=getConfig&key=' + lbMoveConfigKey(q)), {cache:'no-store'}, undefined, 'critical').catch(function(){return null;})
   ]).then(function(res){
     var curTs = (res[0] && res[0].ok && res[0].value) ? String(res[0].value) : '';
     if(curTs) curTs += lbMoveVersionSuffix(q);   // prechod k 22. prerolluje snapshot
@@ -22091,8 +22072,7 @@ function plnenieDataTsFetch(cb) {
   if (typeof IS_DEV !== 'undefined' && IS_DEV) { if (cb) cb(false); return; }
   if (typeof notifUrl !== 'function') { if (cb) cb(false); return; }
   var tag = (typeof notifLineTag === 'function') ? notifLineTag() : '';
-  fetch(notifUrl('action=getConfig&key=notif_predaje'))
-    .then(function(r){ return r.json(); })
+  appQueuedFetchJson(notifUrl('action=getConfig&key=notif_predaje'), undefined, undefined, 'critical')
     .then(function(d){
       var ts = (d && d.ok && d.value) ? String(d.value) : '';
       var prev = PLNENIE_DATA_TS[tag] || '';
@@ -22512,8 +22492,7 @@ function usageStatsLoad(rep, _retry) {
     settled = true;
     if (_usageLoadToken === myToken && USAGE_VIEW.line === line && USAGE_VIEW.currentRep === (rep || null)) usageRenderError();
   }, 15000);
-  fetch(url, { cache: 'no-store' })
-    .then(function(r){ return r.json(); })
+  appQueuedFetchJson(url, { cache: 'no-store' }, 14000, 'critical')
     .then(function(data){
       if (settled) return;
       settled = true;
@@ -23080,8 +23059,7 @@ function lkRenderRepFilters(login) {
     render(local);
     return;
   }
-  fetch(scriptUrl('action=getLekarneFilters&login=' + encodeURIComponent(login || '') + '&_t=' + Date.now()), { cache: 'no-store' })
-    .then(function(r) { return r.json(); })
+  appQueuedFetchJson(scriptUrl('action=getLekarneFilters&login=' + encodeURIComponent(login || '') + '&_t=' + Date.now()), { cache: 'no-store' }, undefined, 'critical')
     .then(function(d) {
       if (!d || !d.ok || !Array.isArray(d.rows)) { render([]); return; }
       render(d.rows.map(function(r) { var f = {}; try { f = JSON.parse(r.filter); } catch(e) {} return { name: r.nazov, filter: f }; }));
@@ -27311,14 +27289,13 @@ function pharmaAttachPrevDistrictsForCurrent(code, oblast, kvartal, resp, done) 
     done(resp);
     return;
   }
-  fetch(
+  appQueuedFetchJson(
     scriptUrl('action=getPharmaData'
       + '&oblast='  + encodeURIComponent(oblast)
       + '&produkt=' + encodeURIComponent(code)
       + '&kvartal=' + encodeURIComponent(prevKv)),
-    { cache: 'no-store' }
+    { cache: 'no-store' }, undefined, 'background'
   )
-    .then(function(r){ return r.json(); })
     .then(function(prevResp){
       if(prevResp && prevResp.ok && Array.isArray(prevResp.okresy)) {
         PHARMA_STATE.cache[prevKey] = prevResp;
@@ -27512,14 +27489,13 @@ function loadPharmaDataNetwork(code, oblast, kvartal) {
     return;
   }
 
-  fetch(
+  appQueuedFetchJson(
     scriptUrl('action=getPharmaData'
       + '&oblast='  + encodeURIComponent(oblast)
       + '&produkt=' + encodeURIComponent(code)
       + '&kvartal=' + encodeURIComponent(kvartal)),
-    { cache: 'no-store' }
+    { cache: 'no-store' }, undefined, 'critical'
   )
-    .then(function(r) { return r.json(); })
     .then(function(resp) {
       delete PHARMA_STATE.loading[cacheKey];
       if (resp.ok) {
@@ -27625,13 +27601,12 @@ function loadPharmaGrafData(code, oblast, callback) {
     return;
   }
 
-  fetch(
+  appQueuedFetchJson(
     scriptUrl('action=getPharmaGraf'
       + '&oblast='  + encodeURIComponent(oblast)
       + '&produkt=' + encodeURIComponent(code)),
-    { cache: 'no-store' }
+    { cache: 'no-store' }, undefined, 'critical'
   )
-    .then(function(r) { return r.json(); })
     .then(function(resp) {
       delete PHARMA_GRAF_STATE.loading[cacheKey];
       if (resp.ok && resp.rows && resp.rows.length >= 1) {
@@ -27660,13 +27635,12 @@ function loadPharmaGrafDataFresh(code, oblast, callback) {
     return;
   }
 
-  fetch(
+  appQueuedFetchJson(
     scriptUrl('action=getPharmaGraf'
       + '&oblast='  + encodeURIComponent(oblast)
       + '&produkt=' + encodeURIComponent(code)),
-    { cache: 'no-store' }
+    { cache: 'no-store' }, undefined, 'critical'
   )
-    .then(function(r) { return r.json(); })
     .then(function(resp) {
       delete PHARMA_GRAF_STATE.loading[cacheKey];
       if (resp.ok && resp.rows && resp.rows.length >= 1) {
@@ -28084,11 +28058,10 @@ function loadPharmaOkresGrafData(code, oblast, okres, callback) {
     callback(resp);
     return;
   }
-  fetch(scriptUrl('action=getPharmaOkresGraf'
+  appQueuedFetchJson(scriptUrl('action=getPharmaOkresGraf'
     + '&produkt=' + encodeURIComponent(code)
     + '&oblast='  + encodeURIComponent(oblast)
-    + '&okres='   + encodeURIComponent(okres)), { cache: 'no-store' })
-    .then(function(r) { return r.json(); })
+    + '&okres='   + encodeURIComponent(okres)), { cache: 'no-store' }, undefined, 'critical')
     .then(function(resp) {
       delete PHARMA_OKRES_STATE.loading[ck];
       if (resp.ok && resp.rows && resp.rows.length >= 2) {
@@ -30014,14 +29987,13 @@ function rptPharmaHasUsefulRows(resp) {
 
 function rptFetchPharmaDataDirect(code, oblast, kvartal) {
   var cacheKey = code + '_' + oblast + '_' + kvartal;
-  var req = fetch(
+  var req = appQueuedFetchJson(
     scriptUrl('action=getPharmaData'
       + '&oblast=' + encodeURIComponent(oblast)
       + '&produkt=' + encodeURIComponent(code)
       + '&kvartal=' + encodeURIComponent(kvartal)),
-    { cache: 'no-store' }
+    { cache: 'no-store' }, undefined, 'critical'
   )
-    .then(function(r) { return r.json(); })
     .then(function(resp) {
       if (resp && resp.ok) {
         PHARMA_STATE.cache[cacheKey] = resp;
@@ -33509,8 +33481,7 @@ function okresyPharmaTs() {
 function okresyPharmaTsFetch(cb) {
   if (typeof IS_DEV !== 'undefined' && IS_DEV) { cb(okresyPharmaTs()); return; }
   if (typeof notifUrl !== 'function') { cb(okresyPharmaTs()); return; }
-  fetch(notifUrl('action=getConfig&key=notif_pharma'), { cache: 'no-store' })
-    .then(function(r) { return r.json(); })
+  appQueuedFetchJson(notifUrl('action=getConfig&key=notif_pharma'), { cache: 'no-store' }, undefined, 'critical')
     .then(function(d) {
       var ts = (d && d.ok && d.value) ? String(d.value) : '';
       if (ts) { try { localStorage.setItem(settingsDateLsKey('pharma'), ts); } catch(e){} }
@@ -33582,14 +33553,13 @@ function okresyFetchCode(code, oblast, kvartal, reqId, cb, isPrev, forceNet) {
     else deliver(null);
   }
 
-  fetch(
+  appQueuedFetchJson(
     scriptUrl('action=getPharmaData'
       + '&oblast='  + encodeURIComponent(oblast)
       + '&produkt=' + encodeURIComponent(code)
       + '&kvartal=' + encodeURIComponent(kvartal)),
-    { cache: 'no-store' }
+    { cache: 'no-store' }, undefined, 'critical'
   )
-    .then(function(r) { return r.json(); })
     .then(function(resp) {
       if (resp && resp.ok && hasReal(resp)) {
         PHARMA_STATE.cache[cacheKey] = resp;
@@ -34028,8 +33998,7 @@ function lkLoadVariants(login, dataset) {
     if (d && d.classList.contains('show') && LK_DETAIL_OPEN_KEY) lkOpenDetail(LK_DETAIL_OPEN_KEY, true);
   };
   if (typeof IS_DEV !== 'undefined' && IS_DEV) { lkBuildDevVariants(dataset); done(); return; }
-  fetch(scriptUrl('action=getLekarneDetail&login=' + encodeURIComponent(login || '') + '&_t=' + Date.now()), { cache: 'no-store' })
-    .then(function(r) { return r.json(); })
+  appQueuedFetchJson(scriptUrl('action=getLekarneDetail&login=' + encodeURIComponent(login || '') + '&_t=' + Date.now()), { cache: 'no-store' }, undefined, 'background')
     .then(function(d) { if (d && d.ok && d.rows) lkIngestDetail(d.rows); done(); })
     .catch(function() { done(); });
 }
@@ -34262,8 +34231,7 @@ function lkPresetSync() {
   if (typeof IS_DEV !== 'undefined' && IS_DEV) return;
   var login = String(lkSessionUsername() || '');
   if (!login) return;
-  fetch(scriptUrl('action=getLekarneFilters&login=' + encodeURIComponent(login) + '&_t=' + Date.now()), { cache: 'no-store' })
-    .then(function(r) { return r.json(); })
+  appQueuedFetchJson(scriptUrl('action=getLekarneFilters&login=' + encodeURIComponent(login) + '&_t=' + Date.now()), { cache: 'no-store' }, undefined, 'background')
     .then(function(d) {
       if (!d || !d.ok || !Array.isArray(d.rows)) return;
       var arr = d.rows.map(function(row) { try { return { name: row.nazov, filter: JSON.parse(row.filter) }; } catch(e) { return null; } }).filter(Boolean);
@@ -35098,8 +35066,7 @@ function surveyFetchServer(state, actionName, saveFn, cb){
   var url;
   try { url = scriptUrl('action=' + actionName + '&reprezentant=' + encodeURIComponent(user)); }
   catch(e){ if (cb) cb(); return; }
-  fetch(url, { cache: 'no-store' })
-    .then(function(r){ return r.json(); })
+  appQueuedFetchJson(url, { cache: 'no-store' }, undefined, 'critical')
     .then(function(d){
       if (reqId !== state._reqId) return;
       if (d && d.ok && Array.isArray(d.records)){
@@ -37431,8 +37398,7 @@ function gpFetchLineStats(){
   if(typeof IS_DEV !== 'undefined' && IS_DEV){ gpLineStatsState = 'ready'; return; }  // localhost → ukážka
   if(typeof scriptUrl !== 'function'){ gpLineStatsState = 'ready'; return; }
   gpLineStatsState = 'loading';
-  fetch(scriptUrl('action=getLineStats'), { cache:'no-store' })
-    .then(function(r){ return r.json(); })
+  appQueuedFetchJson(scriptUrl('action=getLineStats'), { cache:'no-store' }, undefined, 'background')
     .then(function(d){ gpApplyLineStats(d); })
     .catch(function(){ gpApplyLineStats(null); });
 }
@@ -37451,8 +37417,7 @@ function gpApplyOverrides(list){
 function gpFetchOverrides(){
   if(typeof IS_DEV !== 'undefined' && IS_DEV) return;
   if(typeof scriptUrl !== 'function') return;
-  fetch(scriptUrl('action=getOverrides'), { cache:'no-store' })
-    .then(function(r){ return r.json(); })
+  appQueuedFetchJson(scriptUrl('action=getOverrides'), { cache:'no-store' }, undefined, 'background')
     .then(function(list){ gpApplyOverrides(list); })
     .catch(function(){});
 }
@@ -37466,8 +37431,7 @@ function gpBootstrapRep(username, done){
     if(done) done(); return;
   }
   var url = scriptUrl('action=bootstrap&parts=overrides,linestats,tuyoryrep,lonelixrep,apixrep&reprezentant=' + encodeURIComponent(username || ''));
-  fetch(url, { cache:'no-store' })
-    .then(function(r){ return r.json(); })
+  appQueuedFetchJson(url, { cache:'no-store' }, undefined, 'critical')
     .then(function(d){
       if(!d || !d.ok) throw new Error('bootstrap fail');
       try { if(d.overrides) gpApplyOverrides(d.overrides); } catch(e){}
@@ -37494,8 +37458,7 @@ function gpBootstrapMgr(done){
     if(done) done(); return;
   }
   var url = scriptUrl('action=bootstrap&parts=overrides,linestats,alltuyory,alllonelix,allapix');
-  fetch(url, { cache:'no-store' })
-    .then(function(r){ return r.json(); })
+  appQueuedFetchJson(url, { cache:'no-store' }, undefined, 'critical')
     .then(function(d){
       if(!d || !d.ok) throw new Error('bootstrap fail');
       try { if(d.overrides) gpApplyOverrides(d.overrides); } catch(e){}
