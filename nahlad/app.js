@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.72';
+var APP_VERSION = '2.85.73';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -3997,6 +3997,20 @@ function repNavToForm() {
   } else {
     goHome();
   }
+}
+
+// „+ Zadať nového GP" — na rozdiel od repNavToForm() (len otvorí formulár tak,
+// ako je) toto explicitne signalizuje „chcem ZAČAŤ NOVÝ záznam". Predtým to
+// volalo to isté ako obyčajné otvorenie formulára, takže ak bol rozpracovaný
+// lekár A, tlačidlo „Nový" ukázalo ten istý formulár stále vyplnený A —
+// jediný spôsob, ako začať niekoho iného, bolo ručne vymazať každé pole.
+// Draft A je v tej chvíli už priebežne uložený (autosave), takže vyčistenie
+// formulára ho nezničí — len ho pošle do zoznamu „Rozpracované" na Domove.
+function repNavToNewForm() {
+  try { saveDraft(); } catch(e){}   // istota — ulož aj rozpísané zmeny, ktoré autosave ešte nestihol
+  _currentDraftKey = null;
+  try { resetForm(); } catch(e){}
+  repNavToForm();
 }
 
 // Po prihlásení reprezentanta (GP línia) otvor zvolenú predvolenú záložku.
