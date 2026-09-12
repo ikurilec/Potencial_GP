@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.3';
+var APP_VERSION = '2.87.4';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -3396,17 +3396,19 @@ function loadHistoryItems(username) {
   if(!username) return Promise.resolve([]);
   if(_histPromise) return _histPromise;
 
-  // SWR: zobraz z localStorage okamžite, fetch ticho na pozadí
-  var _lsHist = _histLsLoad(username);
+  var _histDsKey = _histLsKey(username);
+  // SWR: zobraz z cache okamžite, fetch ticho na pozadí. DataStore.get() bez
+  // fetchera = čisté čítanie (rovnaké ako predtým _histLsLoad).
+  var _lsHist = DataStore.get(_histDsKey, {}).data;
   if (_lsHist !== null) {
     _histAllItems = _lsHist;
     updateBadge(_histAllItems.length, false);
-    // Background refresh — aktualizuje _histAllItems a localStorage
+    // Background refresh — aktualizuje _histAllItems a cache
     appQueuedFetchJson(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username)), undefined, undefined, 'background')
       .then(function(rows) {
         if (!Array.isArray(rows) || rows.length === 0) return;
         _histAllItems = _histParseRawRows(rows);
-        _histLsSave(username, _histAllItems);
+        DataStore.set(_histDsKey, _histAllItems);
         updateBadge(_histAllItems.length, false);
       })
       .catch(function(){});
@@ -3416,7 +3418,7 @@ function loadHistoryItems(username) {
   _histPromise = appQueuedFetchJson(scriptUrl('action=getHistory&reprezentant=' + encodeURIComponent(username)), undefined, undefined, 'critical')
     .then(function(rows) {
       _histAllItems = _histParseRawRows(rows);
-      _histLsSave(username, _histAllItems);
+      DataStore.set(_histDsKey, _histAllItems);
       updateBadge(_histAllItems.length, false);
       return _histAllItems;
     })
@@ -3449,7 +3451,7 @@ function gpHistForceRefresh(username, done) {
     .then(function (rows) {
       if (Array.isArray(rows)) {
         _histAllItems = _histParseRawRows(rows);
-        _histLsSave(username, _histAllItems);
+        DataStore.set(_histLsKey(username), _histAllItems);
         updateBadge(_histAllItems.length, false);
       }
     })
@@ -20510,7 +20512,7 @@ function bootHasCachedData() {
       }
       return false;
     }
-    return _histLsLoad(sess.username) !== null;
+    return DataStore.get(_histLsKey(sess.username), {}).data !== null;
   } catch (e) { return false; }
 }
 
@@ -20612,14 +20614,14 @@ function appRosterCacheKey(){
   var s = getSession() || {};
   return APP_ROSTER_CACHE_PREFIX + [s.line || 'gp', s.username || '', s.role || '', s.region || ''].join('|').toLowerCase();
 }
+// F2-1: read/write cez DataStore.get()/set() — predtým vlastný JSON.parse/lsSafeSet
+// s vlastným tvarom záznamu ({ts, reps}), teraz rovnaký mechanizmus ako všade inde.
 function appRosterCacheRead(){
-  try {
-    var d = JSON.parse(localStorage.getItem(appRosterCacheKey()) || 'null');
-    return d && Array.isArray(d.reps) && d.reps.length ? d.reps : null;
-  } catch(e){ return null; }
+  var d = DataStore.get(appRosterCacheKey(), {}).data;
+  return Array.isArray(d) && d.length ? d : null;
 }
 function appRosterCacheWrite(reps){
-  try { if(Array.isArray(reps) && reps.length) lsSafeSet(appRosterCacheKey(), JSON.stringify({ ts:Date.now(), reps:reps })); } catch(e){}
+  if (Array.isArray(reps) && reps.length) DataStore.set(appRosterCacheKey(), reps);
 }
 function appWarmRosterFromCache(){
   var reps = appRosterCacheRead();
@@ -27187,16 +27189,10 @@ function _lbHsLoad() {
   return (p && p.data && typeof p.data === 'object') ? p.data : null;
 }
 
-// ── Per-rep history localStorage SWR ──────────────────────────────
+// ── Per-rep history — F2-1: read/write ide priamo cez DataStore.get()/set()
+// (loadHistoryItems vyššie) — _histLsKey ostáva jediný zdroj kľúča.
 var _HIST_LS_V = 'v1';
 function _histLsKey(username) { return 'hist_' + _HIST_LS_V + '_' + ((typeof appLineTag === 'function') ? appLineTag() : 'gp') + '_' + (username || '').toLowerCase(); }
-function _histLsSave(username, items) {
-  dsWrite(_histLsKey(username), { items: items });
-}
-function _histLsLoad(username) {
-  var p = dsRead(_histLsKey(username));
-  return (p && Array.isArray(p.items)) ? p.items : null;
-}
 
 // ── PharmaGraf localStorage SWR ────────────────────────────────────
 // F2-1: read/write ide priamo cez DataStore.get()/refresh() (loadPharmaGrafData
