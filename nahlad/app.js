@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.84';
+var APP_VERSION = '2.85.85';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -10422,6 +10422,20 @@ function gynCacheAge(key) {
   var item = dsRead(GYN_CACHE_PREFIX + key);
   return item ? dsAge(item.ts) : Infinity;
 }
+// F2-1: gynCacheRead() ktorá vráti null aj pre existujúci, ale prestarnutý
+// záznam — presne to, čo gynCacheAge() umožňovala, ale nikde sa nepoužívalo.
+// Určené pre miesta, kde je nájdená cache dôvod NEVOLAŤ fetch vôbec (na
+// rozdiel od "stale-while-revalidate" miest, ktoré fetchujú vždy a cache
+// je len pre okamžité vykreslenie — tie majú gynCacheRead() nechať tak).
+function gynCacheReadFresh(key, maxAgeMs) {
+  var item = dsRead(GYN_CACHE_PREFIX + key);
+  if (!item || !item.data) return null;
+  if (maxAgeMs != null && dsIsStale(item.ts, maxAgeMs)) return null;
+  return item.data;
+}
+// Predvolené okno platnosti pre gyn cache, ktorá by inak zostala použitá
+// naveky bez opätovného overenia zo servera (Ivanovo rozhodnutie: 6h).
+var GYN_CACHE_MAX_AGE_MS = 6 * 60 * 60 * 1000;
 function gynCacheSame(a, b) {
   try { return JSON.stringify(a || null) === JSON.stringify(b || null); }
   catch(e) { return false; }
@@ -10982,7 +10996,10 @@ function gynEnsureQuarterData(qq, onReady){
   if(!qq || qq < 1) return;
   if(GYN_APP.plCache && GYN_APP.plCache[qq]) return;
   var key = gynPlnenieCacheKey(GYN_APP.year, qq);
-  var cached = (typeof gynCacheRead === 'function') ? gynCacheRead(key) : null;
+  // F2-1: cache staršia ako GYN_CACHE_MAX_AGE_MS sa berie ako chýbajúca —
+  // predtým raz uložený záznam blokoval akékoľvek ďalšie overenie zo servera
+  // navždy (žiaden refetch nižšie by sa vôbec nespustil).
+  var cached = (typeof gynCacheReadFresh === 'function') ? gynCacheReadFresh(key, GYN_CACHE_MAX_AGE_MS) : null;
   if(cached){ gynPreprocessData(cached); GYN_APP.plCache[qq] = cached; if(onReady) setTimeout(onReady, 0); return; }
   if(GYN_APP.plLoading[qq]) return;
   GYN_APP.plLoading[qq] = true;
@@ -11325,7 +11342,9 @@ function gynEnsureRepPharma(region, products, onReady){
     kvs.forEach(function(kv){
       var key = prodLabel + '|' + oblast + '|' + kv;
       if(GYN_PHARMA_STATE.cache[key] || GYN_PHARMA_STATE.loading[key]) return;
-      var persisted = (typeof gynCacheRead === 'function') ? gynCacheRead(gynPharmaCacheKey(prodLabel, oblast, kv)) : null;
+      // F2-1: rovnaká oprava ako gynEnsureQuarterData — stará cache sa berie
+      // ako chýbajúca, inak by tento riadok navždy blokoval nový fetch nižšie.
+      var persisted = (typeof gynCacheReadFresh === 'function') ? gynCacheReadFresh(gynPharmaCacheKey(prodLabel, oblast, kv), GYN_CACHE_MAX_AGE_MS) : null;
       if(persisted){ GYN_PHARMA_STATE.cache[key] = persisted; return; }  // render číta localStorage sám → netreba re-render
       tasks.push({ key:key, produkt:prodLabel, oblast:oblast, kvartal:kv });
     });
@@ -13043,7 +13062,9 @@ function gynPharmaDistrictDisplayYymmsForQ(q, resp, currentKvartal, fallbackYymm
 function gynPharmaLoad() {
   var key = GYN_PHARMA_STATE.produkt + '|' + GYN_PHARMA_STATE.oblast + '|' + GYN_PHARMA_STATE.kvartal;
   var persistentKey = gynPharmaCacheKey(GYN_PHARMA_STATE.produkt, GYN_PHARMA_STATE.oblast, GYN_PHARMA_STATE.kvartal);
-  var cached = GYN_PHARMA_STATE.cache[key] || gynCacheRead(persistentKey);
+  // F2-1: rovnaká oprava — bez nej "kompletná" (má okresy pre trend) ale
+  // stará persistovaná cache nižšie navždy zablokuje nový fetch.
+  var cached = GYN_PHARMA_STATE.cache[key] || gynCacheReadFresh(persistentKey, GYN_CACHE_MAX_AGE_MS);
   if(cached && !GYN_PHARMA_STATE.cache[key]) GYN_PHARMA_STATE.cache[key] = cached;
 
   // Cache hit je kompletný až vtedy, keď má okresy pre všetky kvartály zobrazené v 6-mesačnom trende.
