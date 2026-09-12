@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.12';
+var APP_VERSION = '2.87.13';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -4932,7 +4932,11 @@ function dnesRepSummaryInitSwipe() {
   }
 
   var bd = document.getElementById('dnes-rep-summary-bd');
-  if (bd) bd.addEventListener('touchmove', function(e){ e.preventDefault(); }, { passive: false });
+  // Blokovať scroll za sheetom smie len dotyk na SAMOTNOM pozadí (rovnaký
+  // vzor ako onclick vyššie: event.target===this) — nie čokoľvek v sheete,
+  // lebo touchmove z vnútra .dnes-rs-scroll tiež bublá až sem a preventDefault()
+  // by zablokoval aj scrollovanie zoznamu produktov (nahlásené Ivanom).
+  if (bd) bd.addEventListener('touchmove', function(e){ if (e.target === bd) e.preventDefault(); }, { passive: false });
 
   sheet.addEventListener('touchstart', function(e) {
     if (!DNES_REP_SUMMARY.open) return;
