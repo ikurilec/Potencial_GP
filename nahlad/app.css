@@ -2992,14 +2992,18 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
   @media(prefers-reduced-motion:reduce){.gyn-hdr-bday.own{animation:none}}
   /* GYN NAV TABS */
   .gyn-nav{display:grid;grid-template-columns:repeat(var(--gcols,5),1fr);gap:6px;margin:0 0 10px;background:#fff;border-radius:var(--radius-md);padding:var(--space-1);box-shadow:0 2px 8px rgba(12,30,53,.06);position:sticky;top:var(--sat);z-index:100}
-  .gyn-nav-btn{min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px 2px;border:none;border-radius:var(--radius-base);font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;background:transparent;color:var(--color-text-muted);touch-action:manipulation;transition:all .2s ease;-webkit-tap-highlight-color:transparent;line-height:1.1}
+  /* F6 krok 6: pozadie v pokoji a font-size zjednotené s .panel-nav-btn (rovnaký
+     vzor — jedna zdieľaná biela karta, tlačidlá vnútri). Predtým bolo gyn-nav-btn
+     v pokoji priehľadné (na bielej karte kontajnera prakticky neviditeľné, najmä
+     na dotykových zariadeniach bez hover stavu) — teraz svetlosivé ako všade inde. */
+  .gyn-nav-btn{min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px 2px;border:none;border-radius:var(--radius-base);font-size:10px;font-weight:700;font-family:inherit;cursor:pointer;background:var(--color-border-light);color:var(--color-text-muted);touch-action:manipulation;transition:all .2s ease;-webkit-tap-highlight-color:transparent;line-height:1.1}
   .gyn-nav-btn .st-emoji{font-size:17px;line-height:1}
-  .gyn-nav-btn .st-lbl{font-size:11px;white-space:nowrap}
+  .gyn-nav-btn .st-lbl{font-size:10px;white-space:nowrap}
   /* Dynamická ikonka kalendára v záložke — vykresľuje dnešné číslo dňa */
   .gyn-cal-navico{display:inline-flex;flex-direction:column;width:17px;height:17px;border-radius:4px;overflow:hidden;background:#fff;box-shadow:0 0 0 1px rgba(12,30,53,.14);line-height:1}
   .gyn-cal-navico .gci-top{height:5px;background:#EF4444;flex-shrink:0}
   .gyn-cal-navico .gci-day{flex:1;display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:800;color:var(--color-navy);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
-  .gyn-nav-btn:hover:not(.active){background:var(--color-border-light);color:var(--color-text-strong)}
+  .gyn-nav-btn:hover:not(.active){background:var(--color-border);color:var(--color-text-strong)}
   .gyn-nav-btn.active{background:linear-gradient(135deg,var(--color-navy) 0%,#13294B 100%);color:#fff;box-shadow:0 4px 12px rgba(12,30,53,.25),inset 0 1px 0 rgba(255,255,255,.10)}
   /* GYN Q TABS */
   .gyn-q-row{display:flex;gap:6px;padding:12px 12px 0;overflow-x:auto}
