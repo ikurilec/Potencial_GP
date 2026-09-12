@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.99';
+var APP_VERSION = '2.86.0';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -33179,8 +33179,7 @@ function lkFetchAll(cb) {
   if (LK_STATE.allLoading) { if (cb) LK_STATE.allCallbacks.push(cb); return; }
   LK_STATE.allLoading = true;
   if (cb) LK_STATE.allCallbacks.push(cb);
-  fetch(scriptUrl('action=getLekarneAll&creamMonth=' + encodeURIComponent(lkCreamContactMonthKey()) + '&_t=' + Date.now()), { cache: 'no-store' })
-    .then(function(r){ return r.json(); })
+  appQueuedFetchJson(scriptUrl('action=getLekarneAll&creamMonth=' + encodeURIComponent(lkCreamContactMonthKey()) + '&_t=' + Date.now()), { cache: 'no-store' }, undefined, 'background')
     .then(function(data) {
       var ok = !!(data && data.ok && Array.isArray(data.rows));
       var rows = ok ? data.rows : [];
@@ -35965,8 +35964,7 @@ function nstFetch(cb){
   NST.loading = true;
   var url;
   try { url = nstUrl('action=getNastenka'); } catch(e){ NST.loading = false; if (cb) cb(); return; }
-  fetch(url, { cache: 'no-store' })
-    .then(function(r){ return r.json(); })
+  appQueuedFetchJson(url, { cache: 'no-store' }, undefined, 'background')
     .then(function(d){
       if (reqId !== NST._reqId || !appLineContextActive(reqCtx)) return;
       NST.loading = false;
