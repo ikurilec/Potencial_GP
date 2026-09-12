@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.76';
+var APP_VERSION = '2.85.77';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -34932,18 +34932,26 @@ function tuyEsc(x){
 }
 function tuyUser(){ var s = getSession(); return (s && s.username) ? s.username : ''; }
 function tuyTarget(){ var t = +(userPrefsGet().tuyoryTarget || 0); return (t > 0) ? t : 0; }
-function tuyoryLocalKey(){ return 'tuyory_records_' + tuyUser(); }
-function tuyoryLoadLocal(){
-  try { var raw = localStorage.getItem(tuyoryLocalKey()); var a = raw ? JSON.parse(raw) : []; return Array.isArray(a) ? a : []; }
+// F3-4 krok 1: zdieľaná local-storage vrstva pre tri prieskumy (Tuyory /
+// Lonelix / Apixaban) — boli to tri identické kópie tej istej logiky,
+// líšiace sa len kľúčom. Každý prieskum si necháva vlastné pomenované
+// funkcie (tuyoryLoadLocal, lonelixSaveLocal, ...), aby sa nemenili
+// desiatky volaní po appke — mení sa len ich telo na jednoriadkový delegát.
+function surveyLoadLocal(key){
+  try { var raw = localStorage.getItem(key); var a = raw ? JSON.parse(raw) : []; return Array.isArray(a) ? a : []; }
   catch(e){ return []; }
 }
-function tuyorySaveLocal(arr){
+function surveySaveLocal(key, arr){
   try {
     var payload = JSON.stringify(arr || []);
-    if (typeof lsSafeSet === 'function') lsSafeSet(tuyoryLocalKey(), payload);
-    else localStorage.setItem(tuyoryLocalKey(), payload);
+    if (typeof lsSafeSet === 'function') lsSafeSet(key, payload);
+    else localStorage.setItem(key, payload);
   } catch(e){}
 }
+
+function tuyoryLocalKey(){ return 'tuyory_records_' + tuyUser(); }
+function tuyoryLoadLocal(){ return surveyLoadLocal(tuyoryLocalKey()); }
+function tuyorySaveLocal(arr){ surveySaveLocal(tuyoryLocalKey(), arr); }
 
 // ── Otvorenie / zatvorenie záložky ──
 function openTuyory(){
@@ -34959,31 +34967,36 @@ function openTuyory(){
 }
 function closeTuyory(){ usageSectionClose(); TUYORY._reqId++; closeAllPanels(); }
 
-// ── Načítanie záznamov zo Sheetu (getTuyory). Ak backend ešte nemá handler,
-//    ticho spadneme na localStorage cache. Server je po nasadení autoritatívny. ──
-function tuyoryApplyRecords(records){
-  if (Array.isArray(records)){ TUYORY.records = records; tuyorySaveLocal(records); }
+// F3-4 krok 2: zdieľané načítanie záznamov zo Sheetu pre tri prieskumy —
+// líšia sa len stavovým objektom, action názvom a ukladacou funkciou.
+// Ak backend ešte nemá handler, ticho spadneme na localStorage cache.
+// Server je po nasadení autoritatívny.
+function surveyApplyRecords(state, saveFn, records){
+  if (Array.isArray(records)){ state.records = records; saveFn(records); }
 }
-function tuyoryFetchServer(cb){
+function surveyFetchServer(state, actionName, saveFn, cb){
   if (typeof IS_DEV !== 'undefined' && IS_DEV){ if (cb) cb(); return; }   // DEV → len localStorage
   var user = tuyUser();
   if (!user){ if (cb) cb(); return; }
-  var reqId = (++TUYORY._reqId);
+  var reqId = (++state._reqId);
   var url;
-  try { url = scriptUrl('action=getTuyory&reprezentant=' + encodeURIComponent(user)); }
+  try { url = scriptUrl('action=' + actionName + '&reprezentant=' + encodeURIComponent(user)); }
   catch(e){ if (cb) cb(); return; }
   fetch(url, { cache: 'no-store' })
     .then(function(r){ return r.json(); })
     .then(function(d){
-      if (reqId !== TUYORY._reqId) return;
+      if (reqId !== state._reqId) return;
       if (d && d.ok && Array.isArray(d.records)){
-        TUYORY.records = d.records;
-        tuyorySaveLocal(d.records);      // server je pravda → prepíš cache
+        state.records = d.records;
+        saveFn(d.records);      // server je pravda → prepíš cache
       }
       if (cb) cb();
     })
     .catch(function(){ if (cb) cb(); });   // offline / handler neexistuje → ostáva localStorage
 }
+
+function tuyoryApplyRecords(records){ surveyApplyRecords(TUYORY, tuyorySaveLocal, records); }
+function tuyoryFetchServer(cb){ surveyFetchServer(TUYORY, 'getTuyory', tuyorySaveLocal, cb); }
 
 // ── Render celej záložky (dashboard + formulár) ──
 function tuyoryRender(){
@@ -36533,17 +36546,8 @@ function apxTargets(){
   return { kard: (+(p.apixTargetKard || 0) > 0) ? +p.apixTargetKard : 0, int: (+(p.apixTargetInt || 0) > 0) ? +p.apixTargetInt : 0 };
 }
 function apixLocalKey(){ return 'apixaban_records_' + tuyUser(); }
-function apixLoadLocal(){
-  try { var raw = localStorage.getItem(apixLocalKey()); var a = raw ? JSON.parse(raw) : []; return Array.isArray(a) ? a : []; }
-  catch(e){ return []; }
-}
-function apixSaveLocal(arr){
-  try {
-    var payload = JSON.stringify(arr || []);
-    if (typeof lsSafeSet === 'function') lsSafeSet(apixLocalKey(), payload);
-    else localStorage.setItem(apixLocalKey(), payload);
-  } catch(e){}
-}
+function apixLoadLocal(){ return surveyLoadLocal(apixLocalKey()); }
+function apixSaveLocal(arr){ surveySaveLocal(apixLocalKey(), arr); }
 
 // ── Otvorenie / zatvorenie záložky ──
 function openApixaban(){
@@ -36559,31 +36563,9 @@ function openApixaban(){
 }
 function closeApixaban(){ usageSectionClose(); APIX._reqId++; clearInterval(APIX._cdT); closeAllPanels(); }
 
-// ── Načítanie záznamov zo Sheetu (getApixaban). Ak backend ešte nemá handler,
-//    ticho spadneme na localStorage cache. Server je po nasadení autoritatívny. ──
-function apixApplyRecords(records){
-  if (Array.isArray(records)){ APIX.records = records; apixSaveLocal(records); }
-}
-function apixFetchServer(cb){
-  if (typeof IS_DEV !== 'undefined' && IS_DEV){ if (cb) cb(); return; }   // DEV → len localStorage
-  var user = tuyUser();
-  if (!user){ if (cb) cb(); return; }
-  var reqId = (++APIX._reqId);
-  var url;
-  try { url = scriptUrl('action=getApixaban&reprezentant=' + encodeURIComponent(user)); }
-  catch(e){ if (cb) cb(); return; }
-  fetch(url, { cache: 'no-store' })
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      if (reqId !== APIX._reqId) return;
-      if (d && d.ok && Array.isArray(d.records)){
-        APIX.records = d.records;
-        apixSaveLocal(d.records);      // server je pravda → prepíš cache
-      }
-      if (cb) cb();
-    })
-    .catch(function(){ if (cb) cb(); });   // offline / handler neexistuje → ostáva localStorage
-}
+// ── Načítanie záznamov zo Sheetu (getApixaban) ──
+function apixApplyRecords(records){ surveyApplyRecords(APIX, apixSaveLocal, records); }
+function apixFetchServer(cb){ surveyFetchServer(APIX, 'getApixaban', apixSaveLocal, cb); }
 
 // ── Render celej záložky (dashboard + formulár / zámok pred otvorením) ──
 function apixRender(){
@@ -37712,13 +37694,8 @@ function _histCombined(){
 var LONELIX = { records: [], answers: {}, flash: null, _flashT: null, _reqId: 0, docList: [], _matchCache: [] };
 
 function lonelixLocalKey(){ return 'lonelix_records_' + tuyUser(); }
-function lonelixLoadLocal(){
-  try { var raw = localStorage.getItem(lonelixLocalKey()); var a = raw ? JSON.parse(raw) : []; return Array.isArray(a) ? a : []; }
-  catch(e){ return []; }
-}
-function lonelixSaveLocal(arr){
-  try { var p = JSON.stringify(arr || []); if (typeof lsSafeSet === 'function') lsSafeSet(lonelixLocalKey(), p); else localStorage.setItem(lonelixLocalKey(), p); } catch(e){}
-}
+function lonelixLoadLocal(){ return surveyLoadLocal(lonelixLocalKey()); }
+function lonelixSaveLocal(arr){ surveySaveLocal(lonelixLocalKey(), arr); }
 
 function openLonelix(){
   usageSectionEnter('Lonelix');
@@ -37771,21 +37748,8 @@ function lonelixDoctorHasRecord(meno, okres){
 }
 
 // ── Načítanie záznamov zo Sheetu (getLonelix) ──
-function lonelixApplyRecords(records){
-  if (Array.isArray(records)){ LONELIX.records = records; lonelixSaveLocal(records); }
-}
-function lonelixFetchServer(cb){
-  if (typeof IS_DEV !== 'undefined' && IS_DEV){ if (cb) cb(); return; }
-  var user = tuyUser(); if (!user){ if (cb) cb(); return; }
-  var reqId = (++LONELIX._reqId);
-  var url;
-  try { url = scriptUrl('action=getLonelix&reprezentant=' + encodeURIComponent(user)); } catch(e){ if (cb) cb(); return; }
-  fetch(url, { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(d){
-    if (reqId !== LONELIX._reqId) return;
-    if (d && d.ok && Array.isArray(d.records)){ LONELIX.records = d.records; lonelixSaveLocal(d.records); }
-    if (cb) cb();
-  }).catch(function(){ if (cb) cb(); });
-}
+function lonelixApplyRecords(records){ surveyApplyRecords(LONELIX, lonelixSaveLocal, records); }
+function lonelixFetchServer(cb){ surveyFetchServer(LONELIX, 'getLonelix', lonelixSaveLocal, cb); }
 
 function lonelixRender(){
   var body = document.getElementById('lonelix-body'); if (!body) return;
