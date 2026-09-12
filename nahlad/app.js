@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.94';
+var APP_VERSION = '2.85.95';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -35575,7 +35575,7 @@ function tuyOkresShowAll(el){
   if (!items.length){ list.style.display = 'none'; return; }
   list.innerHTML = items.map(function(m){
     var disp = val ? '<strong>' + m.slice(0, val.length) + '</strong>' + m.slice(val.length) : m;
-    return '<div class="ac-item" onclick="tuyOkresPick(\'' + m.replace(/'/g, "\\'") + '\')">' + disp + '</div>';
+    return '<div class="ac-item" role="button" tabindex="0" aria-label="Vybrať okres ' + m.replace(/"/g,'&quot;') + '" onclick="tuyOkresPick(\'' + m.replace(/'/g, "\\'") + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();tuyOkresPick(\'' + m.replace(/'/g, "\\'") + '\')}">' + disp + '</div>';
   }).join('');
   list.style.display = 'block';
 }
@@ -37143,7 +37143,7 @@ function apxOkresShowAll(el){
   if (!items.length){ list.style.display = 'none'; return; }
   list.innerHTML = items.map(function(m){
     var disp = val ? '<strong>' + m.slice(0, val.length) + '</strong>' + m.slice(val.length) : m;
-    return '<div class="ac-item" onclick="apxOkresPick(\'' + m.replace(/'/g, "\\'") + '\')">' + disp + '</div>';
+    return '<div class="ac-item" role="button" tabindex="0" aria-label="Vybrať okres ' + m.replace(/"/g,'&quot;') + '" onclick="apxOkresPick(\'' + m.replace(/'/g, "\\'") + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();apxOkresPick(\'' + m.replace(/'/g, "\\'") + '\')}">' + disp + '</div>';
   }).join('');
   list.style.display = 'block';
 }
@@ -38014,7 +38014,7 @@ function lonDocShowMatches(){
   if (!matches.length){ list.style.display = 'none'; return; }
   LONELIX._matchCache = matches;
   list.innerHTML = matches.map(function(d, i){
-    return '<div class="ac-item" onclick="lonDocPick(' + i + ')"><strong>' + tuyEsc(d.meno) + '</strong>' + (d.okres ? ' <span style="color:#94A3B8">· ' + tuyEsc(d.okres) + '</span>' : '') + '</div>';
+    return '<div class="ac-item" role="button" tabindex="0" aria-label="Vybrať lekára ' + tuyEsc(d.meno) + '" onclick="lonDocPick(' + i + ')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();lonDocPick(' + i + ')}"><strong>' + tuyEsc(d.meno) + '</strong>' + (d.okres ? ' <span style="color:#94A3B8">· ' + tuyEsc(d.okres) + '</span>' : '') + '</div>';
   }).join('');
   list.style.display = 'block';
 }
@@ -38073,7 +38073,7 @@ function lonOkresShowAll(el){
   if (!items.length){ list.style.display = 'none'; return; }
   list.innerHTML = items.map(function(m){
     var disp = val ? '<strong>' + m.slice(0, val.length) + '</strong>' + m.slice(val.length) : m;
-    return '<div class="ac-item" onclick="lonOkresPick(\'' + m.replace(/'/g, "\\'") + '\')">' + disp + '</div>';
+    return '<div class="ac-item" role="button" tabindex="0" aria-label="Vybrať okres ' + m.replace(/"/g,'&quot;') + '" onclick="lonOkresPick(\'' + m.replace(/'/g, "\\'") + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();lonOkresPick(\'' + m.replace(/'/g, "\\'") + '\')}">' + disp + '</div>';
   }).join('');
   list.style.display = 'block';
 }
