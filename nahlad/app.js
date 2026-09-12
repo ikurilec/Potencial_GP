@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.20';
+var APP_VERSION = '2.87.21';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -11871,8 +11871,22 @@ function gynLoadRepList(user, _attempt) {
       if(!active()) return;
       // Cold-start / session ešte nie je pripravená pri prvom logine → skús znova.
       var _a = _attempt || 0;
-      if(_a < 2) setTimeout(function(){ if(active()) gynLoadRepList(user, _a + 1); }, _a === 0 ? 1200 : 2500);
-      else GYN_APP._repListLoading = false;
+      if(_a < 2) { setTimeout(function(){ if(active()) gynLoadRepList(user, _a + 1); }, _a === 0 ? 1200 : 2500); return; }
+      GYN_APP._repListLoading = false;
+      // Po vyčerpaní pokusov predtým nezostalo nič — manažérske Plnenie viselo
+      // navždy na "Načítavam reprezentantov..." bez chyby aj bez možnosti
+      // skúsiť znova. Ukáž error kartu, ale LEN ak tam ešte skutočne visí ten
+      // istý loading stav (nič nechceme prepísať, ak medzičasom dorazil roster
+      // inou cestou, napr. cez gynBootstrap).
+      var gc = document.getElementById('gyn-content');
+      if(gc && !GYN_STATE.repList.length && gc.textContent.indexOf('Načítavam reprezentantov') !== -1) {
+        appRegisterRetry('gyn-replist', function(){ gynLoadRepList(user, 0); });
+        gc.innerHTML = gynQTabsHtml() + appErrorCardHtml({
+          id: 'gyn-replist',
+          title: 'Nepodarilo sa načítať zoznam reprezentantov',
+          desc: 'Skús to znova.'
+        });
+      }
     });
 }
 
@@ -28000,7 +28014,10 @@ function loadPharmaGrafDataFresh(code, oblast, callback) {
       }, function(err) { delete PHARMA_GRAF_STATE.loading[cacheKey]; throw err; });
     },
     onFresh: function(resp) { PHARMA_GRAF_STATE.cache[cacheKey] = resp; if (callback) callback(resp); },
-    onError: function(){ delete PHARMA_GRAF_STATE.loading[cacheKey]; }
+    // Rovnaký bug ako v loadPharmaGrafData() pred opravou (2.87.16): bez
+    // callback(null) tu ostane "Načítavam trend…" navždy, keď zlyhá aj RETRY
+    // (fillGrafChart()'s retry() volá presne túto funkciu).
+    onError: function(){ delete PHARMA_GRAF_STATE.loading[cacheKey]; if (callback) callback(null); }
   });
 }
 
@@ -28420,12 +28437,18 @@ function loadPharmaOkresGrafData(code, oblast, okres, callback) {
     + '&okres='   + encodeURIComponent(okres)), { cache: 'no-store' }, undefined, 'critical')
     .then(function(resp) {
       delete PHARMA_OKRES_STATE.loading[ck];
-      if (resp.ok && resp.rows && resp.rows.length >= 2) {
+      if (resp && resp.ok && resp.rows && resp.rows.length >= 2) {
         PHARMA_OKRES_STATE.cache[ck] = resp;
         callback(resp);
+      } else if (resp && resp.ok) {
+        // ok, ale málo riadkov — legitímny stav ("Nedostatok dát."), nie chyba.
+        callback(resp);
+      } else {
+        // resp.ok===false — odlíš od siete/timeoutu, ktoré idú cez .catch().
+        callback(null);
       }
     })
-    .catch(function() { delete PHARMA_OKRES_STATE.loading[ck]; });
+    .catch(function() { delete PHARMA_OKRES_STATE.loading[ck]; callback(null); });
 }
 
 function openPharmaOkresChart(r, prodLabel) {
@@ -28463,15 +28486,25 @@ function openPharmaOkresChart(r, prodLabel) {
   overlay.classList.add('show');
   document.body.style.overflow = 'hidden';
 
-  loadPharmaOkresGrafData(code, oblast, r.okres, function(resp) {
+  // Predtým sa pri zlyhaní fetchu (aj pri resp.ok===true s málo riadkami)
+  // callback vôbec nezavolal — "Načítavam…" ostalo navždy bez chyby/retry.
+  // loadPharmaOkresGrafData() teraz vždy zavolá callback: resp===null pri
+  // chybe, resp.ok pri úspechu (aj s málo dátami).
+  function onOkresGrafResult(resp) {
     var cur = PHARMA_OKRES_STATE.current;
     if (!cur || cur.r.okres !== r.okres) return;
-    var rows = (resp.rows || []).slice(-6); // posledných 6 mesiacov
-    if (rows.length < 2) {
-      svgEl.innerHTML = '<div style="color:#94A3B8;font-size:13px">Nedostatok dát.</div>';
+    var svgElNow = document.getElementById('pharma-okres-chart-svg');
+    if (!svgElNow) return;
+    if (!resp) {
+      appShowErrorCard(svgElNow, { id: 'pharma-okres-graf', title: 'Graf sa nepodarilo načítať', desc: 'Skús to znova.' }, retryOkresGraf);
       return;
     }
-    svgEl.innerHTML = buildOkresChartSvg(rows, prodLabel);
+    var rows = (resp.rows || []).slice(-6); // posledných 6 mesiacov
+    if (rows.length < 2) {
+      svgElNow.innerHTML = '<div style="color:#94A3B8;font-size:13px">Nedostatok dát.</div>';
+      return;
+    }
+    svgElNow.innerHTML = buildOkresChartSvg(rows, prodLabel);
     legEl.innerHTML = buildOkresLegend(rows, prodLabel);
     // Animuj všetky čiary
     requestAnimationFrame(function() {
@@ -28480,7 +28513,13 @@ function openPharmaOkresChart(r, prodLabel) {
         if (wrap) pharmaTrendAnimate(wrap);
       });
     });
-  });
+  }
+  function retryOkresGraf() {
+    var svgElNow = document.getElementById('pharma-okres-chart-svg');
+    if (svgElNow) svgElNow.innerHTML = '<div style="color:#94A3B8;font-size:13px">Načítavam…</div>';
+    loadPharmaOkresGrafData(code, oblast, r.okres, onOkresGrafResult);
+  }
+  loadPharmaOkresGrafData(code, oblast, r.okres, onOkresGrafResult);
 }
 
 function closePharmaOkresChart() {
