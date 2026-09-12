@@ -38,7 +38,7 @@
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.85.81 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.85.82 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -993,7 +993,7 @@
 <div class="footer">Intern&#253; n&#225;stroj pre medic&#237;nskych reprezentantov<br><span style="font-size:10px;color:#B0BAC4">Designed &amp; developed by Ivan Kurilec &middot; Gedeon Richter Slovakia &middot; 2026</span></div>
 </div>
 
-<script src="dist/app.05d9a7f2.js"></script>
+<script src="dist/app.c93b16cc.js"></script>
 
 <!-- ── LOGOUT CONFIRM ── -->
 <div class="logout-overlay" id="logout-overlay">
@@ -1496,6 +1496,12 @@
   .line-choose-btn.caka{opacity:.6;cursor:default}
   .line-choose-btn.zlyhala{opacity:.72;cursor:default;border-color:#FECACA;background:#FFF7F7}
   .line-choose-btn.zlyhala .line-choose-desc,.line-choose-btn.zlyhala .line-choose-arrow{color:#B91C1C}
+  /* Prvý pokus zlyhal, appka to na pozadí ticho skúša znova (retryOne) — jantárová,
+     nech je jasné, že to nie je to isté ako prvé načítanie (modrá) ani definitívne
+     zlyhanie (červená). Bez tohto rozlíšenia to vyzeralo mŕtvo, hoci sa čakalo. */
+  .line-choose-btn.skusa-znova{border-color:#FDE68A;background:#FFFBEB}
+  .line-choose-btn.skusa-znova .line-choose-desc{color:#B45309}
+  .line-choose-btn.skusa-znova .line-choose-spin{border-top-color:#D97706}
   .line-choose-spin{width:16px;height:16px;border:2px solid #E2E8F0;border-top-color:#2563EB;border-radius:50%;
     animation:nstSpin .7s linear infinite;flex-shrink:0}
   .nst-spin{width:14px;height:14px;border:2px solid #E2E8F0;border-top-color:#2563EB;border-radius:50%;animation:nstSpin .7s linear infinite;flex-shrink:0}

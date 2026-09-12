@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.81';
+var APP_VERSION = '2.85.82';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -8957,6 +8957,12 @@ function lineChooserMeta(line){
 // „načítavam…“ — pomalá línia sa doplní do dual session na pozadí.
 function lineShouldShowChooser(avail){ return (avail || []).length >= 2; }
 var _lineChooserCtx = null;
+// Línia, ktorá prvýkrát zlyhala, sa hneď (automaticky, na pozadí) skúša ešte raz —
+// pozri retryOne()/lineRetryFailedSilently(). Bez tohto príznaku výber ukazoval
+// statické „server neodpovedal" (vyzeralo to mŕtvo) po celý čas tohto tichého
+// opakovania (až ~42s), a keď sa to podarilo, tlačidlo sa ticho zmenilo na
+// funkčné bez akéhokoľvek prechodu — vyzeralo to, akoby sa medzitým nič nedialo.
+var _lineRetryInFlight = {};
 // Línie, ktoré neodpovedali včas (cold start Apps Scriptu), sa doteraz do
 // výberu vôbec nedostali — a človek videl len tie, ktoré stihli. Admin tak
 // prišiel o Golem. Teraz sa ukážu ako „načítavam…" a keď dobehnú, samy sa
@@ -8979,13 +8985,21 @@ function showLineChooser(username, lines, dataMap, pending, failed){
     var caka = lines.indexOf(ln) === -1;
     var zlyhala = (failed || []).indexOf(ln) !== -1;
     caka = caka && !zlyhala;
-    return '<button type="button" class="line-choose-btn' + (caka ? ' caka' : '') + (zlyhala ? ' zlyhala' : '') + '"' +
+    // Prvé zlyhanie hneď spustí tichý pokus na pozadí (retryOne) — kým beží,
+    // línia nie je natrvalo mŕtva, len sa to (zatiaľ) nedarí. Bez tohto
+    // rozlíšenia vyzerala presne rovnako ako línia, ktorá už definitívne
+    // vzdala (rovnaké „server neodpovedal"), hoci sa v pozadí ďalej skúšalo.
+    var skusaZnova = zlyhala && !!_lineRetryInFlight[ln];
+    var mrtva = zlyhala && !skusaZnova;
+    var stateCls = caka ? ' caka' : skusaZnova ? ' caka skusa-znova' : mrtva ? ' zlyhala' : '';
+    var descTxt = caka ? 'načítavam…' : skusaZnova ? 'skúšam znova…' : mrtva ? 'server neodpovedal' : m.desc;
+    return '<button type="button" class="line-choose-btn' + stateCls + '"' +
              ' id="line-choose-' + ln + '"' +
-             ((caka || zlyhala) ? ' disabled' : ' onclick="pickLine(\'' + ln + '\')"') + '>' +
+             ((caka || skusaZnova || mrtva) ? ' disabled' : ' onclick="pickLine(\'' + ln + '\')"') + '>' +
              '<span class="line-choose-emoji">' + m.emoji + '</span>' +
              '<span class="line-choose-txt"><span class="line-choose-lbl">' + lineChooserEsc(m.label) + '</span>' +
-             '<span class="line-choose-desc">' + lineChooserEsc(caka ? 'načítavam…' : zlyhala ? 'server neodpovedal' : m.desc) + '</span></span>' +
-             (caka ? '<span class="line-choose-spin"></span>' : zlyhala ? '<span class="line-choose-arrow">!</span>' : '<span class="line-choose-arrow">→</span>') +
+             '<span class="line-choose-desc">' + lineChooserEsc(descTxt) + '</span></span>' +
+             ((caka || skusaZnova) ? '<span class="line-choose-spin"></span>' : mrtva ? '<span class="line-choose-arrow">!</span>' : '<span class="line-choose-arrow">→</span>') +
            '</button>';
   }).join('');
   ov.innerHTML =
@@ -9095,9 +9109,13 @@ function doLogin() {
     // Každý backend môže pri cold štarte krátko vrátiť ok:false, hoci účet existuje.
     // Každú chýbajúcu líniu preto pri prihlásení ešte raz overíme na pozadí.
     retryStarted[line]=true;
+    _lineRetryInFlight[line] = true;
     var one={gp:{ok:false},gyn:{ok:false},reagila:{ok:false}};
     one[line]=dataMap[line]._failed ? dataMap[line] : {ok:false,_failed:true,_retryExplicit:true};
-    lineRetryFailedSilently(username,password,one,lineChooserResolve,300);
+    lineRetryFailedSilently(username,password,one,function(ln,d){
+      delete _lineRetryInFlight[ln];
+      lineChooserResolve(ln,d);
+    },300);
   }
   function finishUi(){
     if(uiFinished) return;
