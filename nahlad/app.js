@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.85.82';
+var APP_VERSION = '2.85.83';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -35556,18 +35556,23 @@ function surveyDoctorHasRecord(state, meno, okres){
   });
 }
 function tuyoryDoctorHasRecord(meno, okres){ return surveyDoctorHasRecord(TUYORY, meno, okres); }
-function tuyMenoDupCheck(){
-  var dup = document.getElementById('tuy-meno-dup');
-  var submit = document.getElementById('tuy-submit');
-  var meno = (document.getElementById('tuy-meno') || {}).value || '';
-  var okres = (document.getElementById('tuy-okres') || {}).value || '';
-  var hit = tuyoryDoctorHasRecord(meno, okres);
+// F3-4 krok 5: zdieľaná kontrola duplicitného lekára priamo vo formulári
+// (Tuyory/Apixaban majú identickú DOM štruktúru — samostatný "dup" riadok
+// + submit tlačidlo; Lonelix má inú štruktúru — chybový riadok so stavmi —
+// preto ostáva mimo tejto abstrakcie).
+function surveyMenoDupCheck(prefix, hasRecordFn, surveyLabel){
+  var dup = document.getElementById(prefix + '-meno-dup');
+  var submit = document.getElementById(prefix + '-submit');
+  var meno = (document.getElementById(prefix + '-meno') || {}).value || '';
+  var okres = (document.getElementById(prefix + '-okres') || {}).value || '';
+  var hit = hasRecordFn(meno, okres);
   if (dup){
-    if (hit){ dup.innerHTML = '🚫 Tento lekár už má Tuyory záznam — druhý sa pridať nedá.'; dup.style.display = 'block'; dup.style.color = '#B91C1C'; }
+    if (hit){ dup.innerHTML = '🚫 Tento lekár už má ' + surveyLabel + ' záznam — druhý sa pridať nedá.'; dup.style.display = 'block'; dup.style.color = '#B91C1C'; }
     else { dup.style.display = 'none'; dup.style.color = '#D97706'; }
   }
   if (submit){ submit.disabled = !!hit; submit.style.opacity = hit ? '.5' : ''; }
 }
+function tuyMenoDupCheck(){ surveyMenoDupCheck('tuy', tuyoryDoctorHasRecord, 'Tuyory'); }
 
 // ── HISTÓRIA — Tuyory záznamy medzi GP návštevami ──
 function tuyoryHistItems(){
@@ -37083,12 +37088,10 @@ function apxMenoFocus(el){
   if (!el.value) el.value = 'MUDr. ';
   setTimeout(function(){ try { el.setSelectionRange(el.value.length, el.value.length); } catch(e){} }, 0);
 }
-function apxMenoValid(v){
-  v = String(v || '').trim(); if (!v) return false;
-  var words = v.split(/\s+/).filter(function(w){ return w.length > 0; });
-  var real = words.filter(function(w){ return TUY_TITLES.indexOf(w.toLowerCase()) === -1; });
-  return real.length >= 2;
-}
+// Identické s tuyMenoValid — apix formulár si drží vlastné meno funkcie
+// (apxMenoValid) kvôli ostatným apx*/tuy* volaniam v jeho bloku, ale
+// overovacia logika je tá istá, tak nech je len jedna implementácia.
+function apxMenoValid(v){ return tuyMenoValid(v); }
 function apxMenoInput(el){
   if (typeof capAfterSpace === 'function') capAfterSpace(el);
   el.classList.remove('tuy-invalid');
@@ -37102,18 +37105,7 @@ function apxMenoBlur(el){
 }
 // Poistka proti dvojitému Apixaban záznamu (normalizované meno bez titulu + okres)
 function apixDoctorHasRecord(meno, okres){ return surveyDoctorHasRecord(APIX, meno, okres); }
-function apxMenoDupCheck(){
-  var dup = document.getElementById('apx-meno-dup');
-  var submit = document.getElementById('apx-submit');
-  var meno = (document.getElementById('apx-meno') || {}).value || '';
-  var okres = (document.getElementById('apx-okres') || {}).value || '';
-  var hit = apixDoctorHasRecord(meno, okres);
-  if (dup){
-    if (hit){ dup.innerHTML = '🚫 Tento lekár už má Apixaban záznam — druhý sa pridať nedá.'; dup.style.display = 'block'; dup.style.color = '#B91C1C'; }
-    else { dup.style.display = 'none'; dup.style.color = '#D97706'; }
-  }
-  if (submit){ submit.disabled = !!hit; submit.style.opacity = hit ? '.5' : ''; }
-}
+function apxMenoDupCheck(){ surveyMenoDupCheck('apx', apixDoctorHasRecord, 'Apixaban'); }
 
 // ── HISTÓRIA — Apixaban záznamy medzi GP návštevami ──
 function apixHistItems(){
