@@ -1,6 +1,6 @@
 // ╔══════════════════════════════════════════════════════════════╗
 // ║  Potenciál VL — Service Worker                                ║
-// ║  (retrigger GitHub Pages deploy 2026-09-13 13:12 UTC)          ║
+// ║  (retrigger GitHub Pages deploy 2026-09-13 17:04 UTC)          ║
 // ║  Stratégia: network-first pre HTML (vždy sviežie keď online), ║
 // ║  cache-first pre ostatné assety (rýchly štart, offline ready).║
 // ╚══════════════════════════════════════════════════════════════╝
