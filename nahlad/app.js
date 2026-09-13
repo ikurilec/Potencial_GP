@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.58';
+var APP_VERSION = '2.87.59';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -5999,35 +5999,22 @@ function closeViac() {
 
 
 // ── TÍMOVÉ PLNENIE — Golem rep west / rep east ────────────────────────────
-// Samostatný bezpečný pohľad: endpoint vracia len produktový súhrn rovnakej
-// roly. Nevychádza z manažérskych raw dát a neobsahuje lekárov ani návštevy.
-var TEAM_PL_STATE = { open:false, detailUser:'', payload:null, returnTo:null, request:0 };
+// Prehľad vracia výlučne produktové plnenie. Lekári ani návštevy sa sem neprenášajú.
+var TEAM_PL_STATE = { open:false, detailUser:'', pendingDetailUser:'', payload:null, returnTo:null, request:0 };
 var TEAM_PL_CACHE_MAX_AGE_MS = 15 * 60 * 1000;
 
 function teamPlnenieAllowed(){
-  try {
-    var s = getSession() || {};
-    return !s.line && /^(rep west|rep east)$/i.test(String(s.role || '').trim());
-  } catch(e) { return false; }
+  try { var s = getSession() || {}; return !s.line && /^(rep west|rep east)$/i.test(String(s.role || '').trim()); } catch(e) { return false; }
 }
 function teamPlnenieQuarter(){ return (typeof plnenieCurrentQ === 'function') ? plnenieCurrentQ() : Math.ceil((new Date().getMonth() + 1) / 3); }
 function teamPlnenieYear(){ return new Date().getFullYear(); }
-function teamPlnenieCacheKey(){
-  var s = getSession() || {};
-  return 'team_plnenie_' + String(s.username || 'anonymous').toLowerCase() + '_' + teamPlnenieYear() + '_' + teamPlnenieQuarter();
-}
+function teamPlnenieCacheKey(){ var s = getSession() || {}; return 'team_plnenie_' + String(s.username || 'anonymous').toLowerCase() + '_' + teamPlnenieYear() + '_' + teamPlnenieQuarter(); }
 function teamPlnenieFmtPct(value){ return value === null || value === undefined || !isFinite(value) ? '—' : Number(value).toLocaleString('sk-SK', {maximumFractionDigits:1}) + ' %'; }
 function teamPlnenieFmtMoney(value){ return Math.round(Number(value) || 0).toLocaleString('sk-SK').replace(/\u00A0/g, ' ') + ' €'; }
 function teamPlnenieColor(value){ if(value === null || value === undefined || !isFinite(value)) return 'none'; return value >= 100 ? 'g' : (value >= 95 ? 'o' : 'r'); }
-function teamPlnenieTeamName(){
-  var role = String(((TEAM_PL_STATE.payload || {}).team || ((getSession() || {}).role) || '')).toLowerCase();
-  return role === 'rep east' ? 'East' : 'West';
-}
-function teamPlnenieCaptureReturn(){
-  // Rovnaké pravidlá ako pri Skladoch: návrat je presne na panel, ktorý bol
-  // otvorený pred Menu, nie na ľubovoľnú predvolenú záložku.
-  return (typeof stockCaptureReturn === 'function') ? stockCaptureReturn() : null;
-}
+function teamPlnenieRoleName(role){ return String(role || '').toLowerCase() === 'rep east' ? 'East' : 'West'; }
+function teamPlnenieTeamName(){ return 'Golem'; }
+function teamPlnenieCaptureReturn(){ return (typeof stockCaptureReturn === 'function') ? stockCaptureReturn() : null; }
 function teamPlnenieRestoreReturn(target){
   var overlay = document.getElementById('team-plnenie-overlay');
   if (overlay) overlay.classList.remove('show');
@@ -6039,129 +6026,76 @@ function teamPlnenieRestoreReturn(target){
   if (target.kind === 'gyn') { try { gynNavTo(target.tab); return; } catch(e) {} }
   if (target.kind === 'mgr') { try { mgrSwitchSubtab(target.tab); return; } catch(e) {} }
   if (target.kind === 'panel' && target.id) {
-    try {
-      if (_panelStack[_panelStack.length - 1] === target.id) _panelStack.pop();
-      _panelShow(target.id, true);
-      if (target.id === 'dnes-overlay') { try { dnesRender(); } catch(e2) {} }
-      return;
-    } catch(e) {}
+    try { if (_panelStack[_panelStack.length - 1] === target.id) _panelStack.pop(); _panelShow(target.id, true); if (target.id === 'dnes-overlay') { try { dnesRender(); } catch(e2) {} } return; } catch(e) {}
   }
   closeAllPanels();
 }
 function teamPlnenieSyncMeta(reps){
   (reps || []).forEach(function(rep, index){
     if (!rep || !rep.username) return;
-    var username = String(rep.username).toLowerCase();
-    var avatar = rep.avatar || null;
+    var username = String(rep.username).toLowerCase(), avatar = rep.avatar || null;
     if (typeof avatar === 'string' && avatar) { try { avatar = JSON.parse(avatar); } catch(e) { avatar = null; } }
-    USERS_LOCAL[username] = Object.assign({}, USERS_LOCAL[username] || {}, {
-      name: rep.name || username, region: rep.region || '', pohlavie: rep.pohlavie || '', avatar: avatar || null
-    });
-    LB_REP_INFO[username] = Object.assign({}, LB_REP_INFO[username] || {}, {
-      name: rep.name || username, region: rep.region || '', avatar: avatar || null,
-      color: (LB_REP_INFO[username] && LB_REP_INFO[username].color) || ['#2563EB','#0F766E','#7C3AED','#C2410C','#BE185D','#0369A1'][index % 6]
-    });
+    USERS_LOCAL[username] = Object.assign({}, USERS_LOCAL[username] || {}, { name:rep.name || username, region:rep.region || '', pohlavie:rep.pohlavie || '', avatar:avatar || null });
+    LB_REP_INFO[username] = Object.assign({}, LB_REP_INFO[username] || {}, { name:rep.name || username, region:rep.region || '', avatar:avatar || null, color:(LB_REP_INFO[username] && LB_REP_INFO[username].color) || ['#2563EB','#0F766E','#7C3AED','#C2410C','#BE185D','#0369A1'][index % 6] });
   });
 }
-function teamPlnenieSkeleton(){
-  return '<div class="team-plnenie-hero"><div class="team-plnenie-eyebrow">Tímové plnenie</div><div class="team-plnenie-loading"><span class="team-plnenie-spinner"></span>Načítavam výsledky tímu…</div></div>' +
-    '<div class="team-plnenie-skeleton" aria-label="Načítavam"><div class="team-plnenie-skeleton-card"></div><div class="team-plnenie-skeleton-card"></div><div class="team-plnenie-skeleton-card"></div></div>';
-}
-function teamPlnenieLoadError(){
-  var body = document.getElementById('team-plnenie-body');
-  if (!body) return;
-  body.innerHTML = '<div class="team-plnenie-hero"><div class="team-plnenie-eyebrow">Tímové plnenie</div><div class="team-plnenie-loading">Údaje tímu sa teraz nepodarilo načítať.</div></div>' +
-    '<div class="team-plnenie-empty">Skús to prosím znovu. Ak problém pretrvá, skontroluj pripojenie.<br><button type="button" class="team-plnenie-retry" onclick="teamPlnenieRefresh()">↻ Načítať znovu</button></div>';
-}
+function teamPlnenieSkeleton(){ return '<div class="team-plnenie-hero"><div class="team-plnenie-eyebrow">Tímové plnenie</div><div class="team-plnenie-loading"><span class="team-plnenie-spinner"></span>Načítavam výsledky tímu…</div></div><div class="team-plnenie-skeleton" aria-label="Načítavam"><div class="team-plnenie-skeleton-card"></div><div class="team-plnenie-skeleton-card"></div><div class="team-plnenie-skeleton-card"></div></div>'; }
+function teamPlnenieLoadError(){ var body=document.getElementById('team-plnenie-body'); if(body) body.innerHTML='<div class="team-plnenie-hero"><div class="team-plnenie-eyebrow">Tímové plnenie</div><div class="team-plnenie-loading">Údaje tímu sa teraz nepodarilo načítať.</div></div><div class="team-plnenie-empty">Skús to prosím znovu. Ak problém pretrvá, skontroluj pripojenie.<br><button type="button" class="team-plnenie-retry" onclick="teamPlnenieRefresh()">↻ Načítať znovu</button></div>'; }
 function teamPlnenieFetch(){
-  var q = teamPlnenieQuarter(), year = teamPlnenieYear();
-  return appQueuedFetchJson(scriptUrl('action=getTeamPlnenie&rok=' + encodeURIComponent(year) + '&Q=' + encodeURIComponent(q)), {cache:'no-store'}, 25000, 'critical')
-    .then(function(payload){
-      if (!payload || payload.ok === false) throw new Error((payload && payload.error) || 'team endpoint unavailable');
-      if (!Array.isArray(payload.reps)) throw new Error('team response invalid');
-      return payload;
-    });
+  var q=teamPlnenieQuarter(), year=teamPlnenieYear();
+  return appQueuedFetchJson(scriptUrl('action=getTeamPlnenie&rok='+encodeURIComponent(year)+'&Q='+encodeURIComponent(q)), {cache:'no-store'},25000,'critical').then(function(payload){ if(!payload || payload.ok===false) throw new Error((payload && payload.error)||'team endpoint unavailable'); if(!Array.isArray(payload.reps)) throw new Error('team response invalid'); return payload; });
 }
+function teamPlnenieApplyPayload(payload){ TEAM_PL_STATE.payload=payload; teamPlnenieSyncMeta(payload.reps); if(TEAM_PL_STATE.pendingDetailUser && (payload.reps || []).some(function(r){ return r.username===TEAM_PL_STATE.pendingDetailUser; })) { TEAM_PL_STATE.detailUser=TEAM_PL_STATE.pendingDetailUser; TEAM_PL_STATE.pendingDetailUser=''; } teamPlnenieRender(); }
 function teamPlnenieLoad(force){
-  if (!teamPlnenieAllowed()) return;
-  var key = teamPlnenieCacheKey();
-  var request = ++TEAM_PL_STATE.request;
-  var opts = {
-    maxAgeMs: TEAM_PL_CACHE_MAX_AGE_MS,
-    fetcher: teamPlnenieFetch,
-    onFresh: function(payload){
-      if (!TEAM_PL_STATE.open || request !== TEAM_PL_STATE.request) return;
-      TEAM_PL_STATE.payload = payload; teamPlnenieSyncMeta(payload.reps); teamPlnenieRender();
-    },
-    onError: function(){
-      if (!TEAM_PL_STATE.open || request !== TEAM_PL_STATE.request) return;
-      if (TEAM_PL_STATE.payload) teamPlnenieRender(); else teamPlnenieLoadError();
-    }
-  };
-  var cached = force ? DataStore.refresh(key, opts) : DataStore.get(key, opts);
-  if (cached && cached.data) { TEAM_PL_STATE.payload = cached.data; teamPlnenieSyncMeta(cached.data.reps); teamPlnenieRender(); }
-  else if (!TEAM_PL_STATE.payload) {
-    var body = document.getElementById('team-plnenie-body'); if (body) body.innerHTML = teamPlnenieSkeleton();
-  }
+  if(!teamPlnenieAllowed()) return;
+  var key=teamPlnenieCacheKey(), request=++TEAM_PL_STATE.request, opts={maxAgeMs:TEAM_PL_CACHE_MAX_AGE_MS,fetcher:teamPlnenieFetch,onFresh:function(payload){if(!TEAM_PL_STATE.open || request!==TEAM_PL_STATE.request)return;teamPlnenieApplyPayload(payload);},onError:function(){if(!TEAM_PL_STATE.open || request!==TEAM_PL_STATE.request)return;if(TEAM_PL_STATE.payload)teamPlnenieRender();else teamPlnenieLoadError();}};
+  var cached=force?DataStore.refresh(key,opts):DataStore.get(key,opts);
+  if(cached && cached.data) teamPlnenieApplyPayload(cached.data); else if(!TEAM_PL_STATE.payload){var body=document.getElementById('team-plnenie-body');if(body)body.innerHTML=teamPlnenieSkeleton();}
 }
-function teamPlnenieRefresh(){ TEAM_PL_STATE.payload = null; TEAM_PL_STATE.detailUser = ''; teamPlnenieLoad(true); }
-function teamPlneniePreload(){
-  if (!teamPlnenieAllowed()) return;
-  DataStore.get(teamPlnenieCacheKey(), { maxAgeMs: TEAM_PL_CACHE_MAX_AGE_MS, fetcher: teamPlnenieFetch });
+function teamPlnenieRefresh(){ TEAM_PL_STATE.payload=null; TEAM_PL_STATE.detailUser=''; teamPlnenieLoad(true); }
+function teamPlneniePreload(){ if(teamPlnenieAllowed()) DataStore.get(teamPlnenieCacheKey(),{maxAgeMs:TEAM_PL_CACHE_MAX_AGE_MS,fetcher:teamPlnenieFetch}); }
+function openTeamPlnenie(detailUser){
+  if(!teamPlnenieAllowed()) return;
+  usageSectionEnter('Tímové plnenie'); TEAM_PL_STATE.open=true; TEAM_PL_STATE.detailUser=''; TEAM_PL_STATE.pendingDetailUser=detailUser || ''; TEAM_PL_STATE.returnTo=teamPlnenieCaptureReturn();
+  var sub=document.getElementById('team-plnenie-sub'); if(sub)sub.textContent='Golem · Q'+teamPlnenieQuarter()+' '+teamPlnenieYear();
+  _panelShow('team-plnenie-overlay'); teamPlnenieLoad(false);
 }
-function openTeamPlnenie(){
-  if (!teamPlnenieAllowed()) return;
-  usageSectionEnter('Tímové plnenie');
-  TEAM_PL_STATE.open = true; TEAM_PL_STATE.detailUser = ''; TEAM_PL_STATE.returnTo = teamPlnenieCaptureReturn();
-  var sub = document.getElementById('team-plnenie-sub');
-  if (sub) sub.textContent = teamPlnenieTeamName() + ' · Q' + teamPlnenieQuarter() + ' ' + teamPlnenieYear();
-  _panelShow('team-plnenie-overlay');
-  teamPlnenieLoad(false);
+function closeTeamPlnenie(){ var target=TEAM_PL_STATE.returnTo; usageSectionClose(); TEAM_PL_STATE.open=false; TEAM_PL_STATE.detailUser=''; TEAM_PL_STATE.pendingDetailUser=''; TEAM_PL_STATE.request++; TEAM_PL_STATE.returnTo=null; teamPlnenieRestoreReturn(target); }
+function teamPlnenieOpenDetail(username){ var rep=((TEAM_PL_STATE.payload || {}).reps || []).find(function(item){return item.username===username;}); if(!rep)return; TEAM_PL_STATE.detailUser=username; teamPlnenieRender(); var overlay=document.getElementById('team-plnenie-overlay');if(overlay)overlay.scrollTop=0; }
+function teamPlnenieOpenFromLeaderboard(username){ if(teamPlnenieAllowed()) openTeamPlnenie(username); }
+function teamPlnenieCloseDetail(){ if(!TEAM_PL_STATE.detailUser)return closeTeamPlnenie(); TEAM_PL_STATE.detailUser=''; teamPlnenieRender(); var overlay=document.getElementById('team-plnenie-overlay');if(overlay)overlay.scrollTop=0; }
+function teamPlnenieBack(){ if(TEAM_PL_STATE.detailUser) teamPlnenieCloseDetail(); else closeTeamPlnenie(); }
+function teamPlnenieAggregate(reps){ var plan=(reps||[]).reduce(function(sum,r){return sum+(Number(r.planEUR)||0);},0), sales=(reps||[]).reduce(function(sum,r){return sum+(Number(r.predajeEUR)||0);},0); return {plan:plan,sales:sales,pct:plan>0?sales/plan*100:null}; }
+function teamPlnenieProductLabel(value){ return String(value || '').replace(/_/g,' '); }
+function teamPlneniePharmaKey(productKey){
+  if(typeof PHARMA_CODES === 'undefined') return '';
+  if(PHARMA_CODES[productKey]) return productKey;
+  var normal = typeof plnenieNormalizeKey === 'function' ? plnenieNormalizeKey(productKey) : String(productKey).toLowerCase();
+  return Object.keys(PHARMA_CODES).find(function(key){ return (typeof plnenieNormalizeKey === 'function' ? plnenieNormalizeKey(key) : String(key).toLowerCase()) === normal; }) || '';
 }
-function closeTeamPlnenie(){
-  var target = TEAM_PL_STATE.returnTo;
-  usageSectionClose(); TEAM_PL_STATE.open = false; TEAM_PL_STATE.detailUser = ''; TEAM_PL_STATE.request++; TEAM_PL_STATE.returnTo = null;
-  teamPlnenieRestoreReturn(target);
+function teamPlnenieOpenPharma(username, productKey){
+  var payload=TEAM_PL_STATE.payload || {}, rep=(payload.reps||[]).find(function(item){return item.username===username;}), product=rep && (rep.products||[]).find(function(item){return item.key===productKey;}), pharmaKey=teamPlneniePharmaKey(productKey);
+  if(!rep || !product || !pharmaKey) return;
+  openPharmaMs(pharmaKey, teamPlnenieProductLabel(product.label), rep.region, rep.username, {q:payload.Q || teamPlnenieQuarter(),year:payload.rok || teamPlnenieYear(),team:true});
 }
-function teamPlnenieOpenDetail(username){
-  var data = TEAM_PL_STATE.payload || {}, rep = (data.reps || []).find(function(item){ return item.username === username; });
-  if (!rep) return;
-  TEAM_PL_STATE.detailUser = username; teamPlnenieRender();
-  var overlay = document.getElementById('team-plnenie-overlay'); if (overlay) overlay.scrollTop = 0;
-}
-function teamPlnenieCloseDetail(){
-  if (!TEAM_PL_STATE.detailUser) return closeTeamPlnenie();
-  TEAM_PL_STATE.detailUser = ''; teamPlnenieRender();
-  var overlay = document.getElementById('team-plnenie-overlay'); if (overlay) overlay.scrollTop = 0;
-}
-function teamPlnenieBack(){ if (TEAM_PL_STATE.detailUser) teamPlnenieCloseDetail(); else closeTeamPlnenie(); }
+
+function teamPlnenieCard(rep,index,current){ var av=lbAvatarContent(rep.username,rep.name,40), color=(LB_REP_INFO[rep.username]||{}).color || '#2563EB', safe=String(rep.username).replace(/'/g,"\\'"), name=teamPlnenieRoleName(rep.role); return '<button type="button" class="team-plnenie-card" onclick="teamPlnenieOpenDetail(\''+safe+'\')"><span class="team-plnenie-rank">'+(index+1)+'.</span><span class="team-plnenie-avatar'+(av.hasAvatar?' has-avatar':'')+'" data-username="'+appEsc(rep.username)+'" style="background:'+appEsc(color)+'">'+av.html+'</span><span class="team-plnenie-person"><span class="team-plnenie-name">'+appEsc(rep.name)+'</span><span class="team-plnenie-meta">'+appEsc(name+' · '+(rep.region||'Golem'))+(rep.username===current?'<span class="team-plnenie-you">Ty</span>':'')+'</span></span><span class="team-plnenie-result"><span class="team-plnenie-pct '+teamPlnenieColor(rep.pct)+'">'+teamPlnenieFmtPct(rep.pct)+'</span><span class="team-plnenie-money">'+teamPlnenieFmtMoney(rep.predajeEUR)+'</span></span><span class="team-plnenie-chev">›</span></button>'; }
+function teamPlnenieGroupHtml(role,reps,current){ var ag=teamPlnenieAggregate(reps); return '<section class="team-plnenie-group"><div class="team-plnenie-group-head"><div class="team-plnenie-label">Tím '+teamPlnenieRoleName(role)+'</div><div class="team-plnenie-group-result">'+teamPlnenieFmtPct(ag.pct)+' · '+reps.length+' rep.</div></div><div class="team-plnenie-list">'+reps.map(function(rep,i){return teamPlnenieCard(rep,i,current);}).join('')+'</div></section>'; }
 function teamPlnenieRender(){
-  var body = document.getElementById('team-plnenie-body'), title = document.getElementById('team-plnenie-title'), sub = document.getElementById('team-plnenie-sub');
-  if (!body || !TEAM_PL_STATE.open) return;
-  var payload = TEAM_PL_STATE.payload || {}, reps = Array.isArray(payload.reps) ? payload.reps.slice() : [];
-  teamPlnenieSyncMeta(reps);
-  var team = teamPlnenieTeamName(), q = payload.Q || teamPlnenieQuarter(), year = payload.rok || teamPlnenieYear();
-  if (sub) sub.textContent = team + ' · Q' + q + ' ' + year;
-  var current = (getSession() || {}).username || '';
-  if (TEAM_PL_STATE.detailUser) {
-    var rep = reps.find(function(item){ return item.username === TEAM_PL_STATE.detailUser; });
-    if (!rep) { TEAM_PL_STATE.detailUser = ''; return teamPlnenieRender(); }
-    if (title) title.textContent = rep.name || 'Plnenie reprezentanta';
-    var av = lbAvatarContent(rep.username, rep.name, 48);
-    var products = (rep.products || []).slice().sort(function(a,b){ return (a.label || '').localeCompare(b.label || '', 'sk'); });
-    body.innerHTML = '<div class="team-plnenie-person-head"><div class="team-plnenie-avatar' + (av.hasAvatar ? ' has-avatar' : '') + '" data-username="' + appEsc(rep.username) + '" style="background:' + appEsc((LB_REP_INFO[rep.username] || {}).color || '#2563EB') + '">' + av.html + '</div><div class="team-plnenie-person"><div class="team-plnenie-name">' + appEsc(rep.name) + '</div><div class="team-plnenie-meta">' + appEsc(rep.region || 'Golem') + (rep.username === current ? '<span class="team-plnenie-you">Ty</span>' : '') + '</div></div><div class="team-plnenie-person-pct"><div class="team-plnenie-pct ' + teamPlnenieColor(rep.pct) + '">' + teamPlnenieFmtPct(rep.pct) + '</div><small>celkom</small></div></div>' +
-      '<div class="team-plnenie-label">Produkty s plánom · Q' + q + '</div>' +
-      (products.length ? products.map(function(product){ var cls = teamPlnenieColor(product.pct), pct = product.pct === null ? 0 : Math.max(0, Math.min(100, product.pct)); return '<div class="team-plnenie-product"><div class="team-plnenie-product-top"><div class="team-plnenie-product-name"><span class="team-plnenie-dot"></span><span>' + appEsc(product.label) + '</span></div><div class="team-plnenie-pct ' + cls + '">' + teamPlnenieFmtPct(product.pct) + '</div></div><div class="team-plnenie-product-bar"><div class="team-plnenie-product-fill ' + cls + '" style="width:' + pct + '%"></div></div><div class="team-plnenie-product-money"><span>Plán <strong>' + teamPlnenieFmtMoney(product.planEUR) + '</strong></span><span>Predaj <strong>' + teamPlnenieFmtMoney(product.predajeEUR) + '</strong></span></div></div>'; }).join('') : '<div class="team-plnenie-empty">Pre tento kvartál zatiaľ nemá zadaný plán.</div>');
-    return;
+  var body=document.getElementById('team-plnenie-body'),title=document.getElementById('team-plnenie-title'),sub=document.getElementById('team-plnenie-sub'); if(!body || !TEAM_PL_STATE.open)return;
+  var payload=TEAM_PL_STATE.payload || {},reps=Array.isArray(payload.reps)?payload.reps.slice():[],q=payload.Q||teamPlnenieQuarter(),year=payload.rok||teamPlnenieYear(),current=(getSession()||{}).username||'';
+  teamPlnenieSyncMeta(reps); if(sub)sub.textContent='Golem · Q'+q+' '+year;
+  if(TEAM_PL_STATE.detailUser){
+    var rep=reps.find(function(item){return item.username===TEAM_PL_STATE.detailUser;}); if(!rep){TEAM_PL_STATE.detailUser='';return teamPlnenieRender();} if(title)title.textContent=rep.name||'Plnenie reprezentanta';
+    var av=lbAvatarContent(rep.username,rep.name,48), products=(rep.products||[]).slice().sort(function(a,b){return(a.label||'').localeCompare(b.label||'','sk');});
+    body.innerHTML='<div class="team-plnenie-person-head"><div class="team-plnenie-avatar'+(av.hasAvatar?' has-avatar':'')+'" data-username="'+appEsc(rep.username)+'" style="background:'+appEsc((LB_REP_INFO[rep.username]||{}).color||'#2563EB')+'">'+av.html+'</div><div class="team-plnenie-person"><div class="team-plnenie-name">'+appEsc(rep.name)+'</div><div class="team-plnenie-meta">'+appEsc(teamPlnenieRoleName(rep.role)+' · '+(rep.region||'Golem'))+(rep.username===current?'<span class="team-plnenie-you">Ty</span>':'')+'</div></div><div class="team-plnenie-person-pct"><div class="team-plnenie-pct '+teamPlnenieColor(rep.pct)+'">'+teamPlnenieFmtPct(rep.pct)+'</div><small>celkom</small></div></div><div class="team-plnenie-label">Produkty s plánom · Q'+q+'</div>'+(products.length?products.map(function(product){var cls=teamPlnenieColor(product.pct),pct=product.pct===null?0:Math.max(0,Math.min(100,product.pct)),hasPharma=!!teamPlneniePharmaKey(product.key),safeUser=String(rep.username).replace(/'/g,"\\'"),safeKey=String(product.key).replace(/'/g,"\\'");return '<div class="team-plnenie-product"><div class="team-plnenie-product-top"><div class="team-plnenie-product-name"><span class="team-plnenie-dot"></span><span>'+appEsc(teamPlnenieProductLabel(product.label))+'</span></div><div class="team-plnenie-pct '+cls+'">'+teamPlnenieFmtPct(product.pct)+'</div></div><div class="team-plnenie-product-bar"><div class="team-plnenie-product-fill '+cls+'" style="width:'+pct+'%"></div></div><div class="team-plnenie-product-money"><span>Plán <strong>'+teamPlnenieFmtMoney(product.planEUR)+'</strong></span><span>Predaj <strong>'+teamPlnenieFmtMoney(product.predajeEUR)+'</strong></span></div>'+(hasPharma?'<button type="button" class="team-plnenie-pharma" onclick="teamPlnenieOpenPharma(\''+safeUser+'\',\''+safeKey+'\')">Trhový podiel a okresy <span>›</span></button>':'')+'</div>';}).join(''):'<div class="team-plnenie-empty">Pre tento kvartál zatiaľ nemá zadaný plán.</div>'); return;
   }
-  if (title) title.textContent = 'Tímové plnenie';
-  if (!reps.length) { body.innerHTML = '<div class="team-plnenie-empty">Pre tím ' + appEsc(team) + ' zatiaľ nie sú dostupné údaje o plnení.</div>'; return; }
-  reps.sort(function(a,b){ var ap=a.pct == null ? -1 : a.pct, bp=b.pct == null ? -1 : b.pct; return bp-ap || String(a.name).localeCompare(String(b.name),'sk'); });
-  var plan = reps.reduce(function(sum, rep){ return sum + (Number(rep.planEUR) || 0); }, 0), sales = reps.reduce(function(sum, rep){ return sum + (Number(rep.predajeEUR) || 0); }, 0), pct = plan > 0 ? sales / plan * 100 : null;
-  body.innerHTML = '<div class="team-plnenie-hero"><div class="team-plnenie-eyebrow">Tím ' + appEsc(team) + ' · Q' + q + ' ' + year + '</div><div class="team-plnenie-hero-row"><div class="team-plnenie-hero-pct">' + teamPlnenieFmtPct(pct) + '</div><div class="team-plnenie-hero-meta"><strong>' + reps.length + ' reprezentant' + (reps.length === 1 ? '' : 'i') + '</strong><br>' + teamPlnenieFmtMoney(sales) + ' z ' + teamPlnenieFmtMoney(plan) + '</div></div></div>' +
-    '<div class="team-plnenie-note"><span class="team-plnenie-note-ic">🔒</span><span>Vidíš len súhrn plnenia produktov svojho tímu. Informácie o lekároch a návštevách sa tu nezobrazujú.</span></div>' +
-    '<div class="team-plnenie-label">Reprezentanti · ťukni pre produkty</div><div class="team-plnenie-list">' + reps.map(function(rep, index){ var av=lbAvatarContent(rep.username,rep.name,40), color=(LB_REP_INFO[rep.username] || {}).color || '#2563EB'; return '<button type="button" class="team-plnenie-card" onclick="teamPlnenieOpenDetail(\'' + String(rep.username).replace(/'/g, "\\'") + '\')"><span class="team-plnenie-rank">' + (index + 1) + '.</span><span class="team-plnenie-avatar' + (av.hasAvatar ? ' has-avatar' : '') + '" data-username="' + appEsc(rep.username) + '" style="background:' + appEsc(color) + '">' + av.html + '</span><span class="team-plnenie-person"><span class="team-plnenie-name">' + appEsc(rep.name) + '</span><span class="team-plnenie-meta">' + appEsc(rep.region || 'Golem') + (rep.username === current ? '<span class="team-plnenie-you">Ty</span>' : '') + '</span></span><span class="team-plnenie-result"><span class="team-plnenie-pct ' + teamPlnenieColor(rep.pct) + '">' + teamPlnenieFmtPct(rep.pct) + '</span><span class="team-plnenie-money">' + teamPlnenieFmtMoney(rep.predajeEUR) + '</span></span><span class="team-plnenie-chev">›</span></button>'; }).join('') + '</div>';
+  if(title)title.textContent='Tímové plnenie'; if(!reps.length){body.innerHTML='<div class="team-plnenie-empty">Pre Golem zatiaľ nie sú dostupné údaje o plnení.</div>';return;}
+  reps.sort(function(a,b){var ap=a.pct==null?-1:a.pct,bp=b.pct==null?-1:b.pct;return bp-ap||String(a.name).localeCompare(String(b.name),'sk');}); var all=teamPlnenieAggregate(reps),west=reps.filter(function(r){return String(r.role).toLowerCase()==='rep west';}),east=reps.filter(function(r){return String(r.role).toLowerCase()==='rep east';}),w=teamPlnenieAggregate(west),e=teamPlnenieAggregate(east);
+  body.innerHTML='<div class="team-plnenie-hero"><div class="team-plnenie-eyebrow">Golem · Q'+q+' '+year+'</div><div class="team-plnenie-hero-row"><div class="team-plnenie-hero-pct">'+teamPlnenieFmtPct(all.pct)+'</div><div class="team-plnenie-hero-meta"><strong>'+reps.length+' reprezentant'+(reps.length===1?'':'i')+'</strong><br>'+teamPlnenieFmtMoney(all.sales)+' z '+teamPlnenieFmtMoney(all.plan)+'</div></div><div class="team-plnenie-team-totals"><div><span>West</span><strong>'+teamPlnenieFmtPct(w.pct)+'</strong><small>'+teamPlnenieFmtMoney(w.sales)+' / '+teamPlnenieFmtMoney(w.plan)+'</small></div><div><span>East</span><strong>'+teamPlnenieFmtPct(e.pct)+'</strong><small>'+teamPlnenieFmtMoney(e.sales)+' / '+teamPlnenieFmtMoney(e.plan)+'</small></div></div></div>'+teamPlnenieGroupHtml('rep west',west,current)+teamPlnenieGroupHtml('rep east',east,current);
 }
+
+document.addEventListener('click',function(event){ var back=event.target && event.target.closest && event.target.closest('#team-plnenie-back'); if(!back)return; event.preventDefault(); event.stopPropagation(); teamPlnenieBack(); },true);
 
 // ── SKLADY — read-only prehľad z normalizovaného interného Sheet-u ─────────
 var SKLADY_STATE = { open:false, request:0, expanded:{}, payload:null, returnTo:null, _scrollToKey:null };
@@ -19140,6 +19074,7 @@ function initEdgeSwipeBack() {
 // používajú jeden poriadok vrstiev. Toto gesto však priebežne posúva aktuálnu vrstvu pod
 // prstom — nepôsobí preto ako oneskorené kliknutie po pustení prsta.
 function globalSwipeBackFindLayer() {
+  if (typeof TEAM_PL_STATE !== 'undefined' && TEAM_PL_STATE.open) return TEAM_PL_STATE.detailUser ? {id:'team-plnenie-detail',close:teamPlnenieCloseDetail} : {id:'team-plnenie-overlay',close:closeTeamPlnenie};
   if (typeof _backLayers === 'undefined') return null;
   for (var i = 0; i < _backLayers.length; i++) {
     var layer = _backLayers[i];
@@ -19161,6 +19096,7 @@ function globalSwipeBackResolveVisualTarget(layer) {
   var id = layer.id;
   var direct = document.getElementById(id);
   if (direct) return direct;
+  if (id === 'team-plnenie-detail') return document.getElementById('team-plnenie-overlay');
   if (id === 'mgr-plnenie-detail-open') return document.getElementById('mgr-plnenie-detail');
   if (id === 'mgr-subtab') return document.getElementById('mgr-view');
   if (id === 'reagila-nav') return document.getElementById('rep-plnenie-overlay');
@@ -19561,6 +19497,7 @@ _backRegister('gyn-view-nav', function () {
 });
 
 function _handleAndroidBack() {
+  if (typeof TEAM_PL_STATE !== 'undefined' && TEAM_PL_STATE.open) { teamPlnenieBack(); return true; }
   // Poradie: od najvnútornejšieho overlaya po najvonkajší
   for (var _bi = 0; _bi < _backLayers.length; _bi++) {
     var _layer = _backLayers[_bi];
@@ -22347,6 +22284,7 @@ function lbRenderPlnenie(body) {
   // vidí v Rebríčku celý tím (to je zmysel rebríčka), ale nemá mať prístup k cudzím
   // detailným dátam — tie sú výhradne manažérska funkcia (plnenieOpenDetail).
   var _lbCanOpenDetail = appRole() === 'mgr';
+  var _lbCanOpenTeam = teamPlnenieAllowed();
 
   function pctCls(pct){ return pct === null ? 'n' : pct >= 100 ? 'g' : pct >= 95 ? 'o' : 'r'; }
   function pctLbl(pct){ return pct === null ? '—' : pct.toFixed(1).replace('.',',') + ' %'; }
@@ -22400,9 +22338,9 @@ function lbRenderPlnenie(body) {
     var cls = pctCls(rep.pct);
     var av = lbAvatarContent(rep.username, rep.name, isFirst ? 68 : 46);
     var _lbSafeU = String(rep.username).replace(/'/g, "\\'");
-    var _lbClickAttr = _lbCanOpenDetail ? ' onclick="lbOpenRepDetail(\'' + _lbSafeU + '\')" role="button" tabindex="0"' : '';
+    var _lbClickAttr = _lbCanOpenDetail ? ' onclick="lbOpenRepDetail(\'' + _lbSafeU + '\')" role="button" tabindex="0"' : (_lbCanOpenTeam ? ' onclick="teamPlnenieOpenFromLeaderboard(\'' + _lbSafeU + '\')" role="button" tabindex="0"' : '');
     podiumHtml +=
-      '<div class="lb-p-item' + (_lbCanOpenDetail ? ' lb-clickable' : '') + ' ' + podiumClasses[pi] + '"' + _lbClickAttr + '>' +
+      '<div class="lb-p-item' + ((_lbCanOpenDetail || _lbCanOpenTeam) ? ' lb-clickable' : '') + ' ' + podiumClasses[pi] + '"' + _lbClickAttr + '>' +
         (isFirst ? '<span class="lb-p-crown">\uD83D\uDC51</span>' : '') +
         '<div class="lb-p-avatar' + (av.hasAvatar ? ' has-avatar' : '') + '" data-username="' + rep.username + '" style="background:' + rep.color + '">' +
           av.html +
@@ -22424,9 +22362,9 @@ function lbRenderPlnenie(body) {
     var cls = pctCls(rep.pct);
     var av2 = lbAvatarContent(rep.username, rep.name, 34);
     var _lbSafeU2 = String(rep.username).replace(/'/g, "\\'");
-    var _lbClickAttr2 = _lbCanOpenDetail ? ' onclick="lbOpenRepDetail(\'' + _lbSafeU2 + '\')" role="button" tabindex="0"' : '';
+    var _lbClickAttr2 = _lbCanOpenDetail ? ' onclick="lbOpenRepDetail(\'' + _lbSafeU2 + '\')" role="button" tabindex="0"' : (_lbCanOpenTeam ? ' onclick="teamPlnenieOpenFromLeaderboard(\'' + _lbSafeU2 + '\')" role="button" tabindex="0"' : '');
     listHtml +=
-      '<div class="lb-row' + (isMe ? ' me' : '') + (_lbCanOpenDetail ? ' lb-clickable' : '') + '"' + _lbClickAttr2 + '>' +
+      '<div class="lb-row' + (isMe ? ' me' : '') + ((_lbCanOpenDetail || _lbCanOpenTeam) ? ' lb-clickable' : '') + '"' + _lbClickAttr2 + '>' +
         '<div class="lb-rank">' + rank + '</div>' +
         '<div class="lb-avatar' + (av2.hasAvatar ? ' has-avatar' : '') + '" data-username="' + rep.username + '" style="background:' + rep.color + '">' + av2.html + '</div>' +
         '<div class="lb-info">' +
@@ -28340,6 +28278,10 @@ function pharmaNeedsPrevDistrictFetch(resp, kvartal) {
   return (map.months || []).length > 0 && (map.months || []).length < 3 && (!Array.isArray(resp.okresy_prev) || resp.okresy_prev.length === 0);
 }
 
+function pharmaTeamAccessParams(){ return PHARMA_STATE.teamRepAccess && PHARMA_STATE.repLogin ? '&team_rep=' + encodeURIComponent(PHARMA_STATE.repLogin) : ''; }
+function pharmaDataRequestUrl(code, oblast, kvartal){ return scriptUrl('action=getPharmaData&oblast=' + encodeURIComponent(oblast) + '&produkt=' + encodeURIComponent(code) + '&kvartal=' + encodeURIComponent(kvartal) + pharmaTeamAccessParams()); }
+function pharmaOkresGrafRequestUrl(code, oblast, okres){ return scriptUrl('action=getPharmaOkresGraf&produkt=' + encodeURIComponent(code) + '&oblast=' + encodeURIComponent(oblast) + '&okres=' + encodeURIComponent(okres) + pharmaTeamAccessParams()); }
+
 function pharmaAttachPrevDistrictsForCurrent(code, oblast, kvartal, resp, done) {
   if(!pharmaIsCurrentKvartal(kvartal)) { done(resp); return; }
   var prevKv = pharmaKvartalPrev(kvartal);
@@ -28358,10 +28300,7 @@ function pharmaAttachPrevDistrictsForCurrent(code, oblast, kvartal, resp, done) 
     return;
   }
   appQueuedFetchJson(
-    scriptUrl('action=getPharmaData'
-      + '&oblast='  + encodeURIComponent(oblast)
-      + '&produkt=' + encodeURIComponent(code)
-      + '&kvartal=' + encodeURIComponent(prevKv)),
+    pharmaDataRequestUrl(code, oblast, prevKv),
     { cache: 'no-store' }, undefined, 'background'
   )
     .then(function(prevResp){
@@ -28400,7 +28339,7 @@ function pharmaGetOblast() {
   return (USERS_LOCAL[session.username] && USERS_LOCAL[session.username].region) || session.region || '';
 }
 
-function openPharmaMs(prodKey, label, oblastOverride, repLoginOverride) {
+function openPharmaMs(prodKey, label, oblastOverride, repLoginOverride, periodOverride) {
   var codes = PHARMA_CODES[prodKey];
   if (!codes || !codes.length) return;
   usageSectionEnter('Trhový podiel', 'produkt: ' + (label || prodKey));
@@ -28413,10 +28352,11 @@ function openPharmaMs(prodKey, label, oblastOverride, repLoginOverride) {
   // repLoginOverride — Reagila: manažér otvoril trhový podiel konkrétneho repa → výber
   // konkurentov (ceruzka) sa scope-uje per rep (uloží sa pod manažéra ako rep:<login>).
   PHARMA_STATE.repLogin = repLoginOverride ? String(repLoginOverride).toLowerCase() : null;
+  PHARMA_STATE.teamRepAccess = !!(periodOverride && periodOverride.team && teamPlnenieAllowed());
 
   var repOverlayOpen = document.getElementById('rep-plnenie-overlay') && document.getElementById('rep-plnenie-overlay').classList.contains('show');
-  var q    = repOverlayOpen ? (REP_PL_STATE.q || plnenieCurrentQ()) : (PL_STATE.q || plnenieCurrentQ());
-  var year = repOverlayOpen ? (REP_PL_STATE.year || (new Date()).getFullYear()) : (PL_STATE.year || (new Date()).getFullYear());
+  var q    = (periodOverride && periodOverride.q) || (repOverlayOpen ? (REP_PL_STATE.q || plnenieCurrentQ()) : (PL_STATE.q || plnenieCurrentQ()));
+  var year = (periodOverride && periodOverride.year) || (repOverlayOpen ? (REP_PL_STATE.year || (new Date()).getFullYear()) : (PL_STATE.year || (new Date()).getFullYear()));
   var kvartal = pharmaKvartalCode(year, q);
 
   PHARMA_STATE.codes      = codes;
@@ -28558,10 +28498,7 @@ function loadPharmaDataNetwork(code, oblast, kvartal) {
   }
 
   appQueuedFetchJson(
-    scriptUrl('action=getPharmaData'
-      + '&oblast='  + encodeURIComponent(oblast)
-      + '&produkt=' + encodeURIComponent(code)
-      + '&kvartal=' + encodeURIComponent(kvartal)),
+    pharmaDataRequestUrl(code, oblast, kvartal),
     { cache: 'no-store' }, undefined, 'critical'
   )
     .then(function(resp) {
@@ -29142,10 +29079,7 @@ function loadPharmaOkresGrafData(code, oblast, okres, callback) {
     callback(resp);
     return;
   }
-  appQueuedFetchJson(scriptUrl('action=getPharmaOkresGraf'
-    + '&produkt=' + encodeURIComponent(code)
-    + '&oblast='  + encodeURIComponent(oblast)
-    + '&okres='   + encodeURIComponent(okres)), { cache: 'no-store' }, undefined, 'critical')
+  appQueuedFetchJson(pharmaOkresGrafRequestUrl(code, oblast, okres), { cache: 'no-store' }, undefined, 'critical')
     .then(function(resp) {
       delete PHARMA_OKRES_STATE.loading[ck];
       if (resp && resp.ok && resp.rows && resp.rows.length >= 2) {
@@ -29896,7 +29830,7 @@ function closePharmaMs() {
   overlay.classList.add('pl-detail-exit-r');
   setTimeout(function(){
     overlay.classList.remove('show', 'pl-detail-exit-r');
-    PHARMA_STATE.open = false;
+    PHARMA_STATE.open = false; PHARMA_STATE.teamRepAccess = false; PHARMA_STATE.repLogin = null;
   }, 230);
 }
 
