@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.45';
+var APP_VERSION = '2.87.46';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -22782,20 +22782,20 @@ function plnenieLastPredajeTs() {
   }
   return ts;
 }
+// ROOT CAUSE (Ivan, 13.9.): appka ukazovala Q2 aj keď v Sheetoch dávno boli
+// predaje za Q3 (vo všetkých troch líniách) — signál, z ktorého si táto
+// funkcia predtým odvodzovala "posledný kvartál s dátami" (notif_predaje),
+// je len časová pečiatka toho, KEDY admin naposledy KLIKOL na tlačidlo
+// „Odoslať" pri push notifikácii „Dáta predajov boli aktualizované"
+// (plnenieDoSetNotif) — nie signál z importu dát samotného. Kliknutie na
+// notifikáciu a skutočná prítomnosť dát v Sheete sú dve rôzne veci, ktoré
+// sa vedia rozísť (notifikácia sa nemusí poslať vôbec, alebo sa pošle
+// neskoro) — presne to sa tu stalo. Default je teraz vždy kalendárny
+// kvartál; plnenieLastPredajeTs() ostáva nezmenená (banner "dáta
+// aktualizované" aj predikcia ju používajú ďalej, len už nie výber Q).
 function plnenieDefaultPeriod() {
   var now = new Date();
-  var def = { q: plnenieCurrentQ(), year: now.getFullYear() };
-  var ts = plnenieLastPredajeTs();
-  if (!ts) return def;
-  var up = new Date(ts);
-  if (isNaN(up.getTime())) return def;
-  var y = up.getFullYear();
-  var m = up.getMonth() + 1;                                          // mesiac notifikácie (1..12)
-  if (up.getDate() < 15) { m -= 1; if (m < 1) { m = 12; y -= 1; } }   // < 15. = nahral predošlý CELÝ mesiac
-  var dataQ = Math.ceil(m / 3);
-  // Nikdy nepredbehni kalendár; ak posledné dáta patria do staršieho Q, zostaň na ňom
-  if (y > def.year || (y === def.year && dataQ >= def.q)) return def;
-  return { q: dataQ, year: y };
+  return { q: plnenieCurrentQ(), year: now.getFullYear() };
 }
 function plnenieDefaultQ() { return plnenieDefaultPeriod().q; }
 // Nastav default obdobie (Q + rok) do state objektu (REP_PL_STATE / PL_STATE / GYN_APP).
