@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.21';
+var APP_VERSION = '2.87.22';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -15793,6 +15793,17 @@ function gynCalSync(){
   var syncLine=gynCalLine();
   var syncCtx=appLineCapture();
   GYN_CAL._syncing=true;
+  // Ticho len ak MÁ appka lokálne dáta ako fallback. Na úplne novom zariadení
+  // (prázdna cache) predtým ostal spinner "Načítavam udalosti…" navždy bez
+  // akéhokoľvek vysvetlenia, či šlo o sieťovú chybu (.catch) alebo o platnú
+  // odpoveď s ok:false/chybným tvarom (.then vetva to predtým ticho ignorovala).
+  function markSyncFailed(){
+    if(GYN_CAL.events.length===0 && syncLine===gynCalLine() && appLineContextActive(syncCtx)){
+      GYN_CAL._firstSyncFailed=true;
+      var elErr=gynCalHost();
+      if(elErr) gynKalShow(elErr, getSession());
+    }
+  }
   appQueuedFetchJson(gynCalScriptUrl('action=getCalEvents&_t='+Date.now()), undefined, APP_FETCH_TIMEOUT_PRELOAD_MS, 'background')
     .then(function(d){
       if(syncLine!==gynCalLine() || !appLineContextActive(syncCtx)) return;
@@ -15800,6 +15811,7 @@ function gynCalSync(){
         var fresh=d.events.map(gynCalNormEvent);          // normalizuj ISO dátumy zo Sheets
         var wasFirstOk=!GYN_CAL._everSyncedOk;
         GYN_CAL._everSyncedOk=true;                        // ÚSPEŠNÝ sync → už nikdy „Načítavam…"
+        GYN_CAL._firstSyncFailed=false;
         // Prekresli keď sa obsah zmenil, ALEBO pri prvom úspešnom synci (zruš loading aj pri 0 eventoch).
         if(gynCalSig(fresh) !== gynCalSig(GYN_CAL.events)){
           GYN_CAL.events=fresh;
@@ -15811,9 +15823,11 @@ function gynCalSync(){
           var el0=gynCalHost();
           if(el0) gynKalShow(el0, getSession());
         }
+      } else {
+        markSyncFailed();
       }
     })
-    .catch(function(){})                                   // offline / backend nenasadený → lokál ostáva
+    .catch(markSyncFailed)
     .then(function(){ if(syncLine===gynCalLine() && appLineContextActive(syncCtx)) GYN_CAL._syncing=false; });
 }
 // Manuálny sync — ↻ tlačidlo v hlavičke. Krátka animácia + načítanie zo Sheets.
@@ -16283,7 +16297,15 @@ function gynKalShow(el, user) {
   // Loading stav LEN pri úplne prázdnej cache a kým prvý sync nedobehol (prvé prihlásenie / nové
   // zariadenie). Keď je už niečo v cache, nič sa nezobrazuje — nové udalosti sa ticho dosynchronizujú.
   var firstLoading = (GYN_CAL.events.length===0 && gynCalRemoteOn() && !GYN_CAL._everSyncedOk);
-  if(firstLoading){
+  if(firstLoading && GYN_CAL._firstSyncFailed){
+    // Na úplne novom zariadení/prvom prihlásení niet lokálnej cache — ak prvý
+    // sync zlyhá (offline, výpadok), predtým appka ticho ostala navždy na
+    // "Načítavam udalosti…" (gynCalSync().catch() bol zámerne ticho, keď MÁ
+    // appka staré dáta ako fallback, ale tu žiadne nemá). Teraz ukáž chybu s
+    // možnosťou skúsiť znova namiesto večného spinnera.
+    agenda='<div class="gyn-cal-agenda-empty"><span class="gyn-cal-agenda-empty-icon">⚠️</span>Nepodarilo sa načítať udalosti<br>' +
+      '<button type="button" class="gyn-cal-sync" style="margin-top:8px" onclick="gynCalManualSync(this)">↻ Skúsiť znova</button></div>';
+  } else if(firstLoading){
     agenda='<div class="gyn-cal-agenda-empty"><span class="gyn-cal-loadspin"></span>Načítavam udalosti…</div>';
   } else if(!evList.length){
     agenda = (evAll.length > evList.length)
@@ -27935,6 +27957,12 @@ function loadPharmaDataNetwork(code, oblast, kvartal) {
           retryLabel: 'Načítať znova'
         }, function () { loadPharmaDataNetwork(code, oblast, kvartal); });
       }
+      // Chyba tu ovplyvňuje aj MS chip "Aflamil Family" vnútri Plnenia (iná
+      // obrazovka než pharma-ms-body vyššie) — ten sa doteraz o zlyhaní vôbec
+      // nedozvedel a ostal na "⏳ Načítavam MS dáta…" navždy, aj keď loading
+      // flag bol už dávno vypnutý. Bez dát ukáže vlastný graceful fallback
+      // ("MS dáta zatiaľ nie sú k dispozícii").
+      aflamilFamilyMaybeRefresh(code, oblast, kvartal);
     });
 }
 
@@ -33853,7 +33881,26 @@ function okresyLoadAll(reqId, ver, cont, showLoading, forceNet, done) {
   // Poistka proti visiacemu requestu — po 20 s vyrenderuj čo máme
   setTimeout(function() {
     if (reqId !== OKRESY_STATE.reqId || finished) { _fin(); return; }
-    if (Object.keys(fresh).length) { OKRESY_STATE.byCode = fresh; okresyRender(); }
+    if (Object.keys(fresh).length) {
+      OKRESY_STATE.byCode = fresh;
+      okresyRender();
+    } else if (cont) {
+      // Pri veľmi zlom signáli (9 produktov, max 2 súbežné požiadavky, každá
+      // s vlastným fallbackom na predošlý kvartál) sa vedelo stať, že do 20s
+      // nedorazil ANI JEDEN produkt — predtým appka ticho ostala na
+      // "Načítavam okresné dáta…" navždy, bez chyby aj bez retry.
+      finished = true;
+      appShowErrorCard(cont, {
+        id: 'okresy-load',
+        title: 'Nepodarilo sa načítať okresné dáta',
+        desc: 'Skontroluj pripojenie a skús to znova.'
+      }, function(){ okresyLoadAll(OKRESY_STATE.reqId, ver, cont, true, true); });
+      // _fin() MUSÍ prísť aj tu — inak by potiahnutie-nadol (pull-to-refresh),
+      // ktoré čaká na done(), zostalo točiť krúžok navždy, aj keď obsah už
+      // ukazuje chybovú kartu namiesto dát.
+      _fin();
+      return;
+    }
     _fin();
   }, 20000);
 }
