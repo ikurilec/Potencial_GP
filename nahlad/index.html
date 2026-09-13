@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@700&display=swap">
-<link rel="stylesheet" href="dist/app.3c103de8.css">
+<link rel="stylesheet" href="dist/app.9791b49c.css">
 <!-- Firebase Cloud Messaging — natívne push notifikácie (defer aby nebrzdil štart) -->
 <script defer src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js"></script>
@@ -38,7 +38,7 @@
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.87.50 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.87.51 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -201,7 +201,13 @@
       <button type="button" class="gyn-cal-vtoggle-btn" id="pl-vt-repi" onclick="plnenieSetView('repi')">Podľa reprezentantov</button>
     </div>
     <div id="pl-view-produkty">
-      <div class="pl-section-lbl" id="pl-prod-lbl">Produkty</div>
+      <div class="pl-prod-sort-row">
+        <div class="pl-section-lbl" id="pl-prod-lbl" style="margin:0">Produkty</div>
+        <div class="nst-sort">
+          <button type="button" class="nst-sort-btn on" id="pl-prod-sort-custom" onclick="plnenieSetProdSort('custom')">Vlastné poradie</button>
+          <button type="button" class="nst-sort-btn" id="pl-prod-sort-pct" onclick="plnenieSetProdSort('pct')">Podľa výkonu</button>
+        </div>
+      </div>
       <div class="pl-sum-prods" id="pl-sum-prods"></div>
     </div>
     <div id="pl-view-repi" style="display:none">
@@ -1003,7 +1009,7 @@
 <div class="footer">Intern&#253; n&#225;stroj pre medic&#237;nskych reprezentantov<br><span style="font-size:10px;color:#B0BAC4">Designed &amp; developed by Ivan Kurilec &middot; Gedeon Richter Slovakia &middot; 2026</span></div>
 </div>
 
-<script src="dist/app.fd76384e.js"></script>
+<script src="dist/app.bbcd982c.js"></script>
 
 <!-- ── LOGOUT CONFIRM ── -->
 <div class="logout-overlay" id="logout-overlay">

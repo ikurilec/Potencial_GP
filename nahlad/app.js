@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.50';
+var APP_VERSION = '2.87.51';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -24321,12 +24321,18 @@ function plnenieRenderSummary() {
   }
   var prodLbl = document.getElementById('pl-prod-lbl');
   if (prodLbl) prodLbl.style.display = (agg.products && agg.products.length) ? '' : 'none';
+  var _prodSort = plnenieProdSort();
+  var _psc = document.getElementById('pl-prod-sort-custom');
+  var _psp = document.getElementById('pl-prod-sort-pct');
+  if (_psc) _psc.classList.toggle('on', _prodSort === 'custom');
+  if (_psp) _psp.classList.toggle('on', _prodSort === 'pct');
   var prods = document.getElementById('pl-sum-prods');
   if (prods) {
     if (!agg.products || agg.products.length === 0) {
       prods.innerHTML = '';
     } else {
-      prods.innerHTML = plnenieApplyProdOrderArr(agg.products).map(function(p){
+      var _sortedProds = (plnenieProdSort() === 'pct') ? plnenieSortProductsByPct(agg.products) : plnenieApplyProdOrderArr(agg.products);
+      prods.innerHTML = _sortedProds.map(function(p){
         var safeKey = p.key.replace(/'/g, "\\'");
         var safeLbl = p.label.replace(/'/g, "\\'");
         var predPct = plnenieCalcPredikciaSummary(p.planEUR, p.predajeEURDone, PL_STATE.q, PL_STATE.year, p.predPlanEURDone);
@@ -25088,6 +25094,37 @@ function plnenieApplyView() {
   var br = document.getElementById('pl-vt-repi');
   if (bp) bp.className = 'gyn-cal-vtoggle-btn' + (v === 'produkty' ? ' active' : '');
   if (br) br.className = 'gyn-cal-vtoggle-btn' + (v === 'repi' ? ' active' : '');
+}
+
+// Zoradenie v pohľade Produkty (Ivan, 13.9.): "Podľa reprezentantov" je vždy
+// zoradené od najlepšieho po najhorší (plnenieBuildAggregates to už robí samo).
+// Produkty majú navyše vlastné ručné poradie (Nastavenia → Poradie produktov),
+// preto tu ide o VOĽBU medzi dvoma zoradeniami, nie o náhradu — vlastné poradie
+// ostáva default, nech sa nezmení správanie nikomu, kto si ho nastavil.
+var PL_PROD_SORT_KEY = 'satori_plnenie_prod_sort';
+function plnenieProdSort() {
+  try { return (localStorage.getItem(PL_PROD_SORT_KEY) === 'pct') ? 'pct' : 'custom'; }
+  catch (e) { return 'custom'; }
+}
+function plnenieSetProdSort(v) {
+  v = (v === 'pct') ? 'pct' : 'custom';
+  try { localStorage.setItem(PL_PROD_SORT_KEY, v); } catch (e) {}
+  var bc = document.getElementById('pl-prod-sort-custom');
+  var bp = document.getElementById('pl-prod-sort-pct');
+  if (bc) bc.classList.toggle('on', v === 'custom');
+  if (bp) bp.classList.toggle('on', v === 'pct');
+  if (PL_STATE.aggregates) plnenieRenderSummary();
+}
+// Zostupne podľa % plnenia — produkty bez plánu (pct === null) na koniec, v pôvodnom poradí.
+function plnenieSortProductsByPct(products) {
+  return products.map(function(p, i){ return { p: p, i: i }; }).sort(function(a, b){
+    var ap = a.p.pct, bp = b.p.pct;
+    var aNull = (ap === null || ap === undefined || isNaN(ap));
+    var bNull = (bp === null || bp === undefined || isNaN(bp));
+    if (aNull !== bNull) return aNull ? 1 : -1;
+    if (aNull && bNull) return a.i - b.i;
+    return bp - ap;
+  }).map(function(x){ return x.p; });
 }
 
 function plnenieRenderAll() {
