@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.24';
+var APP_VERSION = '2.87.25';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -5764,7 +5764,7 @@ function viacDlazdice() {
     var m = [
       { ic: '📋', t: 'Lekári',   fn: "mgrSwitchSubtab('visits')" },
       { ic: '🏆', t: 'Rebríček', fn: "mgrSwitchSubtab('leaderboard')" },
-      { ic: '📦', t: 'Sklady', fn: 'openSklady()' }
+      { ic: '📦', t: 'Sklady', fn: 'openSklady()', panel: 'sklady' }
     ];
     try {
       if (golemActivityAllowed(MGR_STATE.role)) {
@@ -5778,7 +5778,7 @@ function viacDlazdice() {
     var g = [
       { ic: '📋', t: 'Návštevy', fn: "gynNavTo('visits')" },
       { ic: '🏆', t: 'Rebríček', fn: "gynNavTo('leaderboard')" },
-      { ic: '📦', t: 'Sklady', fn: 'openSklady()' }
+      { ic: '📦', t: 'Sklady', fn: 'openSklady()', panel: 'sklady' }
     ];
     if (s.role === 'gyn-rep') g.push({ ic: '🏪', t: 'Lekárne', fn: "gynNavTo('lekarne')" });
     try { if (gynActivityAllowed(s)) g.push({ ic: '📈', t: 'Aktivita', fn: "gynNavTo('activity')" }); } catch (e) {}
@@ -5789,7 +5789,7 @@ function viacDlazdice() {
       { ic: '🏆', t: 'Rebríček', fn: 'openLeaderboard()' },
       { ic: '🏪', t: 'Lekárne',  fn: 'openLekarne()' },
       { ic: '📍', t: 'Okresy',   fn: 'openOkresy()' },
-      { ic: '📦', t: 'Sklady', fn: 'openSklady()' }
+      { ic: '📦', t: 'Sklady', fn: 'openSklady()', panel: 'sklady' }
     ];
   }
   // Golem reprezentant — Lekári sú prvé, sú to jeho najčastejšie dvere
@@ -5798,7 +5798,7 @@ function viacDlazdice() {
     { ic: '🏆', t: 'Rebríček', fn: 'openLeaderboard()' },
     { ic: '🏪', t: 'Lekárne',  fn: 'openLekarne()' },
     { ic: '📍', t: 'Okresy',   fn: 'openOkresy()' },
-    { ic: '📦', t: 'Sklady', fn: 'openSklady()' },
+    { ic: '📦', t: 'Sklady', fn: 'openSklady()', panel: 'sklady' },
     { ic: '🧬', t: 'Tuyory',   fn: 'openTuyory()' },
     { ic: '🛡️', t: 'Lonelix',  fn: 'openLonelix()' },
     // Apixaban je kampaň s termínom — mimo neho sa neponúka ako živá položka.
@@ -5854,7 +5854,7 @@ function viacRender() {
   var tiles = viacDlazdice().map(function (it) {
     var zatvoreny = it.openFn && typeof window[it.openFn] === 'function' && !window[it.openFn]();
     return '<button type="button" class="viac-tile' + (zatvoreny ? ' off' : '') + '"' +
-             (it.id ? ' id="' + it.id + '"' : '') + ' onclick="' + it.fn + '">' +
+             (it.id ? ' id="' + it.id + '"' : '') + (it.panel ? ' data-viac-panel="' + it.panel + '"' : '') + ' onclick="' + it.fn + '">' +
              '<span class="viac-tile-ic">' + (it.raw ? it.ic : appEsc(it.ic)) + '</span>' +
              '<span class="viac-tile-t">' + appEsc(it.t) + (zatvoreny ? '<br><span style="font-weight:600;font-size:10.5px;color:#94A3B8">zatiaľ zatvorené</span>' : '') + '</span>' +
            '</button>';
@@ -5970,13 +5970,16 @@ document.addEventListener('click', function (ev) {
   // Manažér a gyn prepínajú z menu vlastné záložky vo svojom pohľade — ten
   // je pod panelmi, takže sa musia zavrieť, inak sa navonok nestane nič.
   var r = (typeof appRole === 'function') ? appRole() : 'gp';
-  if (r === 'mgr' || r === 'gyn') { try { closeAllPanels(); } catch (e) {} }
+  // Sklady je vlastný overlay pre všetky roly. Manažérsky/gyn cleanup je určený
+  // len pre prepnutie ich vnútorných tabov; tu by nový panel okamžite zavrel.
+  var keepsOwnPanel = t.getAttribute('data-viac-panel') === 'sklady';
+  if (!keepsOwnPanel && (r === 'mgr' || r === 'gyn')) { try { closeAllPanels(); } catch (e) {} }
   setTimeout(function () {
     closeViac();
     // To isté upratovanie ako pri lište — inak by nová sekcia otvorená z menu
     // ostala pod Nástenkou alebo pod detailom, ktorý tam visel predtým.
     try { appNavReset(); } catch (e) {}
-    if (r === 'mgr' || r === 'gyn') { try { closeAllPanels(); } catch (e) {} }
+    if (!keepsOwnPanel && (r === 'mgr' || r === 'gyn')) { try { closeAllPanels(); } catch (e) {} }
   }, 0);
 }, true);
 // Avatar v poslednej položke lišty — rovnaký ako v hlavičke.
