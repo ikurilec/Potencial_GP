@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.59';
+var APP_VERSION = '2.87.60';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -6008,7 +6008,7 @@ function teamPlnenieAllowed(){
 }
 function teamPlnenieQuarter(){ return (typeof plnenieCurrentQ === 'function') ? plnenieCurrentQ() : Math.ceil((new Date().getMonth() + 1) / 3); }
 function teamPlnenieYear(){ return new Date().getFullYear(); }
-function teamPlnenieCacheKey(){ var s = getSession() || {}; return 'team_plnenie_' + String(s.username || 'anonymous').toLowerCase() + '_' + teamPlnenieYear() + '_' + teamPlnenieQuarter(); }
+function teamPlnenieCacheKey(){ var s = getSession() || {}; return 'team_plnenie_west_east_v2_' + String(s.username || 'anonymous').toLowerCase() + '_' + teamPlnenieYear() + '_' + teamPlnenieQuarter(); }
 function teamPlnenieFmtPct(value){ return value === null || value === undefined || !isFinite(value) ? '—' : Number(value).toLocaleString('sk-SK', {maximumFractionDigits:1}) + ' %'; }
 function teamPlnenieFmtMoney(value){ return Math.round(Number(value) || 0).toLocaleString('sk-SK').replace(/\u00A0/g, ' ') + ' €'; }
 function teamPlnenieColor(value){ if(value === null || value === undefined || !isFinite(value)) return 'none'; return value >= 100 ? 'g' : (value >= 95 ? 'o' : 'r'); }
@@ -19073,8 +19073,16 @@ function initEdgeSwipeBack() {
 // výlučne _handleAndroidBack(), takže mobilné gesto, hardvérové Späť aj tlačidlá "Späť"
 // používajú jeden poriadok vrstiev. Toto gesto však priebežne posúva aktuálnu vrstvu pod
 // prstom — nepôsobí preto ako oneskorené kliknutie po pustení prsta.
+function teamPlnenieOwnsBack(){
+  if (typeof TEAM_PL_STATE === 'undefined' || !TEAM_PL_STATE.open) return false;
+  // Trhový podiel a graf okresu sú vnorené nad detailom kolegu. Musia sa
+  // zatvoriť prvé; inak by potiahnutie preskočilo ich obrazovku a zavrelo tím.
+  var pharma = document.getElementById('pharma-ms-overlay');
+  var okres = document.getElementById('pharma-okres-overlay');
+  return !(pharma && (pharma.classList.contains('show') || pharma.classList.contains('pl-detail-exit-r'))) && !(okres && okres.classList.contains('show'));
+}
 function globalSwipeBackFindLayer() {
-  if (typeof TEAM_PL_STATE !== 'undefined' && TEAM_PL_STATE.open) return TEAM_PL_STATE.detailUser ? {id:'team-plnenie-detail',close:teamPlnenieCloseDetail} : {id:'team-plnenie-overlay',close:closeTeamPlnenie};
+  if (teamPlnenieOwnsBack()) return TEAM_PL_STATE.detailUser ? {id:'team-plnenie-detail',close:teamPlnenieCloseDetail} : {id:'team-plnenie-overlay',close:closeTeamPlnenie};
   if (typeof _backLayers === 'undefined') return null;
   for (var i = 0; i < _backLayers.length; i++) {
     var layer = _backLayers[i];
@@ -19497,7 +19505,7 @@ _backRegister('gyn-view-nav', function () {
 });
 
 function _handleAndroidBack() {
-  if (typeof TEAM_PL_STATE !== 'undefined' && TEAM_PL_STATE.open) { teamPlnenieBack(); return true; }
+  if (teamPlnenieOwnsBack()) { teamPlnenieBack(); return true; }
   // Poradie: od najvnútornejšieho overlaya po najvonkajší
   for (var _bi = 0; _bi < _backLayers.length; _bi++) {
     var _layer = _backLayers[_bi];
@@ -26126,7 +26134,7 @@ function plneniePharmaLatestForInsight(code, oblast, q, year) {
     return { last: last, prev: prev, cur: cur, sk: pharmaToNum(last.sk_ms), delta: cur !== null && prevVal !== null ? +(cur - prevVal).toFixed(2) : null };
   }
 
-  var graf = PHARMA_GRAF_STATE.cache[code + '_' + oblast];
+  var graf = PHARMA_GRAF_STATE.cache[pharmaGrafCacheKey(code, oblast)];
   var rows = graf && Array.isArray(graf.rows) ? graf.rows.slice() : [];
   rows = rows.filter(function(r){ return r && r.mesiac; }).sort(function(a,b){ return String(a.mesiac).localeCompare(String(b.mesiac)); });
   if (!rows.length) return null;
@@ -26219,7 +26227,7 @@ function plnenieEnsureInsightPharmaLoaded(key, oblast, q, year) {
   PHARMA_CODES[key].forEach(function(code) {
     var ck = code + '_' + oblast + '_' + kvartal;
     if (!PHARMA_STATE.cache[ck] && !PHARMA_STATE.loading[ck]) loadPharmaData(code, oblast, kvartal);
-    if (!PHARMA_GRAF_STATE.cache[code + '_' + oblast] && !PHARMA_GRAF_STATE.loading[code + '_' + oblast]) {
+    if (!PHARMA_GRAF_STATE.cache[pharmaGrafCacheKey(code, oblast)] && !PHARMA_GRAF_STATE.loading[pharmaGrafCacheKey(code, oblast)]) {
       loadPharmaGrafData(code, oblast, function(){ plnenieProductInsightMaybeRefresh(code, oblast, kvartal); });
     }
   });
@@ -26241,7 +26249,7 @@ function plnenieInsightPharmaMonthLabel(key, oblast, q, year) {
     var map = pharmaDistrictMonthMap(resp, kvartal);
     months = (map.months || []).slice();
   }
-  var graf = PHARMA_GRAF_STATE.cache[code + '_' + oblast];
+  var graf = PHARMA_GRAF_STATE.cache[pharmaGrafCacheKey(code, oblast)];
   if (!months.length && graf && Array.isArray(graf.rows)) {
     graf.rows.forEach(function(r){ if (r && r.mesiac) months.push(String(r.mesiac)); });
   }
@@ -28089,7 +28097,7 @@ function _histLsKey(username) { return 'hist_' + _HIST_LS_V + '_' + ((typeof app
 // F2-1: read/write ide priamo cez DataStore.get()/refresh() (loadPharmaGrafData
 // nižšie) — _pgLsKey ostáva ako jediný zdroj kľúča, aby ho obe strany zdieľali.
 var _PG_LS_V = 'v1';
-function _pgLsKey(code, oblast) { return 'ph_graf_' + _PG_LS_V + '_' + code + '_' + oblast; }
+function _pgLsKey(code, oblast) { return 'ph_graf_' + _PG_LS_V + '_' + pharmaGrafCacheKey(code, oblast); }
 
 // ── Pharma localStorage SWR ───────────────────────────────────────
 var _PH_LS_V = 'v1';
@@ -28279,6 +28287,9 @@ function pharmaNeedsPrevDistrictFetch(resp, kvartal) {
 }
 
 function pharmaTeamAccessParams(){ return PHARMA_STATE.teamRepAccess && PHARMA_STATE.repLogin ? '&team_rep=' + encodeURIComponent(PHARMA_STATE.repLogin) : ''; }
+function pharmaGrafContextKey(){ return PHARMA_STATE.teamRepAccess && PHARMA_STATE.repLogin ? '_team_' + PHARMA_STATE.repLogin : ''; }
+function pharmaGrafCacheKey(code, oblast){ return code + '_' + oblast + pharmaGrafContextKey(); }
+function pharmaGrafRequestUrl(code, oblast){ return scriptUrl('action=getPharmaGraf&oblast=' + encodeURIComponent(oblast) + '&produkt=' + encodeURIComponent(code) + pharmaTeamAccessParams()); }
 function pharmaDataRequestUrl(code, oblast, kvartal){ return scriptUrl('action=getPharmaData&oblast=' + encodeURIComponent(oblast) + '&produkt=' + encodeURIComponent(code) + '&kvartal=' + encodeURIComponent(kvartal) + pharmaTeamAccessParams()); }
 function pharmaOkresGrafRequestUrl(code, oblast, okres){ return scriptUrl('action=getPharmaOkresGraf&produkt=' + encodeURIComponent(code) + '&oblast=' + encodeURIComponent(oblast) + '&okres=' + encodeURIComponent(okres) + pharmaTeamAccessParams()); }
 
@@ -28587,7 +28598,7 @@ function loadPharmaDataNetwork(code, oblast, kvartal) {
 }
 
 function loadPharmaGrafData(code, oblast, callback) {
-  var cacheKey = code + '_' + oblast;
+  var cacheKey = pharmaGrafCacheKey(code, oblast);
   if (PHARMA_GRAF_STATE.cache[cacheKey]) {
     if (callback) callback(PHARMA_GRAF_STATE.cache[cacheKey]);
     return;
@@ -28609,9 +28620,7 @@ function loadPharmaGrafData(code, oblast, callback) {
     fetcher: function(){
       PHARMA_GRAF_STATE.loading[cacheKey] = true;
       return appQueuedFetchJson(
-        scriptUrl('action=getPharmaGraf'
-          + '&oblast='  + encodeURIComponent(oblast)
-          + '&produkt=' + encodeURIComponent(code)),
+        pharmaGrafRequestUrl(code, oblast),
         { cache: 'no-store' }, undefined, 'critical'
       ).then(function(resp) {
         delete PHARMA_GRAF_STATE.loading[cacheKey];
@@ -28634,7 +28643,7 @@ function loadPharmaGrafData(code, oblast, callback) {
 }
 
 function loadPharmaGrafDataFresh(code, oblast, callback) {
-  var cacheKey = code + '_' + oblast;
+  var cacheKey = pharmaGrafCacheKey(code, oblast);
   if (PHARMA_GRAF_STATE.loading[cacheKey]) return;
 
   if (IS_DEV) {
@@ -28651,9 +28660,7 @@ function loadPharmaGrafDataFresh(code, oblast, callback) {
   DataStore.refresh(_pgLsKey(code, oblast), {
     fetcher: function(){
       return appQueuedFetchJson(
-        scriptUrl('action=getPharmaGraf'
-          + '&oblast='  + encodeURIComponent(oblast)
-          + '&produkt=' + encodeURIComponent(code)),
+        pharmaGrafRequestUrl(code, oblast),
         { cache: 'no-store' }, undefined, 'critical'
       ).then(function(resp) {
         delete PHARMA_GRAF_STATE.loading[cacheKey];
@@ -28670,7 +28677,7 @@ function loadPharmaGrafDataFresh(code, oblast, callback) {
 }
 
 function fillGrafChart(code, oblast) {
-  var cacheKey = code + '_' + oblast;
+  var cacheKey = pharmaGrafCacheKey(code, oblast);
   var el = document.getElementById('pharma-graf-chart');
   if (!el) return;
 
@@ -28822,7 +28829,7 @@ function pharmaDistrictInsightPointsFromSeries(months, dSeries) {
 }
 
 function buildGrafChartHtml(code, oblast) {
-  var cacheKey = code + '_' + oblast;
+  var cacheKey = pharmaGrafCacheKey(code, oblast);
   var grafData = PHARMA_GRAF_STATE.cache[cacheKey];
   if (!grafData) return '';
 
