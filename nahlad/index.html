@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@700&display=swap">
-<link rel="stylesheet" href="dist/app.2a2c5361.css">
+<link rel="stylesheet" href="dist/app.2701d9ac.css">
 <!-- Firebase Cloud Messaging — natívne push notifikácie (defer aby nebrzdil štart) -->
 <script defer src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js"></script>
@@ -38,7 +38,7 @@
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.87.23 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.87.24 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -597,6 +597,16 @@
     </div>
   </div>
 
+  <div class="sklady-overlay" id="sklady-overlay" role="dialog" aria-modal="true" aria-label="Sklady">
+    <div class="sklady-inner">
+      <div class="sklady-hd">
+        <button type="button" class="sklady-back" onclick="closeSklady()" aria-label="Späť">←</button>
+        <div><div class="sklady-title">Sklady</div><div class="sklady-sub" id="sklady-sub">Aktuálny stav zásob</div></div>
+      </div>
+      <div id="sklady-body"></div>
+    </div>
+  </div>
+
   <div class="gpp-overlay" id="gpp-overlay">
     <div class="gpp-inner">
       <div class="gpp-hd">
@@ -993,7 +1003,7 @@
 <div class="footer">Intern&#253; n&#225;stroj pre medic&#237;nskych reprezentantov<br><span style="font-size:10px;color:#B0BAC4">Designed &amp; developed by Ivan Kurilec &middot; Gedeon Richter Slovakia &middot; 2026</span></div>
 </div>
 
-<script src="dist/app.da89e6c3.js"></script>
+<script src="dist/app.d0e2fa18.js"></script>
 
 <!-- ── LOGOUT CONFIRM ── -->
 <div class="logout-overlay" id="logout-overlay">

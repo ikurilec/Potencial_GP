@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.23';
+var APP_VERSION = '2.87.24';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -808,6 +808,62 @@ function appLineTag() {
   } catch(e) {
     return 'gp';
   }
+}
+
+// ── SKLADY ────────────────────────────────────────────────────────────────
+// Konvertor zapisuje normalizované riadky za všetky línie do interného Sheetu.
+// V aplikácii sa nesmie zobraziť ani jediný riadok z inej línie.
+function stockLineKey(line){
+  line = String(line || '').trim().toLowerCase();
+  return line === 'gyn' || line === 'reagila' ? line : 'gp';
+}
+function stockNumber(value){
+  if (typeof value === 'number' && isFinite(value)) return value;
+  if (typeof value === 'string') {
+    var parsed = Number(value.trim().replace(',', '.'));
+    return isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+function stockStatus(coverageDays, availability){
+  var days = stockNumber(coverageDays);
+  if (availability !== 'available' || days === null || days < 0) return { key:'missing', label:'Bez údaja', color:'#94A3B8' };
+  if (days < 14) return { key:'critical', label:'Kritické', color:'#DC2626' };
+  if (days < 28) return { key:'watch', label:'Sledovať', color:'#D97706' };
+  return { key:'stable', label:'Stabilné', color:'#16A34A' };
+}
+function stockNormalizePayload(payload, line){
+  payload = payload || {};
+  var activeLine = stockLineKey(line);
+  var rows = Array.isArray(payload.rows) ? payload.rows : [];
+  var byProduct = {};
+  rows.forEach(function(raw){
+    // Neznáma/missing línia nikdy nesmie fallbacknúť do Golemu.
+    if (!raw || String(raw.line || '').trim().toLowerCase() !== activeLine) return;
+    var key = String(raw.product_key || raw.product || '').trim().toLowerCase();
+    if (!key) return;
+    if (!byProduct[key]) byProduct[key] = { key:key, product:String(raw.product || raw.product_key || 'Produkt'), packs:[] };
+    byProduct[key].packs.push({
+      sukl:String(raw.sukl || '').trim(), packaging:String(raw.packaging || '').trim(),
+      availability:String(raw.availability || 'missing_in_report'), coverageDays:stockNumber(raw.coverage_days),
+      distributorUnits:stockNumber(raw.distributor_units), weeklySales:stockNumber(raw.weekly_avg_sales),
+      poConfirmed:stockNumber(raw.po_confirmed), poOrdered:stockNumber(raw.po_ordered)
+    });
+  });
+  var products = Object.keys(byProduct).map(function(key){
+    var product = byProduct[key];
+    var available = product.packs.filter(function(pack){ return pack.availability === 'available' && pack.coverageDays !== null && pack.coverageDays >= 0; });
+    var lowest = available.length ? available.reduce(function(min, pack){ return pack.coverageDays < min ? pack.coverageDays : min; }, available[0].coverageDays) : null;
+    product.coverageDays = lowest;
+    product.status = stockStatus(lowest, available.length ? 'available' : 'missing_in_report');
+    return product;
+  });
+  products.sort(function(a,b){
+    var rank={critical:0,watch:1,missing:2,stable:3};
+    var diff=rank[a.status.key]-rank[b.status.key];
+    return diff || a.product.localeCompare(b.product, 'sk');
+  });
+  return { asOf:String(payload.as_of || payload.asOf || ''), products:products };
 }
 
 // ── GYN LINKA ──
@@ -4092,7 +4148,7 @@ function _panelShow(newId, isBack) {
 
 function closeAllPanels() {
   try { dnesCloseRepSummary(); } catch (e) {}
-  ['dnes-overlay','hist-overlay','lb-overlay','rep-plnenie-overlay','lk-overlay','okresy-overlay','tuyory-overlay','lonelix-overlay','apixaban-overlay','golem-cal-overlay','lk-detail','pharma-ms-overlay','pharma-okres-overlay'].forEach(function(id){
+  ['dnes-overlay','hist-overlay','lb-overlay','rep-plnenie-overlay','lk-overlay','okresy-overlay','sklady-overlay','tuyory-overlay','lonelix-overlay','apixaban-overlay','golem-cal-overlay','lk-detail','pharma-ms-overlay','pharma-okres-overlay'].forEach(function(id){
     var el = document.getElementById(id);
     if(el) el.classList.remove('show');
   });
@@ -5686,7 +5742,7 @@ function appTabSyncFromTab(tab) {
 // golemovského .app — gyn pohľad .app skrýva a spolu s ňou by zmizli aj ony.
 (function () {
   function presun() {
-    ['rep-topbar', 'rep-tabbar', 'dnes-overlay', 'dnes-rep-summary-bd', 'viac-bd', 'viac-overlay', 'gpp-overlay'].forEach(function (id) {
+    ['rep-topbar', 'rep-tabbar', 'dnes-overlay', 'dnes-rep-summary-bd', 'viac-bd', 'viac-overlay', 'sklady-overlay', 'gpp-overlay'].forEach(function (id) {
       var el = document.getElementById(id);
       if (el && el.parentNode !== document.body) document.body.appendChild(el);
     });
@@ -5707,7 +5763,8 @@ function viacDlazdice() {
   if (r === 'mgr') {
     var m = [
       { ic: '📋', t: 'Lekári',   fn: "mgrSwitchSubtab('visits')" },
-      { ic: '🏆', t: 'Rebríček', fn: "mgrSwitchSubtab('leaderboard')" }
+      { ic: '🏆', t: 'Rebríček', fn: "mgrSwitchSubtab('leaderboard')" },
+      { ic: '📦', t: 'Sklady', fn: 'openSklady()' }
     ];
     try {
       if (golemActivityAllowed(MGR_STATE.role)) {
@@ -5720,7 +5777,8 @@ function viacDlazdice() {
   if (r === 'gyn') {
     var g = [
       { ic: '📋', t: 'Návštevy', fn: "gynNavTo('visits')" },
-      { ic: '🏆', t: 'Rebríček', fn: "gynNavTo('leaderboard')" }
+      { ic: '🏆', t: 'Rebríček', fn: "gynNavTo('leaderboard')" },
+      { ic: '📦', t: 'Sklady', fn: 'openSklady()' }
     ];
     if (s.role === 'gyn-rep') g.push({ ic: '🏪', t: 'Lekárne', fn: "gynNavTo('lekarne')" });
     try { if (gynActivityAllowed(s)) g.push({ ic: '📈', t: 'Aktivita', fn: "gynNavTo('activity')" }); } catch (e) {}
@@ -5730,7 +5788,8 @@ function viacDlazdice() {
     return [
       { ic: '🏆', t: 'Rebríček', fn: 'openLeaderboard()' },
       { ic: '🏪', t: 'Lekárne',  fn: 'openLekarne()' },
-      { ic: '📍', t: 'Okresy',   fn: 'openOkresy()' }
+      { ic: '📍', t: 'Okresy',   fn: 'openOkresy()' },
+      { ic: '📦', t: 'Sklady', fn: 'openSklady()' }
     ];
   }
   // Golem reprezentant — Lekári sú prvé, sú to jeho najčastejšie dvere
@@ -5739,6 +5798,7 @@ function viacDlazdice() {
     { ic: '🏆', t: 'Rebríček', fn: 'openLeaderboard()' },
     { ic: '🏪', t: 'Lekárne',  fn: 'openLekarne()' },
     { ic: '📍', t: 'Okresy',   fn: 'openOkresy()' },
+    { ic: '📦', t: 'Sklady', fn: 'openSklady()' },
     { ic: '🧬', t: 'Tuyory',   fn: 'openTuyory()' },
     { ic: '🛡️', t: 'Lonelix',  fn: 'openLonelix()' },
     // Apixaban je kampaň s termínom — mimo neho sa neponúka ako živá položka.
@@ -5836,6 +5896,70 @@ function closeViac() {
   document.body.style.overflow = '';
   try { repTabSetActive(_panelCurrent); } catch (e) {}
 }
+
+// ── SKLADY — read-only prehľad z normalizovaného interného Sheet-u ─────────
+var SKLADY_STATE = { open:false, request:0, expanded:{}, payload:null };
+function stockEsc(value){ return (typeof appEsc === 'function') ? appEsc(value == null ? '' : String(value)) : String(value == null ? '' : value); }
+function stockFmt(value, suffix){
+  var n = stockNumber(value);
+  if (n === null) return '—';
+  return new Intl.NumberFormat('sk-SK', { maximumFractionDigits: n % 1 ? 1 : 0 }).format(n) + (suffix || '');
+}
+function stockDate(value){
+  var m = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? (Number(m[3]) + '. ' + ['január','február','marec','apríl','máj','jún','júl','august','september','október','november','december'][Number(m[2])-1] + ' ' + m[1]) : '';
+}
+function stockSkeletonHtml(){
+  return '<div class="sklady-summary skel-stock"><div class="skel skel-line" style="width:42%"></div><div class="skel skel-line" style="width:68%"></div></div>' +
+    '<div class="sklady-product skel-stock"><div class="skel skel-line" style="width:44%"></div><div class="skel skel-line" style="width:78%"></div></div>' +
+    '<div class="sklady-product skel-stock"><div class="skel skel-line" style="width:36%"></div><div class="skel skel-line" style="width:62%"></div></div>';
+}
+function stockRender(){
+  var body = document.getElementById('sklady-body');
+  if (!body) return;
+  var data = SKLADY_STATE.payload;
+  if (!data) { body.innerHTML = stockSkeletonHtml(); return; }
+  var counts = { critical:0, watch:0, stable:0, missing:0 };
+  data.products.forEach(function(product){ counts[product.status.key]++; });
+  var summary = '<div class="sklady-summary"><div class="sklady-asof">Stav k ' + stockEsc(stockDate(data.asOf) || '—') + '</div>' +
+    '<div class="sklady-counts"><span class="critical">' + counts.critical + ' kritické</span><span class="watch">' + counts.watch + ' sledovať</span><span class="stable">' + counts.stable + ' stabilné</span></div></div>';
+  if (!data.products.length) { body.innerHTML = summary + '<div class="sklady-empty">Pre túto líniu zatiaľ nie je dostupný skladový report.</div>'; return; }
+  body.innerHTML = summary + data.products.map(function(product){
+    var open = !!SKLADY_STATE.expanded[product.key];
+    var badge = product.status.key === 'missing' ? 'Bez údaja' : stockFmt(product.coverageDays, ' dní');
+    var packs = open ? '<div class="sklady-packs">' + product.packs.map(function(pack){
+      if (pack.availability !== 'available') return '<div class="sklady-pack missing">Údaj nie je v aktuálnom reporte.</div>';
+      return '<div class="sklady-pack"><div class="sklady-pack-name">' + stockEsc(pack.packaging || 'Balenie') + (pack.sukl ? '<span>ŠÚKL ' + stockEsc(pack.sukl) + '</span>' : '') + '</div>' +
+        '<div class="sklady-metrics"><span><b>' + stockFmt(pack.coverageDays, ' dní') + '</b> pokrytie</span><span><b>' + stockFmt(pack.distributorUnits) + '</b> u distribútorov</span><span><b>' + stockFmt(pack.weeklySales) + '</b> / týždeň</span><span><b>' + stockFmt(pack.poConfirmed) + '</b> potvrdené</span></div></div>';
+    }).join('') + '</div>' : '';
+    return '<button type="button" class="sklady-product ' + product.status.key + (open ? ' open' : '') + '" onclick="stockToggle(\'' + stockEsc(product.key).replace(/'/g, '&#39;') + '\')">' +
+      '<span class="sklady-dot" style="background:' + product.status.color + '"></span><span class="sklady-prod-main"><strong>' + stockEsc(product.product) + '</strong><small>' + stockEsc(product.status.label) + '</small></span><span class="sklady-cover">' + stockEsc(badge) + '<i>⌄</i></span></button>' + packs;
+  }).join('');
+}
+function stockToggle(key){ SKLADY_STATE.expanded[key] = !SKLADY_STATE.expanded[key]; try { haptic('selection'); } catch(e) {} stockRender(); }
+function stockRequestUrl(){ return appLineTag() === 'gyn' ? gynScriptUrl('action=getStockData') : scriptUrl('action=getStockData'); }
+function stockLoad(){
+  var body = document.getElementById('sklady-body');
+  if (!body) return;
+  var request = ++SKLADY_STATE.request;
+  body.innerHTML = stockSkeletonHtml();
+  appQueuedFetchJson(stockRequestUrl(), { cache:'no-store' }, APP_FETCH_TIMEOUT_PRELOAD_MS, 'critical').then(function(payload){
+    if (!payload || payload.ok === false) throw new Error((payload && payload.error) || 'stock endpoint unavailable');
+    if (request !== SKLADY_STATE.request || !SKLADY_STATE.open) return;
+    SKLADY_STATE.payload = stockNormalizePayload(payload, appLineTag()); stockRender();
+  }).catch(function(){
+    if (request !== SKLADY_STATE.request || !SKLADY_STATE.open) return;
+    appRegisterRetry('sklady', stockLoad);
+    body.innerHTML = appErrorCardHtml({ id:'sklady', title:'Nepodarilo sa načítať sklady', desc:'Skús to znova. Ak problém trvá, skladový report ešte nemusí byť zverejnený.', retryLabel:'Načítať znova' });
+  });
+}
+function openSklady(){
+  usageSectionEnter('Sklady'); SKLADY_STATE.open = true; SKLADY_STATE.expanded = {}; SKLADY_STATE.payload = null;
+  var sub = document.getElementById('sklady-sub'), line = appLineTag();
+  if (sub) sub.textContent = (line === 'gyn' ? 'Gynekológia' : (line === 'reagila' ? 'Reagila' : 'Golem')) + ' · aktuálny stav zásob';
+  _panelShow('sklady-overlay'); stockLoad();
+}
+function closeSklady(){ usageSectionClose(); SKLADY_STATE.open = false; SKLADY_STATE.request++; closeAllPanels(); }
 // Ťuknutie na položku menu ho zavrie — inak by ostalo visieť nad panelom,
 // ktorý práve otvorilo.
 document.addEventListener('click', function (ev) {
@@ -5876,7 +6000,7 @@ var TABBAR_MAP = {
   'viac-overlay': 'tb-viac',
   // Panely otvorené z Menu nechávajú svietiť Menu — používateľ vie, odkiaľ prišiel
   'hist-overlay': 'tb-viac', 'lb-overlay': 'tb-viac', 'lk-overlay': 'tb-viac',
-  'okresy-overlay': 'tb-viac', 'tuyory-overlay': 'tb-viac',
+  'okresy-overlay': 'tb-viac', 'sklady-overlay': 'tb-viac', 'tuyory-overlay': 'tb-viac',
   'lonelix-overlay': 'tb-viac', 'apixaban-overlay': 'tb-viac'
 };
 function repTabSetActive(panelId) {
