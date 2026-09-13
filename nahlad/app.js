@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.53';
+var APP_VERSION = '2.87.54';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -18955,39 +18955,197 @@ function initEdgeSwipeBack() {
   bindDown('detail-overlay', function(){ if (typeof closeDetail === 'function') closeDetail(); });
 }
 
-// Potiahnutie doprava KDEKOĽVEK na obrazovke = krok späť (Ivan, 13.9., "ako v appkách
-// typu Instagram") — používa TEN ISTÝ _handleAndroidBack()/_backLayers mechanizmus ako
-// Android hardvérové tlačidlo Späť, takže zatvára presne to, čo appka aj tak považuje
-// za "najvrchnejšiu otvorenú vec" (panel, detail, prekryv), bez duplicitnej logiky.
-// Vynecháva miesta, ktoré UŽ majú VLASTNÉ vodorovné gesto na niečo iné — inak by sa
-// gestá bili (potvrdené s Ivanom): Plnenie/rep Plnenie/pharma Q-swipe (attachDragSwitcher
-// prepína kvartál/kód, nie "späť"), Gyn kalendár (mesiac), lk-detail (má vlastné
-// swipe-right-close vyššie, s preventDefault ochranou pred vnútorným obsahom).
-var GLOBAL_SWIPE_BACK_EXCLUDE = '#pl-q-content, #rep-pl-q-content, #pl-ps-body, .gyn-cal-grid, #lk-detail';
+// Potiahnutie doprava kdekoľvek na obrazovke = krok späť. Navigáciu stále vykonáva
+// výlučne _handleAndroidBack(), takže mobilné gesto, hardvérové Späť aj tlačidlá "Späť"
+// používajú jeden poriadok vrstiev. Toto gesto však priebežne posúva aktuálnu vrstvu pod
+// prstom — nepôsobí preto ako oneskorené kliknutie po pustení prsta.
+function globalSwipeBackFindLayer() {
+  if (typeof _backLayers === 'undefined') return null;
+  for (var i = 0; i < _backLayers.length; i++) {
+    var layer = _backLayers[i];
+    if (!layer.isOpen()) continue;
+    // Reagila Plnenie je domovská obrazovka; "Späť" na nej vedome nič nemení.
+    if (layer.id === 'reagila-nav' && typeof _reagilaBackDecision !== 'undefined' && _reagilaBackDecision === 'noop') return null;
+    return layer;
+  }
+  return null;
+}
+
+function globalSwipeBackResolveVisualTarget(layer) {
+  if (!layer) return null;
+  var id = layer.id;
+  var direct = document.getElementById(id);
+  if (direct) return direct;
+  if (id === 'mgr-plnenie-detail-open') return document.getElementById('mgr-plnenie-detail');
+  if (id === 'mgr-subtab') return document.getElementById('mgr-view');
+  if (id === 'reagila-nav') return document.getElementById('rep-plnenie-overlay');
+  if (id === 'nastenka-or-panels') {
+    var nst = document.getElementById('nastenka-overlay');
+    return (nst && nst.classList.contains('show')) ? nst : document.getElementById(_panelsBackTargetId || _panelCurrent || '');
+  }
+  if (id === 'gyn-view-nav') return document.getElementById('gyn-view');
+  return null;
+}
+
+// Niektoré obsahové bloky už majú vlastný horizontálny pohyb. Ponecháme mu prioritu
+// len vtedy, keď sa ním naozaj dá ísť na predchádzajúci krok. Na prvej záložke produktu
+// alebo kvartálu tak potiahnutie doprava korektne funguje ako Späť.
+function globalSwipeBackPreserveLocalGesture(target) {
+  if (!target || !target.closest) return false;
+  if (target.closest('.gyn-cal-grid')) return true;
+  if (target.closest('#pl-q-content')) return !!(typeof PL_STATE !== 'undefined' && PL_STATE && Number(PL_STATE.q) > 1);
+  if (target.closest('#rep-pl-q-content')) return !!(typeof REP_PL_STATE !== 'undefined' && REP_PL_STATE && Number(REP_PL_STATE.q) > 1);
+  if (target.closest('#pl-ps-body')) {
+    if (typeof PL_PROD_SHEET_STATE === 'undefined' || !PL_PROD_SHEET_STATE || PL_PROD_SHEET_STATE.familyCombined) return false;
+    var codes = (typeof PHARMA_CODES !== 'undefined' && PHARMA_CODES[PL_PROD_SHEET_STATE.prodKey]) || [];
+    return codes.indexOf(PL_PROD_SHEET_STATE.activePharmaCode) > 0;
+  }
+  return false;
+}
+
+function globalSwipeBackPreview(show, target, progress) {
+  var preview = document.getElementById('global-swipe-back-preview');
+  if (!preview) {
+    preview = document.createElement('div');
+    preview.id = 'global-swipe-back-preview';
+    preview.setAttribute('aria-hidden', 'true');
+    preview.innerHTML = '<div class="global-swipe-back-preview__cue"><span aria-hidden="true">‹</span> Späť</div>';
+    document.body.appendChild(preview);
+  }
+  if (!show) {
+    preview.classList.remove('show');
+    preview.style.opacity = '';
+    preview.style.transform = '';
+    preview.style.zIndex = '';
+    return;
+  }
+  var z = parseInt(window.getComputedStyle(target).zIndex, 10);
+  preview.style.zIndex = String(isFinite(z) ? Math.max(1, z - 1) : 1);
+  preview.classList.add('show');
+  preview.style.opacity = String(Math.min(.96, .18 + progress * .78));
+  preview.style.transform = 'translate3d(' + (-18 + progress * 18) + 'px,0,0)';
+}
+
+function globalSwipeBackTranslate(target, dx) {
+  target.style.setProperty('--swipe-back-progress', String(Math.max(0, Math.min(1, dx / Math.max(1, window.innerWidth)))));
+  target.style.setProperty('--swipe-back-x', Math.max(0, dx) + 'px');
+}
+
+function globalSwipeBackElevate(target) {
+  if (!target || target._globalSwipeBackElevation) return;
+  target._globalSwipeBackElevation = { zIndex: target.style.zIndex, position: target.style.position };
+  var z = parseInt(window.getComputedStyle(target).zIndex, 10);
+  // In-place obrazovky (najmä Gyn a manažérske detailné pohľady) nemajú vlastný
+  // z-index. Pri geste ich dočasne dáme pred orientačnú plochu, aby bolo naozaj
+  // vidieť, ako sa odsúvajú doprava.
+  if (!isFinite(z)) {
+    if (window.getComputedStyle(target).position === 'static') target.style.position = 'relative';
+    target.style.zIndex = '2';
+  }
+}
+
+function globalSwipeBackCleanup(target) {
+  if (!target) return;
+  target.classList.remove('swipe-back-active', 'swipe-back-completing');
+  target.style.removeProperty('--swipe-back-x');
+  target.style.removeProperty('--swipe-back-progress');
+  if (target._globalSwipeBackElevation) {
+    target.style.zIndex = target._globalSwipeBackElevation.zIndex;
+    target.style.position = target._globalSwipeBackElevation.position;
+    target._globalSwipeBackElevation = null;
+  }
+}
+
+function globalSwipeBackComplete(target, width) {
+  if (!target) return;
+  target.classList.add('swipe-back-completing');
+  globalSwipeBackTranslate(target, width + 18);
+  globalSwipeBackPreview(true, target, 1);
+  setTimeout(function() {
+    if (typeof _handleAndroidBack === 'function') _handleAndroidBack();
+    try { haptic('selection'); } catch(e) {}
+    setTimeout(function() { globalSwipeBackCleanup(target); globalSwipeBackPreview(false); }, 360);
+  }, 170);
+}
+
 function initGlobalSwipeBack() {
-  var startX = 0, startY = 0, startT = 0, tracking = false, blocked = false;
-  var threshold = 70, maxOffAxis = 60, maxTime = 800;
-  document.addEventListener('touchstart', function(e) {
-    if (!e.touches || e.touches.length !== 1) { tracking = false; return; }
-    var t = e.touches[0];
-    startX = t.clientX; startY = t.clientY; startT = Date.now();
-    tracking = true;
-    blocked = !!(e.target && e.target.closest && e.target.closest(GLOBAL_SWIPE_BACK_EXCLUDE));
-  }, { passive: true });
-  document.addEventListener('touchend', function(e) {
-    if (!tracking || blocked) { tracking = false; return; }
-    tracking = false;
-    var t = e.changedTouches && e.changedTouches[0];
-    if (!t) return;
-    var dx = t.clientX - startX, dy = t.clientY - startY;
-    if (Date.now() - startT > maxTime) return;
-    if (dx >= threshold && Math.abs(dy) < maxOffAxis) {
-      if (typeof _handleAndroidBack === 'function' && _handleAndroidBack()) {
-        try { haptic('selection'); } catch(e2) {}
+  var startX = 0, startY = 0, tracking = false, locked = false, ownsGesture = false;
+  var activeTarget = null, activeLayer = null;
+  var threshold = .24, maxOffAxis = 72;
+
+  function reset(cancelled) {
+    if (activeTarget) {
+      var targetToReset = activeTarget;
+      if (cancelled) {
+        targetToReset.classList.remove('swipe-back-active');
+        targetToReset.style.removeProperty('--swipe-back-x');
+        targetToReset.style.removeProperty('--swipe-back-progress');
+        setTimeout(function(){ globalSwipeBackCleanup(targetToReset); }, 250);
       }
+      globalSwipeBackPreview(false);
     }
-  }, { passive: true });
-  document.addEventListener('touchcancel', function(){ tracking = false; }, { passive: true });
+    tracking = false; locked = false; ownsGesture = false; activeTarget = null; activeLayer = null;
+  }
+
+  document.addEventListener('touchstart', function(e) {
+    if (!e.touches || e.touches.length !== 1 || (e.target && e.target.closest && e.target.closest('input,textarea,select,[contenteditable="true"]'))) {
+      reset(false); return;
+    }
+    var t = e.touches[0];
+    startX = t.clientX; startY = t.clientY;
+    tracking = true; locked = false; ownsGesture = false; activeTarget = null; activeLayer = null;
+  }, { passive: true, capture: true });
+
+  document.addEventListener('touchmove', function(e) {
+    if (!tracking || !e.touches || e.touches.length !== 1) return;
+    var dx = e.touches[0].clientX - startX;
+    var dy = e.touches[0].clientY - startY;
+    if (!locked) {
+      if (Math.abs(dy) > 8 && Math.abs(dy) >= Math.abs(dx)) { reset(false); return; }
+      if (Math.abs(dx) <= 8) return;
+      locked = true;
+      if (dx <= 0 || globalSwipeBackPreserveLocalGesture(e.target)) { reset(false); return; }
+      activeLayer = globalSwipeBackFindLayer();
+      activeTarget = globalSwipeBackResolveVisualTarget(activeLayer);
+      if (!activeTarget) { reset(false); return; }
+      ownsGesture = true;
+      globalSwipeBackElevate(activeTarget);
+      activeTarget.classList.add('swipe-back-active');
+      activeTarget.style.setProperty('--swipe-back-x', '0px');
+    }
+    if (!ownsGesture) return;
+    // Capture phase zastaví konkurenčné swipe handlery až po rozhodnutí, že toto
+    // gesto patrí navigácii. Vertikálny scroll a lokálne carousel-y zostávajú nedotknuté.
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    var visualDx = Math.max(0, dx);
+    globalSwipeBackTranslate(activeTarget, visualDx);
+    globalSwipeBackPreview(true, activeTarget, Math.min(1, visualDx / Math.max(1, window.innerWidth)));
+  }, { passive: false, capture: true });
+
+  document.addEventListener('touchend', function(e) {
+    if (!tracking) return;
+    if (ownsGesture) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      var t = e.changedTouches && e.changedTouches[0];
+      var dx = t ? t.clientX - startX : 0;
+      var dy = t ? t.clientY - startY : 0;
+      var target = activeTarget;
+      var shouldComplete = dx >= Math.max(70, window.innerWidth * threshold) && Math.abs(dy) <= maxOffAxis && !!activeLayer;
+      tracking = false; locked = false; ownsGesture = false; activeTarget = null; activeLayer = null;
+      if (shouldComplete) globalSwipeBackComplete(target, window.innerWidth);
+      else {
+        globalSwipeBackPreview(false);
+        globalSwipeBackTranslate(target, 0);
+        setTimeout(function(){ globalSwipeBackCleanup(target); }, 250);
+      }
+      return;
+    }
+    reset(false);
+  }, { passive: false, capture: true });
+
+  document.addEventListener('touchcancel', function() { reset(true); }, { passive: true, capture: true });
 }
 
 // ── ANDROID BACK BUTTON — História API pre PWA standalone mód ──
