@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.30';
+var APP_VERSION = '2.87.31';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -288,7 +288,7 @@ function dsIsStale(ts, maxAgeMs) {
 // slúži DataStore.set(key, data, {extra}) — zapíše dáta a vráti true/false,
 // či sa oproti predošlému stavu reálne zmenili (rovnaký diff ako get()).
 var DataStore = (function () {
-  var inFlight = {}; // kľúč -> true, kým preň beží fetch
+  var inFlight = {}; // kľúč -> pole { onFresh, onError } odberateľov, kým preň beží fetch
 
   function readEntry(key) {
     var raw = dsRead(key);
@@ -319,21 +319,32 @@ var DataStore = (function () {
     return changed;
   }
 
+  // POZOR (nahlásené Ivanom: Sklady v gyn línii sa "točili" viac než minútu):
+  // keď na ten istý kľúč príde druhé volanie počas toho, čo preň už beží fetch
+  // (napr. stockPreload() na pozadí po prihlásení + stockLoad() pri reálnom
+  // otvorení Skladov o pár sekúnd neskôr), staré správanie druhé volanie úplne
+  // ignorovalo — jeho onFresh/onError sa NIKDY nezavolalo, aj keď fetch
+  // dopadol úspešne. Viditeľná obrazovka, ktorá čakala práve na TENTO
+  // callback, tak zostala na skeletone navždy. Teraz sa každé volanie počas
+  // prebiehajúceho fetchu pridá ako ďalší odberateľ — fetch beží len raz
+  // (dedup zostáva), ale výsledok/chybu dostanú VŠETCI čakajúci volajúci.
   function fetchAndStore(key, opts) {
-    if (inFlight[key]) return;
-    inFlight[key] = true;
+    if (inFlight[key]) { inFlight[key].push(opts); return; }
+    inFlight[key] = [opts];
     var wasEmpty = !readEntry(key);
     Promise.resolve()
       .then(function () { return opts.fetcher(); })
       .then(function (data) {
+        var subscribers = inFlight[key] || [opts];
         delete inFlight[key];
         if (data === undefined || data === null) return;
         var changed = set(key, data);
-        if (changed && opts.onFresh) opts.onFresh(data, { wasEmpty: wasEmpty });
+        if (changed) subscribers.forEach(function (o) { if (o.onFresh) o.onFresh(data, { wasEmpty: wasEmpty }); });
       })
       .catch(function (err) {
+        var subscribers = inFlight[key] || [opts];
         delete inFlight[key];
-        if (opts.onError) opts.onError(err);
+        subscribers.forEach(function (o) { if (o.onError) o.onError(err); });
       });
   }
 
