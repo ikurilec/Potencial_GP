@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.62';
+var APP_VERSION = '2.87.63';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -6002,7 +6002,7 @@ function closeViac() {
 
 // ── TÍMOVÉ PLNENIE — Golem rep west / rep east ────────────────────────────
 // Prehľad vracia výlučne produktové plnenie. Lekári ani návštevy sa sem neprenášajú.
-var TEAM_PL_STATE = { open:false, detailUser:'', pendingDetailUser:'', payload:null, returnTo:null, request:0 };
+var TEAM_PL_STATE = { open:false, detailUser:'', pendingDetailUser:'', payload:null, returnTo:null, openedFromLinkedDetail:false, request:0 };
 var TEAM_PL_CACHE_MAX_AGE_MS = 15 * 60 * 1000;
 
 function teamPlnenieAllowed(){
@@ -6024,6 +6024,7 @@ function teamPlnenieCaptureReturn(){
   return (typeof stockCaptureReturn === 'function') ? stockCaptureReturn() : null;
 }
 function teamPlnenieReturnsToHistory(){ return !!(TEAM_PL_STATE.returnTo && TEAM_PL_STATE.returnTo.kind === 'panel' && TEAM_PL_STATE.returnTo.id === 'hist-overlay'); }
+function teamPlnenieReturnsDirectly(){ return !!(TEAM_PL_STATE.openedFromLinkedDetail || teamPlnenieReturnsToHistory()); }
 function teamPlnenieRestoreReturn(target){
   var overlay = document.getElementById('team-plnenie-overlay');
   if (overlay) overlay.classList.remove('show');
@@ -6065,15 +6066,15 @@ function teamPlnenieRefresh(){ TEAM_PL_STATE.payload=null; TEAM_PL_STATE.detailU
 function teamPlneniePreload(){ if(teamPlnenieAllowed()) DataStore.get(teamPlnenieCacheKey(),{maxAgeMs:TEAM_PL_CACHE_MAX_AGE_MS,fetcher:teamPlnenieFetch}); }
 function openTeamPlnenie(detailUser){
   if(!teamPlnenieAllowed()) return;
-  usageSectionEnter('Tímové plnenie'); TEAM_PL_STATE.open=true; TEAM_PL_STATE.detailUser=''; TEAM_PL_STATE.pendingDetailUser=detailUser || ''; TEAM_PL_STATE.returnTo=teamPlnenieCaptureReturn();
+  usageSectionEnter('Tímové plnenie'); TEAM_PL_STATE.open=true; TEAM_PL_STATE.detailUser=''; TEAM_PL_STATE.pendingDetailUser=detailUser || ''; TEAM_PL_STATE.openedFromLinkedDetail=!!detailUser; TEAM_PL_STATE.returnTo=teamPlnenieCaptureReturn();
   var sub=document.getElementById('team-plnenie-sub'); if(sub)sub.textContent='Golem · Q'+teamPlnenieQuarter()+' '+teamPlnenieYear();
   _panelShow('team-plnenie-overlay'); teamPlnenieLoad(false);
 }
-function closeTeamPlnenie(){ var target=TEAM_PL_STATE.returnTo; usageSectionClose(); TEAM_PL_STATE.open=false; TEAM_PL_STATE.detailUser=''; TEAM_PL_STATE.pendingDetailUser=''; TEAM_PL_STATE.request++; TEAM_PL_STATE.returnTo=null; teamPlnenieRestoreReturn(target); }
+function closeTeamPlnenie(){ var target=TEAM_PL_STATE.returnTo; usageSectionClose(); TEAM_PL_STATE.open=false; TEAM_PL_STATE.detailUser=''; TEAM_PL_STATE.pendingDetailUser=''; TEAM_PL_STATE.openedFromLinkedDetail=false; TEAM_PL_STATE.request++; TEAM_PL_STATE.returnTo=null; teamPlnenieRestoreReturn(target); }
 function teamPlnenieOpenDetail(username){ var rep=((TEAM_PL_STATE.payload || {}).reps || []).find(function(item){return item.username===username;}); if(!rep)return; TEAM_PL_STATE.detailUser=username; teamPlnenieRender(); var overlay=document.getElementById('team-plnenie-overlay');if(overlay)overlay.scrollTop=0; }
 function teamPlnenieOpenFromLeaderboard(username){ if(teamPlnenieAllowed()) openTeamPlnenie(username); }
 function teamPlnenieCloseDetail(){ if(!TEAM_PL_STATE.detailUser)return closeTeamPlnenie(); TEAM_PL_STATE.detailUser=''; teamPlnenieRender(); var overlay=document.getElementById('team-plnenie-overlay');if(overlay)overlay.scrollTop=0; }
-function teamPlnenieBack(){ if(TEAM_PL_STATE.detailUser && !teamPlnenieReturnsToHistory()) teamPlnenieCloseDetail(); else closeTeamPlnenie(); }
+function teamPlnenieBack(){ if(TEAM_PL_STATE.detailUser && !teamPlnenieReturnsDirectly()) teamPlnenieCloseDetail(); else closeTeamPlnenie(); }
 function teamPlnenieAggregate(reps){ var plan=(reps||[]).reduce(function(sum,r){return sum+(Number(r.planEUR)||0);},0), sales=(reps||[]).reduce(function(sum,r){return sum+(Number(r.predajeEUR)||0);},0); return {plan:plan,sales:sales,pct:plan>0?sales/plan*100:null}; }
 function teamPlnenieProductLabel(value){ return String(value || '').replace(/_/g,' '); }
 function teamPlneniePharmaKey(productKey){
