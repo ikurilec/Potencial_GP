@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.34';
+var APP_VERSION = '2.87.35';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -6639,9 +6639,15 @@ function settingsSubmitPasswordChange(){
           if(typeof doLogout === 'function') doLogout(); else location.reload();
         }, 1800);
       } else {
-        var err = (resp && resp.error === 'wrong_password')
+        // Dočasne (diagnostika, Ivan): backend teraz odpovedá, ale s chybou,
+        // ktorej presný dôvod appka doteraz skrývala za jednu všeobecnú vetu —
+        // nedalo sa tak zistiť, ktorá konkrétna vetva v authHandleChangePassword_
+        // spôsobuje zlyhanie bez prístupu k Apps Script execution logu.
+        var errCode = (resp && resp.error) ? String(resp.error) : 'no_response';
+        try { if (window.console) console.error('[pwd-change] backend vrátil chybu:', errCode, resp); } catch(e){}
+        var err = (errCode === 'wrong_password')
           ? 'Súčasné heslo nie je správne.'
-          : 'Zmena hesla sa nepodarila. Skús to prosím neskôr.';
+          : ('Zmena hesla sa nepodarila. Skús to prosím neskôr. (' + errCode + ')');
         showMsg(err);
         if(btn){ btn.disabled = false; btn.textContent = 'Zmeniť heslo'; }
       }
