@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.27';
+var APP_VERSION = '2.87.28';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -5898,7 +5898,7 @@ function closeViac() {
 }
 
 // ── SKLADY — read-only prehľad z normalizovaného interného Sheet-u ─────────
-var SKLADY_STATE = { open:false, request:0, expanded:{}, payload:null };
+var SKLADY_STATE = { open:false, request:0, expanded:{}, payload:null, returnTo:null };
 function stockEsc(value){ return (typeof appEsc === 'function') ? appEsc(value == null ? '' : String(value)) : String(value == null ? '' : value); }
 function stockFmt(value, suffix){
   var n = stockNumber(value);
@@ -5966,13 +5966,36 @@ function stockLoad(){
     body.innerHTML = appErrorCardHtml({ id:'sklady', title:'Nepodarilo sa načítať sklady', desc:'Skús to znova. Ak problém trvá, skladový report ešte nemusí byť zverejnený.', retryLabel:'Načítať znova' });
   });
 }
+function stockCaptureReturn(){
+  var nst = document.getElementById('nastenka-overlay');
+  if (nst && nst.classList.contains('show')) return { kind:'nastenka' };
+  if (document.body.classList.contains('gyn-line') && typeof GYN_APP !== 'undefined') return { kind:'gyn', tab:GYN_APP.nav || 'plnenie' };
+  if (document.body.classList.contains('manager-mode') && typeof MGR_STATE !== 'undefined') return { kind:'mgr', tab:MGR_STATE.subtab || 'plnenie' };
+  if (typeof _panelCurrent !== 'undefined' && _panelCurrent && _panelCurrent !== 'sklady-overlay') return { kind:'panel', id:_panelCurrent };
+  return null;
+}
+function stockRestoreReturn(target){
+  var stock = document.getElementById('sklady-overlay');
+  if (stock) stock.classList.remove('show');
+  if (typeof _panelCurrent !== 'undefined' && _panelCurrent === 'sklady-overlay') _panelCurrent = null;
+  try { _routerSyncHash(null); } catch(e) {}
+  document.body.style.overflow = '';
+  if (!target) { closeAllPanels(); return; }
+  if (target.kind === 'nastenka') { try { openNastenka(); return; } catch(e) {} }
+  if (target.kind === 'gyn') { try { gynNavTo(target.tab); return; } catch(e) {} }
+  if (target.kind === 'mgr') { try { mgrSwitchSubtab(target.tab); return; } catch(e) {} }
+  if (target.kind === 'panel' && target.id) {
+    try { if (_panelStack[_panelStack.length - 1] === target.id) _panelStack.pop(); _panelShow(target.id, true); return; } catch(e) {}
+  }
+  closeAllPanels();
+}
 function openSklady(){
-  usageSectionEnter('Sklady'); SKLADY_STATE.open = true; SKLADY_STATE.expanded = {}; SKLADY_STATE.payload = null;
+  usageSectionEnter('Sklady'); SKLADY_STATE.open = true; SKLADY_STATE.expanded = {}; SKLADY_STATE.payload = null; SKLADY_STATE.returnTo = stockCaptureReturn();
   var sub = document.getElementById('sklady-sub'), line = appLineTag();
   if (sub) sub.textContent = (line === 'gyn' ? 'Gynekológia' : (line === 'reagila' ? 'Reagila' : 'Golem')) + ' · aktuálny stav zásob';
   _panelShow('sklady-overlay'); stockLoad();
 }
-function closeSklady(){ usageSectionClose(); SKLADY_STATE.open = false; SKLADY_STATE.request++; closeAllPanels(); }
+function closeSklady(){ var target = SKLADY_STATE.returnTo; usageSectionClose(); SKLADY_STATE.open = false; SKLADY_STATE.request++; SKLADY_STATE.returnTo = null; stockRestoreReturn(target); }
 // Ťuknutie na položku menu ho zavrie — inak by ostalo visieť nad panelom,
 // ktorý práve otvorilo.
 document.addEventListener('click', function (ev) {
