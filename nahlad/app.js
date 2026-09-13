@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.22';
+var APP_VERSION = '2.87.23';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -8455,14 +8455,22 @@ function initTutorial() {
 var SESSION_KEY = 'potencial_gp_session';
 // Admin prepínač línie Golem ↔ Gyn — uložené obe session (gp + gyn) pre jeden login
 var MGR_DUAL_KEY = 'potencial_gp_dual_session';
+// Checkbox "Zapamätať prihlásenie" na login obrazovke — doLogin() ho prečíta
+// PRED úspešným prihlásením (nevie ešte, ktorá línia uspeje), setSession()
+// ho potom priradí k session objektu. Default true (bežný stav pri prvom
+// otvorení appky, kým ešte nemá vlastnú session, z ktorej by sa dedilo).
+var LOGIN_REMEMBER_ME = true;
 
 function getSession() {
   try {
     // Priorita: sessionStorage (zatvorenie prehliadača = odhlásenie)
     var data = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null');
     if(!data) {
-      // Fallback na localStorage — vek sa kontroluje nižšie (12h neaktivity),
-      // rovnako pre oba zdroje. Tu žiadna vlastná kontrola veku nie je.
+      // Fallback na localStorage — vek sa kontroluje nižšie, rovnako pre oba
+      // zdroje. Tu žiadna vlastná kontrola veku nie je. Do localStorage sa
+      // teraz zapisuje LEN keď bolo pri prihlásení zaškrtnuté "Zapamätať
+      // prihlásenie" (setSession()) — bez zaškrtnutia session nezažije
+      // zatvorenie prehliadača/reštart appky, presne ako pri "nezapamätaj".
       data = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
     }
     if(!data) return null;
@@ -8475,8 +8483,9 @@ function getSession() {
       clearSession();
       return null;
     }
-    // Kontrola 12 hodin necinnosti
-    var maxAge = 12 * 60 * 60 * 1000; // 12 hodin v ms
+    // Neaktivita: so zapamätaním 30 dní (Ivan sa nemusí furt prihlasovať),
+    // bez zapamätania pôvodných 12 hodín.
+    var maxAge = data.rememberMe ? (30 * 24 * 60 * 60 * 1000) : (12 * 60 * 60 * 1000);
     if(data.loginTime && (Date.now() - data.loginTime) > maxAge) {
       try { localStorage.setItem('potencial_gp_session_expired_msg', '1'); } catch(e){}
       clearSession();
@@ -8488,9 +8497,13 @@ function getSession() {
 
 function setSession(user) {
   try {
+    // Nový login prevezme aktuálnu voľbu z checkboxu; re-uloženie existujúcej
+    // session (napr. userPrefsSet, prepnutie línie) si ponechá to, čo už mala.
+    if(user.rememberMe === undefined) user.rememberMe = LOGIN_REMEMBER_ME;
     user.loginTime = Date.now();
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(user));
-    localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+    if(user.rememberMe) localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+    else localStorage.removeItem(SESSION_KEY);
   } catch(e){}
   try { if(typeof gsApplyEnabled==='function') gsApplyEnabled(); } catch(e){}
 }
@@ -9335,9 +9348,13 @@ function doLogin() {
   var passEl = document.getElementById('login-pass');
   var errEl  = document.getElementById('login-err');
   var btn    = document.getElementById('login-btn');
+  var rememberEl = document.getElementById('login-remember');
 
   var username = (userEl.value || '').trim().toLowerCase();
   var password  = passEl.value || '';
+  // Zisti PRED úspešným prihlásením (appka ešte nevie, ktorá línia uspeje) —
+  // setSession() to priradí k session objektu hneď, ako prihlásenie prejde.
+  LOGIN_REMEMBER_ME = rememberEl ? rememberEl.checked : true;
 
   errEl.classList.remove('show');
   userEl.classList.remove('err');
@@ -9954,7 +9971,12 @@ function refreshSession() {
     if(data) {
       data.loginTime = Date.now();
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(data));
-      localStorage.setItem(SESSION_KEY, JSON.stringify(data));
+      // Rovnaké pravidlo ako setSession() — bez "Zapamätať prihlásenie" sa
+      // do localStorage nesmie zapísať NIČ, inak by ho toto (spúšťané pri
+      // každom kliku/písaní) ticho obnovilo a session by prežila zatvorenie
+      // prehliadača aj napriek nezaškrtnutému checkboxu.
+      if(data.rememberMe) localStorage.setItem(SESSION_KEY, JSON.stringify(data));
+      else localStorage.removeItem(SESSION_KEY);
     }
   } catch(e){}
 }
