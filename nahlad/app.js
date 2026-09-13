@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.40';
+var APP_VERSION = '2.87.41';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -803,11 +803,20 @@ function authSessionParams() {
 }
 
 function scriptUrl(params) {
-  // Golem render používa scriptUrl(...) priamo. Pre Reagila líniu (session.line==='reagila')
-  // presmeruj všetky tieto volania na Reagila backend — tým sa Golem pohľad recykluje 1:1.
+  // Golem render používa scriptUrl(...) priamo. Pre Reagila aj Gyn líniu
+  // (session.line) presmeruj všetky tieto volania na ich vlastný backend —
+  // tým sa Golem pohľad recykluje 1:1. CHÝBAJÚCA vetva pre 'gyn' bola koreňom
+  // toho, že zmena hesla pre gyn používateľa (jediné miesto, čo scriptUrl()
+  // volá priamo namiesto gynScriptUrl()) tíško odchádzala na GOLEM backend s
+  // gyn session tokenom — Golem vo VLASTNOM hárku Sessions logicky nič
+  // nenašiel a appka to ukázala ako "Session expired / no_match", hoci so
+  // session nebolo nič zle.
   var _s = (typeof getSession === 'function') ? getSession() : null;
   if (_s && _s.line === 'reagila' && typeof REAGILA_SCRIPT_URL === 'string') {
     return REAGILA_SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(REAGILA_API_TOKEN) + authSessionParams('reagila');
+  }
+  if (_s && _s.line === 'gyn' && typeof GYN_SCRIPT_URL === 'string') {
+    return GYN_SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(GYN_API_TOKEN) + authSessionParams('gyn');
   }
   return SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(API_TOKEN) + authSessionParams('gp');
 }
