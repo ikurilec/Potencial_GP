@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.52';
+var APP_VERSION = '2.87.53';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -18921,23 +18921,20 @@ document.addEventListener('DOMContentLoaded', function(){
   initProgressSticky();
   initAndroidBack();
   initEdgeSwipeBack();
+  initGlobalSwipeBack();
 });
 
-// Pripoj edge-swipe-back gesture na všetky kľúčové full-screen overlaye.
-// Swipe sprava od ľavej hrany (do 24px) → zatvorí daný overlay.
-// Mirroruje iOS native back gesture pattern.
+// Edge-swipe-back (od ľavej hrany, do 24px) ostáva už len pre lk-detail — má vlastnú,
+// prísnejšiu logiku (attachLekarneDetailEdgeBack robí preventDefault počas ťahania,
+// lebo vnútri má horizontálne posúvateľný obsah, ktorý by inak gesto "ukradol").
+// Všetky ostatné panely, ktoré tu predtým mali rovnaký edge-only bind(id, fn) na
+// attachEdgeSwipeBack, teraz pokrýva initGlobalSwipeBack() nižšie — tá istá
+// _backLayers/_handleAndroidBack() logika ako Android tlačidlo Späť, ale spustená
+// potiahnutím KDEKOĽVEK na obrazovke (Ivan, 13.9.: "nech to sedí ako v appkách typu
+// Instagram"), nielen od okraja. Pre hist-overlay/lb-overlay/rep-plnenie-overlay/
+// golem-cal-overlay je to dokonca presnejšie správanie: _backLayers ich rieši cez
+// _panelStack (krok po kroku späť), nie hromadný closeAllPanels().
 function initEdgeSwipeBack() {
-  function bind(id, fn) {
-    var el = document.getElementById(id);
-    if (el) attachEdgeSwipeBack(el, fn);
-  }
-  bind('hist-overlay', function(){ if (typeof closeAllPanels === 'function') closeAllPanels(); });
-  bind('lb-overlay', function(){ if (typeof closeAllPanels === 'function') closeAllPanels(); });
-  bind('rep-plnenie-overlay', function(){ if (typeof closeAllPanels === 'function') closeAllPanels(); });
-  bind('lk-overlay', function(){ if (typeof closeLekarne === 'function') closeLekarne(); });
-  bind('golem-cal-overlay', function(){ if (typeof closeGolemKalendar === 'function') closeGolemKalendar(); });
-  bind('mgr-detail', function(){ if (typeof mgrCloseRep === 'function') mgrCloseRep(); });
-  bind('mgr-plnenie-detail', function(){ if (typeof plnenieCloseDetail === 'function') plnenieCloseDetail(); });
   var lkDetail = document.getElementById('lk-detail');
   if (lkDetail) {
     attachLekarneDetailEdgeBack(lkDetail, function(){ if (typeof closeLkarneDetail === 'function') closeLkarneDetail(); });
@@ -18948,20 +18945,6 @@ function initEdgeSwipeBack() {
       onSwipeRight: function(){ if (typeof closeLkarneDetail === 'function') closeLkarneDetail(); }
     });
   }
-  bind('pharma-ms-overlay', function(){ if (typeof closePharmaMs === 'function') closePharmaMs(); });
-  bind('pharma-okres-overlay', function(){ if (typeof closePharmaOkresChart === 'function') closePharmaOkresChart(); });
-  bind('detail-overlay', function(){ if (typeof closeDetail === 'function') closeDetail(); });
-  bind('edit-overlay', function(){ if (typeof closeEditOverlay === 'function') closeEditOverlay(); });
-  bind('satori-overlay', function(){ if (typeof satoriClose === 'function') satoriClose(); });
-  bind('settings-overlay', function(){ if (typeof closeSettings === 'function') closeSettings(); });
-  // Gyn línia — edge-swipe od ľavej hrany: detail reprezentanta → späť na zoznam,
-  // iný tab → späť na Plnenie (in-place navigácia v #gyn-content, nie overlaye).
-  bind('gyn-view', function(){
-    var gv = document.getElementById('gyn-view');
-    if (!gv || !gv.classList.contains('show')) return;
-    if (typeof GYN_APP !== 'undefined' && GYN_APP && GYN_APP.detailLogin) { gynCloseRepDetail(); return; }
-    if (typeof GYN_APP !== 'undefined' && GYN_APP && GYN_APP.nav && GYN_APP.nav !== 'plnenie') { gynNavTo('plnenie'); }
-  });
   // Swipe-down zatvára modal-y (WN, milestone, detail záznamu — bonus pre tým ktorí preferujú down gesture)
   function bindDown(id, fn) {
     var el = document.getElementById(id);
@@ -18970,6 +18953,41 @@ function initEdgeSwipeBack() {
   bindDown('wn-overlay', function(){ if (typeof wnClose === 'function') wnClose(); });
   bindDown('milestone-overlay', function(){ if (typeof closeMilestone === 'function') closeMilestone(); });
   bindDown('detail-overlay', function(){ if (typeof closeDetail === 'function') closeDetail(); });
+}
+
+// Potiahnutie doprava KDEKOĽVEK na obrazovke = krok späť (Ivan, 13.9., "ako v appkách
+// typu Instagram") — používa TEN ISTÝ _handleAndroidBack()/_backLayers mechanizmus ako
+// Android hardvérové tlačidlo Späť, takže zatvára presne to, čo appka aj tak považuje
+// za "najvrchnejšiu otvorenú vec" (panel, detail, prekryv), bez duplicitnej logiky.
+// Vynecháva miesta, ktoré UŽ majú VLASTNÉ vodorovné gesto na niečo iné — inak by sa
+// gestá bili (potvrdené s Ivanom): Plnenie/rep Plnenie/pharma Q-swipe (attachDragSwitcher
+// prepína kvartál/kód, nie "späť"), Gyn kalendár (mesiac), lk-detail (má vlastné
+// swipe-right-close vyššie, s preventDefault ochranou pred vnútorným obsahom).
+var GLOBAL_SWIPE_BACK_EXCLUDE = '#pl-q-content, #rep-pl-q-content, #pl-ps-body, .gyn-cal-grid, #lk-detail';
+function initGlobalSwipeBack() {
+  var startX = 0, startY = 0, startT = 0, tracking = false, blocked = false;
+  var threshold = 70, maxOffAxis = 60, maxTime = 800;
+  document.addEventListener('touchstart', function(e) {
+    if (!e.touches || e.touches.length !== 1) { tracking = false; return; }
+    var t = e.touches[0];
+    startX = t.clientX; startY = t.clientY; startT = Date.now();
+    tracking = true;
+    blocked = !!(e.target && e.target.closest && e.target.closest(GLOBAL_SWIPE_BACK_EXCLUDE));
+  }, { passive: true });
+  document.addEventListener('touchend', function(e) {
+    if (!tracking || blocked) { tracking = false; return; }
+    tracking = false;
+    var t = e.changedTouches && e.changedTouches[0];
+    if (!t) return;
+    var dx = t.clientX - startX, dy = t.clientY - startY;
+    if (Date.now() - startT > maxTime) return;
+    if (dx >= threshold && Math.abs(dy) < maxOffAxis) {
+      if (typeof _handleAndroidBack === 'function' && _handleAndroidBack()) {
+        try { haptic('selection'); } catch(e2) {}
+      }
+    }
+  }, { passive: true });
+  document.addEventListener('touchcancel', function(){ tracking = false; }, { passive: true });
 }
 
 // ── ANDROID BACK BUTTON — História API pre PWA standalone mód ──
@@ -20492,15 +20510,12 @@ function avatarBindTabEvents() {
   });
 }
 
-// Edge-swipe back na zatvorenie avatar modalu (rovnaký vzor ako iné overlaye)
-// + swipe down na zatvorenie
-if (typeof attachEdgeSwipeBack === 'function') {
+// Swipe down na zatvorenie avatar modalu — swipe doprava (kdekoľvek) rieši
+// initGlobalSwipeBack() cez _backLayers (av-overlay je tam zaregistrovaný).
+if (typeof attachSwipe === 'function') {
   document.addEventListener('DOMContentLoaded', function(){
     var ov = document.getElementById('av-overlay');
-    if (ov) attachEdgeSwipeBack(ov, avatarCloseCustomizer);
-    if (ov && typeof attachSwipe === 'function') {
-      attachSwipe(ov, { onSwipeDown: avatarCloseCustomizer, threshold: 80, onlyVertical: true });
-    }
+    if (ov) attachSwipe(ov, { onSwipeDown: avatarCloseCustomizer, threshold: 80, onlyVertical: true });
   });
 }
 
