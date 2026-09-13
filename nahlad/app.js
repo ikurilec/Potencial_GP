@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.46';
+var APP_VERSION = '2.87.47';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -21478,6 +21478,20 @@ function lbFetchApprovedQ(callback) {
       } else {
         LB_APPROVED_Q = null;
       }
+      // ROOT CAUSE (Ivan, rep v Goleme): lbPreloadPlnenie() vie dobehnúť SKÔR ako
+      // tento fetch — kým je LB_APPROVED_Q ešte null, lbLastCompletedQ() spadne na
+      // kalendárny fallback (predošlý Q) a naplní LB_PLNENIE_CACHE JEHO dátami. Keď
+      // potom dorazí admin-schválené Q (iné číslo), popisok sa aktualizoval nižšie
+      // (lbSyncTabs), ale cache s dátami starého Q ostala — rebríček tak ukazoval
+      // nálepku "Q3" nad Q2 číslami. Cache je teraz zviazaná s konkrétnym Q (viď
+      // lbPreloadPlnenie/lbRenderPlnenie), toto len urýchli opravu hneď po príchode
+      // schváleného Q, nie až pri ďalšom otvorení rebríčka.
+      if (LB_PLNENIE_CACHE && LB_PLNENIE_CACHE.q !== lbLastCompletedQ()) {
+        LB_PLNENIE_CACHE = null;
+        LB_PLNENIE_LOADING = false;
+        LB_STATE._plLoadAttempted = false;
+        lbPreloadPlnenie();
+      }
       // Tab "💊 Plnenie QX" ukazuje lbLastCompletedQ(), ktoré čita LB_APPROVED_Q — bez
       // tohto by popisok ostal na predvolenom (kalendárnom) kvartáli, kým sa appka
       // nabudúce neotvorí nanovo, hoci telo Plnenia už dávno ukazuje správne dáta.
@@ -21792,7 +21806,11 @@ function lbPreloadPlnenie() {
   lbEnsureLineState();
   var lastQ = lbLastCompletedQ();
   if (lastQ < 1) return;
-  if (LB_PLNENIE_LOADING || LB_PLNENIE_CACHE) return;
+  // Cache je platná len pre TO Q, s ktorým bola naplnená — "je tam niečo" nestačí.
+  // Bez tejto podmienky mohla appka ukázať "Q3" nálepku nad Q2 dátami (viď
+  // lbFetchApprovedQ), keď sa medzičasom zmenilo, ktoré Q je admin-schválené.
+  if (LB_PLNENIE_LOADING || (LB_PLNENIE_CACHE && LB_PLNENIE_CACHE.q === lastQ)) return;
+  LB_PLNENIE_CACHE = null;
   LB_PLNENIE_LOADING = true;
   var loadId = ++LB_PLNENIE_LOAD_ID;
   var loadCtx = appLineCapture();
@@ -21994,7 +22012,9 @@ function lbRenderPlnenie(body) {
   var qLabel = 'Q' + lastQ + ' ' + (new Date()).getFullYear();
 
   // Pouzivame LB_PLNENIE_CACHE -- naplni lbPreloadPlnenie() hned po prihlaseni
-  var cached = LB_PLNENIE_CACHE;
+  // Musí byť pre TOTO lastQ — inak by sa krátko po zmene admin-schváleného Q
+  // zobrazili čísla starého kvartálu pod novou nálepkou (viď lbFetchApprovedQ).
+  var cached = (LB_PLNENIE_CACHE && LB_PLNENIE_CACHE.q === lastQ) ? LB_PLNENIE_CACHE : null;
   if (!cached) {
     if (LB_STATE._plLoadAttempted && !LB_PLNENIE_LOADING) {
       appRegisterRetry('lb-plnenie', function(){
