@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.54';
+var APP_VERSION = '2.87.55';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -19239,6 +19239,11 @@ _backRegister('pharma-ms-overlay', closePharmaMs, function () {
 
 // 4b. Product sheet (spodný panel produktu) — GP aj gyn
 _backRegister('pl-prod-sheet', closeProdSheet);
+
+// 4c. Sklady majú vlastný návratový kontext (Domov / Gyn / manažér / panel),
+// preto ich musí zatvárať closeSklady(), nie všeobecné closeAllPanels(). Bez
+// registrácie globálne potiahnutie preskočilo samotné Sklady a zmenilo obsah pod nimi.
+_backRegister('sklady-overlay', closeSklady);
 
 // 5. Milestone overlay (celebrácia 200 lekárov)
 _backRegister('milestone-overlay', closeMilestone);
