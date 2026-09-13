@@ -1,13 +1,30 @@
 // ╔══════════════════════════════════════════════════════════════╗
 // ║  Potenciál VL — Service Worker                                ║
+// ║  (retrigger GitHub Pages deploy 2026-09-13 17:04 UTC)          ║
 // ║  Stratégia: network-first pre HTML (vždy sviežie keď online), ║
 // ║  cache-first pre ostatné assety (rýchly štart, offline ready).║
 // ╚══════════════════════════════════════════════════════════════╝
 
-var CACHE_NAME = 'potencial-vl-v2790';
+var CACHE_NAME = 'potencial-prod-vadb55093a1c6';
+// Názvy súborov nižšie aj CACHE_NAME vyššie píše "node scripts/build.mjs" —
+// nemeniť ručne, prepíše sa to pri ďalšom builde. Hash v názve = odtlačok
+// obsahu app.js/app.css, nie čísla verzie — zmení sa len keď sa obsah zmení.
+var APP_SHELL = [
+  './',
+  './index.html',
+  './dist/app.a1c62853.css',
+  './dist/app.adb55093.js'
+];
 
 self.addEventListener('install', function(event){
-  self.skipWaiting();
+  // Nová verzia sa stiahne do vlastnej cache, kým používateľ ešte pracuje so
+  // starou. Pri ďalšom otvorení sú CSS aj JS okamžite k dispozícii z cache.
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(function(cache){ return cache.addAll(APP_SHELL); })
+      .catch(function(){ /* pri dočasnom výpadku nechaj štandardný network fallback */ })
+      .then(function(){ return self.skipWaiting(); })
+  );
 });
 
 self.addEventListener('activate', function(event){
@@ -18,7 +35,7 @@ self.addEventListener('activate', function(event){
         // názov, takže každé nasadenie zmazalo aj fonty a avatary z DiceBear — veci,
         // ktoré sa medzi verziami vôbec nemenia — a všetko sa sťahovalo odznova.
         return Promise.all(
-          names.filter(function(n){ return n !== CACHE_NAME; })
+          names.filter(function(n){ return (n.indexOf('potencial-prod-') === 0 || n.indexOf('potencial-vl-') === 0) && n !== CACHE_NAME; })
                .map(function(n){ return caches.delete(n); })
         );
       })

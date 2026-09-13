@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@700&display=swap">
-<link rel="stylesheet" href="dist/app.1be25931.css">
+<link rel="stylesheet" href="dist/app.a1c62853.css">
 <!-- Firebase Cloud Messaging — natívne push notifikácie (defer aby nebrzdil štart) -->
 <script defer src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js"></script>
@@ -38,7 +38,7 @@
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.87.63 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.88.1 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -1022,7 +1022,7 @@
 <div class="footer">Intern&#253; n&#225;stroj pre medic&#237;nskych reprezentantov<br><span style="font-size:10px;color:#B0BAC4">Designed &amp; developed by Ivan Kurilec &middot; Gedeon Richter Slovakia &middot; 2026</span></div>
 </div>
 
-<script src="dist/app.2dd93611.js"></script>
+<script src="dist/app.adb55093.js"></script>
 
 <!-- ── LOGOUT CONFIRM ── -->
 <div class="logout-overlay" id="logout-overlay">
@@ -1810,7 +1810,8 @@
 <div class="login-screen" id="login-screen">
 
   <div class="login-hero">
-    <svg class="login-hero-svg" viewBox="0 48 260 162" xmlns="http://www.w3.org/2000/svg">
+    <div class="login-landscape" aria-hidden="true"></div>
+    <svg class="login-hero-svg" viewBox="0 48 260 162" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Satori">
       <defs>
         <radialGradient id="lhBg" cx="50%" cy="44%" r="55%">
           <stop offset="0%" stop-color="#1E3A8A" stop-opacity="0.3"/>
@@ -1864,18 +1865,18 @@
   </div>
 
   <div class="login-card">
-    <div class="login-card-title">Vitaj v aplikácii Satori <span class="login-wave">👋</span></div>
+    <div class="login-card-title">Vitaj v Satori</div>
     <div class="login-card-sub" id="login-card-sub">Prihlás sa do svojho účtu</div>
 
     <div class="login-field">
       <label class="login-label">Prihlasovacie meno</label>
-      <input class="login-input" id="login-user" type="text" placeholder="napr. peter.novak" autocomplete="username" autocapitalize="none" spellcheck="false">
+      <input class="login-input" id="login-user" type="text" placeholder="Zadaj svoje prihlasovacie meno" autocomplete="username" autocapitalize="none" spellcheck="false">
     </div>
 
     <div class="login-field">
       <label class="login-label">Heslo</label>
       <div class="login-input-wrap">
-        <input class="login-input" id="login-pass" type="password" placeholder="••••••••" autocomplete="current-password">
+        <input class="login-input" id="login-pass" type="password" placeholder="Zadaj svoje heslo" autocomplete="current-password">
         <button class="login-eye" id="login-eye-btn" type="button" onclick="toggleLoginEye()">👁</button>
       </div>
       <div class="login-err-msg" id="login-err">Nesprávne meno alebo heslo. Skús znova.</div>
@@ -1883,22 +1884,16 @@
 
     <label class="login-remember-row" for="login-remember">
       <input type="checkbox" id="login-remember" checked>
-      <span>Zapamätať prihlásenie</span>
+      <span>Zostať prihlásený</span>
     </label>
 
     <button class="login-btn" id="login-btn" type="button" onclick="doLogin()">Prihlásiť sa →</button>
 
-    <div class="login-divider">
-      <div class="login-divider-line"></div>
-      <div class="login-divider-text">info</div>
-      <div class="login-divider-line"></div>
-    </div>
-
-    <div class="login-help">Problémy s prihlásením?<br>Kontaktuj svojho manažéra.</div>
+    <div class="login-help">Problémy s prihlásením? Kontaktuj svojho manažéra.</div>
   </div>
 
   <div class="login-footer">
-    <div class="login-footer-text">Interný nástroj · len pre medicínskych reprezentantov</div>
+    <div class="login-footer-text">Interný nástroj pre medicínskych reprezentantov</div>
     <div class="login-version" id="login-version-lbl"></div>
   </div>
 
