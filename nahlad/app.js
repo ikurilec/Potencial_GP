@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.51';
+var APP_VERSION = '2.87.52';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -21969,6 +21969,11 @@ function lbRenderPlnenie(body) {
 
   var session = getSession();
   var myUsername = session ? session.username : '';
+  // Klik na reprezentanta otvorí jeho detail (plnenie, lekári, produkty) — rovnaký
+  // panel ako "Podľa reprezentantov" v Plnení. Iba manažér/admin: bežný reprezentant
+  // vidí v Rebríčku celý tím (to je zmysel rebríčka), ale nemá mať prístup k cudzím
+  // detailným dátam — tie sú výhradne manažérska funkcia (plnenieOpenDetail).
+  var _lbCanOpenDetail = appRole() === 'mgr';
 
   function pctCls(pct){ return pct === null ? 'n' : pct >= 100 ? 'g' : pct >= 95 ? 'o' : 'r'; }
   function pctLbl(pct){ return pct === null ? '—' : pct.toFixed(1).replace('.',',') + ' %'; }
@@ -22021,8 +22026,10 @@ function lbRenderPlnenie(body) {
     var lastName = rep.name.split(' ').pop();
     var cls = pctCls(rep.pct);
     var av = lbAvatarContent(rep.username, rep.name, isFirst ? 68 : 46);
+    var _lbSafeU = String(rep.username).replace(/'/g, "\\'");
+    var _lbClickAttr = _lbCanOpenDetail ? ' onclick="lbOpenRepDetail(\'' + _lbSafeU + '\')" role="button" tabindex="0"' : '';
     podiumHtml +=
-      '<div class="lb-p-item ' + podiumClasses[pi] + '">' +
+      '<div class="lb-p-item' + (_lbCanOpenDetail ? ' lb-clickable' : '') + ' ' + podiumClasses[pi] + '"' + _lbClickAttr + '>' +
         (isFirst ? '<span class="lb-p-crown">\uD83D\uDC51</span>' : '') +
         '<div class="lb-p-avatar' + (av.hasAvatar ? ' has-avatar' : '') + '" data-username="' + rep.username + '" style="background:' + rep.color + '">' +
           av.html +
@@ -22043,8 +22050,10 @@ function lbRenderPlnenie(body) {
     var isMe = rep.username === myUsername;
     var cls = pctCls(rep.pct);
     var av2 = lbAvatarContent(rep.username, rep.name, 34);
+    var _lbSafeU2 = String(rep.username).replace(/'/g, "\\'");
+    var _lbClickAttr2 = _lbCanOpenDetail ? ' onclick="lbOpenRepDetail(\'' + _lbSafeU2 + '\')" role="button" tabindex="0"' : '';
     listHtml +=
-      '<div class="lb-row' + (isMe ? ' me' : '') + '">' +
+      '<div class="lb-row' + (isMe ? ' me' : '') + (_lbCanOpenDetail ? ' lb-clickable' : '') + '"' + _lbClickAttr2 + '>' +
         '<div class="lb-rank">' + rank + '</div>' +
         '<div class="lb-avatar' + (av2.hasAvatar ? ' has-avatar' : '') + '" data-username="' + rep.username + '" style="background:' + rep.color + '">' + av2.html + '</div>' +
         '<div class="lb-info">' +
@@ -26392,6 +26401,32 @@ function plnenieRepActionSummaryHtml(opts) {
     '</div></div>';
 }
 
+// Klik na reprezentanta v Rebríčku (Golem/Reagila) → rovnaký detail panel ako
+// "Podľa reprezentantov" v Plnení. Ten panel číta z PL_STATE, ktorý sa nemusí
+// zhodovať s tým, čo práve zobrazuje Rebríček (LB_PLNENIE_CACHE — vlastný, na
+// Plnenie nezávislý fetch/cache s rovnakými dátami). Ak PL_STATE ešte nemá
+// dáta pre aktuálny Q (napr. Ivan nikdy neotvoril Plnenie tab túto session),
+// požičiaj si ich odtiaľ, nech detail neukáže zbytočne "Chyba načítania".
+function lbOpenRepDetail(username) {
+  if (!username || appRole() !== 'mgr') return;
+  var lastQ = lbLastCompletedQ();
+  var year = (new Date()).getFullYear();
+  if (!(PL_STATE.aggregates && PL_STATE.q === lastQ && PL_STATE.year === year)) {
+    var src = (PL_STATE.qCache && PL_STATE.qCache[lastQ]) ||
+              (LB_PLNENIE_CACHE && LB_PLNENIE_CACHE.q === lastQ ? LB_PLNENIE_CACHE : null);
+    if (src) {
+      PL_STATE.year = year;
+      PL_STATE.q = lastQ;
+      PL_STATE.data = src.data;
+      PL_STATE.aggregates = src.aggregates;
+      PL_STATE.loaded = true;
+      PL_STATE.qCache[lastQ] = { data: src.data, aggregates: src.aggregates };
+    }
+  }
+  if (MGR_STATE.subtab !== 'plnenie') mgrSwitchSubtab('plnenie');
+  plnenieOpenDetail(username);
+}
+
 function plnenieOpenDetail(username) {
   if (!username) return;
   PL_STATE.detailRep = username;
@@ -26412,6 +26447,17 @@ function plnenieOpenDetail(username) {
 }
 
 function plnenieCloseDetail() {
+  // Ak sme sem prišli z Rebríčka (lbOpenRepDetail prepol subtab a mgrSwitchSubtab
+  // si to zapamätala do _mgrPrevSubtab), Späť má vrátiť TAM, nie nechať na hlavnom
+  // zozname Plnenia — inak by "Späť" z detailu skočil na inú obrazovku, než z ktorej
+  // sa naň prišlo.
+  var _backToLb = (_mgrPrevSubtab === 'leaderboard');
+  function _afterClose() {
+    PL_STATE.detailRep = null;
+    document.body.classList.remove('mgr-plnenie-detail-open');
+    window.scrollTo(0, 0);
+    if (_backToLb) { _mgrPrevSubtab = null; mgrSwitchSubtab('leaderboard'); }
+  }
   var detailEl = document.getElementById('mgr-plnenie-detail');
   if (detailEl) {
     detailEl.classList.remove('panel-anim-r');
@@ -26419,14 +26465,10 @@ function plnenieCloseDetail() {
     detailEl.classList.add('pl-detail-exit-r');
     setTimeout(function(){
       detailEl.classList.remove('pl-detail-exit-r');
-      PL_STATE.detailRep = null;
-      document.body.classList.remove('mgr-plnenie-detail-open');
-      window.scrollTo(0, 0);
+      _afterClose();
     }, 230);
   } else {
-    PL_STATE.detailRep = null;
-    document.body.classList.remove('mgr-plnenie-detail-open');
-    window.scrollTo(0, 0);
+    _afterClose();
   }
 }
 
