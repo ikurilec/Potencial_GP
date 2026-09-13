@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.36';
+var APP_VERSION = '2.87.37';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -6654,7 +6654,7 @@ function settingsSubmitPasswordChange(){
         if (isSessionIssue) {
           closePasswordChange();
           closeSettings();
-          try { showSessionExpiredModal(); } catch(e2){ if(typeof clearSession === 'function') clearSession(); location.reload(); }
+          try { showSessionExpiredModal(errCode); } catch(e2){ if(typeof clearSession === 'function') clearSession(); location.reload(); }
           return;
         }
         var err = (errCode === 'wrong_password')
@@ -9837,8 +9837,13 @@ function confirmLogout() {
   appReload();
 }
 
-function showSessionExpiredModal() {
+function showSessionExpiredModal(diagCode) {
   var overlay = document.getElementById('session-expired-overlay');
+  var diagEl = document.getElementById('session-expired-diag');
+  if (diagEl) {
+    if (diagCode) { diagEl.textContent = 'Diagnostika: ' + diagCode; diagEl.style.display = ''; }
+    else { diagEl.textContent = ''; diagEl.style.display = 'none'; }
+  }
   if(overlay) overlay.classList.add('show');
 }
 
