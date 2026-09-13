@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.56';
+var APP_VERSION = '2.87.57';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -5743,7 +5743,13 @@ function appGoPlnenie() {
   appGoTab('plnenie');
 }
 function appGoKalendar() { appGoTab('kalendar'); }
-function appGoNastenka(postId) { appGoTab('nastenka', postId); }
+function appGoNastenka(postId) {
+  // Spodná lišta je navigácia medzi koreňovými obrazovkami. Keď sa z Domova
+  // otvorí Nástenka, gesto Späť má preto vždy vrátiť Domov, nie formulár ani
+  // náhodný panel, ktorý mohol zostať v pamäti z predchádzajúcej navigácie.
+  try { NST.returnToDomov = true; } catch(e) {}
+  appGoTab('nastenka', postId);
+}
 var APP_PL_PRODUCT_FOCUS = null;
 // Otvor Plnenie a po vykreslení zameraj konkrétnu produktovú kartu.
 // Render môže dobehnúť zo siete neskôr, preto focus krátko opakujeme.
@@ -36681,6 +36687,7 @@ var NST = {
   votersOpen: {},      // id → rozbalený prehľad „kto ako hlasoval“
   composeCat: '', composeProd: '', composeOpts: ['', ''], composeImage: null,
   _reqId: 0, _sending: false, _loadT: null, _opened: false, _primed: false,
+  returnToDomov: false,
   _filterOpen: false
 };
 // Limity pre fotky na nástenke — komprimujeme na klientovi PRED odoslaním
@@ -36848,6 +36855,8 @@ function openNastenka(){
   nstFetch(function(){ NST.loading = false; nstRender(); nstMarkSeen(); });
 }
 function closeNastenka(){
+  var returnToDomov = !!NST.returnToDomov;
+  NST.returnToDomov = false;
   try { usageSectionClose(); } catch(e){}
   NST._reqId++;
   nstComposeClose();
@@ -36856,7 +36865,7 @@ function closeNastenka(){
   document.body.style.overflow = '';
   nstMarkSeen();
   // Domovom je Domov — zavretie Nástenky nemá končiť na prázdnom formulári.
-  if (document.body.classList.contains('app-nav') && !_panelCurrent) {
+  if (returnToDomov || (document.body.classList.contains('app-nav') && !_panelCurrent)) {
     try { openDnes(); return; } catch (e) {}
   }
   try { repTabSetActive(_panelCurrent); } catch (e) {}
