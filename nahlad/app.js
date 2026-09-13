@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.26';
+var APP_VERSION = '2.87.27';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -5910,7 +5910,7 @@ function stockDate(value){
   return m ? (Number(m[3]) + '. ' + ['január','február','marec','apríl','máj','jún','júl','august','september','október','november','december'][Number(m[2])-1] + ' ' + m[1]) : '';
 }
 function stockSkeletonHtml(){
-  return '<div class="sklady-summary skel-stock"><div class="sklady-kicker">Pokrytie zásob</div><div class="sklady-explain">Počet dní, počas ktorých vystačí dostupná zásoba pri aktuálnom priemernom predaji.</div><div class="sklady-legend"><span class="critical">pod 14 dní</span><span class="watch">14–27 dní</span><span class="stable">28+ dní</span></div><div class="skel skel-line" style="width:42%"></div><div class="skel skel-line" style="width:68%"></div></div>' +
+  return '<div class="sklady-summary skel-stock"><div class="sklady-kicker">Pokrytie zásob</div><div class="sklady-explain">Počet dní, počas ktorých vystačí dostupná zásoba pri aktuálnom priemernom predaji.</div><div class="sklady-legend"><span class="critical">pod 14 dní</span><span class="watch">14–27 dní</span><span class="stable">28+ dní</span></div><div class="sklady-loading" role="status"><span class="sklady-loading-spinner" aria-hidden="true"></span><span>Načítavam aktuálne skladové údaje…</span></div><div class="skel skel-line" style="width:42%"></div><div class="skel skel-line" style="width:68%"></div></div>' +
     '<div class="sklady-product skel-stock"><div class="skel skel-line" style="width:44%"></div><div class="skel skel-line" style="width:78%"></div></div>' +
     '<div class="sklady-product skel-stock"><div class="skel skel-line" style="width:36%"></div><div class="skel skel-line" style="width:62%"></div></div>';
 }
@@ -5921,7 +5921,7 @@ function stockRender(){
   if (!data) { body.innerHTML = stockSkeletonHtml(); return; }
   var counts = { critical:0, watch:0, stable:0, missing:0 };
   data.products.forEach(function(product){ counts[product.status.key]++; });
-  var summary = '<div class="sklady-summary"><div class="sklady-kicker">Pokrytie zásob</div><div class="sklady-asof">Stav k ' + stockEsc(stockDate(data.asOf) || '—') + '</div>' +
+  var summary = '<div class="sklady-summary"><div class="sklady-kicker">Pokrytie zásob</div><div class="sklady-asof">Dáta aktualizované k ' + stockEsc(stockDate(data.asOf) || '—') + '</div>' +
     '<div class="sklady-explain">Počet dní, počas ktorých vystačí dostupná zásoba pri aktuálnom priemernom predaji.</div>' +
     '<div class="sklady-legend"><span class="critical">pod 14 dní</span><span class="watch">14–27 dní</span><span class="stable">28+ dní</span></div>' +
     '<div class="sklady-counts"><span class="critical">' + counts.critical + ' kritické</span><span class="watch">' + counts.watch + ' sledovať</span><span class="stable">' + counts.stable + ' stabilné</span></div></div>';
@@ -5945,8 +5945,19 @@ function stockLoad(){
   if (!body) return;
   var request = ++SKLADY_STATE.request;
   body.innerHTML = stockSkeletonHtml();
-  appQueuedFetchJson(stockRequestUrl(), { cache:'no-store' }, APP_FETCH_TIMEOUT_PRELOAD_MS, 'critical').then(function(payload){
-    if (!payload || payload.ok === false) throw new Error((payload && payload.error) || 'stock endpoint unavailable');
+  appFetchWithRetry(stockRequestUrl(), {
+    retries:1,
+    timeoutMs:APP_FETCH_TIMEOUT_MS,
+    priority:'critical',
+    delayFn:function(){ return 1000; },
+    active:function(){ return request === SKLADY_STATE.request && SKLADY_STATE.open; },
+    fetcher:function(){
+      return appQueuedFetchJson(stockRequestUrl(), { cache:'no-store' }, APP_FETCH_TIMEOUT_MS, 'critical').then(function(payload){
+        if (!payload || payload.ok === false) throw new Error((payload && payload.error) || 'stock endpoint unavailable');
+        return payload;
+      });
+    }
+  }).then(function(payload){
     if (request !== SKLADY_STATE.request || !SKLADY_STATE.open) return;
     SKLADY_STATE.payload = stockNormalizePayload(payload, appLineTag()); stockRender();
   }).catch(function(){
