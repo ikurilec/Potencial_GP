@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.35';
+var APP_VERSION = '2.87.36';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -6639,12 +6639,24 @@ function settingsSubmitPasswordChange(){
           if(typeof doLogout === 'function') doLogout(); else location.reload();
         }, 1800);
       } else {
-        // Dočasne (diagnostika, Ivan): backend teraz odpovedá, ale s chybou,
-        // ktorej presný dôvod appka doteraz skrývala za jednu všeobecnú vetu —
-        // nedalo sa tak zistiť, ktorá konkrétna vetva v authHandleChangePassword_
-        // spôsobuje zlyhanie bez prístupu k Apps Script execution logu.
         var errCode = (resp && resp.error) ? String(resp.error) : 'no_response';
         try { if (window.console) console.error('[pwd-change] backend vrátil chybu:', errCode, resp); } catch(e){}
+        // Koreň veci (Ivan: "oprav to od príčiny, nie len plátaním") — appka
+        // nikde reaktívne neriešila, keď SERVER odmietne session_token ako
+        // neplatný/prešlý (na rozdiel od klientskej kontroly getSession(),
+        // ktorá to hlási LEN keď appka sama uzná svoju kópiu za starú —
+        // ak sa tieto dve hodiny niekedy rozídu, appka predtým ukázala len
+        // mätúcu všeobecnú chybu, ktorá navádzala na zbytočné opakovanie
+        // toho istého (už neplatného) tokenu). Rovnaký scenár hrozí pri
+        // KAŽDOM inom volaní, len ho tam nikto doteraz takto nenahlásil —
+        // toto je teda oprava spoločného vzoru, nie plátanie jedného miesta.
+        var isSessionIssue = (errCode === 'Session expired' || errCode === 'Unauthorized' || errCode === 'Session missing');
+        if (isSessionIssue) {
+          closePasswordChange();
+          closeSettings();
+          try { showSessionExpiredModal(); } catch(e2){ if(typeof clearSession === 'function') clearSession(); location.reload(); }
+          return;
+        }
         var err = (errCode === 'wrong_password')
           ? 'Súčasné heslo nie je správne.'
           : ('Zmena hesla sa nepodarila. Skús to prosím neskôr. (' + errCode + ')');
@@ -7698,7 +7710,8 @@ function settingsLoadLine(target){
   lkPrompt('Heslo', 'Zadaj svoje heslo pre načítanie línie ' + meta.label + '.', '', '', function(pwd){
     var lp = '?action=login&username=' + encodeURIComponent(s.username) +
              '&password=' + encodeURIComponent(pwd) +
-             '&device_id=' + encodeURIComponent(authDeviceId());
+             '&device_id=' + encodeURIComponent(authDeviceId()) +
+             '&remember=' + (s.rememberMe ? '1' : '0');
     lineColdLoginFetch(url, lp).then(function(d){
       if(!d || !d.ok){
         if(typeof lkPromptReset === 'function') lkPromptReset();   // späť na ďalší pokus, nie navždy "Overujem…"
@@ -7734,7 +7747,8 @@ function settingsReloadAllLines(){
   lkPrompt('Heslo', 'Appka overí všetky tvoje línie (Golem, Gyn, Reagila) a sprístupní prepínač.', '', '', function(pwd){
   var lp = '?action=login&username=' + encodeURIComponent(s.username) +
            '&password=' + encodeURIComponent(pwd) +
-           '&device_id=' + encodeURIComponent(authDeviceId());
+           '&device_id=' + encodeURIComponent(authDeviceId()) +
+           '&remember=' + (s.rememberMe ? '1' : '0');
   var curLine = (typeof mgrCurrentLine === 'function') ? mgrCurrentLine() : 'gp';
   Promise.all([
     lineColdLoginFetch(SCRIPT_URL, lp),
@@ -8903,7 +8917,8 @@ function lineRetryFailedSilently(username, pwd, dataMap, onLine, delayMs){
     if (!need.length) return;
     var lp = '?action=login&username=' + encodeURIComponent(username) +
              '&password=' + encodeURIComponent(pwd) +
-             '&device_id=' + encodeURIComponent(authDeviceId());
+             '&device_id=' + encodeURIComponent(authDeviceId()) +
+             '&remember=' + (LOGIN_REMEMBER_ME ? '1' : '0');
     setTimeout(function(){
       need.forEach(function(n){
         function attempt(ix){
@@ -9038,7 +9053,8 @@ function mgrEnableLineSwitch(targetLine){
   lkPrompt('Heslo', 'Zadaj svoje heslo pre načítanie Gyn línie.', '', '', function(pwd){
   var lp = '?action=login&username=' + encodeURIComponent(s.username) +
            '&password=' + encodeURIComponent(pwd) +
-           '&device_id=' + encodeURIComponent(authDeviceId());
+           '&device_id=' + encodeURIComponent(authDeviceId()) +
+           '&remember=' + (s.rememberMe ? '1' : '0');
   var gpF  = lineColdLoginFetch(SCRIPT_URL, lp);
   var gynF = lineColdLoginFetch(GYN_SCRIPT_URL, lp);
   Promise.all([gpF, gynF]).then(function(res){
@@ -9656,7 +9672,13 @@ function doLogin() {
   btn.disabled = true;
   btn.textContent = 'Prihlasujem...';
 
-  var loginParams = '?action=login&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password) + '&device_id=' + encodeURIComponent(authDeviceId());
+  // remember=1/0 ide na server → session_token tam dostane rovnako dlhú platnosť,
+  // akú appka sľubuje klientovi (getSession()'s maxAge). Predtým server VŽDY
+  // vytvoril token platný len 12h bez ohľadu na zaškrtnutie "Zapamätať
+  // prihlásenie" — klient si preto ešte celé dni myslel, že je prihlásený
+  // (lokálna kontrola prešla), no server každé volanie ticho odmietal ako
+  // "Session expired" hneď po uplynutí tých 12h.
+  var loginParams = '?action=login&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password) + '&device_id=' + encodeURIComponent(authDeviceId()) + '&remember=' + (LOGIN_REMEMBER_ME ? '1' : '0');
   // Každú líniu overujeme nezávisle. Hneď ako jedna uspeje, počkáme iba krátke
   // okno na ostatné a používateľa pustíme ďalej; pomalé servery dobehnú na pozadí.
   //
