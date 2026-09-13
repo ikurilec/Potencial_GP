@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.31';
+var APP_VERSION = '2.87.32';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -6079,7 +6079,21 @@ function stockRestoreReturn(target){
   if (target.kind === 'gyn') { try { gynNavTo(target.tab); return; } catch(e) {} }
   if (target.kind === 'mgr') { try { mgrSwitchSubtab(target.tab); return; } catch(e) {} }
   if (target.kind === 'panel' && target.id) {
-    try { if (_panelStack[_panelStack.length - 1] === target.id) _panelStack.pop(); _panelShow(target.id, true); return; } catch(e) {}
+    try {
+      if (_panelStack[_panelStack.length - 1] === target.id) _panelStack.pop();
+      _panelShow(target.id, true);
+      // POZOR (nahlásené Ivanom: karta Sklady sa po návrate na Domov nezobrazila,
+      // hoci Sklady medzitým reálne načítali dáta): _panelShow() len prepne CSS
+      // triedu 'show' na UŽ EXISTUJÚCOM DOM elemente — nič neprekresľuje. Domov
+      // dostal svoj HTML naposledy pri openDnes() (napr. hneď po prihlásení,
+      // kým ešte žiadna skladová cache neexistovala) a odvtedy sa needmenil.
+      // Bez tohto by tak návrat zo Skladov ukázal STARÝ obsah Domova, aj keď
+      // medzitým pribudli nové dáta (presne skladová karta). dnesRender() je
+      // lacná synchrónna funkcia čítajúca výlučne z cache — bezpečné zavolať
+      // vždy, nielen keď je cieľom Sklady.
+      if (target.id === 'dnes-overlay') { try { dnesRender(); } catch(e2){} }
+      return;
+    } catch(e) {}
   }
   closeAllPanels();
 }
