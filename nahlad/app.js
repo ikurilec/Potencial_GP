@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.32';
+var APP_VERSION = '2.87.33';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -5561,6 +5561,7 @@ function dnesRender() {
                '<span class="dnes-mini-txt"><span class="dnes-mini-name">' + appEsc(product.product) + '</span>' +
                  '<span class="dnes-mini-when">' + appEsc(product.status.label) +
                    (product.coverageDays != null ? ' · ' + stockFmt(product.coverageDays, ' dní zásob') : '') + '</span></span>' +
+               '<span class="dnes-mini-meta" aria-hidden="true">›</span>' +
              '</div>';
     }).join('');
     var stockExtra = stockW.items.length - Math.min(5, stockW.items.length);
