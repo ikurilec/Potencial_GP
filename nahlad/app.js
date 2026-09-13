@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.39';
+var APP_VERSION = '2.87.40';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -6630,13 +6630,17 @@ function settingsSubmitPasswordChange(){
     .then(function(resp){
       oldPwd = newPwd = confPwd = null; // nedrž heslo v pamäti dlhšie, než treba
       if(resp && resp.ok){
-        showMsg('Heslo bolo zmenené. Prihlás sa prosím znova.', true);
+        // Predtým tu bolo doLogout() — to ukáže potvrdzovací dialóg "Naozaj sa
+        // chceš odhlásiť? Áno/Nie", hoci session už bola zrušená a človek sa
+        // MUSÍ prihlásiť nanovo (nie je to na výber). Namiesto otázky teraz ide
+        // rovno oznamovacia správa + odhlásenie cez confirmLogout().
+        showMsg('Heslo bolo zmenené. Za chvíľu sa odhlásiš — prihlás sa znova s novým heslom.', true);
         if(btn) btn.style.display = 'none';
         setTimeout(function(){
           closePasswordChange();
           closeSettings();
-          if(typeof clearSession === 'function') clearSession();
-          if(typeof doLogout === 'function') doLogout(); else location.reload();
+          if(typeof confirmLogout === 'function') confirmLogout();
+          else { if(typeof clearSession === 'function') clearSession(); location.reload(); }
         }, 1800);
       } else {
         var errCode = (resp && resp.error) ? String(resp.error) : 'no_response';
