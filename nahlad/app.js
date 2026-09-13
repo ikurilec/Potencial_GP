@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.3';
+var APP_VERSION = '2.88.4';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -40440,20 +40440,22 @@ document.addEventListener('DOMContentLoaded', function(){ try { gsApplyEnabled()
 
 /* ═══ LAUNCHER — dlhé podržanie (600 ms) → drag mód, pozícia sa uloží ═══ */
 var GS_LP={ key:'gs_launcher_pos_v1', t:null, dragging:false, moved:false, dx:0, dy:0 };
+// Spodná hranica je nad lištou — guľôčku si ide presunúť kamkoľvek, len nie
+// pod navigáciu, kde by sa na ňu nedalo ťuknúť. Rovnaká lišta vo všetkých
+// líniách a rolách (CLAUDE.md: jedna spodná lišta pre všetkých), preto stačí
+// jeden výpočet — používajú ho aj live drag (moveTo), aj reapply pri načítaní.
+function gsLpLista(){
+  if(!document.body.classList.contains('app-nav')) return 0;
+  var b=document.getElementById('rep-tabbar');
+  return b ? Math.round(b.getBoundingClientRect().height) : 62;
+}
 function gsLpApply(){
   var el=document.getElementById('gs-launcher'); if(!el) return;
   var p=null; try { p=JSON.parse(localStorage.getItem(GS_LP.key)||'null'); } catch(e){}
   if(!p || typeof p.x!=='number' || typeof p.y!=='number') return;
   var w=el.offsetWidth||54, h=el.offsetHeight||54;
-  // Spodná hranica je nad lištou — guľôčku si ide presunúť kamkoľvek, len nie
-  // pod navigáciu, kde by sa na ňu nedalo ťuknúť.
-  var lista = 0;
-  if(document.body.classList.contains('app-nav')){
-    var _b=document.getElementById('rep-tabbar');
-    lista = _b ? Math.round(_b.getBoundingClientRect().height) : 62;
-  }
   var x=Math.max(6, Math.min(p.x, window.innerWidth-w-6));
-  var y=Math.max(6, Math.min(p.y, window.innerHeight-h-6-lista));
+  var y=Math.max(6, Math.min(p.y, window.innerHeight-h-6-gsLpLista()));
   el.style.left=x+'px'; el.style.top=y+'px'; el.style.right='auto'; el.style.bottom='auto';
 }
 function gsLpSave(x,y){ try { localStorage.setItem(GS_LP.key, JSON.stringify({x:x,y:y})); } catch(e){} }
@@ -40476,7 +40478,12 @@ function gsLpInit(){
   function moveTo(cx, cy){
     var w=el.offsetWidth, h=el.offsetHeight;
     var x=Math.max(6, Math.min(cx-GS_LP.dx, window.innerWidth-w-6));
-    var y=Math.max(6, Math.min(cy-GS_LP.dy, window.innerHeight-h-6));
+    // ROOT CAUSE (Ivan, 13.9.: 🔍 tlačidlo sa niekedy stratí vpravo dole):
+    // tento limit predtým nepoznal výšku spodnej lišty (na rozdiel od gsLpApply),
+    // takže sa dalo pustiť tlačidlo PRESNE POD ňu — neviditeľné a nedosiahnuteľné,
+    // až kým appku niekto nereloadol/neotočil (jediné momenty, keď gsLpApply beží
+    // znova a polohu dorovná). Teraz používa ten istý limit ako pri načítaní/reapply.
+    var y=Math.max(6, Math.min(cy-GS_LP.dy, window.innerHeight-h-6-gsLpLista()));
     el.style.left=x+'px'; el.style.top=y+'px'; el.style.right='auto'; el.style.bottom='auto';
   }
   function finish(){
