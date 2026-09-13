@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.37';
+var APP_VERSION = '2.87.38';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -6652,9 +6652,10 @@ function settingsSubmitPasswordChange(){
         // toto je teda oprava spoločného vzoru, nie plátanie jedného miesta.
         var isSessionIssue = (errCode === 'Session expired' || errCode === 'Unauthorized' || errCode === 'Session missing');
         if (isSessionIssue) {
+          var diagLabel = errCode + ((resp && resp.debug) ? ' / ' + String(resp.debug) : '');
           closePasswordChange();
           closeSettings();
-          try { showSessionExpiredModal(errCode); } catch(e2){ if(typeof clearSession === 'function') clearSession(); location.reload(); }
+          try { showSessionExpiredModal(diagLabel); } catch(e2){ if(typeof clearSession === 'function') clearSession(); location.reload(); }
           return;
         }
         var err = (errCode === 'wrong_password')
