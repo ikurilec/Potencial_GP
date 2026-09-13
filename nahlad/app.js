@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.2';
+var APP_VERSION = '2.88.3';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -629,11 +629,27 @@ function pushShowDeniedHelp(){
 var _swUpdatePending = false;
 var _swRegistration = null;   // F1-2: uchováme registráciu, aby checkForUpdate() vedel vynútiť reg.update()
 
+// ROOT CAUSE (Ivan, 13.9.: Kalendár v Reagile — spinner "Načítavam udalosti…"
+// a potom appku hodilo na Domov): tento zoznam bol ručne udržiavaný a nepoznal
+// väčšinu panelov pridaných odvtedy (Sklady, Kalendár, Tímové plnenie, manažérske
+// subtaby…) — checkForUpdate() ich teda považoval za "idle" a autoreload spustil
+// PRIAMO POD POUŽÍVATEĽOM. _backLayers už jeden takýto zoznam udržiava (a je
+// súčasťou toho, čo panel/subtab pri pridaní zaregistruje), preto ho radšej
+// znovupoužijeme, než aby sme viedli druhý, ktorý sa opäť rozíde. Vrstva
+// 'app-main-tab-history' sa vynecháva zámerne — tá je "otvorená" takmer vždy
+// (stačí čo i len prepnúť hlavnú záložku) a reload by tak takmer nikdy neprešiel potichu.
 function _isAppBusy(){
-  return !!document.querySelector(
+  if (document.querySelector(
     '.send-popup.show,.confirm-overlay.show,.wn-overlay.show,' +
     '.detail-overlay.show,.hist-overlay.show,.restore-overlay.show,.edit-overlay.show'
-  );
+  )) return true;
+  if (typeof _backLayers !== 'undefined') {
+    for (var i = 0; i < _backLayers.length; i++) {
+      if (_backLayers[i].id === 'app-main-tab-history') continue;
+      try { if (_backLayers[i].isOpen()) return true; } catch(e){}
+    }
+  }
+  return false;
 }
 
 // Reload pri aktualizácii. Len clearSession + update_msg + location.reload.
