@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.38';
+var APP_VERSION = '2.87.39';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -6670,7 +6670,8 @@ function settingsSubmitPasswordChange(){
       // Diagnostika pre budúci report — appka sama nevie, či ide o CORS,
       // ešte nenasadený backend (action=changePassword) alebo skutočný výpadok.
       try { if (window.console) console.error('[pwd-change] fetch zlyhal:', err); } catch(e){}
-      showMsg('Zmena hesla sa nepodarila — skontroluj pripojenie a skús znova.');
+      var errMsg = (err && err.message) ? String(err.message) : String(err || 'neznáma chyba');
+      showMsg('Zmena hesla sa nepodarila — skontroluj pripojenie a skús znova. (' + errMsg + ')');
       if(btn){ btn.disabled = false; btn.textContent = 'Zmeniť heslo'; }
     });
 }
