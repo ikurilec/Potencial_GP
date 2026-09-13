@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.48';
+var APP_VERSION = '2.87.49';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -15593,8 +15593,10 @@ function gynLbShow(el){
   gynLbRender(el);
 }
 
-// Stiahni ČERSTVÉ dáta plnenia pre daný Q (raz za session). Nerenderujeme zo stale cache —
-// render sa odblokuje (cez GYN_LB.dataReady[q]) až keď dorazia čerstvé dáta pre správny Q.
+// Stiahni ČERSTVÉ dáta plnenia pre daný Q (raz za session). SWR: perzistovaná cache
+// (gynCacheRead) sa použije okamžite na zobrazenie (viď gynLbRender), fetch nižšie
+// ju na pozadí potichu overí/nahradí — dataReady[q] len hovorí, či fetch pre toto Q
+// už reálne dobehol (retry-guard), nie či je čo zobraziť.
 function gynLbEnsureData(q, key, _attempt){
   if(GYN_LB.dataReady[q] || GYN_LB.plLoading[q]) return;
   // Použi posledný výsledok okamžite, ale neoznač ho ako fresh: čerstvý fetch
@@ -15663,16 +15665,21 @@ function gynLbRender(el){
   }
   var qLabel = 'Q' + lastQ + ' ' + GYN_APP.year;
 
-  // Spusti čerstvý fetch dát pre správny Q (ak ešte nedobehol). Nerenderujeme zo stale cache.
+  // Spusti čerstvý fetch dát pre správny Q (ak ešte nedobehol) — na pozadí, aj keď
+  // nižšie už vykreslíme z cache (gynLbEnsureData ju natiahne synchrónne, viď nižšie).
   var key = gynPlnenieCacheKey(GYN_APP.year, lastQ) + '|lb-fullLine';
   gynLbEnsureData(lastQ, key);
   var data = GYN_LB.plCache[lastQ];
   if(data) gynPreprocessData(data);
 
   var reps = gynLbScopeReps();
-  // Drž "Načítavam…" kým nie je VŠETKO pripravené: plný roster (fullLine) + čerstvé dáta pre
-  // správny Q. Až potom vykresli rebríček naraz — žiadne pomlčky ani medzistav.
-  if(!GYN_LB.repFetched || !reps.length || !GYN_LB.dataReady[lastQ] || !data){
+  // ROOT CAUSE (Ivan, 13.9.): predtým sa čakalo aj na GYN_LB.dataReady[lastQ] —
+  // teda na dobehnutý SIEŤOVÝ fetch — hoci gynLbEnsureData() vyššie mohla mať dáta
+  // pre toto Q pripravené OKAMŽITE z localStorage (persisted cache, rovnaký princíp
+  // ako Plnenie/Domov). Rebríček tak zbytočne visel na "Načítavam…", aj keď dáta
+  // už mal. Stačí, že dáta MÁME (z cache alebo fresh) — fetch na pozadí nezávisle
+  // dobehne a pri zmene si render zavolá sám (viď gynLbEnsureData, úspešná vetva).
+  if(!GYN_LB.repFetched || !reps.length || !data){
     gynLbLoading();
     return;
   }
@@ -21699,26 +21706,31 @@ function lbPreloadPlnenie() {
   var lastQ = lbLastCompletedQ();
   if (lastQ < 1) return;
   // Cache je platná len pre TO Q, s ktorým bola naplnená — "je tam niečo" nestačí.
-  // Bez tejto podmienky mohla appka ukázať "Q3" nálepku nad Q2 dátami (viď
-  // lbFetchApprovedQ), keď sa medzičasom zmenilo, ktoré Q je admin-schválené.
   if (LB_PLNENIE_LOADING || (LB_PLNENIE_CACHE && LB_PLNENIE_CACHE.q === lastQ)) return;
-  LB_PLNENIE_CACHE = null;
+  var year = (new Date()).getFullYear();
+  // ROOT CAUSE (Ivan, 13.9.): LB_PLNENIE_CACHE bola len v pamäti — po reloade
+  // stránky vždy prázdna, hoci localStorage mal správne dáta (z Plnenia alebo
+  // z predošlej session), takže Rebríček musel vždy čakať na plný sieťový fetch.
+  // Rovnaký kľúč ako PL_STATE.qCache (_plLsKey) — obe ťahajú identickú
+  // celolíniovú odpoveď z getPlnenieAll pre dané Q, netreba druhú kópiu cache.
+  var lsCached = _plLsLoad(_plLsKey(year, lastQ));
+  LB_PLNENIE_CACHE = lsCached ? { q: lastQ, data: lsCached.data, aggregates: plnenieBuildAggregates(lsCached.data, lastQ, lbScopeReps()) } : null;
   LB_PLNENIE_LOADING = true;
   var loadId = ++LB_PLNENIE_LOAD_ID;
   var loadCtx = appLineCapture();
   function active(){ return loadId === LB_PLNENIE_LOAD_ID && appLineContextActive(loadCtx); }
-  var year = (new Date()).getFullYear();
   var url = scriptUrl('action=getPlnenieAll&rok=' + year + '&Q=' + lastQ);
   mgrFetchWithRetry(url, 3)
     .then(function(resp) {
       if(!active()) return;
       if (!resp || !resp.ok) throw new Error('No data');
       var agg = plnenieBuildAggregates(resp, lastQ, lbScopeReps());
+      DataStore.set(_plLsKey(year, lastQ), resp, { extra: { agg: agg } });
       LB_PLNENIE_CACHE = { q: lastQ, data: resp, aggregates: agg };
     })
     .catch(function() {
-      if(!active()) return;
-      LB_PLNENIE_CACHE = null;
+      // Sieť zlyhala — LB_PLNENIE_CACHE necháme tak, ako je (z localStorage,
+      // ak nejaké bolo); predtým sa tu vždy vynulovala aj platná cache.
     })
     .then(function() {
       if(!active()) return;
@@ -21903,9 +21915,15 @@ function lbRenderPlnenie(body) {
   }
   var qLabel = 'Q' + lastQ + ' ' + (new Date()).getFullYear();
 
-  // Pouzivame LB_PLNENIE_CACHE -- naplni lbPreloadPlnenie() hned po prihlaseni
-  // Musí byť pre TOTO lastQ — inak by sa krátko po zmene admin-schváleného Q
-  // zobrazili čísla starého kvartálu pod novou nálepkou (viď lbFetchApprovedQ).
+  // lbPreloadPlnenie() skúsi najprv SYNCHRÓNNE natiahnuť z localStorage (rovnaký
+  // kľúč ako Plnenie/Domov) — MUSÍ bežať pred výpočtom "cached" nižšie, inak by
+  // appka ukázala skeleton aj vtedy, keď localStorage už dáta má (predtým sa
+  // preload volal až vnútri "if (!cached)", čo tento okamžitý cache-hit obišlo).
+  // Fetch na pozadí beží ďalej nezávisle — keď dorazí, zavolá tento render znova sám.
+  lbPreloadPlnenie();
+
+  // Pouzivame LB_PLNENIE_CACHE. Musí byť pre TOTO lastQ — inak by sa krátko po
+  // zmene kvartálu zobrazili čísla starého kvartálu pod novou nálepkou.
   var cached = (LB_PLNENIE_CACHE && LB_PLNENIE_CACHE.q === lastQ) ? LB_PLNENIE_CACHE : null;
   if (!cached) {
     if (LB_STATE._plLoadAttempted && !LB_PLNENIE_LOADING) {
@@ -21924,7 +21942,6 @@ function lbRenderPlnenie(body) {
     }
     body.innerHTML = skelLb();
     LB_STATE._plLoadAttempted = true;
-    lbPreloadPlnenie();
     var _lbPlTimer = setInterval(function(){
       if (LB_PLNENIE_LOADING) return;
       clearInterval(_lbPlTimer);
