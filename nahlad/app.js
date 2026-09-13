@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.49';
+var APP_VERSION = '2.87.50';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -22977,20 +22977,17 @@ function mgrSwitchSubtab(tab) {
   if (tab === 'leaderboard') {
     LB_STATE.showConfetti = true;
     lbSyncTabs();
-    if (document.body.classList.contains('reagila-line')) {
-      // Reagila nemá rebríček návštev → render rovno Plnenie. lbLoadData je pre
-      // reagilu no-op, takže bez tejto vetvy by sa rebríček nikdy nevykreslil.
-      LB_STATE.mode = 'plnenie';
-      lbRender();
-    } else if (LB_STATE.loading) {
-      var body = lbGetBody();
-      if (body) body.innerHTML = skelLb();
-    } else if (LB_STATE.data && lbDataHasVisits()) {
-      lbRender();
-    } else {
-      // Dáta sú null alebo prázdne (fetch zlyhal) — vynútiť znovu načítanie
-      lbLoadData(true);
-    }
+    // ROOT CAUSE (Ivan, 13.9.): Rebríček je vždy mód Plnenie (Návštevy zrušené pre
+    // Golem aj Reagilu — viď lbEnsureLineState) — táto vetva ale pre Golem stále
+    // išla cez starý LB_STATE.loading / LB_STATE.data / lbLoadData gate, pozostatok
+    // po Návštevách. Ten LB_PLNENIE_CACHE vôbec nepozná: pri každom otvorení najprv
+    // čakal na zbytočný getHistory×N fetch (históriu návštev celého tímu), a až keď
+    // ten dobehol, zavolal lbRender(). Preto Rebríček visel na "Načítavam" aj vtedy,
+    // keď LB_PLNENIE_CACHE/localStorage už dávno mali hotové dáta. openLeaderboard()
+    // (cesta pre reprezentanta) aj Reagila vetva tu už volali lbRender() rovno —
+    // zjednotené na to isté pre všetkých.
+    LB_STATE.mode = 'plnenie';
+    lbRender();
   }
   if (tab === 'kalendar') {
     mgrRenderCalendarView(true);
