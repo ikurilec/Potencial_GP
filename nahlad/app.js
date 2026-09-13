@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.28';
+var APP_VERSION = '2.87.29';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -11906,9 +11906,18 @@ function gynEnter(user) {
     else if (wnShouldShow()) wnShow(isGynManager);
     else checkMilestone();
   }, 800);
-  // Preload na pozadí — všetky Q plnenie + pharma dáta (aby switching Q bol instant)
+  // Preload na pozadí — plnenie za všetky Q (aby switching Q bol instant).
   setTimeout(function(){ gynPreloadAllQuarters(); }, 1500);
-  setTimeout(function(){ gynPreloadAllPharma(); }, 2500);
+  // gynPreloadAllPharma() (hromadné trhové podiely, až 12 produktov × 10 oblastí ×
+  // 2 kvartály = až 240 požiadaviek) sa už po prihlásení NEVOLÁ — zaplavovala
+  // zdieľanú frontu (APP_REQUEST_QUEUE, max 2 súbežné) na celé minúty a reálne
+  // otvorenie Trhového podielu (gynPharmaLoad) tak čakalo za desiatkami cudzích
+  // pozaďových požiadaviek. Horšie: ak mala appka pre presne ten istý kľúč
+  // (produkt|oblasť|kvartál) už rozbehnutý pozaďový fetch z tohto preloadu,
+  // gynPharmaLoad() ho len tíško preskočila (loading[key] guard) a nikdy ho
+  // nenapojila na viditeľné vykreslenie — obrazovka zostala na "Načítavam"
+  // až do 16s watchdogu. Jednotlivé produkty sa teraz načítajú na požiadanie
+  // (gynPharmaLoad) — rýchlo vďaka krátkej server-side cache v Apps Scripte.
   // Update avatar hint hneď + one-time onboarding tip skoro
   // (ak je otvorený WN/satori modal, hdrAvatarShowTipIfNeeded počká kým sa zatvorí)
   setTimeout(function(){ try { hdrAvatarUpdateHint(); } catch(e){} }, 600);
@@ -12416,69 +12425,10 @@ function gynLbPreload() {
   } catch(e){}
 }
 
-// Preload — pharma dáta pre všetky kombinácie produkt × oblast × Q
-function gynPreloadAllPharma() {
-  // F0 (boot audit): predtým chýbal appLineCapture/active guard, ktorý má
-  // sesterská gynPreloadAllQuarters vyššie — 240 požiadaviek bežalo ďalej aj
-  // po prepnutí línie, zapratávalo spoločnú frontu (APP_REQUEST_QUEUE, max 2
-  // súbežné) cudzími požiadavkami z línie, ktorú používateľ už opustil.
-  var preloadCtx = appLineCapture();
-  var productNames = {
-    'escapelle':'Escapelle','levosert':'Levosert','ryeqo':'Ryeqo','lenzetto':'Lenzetto',
-    'drovelis':'Drovelis','belara':'Belara','daylette':'Daylette','daylla':'Daylla',
-    'maitalon':'Maitalon','mistra':'Mistra','evra':'Evra','azalia':'Azalia'
-  };
-  var ALL_REGIONS = ['BAPI','SEPI','STPI','VYPI','ZAPI','BAPA','SEPA','STPA','VYPA','ZAPA'];
-  var year = GYN_APP.year;
-  var qNow = plnenieCurrentQ();
-  var quartals = [gynPharmaKvartal(year, qNow)];
-  if(qNow > 1) quartals.push(gynPharmaKvartal(year, qNow - 1));
-
-  var queue = [];
-  Object.keys(productNames).forEach(function(pkey){
-    var pname = productNames[pkey];
-    ALL_REGIONS.forEach(function(reg){
-      quartals.forEach(function(q){
-        var key = pname + '|' + reg + '|' + q;
-        var persisted = gynCacheRead(gynPharmaCacheKey(pname, reg, q));
-        if(persisted && !GYN_PHARMA_STATE.cache[key]) GYN_PHARMA_STATE.cache[key] = persisted;
-        if(GYN_PHARMA_STATE.loading[key]) return;
-        queue.push({ produkt: pname, oblast: reg, kvartal: q, key: key });
-      });
-    });
-  });
-
-  // Bežíme paralelne s limitom 5
-  var concurrency = 5;
-  var idx = 0;
-  function next() {
-    if(!appLineContextActive(preloadCtx)) return;   // používateľ medzičasom opustil túto líniu
-    if(idx >= queue.length) return;
-    var task = queue[idx++];
-    GYN_PHARMA_STATE.loading[task.key] = true;
-    appQueuedFetchJson(gynScriptUrl(
-      'action=getPharmaData' +
-      '&oblast='  + encodeURIComponent(task.oblast) +
-      '&produkt=' + encodeURIComponent(task.produkt) +
-      '&kvartal=' + encodeURIComponent(task.kvartal)
-    ), undefined, APP_FETCH_TIMEOUT_PRELOAD_MS, 'background')
-      .then(function(resp){
-        delete GYN_PHARMA_STATE.loading[task.key];
-        if(!appLineContextActive(preloadCtx)) return;
-        if(resp && resp.ok) {
-          GYN_PHARMA_STATE.cache[task.key] = resp;
-          gynCacheWrite(gynPharmaCacheKey(task.produkt, task.oblast, task.kvartal), resp);
-        }
-        next();
-      })
-      .catch(function(){
-        delete GYN_PHARMA_STATE.loading[task.key];
-        if(!appLineContextActive(preloadCtx)) return;
-        next();
-      });
-  }
-  for(var c = 0; c < concurrency; c++) next();
-}
+// gynPreloadAllPharma() (hromadný preload trhových podielov naprieč všetkými
+// produktmi × oblasťami × kvartálmi) bola odstránená — pozri komentár pri jej
+// pôvodnom volaní vyššie (gynEnter). Jednotlivé produkty sa teraz sťahujú
+// na požiadanie cez gynPharmaLoad(), rýchlo vďaka krátkej server-side cache.
 
 // ── PLNENIE ──
 // Prvý vstup do Q bez cache nesmie vyzerať ako prázdne plnenie. Karta drží
@@ -12717,6 +12667,11 @@ function gynOpenProdSheet(prodLabel) {
   gynProdSheetUpdateSkMsHeader(prodLabel);   // SK MS — ak sú dáta už v cache (inak doplní polling)
 
   // Triggernúť pharma fetche pre všetky regióny repov × aktuálny + prev kvartal
+  // (pre MS bunky v tejto tabuľke). Priorita 'background', nie 'critical' —
+  // toto vie byť aj 20 súbežných požiadaviek (10 oblastí × 2 kvartály), ktoré
+  // sa predtým unshiftovali PRED reálne dôležitý fetch, keď manažér z tejto
+  // tabuľky otvoril detail Trhového podielu jedného produktu — ten musel čakať
+  // za nimi v zdieľanej fronte. Otvorený detail teraz má vždy prednosť.
   if(GYN_PHARMA_PRODUCTS[pkeyLow]) {
     var kv = gynPharmaKvartal(q, year); // pozor: gynPharmaKvartal(year, q)
     kv = gynPharmaKvartal(year, q);
@@ -12736,7 +12691,7 @@ function gynOpenProdSheet(prodLabel) {
             '&oblast='  + encodeURIComponent(oblast) +
             '&produkt=' + encodeURIComponent(prodLabel) +
             '&kvartal=' + encodeURIComponent(kvartal)
-          ), { cache:'no-store' }, undefined, 'critical')
+          ), { cache:'no-store' }, undefined, 'background')
             .then(function(resp){
               delete GYN_PHARMA_STATE.loading[key];
               if(resp && resp.ok) {
@@ -13060,8 +13015,11 @@ function gynPharmaErrorHtml(produkt) {
     retryLabel: 'Skúsiť znova'
   });
 }
-// Watchdog — ak sa do ~16 s nič nenačíta, ukáž chybu + retry. (Sheets/Apps Script
-// vie reálne trvať aj 10–15 s, najmä pri prvom „studenom" volaní — radšej rezerva.)
+// Watchdog — poistka pre prípad, že by gynPharmaLoad() zlyhala úplne ticho
+// (JS chyba a pod.) a nikdy nezavolala gynPharmaShowError() sama. Fetch v
+// gynPharmaLoad() má teraz VLASTNÝ automatický 2. pokus (16s + 0,8s pauza +
+// 16s ≈ 33s), takže watchdog musí byť dlhší než tento celý reťazec — inak by
+// vystrelil skôr a ukázal chybu, kým appka legitímne ešte skúša druhýkrát.
 function gynPharmaStartWatchdog() {
   if(GYN_PHARMA_STATE._watchdog){ clearTimeout(GYN_PHARMA_STATE._watchdog); }
   GYN_PHARMA_STATE._watchdog = setTimeout(function(){
@@ -13070,7 +13028,7 @@ function gynPharmaStartWatchdog() {
     if(GYN_PHARMA_STATE.open && document.getElementById('gyn-ph-prog-ring')) {
       gynPharmaShowError();
     }
-  }, 16000);
+  }, 36000);
 }
 function gynPharmaShowError() {
   if(GYN_PHARMA_STATE._watchdog){ clearTimeout(GYN_PHARMA_STATE._watchdog); GYN_PHARMA_STATE._watchdog = null; }
@@ -13552,18 +13510,31 @@ function gynPharmaLoad() {
     gynPharmaRender(cached);
     return;
   }
-  if(GYN_PHARMA_STATE.loading[key]) return;
+  // POZOR: predtým bol tu `if(GYN_PHARMA_STATE.loading[key]) return;` — ak mala
+  // appka pre presne ten istý kľúč rozbehnutý iný fetch (napr. z manažérskej
+  // tabuľky nižšie), toto otvorenie sa ticho vzdalo a nikdy sa nenapojilo na
+  // výsledok — obrazovka zostala na "Načítavam" až do watchdogu. Foreground
+  // otvorenie teraz VŽDY spustí svoj vlastný fetch (mierne zvýšené riziko
+  // duplicitnej požiadavky je lacnejšie než zamrznutá obrazovka).
   GYN_PHARMA_STATE.loading[key] = true;
 
   // Aktuálny Q: ak je v cache, znova nesťahuj — len doplníme chýbajúce kvartály pre trend.
+  // Odolný fetch — 1 automatický druhý pokus pri zlyhaní/timeoute (predtým jediný
+  // rozhodujúci pokus), 'critical' priorita ho posunie pred pozaďové požiadavky.
   var fetchCurrent = cached
     ? Promise.resolve(cached)
-    : appQueuedFetchJson(gynScriptUrl(
+    : appFetchWithRetry(gynScriptUrl(
         'action=getPharmaData' +
         '&oblast='  + encodeURIComponent(GYN_PHARMA_STATE.oblast) +
         '&produkt=' + encodeURIComponent(GYN_PHARMA_STATE.produkt) +
         '&kvartal=' + encodeURIComponent(GYN_PHARMA_STATE.kvartal)
-      ), { cache:'no-store' }, undefined, 'critical');
+      ), {
+        retries: 1,
+        timeoutMs: APP_FETCH_TIMEOUT_MS,
+        priority: 'critical',
+        delayFn: function(){ return 800; },
+        active: function(){ return GYN_PHARMA_STATE.open && (GYN_PHARMA_STATE.produkt + '|' + GYN_PHARMA_STATE.oblast + '|' + GYN_PHARMA_STATE.kvartal) === key; }
+      });
 
   fetchCurrent.then(function(resp){
     if(!resp || !resp.ok) {

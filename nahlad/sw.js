@@ -5,7 +5,7 @@
 // ║  cache-first pre ostatné assety (rýchly štart, offline ready).║
 // ╚══════════════════════════════════════════════════════════════╝
 
-var CACHE_NAME = 'potencial-nahlad-v49d45493f069';
+var CACHE_NAME = 'potencial-nahlad-v1d288b35f069';
 // Názvy súborov nižšie aj CACHE_NAME vyššie píše "node scripts/build.mjs" —
 // nemeniť ručne, prepíše sa to pri ďalšom builde. Hash v názve = odtlačok
 // obsahu app.js/app.css, nie čísla verzie — zmení sa len keď sa obsah zmení.
@@ -13,7 +13,7 @@ var APP_SHELL = [
   './',
   './index.html',
   './dist/app.f0693e58.css',
-  './dist/app.49d45493.js'
+  './dist/app.1d288b35.js'
 ];
 
 self.addEventListener('install', function(event){
