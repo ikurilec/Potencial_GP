@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.60';
+var APP_VERSION = '2.87.61';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -6014,7 +6014,14 @@ function teamPlnenieFmtMoney(value){ return Math.round(Number(value) || 0).toLoc
 function teamPlnenieColor(value){ if(value === null || value === undefined || !isFinite(value)) return 'none'; return value >= 100 ? 'g' : (value >= 95 ? 'o' : 'r'); }
 function teamPlnenieRoleName(role){ return String(role || '').toLowerCase() === 'rep east' ? 'East' : 'West'; }
 function teamPlnenieTeamName(){ return 'Golem'; }
-function teamPlnenieCaptureReturn(){ return (typeof stockCaptureReturn === 'function') ? stockCaptureReturn() : null; }
+function teamPlnenieCaptureReturn(){
+  // Menu je iba prekryv. Pri otvorení nad Históriou musí zostať História
+  // presným návratovým cieľom, nie sa neskôr odvodiť z meniaceho sa panel stacku.
+  var panel = typeof _panelCurrent !== 'undefined' ? _panelCurrent : null;
+  if (panel && panel !== 'team-plnenie-overlay' && panel !== 'viac-overlay') return { kind:'panel', id:panel };
+  return (typeof stockCaptureReturn === 'function') ? stockCaptureReturn() : null;
+}
+function teamPlnenieReturnsToHistory(){ return !!(TEAM_PL_STATE.returnTo && TEAM_PL_STATE.returnTo.kind === 'panel' && TEAM_PL_STATE.returnTo.id === 'hist-overlay'); }
 function teamPlnenieRestoreReturn(target){
   var overlay = document.getElementById('team-plnenie-overlay');
   if (overlay) overlay.classList.remove('show');
@@ -6026,7 +6033,7 @@ function teamPlnenieRestoreReturn(target){
   if (target.kind === 'gyn') { try { gynNavTo(target.tab); return; } catch(e) {} }
   if (target.kind === 'mgr') { try { mgrSwitchSubtab(target.tab); return; } catch(e) {} }
   if (target.kind === 'panel' && target.id) {
-    try { if (_panelStack[_panelStack.length - 1] === target.id) _panelStack.pop(); _panelShow(target.id, true); if (target.id === 'dnes-overlay') { try { dnesRender(); } catch(e2) {} } return; } catch(e) {}
+    try { while (_panelStack[_panelStack.length - 1] === 'team-plnenie-overlay' || _panelStack[_panelStack.length - 1] === target.id) _panelStack.pop(); _panelShow(target.id, true); if (target.id === 'dnes-overlay') { try { dnesRender(); } catch(e2) {} } if (target.id === 'hist-overlay') { try { histRender(); } catch(e3) {} } return; } catch(e) {}
   }
   closeAllPanels();
 }
@@ -6064,7 +6071,7 @@ function closeTeamPlnenie(){ var target=TEAM_PL_STATE.returnTo; usageSectionClos
 function teamPlnenieOpenDetail(username){ var rep=((TEAM_PL_STATE.payload || {}).reps || []).find(function(item){return item.username===username;}); if(!rep)return; TEAM_PL_STATE.detailUser=username; teamPlnenieRender(); var overlay=document.getElementById('team-plnenie-overlay');if(overlay)overlay.scrollTop=0; }
 function teamPlnenieOpenFromLeaderboard(username){ if(teamPlnenieAllowed()) openTeamPlnenie(username); }
 function teamPlnenieCloseDetail(){ if(!TEAM_PL_STATE.detailUser)return closeTeamPlnenie(); TEAM_PL_STATE.detailUser=''; teamPlnenieRender(); var overlay=document.getElementById('team-plnenie-overlay');if(overlay)overlay.scrollTop=0; }
-function teamPlnenieBack(){ if(TEAM_PL_STATE.detailUser) teamPlnenieCloseDetail(); else closeTeamPlnenie(); }
+function teamPlnenieBack(){ if(TEAM_PL_STATE.detailUser && !teamPlnenieReturnsToHistory()) teamPlnenieCloseDetail(); else closeTeamPlnenie(); }
 function teamPlnenieAggregate(reps){ var plan=(reps||[]).reduce(function(sum,r){return sum+(Number(r.planEUR)||0);},0), sales=(reps||[]).reduce(function(sum,r){return sum+(Number(r.predajeEUR)||0);},0); return {plan:plan,sales:sales,pct:plan>0?sales/plan*100:null}; }
 function teamPlnenieProductLabel(value){ return String(value || '').replace(/_/g,' '); }
 function teamPlneniePharmaKey(productKey){
