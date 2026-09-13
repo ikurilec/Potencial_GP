@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.41';
+var APP_VERSION = '2.87.42';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -36508,10 +36508,16 @@ var NST = {
   open: {},            // id → rozbalené komentáre
   likesOpen: {},       // id → rozbalený celý zoznam „pomohlo mi"
   votersOpen: {},      // id → rozbalený prehľad „kto ako hlasoval“
-  composeCat: '', composeProd: '', composeOpts: ['', ''],
+  composeCat: '', composeProd: '', composeOpts: ['', ''], composeImage: null,
   _reqId: 0, _sending: false, _loadT: null, _opened: false, _primed: false,
   _filterOpen: false
 };
+// Limity pre fotky na nástenke — komprimujeme na klientovi PRED odoslaním
+// (mobilná fotka vie mať aj 8-12 MB, to by cez appkinu spoločnú frontu
+// požiadaviek aj na dobrom 4G trvalo dlho). Backend má vlastný strop 6 MB
+// ako poistku, sem sa bežne ani nepriblížime.
+var NST_IMG_MAX_DIM = 1600;
+var NST_IMG_QUALITY = 0.82;
 
 var NST_CATS = [
   { k: 'konkurencia', ico: '🔥', lbl: 'Konkurencia',     hint: 'Čo robí konkurencia — akcie, zľavy, materiály, čo sľubujú lekárom.' },
@@ -37102,6 +37108,11 @@ function nstPostHtml(p){
     '</div>' +
     (meta.length ? '<div class="nst-tags">' + meta.join('') + '</div>' : '') +
     '<div class="nst-text">' + nstEsc(p.text || '').replace(/\n/g, '<br>') + '</div>' +
+    (String(p.image || '').trim()
+      ? '<div class="nst-post-img" onclick="event.stopPropagation();nstImageZoom(\'' + nstEsc(p.image).replace(/'/g, '&#39;') + '\')">' +
+          '<img src="' + nstEsc(p.image) + '" loading="lazy" alt="">' +
+        '</div>'
+      : '') +
     nstPollHtml(p) +
     nstMetaLineHtml(p) +
     '<div class="nst-actions">' +
@@ -37289,6 +37300,87 @@ function nstComposeClose(){
   if (bd) bd.classList.remove('show');
 }
 
+// ── Fotka k príspevku (nepovinné, nie pre anketu — backend to nepodporuje) ──
+// Rozpracovaný výber prežije zatvorenie/znovuotvorenie sheetu aj zmenu
+// kategórie, presne ako text a možnosti ankety — nič sa tichoo nestratí.
+function nstComposePhotoAreaInner_(){
+  var img = NST.composeImage;
+  if (img && img.dataUrl){
+    return '<div class="nst-photo-preview"><img src="' + img.dataUrl + '" alt="">' +
+      '<button type="button" class="nst-photo-remove" onclick="nstComposeImageRemove()" aria-label="Odobrať fotku">✕</button></div>';
+  }
+  return '<button type="button" class="nst-photo-btn" onclick="nstComposePickImage()">📷 Pridať fotku' +
+    '<span style="margin-left:auto;color:#CBD5E1;font-weight:600">nepovinné</span></button>';
+}
+function nstComposePhotoAreaRefresh(){
+  var area = document.getElementById('nst-photo-area');
+  if (area) area.innerHTML = nstComposePhotoAreaInner_();
+}
+function nstComposePickImage(){
+  var input = document.getElementById('nst-photo-input');
+  if (input) input.click();
+}
+function nstComposeImageRemove(){
+  NST.composeImage = null;
+  nstComposePhotoAreaRefresh();
+}
+// Zmenši a skomprimuj na klientovi PRED odoslaním (mobilná fotka z fotoaparátu
+// vie mať pokojne 8-12 MB — cez spoločnú frontu požiadaviek appky by to bolo
+// pomalé aj na dobrom pripojení). Canvas prekreslí na max NST_IMG_MAX_DIM na
+// dlhšej strane a exportuje ako JPEG v kvalite NST_IMG_QUALITY.
+function nstImageCompress_(file, cb){
+  try {
+    var reader = new FileReader();
+    reader.onload = function(){
+      var img = new Image();
+      img.onload = function(){
+        try {
+          var w = img.width || 1, h = img.height || 1;
+          var scale = Math.min(1, NST_IMG_MAX_DIM / Math.max(w, h));
+          var cw = Math.max(1, Math.round(w * scale)), ch = Math.max(1, Math.round(h * scale));
+          var canvas = document.createElement('canvas');
+          canvas.width = cw; canvas.height = ch;
+          var ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, cw, ch);
+          cb(canvas.toDataURL('image/jpeg', NST_IMG_QUALITY), 'image/jpeg');
+        } catch(e){ cb(null); }
+      };
+      img.onerror = function(){ cb(null); };
+      img.src = reader.result;
+    };
+    reader.onerror = function(){ cb(null); };
+    reader.readAsDataURL(file);
+  } catch(e){ cb(null); }
+}
+function nstComposeImagePicked(input){
+  var file = input.files && input.files[0];
+  if (!file) { return; }
+  if (!/^image\//.test(file.type)){ input.value = ''; return; }
+  var area = document.getElementById('nst-photo-area');
+  if (area) area.innerHTML = '<div class="nst-photo-busy">Spracúvam fotku…</div>';
+  nstImageCompress_(file, function(dataUrl, mime){
+    input.value = '';
+    if (!dataUrl){
+      NST.composeImage = null;
+      nstComposePhotoAreaRefresh();
+      return;
+    }
+    NST.composeImage = { dataUrl: dataUrl, mime: mime };
+    nstComposePhotoAreaRefresh();
+  });
+}
+function nstImageZoom(url){
+  var ov = document.getElementById('nst-img-zoom');
+  var img = document.getElementById('nst-img-zoom-src');
+  if (!ov || !img || !url) return;
+  img.src = url;
+  ov.classList.add('show');
+}
+function nstImageZoomClose(){
+  var ov = document.getElementById('nst-img-zoom');
+  if (ov) ov.classList.remove('show');
+}
+
 // Možnosti ankety vo formulári (2–6). Text sa drží v NST.composeOpts, aby prehľad
 // medzi prekresleniami (zmena kategórie, pridanie možnosti) nič nestratil.
 function nstComposeOptsHtml(){
@@ -37359,7 +37451,7 @@ function nstComposeRender(){
     '<div class="nst-f-lbl">' + (isPoll ? 'Otázka ankety' : 'Text príspevku') + '</div>' +
     '<textarea class="nst-in nst-ta" id="nst-text" rows="' + (isPoll ? 3 : 5) + '" placeholder="' +
       (isPoll ? 'Na čo sa chceš kolegov opýtať?' : 'Napíš, čo chceš zdieľať s kolegami…') + '">' + nstEsc(txt) + '</textarea>' +
-    (isPoll ? nstComposeOptsHtml() : '') +
+    (isPoll ? nstComposeOptsHtml() : '<div id="nst-photo-area">' + nstComposePhotoAreaInner_() + '</div>') +
     '<div class="nst-err" id="nst-err"></div>' +
     '<button type="button" class="nst-submit" id="nst-submit" onclick="nstSubmit()">Pridať na nástenku</button>';
 }
@@ -37402,8 +37494,14 @@ function nstSubmit(){
     text: txt,
     pin: (cat === 'dolezite' && isMgr) ? '1' : '',
     likes: [], comments: [],
-    options: pollOpts, votes: {}
+    options: pollOpts, votes: {}, image: ''
   };
+
+  if (NST.composeImage && NST.composeImage.dataUrl && cat !== 'anketa'){
+    nstSubmitWithImage_(rec);
+    return;
+  }
+
   NST.posts = [rec].concat(NST.posts || []);
   nstSaveLocal(NST.posts);
   nstSend({
@@ -37411,8 +37509,48 @@ function nstSubmit(){
     kategoria: rec.kategoria, text: rec.text, pin: rec.pin,
     moznosti: pollOpts.join('|')
   });
+  nstSubmitFinish_();
+}
+
+// Príspevok S FOTKOU — nstSend() posiela fire-and-forget cez skrytý iframe
+// (GET), ten nevie preniesť base64 dáta fotky. Tu ide skutočný POST (rovnaký
+// vzor ako zmena hesla) a appka počká na odpoveď, aby vedela doplniť priamy
+// odkaz na fotku z Disku (rec.image) skôr, než sa príspevok objaví vo feede.
+function nstSubmitWithImage_(rec){
+  var btn = document.getElementById('nst-submit');
+  var err = document.getElementById('nst-err');
+  if (btn){ btn.disabled = true; btn.textContent = 'Nahrávam fotku…'; }
+  if (err){ err.textContent = ''; err.classList.remove('show'); }
+  var img = NST.composeImage;
+  appQueuedFetchJson(nstUrl('action=saveNastenkaImage'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({
+      id: rec.id, text: rec.text, produkt: rec.produkt, okres: rec.okres,
+      kategoria: rec.kategoria, imageBase64: img.dataUrl, imageMime: img.mime
+    }),
+    cache: 'no-store'
+  }, APP_FETCH_TIMEOUT_MS, 'critical').then(function(resp){
+    if (!resp || !resp.ok){
+      var errCode = (resp && resp.error) ? String(resp.error) : 'no_response';
+      if (err){ err.textContent = 'Nepodarilo sa nahrať fotku. Skús to znova. (' + errCode + ')'; err.classList.add('show'); }
+      if (btn){ btn.disabled = false; btn.textContent = 'Pridať na nástenku'; }
+      return;
+    }
+    rec.image = String(resp.image || '');
+    NST.posts = [rec].concat(NST.posts || []);
+    nstSaveLocal(NST.posts);
+    nstSubmitFinish_();
+  }).catch(function(){
+    if (err){ err.textContent = 'Nepodarilo sa nahrať fotku — skontroluj pripojenie a skús znova.'; err.classList.add('show'); }
+    if (btn){ btn.disabled = false; btn.textContent = 'Pridať na nástenku'; }
+  });
+}
+// Spoločný záver úspešného odoslania (s fotkou aj bez nej).
+function nstSubmitFinish_(){
   nstComposeClose();
   NST.composeOpts = ['', ''];
+  NST.composeImage = null;
   NST.q = '';
   nstRender();
   nstMarkSeen();

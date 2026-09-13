@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@700&display=swap">
-<link rel="stylesheet" href="dist/app.246a0f17.css">
+<link rel="stylesheet" href="dist/app.58a186a6.css">
 <!-- Firebase Cloud Messaging — natívne push notifikácie (defer aby nebrzdil štart) -->
 <script defer src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js"></script>
@@ -38,7 +38,7 @@
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.87.41 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.87.42 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -1003,7 +1003,7 @@
 <div class="footer">Intern&#253; n&#225;stroj pre medic&#237;nskych reprezentantov<br><span style="font-size:10px;color:#B0BAC4">Designed &amp; developed by Ivan Kurilec &middot; Gedeon Richter Slovakia &middot; 2026</span></div>
 </div>
 
-<script src="dist/app.fe110e1a.js"></script>
+<script src="dist/app.2d5d8cca.js"></script>
 
 <!-- ── LOGOUT CONFIRM ── -->
 <div class="logout-overlay" id="logout-overlay">
@@ -1016,6 +1016,10 @@
       <button class="logout-confirm" onclick="confirmLogout()">Áno, odhlásiť</button>
     </div>
   </div>
+</div>
+
+<div class="nst-img-zoom" id="nst-img-zoom" onclick="nstImageZoomClose()">
+  <img id="nst-img-zoom-src" src="" alt="">
 </div>
 
 <div class="session-expired-overlay" id="session-expired-overlay">
@@ -1512,6 +1516,17 @@
   .nst-tag{background:#F1F5F9;border-radius:7px;font-size:10.5px;font-weight:700;color:#475569;padding:3px 8px}
   .nst-tag-prod{background:#EFF6FF;color:#1D4ED8}
   .nst-text{margin-top:10px;font-size:14px;color:#1E293B;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+  .nst-post-img{margin-top:10px;border-radius:12px;overflow:hidden;background:#F1F5F9;cursor:zoom-in}
+  .nst-post-img img{display:block;width:100%;max-height:340px;object-fit:cover}
+  .nst-img-zoom{position:fixed;inset:0;z-index:9999;background:rgba(8,12,22,.92);display:none;align-items:center;justify-content:center;padding:22px;cursor:zoom-out}
+  .nst-img-zoom.show{display:flex}
+  .nst-img-zoom img{max-width:100%;max-height:100%;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+  .nst-photo-btn{display:flex;align-items:center;gap:8px;background:#F8FAFC;border:1.5px dashed #CBD5E1;border-radius:11px;color:#475569;font-size:13px;font-weight:700;font-family:inherit;padding:11px 13px;cursor:pointer;width:100%;margin-top:2px;-webkit-tap-highlight-color:transparent}
+  .nst-photo-btn:active{background:#F1F5F9}
+  .nst-photo-preview{position:relative;margin-top:8px;border-radius:12px;overflow:hidden;display:inline-block;max-width:100%}
+  .nst-photo-preview img{display:block;max-width:100%;max-height:220px;border-radius:12px}
+  .nst-photo-remove{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;background:rgba(15,23,42,.72);color:#fff;border:none;font-size:14px;line-height:26px;text-align:center;cursor:pointer;padding:0}
+  .nst-photo-busy{font-size:12px;color:#94A3B8;margin-top:6px}
   .nst-actions{display:flex;gap:7px;margin-top:12px;padding-top:10px;border-top:1px solid #F1F5F9;flex-wrap:wrap}
   .nst-act{background:#F8FAFC;border:1px solid #EEF2F7;border-radius:9px;color:#64748B;font-size:12px;font-weight:700;font-family:inherit;padding:7px 11px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .15s}
   .nst-act:active{transform:scale(.97)}
@@ -1649,6 +1664,7 @@
     <div id="nst-compose-body"></div>
   </div>
 </div>
+<input type="file" id="nst-photo-input" accept="image/*" style="display:none" onchange="nstComposeImagePicked(this)">
 
 <!-- ═══ APIXABAN overlay — prieskum apixaban / kardiológovia + internisti (Golem rep) ═══ -->
 <div class="lk-overlay tuy-scope" id="apixaban-overlay">
