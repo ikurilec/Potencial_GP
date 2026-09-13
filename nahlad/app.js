@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.29';
+var APP_VERSION = '2.87.30';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -5535,6 +5535,33 @@ function dnesRender() {
             '</div>';
   }
 
+  // ── Sklady — produkty, ktoré treba sledovať/sú kritické (všetky roly a línie) ──
+  // Karta sa ukáže LEN keď je čo hlásiť (aspoň 1 produkt pod 28 dní zásob) —
+  // inak by zbytočne zapratávala Domov aj vtedy, keď je všetko stabilné.
+  // Číta výlučne z cache (dnesStockWatchItems) — ak Sklady ešte nikdy
+  // nenačítali dáta (napr. úplne nový login, kým nedobehne stockPreload),
+  // karta jednoducho chýba a znova sa skúsi pri ďalšom vykreslení Domova.
+  var stockW = dnesStockWatchItems();
+  if (stockW) {
+    var stockBody = stockW.items.slice(0, 5).map(function (product) {
+      var kEsc = stockEsc(product.key).replace(/'/g, '&#39;');
+      return '<div class="dnes-mini" onclick="event.stopPropagation();openSklady(\'' + kEsc + '\')">' +
+               '<span class="dnes-mini-dot" style="background:' + product.status.color + '"></span>' +
+               '<span class="dnes-mini-txt"><span class="dnes-mini-name">' + appEsc(product.product) + '</span>' +
+                 '<span class="dnes-mini-when">' + appEsc(product.status.label) +
+                   (product.coverageDays != null ? ' · ' + stockFmt(product.coverageDays, ' dní zásob') : '') + '</span></span>' +
+             '</div>';
+    }).join('');
+    var stockExtra = stockW.items.length - Math.min(5, stockW.items.length);
+    if (stockExtra > 0) stockBody += '<div class="dnes-post-meta">a ďalších ' + stockExtra + '</div>';
+    html += '<div onclick="openSklady()" style="cursor:pointer">' +
+            dnesCardHtml('linear-gradient(90deg,#B45309,#FBBF24)', 'Sklady',
+                         '<span class="dnes-badge" style="background:#B45309">' + stockW.items.length +
+                         (stockW.items.length === 1 ? ' produkt' : ' produkty') + '</span><span class="dnes-more">Otvoriť ›</span>',
+                         stockBody) +
+            '</div>';
+  }
+
   // ── Nedávno otvorení (len Golem reprezentant) ───────────────────────
   if (rola === 'gp' && gpRecentList().length) {
     html += dnesCardHtml('linear-gradient(90deg,#475569,#94A3B8)', 'Nedávno otvorení', '',
@@ -5898,7 +5925,7 @@ function closeViac() {
 }
 
 // ── SKLADY — read-only prehľad z normalizovaného interného Sheet-u ─────────
-var SKLADY_STATE = { open:false, request:0, expanded:{}, payload:null, returnTo:null };
+var SKLADY_STATE = { open:false, request:0, expanded:{}, payload:null, returnTo:null, _scrollToKey:null };
 function stockEsc(value){ return (typeof appEsc === 'function') ? appEsc(value == null ? '' : String(value)) : String(value == null ? '' : value); }
 function stockFmt(value, suffix){
   var n = stockNumber(value);
@@ -5934,41 +5961,97 @@ function stockRender(){
       return '<div class="sklady-pack"><div class="sklady-pack-name">' + stockEsc(pack.packaging || 'Balenie') + (pack.sukl ? '<span>ŠÚKL ' + stockEsc(pack.sukl) + '</span>' : '') + '</div>' +
         '<div class="sklady-metrics"><span><b>' + stockFmt(pack.coverageDays, ' dní') + '</b> pokrytie</span><span><b>' + stockFmt(pack.distributorUnits) + '</b> u distribútorov</span><span><b>' + stockFmt(pack.weeklySales) + '</b> / týždeň</span><span><b>' + stockFmt(pack.poConfirmed) + '</b> potvrdené</span></div></div>';
     }).join('') + '</div>' : '';
-    return '<button type="button" class="sklady-product ' + product.status.key + (open ? ' open' : '') + '" onclick="stockToggle(\'' + stockEsc(product.key).replace(/'/g, '&#39;') + '\')">' +
+    return '<button type="button" class="sklady-product ' + product.status.key + (open ? ' open' : '') + '" data-key="' + stockEsc(product.key) + '" onclick="stockToggle(\'' + stockEsc(product.key).replace(/'/g, '&#39;') + '\')">' +
       '<span class="sklady-dot" style="background:' + product.status.color + '"></span><span class="sklady-prod-main"><strong>' + stockEsc(product.product) + '</strong><small>' + stockEsc(product.status.label) + '</small></span><span class="sklady-cover">' + badge + '<i>⌄</i></span></button>' + packs;
   }).join('');
+  // Otvorenie konkrétneho produktu (z karty na Domove) — rozbaľ a doscrolluj naň.
+  if (SKLADY_STATE._scrollToKey) {
+    var focusKey = SKLADY_STATE._scrollToKey;
+    SKLADY_STATE._scrollToKey = null;
+    var target = body.querySelector('.sklady-product[data-key="' + focusKey.replace(/"/g, '') + '"]');
+    if (target) { try { target.scrollIntoView({ block:'center' }); } catch(e) {} }
+  }
 }
 function stockToggle(key){ SKLADY_STATE.expanded[key] = !SKLADY_STATE.expanded[key]; try { haptic('selection'); } catch(e) {} stockRender(); }
 function stockRequestUrl(){ return appLineTag() === 'gyn' ? gynScriptUrl('action=getStockData') : scriptUrl('action=getStockData'); }
+// Sklady sa aktualizujú cca raz týždenne (Ivan) — netreba pri každom otvorení
+// čakať na sieť. SWR: cache (DataStore, localStorage) sa ukáže OKAMŽITE bez
+// ohľadu na vek, appka ju na pozadí potichu overí/doplní, len keď je staršia
+// než STOCK_CACHE_MAX_AGE_MS — rovnaký princíp ako Golem Trhový podiel.
+var STOCK_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+function stockCacheKey_(line){ return 'satori-stock:' + String(line || '').trim().toLowerCase(); }
 function stockLoad(){
   var body = document.getElementById('sklady-body');
   if (!body) return;
   var request = ++SKLADY_STATE.request;
-  body.innerHTML = stockSkeletonHtml();
-  appFetchWithRetry(stockRequestUrl(), {
-    retries:1,
-    timeoutMs:APP_FETCH_TIMEOUT_MS,
-    priority:'critical',
-    delayFn:function(){ return 1000; },
-    active:function(){ return request === SKLADY_STATE.request && SKLADY_STATE.open; },
-    fetcher:function(){
+  var line = appLineTag();
+  var r = DataStore.get(stockCacheKey_(line), {
+    maxAgeMs: STOCK_CACHE_MAX_AGE_MS,
+    fetcher: function(){
       return appQueuedFetchJson(stockRequestUrl(), { cache:'no-store' }, APP_FETCH_TIMEOUT_MS, 'critical').then(function(payload){
         if (!payload || payload.ok === false) throw new Error((payload && payload.error) || 'stock endpoint unavailable');
         return payload;
       });
+    },
+    onFresh: function(payload){
+      if (request !== SKLADY_STATE.request || !SKLADY_STATE.open) return;
+      SKLADY_STATE.payload = stockNormalizePayload(payload, line); stockRender();
+    },
+    onError: function(){
+      if (request !== SKLADY_STATE.request || !SKLADY_STATE.open) return;
+      if (SKLADY_STATE.payload) return;   // cache už niečo ukazuje — tichá revalidácia nesmie zmazať viditeľné dáta
+      appRegisterRetry('sklady', stockLoad);
+      body.innerHTML = appErrorCardHtml({ id:'sklady', title:'Nepodarilo sa načítať sklady', desc:'Skús to znova. Ak problém trvá, skladový report ešte nemusí byť zverejnený.', retryLabel:'Načítať znova' });
     }
-  }).then(function(payload){
-    if (request !== SKLADY_STATE.request || !SKLADY_STATE.open) return;
-    SKLADY_STATE.payload = stockNormalizePayload(payload, appLineTag()); stockRender();
-  }).catch(function(){
-    if (request !== SKLADY_STATE.request || !SKLADY_STATE.open) return;
-    appRegisterRetry('sklady', stockLoad);
-    body.innerHTML = appErrorCardHtml({ id:'sklady', title:'Nepodarilo sa načítať sklady', desc:'Skús to znova. Ak problém trvá, skladový report ešte nemusí byť zverejnený.', retryLabel:'Načítať znova' });
   });
+  if (r.data) { SKLADY_STATE.payload = stockNormalizePayload(r.data, line); stockRender(); }
+  else { body.innerHTML = stockSkeletonHtml(); }
+}
+// Tichý preload na pozadí po prihlásení — bez neho by Sklady karta na Domove
+// (dnesStockWatchItems) ostala prázdna, kým používateľ sám prvýkrát neotvorí
+// panel Sklady (cache sa dovtedy inak vôbec nezapíše). Rovnaká DataStore SWR
+// cesta ako stockLoad(), len bez akejkoľvek väzby na otvorený panel/DOM.
+function stockPreload(){
+  try {
+    var line = appLineTag();
+    DataStore.get(stockCacheKey_(line), {
+      maxAgeMs: STOCK_CACHE_MAX_AGE_MS,
+      fetcher: function(){
+        return appQueuedFetchJson(stockRequestUrl(), { cache:'no-store' }, APP_FETCH_TIMEOUT_PRELOAD_MS, 'background').then(function(payload){
+          if (!payload || payload.ok === false) throw new Error((payload && payload.error) || 'stock endpoint unavailable');
+          return payload;
+        });
+      },
+      onFresh: function(){ try { dnesRefreshIfOpen(); } catch(e){} }
+    });
+  } catch(e){}
+}
+// Produkty, ktoré treba sledovať/sú kritické — pre kartu na Domove. Číta VÝLUČNE
+// z cache (DataStore/localStorage), nikdy sama nefetchuje — Domov sa smie
+// skladať len z toho, čo je už k dispozícii (pozri stockPreload vyššie).
+function dnesStockWatchItems(){
+  try {
+    var line = appLineTag();
+    var r = DataStore.get(stockCacheKey_(line), { maxAgeMs: STOCK_CACHE_MAX_AGE_MS });
+    if (!r.data) return null;
+    var norm = stockNormalizePayload(r.data, line);
+    var items = norm.products.filter(function(p){ return p.status.key === 'critical' || p.status.key === 'watch'; });
+    if (!items.length) return null;
+    var rank = { critical:0, watch:1 };
+    items.sort(function(a,b){ return (rank[a.status.key] - rank[b.status.key]) || ((a.coverageDays==null?999:a.coverageDays) - (b.coverageDays==null?999:b.coverageDays)); });
+    return { asOf: norm.asOf, items: items };
+  } catch(e) { return null; }
 }
 function stockCaptureReturn(){
   var nst = document.getElementById('nastenka-overlay');
   if (nst && nst.classList.contains('show')) return { kind:'nastenka' };
+  // Domov je panel NAD gyn/manažérskym pohľadom aj nad ostatnými panelmi (pozri
+  // appGoDomov/openDnes) — musí sa skontrolovať PRED vetvami pre gyn/manažéra,
+  // inak (Ivan nahlásil: otvorenie Skladov z Menu na Domove ho vrátilo na
+  // Plnenie) appka namiesto Domova, z ktorého v skutočnosti prišiel, vráti
+  // vnútorný tab gyn/manažéra (GYN_APP.nav/MGR_STATE.subtab), lebo ten ostáva
+  // nastavený na poslednú navštívenú záložku aj kým je Domov navrchu.
+  if (typeof _panelCurrent !== 'undefined' && _panelCurrent === 'dnes-overlay') return { kind:'panel', id:'dnes-overlay' };
   if (document.body.classList.contains('gyn-line') && typeof GYN_APP !== 'undefined') return { kind:'gyn', tab:GYN_APP.nav || 'plnenie' };
   if (document.body.classList.contains('manager-mode') && typeof MGR_STATE !== 'undefined') return { kind:'mgr', tab:MGR_STATE.subtab || 'plnenie' };
   if (typeof _panelCurrent !== 'undefined' && _panelCurrent && _panelCurrent !== 'sklady-overlay') return { kind:'panel', id:_panelCurrent };
@@ -5989,8 +6072,13 @@ function stockRestoreReturn(target){
   }
   closeAllPanels();
 }
-function openSklady(){
-  usageSectionEnter('Sklady'); SKLADY_STATE.open = true; SKLADY_STATE.expanded = {}; SKLADY_STATE.payload = null; SKLADY_STATE.returnTo = stockCaptureReturn();
+// focusKey (voliteľné) — otvor Sklady rovno na konkrétnom produkte (napr. z
+// karty na Domove) — rozbaľ ho a doscrolluj naň hneď, ako dáta dorazia.
+function openSklady(focusKey){
+  usageSectionEnter('Sklady'); SKLADY_STATE.open = true;
+  SKLADY_STATE.expanded = focusKey ? (function(o){ o[focusKey] = true; return o; })({}) : {};
+  SKLADY_STATE.payload = null; SKLADY_STATE.returnTo = stockCaptureReturn();
+  SKLADY_STATE._scrollToKey = focusKey || null;
   var sub = document.getElementById('sklady-sub'), line = appLineTag();
   if (sub) sub.textContent = (line === 'gyn' ? 'Gynekológia' : (line === 'reagila' ? 'Reagila' : 'Golem')) + ' · aktuálny stav zásob';
   _panelShow('sklady-overlay'); stockLoad();
@@ -9280,6 +9368,7 @@ function loginSuccess(username, name, role, region, extra) {
       plnenieApplyDefaultPeriod(REP_PL_STATE);
     }, 2500);
     setTimeout(lkPreload, LOGIN_FOLLOWUP_DELAY_MS.lkPreload);
+    setTimeout(stockPreload, LOGIN_FOLLOWUP_DELAY_MS.lkPreload);
     // Notifikácie pre manažérov (nie admin)
     if (user.role !== 'admin') {
       checkNotifications();
@@ -9318,6 +9407,7 @@ function loginSuccess(username, name, role, region, extra) {
     plnenieApplyDefaultPeriod(REP_PL_STATE);
   }, 1500);
   setTimeout(lkPreload, LOGIN_FOLLOWUP_DELAY_MS.lkPreload);
+  setTimeout(stockPreload, LOGIN_FOLLOWUP_DELAY_MS.lkPreload);
   // Agresívny dedup po prihlásení — eliminácia prípadných duplicitov
   setTimeout(function(){ try { mgrDedupUnique(); } catch(e){} }, 100);
   setTimeout(function(){ try { mgrDedupUnique(); } catch(e){} }, 600);
@@ -11908,6 +11998,7 @@ function gynEnter(user) {
   }, 800);
   // Preload na pozadí — plnenie za všetky Q (aby switching Q bol instant).
   setTimeout(function(){ gynPreloadAllQuarters(); }, 1500);
+  setTimeout(stockPreload, 1500);
   // gynPreloadAllPharma() (hromadné trhové podiely, až 12 produktov × 10 oblastí ×
   // 2 kvartály = až 240 požiadaviek) sa už po prihlásení NEVOLÁ — zaplavovala
   // zdieľanú frontu (APP_REQUEST_QUEUE, max 2 súbežné) na celé minúty a reálne
@@ -13499,30 +13590,36 @@ function gynPharmaLoad() {
   // GYN_CACHE_PREFIX MUSÍ sedieť s gynCacheRead/gynCacheWrite (napr. gynPreloadAllPharma
   // ukladá tie isté kľúče cez ne priamo) — inak DataStore skončí na inom zázname.
   var persistentKey = GYN_CACHE_PREFIX + gynPharmaCacheKey(GYN_PHARMA_STATE.produkt, GYN_PHARMA_STATE.oblast, GYN_PHARMA_STATE.kvartal);
-  // F2-1: rovnaká oprava — bez nej "kompletná" (má okresy pre trend) ale
-  // stará persistovaná cache nižšie navždy zablokuje nový fetch.
-  var _dsFresh = DataStore.get(persistentKey, { maxAgeMs: DS_CACHE_MAX_AGE_MS });
-  var cached = GYN_PHARMA_STATE.cache[key] || (_dsFresh.status === 'fresh' ? _dsFresh.data : null);
+  // SWR (rovnako ako Golem loadPharmaData): trhový podiel sa mení cca raz mesačne,
+  // takže AKÁKOĽVEK cache (aj staršia než DS_CACHE_MAX_AGE_MS) sa smie ukázať
+  // okamžite — appka nikdy nenúti používateľa čakať na sieť kvôli dátam, ktoré
+  // už raz videl. Staršia cache sa navyše potichu doplní/overí na pozadí.
+  var _ds = DataStore.get(persistentKey, { maxAgeMs: DS_CACHE_MAX_AGE_MS });
+  var cached = GYN_PHARMA_STATE.cache[key] || _ds.data || null;
   if(cached && !GYN_PHARMA_STATE.cache[key]) GYN_PHARMA_STATE.cache[key] = cached;
 
   // Cache hit je kompletný až vtedy, keď má okresy pre všetky kvartály zobrazené v 6-mesačnom trende.
   if (gynPharmaCacheHasPrevOkresy(cached, GYN_PHARMA_STATE.kvartal)) {
     gynPharmaRender(cached);
+    if (_ds.status !== 'fresh' && !GYN_PHARMA_STATE.loading[key]) gynPharmaFetchAndProcess_(key, persistentKey, true);
     return;
   }
-  // POZOR: predtým bol tu `if(GYN_PHARMA_STATE.loading[key]) return;` — ak mala
-  // appka pre presne ten istý kľúč rozbehnutý iný fetch (napr. z manažérskej
-  // tabuľky nižšie), toto otvorenie sa ticho vzdalo a nikdy sa nenapojilo na
-  // výsledok — obrazovka zostala na "Načítavam" až do watchdogu. Foreground
-  // otvorenie teraz VŽDY spustí svoj vlastný fetch (mierne zvýšené riziko
-  // duplicitnej požiadavky je lacnejšie než zamrznutá obrazovka).
-  GYN_PHARMA_STATE.loading[key] = true;
+  gynPharmaFetchAndProcess_(key, persistentKey, false);
+}
 
-  // Aktuálny Q: ak je v cache, znova nesťahuj — len doplníme chýbajúce kvartály pre trend.
-  // Odolný fetch — 1 automatický druhý pokus pri zlyhaní/timeoute (predtým jediný
-  // rozhodujúci pokus), 'critical' priorita ho posunie pred pozaďové požiadavky.
-  var fetchCurrent = cached
-    ? Promise.resolve(cached)
+// silent=true → tichá SWR revalidácia na pozadí (žiadna chybová karta, watchdog
+// ani retry — ide len o doplnenie/overenie dát, ktoré sa už zobrazujú z cache).
+// silent=false → prvé/blokujúce otvorenie (žiadna kompletná cache): odolný
+// fetch s 1 automatickým druhým pokusom, 'critical' priorita.
+function gynPharmaFetchAndProcess_(key, persistentKey, silent) {
+  GYN_PHARMA_STATE.loading[key] = true;
+  var fetchCurrent = silent
+    ? appQueuedFetchJson(gynScriptUrl(
+        'action=getPharmaData' +
+        '&oblast='  + encodeURIComponent(GYN_PHARMA_STATE.oblast) +
+        '&produkt=' + encodeURIComponent(GYN_PHARMA_STATE.produkt) +
+        '&kvartal=' + encodeURIComponent(GYN_PHARMA_STATE.kvartal)
+      ), { cache:'no-store' }, APP_FETCH_TIMEOUT_PRELOAD_MS, 'background')
     : appFetchWithRetry(gynScriptUrl(
         'action=getPharmaData' +
         '&oblast='  + encodeURIComponent(GYN_PHARMA_STATE.oblast) +
@@ -13539,7 +13636,7 @@ function gynPharmaLoad() {
   fetchCurrent.then(function(resp){
     if(!resp || !resp.ok) {
       delete GYN_PHARMA_STATE.loading[key];
-      gynPharmaShowError();
+      if (!silent) gynPharmaShowError();
       return;
     }
     var neededKvartals = resp.metric === 'packs' ? [GYN_PHARMA_STATE.kvartal] : gynPharmaTrendKvartals(resp.summary);
@@ -13588,7 +13685,7 @@ function gynPharmaLoad() {
     });
   }).catch(function(){
     delete GYN_PHARMA_STATE.loading[key];
-    gynPharmaShowError();
+    if (!silent) gynPharmaShowError();
   });
 }
 
