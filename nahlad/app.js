@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.47';
+var APP_VERSION = '2.87.48';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -12564,7 +12564,6 @@ function gynPreloadAllQuarters() {
 function gynLbPreload() {
   try {
     if(typeof gynLbEnsureRepList === 'function') gynLbEnsureRepList();
-    if(typeof gynLbEnsureApprovedQ === 'function') gynLbEnsureApprovedQ();
     var currentQ = GYN_APP.q;
     var currentKey = gynPlnenieCacheKey(GYN_APP.year, currentQ) + '|lb-fullLine';
     gynLbEnsureData(currentQ, currentKey);
@@ -15516,14 +15515,14 @@ function gynPlnenieRenderMgr(el, user, data) {
 // ═══════════════════════════════════════════════════════════════════
 // GYN REBRÍČEK — dizajn totožný s Golem rebríčkom (podium + zoznam).
 // 3 podkategórie: Všetci (pill+patch spolu) · Pill · Patch. Ráta sa plnenie
-// posledného ukončeného kvartálu (rovnaká logika ako Golem, vrátane admin
-// schválenia Q cez setConfig key lb_approved_q na gyn backende).
+// aktuálneho kalendárneho kvartálu (rovnako ako Golem).
 // ═══════════════════════════════════════════════════════════════════
-var GYN_LB = { cat: 'all', approvedQ: null, qFetched: false, qResolved: false, showConfetti: false, dataReady: {}, plCache: {}, plLoading: {}, failed: {}, repList: [], repLoading: false, repFetched: false, _confT: null, _confWinT: null, _animated: false };
+var GYN_LB = { cat: 'all', showConfetti: false, dataReady: {}, plCache: {}, plLoading: {}, failed: {}, repList: [], repLoading: false, repFetched: false, _confT: null, _confWinT: null, _animated: false };
 
+// Rebríček donedávna čakal na admin-schválené Q (rovnaká logika ako Golem) —
+// zrušené (Ivan): vždy aktuálny kalendárny Q, žiadne schvaľovanie.
 function gynLbLastCompletedQ(){
-  if(GYN_LB.approvedQ !== null) return GYN_LB.approvedQ;
-  return Math.max(0, plnenieCurrentQ() - 1);
+  return plnenieCurrentQ();
 }
 function gynLbColor(login){
   var palette = (typeof LB_COLOR_PALETTE !== 'undefined') ? LB_COLOR_PALETTE : null;
@@ -15589,33 +15588,8 @@ function gynLbSetCat(cat){
 }
 function gynLbBody(){ return document.getElementById('gyn-content'); }
 
-// Admin-schválený Q pre rebríček — načítaj raz zo gyn configu. Volané aj z
-// gynLbPreload() (hneď pri vstupe do línie), nie len z gynLbShow() (až pri
-// otvorení rebríčka) — predtým bol toto jediný krok, ktorý sa nepreloadoval
-// popri plCache/repList, takže aj keď mal používateľ všetko ostatné už
-// pripravené (prednačítané pri prihlásení), prvé otvorenie Rebríčka aj tak
-// čakalo na tento jeden fetch. Odtiaľ dojem "raz sa nenačíta, druhýkrát hneď
-// je hotový" (nahlásené Ivanom).
-function gynLbEnsureApprovedQ(){
-  if(GYN_LB.qFetched) return;
-  GYN_LB.qFetched = true;
-  appQueuedFetchJson(gynScriptUrl('action=getConfig&key=lb_approved_q'), undefined, APP_FETCH_TIMEOUT_PRELOAD_MS, 'background')
-    .then(function(d){
-      var q = parseInt(d && d.value, 10);
-      GYN_LB.approvedQ = (q >= 1 && q <= 4) ? q : null;
-    })
-    .catch(function(){})
-    .then(function(){
-      // Až teraz poznáme správny (admin-schválený) Q — odblokuj render rebríčka.
-      // Dovtedy gynLbRender drží "Načítavam…" (žiadny medzistav so zlým Q).
-      GYN_LB.qResolved = true;
-      if(GYN_APP.nav === 'leaderboard') gynLbRender();
-    });
-}
-
 function gynLbShow(el){
   gynLbEnsureRepList();
-  gynLbEnsureApprovedQ();
   gynLbRender(el);
 }
 
@@ -15680,9 +15654,6 @@ function gynLbRender(el){
   function gynLbLoading(){
     el.innerHTML = gynLbCard(tabs + '<div style="padding:32px 0;text-align:center;color:#64748B;font-size:13px">Načítavam rebríček…</div>');
   }
-  // Kým nepoznáme správny (admin-schválený) Q, drž "Načítavam…" — žiadny medzistav so zlým Q.
-  if(!GYN_LB.qResolved){ gynLbLoading(); return; }
-
   var lastQ = gynLbLastCompletedQ();
   if(lastQ < 1){
     el.innerHTML = gynLbCard(tabs + '<div class="gyn-empty"><div class="gyn-empty-icon">📅</div>' +
@@ -15784,13 +15755,7 @@ function gynLbRender(el){
   });
   listHtml += '</div>';
 
-  // Admin tlačidlo schválenia ďalšieho Q (rovnako ako Golem)
-  var nextQ = lastQ + 1;
-  var approveBtn = '';
-  if(user.role === 'admin' && nextQ <= 4){
-    approveBtn = '<button id="gyn-lb-approve-q-btn" class="lb-approve-q-btn" onclick="gynLbApproveQ(' + nextQ + ')">Schváliť Q' + nextQ + ' v rebríčku</button>';
-  }
-  var headerHtml = '<div class="lb-pl-q-header">Plnenie plánu · ' + qLabel + '</div>' + approveBtn;
+  var headerHtml = '<div class="lb-pl-q-header">Plnenie plánu · ' + qLabel + '</div>';
 
   el.innerHTML = gynLbCard(tabs + headerHtml + podiumHtml + listHtml);
 
@@ -15814,21 +15779,6 @@ function gynLbRender(el){
   }
 }
 
-// Admin schváli nový Q pre gyn rebríček (zápis cez gyn setConfig)
-function gynLbApproveQ(q){
-  var btn = document.getElementById('gyn-lb-approve-q-btn');
-  if(btn) btn.classList.add('saving');
-  fetch(gynScriptUrl('action=setConfig&key=lb_approved_q&value=' + q))
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      if(d && d.ok){
-        GYN_LB.approvedQ = q;
-        if(GYN_APP.nav === 'leaderboard') gynLbRender();
-      }
-    })
-    .catch(function(){})
-    .then(function(){ if(btn) btn.classList.remove('saving'); });
-}
 function gynHistShow(el) {
   el.innerHTML = '<div class="gyn-empty"><div class="gyn-empty-icon">📋</div>' +
     '<div class="gyn-empty-title">Návštevy</div>' +
@@ -19794,7 +19744,6 @@ var LB_STATE = { period: 'all', mode: 'plnenie', data: null, loading: false, sho
 var LB_PLNENIE_CACHE = null;
 var LB_PLNENIE_LOADING = false;
 var LB_PLNENIE_LOAD_ID = 0;
-var LB_APPROVED_Q = null; // admin schvaleny Q pre rebricek plnenie, null = auto (currentQ-1)
 
 function lbCurrentLine() {
   return (typeof appLineTag === 'function') ? appLineTag() : 'gp';
@@ -21304,11 +21253,6 @@ function loadInitData(username, _lineCtx) {
       // MilestoneStats — uloží pre checkMilestone, vyhne sa extra fetchu
       if(data.milestoneStats) window._cachedMilestoneStats = data.milestoneStats;
 
-      // Config — lb_approved_q (vyhne sa extra getConfig fetchu pri otváraní rebríčka)
-      if(data.configs && data.configs.lb_approved_q !== null && data.configs.lb_approved_q !== undefined) {
-        var lbq = parseInt(data.configs.lb_approved_q);
-        if(!isNaN(lbq)) LB_APPROVED_Q = lbq;
-      }
       try { appBootFinishIfReady(); } catch(e){}
     })
     .catch(function() {
@@ -21453,76 +21397,24 @@ function lbSetPeriod(period, el){
 
 // ── PLNENIE LEADERBOARD MODE ──
 
+// Rebríček donedávna vyžadoval, aby admin ručne klikol "Schváliť QX", inak
+// zostal na predošlom kvartáli — nezávisle od toho, že karta Plnenie (Domov
+// aj panel) medzičasom vždy ukazuje aktuálny kalendárny Q. Výsledok: appka
+// vedela súčasne tvrdiť "Q3" na jednom mieste a "Q2" na druhom (nahlásené
+// Ivanom). Rebríček teraz ide rovnako ako Plnenie — vždy aktuálny Q, žiadne
+// schvaľovanie. Meno funkcie ostáva (veľa miest sa naň pýta).
 function lbLastCompletedQ() {
-  // Admin moze manualne schvalit Q cez tlacidlo v rebricku
-  if (LB_APPROVED_Q !== null) return LB_APPROVED_Q;
-  return Math.max(0, plnenieCurrentQ() - 1);
+  return plnenieCurrentQ();
 }
 
-// Nacita iba posledny ukonceny Q pre leaderboard Plnenie (1 request, nezavisly od repPlnenieLoad)
-
-// Nacita admin-schvaleny Q zo Sheets (getConfig)
-// Ak loadInitData už nastavil LB_APPROVED_Q, preskočí fetch a zavolá callback priamo
+// Predtým sťahovala admin-schválené Q zo Sheets (getConfig) — Rebríček už
+// viac neschvaľuje, vždy ide podľa kalendára (lbLastCompletedQ()), takže tu
+// nie je čo naťahovať. Meno a volací tvar (callback) ostávajú, lebo viacero
+// miest v boot/prihlasovacom toku sa na tento krok spolieha ako na
+// sekvenčný bod ("najprv over Q, potom načítaj Plnenie") — nech sa nemusí
+// upravovať 5 rôznych volajúcich miest kvôli zrušeniu schvaľovania.
 function lbFetchApprovedQ(callback) {
-  // Cache hit z loadInitData — vyhne sa extra getConfig fetchu
-  if(LB_APPROVED_Q !== null) {
-    if(callback) callback();
-    return;
-  }
-  var url = scriptUrl('action=getConfig&key=lb_approved_q');
-  appQueuedFetchJson(url, undefined, undefined, 'background')
-    .then(function(d){
-      if (d && d.ok && d.value !== null) {
-        var q = parseInt(d.value, 10);
-        if (q >= 1 && q <= 4) LB_APPROVED_Q = q;
-      } else {
-        LB_APPROVED_Q = null;
-      }
-      // ROOT CAUSE (Ivan, rep v Goleme): lbPreloadPlnenie() vie dobehnúť SKÔR ako
-      // tento fetch — kým je LB_APPROVED_Q ešte null, lbLastCompletedQ() spadne na
-      // kalendárny fallback (predošlý Q) a naplní LB_PLNENIE_CACHE JEHO dátami. Keď
-      // potom dorazí admin-schválené Q (iné číslo), popisok sa aktualizoval nižšie
-      // (lbSyncTabs), ale cache s dátami starého Q ostala — rebríček tak ukazoval
-      // nálepku "Q3" nad Q2 číslami. Cache je teraz zviazaná s konkrétnym Q (viď
-      // lbPreloadPlnenie/lbRenderPlnenie), toto len urýchli opravu hneď po príchode
-      // schváleného Q, nie až pri ďalšom otvorení rebríčka.
-      if (LB_PLNENIE_CACHE && LB_PLNENIE_CACHE.q !== lbLastCompletedQ()) {
-        LB_PLNENIE_CACHE = null;
-        LB_PLNENIE_LOADING = false;
-        LB_STATE._plLoadAttempted = false;
-        lbPreloadPlnenie();
-      }
-      // Tab "💊 Plnenie QX" ukazuje lbLastCompletedQ(), ktoré čita LB_APPROVED_Q — bez
-      // tohto by popisok ostal na predvolenom (kalendárnom) kvartáli, kým sa appka
-      // nabudúce neotvorí nanovo, hoci telo Plnenia už dávno ukazuje správne dáta.
-      try { if (typeof lbSyncTabs === 'function') lbSyncTabs(); } catch(e){}
-      if (callback) callback();
-    })
-    .catch(function(){ if (callback) callback(); });
-}
-
-// Admin schvali novy Q (zapisuje cez setConfig, aktualizuje cache a re-renderuje)
-function lbApproveQ(q) {
-  var btn = document.getElementById('lb-approve-q-btn');
-  if (btn) btn.classList.add('saving');
-  var url = scriptUrl('action=setConfig&key=lb_approved_q&value=' + q);
-  fetch(url)
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      if (d && d.ok) {
-        LB_APPROVED_Q = q;
-        LB_PLNENIE_CACHE = null;
-        LB_PLNENIE_LOADING = false;
-        LB_STATE._plLoadAttempted = false;
-        lbPreloadPlnenie();
-        var b = lbGetBody();
-        if (b && LB_STATE.mode === 'plnenie') lbRenderPlnenie(b);
-      }
-    })
-    .catch(function(){})
-    .then(function(){
-      if (btn) btn.classList.remove('saving');
-    });
+  if (callback) callback();
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -22147,14 +22039,7 @@ function lbRenderPlnenie(body) {
   });
   listHtml += '</div>';
 
-  var nextQ = lastQ + 1;
-  var approveBtn = '';
-  if (MGR_STATE && MGR_STATE.role === 'admin' && nextQ <= 4) {
-    approveBtn = '<button id="lb-approve-q-btn" class="lb-approve-q-btn" onclick="lbApproveQ(' + nextQ + ')">' +
-      'Schv\u00e1li\u0165 Q' + nextQ + ' v rebr\u00ed\u010dku' +
-      '</button>';
-  }
-  var headerHtml = '<div class="lb-pl-q-header">Plnenie pl\u00e1nu \u00b7 ' + qLabel + '</div>' + approveBtn;
+  var headerHtml = '<div class="lb-pl-q-header">Plnenie pl\u00e1nu \u00b7 ' + qLabel + '</div>';
   body.innerHTML = headerHtml + podiumHtml + listHtml;
 
   // Konfety (rovnako ako pri nav\u0161tev\u00e1ch)
