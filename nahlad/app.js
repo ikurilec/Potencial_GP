@@ -5686,6 +5686,7 @@ function appNavReset(nechaj) {
 // Domov je panel nad všetkým — manažérovi aj gyn sa otvorí nad ich pohľadom.
 function appGoDomov() {
   appNavigaciaZaznam();
+  if (typeof _appTrackMainTab === 'function') _appTrackMainTab('domov');
   appNavReset('domov');
   try { openDnes(); } catch (e) {}
 }
@@ -5714,6 +5715,7 @@ document.addEventListener('keydown', function (ev) {
 // pod Domovom a prepnutie by nebolo vidieť.
 function appGoTab(kam, arg) {
   appNavigaciaZaznam();
+  if (typeof _appTrackMainTab === 'function') _appTrackMainTab(kam);
   var r = appRole();
   appNavReset(kam === 'nastenka' ? 'nastenka' : null);
   try {
@@ -19120,6 +19122,17 @@ function globalSwipeBackResolveVisualTarget(layer) {
     return (nst && nst.classList.contains('show')) ? nst : document.getElementById(_panelsBackTargetId || _panelCurrent || '');
   }
   if (id === 'gyn-view-nav') return document.getElementById('gyn-view');
+  if (id === 'app-main-tab-history') {
+    // Domov je vždy celoobrazovkový panel nad gyn/manažérskym pohľadom aj nad
+    // ostatnými panelmi (viď stockCaptureReturn vyššie v súbore) — ak je viditeľný,
+    // swipe ho odsúva, odhaľujúc to, čo bolo pod ním. Inak je "domovskou"
+    // obrazovkou manažér/gyn subtab (napr. Plnenie), ktorý nemá vlastný panel.
+    var dnes = document.getElementById('dnes-overlay');
+    if (dnes && dnes.classList.contains('show')) return dnes;
+    if (document.body.classList.contains('manager-mode')) return document.getElementById('mgr-view');
+    if (document.body.classList.contains('gyn-line')) return document.getElementById('gyn-view');
+    return null;
+  }
   return null;
 }
 
@@ -19509,6 +19522,35 @@ _backRegister('gyn-view-nav', function () {
   if (typeof GYN_APP !== 'undefined' && GYN_APP && GYN_APP.nav && GYN_APP.nav !== 'plnenie') { _gynBackDecision = 'tab'; return true; }
   _gynBackDecision = null;
   return false;
+});
+
+// 16. Hlavné záložky (Domov/Plnenie/Kalendár/Nástenka) — Ivan, 13.9.: potiahnutie
+// doprava má fungovať ako krok späť aj TU, nielen v paneloch/detailoch, a má sa
+// vrátiť presne tam, kde bol používateľ predtým (nie vždy na Domov). appGoDomov()/
+// appGoTab() sú JEDINÉ miesta, cez ktoré ide vedomé prepnutie hlavnej záložky (Menu
+// je prekryv, rieši ho vlastný _backRegister('viac-overlay', ...) — viď openViac).
+// Najnižšia priorita v tomto zozname (registrovaná posledná) — všetky panely a
+// detaily vyššie majú vždy prednosť pred prepnutím celej záložky.
+var _appMainTabHistory = [];
+var _appMainTabCurrent = null;
+function _appTrackMainTab(tab) {
+  if (!tab || tab === _appMainTabCurrent) return;
+  if (_appMainTabCurrent) {
+    _appMainTabHistory.push(_appMainTabCurrent);
+    if (_appMainTabHistory.length > 20) _appMainTabHistory.shift();
+  }
+  _appMainTabCurrent = tab;
+}
+_backRegister('app-main-tab-history', function () {
+  var prev = _appMainTabHistory.pop();
+  if (!prev) return;
+  // Nastaviť SKÔR než zavolať appGoDomov()/appGoTab() — tie si samé volajú
+  // _appTrackMainTab(prev), ktorá by inak (keby _appMainTabCurrent ešte
+  // ukazovala na starú záložku) prev omylom pridala späť do histórie.
+  _appMainTabCurrent = prev;
+  if (prev === 'domov') appGoDomov(); else appGoTab(prev);
+}, function () {
+  return _appMainTabHistory.length > 0;
 });
 
 function _handleAndroidBack() {
