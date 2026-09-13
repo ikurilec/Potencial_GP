@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.55';
+var APP_VERSION = '2.87.56';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -18971,6 +18971,11 @@ function globalSwipeBackFindLayer() {
   return null;
 }
 
+function globalSwipeBackIsIOS() {
+  var ua = navigator.userAgent || '';
+  return /iP(hone|ad|od)/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
 function globalSwipeBackResolveVisualTarget(layer) {
   if (!layer) return null;
   var id = layer.id;
@@ -19094,7 +19099,15 @@ function initGlobalSwipeBack() {
     var t = e.touches[0];
     startX = t.clientX; startY = t.clientY;
     tracking = true; locked = false; ownsGesture = false; activeTarget = null; activeLayer = null;
-  }, { passive: true, capture: true });
+    // Safari pri ťahu z úplne ľavého okraja začína svoj browserový "back"
+    // už pred touchmove. Ten ukazoval starú Golem stránku pod aktuálnou líniou.
+    // Ak appka má vlastný krok späť, prevezme toto jediné edge gesto hneď pri
+    // štarte; mimo iOS ani pri lokálnom carousel-i sa do natívneho správania
+    // vôbec nezasahuje.
+    if (globalSwipeBackIsIOS() && startX <= 32 && !globalSwipeBackPreserveLocalGesture(e.target) && globalSwipeBackFindLayer()) {
+      e.preventDefault();
+    }
+  }, { passive: false, capture: true });
 
   document.addEventListener('touchmove', function(e) {
     if (!tracking || !e.touches || e.touches.length !== 1) return;
