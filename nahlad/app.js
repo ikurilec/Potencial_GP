@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.43';
+var APP_VERSION = '2.87.44';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -5213,6 +5213,36 @@ function appRepAvatarHtml(username, name, size, extraClass) {
     ' style="width:' + px + 'px;height:' + px + 'px;background:' + color + '">' + av.html + '</span>';
 }
 
+// ── Poradie kariet na Domove — vlastné usporiadanie (Nastavenia), rovnaký
+// vzor ako Poradie produktov v Plnení (userPrefs.homeOrder, sync cez Sheets).
+// "Rozpracované" tu nie je — to ostáva vždy prvé, mimo poradia.
+var DNES_HOME_CARDS = [
+  { key: 'kalendar', label: '📅 Kalendár · dnes' },
+  { key: 'plnenie',  label: '🎯 Plnenie' },
+  { key: 'dnesok',   label: '📋 Dnes zadaní lekári', onlyGp: true },
+  { key: 'rebricek', label: '🏆 Moje miesto v rebríčku' },
+  { key: 'launche',  label: '🚀 Launche', onlyGp: true },
+  { key: 'nastenka', label: '📌 Nástenka' },
+  { key: 'sklady',   label: '📦 Sklady' },
+  { key: 'nedavno',  label: '🕓 Nedávno otvorení', onlyGp: true }
+];
+// Karty relevantné pre aktuálnu rolu, v uloženom poradí (chýbajúce na konci v default poradí).
+function dnesHomeOrderKeys() {
+  var rola = (typeof appRole === 'function') ? appRole() : 'gp';
+  var cards = DNES_HOME_CARDS.filter(function (c) { return !c.onlyGp || rola === 'gp'; });
+  var ord = [];
+  try { ord = userPrefsGet().homeOrder || []; } catch (e) {}
+  var keys = cards.map(function (c) { return c.key; });
+  keys.sort(function (a, b) {
+    var ai = ord.indexOf(a), bi = ord.indexOf(b);
+    var aIn = ai !== -1, bIn = bi !== -1;
+    if (aIn && bIn) return ai - bi;
+    if (aIn !== bIn) return aIn ? -1 : 1;
+    return 0; // oba mimo uloženého poradia → nechaj v default poradí (stabilné triedenie)
+  });
+  return keys;
+}
+
 function dnesRender() {
   var body = document.getElementById('dnes-body');
   if (!body) return;
@@ -5221,6 +5251,12 @@ function dnesRender() {
   var sub = document.getElementById('dnes-sub');
   if (sub) { try { sub.textContent = hdrInfoText(); } catch (e) { sub.textContent = ''; } }
   var html = '';
+  // Karty sa skladajú samostatne (blocks) a spoja sa až na konci vo vlastnom
+  // poradí (dnesHomeOrderKeys) — nech si ich vie používateľ v Nastaveniach
+  // preusporiadať bez toho, aby sa menila logika, KEDY sa ktorá karta vôbec
+  // ukáže. "Rozpracované" ostáva mimo poradia, vždy prvé — je to rozrobená
+  // práca na dokončenie, nie karta na prezeranie.
+  var blocks = {};
 
   // Akcie má len Golem reprezentant — ostatní GP formulár nemajú.
   var akcie = document.getElementById('dnes-akcie');
@@ -5289,7 +5325,7 @@ function dnesRender() {
                '</div>';
     });
     if (kBody) {
-      html += '<div onclick="appGoKalendar()" style="cursor:pointer">' +
+      blocks.kalendar = '<div onclick="appGoKalendar()" style="cursor:pointer">' +
               dnesCardHtml('linear-gradient(90deg,#DC2626,#FCA5A5)', 'Kalendár · dnes',
                            '<span class="dnes-more">Otvoriť ›</span>', kBody) +
               '</div>';
@@ -5306,7 +5342,7 @@ function dnesRender() {
     // Karta ostáva na svojom mieste aj kým dáta nie sú — inak Domov po
     // prihlásení vyzerá, že plnenie v appke nie je.
     var dpX = plnenieDefaultPeriod();
-    html += '<div onclick="appGoPlnenie()" style="cursor:pointer">' +
+    blocks.plnenie = '<div onclick="appGoPlnenie()" style="cursor:pointer">' +
             dnesCardHtml('linear-gradient(90deg,#2563EB,#60A5FA)',
                          ((rola === 'mgr') ? 'Plnenie tímu · ' : 'Plnenie · ') + plnenieQLabel(dpX.q, dpX.year),
                          '<span class="dnes-more">Otvoriť ›</span>',
@@ -5367,7 +5403,7 @@ function dnesRender() {
       }
     }
     var plTitul = ((rola === 'mgr' || pl.tim) ? 'Plnenie tímu · ' : 'Plnenie · ') + plnenieQLabel(pl.q, pl.year);
-    html += '<div onclick="appGoPlnenie()" style="cursor:pointer">' +
+    blocks.plnenie = '<div onclick="appGoPlnenie()" style="cursor:pointer">' +
             dnesCardHtml('linear-gradient(90deg,#2563EB,#60A5FA)', plTitul,
                          '<span class="dnes-more">Otvoriť ›</span>', plBody) +
             '</div>';
@@ -5407,7 +5443,7 @@ function dnesRender() {
     } else {
       todayBody = '<div class="dnes-empty">Dnes si nezadal ani neaktualizoval potenciál žiadneho lekára.</div>';
     }
-    html += dnesCardHtml('linear-gradient(90deg,#0C1E35,#1E3A5F)', 'Dnes zadaní lekári', '', todayBody);
+    blocks.dnesok = dnesCardHtml('linear-gradient(90deg,#0C1E35,#1E3A5F)', 'Dnes zadaní lekári', '', todayBody);
   }
 
   // ── Moje miesto v rebríčku ──────────────────────────────────────────
@@ -5422,7 +5458,7 @@ function dnesRender() {
     var jeManazer = (rola === 'mgr') || !!(typeof mgrDetectRole === 'function' && mgrDetectRole(getSession()));
     var titulR = (jeManazer ? 'Rebríček tímu · ' : 'Moje miesto v rebríčku · ') +
                  'Q' + dpR.q + ' ' + dpR.year;
-    html += '<div onclick="appGoRebricek()" style="cursor:pointer">' +
+    blocks.rebricek = '<div onclick="appGoRebricek()" style="cursor:pointer">' +
             dnesCardHtml('linear-gradient(90deg,#D97706,#FCD34D)', titulR,
                          '<span class="dnes-more">Otvoriť ›</span>',
                          dnesRebricekFailed()
@@ -5475,7 +5511,7 @@ function dnesRender() {
                  (reb.popis ? ' · ' + appEsc(reb.popis) : '') + '</div>';
       }
     }
-    html += '<div onclick="appGoRebricek()" style="cursor:pointer">' +
+    blocks.rebricek = '<div onclick="appGoRebricek()" style="cursor:pointer">' +
             dnesCardHtml('linear-gradient(90deg,#D97706,#FCD34D)',
                          (reb.kind === 'ja' ? 'Moje miesto v rebríčku' : 'Rebríček tímu') +
                          (reb.qLabel ? ' · ' + reb.qLabel : ''),
@@ -5504,7 +5540,7 @@ function dnesRender() {
              '</div>';
     }).join('');
     var spolu = kam.reduce(function (n, c) { return n + (c.done || 0); }, 0);
-    html += dnesCardHtml('linear-gradient(90deg,#059669,#34D399)', 'Launche',
+    blocks.launche = dnesCardHtml('linear-gradient(90deg,#059669,#34D399)', 'Launche',
                          '<span class="dnes-badge" style="background:#059669">' + spolu +
                          (spolu === 1 ? ' záznam' : (spolu < 5 ? ' záznamy' : ' záznamov')) + '</span>', kamBody);
   }
@@ -5539,7 +5575,7 @@ function dnesRender() {
                odpHtml +
              '</div>';
     }).join('');
-    html += '<div onclick="appGoNastenka()" style="cursor:pointer">' +
+    blocks.nastenka = '<div onclick="appGoNastenka()" style="cursor:pointer">' +
             dnesCardHtml('linear-gradient(90deg,#7C3ABE,#C084FC)', 'Nástenka',
                          badge + '<span class="dnes-more">Otvoriť ›</span>', nstBody) +
             '</div>';
@@ -5547,7 +5583,7 @@ function dnesRender() {
     // Karta musí byť na Domove od prvého vykreslenia. Bez nej obsah po
     // prihlásení poskakoval, keď Nástenka o chvíľu dobehla zo servera.
     var nstCaka = (typeof NST !== 'undefined') && (NST.loading || !NST.loaded);
-    html += '<div onclick="appGoNastenka()" style="cursor:pointer">' +
+    blocks.nastenka = '<div onclick="appGoNastenka()" style="cursor:pointer">' +
             dnesCardHtml('linear-gradient(90deg,#7C3ABE,#C084FC)', 'Nástenka',
                          '<span class="dnes-more">Otvoriť ›</span>',
                          nstCaka ? dnesSkeletonHtml('Načítavam nástenku…')
@@ -5575,7 +5611,7 @@ function dnesRender() {
     }).join('');
     var stockExtra = stockW.items.length - Math.min(5, stockW.items.length);
     if (stockExtra > 0) stockBody += '<div class="dnes-post-meta">a ďalších ' + stockExtra + '</div>';
-    html += '<div onclick="openSklady()" style="cursor:pointer">' +
+    blocks.sklady = '<div onclick="openSklady()" style="cursor:pointer">' +
             dnesCardHtml('linear-gradient(90deg,#B45309,#FBBF24)', 'Sklady',
                          '<span class="dnes-badge" style="background:#B45309">' + stockW.items.length +
                          (stockW.items.length === 1 ? ' produkt' : ' produkty') + '</span><span class="dnes-more">Otvoriť ›</span>',
@@ -5585,9 +5621,13 @@ function dnesRender() {
 
   // ── Nedávno otvorení (len Golem reprezentant) ───────────────────────
   if (rola === 'gp' && gpRecentList().length) {
-    html += dnesCardHtml('linear-gradient(90deg,#475569,#94A3B8)', 'Nedávno otvorení', '',
+    blocks.nedavno = dnesCardHtml('linear-gradient(90deg,#475569,#94A3B8)', 'Nedávno otvorení', '',
                          '<div class="hist-recent" id="dnes-recent"></div>');
   }
+
+  // Karty v poradí, ktoré si používateľ nastavil v Nastaveniach (Poradie na
+  // Domove) — chýbajúce/nedostupné kľúče sa jednoducho preskočia.
+  dnesHomeOrderKeys().forEach(function (key) { if (blocks[key]) html += blocks[key]; });
 
   if (!html) {
     html = '<div class="card"><div class="card-inner"><div class="dnes-empty">' +
@@ -7012,60 +7052,12 @@ function userPrefsSet(patch){
   } catch(e){}
 }
 
-// Ktorá obrazovka sa má otvoriť po prihlásení.
-//
-// Uložené voľby pochádzajú z času, keď Domov ešte neexistoval pre všetky roly
-// a manažér ani gyn si ho nemali ako zvoliť — ich „Plnenie" teda nie je
-// rozhodnutie proti Domovu, len jediná vtedajšia možnosť. Kým si používateľ
-// úvodnú obrazovku nezvolí nanovo (v Nastaveniach), domovom je Domov.
-// Marker je lokálny, aby sa uložená voľba v Sheete nikomu neprepísala.
-// Kľúč nesie verziu: keď sa úvodná obrazovka zmení, staré voľby sa zahodia
-// a znovu platí Domov, kým si používateľ nevyberie nanovo. Bez toho by
-// zostávalo visieť nastavenie z čias, keď Domov ešte pre danú rolu neexistoval.
-var DOMOV_VOLBA_KEY = 'satori_uvodna_obrazovka_v282';
-function appVolbaPotvrdena() {
-  try { return localStorage.getItem(DOMOV_VOLBA_KEY) === '1'; } catch (e) { return false; }
-}
+// Ktorá obrazovka sa má otvoriť po prihlásení. Predtým si to používateľ vedel
+// zvoliť v Nastaveniach (Plnenie/História/Rebríček/…) — Ivan to zámerne
+// zjednodušil: vždy Domov, bez výnimky. Voľba aj jej UI boli odstránené;
+// funkcia ostáva (veľa miest v appke sa na ňu pýta), len teraz nemá čo voliť.
 function appDefaultTab() {
-  if (!appVolbaPotvrdena()) return 'dnes';
-  var def = '';
-  try { def = String(userPrefsGet().defaultTab || '').trim(); } catch (e) {}
-  return def || 'dnes';
-}
-
-// Predvolená záložka po prihlásení — ulož voľbu (sync cez Sheets) + potvrdenie.
-// Po výbere aktualizuj zobrazenú hodnotu, zlož editor a zvýrazni vybranú možnosť.
-function settingsSetDefaultTab(val){
-  val = val || 'form';
-  // Od tejto chvíle je to vlastná voľba používateľa a Domov ju neprebíja.
-  try { localStorage.setItem(DOMOV_VOLBA_KEY, '1'); } catch (e) {}
-  userPrefsSet({ defaultTab: val });
-  try { haptic('selection'); } catch(e){}
-  try {
-    var opts = settingsDefaultTabOpts(getSession()).opts;
-    var lbl = (opts.filter(function(o){ return o[0] === val; })[0] || ['', val])[1];
-    var valEl = document.getElementById('set-dt-current-val');
-    if(valEl) valEl.textContent = lbl;
-    document.querySelectorAll('#set-dt-editor .set-dt-opt').forEach(function(b){
-      b.classList.toggle('selected', b.getAttribute('data-val') === val);
-    });
-  } catch(e){}
-  settingsDefaultTabEdit(false);
-  var el = document.getElementById('set-defaulttab-saved');
-  if(el){
-    el.classList.add('show');
-    clearTimeout(window._setSavedT);
-    window._setSavedT = setTimeout(function(){ el.classList.remove('show'); }, 2200);
-  }
-}
-// Rozbaľ / zlož zoznam možností úvodnej obrazovky
-function settingsDefaultTabEdit(open){
-  var cur = document.getElementById('set-dt-current');
-  var ed  = document.getElementById('set-dt-editor');
-  if(!cur || !ed) return;
-  cur.style.display = open ? 'none' : 'flex';
-  ed.style.display  = open ? 'flex' : 'none';
-  if(open){ try { haptic('selection'); } catch(e){} }
+  return 'dnes';
 }
 
 // ── PORADIE PRODUKTOV — vlastné usporiadanie produktových kariet v Plnení ──
@@ -7186,6 +7178,27 @@ function settingsProdOrderProducts(){
   });
   return items;
 }
+// ── Poradie na Domove — v akom poradí sa majú ukazovať karty na Domove.
+// Rovnaký drag mechanizmus ako Poradie produktov (poRowDown/poBeginDrag/…),
+// len iná skupina (data-po-group="home") a iný cieľ uloženia (homeOrder).
+function settingsHomeOrderCard(s){
+  s = s || getSession(); if(!s) return '';
+  var rola = (typeof appRole === 'function') ? appRole() : 'gp';
+  var cards = DNES_HOME_CARDS.filter(function(c){ return !c.onlyGp || rola === 'gp'; });
+  var ord = userPrefsGet().homeOrder || [];
+  var items = cards.map(function(c, i){ return { key: c.key, label: c.label, _i: i }; });
+  items.sort(function(a, b){
+    var ai = ord.indexOf(a.key), bi = ord.indexOf(b.key);
+    var aIn = ai !== -1, bIn = bi !== -1;
+    if(aIn && bIn) return ai - bi;
+    if(aIn !== bIn) return aIn ? -1 : 1;
+    return a._i - b._i;
+  });
+  var body = '<div class="set-row-desc">Potiahni za úchyt <strong>☰</strong> a usporiadaj si karty v poradí, v akom ich chceš mať na <strong>Domove</strong>. „Rozpracované" ostáva vždy navrchu. Uloží sa to aj na iné zariadenie.</div>' +
+    poListHtml(items, 'home') +
+    '<span class="set-saved" id="ho-saved" style="display:block;margin-top:8px">✓ Uložené</span>';
+  return settingsCardHtml('linear-gradient(90deg,#0F766E,#5EEAD4)', 'Poradie na Domove', body);
+}
 function settingsProdOrderCard(s){
   s = s || getSession(); if(!s) return '';
   var items = settingsProdOrderProducts();
@@ -7223,9 +7236,12 @@ function settingsProdOrderCard(s){
   }
   return settingsCardHtml('linear-gradient(90deg,#D97706,#FCD34D)', 'Poradie produktov', inner);
 }
-// Jeden presúvateľný zoznam (vlastné číslovanie 1..n)
-function poListHtml(items){
-  return '<div class="po-list">' +
+// Jeden presúvateľný zoznam (vlastné číslovanie 1..n). group rozlišuje, KAM sa
+// má pri pustení uložiť poradie (poEnd) — 'prod' (predvolené) = Poradie
+// produktov, 'home' = Poradie na Domove. Bez toho by druhý zoznam na tej istej
+// stránke omylom miešal svoje kľúče do prvého (obe skupiny majú triedu .po-list).
+function poListHtml(items, group){
+  return '<div class="po-list" data-po-group="' + settingsEsc(group || 'prod') + '">' +
     items.map(function(it, i){
       return '<div class="po-row" data-key="' + settingsEsc(it.key) + '" onpointerdown="poRowDown(event)">' +
                '<span class="po-handle" aria-hidden="true">☰</span>' +
@@ -7374,7 +7390,9 @@ function poEnd(){
   row.style.transform = '';
   setTimeout(function(){ row.classList.remove('po-dragging'); row.style.transition = ''; row.style.transform = ''; }, 210);
   poRenumber();
-  settingsProdOrderSave();
+  var grp = 'prod';
+  try { var list = row.closest('.po-list'); if(list) grp = list.getAttribute('data-po-group') || 'prod'; } catch(e){}
+  if(grp === 'home') settingsHomeOrderSave(); else settingsProdOrderSave();
 }
 function poRenumber(){
   Array.prototype.forEach.call(document.querySelectorAll('.po-list'), function(list){
@@ -7384,7 +7402,7 @@ function poRenumber(){
   });
 }
 function settingsProdOrderSave(){
-  var lists = document.querySelectorAll('.po-list'); if(!lists.length) return;
+  var lists = document.querySelectorAll('.po-list[data-po-group="prod"]'); if(!lists.length) return;
   // Pozbieraj kľúče zo všetkých zoznamov (Gyn má Pill/Patch sekcie) v poradí, dedupe
   var keys = [], seen = {};
   Array.prototype.forEach.call(lists, function(list){
@@ -7409,6 +7427,24 @@ function settingsProdOrderSave(){
     }
   } catch(e){}
 }
+function settingsHomeOrderSave(){
+  var lists = document.querySelectorAll('.po-list[data-po-group="home"]'); if(!lists.length) return;
+  var keys = [], seen = {};
+  Array.prototype.forEach.call(lists, function(list){
+    Array.prototype.forEach.call(list.querySelectorAll('.po-row'), function(r){
+      var k = r.getAttribute('data-key');
+      if(k && !seen[k]){ seen[k] = 1; keys.push(k); }
+    });
+  });
+  userPrefsSet({ homeOrder: keys });
+  var el = document.getElementById('ho-saved');
+  if(el){ el.classList.add('show'); clearTimeout(window._hoSavedT); window._hoSavedT = setTimeout(function(){ el.classList.remove('show'); }, 2000); }
+  // Premietni nové poradie hneď, ak je Domov práve otvorený.
+  try {
+    var ov = document.getElementById('dnes-overlay');
+    if(ov && ov.classList.contains('show') && typeof dnesRender === 'function') dnesRender();
+  } catch(e){}
+}
 // Uložené poradie produktov — Golem (null ak žiadne / gyn línia)
 function plnenieUserProdOrder(){
   var s = (typeof getSession === 'function') ? getSession() : null;
@@ -7422,62 +7458,6 @@ function gynUserProdOrder(){
   if(!s || s.line !== 'gyn') return null;
   var o = userPrefsGet().prodOrder;
   return (o && Object.prototype.toString.call(o) === '[object Array]' && o.length) ? o : null;
-}
-
-// Zoznam možností úvodnej obrazovky podľa role + línie prihláseného používateľa.
-// GP rep: Formulár/História/Rebríček/Plnenie/Lekárne.
-// Manažér (GP) a celá Gyn línia (rep aj manažér): Plnenie/Návštevy/Rebríček (+Aktivita admin).
-function settingsDefaultTabOpts(s){
-  if(!s) return { opts: [['dnes','🏠 Domov']], hint: 'Domov' };
-  var isGyn   = s.line === 'gyn';
-  var isReagila = s.line === 'reagila';
-  var mgrRole = (typeof mgrDetectRole === 'function') ? mgrDetectRole(s) : null;
-  var isAdmin = (mgrRole === 'admin') || (isGyn && s.role === 'admin');
-  // Reagila línia má vlastné záložky (žiadny Formulár/Návštevy/História)
-  if(isReagila){
-    if(mgrRole){
-      // Manažér/admin: Plnenie · Kalendár · Rebríček (+ Aktivita pre admina) — kľúče mgr subtabov
-      var ro = [['dnes','🏠 Domov'],['plnenie','💊 Plnenie'],['kalendar','📅 Kalendár'],['leaderboard','🏆 Rebríček']];
-      if(isAdmin) ro.push(['activity','📈 Aktivita']);
-      return { opts: ro, hint: 'Domov' };
-    }
-    // KAM reprezentant: Plnenie · Kalendár · Lekárne · Okresy · Rebríček — kľúče rep záložiek
-    return { opts: [['dnes','🏠 Domov'],['plnenie','💊 Plnenie'],['kalendar','📅 Kalendár'],['lekarne','🏪 Lekárne'],['okresy','📍 Okresy'],['rebricek','🏆 Rebríček']], hint: 'Domov' };
-  }
-  if(isGyn || mgrRole){
-    var opts = [['dnes','🏠 Domov'],['plnenie','💊 Plnenie'],['kalendar','📅 Kalendár'],['visits','📋 Návštevy'],['leaderboard','🏆 Rebríček']];
-    if(isAdmin || (isGyn && typeof gynActivityAllowed === 'function' && gynActivityAllowed(s))) opts.push(['activity','📈 Aktivita']);
-    return { opts: opts, hint: 'Domov' };
-  }
-  return { opts: [['dnes','🏠 Domov'],['form','📝 Formulár GP'],['historia','📋 História'],['rebricek','🏆 Rebríček'],['plnenie','💊 Plnenie'],['lekarne','🏪 Lekárne'],['okresy','📍 Okresy'],['kalendar','📅 Kalendár']], hint: 'Domov' };
-}
-function settingsDefaultTabHtml(s){
-  var cfg = settingsDefaultTabOpts(s);
-  var opts = cfg.opts;
-  var def = appDefaultTab() || opts[0][0];
-  // Ak uložená hodnota nepatrí do aktuálnej ponuky (zmena role/línie), spadni na prvú
-  if(!opts.some(function(o){ return o[0] === def; })) def = opts[0][0];
-  var curLbl = (opts.filter(function(o){ return o[0] === def; })[0] || opts[0])[1];
-  // Rozbaľovací zoznam možností (skrytý, zobrazí sa po kliknutí na ceruzku)
-  var optHtml = opts.map(function(o){
-    var sel = (o[0] === def) ? ' selected' : '';
-    return '<button type="button" class="set-dt-opt' + sel + '" data-val="' + o[0] + '" onclick="settingsSetDefaultTab(\'' + o[0] + '\')">' +
-             '<span class="set-dt-opt-lbl">' + o[1] + '</span>' +
-             '<span class="set-dt-opt-check">✓</span>' +
-           '</button>';
-  }).join('');
-  return '<div class="set-default-tab">' +
-           '<div class="set-row-label" style="margin-bottom:3px">Úvodná obrazovka</div>' +
-           '<div class="set-row-desc">Čo sa otvorí hneď po prihlásení. Štandardne <strong>' + settingsEsc(cfg.hint) + '</strong>.</div>' +
-           '<div class="set-dt-current" id="set-dt-current" onclick="settingsDefaultTabEdit(true)">' +
-             '<span class="set-dt-current-val" id="set-dt-current-val">' + curLbl + '</span>' +
-             '<button type="button" class="set-dt-edit-btn" aria-label="Zmeniť úvodnú obrazovku" onclick="event.stopPropagation();settingsDefaultTabEdit(true)">' +
-               '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>' +
-             '</button>' +
-           '</div>' +
-           '<div class="set-dt-editor" id="set-dt-editor" style="display:none">' + optHtml + '</div>' +
-           '<span class="set-saved" id="set-defaulttab-saved" style="display:block;margin-top:8px">✓ Uložené</span>' +
-         '</div>';
 }
 
 // ── Aplikácia — sekcia (dáta, haptika, prepínač línie pre admina, cache) ──
@@ -7511,8 +7491,11 @@ function settingsAppHtml(s){
             '<button type="button" class="set-switch' + (gsOn ? ' on' : '') + '" role="switch" aria-checked="' + (gsOn ? 'true' : 'false') + '" aria-label="Globálne vyhľadávanie" onclick="settingsToggleGlobalSearch()"></button>' +
           '</div>';
 
-  // Predvolená (úvodná) obrazovka po prihlásení — reprezentant aj manažér, GP aj Gyn
-  html += settingsDefaultTabHtml(s);
+  // Poradie kariet na Domove — nahradilo predtým tu bývalú voľbu úvodnej
+  // obrazovky (Ivan: Domov má byť vždy jediná, appDefaultTab() to teraz
+  // vracia napevno). Namiesto výberu obrazovky si používateľ vie usporiadať,
+  // čo sa mu na Domove ukáže v akom poradí.
+  html += settingsHomeOrderCard(s);
 
   // ── Línie — len keď je čo riešiť (jedna alebo viac línií naraz pre managera/admina) ──
   var linesHtml = '';
@@ -7573,7 +7556,11 @@ function settingsAppHtml(s){
   // líniách (AM v Goleme + KAM v Reagile, PM, BUM…) — a bez tejto záchrany uviazne v Gyn/Reagile
   // bez Golemu a bez prepínača. Ukazujeme to len tomu, kto práve NIE JE v Goleme a Golem
   // mu v dual session chýba; Golem-only reprezentanti (väčšina) to nikdy neuvidia.
-  if(typeof mgrCurrentLine === 'function' && mgrCurrentLine() !== 'gp' && !(_dualNow && _dualNow.gp)){
+  // ROOT CAUSE (Ivan): tu chýbala aj _isMgrLines podmienka — bežný gyn/reagila
+  // reprezentant (jedna línia, žiadna dual session) mal mgrCurrentLine()!=='gp'
+  // aj chýbajúci dual.gp VŽDY pravdivé, takže mu appka ukazovala "Chýba ti
+  // Golem línia?", hoci Golem nikdy nemal a nemôže mať.
+  if(_isMgrLines && typeof mgrCurrentLine === 'function' && mgrCurrentLine() !== 'gp' && !(_dualNow && _dualNow.gp)){
     linesHtml += '<div class="set-collapse-sub">' +
               '<div class="set-card-sub">Chýba ti Golem línia?</div>' +
               '<div class="set-row-desc">Ak sa Golem pri prihlásení nenačítal (cold start servera, pomalé pripojenie alebo druhé zariadenie), môžeš ho doplniť <strong>bez odhlásenia</strong>. Zadáš heslo, appka načíta Golem líniu a prepne sa do nej.</div>' +
