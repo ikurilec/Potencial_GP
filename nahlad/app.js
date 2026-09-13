@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.44';
+var APP_VERSION = '2.87.45';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -7197,7 +7197,10 @@ function settingsHomeOrderCard(s){
   var body = '<div class="set-row-desc">Potiahni za úchyt <strong>☰</strong> a usporiadaj si karty v poradí, v akom ich chceš mať na <strong>Domove</strong>. „Rozpracované" ostáva vždy navrchu. Uloží sa to aj na iné zariadenie.</div>' +
     poListHtml(items, 'home') +
     '<span class="set-saved" id="ho-saved" style="display:block;margin-top:8px">✓ Uložené</span>';
-  return settingsCardHtml('linear-gradient(90deg,#0F766E,#5EEAD4)', 'Poradie na Domove', body);
+  // Zbalené, presne ako Poradie produktov — nastavuje sa raz a potom sa na
+  // to nepozerá, tak nech na Nastaveniach nezaberá miesto zbytočne.
+  var inner = settingsCollapseHtml('homeorder', 'Zobraziť poradie (' + items.length + ')', body, false);
+  return settingsCardHtml('linear-gradient(90deg,#0F766E,#5EEAD4)', 'Poradie na Domove', inner);
 }
 function settingsProdOrderCard(s){
   s = s || getSession(); if(!s) return '';
