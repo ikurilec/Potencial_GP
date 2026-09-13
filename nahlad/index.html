@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@700&display=swap">
-<link rel="stylesheet" href="dist/app.f0693e58.css">
+<link rel="stylesheet" href="dist/app.246a0f17.css">
 <!-- Firebase Cloud Messaging — natívne push notifikácie (defer aby nebrzdil štart) -->
 <script defer src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js"></script>
@@ -38,7 +38,7 @@
     text-transform:uppercase;text-align:center;line-height:19px;height:calc(19px + env(safe-area-inset-top, 0px));
     padding-top:env(safe-area-inset-top, 0px);pointer-events:none;opacity:.95}
 </style>
-<div id="nahlad-pas">Náhľad 2.87.33 — píše do ostrých dát</div>
+<div id="nahlad-pas">Náhľad 2.87.34 — píše do ostrých dát</div>
 <div id="sw-toast" class="sw-toast"></div>
 <div class="send-bar" id="send-bar"></div>
 <div class="app">
@@ -1003,7 +1003,7 @@
 <div class="footer">Intern&#253; n&#225;stroj pre medic&#237;nskych reprezentantov<br><span style="font-size:10px;color:#B0BAC4">Designed &amp; developed by Ivan Kurilec &middot; Gedeon Richter Slovakia &middot; 2026</span></div>
 </div>
 
-<script src="dist/app.2a2ee28e.js"></script>
+<script src="dist/app.393b174c.js"></script>
 
 <!-- ── LOGOUT CONFIRM ── -->
 <div class="logout-overlay" id="logout-overlay">
@@ -1042,6 +1042,7 @@
     <div class="pwd-change-field">
       <label for="pwd-change-new">Nové heslo</label>
       <input type="password" id="pwd-change-new" autocomplete="new-password" placeholder="••••••••">
+      <div class="pwd-change-hint">Aspoň 8 znakov</div>
     </div>
     <div class="pwd-change-field">
       <label for="pwd-change-confirm">Zopakuj nové heslo</label>
@@ -1473,6 +1474,14 @@
   .nst-sort{display:flex;gap:4px;background:#fff;border:1px solid #E2E8F0;border-radius:11px;padding:3px}
   .nst-sort-btn{border:none;background:transparent;color:#64748B;font-size:12px;font-weight:700;font-family:inherit;padding:7px 10px;border-radius:8px;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap}
   .nst-sort-btn.on{background:#0C1E35;color:#fff}
+  .nst-filter-btn{display:flex;align-items:center;gap:6px;height:40px;padding:0 13px;border-radius:11px;border:1px solid #E2E8F0;background:#fff;color:#334155;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap;flex-shrink:0}
+  .nst-filter-btn.on{border-color:#2563EB;color:#2563EB}
+  .nst-filter-btn.expanded{background:#0C1E35;border-color:#0C1E35;color:#fff}
+  .nst-filter-badge{background:#2563EB;color:#fff;font-size:10.5px;font-weight:800;border-radius:999px;min-width:16px;height:16px;display:flex;align-items:center;justify-content:center;padding:0 4px}
+  .nst-filter-btn.expanded .nst-filter-badge{background:#fff;color:#0C1E35}
+  .nst-filter-caret{font-size:9px;opacity:.6}
+  .nst-filter-clear{border:none;background:transparent;color:#94A3B8;font-size:12px;font-weight:700;font-family:inherit;padding:7px 4px;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap}
+  .nst-filterpanel{margin-top:2px;padding-top:8px;border-top:1px solid #EEF2F7}
 
   /* Príspevok */
   .nst-post{background:#fff;border-radius:16px;padding:14px 15px;box-shadow:0 2px 10px rgba(15,23,42,.06);border:1px solid #EEF2F7;margin-bottom:11px;overflow:hidden}

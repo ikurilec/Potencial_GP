@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.87.33';
+var APP_VERSION = '2.87.34';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -6646,8 +6646,11 @@ function settingsSubmitPasswordChange(){
         if(btn){ btn.disabled = false; btn.textContent = 'Zmeniť heslo'; }
       }
     })
-    .catch(function(){
+    .catch(function(err){
       oldPwd = newPwd = confPwd = null;
+      // Diagnostika pre budúci report — appka sama nevie, či ide o CORS,
+      // ešte nenasadený backend (action=changePassword) alebo skutočný výpadok.
+      try { if (window.console) console.error('[pwd-change] fetch zlyhal:', err); } catch(e){}
       showMsg('Zmena hesla sa nepodarila — skontroluj pripojenie a skús znova.');
       if(btn){ btn.disabled = false; btn.textContent = 'Zmeniť heslo'; }
     });
@@ -36458,7 +36461,8 @@ var NST = {
   likesOpen: {},       // id → rozbalený celý zoznam „pomohlo mi"
   votersOpen: {},      // id → rozbalený prehľad „kto ako hlasoval“
   composeCat: '', composeProd: '', composeOpts: ['', ''],
-  _reqId: 0, _sending: false, _loadT: null, _opened: false, _primed: false
+  _reqId: 0, _sending: false, _loadT: null, _opened: false, _primed: false,
+  _filterOpen: false
 };
 
 var NST_CATS = [
@@ -36739,6 +36743,13 @@ function nstSetProd(k){ NST.prod = k; nstRender(); try { haptic('selection'); } 
 function nstSetRegion(k){ NST.region = k; nstRender(); try { haptic('selection'); } catch(e){} }
 function nstSetSort(k){ NST.sort = (k === 'top') ? 'top' : 'new'; nstRender(); try { haptic('selection'); } catch(e){} }
 function nstSearch(el){ NST.q = el.value || ''; nstRenderList(); }
+// Zjednodušenie filtra (Ivan, 13.9.2026) — kategórie/produkt/región boli
+// natrvalo vypísané v 3 riadkoch nad zoznamom, aj keď ich väčšina ľudí
+// nepoužíva pri každom otvorení. Teraz sú schované za tlačidlo Filter,
+// hore ostáva len hľadanie + zoradenie.
+function nstToggleFilterPanel(){ NST._filterOpen = !NST._filterOpen; nstRender(); try { haptic('selection'); } catch(e){} }
+function nstClearFilters(){ NST.cat = 'all'; NST.prod = 'all'; NST.region = 'all'; nstRender(); try { haptic('selection'); } catch(e){} }
+function nstActiveFilterCount(){ return (NST.cat !== 'all' ? 1 : 0) + (NST.prod !== 'all' ? 1 : 0) + (NST.region !== 'all' ? 1 : 0); }
 
 // ── Render: hlavička + filtre + zoznam ──
 function nstRender(){
@@ -36771,21 +36782,33 @@ function nstRender(){
       '</div>' +
       '<button type="button" class="nst-new-btn" onclick="nstComposeOpen()">＋ Pridať príspevok</button>' +
     '</div>' +
-    '<div class="nst-filters">' +
-      '<div class="nst-chiprow">' + catChips + '</div>' +
-      '<div class="nst-filterrow">' +
-        '<select class="nst-select nst-select-half" onchange="nstSetProd(this.value)">' + prodOpts + '</select>' +
-        '<select class="nst-select nst-select-half" onchange="nstSetRegion(this.value)">' + regOpts + '</select>' +
-      '</div>' +
-      '<div class="nst-filterrow">' +
-        '<div class="nst-search"><span class="nst-search-ico">🔍</span>' +
-          '<input type="text" id="nst-q" placeholder="Hľadať v príspevkoch…" value="' + nstEsc(NST.q) + '" oninput="nstSearch(this)" autocomplete="off"></div>' +
-        '<div class="nst-sort">' +
-          '<button type="button" class="nst-sort-btn' + (NST.sort === 'new' ? ' on' : '') + '" onclick="nstSetSort(\'new\')">Najnovšie</button>' +
-          '<button type="button" class="nst-sort-btn' + (NST.sort === 'top' ? ' on' : '') + '" onclick="nstSetSort(\'top\')">Najužitočnejšie</button>' +
+    (function(){
+      var activeN = nstActiveFilterCount();
+      var open = !!NST._filterOpen;
+      return '<div class="nst-filters">' +
+        '<div class="nst-filterrow">' +
+          '<div class="nst-search"><span class="nst-search-ico">🔍</span>' +
+            '<input type="text" id="nst-q" placeholder="Hľadať v príspevkoch…" value="' + nstEsc(NST.q) + '" oninput="nstSearch(this)" autocomplete="off"></div>' +
+          '<button type="button" class="nst-filter-btn' + (activeN ? ' on' : '') + (open ? ' expanded' : '') + '" onclick="nstToggleFilterPanel()">' +
+            'Filter' + (activeN ? '<span class="nst-filter-badge">' + activeN + '</span>' : '') + '<span class="nst-filter-caret">' + (open ? '▲' : '▼') + '</span>' +
+          '</button>' +
         '</div>' +
-      '</div>' +
-    '</div>' +
+        '<div class="nst-filterrow">' +
+          '<div class="nst-sort">' +
+            '<button type="button" class="nst-sort-btn' + (NST.sort === 'new' ? ' on' : '') + '" onclick="nstSetSort(\'new\')">Najnovšie</button>' +
+            '<button type="button" class="nst-sort-btn' + (NST.sort === 'top' ? ' on' : '') + '" onclick="nstSetSort(\'top\')">Najužitočnejšie</button>' +
+          '</div>' +
+          (activeN ? '<button type="button" class="nst-filter-clear" onclick="nstClearFilters()">Zrušiť filter ×</button>' : '') +
+        '</div>' +
+        '<div class="nst-filterpanel"' + (open ? '' : ' hidden') + '>' +
+          '<div class="nst-chiprow">' + catChips + '</div>' +
+          '<div class="nst-filterrow">' +
+            '<select class="nst-select nst-select-half" onchange="nstSetProd(this.value)">' + prodOpts + '</select>' +
+            '<select class="nst-select nst-select-half" onchange="nstSetRegion(this.value)">' + regOpts + '</select>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    })() +
     '<div id="nst-list"></div>';
   nstRenderList();
 }
