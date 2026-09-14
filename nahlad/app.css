@@ -1429,6 +1429,10 @@
   .swipe-back-active,.swipe-back-completing{transform:translate3d(var(--swipe-back-x,0px),0,0)!important;will-change:transform;box-shadow:-12px 0 28px rgba(12,30,53,.18);touch-action:pan-y}
   .swipe-back-active{transition:none!important}
   .swipe-back-completing{transition:transform .17s cubic-bezier(.22,.9,.32,1)!important}
+  /* Všetky návratové šípky majú rovnaký, spoľahlivý mobilný zásahový priestor.
+     Pseudo-element zväčší aktívnu zónu bez toho, aby menil vyváženie hlavičky. */
+  button[data-app-back]{position:relative;z-index:4;min-width:48px;min-height:48px;cursor:pointer;touch-action:manipulation}
+  button[data-app-back]::after{content:'';position:absolute;inset:-10px}
   @media(orientation:portrait){
     .pharma-okres-overlay.swipe-back-active,.pharma-okres-overlay.swipe-back-completing{transform:translate(calc(-50% + var(--swipe-back-x,0px)),-50%) rotate(90deg)!important}
   }

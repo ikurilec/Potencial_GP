@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@700&display=swap">
-<link rel="stylesheet" href="dist/app.ac6b68a5.css">
+<link rel="stylesheet" href="dist/app.0b00339e.css">
 <!-- Firebase Cloud Messaging — natívne push notifikácie (defer aby nebrzdil štart) -->
 <script defer src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js"></script>
@@ -144,7 +144,7 @@
 
   <!-- Detail reprezentanta — zoznam jeho návštev -->
   <div class="mgr-detail" id="mgr-detail">
-    <button class="mgr-back" onclick="mgrCloseRep()">&larr; Späť na zoznam</button>
+    <button type="button" class="mgr-back" data-app-back onclick="mgrCloseRep()">&larr; Späť na zoznam</button>
     <div class="mgr-dhdr">
       <div class="mgr-davatar" id="mgr-davatar">—</div>
       <div style="flex:1;min-width:0">
@@ -247,7 +247,7 @@
 
   <!-- Plnenie — Detail reprezentanta (v2.3.1) -->
   <div class="mgr-plnenie-detail" id="mgr-plnenie-detail">
-    <button type="button" class="pl-detail-back" onclick="plnenieCloseDetail()">&larr; Späť na zoznam</button>
+    <button type="button" class="pl-detail-back" data-app-back onclick="plnenieCloseDetail()">&larr; Späť na zoznam</button>
 
     <div class="dhdr">
       <div class="dhdr-avatar" id="pl-detail-avatar">—</div>
@@ -314,7 +314,7 @@
           <button class="lk-tab" data-lk-tab="new" onclick="lkMgrSwitchTab('new',this)">Nové 🟢</button>
           <button class="lk-tab" data-lk-tab="all" onclick="lkMgrSwitchTab('all',this)">Všetky</button>
         </div>
-        <button type="button" class="lk-floating-back" onclick="plnenieDetailSwitchSubtab('predaje',null);window.scrollTo(0,0)">← Späť na plnenie</button>
+        <button type="button" class="lk-floating-back" data-app-back onclick="plnenieDetailSwitchSubtab('predaje',null);window.scrollTo(0,0)">← Späť na plnenie</button>
       </div>
       <div class="mgr-lk-wrap" id="pl-detail-lekarne-body">
         <div class="lk-empty">Načítavam…</div>
@@ -606,7 +606,7 @@
   <div class="sklady-overlay" id="sklady-overlay" role="dialog" aria-modal="true" aria-label="Sklady">
     <div class="sklady-inner">
       <div class="sklady-hd">
-        <button type="button" class="sklady-back" onclick="closeSklady()" aria-label="Späť">←</button>
+        <button type="button" class="sklady-back" data-app-back onclick="closeSklady()" aria-label="Späť">←</button>
         <div><div class="sklady-title">Sklady</div><div class="sklady-sub" id="sklady-sub">Aktuálny stav zásob</div></div>
       </div>
       <div id="sklady-body"></div>
@@ -616,7 +616,7 @@
   <div class="team-plnenie-overlay" id="team-plnenie-overlay" role="dialog" aria-modal="true" aria-label="Tímové plnenie">
     <div class="team-plnenie-inner">
       <div class="team-plnenie-hd">
-        <button type="button" class="team-plnenie-back" id="team-plnenie-back" aria-label="Späť">←</button>
+        <button type="button" class="team-plnenie-back" id="team-plnenie-back" data-app-back aria-label="Späť">←</button>
         <div>
           <div class="team-plnenie-title" id="team-plnenie-title">Tímové plnenie</div>
           <div class="team-plnenie-sub" id="team-plnenie-sub">Golem · aktuálny kvartál</div>
@@ -629,7 +629,7 @@
   <div class="gpp-overlay" id="gpp-overlay">
     <div class="gpp-inner">
       <div class="gpp-hd">
-        <button type="button" class="gpp-back" onclick="closeGpPicker()" aria-label="Späť">←</button>
+        <button type="button" class="gpp-back" data-app-back onclick="closeGpPicker()" aria-label="Späť">←</button>
         <div>
           <div class="gpp-title">Aktualizovať potenciál</div>
           <div class="gpp-sub">Vyber GP lekára alebo záznam Len Lonelix</div>
@@ -709,7 +709,7 @@
   <!-- ── REBRÍČEK ── -->
   <div class="lb-overlay" id="lb-overlay">
     <div class="lb-inner">
-      <button type="button" class="mgr-back panel-nav-mgr-back" onclick="closeLeaderboard()">← Späť</button>
+      <button type="button" class="mgr-back panel-nav-mgr-back" data-app-back onclick="closeLeaderboard()">← Späť</button>
       <div class="lb-hdr">
         <div class="lb-hdr-title">🏆 Rebríček tímu</div>
         <div class="lb-hdr-sub" id="lb-hdr-sub">Gedeon Richter Slovakia · 2026</div>
@@ -862,7 +862,7 @@
 <div class="footer">Intern&#253; n&#225;stroj pre medic&#237;nskych reprezentantov<br><span style="font-size:10px;color:#B0BAC4">Designed &amp; developed by Ivan Kurilec &middot; Gedeon Richter Slovakia &middot; 2026</span></div>
 </div>
 
-<script src="dist/app.befc3998.js"></script>
+<script src="dist/app.025f3dd9.js"></script>
 
 <!-- ── LOGOUT CONFIRM ── -->
 <div class="logout-overlay" id="logout-overlay">
@@ -1508,7 +1508,7 @@
 </style>
 <div id="nastenka-overlay">
   <div class="nst-inner">
-    <div class="nst-topbar"><button type="button" class="nst-back" onclick="closeNastenka()">&larr; Späť</button></div>
+    <div class="nst-topbar"><button type="button" class="nst-back" data-app-back onclick="closeNastenka()">&larr; Späť</button></div>
     <div id="nastenka-body"></div>
   </div>
 </div>
@@ -1590,7 +1590,7 @@
 <div class="lk-detail" id="lk-detail">
   <div class="lk-detail-inner">
     <div class="lk-det-hdr">
-      <button class="lk-det-back" onclick="closeLkarneDetail()">← Späť</button>
+      <button type="button" class="lk-det-back" data-app-back onclick="closeLkarneDetail()">← Späť</button>
       <div class="lk-det-title" id="lk-detail-title">Lekáreň</div>
     </div>
     <div id="lk-detail-body"></div>
@@ -1601,7 +1601,7 @@
 <div class="pharma-ms-overlay" id="pharma-ms-overlay">
   <div class="pharma-ms-inner">
     <div class="pharma-ms-hdr">
-      <button type="button" class="pharma-ms-back" onclick="closePharmaMs()">← Späť</button>
+      <button type="button" class="pharma-ms-back" data-app-back onclick="closePharmaMs()">← Späť</button>
       <span class="pharma-ms-title" id="pharma-ms-title">Trhový podiel</span>
       <span class="pharma-ms-mesiac" id="pharma-ms-mesiac"></span>
     </div>
@@ -1783,7 +1783,7 @@ function rptEnsureHtml2pdf(cb) {
 <div class="settings-overlay" id="settings-overlay">
   <div class="settings-inner">
     <div class="set-topbar">
-      <button type="button" class="set-back" onclick="settingsBack()" aria-label="Späť">←</button>
+      <button type="button" class="set-back" data-app-back onclick="settingsBack()" aria-label="Späť">←</button>
       <div class="set-title">Nastavenia</div>
     </div>
     <div id="settings-body"></div>

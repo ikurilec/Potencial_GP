@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.9';
+var APP_VERSION = '2.88.10';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -14860,7 +14860,7 @@ function gynLkDetailHtml(ph){
       rowsH + reaChipForDetail(pe) + twin + contact +
     '</div>';
   }).join('');
-  return '<button type="button" class="lk-det-back" style="margin-bottom:12px" onclick="gynLkCloseDetail()">← Späť</button>' +
+  return '<button type="button" class="lk-det-back" data-app-back style="margin-bottom:12px" onclick="gynLkCloseDetail()">← Späť</button>' +
     gynLkDetailNameHtml(ph) +
     '<div class="lk-item-sub" style="margin:2px 0 4px"><b>'+gynEsc(ph.okres)+'</b> · '+gynEsc(ph.mesto)+'</div>' +
     body;
@@ -15066,7 +15066,7 @@ function gynPlnenieRenderRepDetail(el, data) {
   var avGd = gynAvatarContent(login, meno);
   var html =
     '<div class="mgr-plnenie-detail" style="display:block">' +
-      '<button type="button" class="mgr-back" onclick="gynCloseRepDetail()" style="margin-bottom:10px">← Späť</button>' +
+      '<button type="button" class="mgr-back" data-app-back onclick="gynCloseRepDetail()" style="margin-bottom:10px">← Späť</button>' +
       '<div class="dhdr">' +
         '<div class="dhdr-avatar' + (avGd.hasAvatar ? ' has-avatar' : '') + '" data-username="' + login + '" style="background:'+avatarColor+'">' + avGd.html + '</div>' +
         '<div style="flex:1;min-width:0">' +
@@ -17153,7 +17153,7 @@ function gynCalOpenDetail(dk, id){
   sh.innerHTML=
     '<div class="gyn-cal-sheet-grip"></div>'+
     '<div class="gyn-cal-sheet-hdr">'+
-      '<button class="gyn-cal-sheet-back" onclick="gynCalRenderDayView(getSession(),\''+dk+'\')" aria-label="Späť">‹</button>'+
+      '<button type="button" class="gyn-cal-sheet-back" data-app-back onclick="gynCalRenderDayView(getSession(),\''+dk+'\')" aria-label="Späť">‹</button>'+
       '<div class="gyn-cal-sheet-date">Udalosť</div>'+
       '<div class="gyn-cal-sheet-hdr-actions">'+
         (canEdit?'<button class="gyn-cal-sheet-edit" onclick="gynCalOpenForm(\''+dk+'\',\''+id+'\')" aria-label="Upraviť">✏️</button>':'')+
@@ -17214,7 +17214,7 @@ function gynCalOpenForm(dk, editId){
   sh.innerHTML=
     '<div class="gyn-cal-sheet-grip"></div>'+
     '<div class="gyn-cal-sheet-hdr">'+
-      '<button class="gyn-cal-sheet-back" onclick="gynCalRenderDayView(getSession(),\''+dk+'\')" aria-label="Späť">‹</button>'+
+      '<button type="button" class="gyn-cal-sheet-back" data-app-back onclick="gynCalRenderDayView(getSession(),\''+dk+'\')" aria-label="Späť">‹</button>'+
       '<div class="gyn-cal-sheet-date">'+(editId?'Upraviť udalosť':'Nová udalosť')+'</div>'+
       '<button class="gyn-cal-sheet-x" onclick="gynCalSheetClose()" aria-label="Zavrieť">×</button>'+
     '</div>'+
@@ -19158,6 +19158,7 @@ document.addEventListener('DOMContentLoaded', function(){
   initAndroidBack();
   initEdgeSwipeBack();
   initGlobalSwipeBack();
+  initReliableBackTargets();
 });
 
 // Edge-swipe-back (od ľavej hrany, do 24px) ostáva už len pre lk-detail — má vlastnú,
@@ -19416,6 +19417,75 @@ function initGlobalSwipeBack() {
   }, { passive: false, capture: true });
 
   document.addEventListener('touchcancel', function() { reset(true); }, { passive: true, capture: true });
+}
+
+// ── SPOĽAHLIVÉ TLAČIDLÁ SPÄŤ ───────────────────────────────────────────────
+// Staršie obrazovky vznikali postupne a ich návratové šípky preto mali rôznu
+// veľkosť i implementáciu. Na iPhone sa pri malom kruhu dalo ľahko ťuknúť do
+// tieňa alebo medzi šípku a kartu, takže click vôbec nedošiel k tlačidlu.
+// Nezasahujeme do konkrétnych návratových funkcií: zachováme pôvodný onclick
+// každej obrazovky a iba mu dáme jednotnú, veľkorysú zásahovú zónu.
+var _reliableBackTargetsInited = false;
+var RELIABLE_BACK_SELECTOR = [
+  '[data-app-back]', 'button[aria-label="Späť"]', '.mgr-back', '.pl-detail-back', '.lk-floating-back',
+  '.sklady-back', '.team-plnenie-back', '.gpp-back', '.nst-back',
+  '.lk-det-back', '.pharma-ms-back', '.set-back', '.gyn-cal-sheet-back'
+].join(',');
+
+function reliableBackTargetButtons(){
+  var all = Array.prototype.slice.call(document.querySelectorAll(RELIABLE_BACK_SELECTOR));
+  all.forEach(function(button){ button.setAttribute('data-app-back', ''); });
+  return all.filter(function(button){
+    if(!button || !button.isConnected || button.disabled) return false;
+    var rect = button.getBoundingClientRect();
+    var style = window.getComputedStyle(button);
+    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+  });
+}
+
+function reliableBackTargetFrom(node){
+  return node && node.closest ? node.closest('[data-app-back]') : null;
+}
+
+function initReliableBackTargets(){
+  if(_reliableBackTargetsInited) return;
+  _reliableBackTargetsInited = true;
+  reliableBackTargetButtons();
+
+  // Gyn aj manažérsky detail sa prekresľujú za behu. Označ novú šípku hneď
+  // po renderi, aby dostala rovnakú CSS zónu ako statické tlačidlá.
+  if(typeof MutationObserver === 'function' && document.body){
+    var queued = false;
+    new MutationObserver(function(){
+      if(queued) return;
+      queued = true;
+      requestAnimationFrame(function(){ queued = false; reliableBackTargetButtons(); });
+    }).observe(document.body, { childList:true, subtree:true });
+  }
+
+  document.addEventListener('click', function(event){
+    // Normálny dotyk priamo na tlačidlo ponechaj jeho vlastnému onclicku.
+    var direct = reliableBackTargetFrom(event.target);
+    if(direct) return;
+    var buttons = reliableBackTargetButtons();
+    direct = reliableBackTargetFrom(event.target);
+    if(direct) return;
+
+    // Ak dotyk trafí tieň alebo bezprostredné okolie viditeľnej šípky,
+    // prevezmi ho v capture fáze a spusti PRESNE pôvodnú akciu daného tlačidla.
+    // Tak sa neobjaví dvojité zatvorenie ani nesprávny návratový krok.
+    var x = event.clientX, y = event.clientY;
+    if(!isFinite(x) || !isFinite(y)) return;
+    for(var i=0;i<buttons.length;i++){
+      var button = buttons[i], rect = button.getBoundingClientRect(), pad = 10;
+      if(x >= rect.left-pad && x <= rect.right+pad && y >= rect.top-pad && y <= rect.bottom+pad){
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        button.click();
+        return;
+      }
+    }
+  }, true);
 }
 
 // ── ANDROID BACK BUTTON — História API pre PWA standalone mód ──
