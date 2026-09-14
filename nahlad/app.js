@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.15';
+var APP_VERSION = '2.88.16';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -12747,9 +12747,7 @@ function gynQTabsHtml() {
 // Samostatný pohľad pre reprezentantov: iba súčty produktov PIL a Patch.
 // Dáta prichádzajú z aggregate-only endpointu; do klienta sa neposielajú
 // žiadne cudzie riadky, mená, lekári ani návštevy.
-var GYN_TEAM_STATE = { data:null, cacheKey:'', detailUser:'', returnTo:'' };
-var GYN_TEAM_CACHE_MAX_AGE_MS = 15 * 60 * 1000;
-function gynTeamCacheKey(){ return 'team-plnenie|' + gynCacheUserScope() + '|' + GYN_APP.year + '|Q' + GYN_APP.q; }
+var GYN_TEAM_STATE = { data:null, detailUser:'', returnTo:'' };
 function gynTeamLineLabel(line){ return line === 'pill' ? 'PIL' : 'Patch'; }
 function gynTeamLoadingHtml(){
   return gynQTabsHtml() +
@@ -12769,52 +12767,30 @@ function gynTeamErrorHtml(errCode){
     retryLabel:'Načítať znova'
   });
 }
-// Rovnaké spracovanie, aké používa manažérske Plnenie: zachová korekcie aj
-// presuny spoločných produktov medzi párovými PIL/Patch regiónmi.
-// (timeout) — celá línia naraz (fullLine=1) je ťažší dopyt než bežné čítanie,
-// bežný 16s limit nestačil. Rovnaké dva endpointy ako tichý preload rebríčka
-// (ten smie zlyhať potichu), toto ale ukazuje chybovú kartu, preto dlhší limit.
-var GYN_TEAM_FETCH_TIMEOUT_MS = 35000;
-function gynTeamFetch(user, q, year){
-  return Promise.all([
-    appQueuedFetchJson(gynScriptUrl('action=getRepList&fullLine=1'), undefined, GYN_TEAM_FETCH_TIMEOUT_MS, 'critical'),
-    appQueuedFetchJson(gynScriptUrl('action=getPlnenieAll&rok=' + year + '&Q=' + q + '&fullLine=1'), undefined, GYN_TEAM_FETCH_TIMEOUT_MS, 'critical')
-  ]).then(function(results){
-    var repData = results[0], plnenie = results[1];
-    if(!repData || !repData.ok) throw new Error('rep_list' + (repData && repData.error ? (':' + repData.error) : ':no_response'));
-    if(!Array.isArray(repData.reps)) throw new Error('rep_list:bad_shape');
-    if(!plnenie || !plnenie.ok) throw new Error('plnenie' + (plnenie && plnenie.error ? (':' + plnenie.error) : ':no_response'));
-    gynApplyRepListData(repData, user);
-    gynPreprocessData(plnenie);
-    return { ok:true, reps:repData.reps, plnenie:plnenie };
-  });
-}
-// ROOT CAUSE (Ivan, 14.9.: Gyn tímové plnenie sa dlho točilo a niekedy sa
-// po načítaní znova stratilo): predchádzajúca verzia držala dáta LEN v pamäti
-// (GYN_TEAM_STATE.data) a pri každom otvorení spúšťala vlastný fetch s ručným
-// retry — bez perzistovanej cache najprv vždy visela na "Načítavam" a pri
-// akomkoľvek prekreslení/zlyhaní zmizlo aj to, čo už raz zobrazila. Teraz ide
-// cez DataStore (rovnaká SWR cesta ako Sklady/Golem Tímové plnenie): cache sa
-// ukáže OKAMŽITE, fetch na pozadí ju potichu doplní/overí.
+// ROOT CAUSE (Ivan, 14.9.: aj po predĺžení timeoutu na 35s stále "timeout"):
+// problém nebol v dĺžke limitu — Tímové plnenie robilo VLASTNÝ, nezávislý
+// fetch presne tých istých fullLine dát (getRepList + getPlnenieAll), aké už
+// naťahuje a cachuje Rebríček svojou vlastnou, overenou cestou s retry
+// (gynLbEnsureRepList/gynLbEnsureData, 3 pokusy s odstupňovaným čakaním).
+// Tímové plnenie teraz tú istú cestu zdieľa — žiadny druhý, samostatný fetch.
+// Ak už bol Rebríček otvorený, dáta sú tu hneď; inak sa natiahnu rovnako
+// spoľahlivo ako preň (gynLbOrTeamRerenderIfReady prekreslí, nech dorazia
+// z ktoréhokoľvek volania).
 function gynTeamShow(el, user){
-  var q = GYN_APP.q, year = GYN_APP.year, key = gynTeamCacheKey(), ctx = appLineCapture();
-  function stillActive(){ return GYN_APP.nav === 'team' && GYN_APP.q === q && GYN_APP.year === year && appLineContextActive(ctx); }
-  var cached = DataStore.get(key, {
-    maxAgeMs: GYN_TEAM_CACHE_MAX_AGE_MS,
-    fetcher: function(){ return gynTeamFetch(user, q, year); },
-    onFresh: function(data){
-      if(!stillActive()) return;
-      GYN_TEAM_STATE.data = data; GYN_TEAM_STATE.cacheKey = key;
-      gynTeamRender(document.getElementById('gyn-content'), data);
-    },
-    onError: function(err){
-      if(!stillActive() || GYN_TEAM_STATE.data) return;   // cache už niečo ukazuje — tichá revalidácia nesmie zmazať viditeľné dáta
-      appRegisterRetry('gyn-team', function(){ DataStore.invalidate(key); GYN_TEAM_STATE.data = null; GYN_TEAM_STATE.cacheKey = ''; gynTeamShow(document.getElementById('gyn-content'), getSession()); });
-      var target = document.getElementById('gyn-content'); if(target) target.innerHTML = gynTeamErrorHtml(err && err.message);
-    }
-  });
-  if(cached.data){ GYN_TEAM_STATE.data = cached.data; GYN_TEAM_STATE.cacheKey = key; gynTeamRender(el, cached.data); }
-  else if(!GYN_TEAM_STATE.data || GYN_TEAM_STATE.cacheKey !== key) el.innerHTML = gynTeamLoadingHtml();
+  var q = GYN_APP.q, year = GYN_APP.year;
+  gynLbEnsureRepList();
+  var plKey = gynPlnenieCacheKey(year, q) + '|lb-fullLine';
+  gynLbEnsureData(q, plKey);
+  var reps = gynLbScopeReps();
+  var plnenie = GYN_LB.plCache[q];
+  if(!GYN_LB.repFetched || !reps.length || !plnenie){
+    if(GYN_LB.failed[q] && !plnenie){ el.innerHTML = gynTeamErrorHtml('plnenie:fetch_failed'); return; }
+    el.innerHTML = gynTeamLoadingHtml();
+    return;
+  }
+  var data = { reps:reps, plnenie:plnenie };
+  GYN_TEAM_STATE.data = data;
+  gynTeamRender(el, data);
 }
 function gynTeamRepLine(rep){ return /^[A-Z]{2}PA$/i.test(String((rep || {}).region || '').trim()) ? 'patch' : 'pill'; }
 function gynTeamLineAgg(items){
@@ -15908,6 +15884,13 @@ function gynLbColor(login){
 function gynLbScopeReps(){
   return (GYN_LB.repList && GYN_LB.repList.length) ? GYN_LB.repList : (GYN_STATE.repList || []);
 }
+// Tímové plnenie zdieľa presne tie isté fullLine dáta ako Rebríček (rovnaký
+// roster aj rovnaké plnenie za Q) — prekreslí sa, nech dáta dorazia z
+// ktoréhokoľvek volania (rebríček ich mohol natiahnuť už skôr, alebo naopak).
+function gynLbOrTeamRerenderIfReady(){
+  if(GYN_APP.nav === 'leaderboard') gynLbRender();
+  else if(GYN_APP.nav === 'team') gynTeamShow(document.getElementById('gyn-content'), getSession());
+}
 function gynLbRepListLoaded(data){
   if(!(data && data.ok && data.reps)) return;
   GYN_LB.repList = data.reps;
@@ -15932,7 +15915,7 @@ function gynLbEnsureRepList(){
       GYN_LB.repLoading = false;
       gynLbRepListLoaded(d);
       if(d && d.ok && d.reps && d.reps.length) gynCacheWrite(rosterKey, d);
-      if(GYN_APP.nav === 'leaderboard') gynLbRender();
+      gynLbOrTeamRerenderIfReady();
       try { dnesRefreshIfOpen(); } catch(e){}
       try { gynOpenDnesWhenReady(); } catch(e){}
     })
@@ -15942,7 +15925,7 @@ function gynLbEnsureRepList(){
       if(!GYN_LB.repFetched && GYN_STATE.repList && GYN_STATE.repList.length){
         GYN_LB.repList = GYN_STATE.repList;
         GYN_LB.repFetched = true;
-        if(GYN_APP.nav === 'leaderboard') gynLbRender();
+        gynLbOrTeamRerenderIfReady();
       }
       try { gynOpenDnesWhenReady(); } catch(e){}
     });
@@ -15994,7 +15977,7 @@ function gynLbEnsureData(q, key, _attempt){
       gynCacheWrite(key, d);
       GYN_LB.dataReady[q] = true;
       delete GYN_LB.failed[q];
-      if(GYN_APP.nav === 'leaderboard') gynLbRender();
+      gynLbOrTeamRerenderIfReady();
       try { dnesRefreshIfOpen(); } catch(e){}
       try { gynOpenDnesWhenReady(); } catch(e){}
     })
@@ -16016,6 +15999,12 @@ function gynLbEnsureData(q, key, _attempt){
             desc: 'Dáta plnenia sa nepodarilo načítať. Skús to znova.',
             retryLabel: 'Načítať znova'
           }));
+        }
+      } else if(GYN_APP.nav === 'team' && !GYN_LB.plCache[q]){
+        var e3 = document.getElementById('gyn-content');
+        if(e3){
+          appRegisterRetry('gyn-team', function(){ delete GYN_LB.failed[q]; gynLbEnsureData(q, key); gynTeamShow(document.getElementById('gyn-content'), getSession()); });
+          e3.innerHTML = gynTeamErrorHtml('plnenie:fetch_failed');
         }
       }
       try { dnesRefreshIfOpen(); } catch(e){}
