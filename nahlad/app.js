@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.12';
+var APP_VERSION = '2.88.13';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -12747,22 +12747,10 @@ function gynQTabsHtml() {
 // Samostatný pohľad pre reprezentantov: iba súčty produktov PIL a Patch.
 // Dáta prichádzajú z aggregate-only endpointu; do klienta sa neposielajú
 // žiadne cudzie riadky, mená, lekári ani návštevy.
-var GYN_TEAM_STATE = { data:null, cacheKey:'', loading:false, loadingKey:'', request:0, failed:false, detailUser:'', returnTo:'' };
+var GYN_TEAM_STATE = { data:null, cacheKey:'', detailUser:'', returnTo:'' };
 var GYN_TEAM_CACHE_MAX_AGE_MS = 15 * 60 * 1000;
 function gynTeamCacheKey(){ return 'team-plnenie|' + gynCacheUserScope() + '|' + GYN_APP.year + '|Q' + GYN_APP.q; }
 function gynTeamLineLabel(line){ return line === 'pill' ? 'PIL' : 'Patch'; }
-function gynTeamProductsByLine(products, line){
-  return (products || []).filter(function(product){
-    var key = String(product.key || product.label || product.name || '').trim().toLowerCase();
-    var productLine = GYN_PRODUCT_LINIA[key];
-    return productLine === line || productLine === 'both';
-  }).sort(function(a,b){ return String(a.label || a.key || '').localeCompare(String(b.label || b.key || ''), 'sk'); });
-}
-function gynTeamAggregate(products){
-  var plan = 0, predaj = 0;
-  (products || []).forEach(function(product){ plan += parseFloat(product.plan) || 0; predaj += parseFloat(product.predaj) || 0; });
-  return { plan:plan, predaj:predaj, pct:plan > 0 ? predaj / plan * 100 : null };
-}
 function gynTeamLoadingHtml(){
   return gynQTabsHtml() +
     '<section class="gyn-team-hero gyn-team-loading" role="status" aria-live="polite">' +
@@ -12778,81 +12766,74 @@ function gynTeamErrorHtml(){
     desc:'Skús to znova. Zobrazujú sa iba súhrny produktov PIL a Patch.', retryLabel:'Načítať znova'
   });
 }
+// Rovnaké spracovanie, aké používa manažérske Plnenie: zachová korekcie aj
+// presuny spoločných produktov medzi párovými PIL/Patch regiónmi.
+function gynTeamFetch(user, q, year){
+  return Promise.all([
+    appQueuedFetchJson(gynScriptUrl('action=getRepList&fullLine=1'), undefined, APP_FETCH_TIMEOUT_MS, 'critical'),
+    appQueuedFetchJson(gynScriptUrl('action=getPlnenieAll&rok=' + year + '&Q=' + q + '&fullLine=1'), undefined, APP_FETCH_TIMEOUT_MS, 'critical')
+  ]).then(function(results){
+    var repData = results[0], plnenie = results[1];
+    if(!repData || !repData.ok || !Array.isArray(repData.reps) || !plnenie || !plnenie.ok) throw new Error('invalid team payload');
+    gynApplyRepListData(repData, user);
+    gynPreprocessData(plnenie);
+    return { ok:true, reps:repData.reps, plnenie:plnenie };
+  });
+}
+// ROOT CAUSE (Ivan, 14.9.: Gyn tímové plnenie sa dlho točilo a niekedy sa
+// po načítaní znova stratilo): predchádzajúca verzia držala dáta LEN v pamäti
+// (GYN_TEAM_STATE.data) a pri každom otvorení spúšťala vlastný fetch s ručným
+// retry — bez perzistovanej cache najprv vždy visela na "Načítavam" a pri
+// akomkoľvek prekreslení/zlyhaní zmizlo aj to, čo už raz zobrazila. Teraz ide
+// cez DataStore (rovnaká SWR cesta ako Sklady/Golem Tímové plnenie): cache sa
+// ukáže OKAMŽITE, fetch na pozadí ju potichu doplní/overí.
 function gynTeamShow(el, user){
-  if(GYN_TEAM_STATE.data && GYN_TEAM_STATE.cacheKey === gynTeamCacheKey()) gynTeamRender(el, GYN_TEAM_STATE.data);
-  else el.innerHTML = gynTeamLoadingHtml();
-  gynTeamLoad(user);
-}
-function gynTeamLoad(user, attempt){
-  var q = GYN_APP.q, year = GYN_APP.year, cacheKey = gynTeamCacheKey();
-  if(GYN_TEAM_STATE.loading && GYN_TEAM_STATE.loadingKey === cacheKey) return;
-  // Pri rýchlom prepnutí Q starý request nerušíme násilne, ale zneplatníme
-  // jeho výsledok a hneď spustíme request pre novú záložku.
-  if(GYN_TEAM_STATE.loading && GYN_TEAM_STATE.loadingKey !== cacheKey) GYN_TEAM_STATE.loading = false;
-  var request = ++GYN_TEAM_STATE.request;
-  var ctx = appLineCapture();
-  function active(){ return request === GYN_TEAM_STATE.request && appLineContextActive(ctx) && GYN_APP.nav === 'team' && GYN_APP.q === q; }
-  GYN_TEAM_STATE.loading = true;
-  GYN_TEAM_STATE.loadingKey = cacheKey;
-  Promise.all([
-    appFetchJson(gynScriptUrl('action=getRepList&fullLine=1'), undefined, 12000),
-    appFetchJson(gynScriptUrl('action=getPlnenieAll&rok=' + year + '&Q=' + q + '&fullLine=1'), undefined, 12000)
-  ])
-    .then(function(results){
-      if(request !== GYN_TEAM_STATE.request || !appLineContextActive(ctx)) return;
-      GYN_TEAM_STATE.loading = false;
-      GYN_TEAM_STATE.loadingKey = '';
-      var repData = results[0], plnenie = results[1];
-      if(!repData || !repData.ok || !Array.isArray(repData.reps) || !plnenie || !plnenie.ok) throw new Error('invalid team payload');
-      // Rovnaké spracovanie, aké používa manažérske Plnenie: zachová korekcie
-      // aj presuny spoločných produktov medzi párovými PIL/Patch regiónmi.
-      gynApplyRepListData(repData, user);
-      gynPreprocessData(plnenie);
-      GYN_TEAM_STATE.failed = false;
-      GYN_TEAM_STATE.data = { ok:true, reps:repData.reps, plnenie:plnenie };
-      GYN_TEAM_STATE.cacheKey = cacheKey;
-      if(active()) gynTeamRender(document.getElementById('gyn-content'), GYN_TEAM_STATE.data);
-    })
-    .catch(function(){
-      if(request !== GYN_TEAM_STATE.request || !appLineContextActive(ctx)) return;
-      GYN_TEAM_STATE.loading = false;
-      GYN_TEAM_STATE.loadingKey = '';
-      var retry = attempt || 0;
-      if(retry < 2) { setTimeout(function(){ if(active()) gynTeamLoad(user, retry + 1); }, retry === 0 ? 1200 : 2500); return; }
-      GYN_TEAM_STATE.failed = true;
-      if(active()) {
-        appRegisterRetry('gyn-team', function(){ GYN_TEAM_STATE.data = null; GYN_TEAM_STATE.cacheKey = ''; gynTeamShow(document.getElementById('gyn-content'), getSession()); });
-        var target = document.getElementById('gyn-content'); if(target) target.innerHTML = gynTeamErrorHtml();
-      }
-    });
-}
-function gynTeamProductCard(product){
-  var plan = parseFloat(product.plan) || 0, predaj = parseFloat(product.predaj) || 0;
-  var pct = plan > 0 ? predaj / plan * 100 : null;
-  var color = plnenieColorClass(pct);
-  var width = pct === null ? 0 : Math.max(0, Math.min(100, pct));
-  return '<article class="gyn-team-product">' +
-    '<div class="gyn-team-product-head"><div class="gyn-team-product-name"><i></i>' + gynEsc(product.label || product.name || product.key) + '</div><strong class="' + color + '">' + gynFmtPctOrEur(pct, predaj) + '</strong></div>' +
-    '<div class="gyn-team-bar"><span class="' + color + '" style="width:' + width + '%"></span></div>' +
-    '<div class="gyn-team-money"><span>Plán <b>' + gynFmtEur(plan) + '</b></span><span>Predaj <b>' + gynFmtEur(predaj) + '</b></span></div>' +
-  '</article>';
+  var q = GYN_APP.q, year = GYN_APP.year, key = gynTeamCacheKey(), ctx = appLineCapture();
+  function stillActive(){ return GYN_APP.nav === 'team' && GYN_APP.q === q && GYN_APP.year === year && appLineContextActive(ctx); }
+  var cached = DataStore.get(key, {
+    maxAgeMs: GYN_TEAM_CACHE_MAX_AGE_MS,
+    fetcher: function(){ return gynTeamFetch(user, q, year); },
+    onFresh: function(data){
+      if(!stillActive()) return;
+      GYN_TEAM_STATE.data = data; GYN_TEAM_STATE.cacheKey = key;
+      gynTeamRender(document.getElementById('gyn-content'), data);
+    },
+    onError: function(){
+      if(!stillActive() || GYN_TEAM_STATE.data) return;   // cache už niečo ukazuje — tichá revalidácia nesmie zmazať viditeľné dáta
+      appRegisterRetry('gyn-team', function(){ DataStore.invalidate(key); GYN_TEAM_STATE.data = null; GYN_TEAM_STATE.cacheKey = ''; gynTeamShow(document.getElementById('gyn-content'), getSession()); });
+      var target = document.getElementById('gyn-content'); if(target) target.innerHTML = gynTeamErrorHtml();
+    }
+  });
+  if(cached.data){ GYN_TEAM_STATE.data = cached.data; GYN_TEAM_STATE.cacheKey = key; gynTeamRender(el, cached.data); }
+  else if(!GYN_TEAM_STATE.data || GYN_TEAM_STATE.cacheKey !== key) el.innerHTML = gynTeamLoadingHtml();
 }
 function gynTeamRepLine(rep){ return /^[A-Z]{2}PA$/i.test(String((rep || {}).region || '').trim()) ? 'patch' : 'pill'; }
 function gynTeamLineAgg(items){
   var plan=0, predaj=0; (items || []).forEach(function(item){ plan += item.agg.totalPlan || 0; predaj += item.agg.totalPred || 0; });
   return {plan:plan,predaj:predaj,pct:plan>0?predaj/plan*100:null};
 }
-function gynTeamRepCard(item, index){
-  var rep=item.rep, agg=item.agg, av=gynAvatarContent(rep.login,rep.meno), pct=agg.pct, safe=String(rep.login||'').replace(/'/g,"\\'");
-  return '<button type="button" class="gyn-team-rep" onclick="gynTeamOpenDetail(\''+safe+'\')"><span class="gyn-team-rank">'+(index+1)+'.</span><span class="gyn-team-avatar'+(av.hasAvatar?' has-avatar':'')+'" data-username="'+gynEsc(rep.login||'')+'">'+av.html+'</span><span class="gyn-team-rep-name"><b>'+gynEsc(rep.meno||rep.login)+'</b><small>'+gynEsc(rep.region||gynTeamLineLabel(gynTeamRepLine(rep)))+'</small></span><span class="gyn-team-rep-result"><strong class="'+plnenieColorClass(pct)+'">'+(pct===null?'—':plnenieFormatPct(pct))+'</strong><small>'+gynFmtEur(agg.totalPred)+' z '+gynFmtEur(agg.totalPlan)+'</small></span><span class="gyn-team-rep-chev">›</span></button>';
+// Ivan, 14.9.: má to vyzerať presne ako Golem Tímové plnenie — preto znovupoužíva
+// jeho .team-plnenie-* triedy (hero, karty, produkty) namiesto vlastných .gyn-team-*.
+// Jediný zámerný rozdiel: žiadne tlačidlo "Trhový podiel a okresy" (gyn tie dáta nemá).
+function gynTeamRepCard(item, index, current){
+  var rep=item.rep, agg=item.agg, av=gynAvatarContent(rep.login,rep.meno), safe=String(rep.login||'').replace(/'/g,"\\'");
+  return '<button type="button" class="team-plnenie-card" onclick="gynTeamOpenDetail(\''+safe+'\')"><span class="team-plnenie-rank">'+(index+1)+'.</span>' +
+    '<span class="team-plnenie-avatar'+(av.hasAvatar?' has-avatar':'')+'" data-username="'+gynEsc(rep.login||'')+'">'+av.html+'</span>' +
+    '<span class="team-plnenie-person"><span class="team-plnenie-name">'+gynEsc(rep.meno||rep.login)+'</span><span class="team-plnenie-meta">'+gynEsc(gynTeamLineLabel(gynTeamRepLine(rep))+' · '+(rep.region||''))+(rep.login===current?'<span class="team-plnenie-you">Ty</span>':'')+'</span></span>' +
+    '<span class="team-plnenie-result"><span class="team-plnenie-pct '+teamPlnenieColor(agg.pct)+'">'+teamPlnenieFmtPct(agg.pct)+'</span><span class="team-plnenie-money">'+teamPlnenieFmtMoney(agg.totalPred)+'</span></span>' +
+    '<span class="team-plnenie-chev">›</span></button>';
 }
-function gynTeamSection(line, items){
-  var total = gynTeamLineAgg(items);
-  var pct = total.pct === null ? '—' : plnenieFormatPct(total.pct);
-  return '<section class="gyn-team-section ' + line + '">' +
-    '<header class="gyn-team-section-head"><div><div class="gyn-team-section-kicker">Tím</div><h2>' + gynTeamLineLabel(line) + '</h2></div><div><strong>' + pct + '</strong><span>' + items.length + ' reprezentant' + (items.length === 1 ? '' : 'ov') + '</span></div></header>' +
-    (items.length ? '<div class="gyn-team-reps">' + items.map(gynTeamRepCard).join('') + '</div>' : '<div class="gyn-team-empty">Pre túto skupinu zatiaľ nie sú dostupné údaje o reprezentantoch.</div>') +
+function gynTeamSection(line, items, current){
+  var ag = gynTeamLineAgg(items);
+  return '<section class="team-plnenie-group"><div class="team-plnenie-group-head"><div class="team-plnenie-label">Tím '+gynTeamLineLabel(line)+'</div><div class="team-plnenie-group-result">'+teamPlnenieFmtPct(ag.pct)+' · '+items.length+' rep.</div></div>' +
+    (items.length ? '<div class="team-plnenie-list">'+items.map(function(item,i){return gynTeamRepCard(item,i,current);}).join('')+'</div>' : '<div class="team-plnenie-empty">Pre túto skupinu zatiaľ nie sú dostupné údaje o reprezentantoch.</div>') +
   '</section>';
+}
+function gynTeamProductBlock(products){
+  return products.length ? products.map(function(product){
+    var cls=teamPlnenieColor(product.pct), pct=product.pct===null?0:Math.max(0,Math.min(100,product.pct));
+    return '<div class="team-plnenie-product"><div class="team-plnenie-product-top"><div class="team-plnenie-product-name"><span class="team-plnenie-dot"></span><span>'+gynEsc(product.name||product.label||product.key)+'</span></div><div class="team-plnenie-pct '+cls+'">'+teamPlnenieFmtPct(product.pct)+'</div></div><div class="team-plnenie-product-bar"><div class="team-plnenie-product-fill '+cls+'" style="width:'+pct+'%"></div></div><div class="team-plnenie-product-money"><span>Plán <strong>'+teamPlnenieFmtMoney(product.plan)+'</strong></span><span>Predaj <strong>'+teamPlnenieFmtMoney(product.predaj)+'</strong></span></div></div>';
+  }).join('') : '<div class="team-plnenie-empty">Pre tento kvartál zatiaľ nemá zadaný plán.</div>';
 }
 function gynTeamOpenDetail(username){ GYN_TEAM_STATE.returnTo=''; GYN_TEAM_STATE.detailUser=String(username||'').toLowerCase(); gynTeamRender(document.getElementById('gyn-content'),GYN_TEAM_STATE.data); window.scrollTo(0,0); satoriGuideQueueHint('rep_detail',550); }
 function gynTeamOpenFrom(username, returnTo){ GYN_TEAM_STATE.returnTo=returnTo||''; GYN_TEAM_STATE.detailUser=String(username||'').toLowerCase(); gynNavTo('team'); }
@@ -12865,25 +12846,29 @@ function gynTeamCloseDetail(){
 }
 function gynTeamRender(el, data){
   if(!el || !data) return;
+  var current = (getSession()||{}).username || '';
   var items=(data.reps||[]).map(function(rep){ return {rep:rep,agg:gynBuildRepAgg(rep.login,data.plnenie,GYN_APP.q)}; });
   var detail=items.filter(function(item){ return String(item.rep.login||'').toLowerCase()===GYN_TEAM_STATE.detailUser; })[0];
   if(detail){
-    var dPill=gynTeamProductsByLine(detail.agg.prods,'pill'), dPatch=gynTeamProductsByLine(detail.agg.prods,'patch'), av=gynAvatarContent(detail.rep.login,detail.rep.meno);
-    el.innerHTML='<section class="gyn-team-detail-head"><button type="button" class="gyn-team-detail-back" data-app-back onclick="gynTeamCloseDetail()" aria-label="Späť">←</button><div class="gyn-team-avatar large'+(av.hasAvatar?' has-avatar':'')+'" data-username="'+gynEsc(detail.rep.login||'')+'">'+av.html+'</div><div><h1>'+gynEsc(detail.rep.meno||detail.rep.login)+'</h1><p>'+gynEsc(gynTeamLineLabel(gynTeamRepLine(detail.rep))+' · '+(detail.rep.region||''))+'</p></div><strong class="'+plnenieColorClass(detail.agg.pct)+'">'+(detail.agg.pct===null?'—':plnenieFormatPct(detail.agg.pct))+'</strong></section>'+gynTeamProductBlock('PIL',dPill)+gynTeamProductBlock('Patch',dPatch);
+    var av=gynAvatarContent(detail.rep.login,detail.rep.meno);
+    var products=(detail.agg.prods||[]).slice().sort(function(a,b){ return String(a.name||'').localeCompare(String(b.name||''),'sk'); });
+    el.innerHTML='<div class="team-plnenie-person-head"><button type="button" class="gyn-team-detail-back" data-app-back onclick="gynTeamCloseDetail()" aria-label="Späť">←</button>' +
+      '<div class="team-plnenie-avatar'+(av.hasAvatar?' has-avatar':'')+'" data-username="'+gynEsc(detail.rep.login||'')+'">'+av.html+'</div>' +
+      '<div class="team-plnenie-person"><div class="team-plnenie-name">'+gynEsc(detail.rep.meno||detail.rep.login)+'</div><div class="team-plnenie-meta">'+gynEsc(gynTeamLineLabel(gynTeamRepLine(detail.rep))+' · '+(detail.rep.region||''))+(detail.rep.login===current?'<span class="team-plnenie-you">Ty</span>':'')+'</div></div>' +
+      '<div class="team-plnenie-person-pct"><div class="team-plnenie-pct '+teamPlnenieColor(detail.agg.pct)+'">'+teamPlnenieFmtPct(detail.agg.pct)+'</div><small>celkom</small></div></div>' +
+      '<div class="team-plnenie-label">Produkty s plánom · Q'+GYN_APP.q+'</div>' + gynTeamProductBlock(products);
     return;
   }
-  var pill=items.filter(function(item){return gynTeamRepLine(item.rep)==='pill';}).sort(function(a,b){return (b.agg.pct||-1)-(a.agg.pct||-1);});
-  var patch=items.filter(function(item){return gynTeamRepLine(item.rep)==='patch';}).sort(function(a,b){return (b.agg.pct||-1)-(a.agg.pct||-1);});
-  var pillTotal = gynTeamLineAgg(pill), patchTotal = gynTeamLineAgg(patch);
-  function totalCard(line, total){
-    return '<div class="gyn-team-total ' + line + '"><span>' + gynTeamLineLabel(line) + '</span><strong class="' + plnenieColorClass(total.pct) + '">' + (total.pct === null ? '—' : plnenieFormatPct(total.pct)) + '</strong><small>' + gynFmtEur(total.predaj) + ' z ' + gynFmtEur(total.plan) + '</small></div>';
-  }
+  if(!items.length){ el.innerHTML = gynQTabsHtml() + '<div class="team-plnenie-empty">Pre Gynekológiu zatiaľ nie sú dostupné údaje o plnení.</div>'; return; }
+  var pill=items.filter(function(item){return gynTeamRepLine(item.rep)==='pill';}).sort(function(a,b){return (b.agg.pct==null?-1:b.agg.pct)-(a.agg.pct==null?-1:a.agg.pct);});
+  var patch=items.filter(function(item){return gynTeamRepLine(item.rep)==='patch';}).sort(function(a,b){return (b.agg.pct==null?-1:b.agg.pct)-(a.agg.pct==null?-1:a.agg.pct);});
+  var all=gynTeamLineAgg(items), pillAg=gynTeamLineAgg(pill), patchAg=gynTeamLineAgg(patch);
   el.innerHTML = gynQTabsHtml() +
-    '<section class="gyn-team-hero"><div class="gyn-team-kicker">Tímové plnenie · ' + plnenieQLabel(GYN_APP.q, GYN_APP.year) + '</div><h1>Výsledky tímu</h1><p>Otvor reprezentanta a pozri jeho plnenie produktov. Trhové dáta sa tu nezobrazujú.</p><div class="gyn-team-totals">' + totalCard('pill', pillTotal) + totalCard('patch', patchTotal) + '</div></section>' +
-    '<div class="gyn-team-note">Ťuknutím na reprezentanta otvoríš jeho produkty, plán, predaj a percento plnenia.</div>' +
-    gynTeamSection('pill', pill) + gynTeamSection('patch', patch);
+    '<div class="team-plnenie-hero"><div class="team-plnenie-eyebrow">Gynekológia · Q'+GYN_APP.q+' '+GYN_APP.year+'</div>' +
+    '<div class="team-plnenie-hero-row"><div class="team-plnenie-hero-pct">'+teamPlnenieFmtPct(all.pct)+'</div><div class="team-plnenie-hero-meta"><strong>'+items.length+' reprezentant'+(items.length===1?'':'i')+'</strong><br>'+teamPlnenieFmtMoney(all.predaj)+' z '+teamPlnenieFmtMoney(all.plan)+'</div></div>' +
+    '<div class="team-plnenie-team-totals"><div><span>PIL</span><strong>'+teamPlnenieFmtPct(pillAg.pct)+'</strong><small>'+teamPlnenieFmtMoney(pillAg.predaj)+' / '+teamPlnenieFmtMoney(pillAg.plan)+'</small></div><div><span>Patch</span><strong>'+teamPlnenieFmtPct(patchAg.pct)+'</strong><small>'+teamPlnenieFmtMoney(patchAg.predaj)+' / '+teamPlnenieFmtMoney(patchAg.plan)+'</small></div></div></div>' +
+    gynTeamSection('pill', pill, current) + gynTeamSection('patch', patch, current);
 }
-function gynTeamProductBlock(title, products){ return '<section class="gyn-team-product-block"><h2>'+title+' · produkty s plánom</h2>'+(products.length?'<div class="gyn-team-products">'+products.map(gynTeamProductCard).join('')+'</div>':'<div class="gyn-team-empty">Pre túto skupinu nemá reprezentant produkty s plánom ani predajom.</div>')+'</section>'; }
 
 // Preload — všetky 4 Q plnenia paralelne (cache GYN_APP.plCache)
 function gynPreloadAllQuarters() {
