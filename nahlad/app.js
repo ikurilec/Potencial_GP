@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.7';
+var APP_VERSION = '2.88.8';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -4190,6 +4190,7 @@ function _panelShow(newId, isBack) {
 }
 
 function closeAllPanels() {
+  try { satoriGuideHideHint(); } catch (e) {}
   try { dnesCloseRepSummary(); } catch (e) {}
   ['dnes-overlay','hist-overlay','lb-overlay','rep-plnenie-overlay','lk-overlay','okresy-overlay','sklady-overlay','team-plnenie-overlay','tuyory-overlay','lonelix-overlay','apixaban-overlay','golem-cal-overlay','lk-detail','pharma-ms-overlay','pharma-okres-overlay'].forEach(function(id){
     var el = document.getElementById(id);
@@ -5737,6 +5738,7 @@ document.addEventListener('keydown', function (ev) {
 // a gyn preto treba najprv zavrieť panely, inak by ich pohľad ostal schovaný
 // pod Domovom a prepnutie by nebolo vidieť.
 function appGoTab(kam, arg) {
+  try { satoriGuideHideHint(); } catch (e) {}
   appNavigaciaZaznam();
   if (typeof _appTrackMainTab === 'function') _appTrackMainTab(kam);
   var r = appRole();
@@ -6002,6 +6004,7 @@ function viacRender() {
 // Menu je prekryv, nie panel — nezaraďuje sa do histórie panelov, aby sa
 // systémové „späť" nevracalo doň, ale tam, odkiaľ používateľ prišiel.
 function openViac() {
+  try { satoriGuideHideHint(); } catch (e) {}
   appNavigaciaZaznam();
   usageSectionEnter('Menu');
   viacRender();
@@ -6302,8 +6305,9 @@ function openSklady(focusKey){
   var sub = document.getElementById('sklady-sub'), line = appLineTag();
   if (sub) sub.textContent = (line === 'gyn' ? 'Gynekológia' : (line === 'reagila' ? 'Reagila' : 'Golem')) + ' · aktuálny stav zásob';
   _panelShow('sklady-overlay'); stockLoad();
+  setTimeout(function(){ try { satoriGuideMaybeHint('stocks'); } catch(e){} }, 700);
 }
-function closeSklady(){ var target = SKLADY_STATE.returnTo; usageSectionClose(); SKLADY_STATE.open = false; SKLADY_STATE.request++; SKLADY_STATE.returnTo = null; stockRestoreReturn(target); }
+function closeSklady(){ try { satoriGuideHideHint(); } catch(e){} var target = SKLADY_STATE.returnTo; usageSectionClose(); SKLADY_STATE.open = false; SKLADY_STATE.request++; SKLADY_STATE.returnTo = null; stockRestoreReturn(target); }
 // Ťuknutie na položku menu ho zavrie — inak by ostalo visieť nad panelom,
 // ktorý práve otvorilo.
 document.addEventListener('click', function (ev) {
@@ -7657,6 +7661,20 @@ function settingsAppHtml(s){
             '<button type="button" class="set-switch' + (hOn ? ' on' : '') + '" role="switch" aria-checked="' + (hOn ? 'true' : 'false') + '" aria-label="Haptická odozva" onclick="settingsToggleHaptics()"></button>' +
           '</div>';
 
+  // Satori sprievodca — úvodná prehliadka a kontextové tipy. Stav sa ukladá
+  // do rovnakých osobných nastavení ako haptika, preto ho používateľ dostane
+  // aj na ďalšom zariadení bez ďalšieho backendu.
+  var guide = (typeof satoriGuidePrefs === 'function') ? satoriGuidePrefs() : { enabled:true };
+  html += '<div class="set-row"><div class="set-row-label">Satori sprievodca<br>' +
+            '<span style="font-weight:600;color:#64748B">' + (guide.enabled ? 'tipy pri prvom otvorení funkcie' : 'automatické tipy sú vypnuté') + '</span></div>' +
+            '<button type="button" class="set-switch' + (guide.enabled ? ' on' : '') + '" role="switch" aria-checked="' + (guide.enabled ? 'true' : 'false') + '" aria-label="Satori sprievodca" onclick="settingsToggleSatoriGuide()"></button>' +
+          '</div>' +
+          '<div class="set-row-desc" style="margin:-2px 0 9px">Krátko vysvetlí navigáciu, obnovu dát, Sklady, Kalendár a Nástenku. Zobrazí sa iba raz.</div>' +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:9px">' +
+            '<button type="button" class="set-action-btn" style="flex:1;margin:0" onclick="satoriGuideStart(true)">✦ Spustiť sprievodcu znova</button>' +
+            '<button type="button" class="set-mini-btn" onclick="satoriGuideResetHints()">Obnoviť tipy</button>' +
+          '</div><div class="set-cache-status" id="set-guide-status"></div>';
+
   // Globálne vyhľadávanie — možnosť skryť/vypnúť (uloží sa do Sheetu, stĺpec „nastavenia")
   var gsOn = gsEnabled();
   html += '<div class="set-row"><div class="set-row-label">Globálne vyhľadávanie<br>' +
@@ -8656,267 +8674,218 @@ function updateOnline(){
 window.addEventListener('online',updateOnline);
 window.addEventListener('offline',updateOnline);
 updateOnline();
-// ── tutorial ──
-var TUTORIAL_KEY = 'potencial_vl_tutorial_done';
+// ── Satori sprievodca (len náhľad) ───────────────────────────────────────
+// Jedna spoločná prehliadka pre všetky línie + krátke tipy pri prvom otvorení
+// konkrétnej časti. Stav je v existujúcich osobných nastaveniach, takže nerobí
+// nový backend ani neukladá žiadne dáta o používaní navyše.
+var SATORI_GUIDE_STATE = { open:false, manual:false, step:0, restoreOverflow:'', scheduled:false, hintKey:'', hintTimer:0, touchReady:false };
+var SATORI_GUIDE_STEPS = [
+  { icon:'✦', kicker:'SATORI · SPRIEVODCA', title:'Vitaj v Satori', copy:'Za minútu ti ukážeme najdôležitejšie miesta v aplikácii. Užitočné tipy môžeš kedykoľvek vypnúť alebo znovu spustiť v Nastaveniach.', info:'Sprievodca nemení tvoje údaje ani nastavenia aplikácie.' },
+  { icon:'⌂', kicker:'ORIENTÁCIA', title:'Všetko má svoje miesto', copy:'Spodná lišta ťa privedie na Domov, Plnenie, Kalendár, Nástenku a Menu. Ťuknutím na aktívnu položku sa vždy vrátiš na jej začiatok.' },
+  { icon:'↻', kicker:'AKTUÁLNE DÁTA', title:'Obnov dáta potiahnutím', copy:'Keď si úplne hore na obrazovke s dátami, potiahni nadol a pusť. Krúžok ukáže, kedy sa začne obnova.', info:'Formuláre sa potiahnutím neobnovujú, aby si nestratil rozpracovaný záznam.' },
+  { icon:'☰', kicker:'TVOJE NÁSTROJE', title:'Všetko ostatné je v Menu', copy:'V Menu nájdeš nástroje, ktoré máš dostupné pre svoju rolu a aktuálnu líniu. Nastavenia sú vždy úplne dole.' },
+  { icon:'▣', kicker:'STAV ZÁSOB', title:'Sklady pod kontrolou', copy:'Dni pokrytia hovoria, na koľko dní vystačí zásoba pri aktuálnom tempe. Ťuknutím na produkt otvoríš jeho detail.', info:'Červená znamená kritickú zásobu, oranžová položku na sledovanie a zelená stabilný stav.' },
+  { icon:'✦', kicker:'SI PRIPRAVENÝ', title:'Pomoc je vždy poruke', copy:'V Kalendári riešiš udalosti a dovolenky, na Nástenke zdieľaš informácie s ľuďmi vo svojej línii. Sprievodcu si môžeš kedykoľvek znovu otvoriť v Nastaveniach.' }
+];
+var SATORI_GUIDE_HINTS = {
+  stocks: { title:'Ako čítať Sklady', copy:'Dni pokrytia ukazujú, na koľko dní vystačí zásoba pri aktuálnom tempe. Ťuknutím na položku otvoríš detail produktu.' },
+  calendar: { title:'Kalendár na jednom mieste', copy:'Tu pridáš dovolenku alebo udalosť a hneď vidíš jej stav. Schválené absencie sa zobrazia aj kolegom v tvojej línii.' },
+  board: { title:'Zdieľaj informácie s tímom', copy:'Príspevky na Nástenke vidia iba ľudia v aktuálnej línii. Nový vytvoríš cez tlačidlo + Pridať príspevok.' }
+};
 
-var _tutorialCurrent = 1;
-var _tutorialTotal = 7;
-
-function tutorialGo(step) {
-  if(step < 1 || step > _tutorialTotal) return;
-  // steps handled by transform
-  var next = document.getElementById('tstep-' + step);
-  if(next) next.classList.add('active');
-  _tutorialCurrent = step;
+function satoriGuidePrefs(){
+  var p = (typeof userPrefsGet === 'function' ? userPrefsGet() : {}) || {};
+  var hints = (p.satoriGuideHints && typeof p.satoriGuideHints === 'object') ? p.satoriGuideHints : {};
+  return { enabled:p.satoriGuideEnabled !== false, seen:p.satoriGuideSeen === true || satoriGuideSeenOnDevice(), hints:hints };
 }
-
-function tutorialNext(step) { tutorialGo(step); }
-function tutorialBack(step) { tutorialGo(step); }
-
-// Swipe support – plynulé ťahanie + dismiss v ľubovoľnom smere na poslednej stránke
-(function(){
-  var startX = 0, startY = 0, dragX = 0, dragY = 0, dragging = false;
-  var gestureType = null; // 'horizontal' | 'dismiss'
-  var threshold = 50;
-  var dismissDist = 100; // minimálna vzdialenosť pre dismiss
-
-  function getTrack(){ return document.getElementById('tutorial-track'); }
-  function getModal(){ return document.querySelector('.tutorial-modal'); }
-  function getOverlay(){ return document.getElementById('tutorial-overlay'); }
-
-  function updateDots() {
-    document.querySelectorAll('.tutorial-dots').forEach(function(group){
-      group.querySelectorAll('.tutorial-dot').forEach(function(d,i){
-        d.classList.toggle('active', i === _tutorialCurrent-1);
-      });
-    });
-  }
-
-  function tutorialGoSmooth(step) {
-    if(step < 1 || step > _tutorialTotal) return;
-    var prevStep = _tutorialCurrent;
-    _tutorialCurrent = step;
-    var t = getTrack(); if(!t) return;
-    var m = getModal();
-    if(m){ m.style.transition='transform .38s cubic-bezier(.4,0,.2,1),opacity .38s'; m.style.transform=''; m.style.opacity='1'; }
-    t.classList.remove('no-transition');
-    // Animate icon on target step
-    var steps = t.querySelectorAll('.tutorial-step');
-    var targetStep = steps[step-1];
-    if(targetStep){
-      var icon = targetStep.querySelector('.tutorial-icon-circle');
-      if(icon){
-        icon.classList.remove('icon-anim-forward','icon-anim-back');
-        void icon.offsetWidth; // reflow
-        icon.classList.add(step > prevStep ? 'icon-anim-forward' : 'icon-anim-back');
-      }
-    }
-    var cardW = t.children[0] ? t.children[0].offsetWidth : 0; var gap = 16; t.style.transform = 'translateX(calc(-' + (_tutorialCurrent-1) + ' * (' + cardW + 'px + ' + gap + 'px)))';
-    updateDots();
-  }
-
-  window.tutorialGo = tutorialGoSmooth;
-  window.tutorialGoSmooth = tutorialGoSmooth;
-  window.tutorialNext = function(s){ tutorialGoSmooth(s); };
-  window.tutorialBack = function(s){ tutorialGoSmooth(s); };
-
-  // Footer drag zone — velka plocha, plynule sledovanie prsta
-  function initFooterDrag() {
-    var footers = document.querySelectorAll('.tutorial-footer');
-    footers.forEach(function(footer) {
-      var fStartX = 0, fCurX = 0, fDragging = false;
-
-      footer.addEventListener('touchstart', function(e){
-        if(!getOverlay() || !getOverlay().classList.contains('show')) return;
-        fStartX = e.touches[0].clientX;
-        fCurX = fStartX;
-        footer._startY = e.touches[0].clientY;
-        fDragging = true;
-        var modal = document.querySelector('.tutorial-modal');
-        if(modal){ modal.style.transition='none'; modal.style.transform=''; modal.style.opacity='1'; }
-        var t = getTrack(); if(t) t.classList.add('no-transition');
-        e.stopPropagation();
-      }, {passive:true});
-
-      footer.addEventListener('touchmove', function(e){
-        if(!fDragging) return;
-        fCurX = e.touches[0].clientX;
-        var dragX = fCurX - fStartX;
-        var dragY = e.touches[0].clientY - (footer._startY || e.touches[0].clientY);
-        var t = getTrack(); if(!t) return;
-        var cardW = t.children[0] ? t.children[0].offsetWidth : 0;
-        var isFirst = _tutorialCurrent === 1;
-        var isLast = _tutorialCurrent === _tutorialTotal;
-        // On last page — move the whole modal (dismiss gesture)
-        if(isLast && dragX < 0) {
-          var modal = document.querySelector('.tutorial-modal');
-          var dist = Math.sqrt(dragX*dragX + dragY*dragY);
-          var pct = Math.min(dist / 200, 1);
-          if(modal){ modal.style.transition='none'; modal.style.transform='translateX('+dragX+'px) translateY('+dragY+'px) rotate('+(dragX*0.04)+'deg) scale('+(1-pct*0.08)+')'; modal.style.opacity=String(Math.max(0,1-pct*0.6)); }
-          t.style.transform = 'translateX(calc(-' + (_tutorialCurrent-1) + ' * (' + cardW + 'px + 16px)))';
-        } else {
-          var offset = (isFirst && dragX > 0) ? dragX * 0.12 : dragX;
-          t.style.transform = 'translateX(calc(-' + (_tutorialCurrent-1) + ' * (' + cardW + 'px + 16px) + ' + offset + 'px))';
-        }
-        e.stopPropagation();
-      }, {passive:true});
-
-      footer.addEventListener('touchend', function(e){
-        if(!fDragging) return; fDragging = false;
-        var dragX = fCurX - fStartX;
-        var isLast = _tutorialCurrent === _tutorialTotal;
-        var modal = document.querySelector('.tutorial-modal');
-        if(isLast && dragX < 0) {
-          var dist = Math.abs(dragX);
-          if(dist > 100) {
-            // dismiss
-            if(modal){ modal.style.transition='transform .35s cubic-bezier(.4,0,.2,1),opacity .3s'; modal.style.transform='translateX(-110%) scale(0.8)'; modal.style.opacity='0'; setTimeout(function(){ tutorialSkip(); }, 320); }
-            else { tutorialSkip(); }
-          } else {
-            // snap back
-            if(modal){ modal.style.transition='transform .45s cubic-bezier(.34,1.56,.64,1),opacity .35s'; modal.style.transform=''; modal.style.opacity='1'; }
-            tutorialGoSmooth(_tutorialCurrent);
-          }
-        } else if(dragX < -40 && _tutorialCurrent < _tutorialTotal) {
-          tutorialGoSmooth(_tutorialCurrent + 1);
-        } else if(dragX > 40 && _tutorialCurrent > 1) {
-          tutorialGoSmooth(_tutorialCurrent - 1);
-        } else {
-          tutorialGoSmooth(_tutorialCurrent);
-        }
-        e.stopPropagation();
-      }, {passive:true});
-    });
-  }
-  setTimeout(initFooterDrag, 200);
-
-
-
-  document.addEventListener('DOMContentLoaded', function(){
-    var t = getTrack(); if(t){ t.classList.add('no-transition'); t.style.transform = 'translateX(0)'; }
-  });
-
-  document.addEventListener('touchstart', function(e){
-    if(!getOverlay() || !getOverlay().classList.contains('show')) return;
-    var modal = getModal();
-    if(modal && !modal.contains(e.target)) return;
-    startX = e.touches[0].clientX;
-    startY = e.touches[0].clientY;
-    dragX = 0; dragY = 0;
-    dragging = true;
-    gestureType = null;
-    var t = getTrack(); if(t) t.classList.add('no-transition');
-    if(modal){ modal.style.transition='none'; modal.style.transform=''; modal.style.opacity='1'; }
-  }, {passive:true});
-
-  document.addEventListener('touchmove', function(e){
-    if(!dragging) return;
-    e.stopPropagation();
-    dragX = e.touches[0].clientX - startX;
-    dragY = e.touches[0].clientY - startY;
-    var dist = Math.sqrt(dragX*dragX + dragY*dragY);
-    var t = getTrack(); if(!t) return;
-    var modal = getModal();
-    var isLast = _tutorialCurrent === _tutorialTotal;
-    var isFirst = _tutorialCurrent === 1;
-
-    // Determine gesture type once we have enough movement
-    if(!gestureType && dist > 10) {
-      var isMoreHorizontal = Math.abs(dragX) > Math.abs(dragY);
-      if(isLast && !isMoreHorizontal) gestureType = 'dismiss';
-      else if(isLast && dragX < 0) gestureType = 'dismiss';
-      else gestureType = 'horizontal';
-    }
-
-    if(gestureType === 'dismiss') {
-      // Sleduj prst v akomkoľvek smere
-      var pct = Math.min(dist / 200, 1);
-      var angle = Math.atan2(dragY, dragX) * 180 / Math.PI;
-      if(modal){
-        modal.style.transform = 'translateX(' + dragX + 'px) translateY(' + dragY + 'px) rotate(' + (dragX * 0.04) + 'deg) scale(' + (1 - pct * 0.08) + ')';
-        modal.style.opacity = String(Math.max(0, 1 - pct * 0.6));
-      }
-      var cardW = t.children[0] ? t.children[0].offsetWidth : 0; var gap = 16; t.style.transform = 'translateX(calc(-' + (_tutorialCurrent-1) + ' * (' + cardW + 'px + ' + gap + 'px)))';
-    } else if(gestureType === 'horizontal') {
-      if(isFirst && dragX > 0) {
-        var cardW3 = t.children[0] ? t.children[0].offsetWidth : 0; t.style.transform = 'translateX(calc(-' + (_tutorialCurrent-1) + ' * (' + cardW3 + 'px + 16px) + ' + (dragX*0.15) + 'px))';
-      } else {
-        var cardW2 = t.children[0] ? t.children[0].offsetWidth : 0; t.style.transform = 'translateX(calc(-' + (_tutorialCurrent-1) + ' * (' + cardW2 + 'px + 16px) + ' + dragX + 'px))';
-      }
-    }
-  }, {passive:true});
-
-  document.addEventListener('touchend', function(e){
-    if(!dragging) return; dragging = false;
-    var isLast = _tutorialCurrent === _tutorialTotal;
-    var modal = getModal();
-    var dist = Math.sqrt(dragX*dragX + dragY*dragY);
-
-    if(gestureType === 'dismiss' && dist > dismissDist) {
-      // Dosť ďaleko — odletí v smere prsta a zavrie sa
-      var flyX = dragX * 3;
-      var flyY = dragY * 3;
-      if(modal){
-        modal.style.transition = 'transform .35s cubic-bezier(.4,0,.2,1), opacity .3s';
-        modal.style.transform = 'translateX(' + flyX + 'px) translateY(' + flyY + 'px) rotate(' + (dragX * 0.08) + 'deg) scale(0.7)';
-        modal.style.opacity = '0';
-        setTimeout(function(){ tutorialSkip(); }, 320);
-      } else { tutorialSkip(); }
-    } else if(gestureType === 'dismiss') {
-      // Nedotiahol — spring back
-      if(modal){
-        modal.style.transition = 'transform .45s cubic-bezier(.34,1.56,.64,1), opacity .35s';
-        modal.style.transform = '';
-        modal.style.opacity = '1';
-      }
-    } else if(dragX < -threshold && _tutorialCurrent < _tutorialTotal) {
-      tutorialGoSmooth(_tutorialCurrent + 1);
-    } else if(dragX > threshold && _tutorialCurrent > 1) {
-      tutorialGoSmooth(_tutorialCurrent - 1);
-    } else {
-      tutorialGoSmooth(_tutorialCurrent);
-    }
-    gestureType = null;
-  }, {passive:true});
-})();
-
-function tutorialSkip() {
-  localStorage.setItem(TUTORIAL_KEY, '1');
-  var overlay = document.getElementById('tutorial-overlay');
-  if(overlay) overlay.classList.remove('show');
-  document.body.style.overflow = '';
-  window.scrollTo(0, 0);
-  // Zobraziť What's New po dokončení tutoriálu (pre nových používateľov)
-  var session = getSession();
-  var isManager = session && (['admin','bum','boss','pm','am','asistent'].indexOf(session.role) !== -1);
-  setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(isManager);}else{checkMilestone();} }, 400);
+function satoriGuideSave(patch){ try { if(typeof userPrefsSet === 'function') userPrefsSet(patch); } catch(e){} }
+// Nastavenia sa synchronizujú cez líniu. Tento malý lokálny marker navyše
+// bráni tomu, aby ten istý človek videl úvodnú prehliadku znovu len preto,
+// že si v rámci tej istej appky prepne Golem, Gyn alebo Reagilu.
+function satoriGuideSeenKey(){
+  try {
+    var s = getSession(), user = s && s.username ? String(s.username).trim().toLowerCase() : '';
+    return user ? 'satori-guide-seen:' + user : '';
+  } catch(e){ return ''; }
 }
-
-function initTutorial() {
-  var session = getSession();
-  if(!session) return;
-  if(localStorage.getItem(TUTORIAL_KEY)) return; // už videl tutoriál
-  var overlay = document.getElementById('tutorial-overlay');
-  if(overlay) overlay.classList.add('show');
-  // Bezpečný scroll lock — bez position:fixed na body (iOS bug)
-  document.body.style.overflow = 'hidden';
-  document.body.dataset.scrollY = window.scrollY;
-  // Animácia ikony na prvom kroku
-  setTimeout(function(){
-    var track = document.getElementById('tutorial-track');
-    if(track){
-      var firstStep = track.querySelector('.tutorial-step');
-      if(firstStep){
-        var icon = firstStep.querySelector('.tutorial-icon-circle');
-        if(icon){
-          icon.classList.remove('icon-anim-forward','icon-anim-back');
-          void icon.offsetWidth;
-          icon.classList.add('icon-anim-forward');
-        }
-      }
-    }
-  }, 400);
+function satoriGuideSeenOnDevice(){
+  try { var key = satoriGuideSeenKey(); return !!(key && localStorage.getItem(key) === '1'); } catch(e){ return false; }
 }
+function satoriGuideMarkSeen(){ try { var key = satoriGuideSeenKey(); if(key) localStorage.setItem(key, '1'); } catch(e){} }
+function satoriGuideClearSeen(){ try { var key = satoriGuideSeenKey(); if(key) localStorage.removeItem(key); } catch(e){} }
+function satoriGuideOverlay(){ return document.getElementById('satori-guide-overlay'); }
+function satoriGuideHideHint(){
+  clearTimeout(SATORI_GUIDE_STATE.hintTimer);
+  SATORI_GUIDE_STATE.hintTimer = 0; SATORI_GUIDE_STATE.hintKey = '';
+  var el = document.getElementById('satori-hint');
+  if(el){ el.classList.remove('show'); el.innerHTML = ''; }
+}
+function satoriGuideBlocked(){
+  if(SATORI_GUIDE_STATE.open) return true;
+  var ids = ['login-screen','satori-overlay','wn-overlay','line-chooser-overlay','av-overlay','av-confirm-overlay','logout-overlay','confirm-overlay','settings-overlay','edit-overlay','detail-overlay','session-expired-overlay','rpt-progress-overlay','gpp-overlay','lk-prompt-overlay','lk-confirm-overlay','pharma-ms-overlay','pharma-okres-overlay','pl-prod-sheet','nst-compose','gyn-ms-picker-overlay'];
+  for(var i=0;i<ids.length;i++){
+    var el = document.getElementById(ids[i]);
+    if(el && el.classList.contains('show')) return true;
+  }
+  try { if(document.querySelector('.gyn-cal-sheet.show, .gyn-ms-picker-overlay.show')) return true; } catch(e){}
+  return false;
+}
+function satoriGuideBuildSteps(){
+  var steps = SATORI_GUIDE_STEPS.slice();
+  try {
+    if(typeof mgrShouldShowLineToggle === 'function' && mgrShouldShowLineToggle()){
+      steps[1] = Object.assign({}, steps[1], { info:'Máš prístup do viacerých línií. Prepneš ich v Menu; po prepnutí sa otvorí Domov vybratej línie.' });
+    }
+  } catch(e){}
+  return steps;
+}
+function satoriGuidePageHtml(step, index, enabled){
+  var toggle = index === 0 ? '<div class="sg-toggle-row"><div><div class="sg-toggle-title">Zobrazovať užitočné tipy</div><div class="sg-toggle-sub">Krátko vysvetlia funkciu pri prvom otvorení.</div></div><button type="button" id="sg-enabled" class="sg-toggle' + (enabled ? ' on' : '') + '" role="switch" aria-checked="' + (enabled ? 'true' : 'false') + '" aria-label="Zobrazovať užitočné tipy" onclick="satoriGuideToggleEnabled()"></button></div>' : '';
+  var info = step.info ? '<div class="sg-info"><span class="sg-info-mark" aria-hidden="true">i</span><span>' + step.info + '</span></div>' : '';
+  return '<article class="sg-page" aria-hidden="' + (index === SATORI_GUIDE_STATE.step ? 'false' : 'true') + '"><div class="sg-page-inner"><div class="sg-icon" aria-hidden="true">' + step.icon + '</div><div class="sg-kicker">' + step.kicker + '</div><h2 class="sg-title"' + (index === 0 ? ' id="satori-guide-title"' : '') + '>' + step.title + '</h2><p class="sg-copy">' + step.copy + '</p>' + info + toggle + '</div></article>';
+}
+function satoriGuideFooterHtml(total){
+  var step = SATORI_GUIDE_STATE.step;
+  var dots = '';
+  for(var i=0;i<total;i++) dots += '<button type="button" class="sg-dot' + (i === step ? ' active' : '') + '" aria-label="Krok ' + (i+1) + ' z ' + total + '" aria-current="' + (i === step ? 'step' : 'false') + '" onclick="satoriGuideSetStep(' + i + ')"></button>';
+  var last = step === total - 1;
+  return '<div class="sg-dots">' + dots + '</div><div class="sg-actions' + (step === 0 ? ' first' : '') + '"><button type="button" class="sg-next" onclick="' + (last ? 'satoriGuideFinish()' : 'satoriGuideSetStep(' + (step+1) + ')') + '">' + (last ? 'Začať používať Satori ✓' : (step === 0 ? 'Začíname →' : 'Ďalej →')) + '</button>' + (step > 0 ? '<button type="button" class="sg-back" onclick="satoriGuideSetStep(' + (step-1) + ')">← Späť</button>' : '') + '</div><button type="button" class="sg-skip" onclick="satoriGuideSkip()">' + (step === 0 ? 'Teraz nie' : 'Preskočiť sprievodcu') + '</button>';
+}
+function satoriGuideRender(){
+  var body = document.getElementById('satori-guide-body'); if(!body) return;
+  var prefs = satoriGuidePrefs(), steps = satoriGuideBuildSteps();
+  if(SATORI_GUIDE_STATE.step < 0 || SATORI_GUIDE_STATE.step >= steps.length) SATORI_GUIDE_STATE.step = 0;
+  body.innerHTML = '<div class="sg-shell"><div class="sg-top"><div class="sg-brand"><span>Satori · pomocník</span><button type="button" class="sg-close" aria-label="Zavrieť sprievodcu" onclick="satoriGuideSkip()">×</button></div></div><div class="sg-track-viewport"><div class="sg-track" id="sg-track">' + steps.map(function(step, i){ return satoriGuidePageHtml(step, i, prefs.enabled); }).join('') + '</div></div><div class="sg-footer" id="sg-footer">' + satoriGuideFooterHtml(steps.length) + '</div></div>';
+  satoriGuideUpdate(false);
+}
+function satoriGuideUpdate(animate){
+  var track = document.getElementById('sg-track'), footer = document.getElementById('sg-footer');
+  var steps = satoriGuideBuildSteps();
+  if(!track || !footer) return;
+  track.classList.toggle('dragging', animate === false);
+  track.style.transform = 'translateX(-' + (SATORI_GUIDE_STATE.step * 100) + '%)';
+  if(animate === false) setTimeout(function(){ if(track) track.classList.remove('dragging'); }, 30);
+  track.querySelectorAll('.sg-page').forEach(function(page, i){ page.setAttribute('aria-hidden', i === SATORI_GUIDE_STATE.step ? 'false' : 'true'); });
+  footer.innerHTML = satoriGuideFooterHtml(steps.length);
+  if(animate !== false) try { haptic('selection'); } catch(e){}
+}
+function satoriGuideSetStep(step){
+  var total = satoriGuideBuildSteps().length;
+  if(step < 0 || step >= total || !SATORI_GUIDE_STATE.open) return;
+  SATORI_GUIDE_STATE.step = step; satoriGuideUpdate(true);
+}
+function satoriGuideStart(manual){
+  var prefs = satoriGuidePrefs();
+  if(!manual && (!prefs.enabled || prefs.seen || satoriGuideBlocked())) return false;
+  if(SATORI_GUIDE_STATE.open) return true;
+  satoriGuideHideHint();
+  var overlay = satoriGuideOverlay(); if(!overlay) return false;
+  SATORI_GUIDE_STATE.open = true; SATORI_GUIDE_STATE.manual = !!manual; SATORI_GUIDE_STATE.step = 0;
+  SATORI_GUIDE_STATE.restoreOverflow = document.body.style.overflow || '';
+  satoriGuideRender(); overlay.classList.add('show'); overlay.setAttribute('aria-hidden','false'); document.body.style.overflow = 'hidden';
+  setTimeout(function(){ var btn=document.querySelector('#satori-guide-overlay .sg-next'); if(btn) btn.focus(); }, 80);
+  return true;
+}
+function satoriGuideClose(){
+  var overlay = satoriGuideOverlay();
+  if(overlay){ overlay.classList.remove('show'); overlay.setAttribute('aria-hidden','true'); }
+  if(SATORI_GUIDE_STATE.open) document.body.style.overflow = SATORI_GUIDE_STATE.restoreOverflow || '';
+  SATORI_GUIDE_STATE.open = false; SATORI_GUIDE_STATE.manual = false;
+}
+function satoriGuideSkip(){ satoriGuideMarkSeen(); satoriGuideSave({satoriGuideSeen:true}); satoriGuideClose(); }
+function satoriGuideFinish(){ satoriGuideMarkSeen(); satoriGuideSave({satoriGuideSeen:true}); try { haptic('success'); } catch(e){} satoriGuideClose(); }
+function satoriGuideDisable(){ satoriGuideMarkSeen(); satoriGuideSave({satoriGuideEnabled:false,satoriGuideSeen:true}); satoriGuideClose(); }
+function satoriGuideToggleEnabled(){
+  var prefs = satoriGuidePrefs();
+  if(prefs.enabled){ satoriGuideDisable(); return; }
+  satoriGuideSave({satoriGuideEnabled:true}); satoriGuideRender();
+}
+function satoriGuideBack(){ if(SATORI_GUIDE_STATE.step > 0) satoriGuideSetStep(SATORI_GUIDE_STATE.step - 1); else satoriGuideSkip(); }
+function satoriGuideSchedule(){
+  clearTimeout(SATORI_GUIDE_STATE.scheduleTimer);
+  var began = Date.now(); SATORI_GUIDE_STATE.scheduled = true;
+  (function waitForSafeMoment(){
+    if(!SATORI_GUIDE_STATE.scheduled) return;
+    var prefs = satoriGuidePrefs();
+    if(!prefs.enabled || prefs.seen){ SATORI_GUIDE_STATE.scheduled = false; return; }
+    if(!satoriGuideBlocked() && satoriGuideStart(false)){ SATORI_GUIDE_STATE.scheduled = false; return; }
+    if(Date.now() - began < 15000) SATORI_GUIDE_STATE.scheduleTimer = setTimeout(waitForSafeMoment, 350);
+    else SATORI_GUIDE_STATE.scheduled = false;
+  })();
+}
+function satoriGuideResetHints(){
+  satoriGuideClearSeen();
+  satoriGuideSave({satoriGuideSeen:false,satoriGuideHints:{}});
+  var s = getSession(); if(s) renderSettings(s);
+  var status = document.getElementById('set-guide-status');
+  if(status){ status.textContent = 'Sprievodca a tipy sú pripravené na ďalšie zobrazenie.'; status.classList.add('show'); }
+  try { haptic('success'); } catch(e){}
+}
+function settingsToggleSatoriGuide(){
+  var prefs = satoriGuidePrefs(); satoriGuideSave({satoriGuideEnabled:!prefs.enabled});
+  var s = getSession(); if(s) renderSettings(s);
+  try { haptic('selection'); } catch(e){}
+}
+function satoriGuideHintScreenOpen(key){
+  if(key === 'stocks') return !!(typeof SKLADY_STATE !== 'undefined' && SKLADY_STATE.open && document.getElementById('sklady-overlay') && document.getElementById('sklady-overlay').classList.contains('show'));
+  if(key === 'board') return !!(document.getElementById('nastenka-overlay') && document.getElementById('nastenka-overlay').classList.contains('show'));
+  if(key === 'calendar'){
+    var golem = document.getElementById('golem-cal-overlay');
+    try { return !!((golem && golem.classList.contains('show')) || document.body.classList.contains('mgr-subtab-kalendar') || (typeof GYN_APP !== 'undefined' && GYN_APP.nav === 'kalendar' && document.getElementById('gyn-view') && document.getElementById('gyn-view').classList.contains('show'))); } catch(e){ return false; }
+  }
+  return false;
+}
+function satoriGuideMaybeHint(key){
+  var prefs = satoriGuidePrefs();
+  if(!SATORI_GUIDE_HINTS[key] || !prefs.enabled || prefs.hints[key] || SATORI_GUIDE_STATE.hintKey || SATORI_GUIDE_STATE.open) return;
+  SATORI_GUIDE_STATE.hintKey = key;
+  var attempts = 0;
+  (function waitForScreen(){
+    if(SATORI_GUIDE_STATE.hintKey !== key) return;
+    if(!satoriGuideHintScreenOpen(key)){ SATORI_GUIDE_STATE.hintKey = ''; return; }
+    // Pri Skladoch zobraz tip až nad skutočnými údajmi. Pri pomalej sieti by
+    // karta nad skeletonom vyzerala ako ďalší chybový stav.
+    if(key === 'stocks' && (!SKLADY_STATE.payload || !Array.isArray(SKLADY_STATE.payload.products))){
+      if(++attempts < 24){ SATORI_GUIDE_STATE.hintTimer = setTimeout(waitForScreen, 350); } else SATORI_GUIDE_STATE.hintKey = '';
+      return;
+    }
+    if(satoriGuideBlocked()){ if(++attempts < 8){ SATORI_GUIDE_STATE.hintTimer = setTimeout(waitForScreen, 350); } else SATORI_GUIDE_STATE.hintKey = ''; return; }
+    satoriGuideRenderHint(key);
+  })();
+}
+function satoriGuideRenderHint(key){
+  var hint = SATORI_GUIDE_HINTS[key], el = document.getElementById('satori-hint');
+  if(!hint || !el || !satoriGuideHintScreenOpen(key)){ SATORI_GUIDE_STATE.hintKey = ''; return; }
+  el.innerHTML = '<div class="sg-hint-card"><div class="sg-hint-row"><div class="sg-hint-icon" aria-hidden="true">✦</div><div><div class="sg-hint-title">' + hint.title + '</div><div class="sg-hint-copy">' + hint.copy + '</div></div></div><div class="sg-hint-actions"><button type="button" class="sg-hint-btn" onclick="satoriGuideDismissHint(\'' + key + '\',true)">Už neukazovať</button><button type="button" class="sg-hint-btn primary" onclick="satoriGuideDismissHint(\'' + key + '\',false)">Rozumiem</button></div></div>';
+  el.classList.add('show');
+}
+function satoriGuideDismissHint(key, disableAll){
+  var prefs = satoriGuidePrefs(), hints = Object.assign({}, prefs.hints || {}); hints[key] = true;
+  satoriGuideSave(disableAll ? {satoriGuideEnabled:false,satoriGuideHints:hints} : {satoriGuideHints:hints});
+  satoriGuideHideHint(); try { haptic('selection'); } catch(e){}
+}
+function satoriGuideInitTouch(){
+  if(SATORI_GUIDE_STATE.touchReady) return;
+  var overlay = satoriGuideOverlay(); if(!overlay) return;
+  SATORI_GUIDE_STATE.touchReady = true;
+  var startX=0,startY=0,dragX=0,dragging=false;
+  function track(){ return document.getElementById('sg-track'); }
+  overlay.addEventListener('touchstart',function(e){
+    if(!SATORI_GUIDE_STATE.open || (e.target.closest && e.target.closest('button,input'))) return;
+    startX=e.touches[0].clientX; startY=e.touches[0].clientY; dragX=0; dragging=true; var t=track(); if(t) t.classList.add('dragging');
+  },{passive:true});
+  overlay.addEventListener('touchmove',function(e){
+    if(!dragging) return; var dx=e.touches[0].clientX-startX,dy=e.touches[0].clientY-startY;
+    if(Math.abs(dy)>Math.abs(dx) && Math.abs(dy)>12){ dragging=false; var vt=track(); if(vt) vt.classList.remove('dragging'); return; }
+    dragX=dx; var t=track(); if(!t) return; var w=overlay.clientWidth||1,atStart=SATORI_GUIDE_STATE.step===0,atEnd=SATORI_GUIDE_STATE.step===satoriGuideBuildSteps().length-1;
+    var resistance=(atStart&&dx>0)||(atEnd&&dx<0)?0.22:1; t.style.transform='translateX(calc(-'+(SATORI_GUIDE_STATE.step*100)+'% + '+(dx*resistance)+'px))';
+  },{passive:true});
+  overlay.addEventListener('touchend',function(){
+    if(!dragging) return; dragging=false; var t=track(); if(t) t.classList.remove('dragging');
+    if(dragX<-52) satoriGuideSetStep(SATORI_GUIDE_STATE.step+1); else if(dragX>52) satoriGuideSetStep(SATORI_GUIDE_STATE.step-1); else satoriGuideUpdate(true);
+  },{passive:true});
+}
+document.addEventListener('DOMContentLoaded', satoriGuideInitTouch);
 // ── USERS sú uložení v Google Sheets (hárok Pouzivatelia) ──
 
 var SESSION_KEY = 'potencial_gp_session';
@@ -9599,14 +9568,13 @@ function loginSuccess(username, name, role, region, extra) {
     setTimeout(function(){ try { pushMaybePrompt(); } catch(e){} }, LOGIN_FOLLOWUP_DELAY_MS.push);
     // One-time onboarding tip pre avatar — 4s delay aby WN/satori modal stihli skončiť
     setTimeout(function(){ try { hdrAvatarShowTipIfNeeded(); } catch(e){} }, 1500);
+    setTimeout(function(){ try { satoriGuideSchedule(); } catch(e){} }, 1500);
     appBootWaitForHomeData(user);
     return;
   }
-  if(localStorage.getItem(TUTORIAL_KEY)){
-    setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(false);}else{checkMilestone();} }, LOGIN_FOLLOWUP_DELAY_MS.satoriWn);
-  }
+  setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(false);}else{checkMilestone();} }, LOGIN_FOLLOWUP_DELAY_MS.satoriWn);
   usageEnterGolemHome(user);   // zaznamenaj úvodnú obrazovku (fix „0 s · nič nepozeral")
-  initTutorial();
+  setTimeout(function(){ try { satoriGuideSchedule(); } catch(e){} }, 1500);
   // refreshBadgeFromSheets je nahradená loadInitData() vyššie — história sa načíta cez getInitData
   // Skontroluj notifikácie od admina — výsledky sú pravdepodobne už v cache z prefetchu
   checkNotifications();
@@ -9995,6 +9963,7 @@ function closeLogoutConfirm() {
 }
 
 function confirmLogout() {
+  try { satoriGuideHideHint(); satoriGuideClose(); } catch(e){}
   _isLoggingOut = true;
   try {
     var s = getSession();
@@ -10570,11 +10539,13 @@ function initLogin() {
       }, 2500);
       // One-time onboarding tip pre avatar — 4s delay aby modal-y stihli skončiť
       setTimeout(function(){ try { hdrAvatarShowTipIfNeeded(); } catch(e){} }, 1500);
+      setTimeout(function(){ try { satoriGuideSchedule(); } catch(e){} }, 1500);
       return;
     }
     usageEnterGolemHome(session);   // zaznamenaj úvodnú obrazovku (fix „0 s · nič nepozeral")
     setTimeout(function(){ updateHdrForUser(session); }, 300);
     setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(false);}else{checkMilestone();} }, 600);
+    setTimeout(function(){ try { satoriGuideSchedule(); } catch(e){} }, 1500);
     // refreshBadgeFromSheets nahradená loadInitData() vyššie
     if (!REP_PL_STATE.loading && !REP_PL_STATE.loaded) {
       plnenieApplyDefaultPeriod(REP_PL_STATE, true);
@@ -12261,6 +12232,7 @@ function gynEnter(user) {
   // (ak je otvorený WN/satori modal, hdrAvatarShowTipIfNeeded počká kým sa zatvorí)
   setTimeout(function(){ try { hdrAvatarUpdateHint(); } catch(e){} }, 600);
   setTimeout(function(){ try { hdrAvatarShowTipIfNeeded(); } catch(e){} }, 1500);
+  setTimeout(function(){ try { satoriGuideSchedule(); } catch(e){} }, 1500);
   // Ponuka push notifikácií (gyn) — nie admin
   setTimeout(function(){ try { pushMaybePrompt(); } catch(e){} }, 3500);
   // In-app notifikácie (banner + polling) — admin je odosielateľ, ten ich nepotrebuje
@@ -12611,6 +12583,7 @@ function gynActivityAllowed(u) {
 
 // ── Navigácia medzi tabmi ──
 function gynNavTo(tab) {
+  try { satoriGuideHideHint(); } catch(e){}
   // Obnov aktívny povrch aj po prepnutí línie alebo oneskorenom GP callbacku.
   var session = getSession();
   if (!session || session.line !== 'gyn') return;
@@ -12647,6 +12620,7 @@ function gynNavTo(tab) {
   });
   gynRenderContent(getSession());
   window.scrollTo(0, 0);
+  if(tab === 'kalendar') setTimeout(function(){ try { satoriGuideMaybeHint('calendar'); } catch(e){} }, 550);
 }
 
 function gynSwitchQ(q) {
@@ -19443,11 +19417,8 @@ _backRegister('detail-overlay', closeDetail);
 _backRegister('satori-overlay', satoriClose);
 _backRegister('wn-overlay', wnClose);
 
-// 2. Tutorial — krok späť, na kroku 1 zatvoriť tutoriál
-_backRegister('tutorial-overlay', function () {
-  if (_tutorialCurrent > 1) window.tutorialBack(_tutorialCurrent - 1);
-  else tutorialSkip();
-});
+// 2. Satori sprievodca — krok späť, na prvej karte bezpečne zavrieť.
+_backRegister('satori-guide-overlay', satoriGuideBack);
 
 // 3. District chart overlay (pharma → okres graf)
 _backRegister('pharma-okres-overlay', closePharmaOkresChart);
@@ -21212,7 +21183,7 @@ function hdrAvatarShowTipIfNeeded(_stableTicks) {
                        'detail-overlay','edit-overlay','restore-overlay','hist-overlay',
                        'lb-overlay','rep-plnenie-overlay','lk-overlay','golem-cal-overlay','lk-detail',
                        'pharma-ms-overlay','pharma-okres-overlay',
-                       'tutorial-overlay','session-expired-overlay','rpt-progress-overlay','thankyou'];
+                       'satori-guide-overlay','session-expired-overlay','rpt-progress-overlay','thankyou'];
     var isBlocked = false;
     for (var bi = 0; bi < blockingIds.length; bi++) {
       var bel = document.getElementById(blockingIds[bi]);
@@ -23434,6 +23405,7 @@ function mgrSwitchSubtab(tab) {
   }
   if (tab === 'kalendar') {
     mgrRenderCalendarView(true);
+    setTimeout(function(){ try { satoriGuideMaybeHint('calendar'); } catch(e){} }, 550);
   }
   if (tab === 'activity') {
     USAGE_VIEW.line = 'gp';
@@ -34981,6 +34953,7 @@ function mgrRenderCalendarView(resetMonth) {
 function openGolemKalendar() {
   if (document.body.classList.contains('manager-mode')) {
     mgrSwitchSubtab('kalendar');
+    setTimeout(function(){ try { satoriGuideMaybeHint('calendar'); } catch(e){} }, 550);
     return;
   }
   usageSectionEnter('Kalendár');
@@ -34999,8 +34972,10 @@ function openGolemKalendar() {
   if (host) gynKalShow(host, getSession());
   try { gynCalSync(); } catch(e){}                  // načítaj zo Sheets (ak Golem backend beží)
   gynCalUpdateBadge();
+  setTimeout(function(){ try { satoriGuideMaybeHint('calendar'); } catch(e){} }, 550);
 }
 function closeGolemKalendar() {
+  try { satoriGuideHideHint(); } catch(e){}
   usageSectionClose();
   closeAllPanels();
   if (document.body.classList.contains('manager-mode')) {
@@ -37110,8 +37085,10 @@ function openNastenka(){
   nstRender();
   try { ov.scrollTop = 0; } catch(e){}
   nstFetch(function(){ NST.loading = false; nstRender(); nstMarkSeen(); });
+  setTimeout(function(){ try { satoriGuideMaybeHint('board'); } catch(e){} }, 550);
 }
 function closeNastenka(){
+  try { satoriGuideHideHint(); } catch(e){}
   var returnToDomov = !!NST.returnToDomov;
   NST.returnToDomov = false;
   try { usageSectionClose(); } catch(e){}
