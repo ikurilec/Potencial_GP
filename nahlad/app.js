@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.16';
+var APP_VERSION = '2.88.17';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -6107,17 +6107,6 @@ function teamPlnenieCloseDetail(){ if(!TEAM_PL_STATE.detailUser)return closeTeam
 function teamPlnenieBack(){ if(TEAM_PL_STATE.detailUser && !teamPlnenieReturnsDirectly()) teamPlnenieCloseDetail(); else closeTeamPlnenie(); }
 function teamPlnenieAggregate(reps){ var plan=(reps||[]).reduce(function(sum,r){return sum+(Number(r.planEUR)||0);},0), sales=(reps||[]).reduce(function(sum,r){return sum+(Number(r.predajeEUR)||0);},0); return {plan:plan,sales:sales,pct:plan>0?sales/plan*100:null}; }
 function teamPlnenieProductLabel(value){ return String(value || '').replace(/_/g,' '); }
-function teamPlneniePharmaKey(productKey){
-  if(typeof PHARMA_CODES === 'undefined') return '';
-  if(PHARMA_CODES[productKey]) return productKey;
-  var normal = typeof plnenieNormalizeKey === 'function' ? plnenieNormalizeKey(productKey) : String(productKey).toLowerCase();
-  return Object.keys(PHARMA_CODES).find(function(key){ return (typeof plnenieNormalizeKey === 'function' ? plnenieNormalizeKey(key) : String(key).toLowerCase()) === normal; }) || '';
-}
-function teamPlnenieOpenPharma(username, productKey){
-  var payload=TEAM_PL_STATE.payload || {}, rep=(payload.reps||[]).find(function(item){return item.username===username;}), product=rep && (rep.products||[]).find(function(item){return item.key===productKey;}), pharmaKey=teamPlneniePharmaKey(productKey);
-  if(!rep || !product || !pharmaKey) return;
-  openPharmaMs(pharmaKey, teamPlnenieProductLabel(product.label), rep.region, rep.username, {q:payload.Q || teamPlnenieQuarter(),year:payload.rok || teamPlnenieYear(),team:true});
-}
 
 function teamPlnenieCard(rep,index,current){ var av=lbAvatarContent(rep.username,rep.name,40), color=(LB_REP_INFO[rep.username]||{}).color || '#2563EB', safe=String(rep.username).replace(/'/g,"\\'"), name=teamPlnenieRoleName(rep.role); return '<button type="button" class="team-plnenie-card" onclick="teamPlnenieOpenDetail(\''+safe+'\')"><span class="team-plnenie-rank">'+(index+1)+'.</span><span class="team-plnenie-avatar'+(av.hasAvatar?' has-avatar':'')+'" data-username="'+appEsc(rep.username)+'" style="background:'+appEsc(color)+'">'+av.html+'</span><span class="team-plnenie-person"><span class="team-plnenie-name">'+appEsc(rep.name)+'</span><span class="team-plnenie-meta">'+appEsc(name+' · '+(rep.region||'Golem'))+(rep.username===current?'<span class="team-plnenie-you">Ty</span>':'')+'</span></span><span class="team-plnenie-result"><span class="team-plnenie-pct '+teamPlnenieColor(rep.pct)+'">'+teamPlnenieFmtPct(rep.pct)+'</span><span class="team-plnenie-money">'+teamPlnenieFmtMoney(rep.predajeEUR)+'</span></span><span class="team-plnenie-chev">›</span></button>'; }
 function teamPlnenieGroupHtml(role,reps,current){ var ag=teamPlnenieAggregate(reps); return '<section class="team-plnenie-group"><div class="team-plnenie-group-head"><div class="team-plnenie-label">Tím '+teamPlnenieRoleName(role)+'</div><div class="team-plnenie-group-result">'+teamPlnenieFmtPct(ag.pct)+' · '+reps.length+' rep.</div></div><div class="team-plnenie-list">'+reps.map(function(rep,i){return teamPlnenieCard(rep,i,current);}).join('')+'</div></section>'; }
@@ -6128,7 +6117,7 @@ function teamPlnenieRender(){
   if(TEAM_PL_STATE.detailUser){
     var rep=reps.find(function(item){return item.username===TEAM_PL_STATE.detailUser;}); if(!rep){TEAM_PL_STATE.detailUser='';return teamPlnenieRender();} if(title)title.textContent=rep.name||'Plnenie reprezentanta';
     var av=lbAvatarContent(rep.username,rep.name,48), products=(rep.products||[]).slice().sort(function(a,b){return(a.label||'').localeCompare(b.label||'','sk');});
-    body.innerHTML='<div class="team-plnenie-person-head"><div class="team-plnenie-avatar'+(av.hasAvatar?' has-avatar':'')+'" data-username="'+appEsc(rep.username)+'" style="background:'+appEsc((LB_REP_INFO[rep.username]||{}).color||'#2563EB')+'">'+av.html+'</div><div class="team-plnenie-person"><div class="team-plnenie-name">'+appEsc(rep.name)+'</div><div class="team-plnenie-meta">'+appEsc(teamPlnenieRoleName(rep.role)+' · '+(rep.region||'Golem'))+(rep.username===current?'<span class="team-plnenie-you">Ty</span>':'')+'</div></div><div class="team-plnenie-person-pct"><div class="team-plnenie-pct '+teamPlnenieColor(rep.pct)+'">'+teamPlnenieFmtPct(rep.pct)+'</div><small>celkom</small></div></div><div class="team-plnenie-label">Produkty s plánom · Q'+q+'</div>'+(products.length?products.map(function(product){var cls=teamPlnenieColor(product.pct),pct=product.pct===null?0:Math.max(0,Math.min(100,product.pct)),hasPharma=!!teamPlneniePharmaKey(product.key),safeUser=String(rep.username).replace(/'/g,"\\'"),safeKey=String(product.key).replace(/'/g,"\\'");return '<div class="team-plnenie-product"><div class="team-plnenie-product-top"><div class="team-plnenie-product-name"><span class="team-plnenie-dot"></span><span>'+appEsc(teamPlnenieProductLabel(product.label))+'</span></div><div class="team-plnenie-pct '+cls+'">'+teamPlnenieFmtPct(product.pct)+'</div></div><div class="team-plnenie-product-bar"><div class="team-plnenie-product-fill '+cls+'" style="width:'+pct+'%"></div></div><div class="team-plnenie-product-money"><span>Plán <strong>'+teamPlnenieFmtMoney(product.planEUR)+'</strong></span><span>Predaj <strong>'+teamPlnenieFmtMoney(product.predajeEUR)+'</strong></span></div>'+(hasPharma?'<button type="button" class="team-plnenie-pharma" onclick="teamPlnenieOpenPharma(\''+safeUser+'\',\''+safeKey+'\')">Trhový podiel a okresy <span>›</span></button>':'')+'</div>';}).join(''):'<div class="team-plnenie-empty">Pre tento kvartál zatiaľ nemá zadaný plán.</div>'); return;
+    body.innerHTML='<div class="team-plnenie-person-head"><div class="team-plnenie-avatar'+(av.hasAvatar?' has-avatar':'')+'" data-username="'+appEsc(rep.username)+'" style="background:'+appEsc((LB_REP_INFO[rep.username]||{}).color||'#2563EB')+'">'+av.html+'</div><div class="team-plnenie-person"><div class="team-plnenie-name">'+appEsc(rep.name)+'</div><div class="team-plnenie-meta">'+appEsc(teamPlnenieRoleName(rep.role)+' · '+(rep.region||'Golem'))+(rep.username===current?'<span class="team-plnenie-you">Ty</span>':'')+'</div></div><div class="team-plnenie-person-pct"><div class="team-plnenie-pct '+teamPlnenieColor(rep.pct)+'">'+teamPlnenieFmtPct(rep.pct)+'</div><small>celkom</small></div></div><div class="team-plnenie-label">Produkty s plánom · Q'+q+'</div>'+(products.length?products.map(function(product){var cls=teamPlnenieColor(product.pct),pct=product.pct===null?0:Math.max(0,Math.min(100,product.pct));return '<div class="team-plnenie-product"><div class="team-plnenie-product-top"><div class="team-plnenie-product-name"><span class="team-plnenie-dot"></span><span>'+appEsc(teamPlnenieProductLabel(product.label))+'</span></div><div class="team-plnenie-pct '+cls+'">'+teamPlnenieFmtPct(product.pct)+'</div></div><div class="team-plnenie-product-bar"><div class="team-plnenie-product-fill '+cls+'" style="width:'+pct+'%"></div></div><div class="team-plnenie-product-money"><span>Plán <strong>'+teamPlnenieFmtMoney(product.planEUR)+'</strong></span><span>Predaj <strong>'+teamPlnenieFmtMoney(product.predajeEUR)+'</strong></span></div></div>';}).join(''):'<div class="team-plnenie-empty">Pre tento kvartál zatiaľ nemá zadaný plán.</div>'); return;
   }
   if(title)title.textContent='Tímové plnenie'; if(!reps.length){body.innerHTML='<div class="team-plnenie-empty">Pre Golem zatiaľ nie sú dostupné údaje o plnení.</div>';return;}
   reps.sort(function(a,b){var ap=a.pct==null?-1:a.pct,bp=b.pct==null?-1:b.pct;return bp-ap||String(a.name).localeCompare(String(b.name),'sk');}); var all=teamPlnenieAggregate(reps),west=reps.filter(function(r){return String(r.role).toLowerCase()==='rep west';}),east=reps.filter(function(r){return String(r.role).toLowerCase()==='rep east';}),w=teamPlnenieAggregate(west),e=teamPlnenieAggregate(east);
@@ -12803,7 +12792,7 @@ function gynTeamLineAgg(items){
 function gynTeamRepCard(item, index, current){
   var rep=item.rep, agg=item.agg, av=gynAvatarContent(rep.login,rep.meno), safe=String(rep.login||'').replace(/'/g,"\\'");
   return '<button type="button" class="team-plnenie-card" onclick="gynTeamOpenDetail(\''+safe+'\')"><span class="team-plnenie-rank">'+(index+1)+'.</span>' +
-    '<span class="team-plnenie-avatar'+(av.hasAvatar?' has-avatar':'')+'" data-username="'+gynEsc(rep.login||'')+'">'+av.html+'</span>' +
+    '<span class="team-plnenie-avatar'+(av.hasAvatar?' has-avatar':'')+'" data-username="'+gynEsc(rep.login||'')+'" style="background:'+gynLbColor(rep.login)+'">'+av.html+'</span>' +
     '<span class="team-plnenie-person"><span class="team-plnenie-name">'+gynEsc(rep.meno||rep.login)+'</span><span class="team-plnenie-meta">'+gynEsc(gynTeamLineLabel(gynTeamRepLine(rep))+' · '+(rep.region||''))+(rep.login===current?'<span class="team-plnenie-you">Ty</span>':'')+'</span></span>' +
     '<span class="team-plnenie-result"><span class="team-plnenie-pct '+teamPlnenieColor(agg.pct)+'">'+teamPlnenieFmtPct(agg.pct)+'</span><span class="team-plnenie-money">'+teamPlnenieFmtMoney(agg.totalPred)+'</span></span>' +
     '<span class="team-plnenie-chev">›</span></button>';
@@ -12837,8 +12826,9 @@ function gynTeamRender(el, data){
   if(detail){
     var av=gynAvatarContent(detail.rep.login,detail.rep.meno);
     var products=(detail.agg.prods||[]).slice().sort(function(a,b){ return String(a.name||'').localeCompare(String(b.name||''),'sk'); });
-    el.innerHTML='<div class="team-plnenie-person-head"><button type="button" class="gyn-team-detail-back" data-app-back onclick="gynTeamCloseDetail()" aria-label="Späť">←</button>' +
-      '<div class="team-plnenie-avatar'+(av.hasAvatar?' has-avatar':'')+'" data-username="'+gynEsc(detail.rep.login||'')+'">'+av.html+'</div>' +
+    el.innerHTML='<button type="button" class="mgr-back" data-app-back onclick="gynTeamCloseDetail()">← Späť</button>' +
+      '<div class="team-plnenie-person-head">' +
+      '<div class="team-plnenie-avatar'+(av.hasAvatar?' has-avatar':'')+'" data-username="'+gynEsc(detail.rep.login||'')+'" style="background:'+gynLbColor(detail.rep.login)+'">'+av.html+'</div>' +
       '<div class="team-plnenie-person"><div class="team-plnenie-name">'+gynEsc(detail.rep.meno||detail.rep.login)+'</div><div class="team-plnenie-meta">'+gynEsc(gynTeamLineLabel(gynTeamRepLine(detail.rep))+' · '+(detail.rep.region||''))+(detail.rep.login===current?'<span class="team-plnenie-you">Ty</span>':'')+'</div></div>' +
       '<div class="team-plnenie-person-pct"><div class="team-plnenie-pct '+teamPlnenieColor(detail.agg.pct)+'">'+teamPlnenieFmtPct(detail.agg.pct)+'</div><small>celkom</small></div></div>' +
       '<div class="team-plnenie-label">Produkty s plánom · Q'+GYN_APP.q+'</div>' + gynTeamProductBlock(products);
