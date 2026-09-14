@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.8';
+var APP_VERSION = '2.88.9';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -5713,6 +5713,7 @@ function appGoDomov() {
   if (typeof _appTrackMainTab === 'function') _appTrackMainTab('domov');
   appNavReset('domov');
   try { openDnes(); } catch (e) {}
+  satoriGuideQueueHint('home', 550);
 }
 
 // Banner aj avatar vedú na vlastný Domov; ovládacie prvky si nechajú svoju akciu.
@@ -6014,6 +6015,7 @@ function openViac() {
   if (ov) ov.classList.add('show');
   document.body.style.overflow = 'hidden';
   try { repTabSetActive('viac-overlay'); } catch (e) {}
+  satoriGuideQueueHint('menu', 420);
 }
 function closeViac() {
   try { usageSectionClose(); } catch (e) {}
@@ -6095,9 +6097,10 @@ function openTeamPlnenie(detailUser){
   usageSectionEnter('Tímové plnenie'); TEAM_PL_STATE.open=true; TEAM_PL_STATE.detailUser=''; TEAM_PL_STATE.pendingDetailUser=detailUser || ''; TEAM_PL_STATE.openedFromLinkedDetail=!!detailUser; TEAM_PL_STATE.returnTo=teamPlnenieCaptureReturn();
   var sub=document.getElementById('team-plnenie-sub'); if(sub)sub.textContent='Golem · Q'+teamPlnenieQuarter()+' '+teamPlnenieYear();
   _panelShow('team-plnenie-overlay'); teamPlnenieLoad(false);
+  if(!detailUser) satoriGuideQueueHint('team', 650);
 }
 function closeTeamPlnenie(){ var target=TEAM_PL_STATE.returnTo; usageSectionClose(); TEAM_PL_STATE.open=false; TEAM_PL_STATE.detailUser=''; TEAM_PL_STATE.pendingDetailUser=''; TEAM_PL_STATE.openedFromLinkedDetail=false; TEAM_PL_STATE.request++; TEAM_PL_STATE.returnTo=null; teamPlnenieRestoreReturn(target); }
-function teamPlnenieOpenDetail(username){ var rep=((TEAM_PL_STATE.payload || {}).reps || []).find(function(item){return item.username===username;}); if(!rep)return; TEAM_PL_STATE.detailUser=username; teamPlnenieRender(); var overlay=document.getElementById('team-plnenie-overlay');if(overlay)overlay.scrollTop=0; }
+function teamPlnenieOpenDetail(username){ var rep=((TEAM_PL_STATE.payload || {}).reps || []).find(function(item){return item.username===username;}); if(!rep)return; TEAM_PL_STATE.detailUser=username; teamPlnenieRender(); var overlay=document.getElementById('team-plnenie-overlay');if(overlay)overlay.scrollTop=0; satoriGuideQueueHint('rep_detail', 550); }
 function teamPlnenieOpenFromLeaderboard(username){ if(teamPlnenieAllowed()) openTeamPlnenie(username); }
 function teamPlnenieCloseDetail(){ if(!TEAM_PL_STATE.detailUser)return closeTeamPlnenie(); TEAM_PL_STATE.detailUser=''; teamPlnenieRender(); var overlay=document.getElementById('team-plnenie-overlay');if(overlay)overlay.scrollTop=0; }
 function teamPlnenieBack(){ if(TEAM_PL_STATE.detailUser && !teamPlnenieReturnsDirectly()) teamPlnenieCloseDetail(); else closeTeamPlnenie(); }
@@ -6587,6 +6590,7 @@ function openHistory() {
   if(!overlay || !body) return;
 
   _panelShow('hist-overlay');
+  satoriGuideQueueHint('visits', 550);
   dateEl.textContent = getTodayStr();
   if(searchEl) searchEl.value = '';
 
@@ -7669,7 +7673,7 @@ function settingsAppHtml(s){
             '<span style="font-weight:600;color:#64748B">' + (guide.enabled ? 'tipy pri prvom otvorení funkcie' : 'automatické tipy sú vypnuté') + '</span></div>' +
             '<button type="button" class="set-switch' + (guide.enabled ? ' on' : '') + '" role="switch" aria-checked="' + (guide.enabled ? 'true' : 'false') + '" aria-label="Satori sprievodca" onclick="settingsToggleSatoriGuide()"></button>' +
           '</div>' +
-          '<div class="set-row-desc" style="margin:-2px 0 9px">Krátko vysvetlí navigáciu, obnovu dát, Sklady, Kalendár a Nástenku. Zobrazí sa iba raz.</div>' +
+          '<div class="set-row-desc" style="margin:-2px 0 9px">Krátko vysvetlí navigáciu a dostupné prehľady, produkty, trhové dáta aj nástroje tvojej roly. Každý tip sa zobrazí iba raz.</div>' +
           '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:9px">' +
             '<button type="button" class="set-action-btn" style="flex:1;margin:0" onclick="satoriGuideStart(true)">✦ Spustiť sprievodcu znova</button>' +
             '<button type="button" class="set-mini-btn" onclick="satoriGuideResetHints()">Obnoviť tipy</button>' +
@@ -8123,6 +8127,7 @@ function openDetail(idx) {
   if(item.type === 'lonelix-new'){ lonelixDoctorDetail(item.lon, { canAddGp: true }); return; }
   _currentDetailIdx = idx;
   _currentDetailItem = item;
+  satoriGuideQueueHint('doctor', 650);
   // Znovuotvorenie po úprave hľadá záznam podľa čísla riadku, nie podľa indexu.
   // saveEditRecord() totiž najprv zavolá histRender(), ktorý _histDetailItems
   // postaví nanovo — s aktuálnym filtrom aj zoradením. Zapamätaný index tak mohol
@@ -8688,6 +8693,24 @@ var SATORI_GUIDE_STEPS = [
   { icon:'✦', kicker:'SI PRIPRAVENÝ', title:'Pomoc je vždy poruke', copy:'V Kalendári riešiš udalosti a dovolenky, na Nástenke zdieľaš informácie s ľuďmi vo svojej línii. Sprievodcu si môžeš kedykoľvek znovu otvoriť v Nastaveniach.' }
 ];
 var SATORI_GUIDE_HINTS = {
+  home: { title:'Domov je tvoj prehľad', copy:'Tu nájdeš to, čo je dnes dôležité: stav plnenia, upozornenia, kalendár a rýchle odkazy na detail.' },
+  menu: { title:'Nástroje podľa tvojej roly', copy:'Menu ukazuje iba funkcie, ku ktorým máš prístup v aktuálnej línii. Nastavenia sú vždy naspodku.' },
+  visits: { title:'História na jednom mieste', copy:'Tu si vyhľadáš predchádzajúce záznamy a otvoríš detail lekára alebo návštevy.' },
+  doctor: { title:'Detail lekára', copy:'Na karte máš súvislosti k lekárovi, predchádzajúce návštevy a ďalší odporúčaný krok.' },
+  plnenie: { title:'Ako čítať Plnenie', copy:'Percento porovnáva aktuálny predaj s plánom. Prepínaj kvartály a ťukni na produkt pre detail jeho výsledku.' },
+  leaderboard: { title:'Rebríček plnenia', copy:'Poradie ukazuje výsledky aktuálneho kvartálu. Ťuknutím na položku sa dostaneš k podrobnejšiemu pohľadu.' },
+  team: { title:'Tímové plnenie', copy:'Vidíš súhrn plnenia tímov West aj East. Ťuknutím na kolegu otvoríš jeho produkty bez informácií o lekároch.' },
+  lekarne: { title:'Príležitosti v lekárňach', copy:'Filtre ti pomôžu nájsť príležitosti podľa situácie. V detaile lekárne nájdeš konkrétny dôvod zaradenia.' },
+  products: { title:'Detail produktu', copy:'Tu porovnáš plán, predaj a predikciu produktu. Ďalšie súvislosti otvoríš ťuknutím na dostupné karty.' },
+  rep_detail: { title:'Výsledok reprezentanta', copy:'Tento pohľad rozkladá celkové plnenie na jednotlivé produkty a umožňuje porovnať ich tempo.' },
+  market: { title:'Trhový podiel', copy:'Graf porovnáva vývoj produktu s trhom v zvolenom území. Legendou môžeš zvýrazniť alebo skryť jednotlivé línie.' },
+  districts: { title:'Vývoj v okresoch', copy:'Tu porovnáš trhový podiel okresov v čase. Dáta majú význam najmä pri sledovaní trendu, nie pri jednom izolovanom mesiaci.' },
+  district_list: { title:'Prehľad okresov', copy:'Okresy pomáhajú rozložiť výsledok teritória na menšie oblasti. Rozbaľ položku pre detail produktu a konkrétneho okresu.' },
+  activity: { title:'Aktivita tímu', copy:'Prehľad ukazuje využívanie aplikácie tímom. Výberom kolegu otvoríš jeho detail bez zásahu do jeho dát.' },
+  reports: { title:'Interaktívny report', copy:'Nastav rozsah a reprezentanta. Report prepája plnenie, produkty a dostupné trhové dáta do jedného pohľadu.' },
+  tuyory: { title:'Prieskum Tuyory', copy:'Najprv si pozri súhrn a potom doplň jednotlivé odpovede. Rozpracované údaje sa zobrazia priamo v tomto nástroji.' },
+  apixaban: { title:'Prieskum Apixaban', copy:'Tu máš súhrn cieľov a záznamov. Nový záznam pridáš až po výbere správnej odbornosti a lekára.' },
+  lonelix: { title:'Prieskum Lonelix', copy:'Prehľad udržuje záznamy na jednom mieste. Pri novom zázname si najprv vyber existujúceho alebo pridaj nového lekára.' },
   stocks: { title:'Ako čítať Sklady', copy:'Dni pokrytia ukazujú, na koľko dní vystačí zásoba pri aktuálnom tempe. Ťuknutím na položku otvoríš detail produktu.' },
   calendar: { title:'Kalendár na jednom mieste', copy:'Tu pridáš dovolenku alebo udalosť a hneď vidíš jej stav. Schválené absencie sa zobrazia aj kolegom v tvojej línii.' },
   board: { title:'Zdieľaj informácie s tímom', copy:'Príspevky na Nástenke vidia iba ľudia v aktuálnej línii. Nový vytvoríš cez tlačidlo + Pridať príspevok.' }
@@ -8720,10 +8743,17 @@ function satoriGuideHideHint(){
   var el = document.getElementById('satori-hint');
   if(el){ el.classList.remove('show'); el.innerHTML = ''; }
 }
-function satoriGuideBlocked(){
+function satoriGuideBlocked(hintKey){
   if(SATORI_GUIDE_STATE.open) return true;
   var ids = ['login-screen','satori-overlay','wn-overlay','line-chooser-overlay','av-overlay','av-confirm-overlay','logout-overlay','confirm-overlay','settings-overlay','edit-overlay','detail-overlay','session-expired-overlay','rpt-progress-overlay','gpp-overlay','lk-prompt-overlay','lk-confirm-overlay','pharma-ms-overlay','pharma-okres-overlay','pl-prod-sheet','nst-compose','gyn-ms-picker-overlay'];
+  // Pri kontextovom tipe je otvorená obrazovka samotným dôvodom na zobrazenie.
+  // Pri úvodnom sprievodcovi (bez hintKey) však naďalej blokuje všetky modaly.
+  var allowed = {
+    doctor:['detail-overlay'], products:['pl-prod-sheet'], market:['pharma-ms-overlay'],
+    districts:['pharma-okres-overlay','pharma-ms-overlay']
+  }[hintKey] || [];
   for(var i=0;i<ids.length;i++){
+    if(allowed.indexOf(ids[i]) >= 0) continue;
     var el = document.getElementById(ids[i]);
     if(el && el.classList.contains('show')) return true;
   }
@@ -8826,30 +8856,67 @@ function settingsToggleSatoriGuide(){
   var s = getSession(); if(s) renderSettings(s);
   try { haptic('selection'); } catch(e){}
 }
+function satoriGuideShown(id){ var el = document.getElementById(id); return !!(el && el.classList.contains('show')); }
+function satoriGuideGynNav(tab){ try { return typeof GYN_APP !== 'undefined' && GYN_APP.nav === tab && satoriGuideShown('gyn-view'); } catch(e){ return false; } }
 function satoriGuideHintScreenOpen(key){
-  if(key === 'stocks') return !!(typeof SKLADY_STATE !== 'undefined' && SKLADY_STATE.open && document.getElementById('sklady-overlay') && document.getElementById('sklady-overlay').classList.contains('show'));
-  if(key === 'board') return !!(document.getElementById('nastenka-overlay') && document.getElementById('nastenka-overlay').classList.contains('show'));
-  if(key === 'calendar'){
-    var golem = document.getElementById('golem-cal-overlay');
-    try { return !!((golem && golem.classList.contains('show')) || document.body.classList.contains('mgr-subtab-kalendar') || (typeof GYN_APP !== 'undefined' && GYN_APP.nav === 'kalendar' && document.getElementById('gyn-view') && document.getElementById('gyn-view').classList.contains('show'))); } catch(e){ return false; }
-  }
+  if(key === 'home') return satoriGuideShown('dnes-overlay');
+  if(key === 'menu') return satoriGuideShown('viac-overlay');
+  if(key === 'visits') return satoriGuideShown('hist-overlay') || satoriGuideGynNav('visits');
+  if(key === 'doctor') return satoriGuideShown('detail-overlay');
+  if(key === 'plnenie') return satoriGuideShown('rep-plnenie-overlay') || document.body.classList.contains('mgr-subtab-plnenie') || satoriGuideGynNav('plnenie');
+  if(key === 'leaderboard') return satoriGuideShown('lb-overlay') || document.body.classList.contains('mgr-subtab-leaderboard') || satoriGuideGynNav('leaderboard');
+  if(key === 'team') return typeof TEAM_PL_STATE !== 'undefined' && TEAM_PL_STATE.open && satoriGuideShown('team-plnenie-overlay');
+  if(key === 'lekarne') return satoriGuideShown('lk-overlay') || satoriGuideGynNav('lekarne');
+  if(key === 'products') return satoriGuideShown('pl-prod-sheet-bd') || satoriGuideShown('pl-prod-sheet');
+  if(key === 'rep_detail') return document.body.classList.contains('mgr-plnenie-detail-open') || satoriGuideShown('mgr-detail') || (typeof TEAM_PL_STATE !== 'undefined' && TEAM_PL_STATE.open && !!TEAM_PL_STATE.detailUser) || !!(typeof GYN_APP !== 'undefined' && GYN_APP.detailLogin);
+  if(key === 'market') return satoriGuideShown('pharma-ms-overlay');
+  if(key === 'districts') return satoriGuideShown('pharma-okres-overlay');
+  if(key === 'district_list') return typeof OKRESY_STATE !== 'undefined' && OKRESY_STATE.open && satoriGuideShown('okresy-overlay');
+  if(key === 'activity') return document.body.classList.contains('mgr-subtab-activity') || satoriGuideGynNav('activity');
+  if(key === 'reports') return document.body.classList.contains('mgr-subtab-reporty');
+  if(key === 'tuyory') return satoriGuideShown('tuyory-overlay');
+  if(key === 'apixaban') return satoriGuideShown('apixaban-overlay');
+  if(key === 'lonelix') return satoriGuideShown('lonelix-overlay');
+  if(key === 'stocks') return typeof SKLADY_STATE !== 'undefined' && SKLADY_STATE.open && satoriGuideShown('sklady-overlay');
+  if(key === 'board') return satoriGuideShown('nastenka-overlay');
+  if(key === 'calendar') return satoriGuideShown('golem-cal-overlay') || document.body.classList.contains('mgr-subtab-kalendar') || satoriGuideGynNav('kalendar');
   return false;
+}
+function satoriGuideHintReady(key){
+  if(key === 'stocks') return !!(SKLADY_STATE.payload && Array.isArray(SKLADY_STATE.payload.products));
+  if(key === 'team') return !!(TEAM_PL_STATE.payload && Array.isArray(TEAM_PL_STATE.payload.reps));
+  if(key === 'products') return !!document.getElementById('pl-ps-body');
+  if(key === 'market'){
+    var marketBody = document.getElementById('pharma-ms-body');
+    return !!(marketBody && marketBody.textContent.trim() && !document.getElementById('gyn-ph-prog-ring') && !marketBody.querySelector('.skel-pharma-card,.gyn-pharma-loading,.app-error-card'));
+  }
+  if(key === 'districts'){ var districtChart = document.getElementById('pharma-okres-chart-svg'); return !!(districtChart && districtChart.textContent.indexOf('Načítavam') < 0); }
+  return true;
+}
+function satoriGuideHintForNav(tab){
+  return ({ plnenie:'plnenie', leaderboard:'leaderboard', visits:'visits', lekarne:'lekarne', activity:'activity', reporty:'reports', kalendar:'calendar' })[tab] || '';
+}
+function satoriGuideQueueHint(key, delay){
+  if(!key) return;
+  setTimeout(function(){ try { satoriGuideMaybeHint(key); } catch(e){} }, delay || 550);
 }
 function satoriGuideMaybeHint(key){
   var prefs = satoriGuidePrefs();
-  if(!SATORI_GUIDE_HINTS[key] || !prefs.enabled || prefs.hints[key] || SATORI_GUIDE_STATE.hintKey || SATORI_GUIDE_STATE.open) return;
+  // Najprv nech prebehne spoločný úvod. Kontextové tipy potom človeka
+  // sprevádzajú postupne pri obrazovkách, ktoré jeho rola naozaj sprístupní.
+  if(!SATORI_GUIDE_HINTS[key] || !prefs.enabled || !prefs.seen || prefs.hints[key] || SATORI_GUIDE_STATE.hintKey || SATORI_GUIDE_STATE.open) return;
   SATORI_GUIDE_STATE.hintKey = key;
   var attempts = 0;
   (function waitForScreen(){
     if(SATORI_GUIDE_STATE.hintKey !== key) return;
     if(!satoriGuideHintScreenOpen(key)){ SATORI_GUIDE_STATE.hintKey = ''; return; }
-    // Pri Skladoch zobraz tip až nad skutočnými údajmi. Pri pomalej sieti by
-    // karta nad skeletonom vyzerala ako ďalší chybový stav.
-    if(key === 'stocks' && (!SKLADY_STATE.payload || !Array.isArray(SKLADY_STATE.payload.products))){
-      if(++attempts < 24){ SATORI_GUIDE_STATE.hintTimer = setTimeout(waitForScreen, 350); } else SATORI_GUIDE_STATE.hintKey = '';
+    // Interaktívne prehľady majú tip ukázať až nad ich reálnym obsahom, nie
+    // nad skeletonom alebo progress indikátorom pri pomalom načítaní.
+    if(!satoriGuideHintReady(key)){
+      if(++attempts < 48){ SATORI_GUIDE_STATE.hintTimer = setTimeout(waitForScreen, 350); } else SATORI_GUIDE_STATE.hintKey = '';
       return;
     }
-    if(satoriGuideBlocked()){ if(++attempts < 8){ SATORI_GUIDE_STATE.hintTimer = setTimeout(waitForScreen, 350); } else SATORI_GUIDE_STATE.hintKey = ''; return; }
+    if(satoriGuideBlocked(key)){ if(++attempts < 8){ SATORI_GUIDE_STATE.hintTimer = setTimeout(waitForScreen, 350); } else SATORI_GUIDE_STATE.hintKey = ''; return; }
     satoriGuideRenderHint(key);
   })();
 }
@@ -12620,7 +12687,7 @@ function gynNavTo(tab) {
   });
   gynRenderContent(getSession());
   window.scrollTo(0, 0);
-  if(tab === 'kalendar') setTimeout(function(){ try { satoriGuideMaybeHint('calendar'); } catch(e){} }, 550);
+  satoriGuideQueueHint(satoriGuideHintForNav(tab), 550);
 }
 
 function gynSwitchQ(q) {
@@ -13039,6 +13106,7 @@ function gynOpenProdSheet(prodLabel) {
     void sheet.offsetWidth;
     sheet.classList.add('show');
   }
+  satoriGuideQueueHint('products', 550);
 }
 
 function gynProdSheetRenderRepList(prodLabel, data) {
@@ -13398,6 +13466,7 @@ function gynOpenPharma(productName, oblast, repLogin) {
 
   overlay.classList.remove('panel-anim-r','pl-detail-exit-r');
   overlay.classList.add('show');
+  satoriGuideQueueHint('market', 650);
   overlay.scrollTop = 0;
   void overlay.offsetWidth;
   overlay.classList.add('panel-anim-r');
@@ -14423,11 +14492,13 @@ function gynOpenRepDetail(login, meno, region) {
   GYN_APP.detailLogin  = login;
   GYN_APP.detailMeno   = meno;
   GYN_APP.detailRegion = region;
+  satoriGuideQueueHint('rep_detail', 550);
   window.scrollTo(0, 0);
   gynRenderContent(getSession());
 }
 
 function gynCloseRepDetail() {
+  try { satoriGuideHideHint(); } catch(e){}
   GYN_APP.detailLogin = null;
   GYN_APP.detailMeno  = '';
   GYN_APP.detailRegion = '';
@@ -18316,6 +18387,7 @@ function gpSetMgrSubH(){
 }
 function mgrOpenRep(username){
   MGR_STATE.currentRep = username;
+  satoriGuideQueueHint('rep_detail', 550);
   gpSetMgrSubH();
   // Detail repa vždy otvor na tabe GP's
   MGR_STATE.detailTab = 'gp';
@@ -19033,6 +19105,7 @@ function mgrOpenVisit(idx){
 }
 
 function mgrCloseRep(){
+  try { satoriGuideHideHint(); } catch(e){}
   var detailEl = document.getElementById('mgr-detail');
   detailEl.classList.remove('panel-anim-r');
   void detailEl.offsetWidth;
@@ -21682,6 +21755,7 @@ function openLeaderboard(){
   LB_STATE.mode = 'plnenie';
   usageSectionEnter('Rebríček');
   _panelShow('lb-overlay');
+  satoriGuideQueueHint('leaderboard', 550);
   LB_STATE.showConfetti = true;
   lbSyncTabs();
   // Rovno renderuj Plnenie rebríček — neťahaj históriu návštev (getHistory × N repov).
@@ -23416,6 +23490,7 @@ function mgrSwitchSubtab(tab) {
   if (tab === 'reporty') {
     rptViewOpen();
   }
+  satoriGuideQueueHint(satoriGuideHintForNav(tab), 550);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -24923,6 +24998,7 @@ function openProdSheet(prodKey, prodLabel) {
   sheet.classList.remove('show');
   void sheet.offsetWidth;
   sheet.classList.add('show');
+  satoriGuideQueueHint('products', 550);
   prodSheetInitSwipe();
   prodSheetInitSubtabSwipe();
 
@@ -26837,6 +26913,7 @@ function plnenieOpenDetail(username) {
   if (!username) return;
   PL_STATE.detailRep = username;
   document.body.classList.add('mgr-plnenie-detail-open');
+  satoriGuideQueueHint('rep_detail', 550);
   plnenieRenderDetail();
   var lekarneEl = document.getElementById('pl-detail-lekarne');
   if (lekarneEl && lekarneEl.style.display !== 'none') {
@@ -27313,6 +27390,7 @@ function openRepPlnenie() {
   if (!session || !session.username) return;
   usageSectionEnter('Plnenie');
   _panelShow('rep-plnenie-overlay');
+  satoriGuideQueueHint('plnenie', 550);
   // Default: DÁTOVÝ kvartál (podľa notif_predaje), nie kalendárny — pri prelome Q sa nemá
   // skočiť na nový Q, kým doň nepribudli predaje (rovnaká logika ako manažér/gyn).
   var dp = plnenieDefaultPeriod();
@@ -28489,6 +28567,7 @@ function openPharmaMs(prodKey, label, oblastOverride, repLoginOverride, periodOv
 
   overlay.classList.remove('panel-anim-r', 'pl-detail-exit-r');
   overlay.classList.add('show');
+  satoriGuideQueueHint('market', 650);
   overlay.scrollTop = 0;
   void overlay.offsetWidth;
   overlay.classList.add('panel-anim-r');
@@ -29223,6 +29302,7 @@ function openPharmaOkresChart(r, prodLabel) {
   legEl.innerHTML     = '';
 
   overlay.classList.add('show');
+  satoriGuideQueueHint('districts', 650);
   document.body.style.overflow = 'hidden';
 
   // Predtým sa pri zlyhaní fetchu (aj pri resp.ok===true s málo riadkami)
@@ -31773,6 +31853,7 @@ function rptViewOpen() {
   rptViewRenderControls();
   rptViewRender();
   rptViewEnsurePharma();
+  satoriGuideQueueHint('reports', 550);
 }
 
 function rptViewAllowedScopes() {
@@ -34430,6 +34511,7 @@ function openLekarne() {
   LK_STATE.searchQ = '';
   lkFilterReset(); LK_FILTER._ctx = 'rep'; lkFilterUpdateBadges();
   _panelShow('lk-overlay');
+  satoriGuideQueueHint('lekarne', 550);
   var searchEl = document.getElementById('lk-search');
   if (searchEl) searchEl.value = '';
   var login = (getSession() || {}).username || '';
@@ -34512,7 +34594,7 @@ function okresyOpen(ctx, containerId) {
   OKRESY_STATE.detail = null;
   var reqId = (++OKRESY_STATE.reqId);
 
-  if (OKRESY_STATE.ctx === 'rep') { usageSectionEnter('Okresy'); _panelShow('okresy-overlay'); }
+  if (OKRESY_STATE.ctx === 'rep') { usageSectionEnter('Okresy'); _panelShow('okresy-overlay'); satoriGuideQueueHint('district_list', 550); }
 
   var oblast = pharmaGetOblast();
   OKRESY_STATE.oblast = oblast;
@@ -36197,6 +36279,7 @@ function tuyorySaveLocal(arr){ surveySaveLocal(tuyoryLocalKey(), arr); }
 function openTuyory(){
   usageSectionEnter('Tuyory');
   _panelShow('tuyory-overlay');
+  satoriGuideQueueHint('tuyory', 550);
   TUYORY.records = tuyoryLoadLocal();
   TUYORY.answers = {};
   TUYORY.znacky = [];
@@ -38007,6 +38090,7 @@ function apixSaveLocal(arr){ surveySaveLocal(apixLocalKey(), arr); }
 function openApixaban(){
   usageSectionEnter('Apixaban');
   _panelShow('apixaban-overlay');
+  satoriGuideQueueHint('apixaban', 550);
   APIX.records = apixLoadLocal();
   APIX.answers = {};
   APIX.flash = null;
@@ -39116,6 +39200,7 @@ function lonelixSaveLocal(arr){ surveySaveLocal(lonelixLocalKey(), arr); }
 function openLonelix(){
   usageSectionEnter('Lonelix');
   _panelShow('lonelix-overlay');
+  satoriGuideQueueHint('lonelix', 550);
   LONELIX.records = lonelixLoadLocal();
   LONELIX.answers = {};
   LONELIX.flash = null;
