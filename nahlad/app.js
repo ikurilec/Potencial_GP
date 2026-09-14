@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.14';
+var APP_VERSION = '2.88.15';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -12771,10 +12771,14 @@ function gynTeamErrorHtml(errCode){
 }
 // Rovnaké spracovanie, aké používa manažérske Plnenie: zachová korekcie aj
 // presuny spoločných produktov medzi párovými PIL/Patch regiónmi.
+// (timeout) — celá línia naraz (fullLine=1) je ťažší dopyt než bežné čítanie,
+// bežný 16s limit nestačil. Rovnaké dva endpointy ako tichý preload rebríčka
+// (ten smie zlyhať potichu), toto ale ukazuje chybovú kartu, preto dlhší limit.
+var GYN_TEAM_FETCH_TIMEOUT_MS = 35000;
 function gynTeamFetch(user, q, year){
   return Promise.all([
-    appQueuedFetchJson(gynScriptUrl('action=getRepList&fullLine=1'), undefined, APP_FETCH_TIMEOUT_MS, 'critical'),
-    appQueuedFetchJson(gynScriptUrl('action=getPlnenieAll&rok=' + year + '&Q=' + q + '&fullLine=1'), undefined, APP_FETCH_TIMEOUT_MS, 'critical')
+    appQueuedFetchJson(gynScriptUrl('action=getRepList&fullLine=1'), undefined, GYN_TEAM_FETCH_TIMEOUT_MS, 'critical'),
+    appQueuedFetchJson(gynScriptUrl('action=getPlnenieAll&rok=' + year + '&Q=' + q + '&fullLine=1'), undefined, GYN_TEAM_FETCH_TIMEOUT_MS, 'critical')
   ]).then(function(results){
     var repData = results[0], plnenie = results[1];
     if(!repData || !repData.ok) throw new Error('rep_list' + (repData && repData.error ? (':' + repData.error) : ':no_response'));
