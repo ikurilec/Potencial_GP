@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.13';
+var APP_VERSION = '2.88.14';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -12760,10 +12760,13 @@ function gynTeamLoadingHtml(){
     '</section>' +
     '<div class="gyn-team-skeleton"><span></span><span></span><span></span></div>';
 }
-function gynTeamErrorHtml(){
+// errCode ide priamo do hlášky — Ivan nahlásil zlyhanie bez toho, aby appka
+// (ani ja) vedela prečo; rovnaký princíp ako pri zmene hesla (2.87.35).
+function gynTeamErrorHtml(errCode){
   return gynQTabsHtml() + appErrorCardHtml({
     id:'gyn-team', title:'Nepodarilo sa načítať tímové plnenie',
-    desc:'Skús to znova. Zobrazujú sa iba súhrny produktov PIL a Patch.', retryLabel:'Načítať znova'
+    desc:'Skús to znova. Zobrazujú sa iba súhrny produktov PIL a Patch.' + (errCode ? ' (' + errCode + ')' : ''),
+    retryLabel:'Načítať znova'
   });
 }
 // Rovnaké spracovanie, aké používa manažérske Plnenie: zachová korekcie aj
@@ -12774,7 +12777,9 @@ function gynTeamFetch(user, q, year){
     appQueuedFetchJson(gynScriptUrl('action=getPlnenieAll&rok=' + year + '&Q=' + q + '&fullLine=1'), undefined, APP_FETCH_TIMEOUT_MS, 'critical')
   ]).then(function(results){
     var repData = results[0], plnenie = results[1];
-    if(!repData || !repData.ok || !Array.isArray(repData.reps) || !plnenie || !plnenie.ok) throw new Error('invalid team payload');
+    if(!repData || !repData.ok) throw new Error('rep_list' + (repData && repData.error ? (':' + repData.error) : ':no_response'));
+    if(!Array.isArray(repData.reps)) throw new Error('rep_list:bad_shape');
+    if(!plnenie || !plnenie.ok) throw new Error('plnenie' + (plnenie && plnenie.error ? (':' + plnenie.error) : ':no_response'));
     gynApplyRepListData(repData, user);
     gynPreprocessData(plnenie);
     return { ok:true, reps:repData.reps, plnenie:plnenie };
@@ -12798,10 +12803,10 @@ function gynTeamShow(el, user){
       GYN_TEAM_STATE.data = data; GYN_TEAM_STATE.cacheKey = key;
       gynTeamRender(document.getElementById('gyn-content'), data);
     },
-    onError: function(){
+    onError: function(err){
       if(!stillActive() || GYN_TEAM_STATE.data) return;   // cache už niečo ukazuje — tichá revalidácia nesmie zmazať viditeľné dáta
       appRegisterRetry('gyn-team', function(){ DataStore.invalidate(key); GYN_TEAM_STATE.data = null; GYN_TEAM_STATE.cacheKey = ''; gynTeamShow(document.getElementById('gyn-content'), getSession()); });
-      var target = document.getElementById('gyn-content'); if(target) target.innerHTML = gynTeamErrorHtml();
+      var target = document.getElementById('gyn-content'); if(target) target.innerHTML = gynTeamErrorHtml(err && err.message);
     }
   });
   if(cached.data){ GYN_TEAM_STATE.data = cached.data; GYN_TEAM_STATE.cacheKey = key; gynTeamRender(el, cached.data); }
