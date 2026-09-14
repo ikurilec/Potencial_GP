@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.4';
+var APP_VERSION = '2.88.5';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -927,6 +927,11 @@ var APP_FETCH_TIMEOUT_MS = 16000;   // koľko čakať na Sheets/Apps Script (mô
 // plných 16s) — predtým rovnaká hodnota 12000 ručne skopírovaná na ~9
 // miestach ako natvrdo zapísané číslo (F0, boot audit, krok 4).
 var APP_FETCH_TIMEOUT_PRELOAD_MS = 12000;
+// Nahrávanie fotky (base64 JSON telo → Apps Script → zápis na Disk) je
+// podstatne ťažšie než bežné čítanie/zápis Sheets — 16s bežne nestačí, appka
+// to ukázala ako "skontroluj pripojenie", hoci sieť bola v poriadku a len
+// server ešte nestihol odpovedať (Ivan, 13.9.: nahrávanie fotky na Nástenku).
+var APP_FETCH_TIMEOUT_UPLOAD_MS = 45000;
 
 // fetch + JSON s tvrdým timeoutom (AbortController). Reject pri timeoute, sieti aj nevalidnom JSON.
 function appFetchJson(url, opts, timeoutMs) {
@@ -37912,7 +37917,7 @@ function nstSubmitWithImage_(rec){
       kategoria: rec.kategoria, imageBase64: img.dataUrl, imageMime: img.mime
     }),
     cache: 'no-store'
-  }, APP_FETCH_TIMEOUT_MS, 'critical').then(function(resp){
+  }, APP_FETCH_TIMEOUT_UPLOAD_MS, 'critical').then(function(resp){
     if (!resp || !resp.ok){
       var errCode = (resp && resp.error) ? String(resp.error) : 'no_response';
       if (err){ err.textContent = 'Nepodarilo sa nahrať fotku. Skús to znova. (' + errCode + ')'; err.classList.add('show'); }
@@ -37923,8 +37928,16 @@ function nstSubmitWithImage_(rec){
     NST.posts = [rec].concat(NST.posts || []);
     nstSaveLocal(NST.posts);
     nstSubmitFinish_();
-  }).catch(function(){
-    if (err){ err.textContent = 'Nepodarilo sa nahrať fotku — skontroluj pripojenie a skús znova.'; err.classList.add('show'); }
+  }).catch(function(e){
+    // Rozlíš vypršanie času (server je len pomalý, sieť je OK) od skutočnej
+    // sieťovej chyby — predtým obe hlásili rovnako zavádzajúco "skontroluj pripojenie".
+    var timedOut = e && e.message === 'timeout';
+    if (err){
+      err.textContent = timedOut
+        ? 'Nahrávanie fotky trvá príliš dlho. Skús to znova, prípadne s menšou fotkou.'
+        : 'Nepodarilo sa nahrať fotku — skontroluj pripojenie a skús znova.';
+      err.classList.add('show');
+    }
     if (btn){ btn.disabled = false; btn.textContent = 'Pridať na nástenku'; }
   });
 }
