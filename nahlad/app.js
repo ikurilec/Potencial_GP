@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.17';
+var APP_VERSION = '2.88.18';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -12738,8 +12738,15 @@ function gynQTabsHtml() {
 // žiadne cudzie riadky, mená, lekári ani návštevy.
 var GYN_TEAM_STATE = { data:null, detailUser:'', returnTo:'' };
 function gynTeamLineLabel(line){ return line === 'pill' ? 'PIL' : 'Patch'; }
+// Ivan, 14.9.: hlavička má vyzerať presne ako Golemov panel Tímového plnenia
+// (biele tlačidlo Späť + tučný nadpis + podnadpis) — Golem to má napevno v
+// index.html (statický overlay), gyn to renderuje nanovo pri každom prekreslení.
+function gynTeamHeaderHtml(){
+  return '<div class="team-plnenie-hd"><button type="button" class="team-plnenie-back" data-app-back onclick="gynNavTo(\'plnenie\')" aria-label="Späť">←</button>' +
+    '<div><div class="team-plnenie-title">Tímové plnenie</div><div class="team-plnenie-sub">Gynekológia · Q' + GYN_APP.q + ' ' + GYN_APP.year + '</div></div></div>';
+}
 function gynTeamLoadingHtml(){
-  return gynQTabsHtml() +
+  return gynTeamHeaderHtml() + gynQTabsHtml() +
     '<section class="gyn-team-hero gyn-team-loading" role="status" aria-live="polite">' +
       '<div class="gyn-team-kicker">Tímové plnenie</div>' +
       '<div class="gyn-team-loading-row"><span class="dnes-spin"></span>Načítavam výsledky tímu</div>' +
@@ -12750,7 +12757,7 @@ function gynTeamLoadingHtml(){
 // errCode ide priamo do hlášky — Ivan nahlásil zlyhanie bez toho, aby appka
 // (ani ja) vedela prečo; rovnaký princíp ako pri zmene hesla (2.87.35).
 function gynTeamErrorHtml(errCode){
-  return gynQTabsHtml() + appErrorCardHtml({
+  return gynTeamHeaderHtml() + gynQTabsHtml() + appErrorCardHtml({
     id:'gyn-team', title:'Nepodarilo sa načítať tímové plnenie',
     desc:'Skús to znova. Zobrazujú sa iba súhrny produktov PIL a Patch.' + (errCode ? ' (' + errCode + ')' : ''),
     retryLabel:'Načítať znova'
@@ -12834,11 +12841,11 @@ function gynTeamRender(el, data){
       '<div class="team-plnenie-label">Produkty s plánom · Q'+GYN_APP.q+'</div>' + gynTeamProductBlock(products);
     return;
   }
-  if(!items.length){ el.innerHTML = gynQTabsHtml() + '<div class="team-plnenie-empty">Pre Gynekológiu zatiaľ nie sú dostupné údaje o plnení.</div>'; return; }
+  if(!items.length){ el.innerHTML = gynTeamHeaderHtml() + gynQTabsHtml() + '<div class="team-plnenie-empty">Pre Gynekológiu zatiaľ nie sú dostupné údaje o plnení.</div>'; return; }
   var pill=items.filter(function(item){return gynTeamRepLine(item.rep)==='pill';}).sort(function(a,b){return (b.agg.pct==null?-1:b.agg.pct)-(a.agg.pct==null?-1:a.agg.pct);});
   var patch=items.filter(function(item){return gynTeamRepLine(item.rep)==='patch';}).sort(function(a,b){return (b.agg.pct==null?-1:b.agg.pct)-(a.agg.pct==null?-1:a.agg.pct);});
   var all=gynTeamLineAgg(items), pillAg=gynTeamLineAgg(pill), patchAg=gynTeamLineAgg(patch);
-  el.innerHTML = gynQTabsHtml() +
+  el.innerHTML = gynTeamHeaderHtml() + gynQTabsHtml() +
     '<div class="team-plnenie-hero"><div class="team-plnenie-eyebrow">Gynekológia · Q'+GYN_APP.q+' '+GYN_APP.year+'</div>' +
     '<div class="team-plnenie-hero-row"><div class="team-plnenie-hero-pct">'+teamPlnenieFmtPct(all.pct)+'</div><div class="team-plnenie-hero-meta"><strong>'+items.length+' reprezentant'+(items.length===1?'':'i')+'</strong><br>'+teamPlnenieFmtMoney(all.predaj)+' z '+teamPlnenieFmtMoney(all.plan)+'</div></div>' +
     '<div class="team-plnenie-team-totals"><div><span>PIL</span><strong>'+teamPlnenieFmtPct(pillAg.pct)+'</strong><small>'+teamPlnenieFmtMoney(pillAg.predaj)+' / '+teamPlnenieFmtMoney(pillAg.plan)+'</small></div><div><span>Patch</span><strong>'+teamPlnenieFmtPct(patchAg.pct)+'</strong><small>'+teamPlnenieFmtMoney(patchAg.predaj)+' / '+teamPlnenieFmtMoney(patchAg.plan)+'</small></div></div></div>' +
