@@ -8966,7 +8966,9 @@ function satoriGuideMaybeHint(key){
 function satoriGuideRenderHint(key){
   var hint = SATORI_GUIDE_HINTS[key], el = document.getElementById('satori-hint');
   if(!hint || !el || !satoriGuideHintScreenOpen(key)){ SATORI_GUIDE_STATE.hintKey = ''; return; }
-  el.innerHTML = '<div class="sg-hint-card"><div class="sg-hint-row"><div class="sg-hint-icon" aria-hidden="true">✦</div><div><div class="sg-hint-title">' + hint.title + '</div><div class="sg-hint-copy">' + hint.copy + '</div></div></div><div class="sg-hint-actions"><button type="button" class="sg-hint-btn" onclick="satoriGuideDismissHint(\'' + key + '\',true)">Už neukazovať</button><button type="button" class="sg-hint-btn primary" onclick="satoriGuideDismissHint(\'' + key + '\',false)">Rozumiem</button></div></div>';
+  var hintCopy = hint.copy;
+  if(key === 'team' && typeof teamPlnenieIsGyn === 'function' && teamPlnenieIsGyn()) hintCopy = 'Vidíš súhrn plnenia tímov PIL aj Patch. Ťuknutím na kolegu otvoríš jeho produkty bez informácií o lekároch.';
+  el.innerHTML = '<div class="sg-hint-card"><div class="sg-hint-row"><div class="sg-hint-icon" aria-hidden="true">✦</div><div><div class="sg-hint-title">' + hint.title + '</div><div class="sg-hint-copy">' + hintCopy + '</div></div></div><div class="sg-hint-actions"><button type="button" class="sg-hint-btn" onclick="satoriGuideDismissHint(\'' + key + '\',true)">Už neukazovať</button><button type="button" class="sg-hint-btn primary" onclick="satoriGuideDismissHint(\'' + key + '\',false)">Rozumiem</button></div></div>';
   el.classList.add('show');
 }
 function satoriGuideDismissHint(key, disableAll){
