@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.6';
+var APP_VERSION = '2.88.7';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -546,7 +546,7 @@ function pushShowSoftPrompt(askedKey){
   box.innerHTML =
     '<div class="push-soft-inner">' +
       '<div class="push-soft-icon">🔔</div>' +
-      '<div class="push-soft-txt">Chceš dostávať upozornenia, keď pribudnú nové dáta (predaje, trhové podiely)?</div>' +
+      '<div class="push-soft-txt">Chceš dostávať upozornenia z tvojej línie — nové príspevky, údaje a dôležité zmeny v kalendári?</div>' +
       '<div class="push-soft-btns">' +
         '<button class="push-soft-no" id="push-soft-no">Nie teraz</button>' +
         '<button class="push-soft-yes" id="push-soft-yes">Povoliť</button>' +
@@ -6903,7 +6903,7 @@ function renderSettings(s){
   body.innerHTML =
     settingsCardHtml('linear-gradient(90deg,#0C1E35,#1E3A5F)', 'Profil', profilBody) +
     settingsCardHtml('linear-gradient(90deg,#2563EB,#60A5FA)', 'Notifikácie',
-      settingsNotifHtml() + settingsCalNotifHtml(s) + settingsNstNotifHtml(s) + settingsBdayNotifHtml(s)) +
+      settingsNotifHtml() + settingsCalNotifHtml(s) + settingsTeamAbsenceNotifHtml(s) + settingsNstNotifHtml(s) + settingsBdayNotifHtml(s)) +
     settingsCardHtml('linear-gradient(90deg,#475569,#94A3B8)', 'Aplikácia', settingsAppHtml(s)) +
     settingsCardHtml('linear-gradient(90deg,#0C1E35,#334155)', 'Bezpečnosť', settingsSecurityHtml()) +
     settingsProdOrderCard(s) +
@@ -7032,6 +7032,31 @@ function settingsToggleCalNotif(key){
 }
 
 
+
+// Schválená absencia ovplyvní celý tím. Každý používateľ ju môže nechať len
+// ako položku v kalendári bez systémového pushu; predvolene je odber zapnutý.
+function settingsTeamAbsenceNotifHtml(s){
+  if(!s || !s.username) return '';
+  var prefs = userPrefsGet();
+  var on = prefs.notifTeamAbsences !== false;
+  return '<div class="set-calnotif-sep"></div>' +
+    '<div class="set-toggle-row">' +
+      '<div class="set-toggle-info"><div class="set-toggle-lbl">📅 Schválené absencie v tíme</div><div class="set-row-desc">' +
+        (on ? 'Push, keď kolega pridá, upraví alebo zruší schválenú absenciu.' : 'Vypnuté — zmeny uvidíš iba v kalendári.') +
+      '</div></div>' +
+      '<button type="button" id="set-teamabsence-sw" class="gyn-cal-switch' + (on ? ' on' : '') + '" role="switch" aria-checked="' + (on ? 'true' : 'false') + '" onclick="settingsToggleTeamAbsenceNotif()"><span class="gyn-cal-switch-kn"></span></button>' +
+    '</div>';
+}
+function settingsToggleTeamAbsenceNotif(){
+  var prefs = userPrefsGet();
+  var next = !(prefs.notifTeamAbsences !== false);
+  userPrefsSet({ notifTeamAbsences: next });
+  var sw = document.getElementById('set-teamabsence-sw');
+  if(sw){ sw.classList.toggle('on', next); sw.setAttribute('aria-checked', next ? 'true' : 'false'); }
+  var desc = sw ? sw.parentNode.querySelector('.set-row-desc') : null;
+  if(desc) desc.textContent = next ? 'Push, keď kolega pridá, upraví alebo zruší schválenú absenciu.' : 'Vypnuté — zmeny uvidíš iba v kalendári.';
+  try { haptic('selection'); } catch(e){}
+}
 // ── Nástenka — push, keď niekoľďo v mojej línii pridá príspevok (default zapnuté) ──
 function settingsNstNotifHtml(s){
   if(!s || !s.username) return '';
@@ -7105,7 +7130,7 @@ function settingsAdminPushCard(s){
   var lineLbl = (s.line === 'gyn') ? 'Gyn' : (s.line === 'reagila') ? 'Reagila' : 'Golem';
   var body =
     '<div class="set-row-desc">Pošle natívne push upozornenie používateľom v línii <b>' + settingsEsc(lineLbl) + '</b> (podľa toho, kde si prepnutý). Najprv otestuj „len mne", potom odošli všetkým.</div>' +
-    '<input id="set-push-title" class="set-push-input" type="text" placeholder="Nadpis" maxlength="60" value="Gedeon Richter Slovakia">' +
+    '<input id="set-push-title" class="set-push-input" type="text" placeholder="Nadpis" maxlength="60" value="Satori">' +
     '<textarea id="set-push-body" class="set-push-input set-push-area" placeholder="Text upozornenia…" maxlength="180" rows="3"></textarea>' +
     '<div id="set-push-result" class="set-push-result" style="display:none"></div>' +
     '<button type="button" class="set-action-btn" onclick="settingsPushTest()">📲 Poslať test (len mne)</button>' +
@@ -37056,6 +37081,17 @@ function nstPrime(){
     if (fromPush && !NST._opened){
       NST._opened = true;
       setTimeout(function(){ try { openNastenka(); } catch(e){} }, 400);
+    }
+    var calendarFromPush = false;
+    try { calendarFromPush = (new URLSearchParams(window.location.search)).get('cal') === '1'; } catch(e){}
+    if (calendarFromPush){
+      setTimeout(function(){
+        try {
+          var session = getSession() || {};
+          if (session.line === 'gyn' && typeof gynNavTo === 'function') gynNavTo('kalendar');
+          else if (typeof openGolemKalendar === 'function') openGolemKalendar();
+        } catch(e){}
+      }, 400);
     }
   } catch(e){}
 }
