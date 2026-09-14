@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.5';
+var APP_VERSION = '2.88.6';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -36924,6 +36924,20 @@ var NST_PRODUCTS = {
 };
 
 function nstEsc(x){ return appEsc(x); }
+// Drive's /uc endpoint can redirect mobile browsers to a response that refuses
+// cross-site embedding. Board photos are therefore always rendered from its
+// direct image host. The original Drive URL remains stored in Sheets.
+function nstImageDisplayUrl_(rawUrl){
+  var url = String(rawUrl || '').trim();
+  if (!url) return '';
+  if (!/^https?:\/\/(?:drive\.google\.com|drive\.usercontent\.google\.com|lh3\.googleusercontent\.com)\//i.test(url)) return url;
+  var match = url.match(/[?&]id=([^&#]+)/i) || url.match(/\/d\/([^/?#=]+)/i);
+  if (!match) return url;
+  var id = match[1];
+  try { id = decodeURIComponent(id); } catch(e) {}
+  if (!/^[A-Za-z0-9_-]{10,}$/.test(id)) return url;
+  return 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(id) + '=w1600';
+}
 function nstSession(){ try { return getSession(); } catch(e){ return null; } }
 function nstUser(){ var s = nstSession(); return (s && s.username) ? String(s.username).trim().toLowerCase() : ''; }
 function nstLine(){ var s = nstSession(); var l = String((s && s.line) || 'gp').toLowerCase(); return (l === 'gyn' || l === 'reagila') ? l : 'gp'; }
@@ -37496,8 +37510,8 @@ function nstPostHtml(p){
     (meta.length ? '<div class="nst-tags">' + meta.join('') + '</div>' : '') +
     '<div class="nst-text">' + nstEsc(p.text || '').replace(/\n/g, '<br>') + '</div>' +
     (String(p.image || '').trim()
-      ? '<div class="nst-post-img" onclick="event.stopPropagation();nstImageZoom(\'' + nstEsc(p.image).replace(/'/g, '&#39;') + '\')">' +
-          '<img src="' + nstEsc(p.image) + '" loading="lazy" alt="">' +
+      ? '<div class="nst-post-img" onclick="event.stopPropagation();nstImageZoom(\'' + nstEsc(nstImageDisplayUrl_(p.image)).replace(/'/g, '&#39;') + '\')">' +
+          '<img src="' + nstEsc(nstImageDisplayUrl_(p.image)) + '" loading="lazy" alt="">' +
         '</div>'
       : '') +
     nstPollHtml(p) +
