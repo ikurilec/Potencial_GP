@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.10';
+var APP_VERSION = '2.88.11';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -5903,6 +5903,7 @@ function viacDlazdice() {
     var g = [
       { ic: '📋', t: 'Návštevy', fn: "gynNavTo('visits')" },
       { ic: '🏆', t: 'Rebríček', fn: "gynNavTo('leaderboard')" },
+      { ic: '👥', t: 'Tímové plnenie', fn: "closeViac();gynNavTo('team')", panel: 'gyn-team' },
       { ic: '📦', t: 'Sklady', fn: 'openSklady()', panel: 'sklady' }
     ];
     if (s.role === 'gyn-rep') g.push({ ic: '🏪', t: 'Lekárne', fn: "gynNavTo('lekarne')" });
@@ -8694,6 +8695,7 @@ var SATORI_GUIDE_STEPS = [
 ];
 var SATORI_GUIDE_HINTS = {
   home: { title:'Domov je tvoj prehľad', copy:'Tu nájdeš to, čo je dnes dôležité: stav plnenia, upozornenia, kalendár a rýchle odkazy na detail.' },
+  gyn_team: { title:'Tímové plnenie PIL a Patch', copy:'Porovnaj spoločné plnenie produktov v oboch líniách. Každá karta ukazuje iba plán, predaj a percento plnenia produktu.' },
   menu: { title:'Nástroje podľa tvojej roly', copy:'Menu ukazuje iba funkcie, ku ktorým máš prístup v aktuálnej línii. Nastavenia sú vždy naspodku.' },
   visits: { title:'História na jednom mieste', copy:'Tu si vyhľadáš predchádzajúce záznamy a otvoríš detail lekára alebo návštevy.' },
   doctor: { title:'Detail lekára', copy:'Na karte máš súvislosti k lekárovi, predchádzajúce návštevy a ďalší odporúčaný krok.' },
@@ -8866,6 +8868,7 @@ function satoriGuideHintScreenOpen(key){
   if(key === 'plnenie') return satoriGuideShown('rep-plnenie-overlay') || document.body.classList.contains('mgr-subtab-plnenie') || satoriGuideGynNav('plnenie');
   if(key === 'leaderboard') return satoriGuideShown('lb-overlay') || document.body.classList.contains('mgr-subtab-leaderboard') || satoriGuideGynNav('leaderboard');
   if(key === 'team') return typeof TEAM_PL_STATE !== 'undefined' && TEAM_PL_STATE.open && satoriGuideShown('team-plnenie-overlay');
+  if(key === 'gyn_team') return satoriGuideGynNav('team');
   if(key === 'lekarne') return satoriGuideShown('lk-overlay') || satoriGuideGynNav('lekarne');
   if(key === 'products') return satoriGuideShown('pl-prod-sheet-bd') || satoriGuideShown('pl-prod-sheet');
   if(key === 'rep_detail') return document.body.classList.contains('mgr-plnenie-detail-open') || satoriGuideShown('mgr-detail') || (typeof TEAM_PL_STATE !== 'undefined' && TEAM_PL_STATE.open && !!TEAM_PL_STATE.detailUser) || !!(typeof GYN_APP !== 'undefined' && GYN_APP.detailLogin);
@@ -8885,6 +8888,7 @@ function satoriGuideHintScreenOpen(key){
 function satoriGuideHintReady(key){
   if(key === 'stocks') return !!(SKLADY_STATE.payload && Array.isArray(SKLADY_STATE.payload.products));
   if(key === 'team') return !!(TEAM_PL_STATE.payload && Array.isArray(TEAM_PL_STATE.payload.reps));
+  if(key === 'gyn_team') return !!(typeof GYN_TEAM_STATE !== 'undefined' && GYN_TEAM_STATE.data && Array.isArray(GYN_TEAM_STATE.data.products));
   if(key === 'products') return !!document.getElementById('pl-ps-body');
   if(key === 'market'){
     var marketBody = document.getElementById('pharma-ms-body');
@@ -8894,7 +8898,7 @@ function satoriGuideHintReady(key){
   return true;
 }
 function satoriGuideHintForNav(tab){
-  return ({ plnenie:'plnenie', leaderboard:'leaderboard', visits:'visits', lekarne:'lekarne', activity:'activity', reporty:'reports', kalendar:'calendar' })[tab] || '';
+  return ({ plnenie:'plnenie', team:'gyn_team', leaderboard:'leaderboard', visits:'visits', lekarne:'lekarne', activity:'activity', reporty:'reports', kalendar:'calendar' })[tab] || '';
 }
 function satoriGuideQueueHint(key, delay){
   if(!key) return;
@@ -12706,6 +12710,7 @@ function gynRenderContent(user) {
   var el = document.getElementById('gyn-content');
   if(!el || !user) return;
   if(GYN_APP.nav === 'plnenie')      gynPlnenieShow(el, user);
+  else if(GYN_APP.nav === 'team')        gynTeamShow(el, user);
   else if(GYN_APP.nav === 'kalendar')    gynKalShow(el, user);
   else if(GYN_APP.nav === 'lekarne')     gynLkShow('gyn-content', user.username, user.region || '');
   else if(GYN_APP.nav === 'leaderboard') gynLbShow(el);
@@ -12736,6 +12741,122 @@ function gynQTabsHtml() {
       return '<button class="pl-q-tab'+cls+'" data-q="'+q+'" onclick="gynSwitchQ('+q+')">Q'+q+'</button>';
     }).join('') +
   '</div>';
+}
+
+// ── TÍMOVÉ PLNENIE GYN ───────────────────────────────────────────────────
+// Samostatný pohľad pre reprezentantov: iba súčty produktov PIL a Patch.
+// Dáta prichádzajú z aggregate-only endpointu; do klienta sa neposielajú
+// žiadne cudzie riadky, mená, lekári ani návštevy.
+var GYN_TEAM_STATE = { data:null, cacheKey:'', loading:false, loadingKey:'', request:0, failed:false };
+var GYN_TEAM_CACHE_MAX_AGE_MS = 15 * 60 * 1000;
+function gynTeamCacheKey(){ return 'team-plnenie|' + gynCacheUserScope() + '|' + GYN_APP.year + '|Q' + GYN_APP.q; }
+function gynTeamLineLabel(line){ return line === 'pill' ? 'PIL' : 'Patch'; }
+function gynTeamProductsByLine(products, line){
+  return (products || []).filter(function(product){
+    var key = String(product.key || product.label || '').trim().toLowerCase();
+    var productLine = GYN_PRODUCT_LINIA[key];
+    return productLine === line || productLine === 'both';
+  }).sort(function(a,b){ return String(a.label || a.key || '').localeCompare(String(b.label || b.key || ''), 'sk'); });
+}
+function gynTeamAggregate(products){
+  var plan = 0, predaj = 0;
+  (products || []).forEach(function(product){ plan += parseFloat(product.plan) || 0; predaj += parseFloat(product.predaj) || 0; });
+  return { plan:plan, predaj:predaj, pct:plan > 0 ? predaj / plan * 100 : null };
+}
+function gynTeamLoadingHtml(){
+  return gynQTabsHtml() +
+    '<section class="gyn-team-hero gyn-team-loading" role="status" aria-live="polite">' +
+      '<div class="gyn-team-kicker">Tímové plnenie</div>' +
+      '<div class="gyn-team-loading-row"><span class="dnes-spin"></span>Načítavam výsledky tímu</div>' +
+      '<div class="gyn-team-loading-copy">Pripravujem produktové plnenie PIL a Patch…</div>' +
+    '</section>' +
+    '<div class="gyn-team-skeleton"><span></span><span></span><span></span></div>';
+}
+function gynTeamErrorHtml(){
+  return gynQTabsHtml() + appErrorCardHtml({
+    id:'gyn-team', title:'Nepodarilo sa načítať tímové plnenie',
+    desc:'Skús to znova. Zobrazujú sa iba súhrny produktov PIL a Patch.', retryLabel:'Načítať znova'
+  });
+}
+function gynTeamShow(el, user){
+  var key = gynTeamCacheKey();
+  var cached = GYN_TEAM_STATE.cacheKey === key ? GYN_TEAM_STATE.data : gynCacheRead(key);
+  if(cached && cached.ok && Array.isArray(cached.products)) {
+    GYN_TEAM_STATE.data = cached;
+    GYN_TEAM_STATE.cacheKey = key;
+    gynTeamRender(el, cached);
+  } else {
+    el.innerHTML = gynTeamLoadingHtml();
+  }
+  gynTeamLoad(user);
+}
+function gynTeamLoad(user, attempt){
+  var q = GYN_APP.q, year = GYN_APP.year, cacheKey = gynTeamCacheKey();
+  if(GYN_TEAM_STATE.loading && GYN_TEAM_STATE.loadingKey === cacheKey) return;
+  // Pri rýchlom prepnutí Q starý request nerušíme násilne, ale zneplatníme
+  // jeho výsledok a hneď spustíme request pre novú záložku.
+  if(GYN_TEAM_STATE.loading && GYN_TEAM_STATE.loadingKey !== cacheKey) GYN_TEAM_STATE.loading = false;
+  var request = ++GYN_TEAM_STATE.request;
+  var ctx = appLineCapture();
+  function active(){ return request === GYN_TEAM_STATE.request && appLineContextActive(ctx) && GYN_APP.nav === 'team' && GYN_APP.q === q; }
+  GYN_TEAM_STATE.loading = true;
+  GYN_TEAM_STATE.loadingKey = cacheKey;
+  appFetchJson(gynScriptUrl('action=getGynTeamPlnenie&rok=' + year + '&Q=' + q), undefined, 12000)
+    .then(function(data){
+      if(request !== GYN_TEAM_STATE.request || !appLineContextActive(ctx)) return;
+      GYN_TEAM_STATE.loading = false;
+      GYN_TEAM_STATE.loadingKey = '';
+      if(!data || !data.ok || !Array.isArray(data.products)) throw new Error('invalid team payload');
+      GYN_TEAM_STATE.failed = false;
+      GYN_TEAM_STATE.data = data;
+      GYN_TEAM_STATE.cacheKey = cacheKey;
+      gynCacheWrite(cacheKey, data);
+      if(active()) gynTeamRender(document.getElementById('gyn-content'), data);
+    })
+    .catch(function(){
+      if(request !== GYN_TEAM_STATE.request || !appLineContextActive(ctx)) return;
+      GYN_TEAM_STATE.loading = false;
+      GYN_TEAM_STATE.loadingKey = '';
+      var retry = attempt || 0;
+      if(retry < 2) { setTimeout(function(){ if(active()) gynTeamLoad(user, retry + 1); }, retry === 0 ? 1200 : 2500); return; }
+      GYN_TEAM_STATE.failed = true;
+      if(active()) {
+        appRegisterRetry('gyn-team', function(){ GYN_TEAM_STATE.data = null; GYN_TEAM_STATE.cacheKey = ''; gynTeamShow(document.getElementById('gyn-content'), getSession()); });
+        var target = document.getElementById('gyn-content'); if(target) target.innerHTML = gynTeamErrorHtml();
+      }
+    });
+}
+function gynTeamProductCard(product){
+  var plan = parseFloat(product.plan) || 0, predaj = parseFloat(product.predaj) || 0;
+  var pct = plan > 0 ? predaj / plan * 100 : null;
+  var color = plnenieColorClass(pct);
+  var width = pct === null ? 0 : Math.max(0, Math.min(100, pct));
+  return '<article class="gyn-team-product">' +
+    '<div class="gyn-team-product-head"><div class="gyn-team-product-name"><i></i>' + gynEsc(product.label || product.key) + '</div><strong class="' + color + '">' + gynFmtPctOrEur(pct, predaj) + '</strong></div>' +
+    '<div class="gyn-team-bar"><span class="' + color + '" style="width:' + width + '%"></span></div>' +
+    '<div class="gyn-team-money"><span>Plán <b>' + gynFmtEur(plan) + '</b></span><span>Predaj <b>' + gynFmtEur(predaj) + '</b></span></div>' +
+  '</article>';
+}
+function gynTeamSection(line, products){
+  var total = gynTeamAggregate(products);
+  var pct = total.pct === null ? '—' : plnenieFormatPct(total.pct);
+  return '<section class="gyn-team-section ' + line + '">' +
+    '<header class="gyn-team-section-head"><div><div class="gyn-team-section-kicker">Tím</div><h2>' + gynTeamLineLabel(line) + '</h2></div><div><strong>' + pct + '</strong><span>' + products.length + ' produkt' + (products.length === 1 ? '' : 'ov') + '</span></div></header>' +
+    (products.length ? '<div class="gyn-team-products">' + products.map(gynTeamProductCard).join('') + '</div>' : '<div class="gyn-team-empty">Pre túto skupinu zatiaľ nie sú dostupné produkty s plánom alebo predajom.</div>') +
+  '</section>';
+}
+function gynTeamRender(el, data){
+  if(!el || !data) return;
+  var pill = gynTeamProductsByLine(data.products, 'pill');
+  var patch = gynTeamProductsByLine(data.products, 'patch');
+  var pillTotal = gynTeamAggregate(pill), patchTotal = gynTeamAggregate(patch);
+  function totalCard(line, total){
+    return '<div class="gyn-team-total ' + line + '"><span>' + gynTeamLineLabel(line) + '</span><strong class="' + plnenieColorClass(total.pct) + '">' + (total.pct === null ? '—' : plnenieFormatPct(total.pct)) + '</strong><small>' + gynFmtEur(total.predaj) + ' z ' + gynFmtEur(total.plan) + '</small></div>';
+  }
+  el.innerHTML = gynQTabsHtml() +
+    '<section class="gyn-team-hero"><div class="gyn-team-kicker">Tímové plnenie · ' + plnenieQLabel(GYN_APP.q, GYN_APP.year) + '</div><h1>Produkty tímu</h1><p>Spoločné plnenie produktov je rozdelené podľa línií PIL a Patch.</p><div class="gyn-team-totals">' + totalCard('pill', pillTotal) + totalCard('patch', patchTotal) + '</div></section>' +
+    '<div class="gyn-team-note">Zobrazené sú iba súhrny plánu, predaja a plnenia produktov.</div>' +
+    gynTeamSection('pill', pill) + gynTeamSection('patch', patch);
 }
 
 // Preload — všetky 4 Q plnenia paralelne (cache GYN_APP.plCache)
