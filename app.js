@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.7';
+var APP_VERSION = '2.88.19';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -4190,6 +4190,7 @@ function _panelShow(newId, isBack) {
 }
 
 function closeAllPanels() {
+  try { satoriGuideHideHint(); } catch (e) {}
   try { dnesCloseRepSummary(); } catch (e) {}
   ['dnes-overlay','hist-overlay','lb-overlay','rep-plnenie-overlay','lk-overlay','okresy-overlay','sklady-overlay','team-plnenie-overlay','tuyory-overlay','lonelix-overlay','apixaban-overlay','golem-cal-overlay','lk-detail','pharma-ms-overlay','pharma-okres-overlay'].forEach(function(id){
     var el = document.getElementById(id);
@@ -5086,12 +5087,12 @@ function dnesOpenFullRepDetail() {
   var m = DNES_REP_SUMMARY.model;
   if (!m || !m.username) return;
   dnesCloseRepSummary();
+  // Gyn ide cez zdieľaný Tímové plnenie prekryv — otvor priamo, ešte kým je
+  // Domov aktuálny panel, nech si teamPlnenieCaptureReturn() správne zachytí
+  // "home" ako návratový cieľ (appGoPlnenie() by ho medzitým prepísal na Plnenie).
+  if (m.role === 'gyn') { openTeamPlnenie(m.username); return; }
   appGoPlnenie();
   setTimeout(function() {
-    if (m.role === 'gyn') {
-      gynOpenRepDetail(m.username, m.name, m.region);
-      return;
-    }
     PL_STATE.year = m.year; PL_STATE.q = m.q;
     var cached = PL_STATE.qCache && PL_STATE.qCache[m.q];
     if (cached) { PL_STATE.data = cached.data; PL_STATE.aggregates = cached.aggregates; PL_STATE.loaded = true; }
@@ -5108,16 +5109,13 @@ function dnesOpenRepProduct(username, productKey) {
   var key = plnenieNormalizeKey(productKey);
   APP_PL_PRODUCT_FOCUS = { key:key, until:Date.now() + 9000 };
   dnesCloseRepSummary();
+  if (m.role === 'gyn') { openTeamPlnenie(m.username); return; }
   appGoPlnenie();
   setTimeout(function() {
-    if (m.role === 'gyn') {
-      gynOpenRepDetail(m.username, m.name, m.region);
-    } else {
-      PL_STATE.year = m.year; PL_STATE.q = m.q;
-      var cached = PL_STATE.qCache && PL_STATE.qCache[m.q];
-      if (cached) { PL_STATE.data = cached.data; PL_STATE.aggregates = cached.aggregates; PL_STATE.loaded = true; }
-      plnenieOpenDetail(m.username);
-    }
+    PL_STATE.year = m.year; PL_STATE.q = m.q;
+    var cached = PL_STATE.qCache && PL_STATE.qCache[m.q];
+    if (cached) { PL_STATE.data = cached.data; PL_STATE.aggregates = cached.aggregates; PL_STATE.loaded = true; }
+    plnenieOpenDetail(m.username);
     appFocusPendingProduct();
   }, 80);
 }
@@ -5712,6 +5710,7 @@ function appGoDomov() {
   if (typeof _appTrackMainTab === 'function') _appTrackMainTab('domov');
   appNavReset('domov');
   try { openDnes(); } catch (e) {}
+  satoriGuideQueueHint('home', 550);
 }
 
 // Banner aj avatar vedú na vlastný Domov; ovládacie prvky si nechajú svoju akciu.
@@ -5737,6 +5736,7 @@ document.addEventListener('keydown', function (ev) {
 // a gyn preto treba najprv zavrieť panely, inak by ich pohľad ostal schovaný
 // pod Domovom a prepnutie by nebolo vidieť.
 function appGoTab(kam, arg) {
+  try { satoriGuideHideHint(); } catch (e) {}
   appNavigaciaZaznam();
   if (typeof _appTrackMainTab === 'function') _appTrackMainTab(kam);
   var r = appRole();
@@ -5900,6 +5900,7 @@ function viacDlazdice() {
     var g = [
       { ic: '📋', t: 'Návštevy', fn: "gynNavTo('visits')" },
       { ic: '🏆', t: 'Rebríček', fn: "gynNavTo('leaderboard')" },
+      { ic: '👥', t: 'Tímové plnenie', fn: 'openTeamPlnenie()', panel: 'team-plnenie' },
       { ic: '📦', t: 'Sklady', fn: 'openSklady()', panel: 'sklady' }
     ];
     if (s.role === 'gyn-rep') g.push({ ic: '🏪', t: 'Lekárne', fn: "gynNavTo('lekarne')" });
@@ -6002,6 +6003,7 @@ function viacRender() {
 // Menu je prekryv, nie panel — nezaraďuje sa do histórie panelov, aby sa
 // systémové „späť" nevracalo doň, ale tam, odkiaľ používateľ prišiel.
 function openViac() {
+  try { satoriGuideHideHint(); } catch (e) {}
   appNavigaciaZaznam();
   usageSectionEnter('Menu');
   viacRender();
@@ -6011,6 +6013,7 @@ function openViac() {
   if (ov) ov.classList.add('show');
   document.body.style.overflow = 'hidden';
   try { repTabSetActive('viac-overlay'); } catch (e) {}
+  satoriGuideQueueHint('menu', 420);
 }
 function closeViac() {
   try { usageSectionClose(); } catch (e) {}
@@ -6028,17 +6031,33 @@ function closeViac() {
 var TEAM_PL_STATE = { open:false, detailUser:'', pendingDetailUser:'', payload:null, returnTo:null, openedFromLinkedDetail:false, request:0 };
 var TEAM_PL_CACHE_MAX_AGE_MS = 15 * 60 * 1000;
 
+// Ivan, 14.9.: Gyn Tímové plnenie muselo vyzerať PRESNE ako Golemovo — nielen
+// rovnaké CSS triedy, ale ten istý celoobrazovkový prekryv (žiadny appkin
+// vrchný pás, žiadne Q-tabs). Namiesto druhej, paralelnej vetvy renderu je
+// teraz gyn len ďalší ZDROJ DÁT pre tento istý panel/render — pixel-identické
+// z podstaty, nie z udržovania dvoch kópií rovnakého kódu.
+function teamPlnenieIsGyn(){ return (getSession()||{}).line === 'gyn'; }
 function teamPlnenieAllowed(){
-  try { var s = getSession() || {}; return !s.line && /^(rep west|rep east)$/i.test(String(s.role || '').trim()); } catch(e) { return false; }
+  try {
+    var s = getSession() || {};
+    if (s.line === 'gyn') return true;
+    return !s.line && /^(rep west|rep east)$/i.test(String(s.role || '').trim());
+  } catch(e) { return false; }
 }
-function teamPlnenieQuarter(){ return (typeof plnenieCurrentQ === 'function') ? plnenieCurrentQ() : Math.ceil((new Date().getMonth() + 1) / 3); }
-function teamPlnenieYear(){ return new Date().getFullYear(); }
+function teamPlnenieQuarter(){ if(teamPlnenieIsGyn()) return gynLbLastCompletedQ(); return (typeof plnenieCurrentQ === 'function') ? plnenieCurrentQ() : Math.ceil((new Date().getMonth() + 1) / 3); }
+function teamPlnenieYear(){ return teamPlnenieIsGyn() ? GYN_APP.year : new Date().getFullYear(); }
 function teamPlnenieCacheKey(){ var s = getSession() || {}; return 'team_plnenie_west_east_v2_' + String(s.username || 'anonymous').toLowerCase() + '_' + teamPlnenieYear() + '_' + teamPlnenieQuarter(); }
+function teamPlnenieGroupKeys(){ return teamPlnenieIsGyn() ? ['pill','patch'] : ['rep west','rep east']; }
 function teamPlnenieFmtPct(value){ return value === null || value === undefined || !isFinite(value) ? '—' : Number(value).toLocaleString('sk-SK', {maximumFractionDigits:1}) + ' %'; }
 function teamPlnenieFmtMoney(value){ return Math.round(Number(value) || 0).toLocaleString('sk-SK').replace(/\u00A0/g, ' ') + ' €'; }
 function teamPlnenieColor(value){ if(value === null || value === undefined || !isFinite(value)) return 'none'; return value >= 100 ? 'g' : (value >= 95 ? 'o' : 'r'); }
-function teamPlnenieRoleName(role){ return String(role || '').toLowerCase() === 'rep east' ? 'East' : 'West'; }
-function teamPlnenieTeamName(){ return 'Golem'; }
+function teamPlnenieRoleName(role){
+  var r = String(role || '').toLowerCase();
+  if(r === 'patch') return 'Patch';
+  if(r === 'pill') return 'PIL';
+  return r === 'rep east' ? 'East' : 'West';
+}
+function teamPlnenieTeamName(){ return teamPlnenieIsGyn() ? 'Gynekológia' : 'Golem'; }
 function teamPlnenieCaptureReturn(){
   // Menu je iba prekryv. Pri otvorení nad Históriou musí zostať História
   // presným návratovým cieľom, nie sa neskôr odvodiť z meniaceho sa panel stacku.
@@ -6079,53 +6098,83 @@ function teamPlnenieFetch(){
   return appQueuedFetchJson(scriptUrl('action=getTeamPlnenie&rok='+encodeURIComponent(year)+'&Q='+encodeURIComponent(q)), {cache:'no-store'},25000,'critical').then(function(payload){ if(!payload || payload.ok===false) throw new Error((payload && payload.error)||'team endpoint unavailable'); if(!Array.isArray(payload.reps)) throw new Error('team response invalid'); return payload; });
 }
 function teamPlnenieApplyPayload(payload){ TEAM_PL_STATE.payload=payload; teamPlnenieSyncMeta(payload.reps); if(TEAM_PL_STATE.pendingDetailUser && (payload.reps || []).some(function(r){ return r.username===TEAM_PL_STATE.pendingDetailUser; })) { TEAM_PL_STATE.detailUser=TEAM_PL_STATE.pendingDetailUser; TEAM_PL_STATE.pendingDetailUser=''; } teamPlnenieRender(); }
+// Gyn nemá vlastný jednoduchý agregačný endpoint ako Golem (getTeamPlnenie) —
+// znovupoužíva presne tie fullLine dáta, ktoré si Rebríček už naťahuje a
+// cachuje svojou vlastnou, overenou cestou (gynLbEnsureRepList/gynLbEnsureData,
+// pôvodne bola root cause dlhého točenia samostatná, duplicitná
+// cesta). Sem sa len normalizujú do rovnakého tvaru ako Golemov payload.
+function teamPlnenieGynPayload(reps, plnenie, q){
+  return {
+    Q: q, rok: GYN_APP.year,
+    reps: reps.map(function(rep){
+      var agg = gynBuildRepAgg(rep.login, plnenie, q);
+      var line = /^[A-Z]{2}PA$/i.test(String(rep.region||'').trim()) ? 'patch' : 'pill';
+      return {
+        username: rep.login, name: rep.meno || rep.login, role: line, region: rep.region || '',
+        pct: agg.pct, planEUR: agg.totalPlan, predajeEUR: agg.totalPred,
+        products: (agg.prods||[]).map(function(p){ return { key:p.name, label:p.name, planEUR:p.plan, predajeEUR:p.predaj, pct:p.pct }; })
+      };
+    })
+  };
+}
+function teamPlnenieLoadGyn(){
+  var q = gynLbLastCompletedQ();
+  gynLbEnsureRepList();
+  var key = gynPlnenieCacheKey(GYN_APP.year, q) + '|lb-fullLine';
+  gynLbEnsureData(q, key);
+  var reps = gynLbScopeReps(), plnenie = GYN_LB.plCache[q];
+  if(!GYN_LB.repFetched || !reps.length || !plnenie){
+    if(GYN_LB.failed[q] && !plnenie && !TEAM_PL_STATE.payload) teamPlnenieLoadError();
+    return;
+  }
+  teamPlnenieApplyPayload(teamPlnenieGynPayload(reps, plnenie, q));
+}
 function teamPlnenieLoad(force){
   if(!teamPlnenieAllowed()) return;
+  if(teamPlnenieIsGyn()){ teamPlnenieLoadGyn(); return; }
   var key=teamPlnenieCacheKey(), request=++TEAM_PL_STATE.request, opts={maxAgeMs:TEAM_PL_CACHE_MAX_AGE_MS,fetcher:teamPlnenieFetch,onFresh:function(payload){if(!TEAM_PL_STATE.open || request!==TEAM_PL_STATE.request)return;teamPlnenieApplyPayload(payload);},onError:function(){if(!TEAM_PL_STATE.open || request!==TEAM_PL_STATE.request)return;if(TEAM_PL_STATE.payload)teamPlnenieRender();else teamPlnenieLoadError();}};
   var cached=force?DataStore.refresh(key,opts):DataStore.get(key,opts);
   if(cached && cached.data) teamPlnenieApplyPayload(cached.data); else if(!TEAM_PL_STATE.payload){var body=document.getElementById('team-plnenie-body');if(body)body.innerHTML=teamPlnenieSkeleton();}
 }
-function teamPlnenieRefresh(){ TEAM_PL_STATE.payload=null; TEAM_PL_STATE.detailUser=''; teamPlnenieLoad(true); }
-function teamPlneniePreload(){ if(teamPlnenieAllowed()) DataStore.get(teamPlnenieCacheKey(),{maxAgeMs:TEAM_PL_CACHE_MAX_AGE_MS,fetcher:teamPlnenieFetch}); }
+function teamPlnenieRefresh(){
+  TEAM_PL_STATE.payload=null; TEAM_PL_STATE.detailUser='';
+  if(teamPlnenieIsGyn()){ var q=gynLbLastCompletedQ(); delete GYN_LB.dataReady[q]; delete GYN_LB.failed[q]; }
+  teamPlnenieLoad(true);
+}
+function teamPlneniePreload(){ if(teamPlnenieAllowed() && !teamPlnenieIsGyn()) DataStore.get(teamPlnenieCacheKey(),{maxAgeMs:TEAM_PL_CACHE_MAX_AGE_MS,fetcher:teamPlnenieFetch}); }
 function openTeamPlnenie(detailUser){
   if(!teamPlnenieAllowed()) return;
   usageSectionEnter('Tímové plnenie'); TEAM_PL_STATE.open=true; TEAM_PL_STATE.detailUser=''; TEAM_PL_STATE.pendingDetailUser=detailUser || ''; TEAM_PL_STATE.openedFromLinkedDetail=!!detailUser; TEAM_PL_STATE.returnTo=teamPlnenieCaptureReturn();
-  var sub=document.getElementById('team-plnenie-sub'); if(sub)sub.textContent='Golem · Q'+teamPlnenieQuarter()+' '+teamPlnenieYear();
+  var sub=document.getElementById('team-plnenie-sub'); if(sub)sub.textContent=teamPlnenieTeamName()+' · Q'+teamPlnenieQuarter()+' '+teamPlnenieYear();
   _panelShow('team-plnenie-overlay'); teamPlnenieLoad(false);
+  if(!detailUser) satoriGuideQueueHint('team', 650);
 }
 function closeTeamPlnenie(){ var target=TEAM_PL_STATE.returnTo; usageSectionClose(); TEAM_PL_STATE.open=false; TEAM_PL_STATE.detailUser=''; TEAM_PL_STATE.pendingDetailUser=''; TEAM_PL_STATE.openedFromLinkedDetail=false; TEAM_PL_STATE.request++; TEAM_PL_STATE.returnTo=null; teamPlnenieRestoreReturn(target); }
-function teamPlnenieOpenDetail(username){ var rep=((TEAM_PL_STATE.payload || {}).reps || []).find(function(item){return item.username===username;}); if(!rep)return; TEAM_PL_STATE.detailUser=username; teamPlnenieRender(); var overlay=document.getElementById('team-plnenie-overlay');if(overlay)overlay.scrollTop=0; }
+function teamPlnenieOpenDetail(username){ var rep=((TEAM_PL_STATE.payload || {}).reps || []).find(function(item){return item.username===username;}); if(!rep)return; TEAM_PL_STATE.detailUser=username; teamPlnenieRender(); var overlay=document.getElementById('team-plnenie-overlay');if(overlay)overlay.scrollTop=0; satoriGuideQueueHint('rep_detail', 550); }
 function teamPlnenieOpenFromLeaderboard(username){ if(teamPlnenieAllowed()) openTeamPlnenie(username); }
 function teamPlnenieCloseDetail(){ if(!TEAM_PL_STATE.detailUser)return closeTeamPlnenie(); TEAM_PL_STATE.detailUser=''; teamPlnenieRender(); var overlay=document.getElementById('team-plnenie-overlay');if(overlay)overlay.scrollTop=0; }
 function teamPlnenieBack(){ if(TEAM_PL_STATE.detailUser && !teamPlnenieReturnsDirectly()) teamPlnenieCloseDetail(); else closeTeamPlnenie(); }
 function teamPlnenieAggregate(reps){ var plan=(reps||[]).reduce(function(sum,r){return sum+(Number(r.planEUR)||0);},0), sales=(reps||[]).reduce(function(sum,r){return sum+(Number(r.predajeEUR)||0);},0); return {plan:plan,sales:sales,pct:plan>0?sales/plan*100:null}; }
 function teamPlnenieProductLabel(value){ return String(value || '').replace(/_/g,' '); }
-function teamPlneniePharmaKey(productKey){
-  if(typeof PHARMA_CODES === 'undefined') return '';
-  if(PHARMA_CODES[productKey]) return productKey;
-  var normal = typeof plnenieNormalizeKey === 'function' ? plnenieNormalizeKey(productKey) : String(productKey).toLowerCase();
-  return Object.keys(PHARMA_CODES).find(function(key){ return (typeof plnenieNormalizeKey === 'function' ? plnenieNormalizeKey(key) : String(key).toLowerCase()) === normal; }) || '';
-}
-function teamPlnenieOpenPharma(username, productKey){
-  var payload=TEAM_PL_STATE.payload || {}, rep=(payload.reps||[]).find(function(item){return item.username===username;}), product=rep && (rep.products||[]).find(function(item){return item.key===productKey;}), pharmaKey=teamPlneniePharmaKey(productKey);
-  if(!rep || !product || !pharmaKey) return;
-  openPharmaMs(pharmaKey, teamPlnenieProductLabel(product.label), rep.region, rep.username, {q:payload.Q || teamPlnenieQuarter(),year:payload.rok || teamPlnenieYear(),team:true});
-}
 
-function teamPlnenieCard(rep,index,current){ var av=lbAvatarContent(rep.username,rep.name,40), color=(LB_REP_INFO[rep.username]||{}).color || '#2563EB', safe=String(rep.username).replace(/'/g,"\\'"), name=teamPlnenieRoleName(rep.role); return '<button type="button" class="team-plnenie-card" onclick="teamPlnenieOpenDetail(\''+safe+'\')"><span class="team-plnenie-rank">'+(index+1)+'.</span><span class="team-plnenie-avatar'+(av.hasAvatar?' has-avatar':'')+'" data-username="'+appEsc(rep.username)+'" style="background:'+appEsc(color)+'">'+av.html+'</span><span class="team-plnenie-person"><span class="team-plnenie-name">'+appEsc(rep.name)+'</span><span class="team-plnenie-meta">'+appEsc(name+' · '+(rep.region||'Golem'))+(rep.username===current?'<span class="team-plnenie-you">Ty</span>':'')+'</span></span><span class="team-plnenie-result"><span class="team-plnenie-pct '+teamPlnenieColor(rep.pct)+'">'+teamPlnenieFmtPct(rep.pct)+'</span><span class="team-plnenie-money">'+teamPlnenieFmtMoney(rep.predajeEUR)+'</span></span><span class="team-plnenie-chev">›</span></button>'; }
+function teamPlnenieCard(rep,index,current){ var av=lbAvatarContent(rep.username,rep.name,40), color=(LB_REP_INFO[rep.username]||{}).color || '#2563EB', safe=String(rep.username).replace(/'/g,"\\'"), name=teamPlnenieRoleName(rep.role); return '<button type="button" class="team-plnenie-card" onclick="teamPlnenieOpenDetail(\''+safe+'\')"><span class="team-plnenie-rank">'+(index+1)+'.</span><span class="team-plnenie-avatar'+(av.hasAvatar?' has-avatar':'')+'" data-username="'+appEsc(rep.username)+'" style="background:'+appEsc(color)+'">'+av.html+'</span><span class="team-plnenie-person"><span class="team-plnenie-name">'+appEsc(rep.name)+'</span><span class="team-plnenie-meta">'+appEsc(name+' · '+(rep.region||teamPlnenieTeamName()))+(rep.username===current?'<span class="team-plnenie-you">Ty</span>':'')+'</span></span><span class="team-plnenie-result"><span class="team-plnenie-pct '+teamPlnenieColor(rep.pct)+'">'+teamPlnenieFmtPct(rep.pct)+'</span><span class="team-plnenie-money">'+teamPlnenieFmtMoney(rep.predajeEUR)+'</span></span><span class="team-plnenie-chev">›</span></button>'; }
 function teamPlnenieGroupHtml(role,reps,current){ var ag=teamPlnenieAggregate(reps); return '<section class="team-plnenie-group"><div class="team-plnenie-group-head"><div class="team-plnenie-label">Tím '+teamPlnenieRoleName(role)+'</div><div class="team-plnenie-group-result">'+teamPlnenieFmtPct(ag.pct)+' · '+reps.length+' rep.</div></div><div class="team-plnenie-list">'+reps.map(function(rep,i){return teamPlnenieCard(rep,i,current);}).join('')+'</div></section>'; }
 function teamPlnenieRender(){
   var body=document.getElementById('team-plnenie-body'),title=document.getElementById('team-plnenie-title'),sub=document.getElementById('team-plnenie-sub'); if(!body || !TEAM_PL_STATE.open)return;
-  var payload=TEAM_PL_STATE.payload || {},reps=Array.isArray(payload.reps)?payload.reps.slice():[],q=payload.Q||teamPlnenieQuarter(),year=payload.rok||teamPlnenieYear(),current=(getSession()||{}).username||'';
-  teamPlnenieSyncMeta(reps); if(sub)sub.textContent='Golem · Q'+q+' '+year;
+  var payload=TEAM_PL_STATE.payload || {},reps=Array.isArray(payload.reps)?payload.reps.slice():[],q=payload.Q||teamPlnenieQuarter(),year=payload.rok||teamPlnenieYear(),current=(getSession()||{}).username||'',teamName=teamPlnenieTeamName();
+  teamPlnenieSyncMeta(reps); if(sub)sub.textContent=teamName+' · Q'+q+' '+year;
   if(TEAM_PL_STATE.detailUser){
     var rep=reps.find(function(item){return item.username===TEAM_PL_STATE.detailUser;}); if(!rep){TEAM_PL_STATE.detailUser='';return teamPlnenieRender();} if(title)title.textContent=rep.name||'Plnenie reprezentanta';
     var av=lbAvatarContent(rep.username,rep.name,48), products=(rep.products||[]).slice().sort(function(a,b){return(a.label||'').localeCompare(b.label||'','sk');});
-    body.innerHTML='<div class="team-plnenie-person-head"><div class="team-plnenie-avatar'+(av.hasAvatar?' has-avatar':'')+'" data-username="'+appEsc(rep.username)+'" style="background:'+appEsc((LB_REP_INFO[rep.username]||{}).color||'#2563EB')+'">'+av.html+'</div><div class="team-plnenie-person"><div class="team-plnenie-name">'+appEsc(rep.name)+'</div><div class="team-plnenie-meta">'+appEsc(teamPlnenieRoleName(rep.role)+' · '+(rep.region||'Golem'))+(rep.username===current?'<span class="team-plnenie-you">Ty</span>':'')+'</div></div><div class="team-plnenie-person-pct"><div class="team-plnenie-pct '+teamPlnenieColor(rep.pct)+'">'+teamPlnenieFmtPct(rep.pct)+'</div><small>celkom</small></div></div><div class="team-plnenie-label">Produkty s plánom · Q'+q+'</div>'+(products.length?products.map(function(product){var cls=teamPlnenieColor(product.pct),pct=product.pct===null?0:Math.max(0,Math.min(100,product.pct)),hasPharma=!!teamPlneniePharmaKey(product.key),safeUser=String(rep.username).replace(/'/g,"\\'"),safeKey=String(product.key).replace(/'/g,"\\'");return '<div class="team-plnenie-product"><div class="team-plnenie-product-top"><div class="team-plnenie-product-name"><span class="team-plnenie-dot"></span><span>'+appEsc(teamPlnenieProductLabel(product.label))+'</span></div><div class="team-plnenie-pct '+cls+'">'+teamPlnenieFmtPct(product.pct)+'</div></div><div class="team-plnenie-product-bar"><div class="team-plnenie-product-fill '+cls+'" style="width:'+pct+'%"></div></div><div class="team-plnenie-product-money"><span>Plán <strong>'+teamPlnenieFmtMoney(product.planEUR)+'</strong></span><span>Predaj <strong>'+teamPlnenieFmtMoney(product.predajeEUR)+'</strong></span></div>'+(hasPharma?'<button type="button" class="team-plnenie-pharma" onclick="teamPlnenieOpenPharma(\''+safeUser+'\',\''+safeKey+'\')">Trhový podiel a okresy <span>›</span></button>':'')+'</div>';}).join(''):'<div class="team-plnenie-empty">Pre tento kvartál zatiaľ nemá zadaný plán.</div>'); return;
+    body.innerHTML='<div class="team-plnenie-person-head"><div class="team-plnenie-avatar'+(av.hasAvatar?' has-avatar':'')+'" data-username="'+appEsc(rep.username)+'" style="background:'+appEsc((LB_REP_INFO[rep.username]||{}).color||'#2563EB')+'">'+av.html+'</div><div class="team-plnenie-person"><div class="team-plnenie-name">'+appEsc(rep.name)+'</div><div class="team-plnenie-meta">'+appEsc(teamPlnenieRoleName(rep.role)+' · '+(rep.region||teamName))+(rep.username===current?'<span class="team-plnenie-you">Ty</span>':'')+'</div></div><div class="team-plnenie-person-pct"><div class="team-plnenie-pct '+teamPlnenieColor(rep.pct)+'">'+teamPlnenieFmtPct(rep.pct)+'</div><small>celkom</small></div></div><div class="team-plnenie-label">Produkty s plánom · Q'+q+'</div>'+(products.length?products.map(function(product){var cls=teamPlnenieColor(product.pct),pct=product.pct===null?0:Math.max(0,Math.min(100,product.pct));return '<div class="team-plnenie-product"><div class="team-plnenie-product-top"><div class="team-plnenie-product-name"><span class="team-plnenie-dot"></span><span>'+appEsc(teamPlnenieProductLabel(product.label))+'</span></div><div class="team-plnenie-pct '+cls+'">'+teamPlnenieFmtPct(product.pct)+'</div></div><div class="team-plnenie-product-bar"><div class="team-plnenie-product-fill '+cls+'" style="width:'+pct+'%"></div></div><div class="team-plnenie-product-money"><span>Plán <strong>'+teamPlnenieFmtMoney(product.planEUR)+'</strong></span><span>Predaj <strong>'+teamPlnenieFmtMoney(product.predajeEUR)+'</strong></span></div></div>';}).join(''):'<div class="team-plnenie-empty">Pre tento kvartál zatiaľ nemá zadaný plán.</div>'); return;
   }
-  if(title)title.textContent='Tímové plnenie'; if(!reps.length){body.innerHTML='<div class="team-plnenie-empty">Pre Golem zatiaľ nie sú dostupné údaje o plnení.</div>';return;}
-  reps.sort(function(a,b){var ap=a.pct==null?-1:a.pct,bp=b.pct==null?-1:b.pct;return bp-ap||String(a.name).localeCompare(String(b.name),'sk');}); var all=teamPlnenieAggregate(reps),west=reps.filter(function(r){return String(r.role).toLowerCase()==='rep west';}),east=reps.filter(function(r){return String(r.role).toLowerCase()==='rep east';}),w=teamPlnenieAggregate(west),e=teamPlnenieAggregate(east);
-  body.innerHTML='<div class="team-plnenie-hero"><div class="team-plnenie-eyebrow">Golem · Q'+q+' '+year+'</div><div class="team-plnenie-hero-row"><div class="team-plnenie-hero-pct">'+teamPlnenieFmtPct(all.pct)+'</div><div class="team-plnenie-hero-meta"><strong>'+reps.length+' reprezentant'+(reps.length===1?'':'i')+'</strong><br>'+teamPlnenieFmtMoney(all.sales)+' z '+teamPlnenieFmtMoney(all.plan)+'</div></div><div class="team-plnenie-team-totals"><div><span>West</span><strong>'+teamPlnenieFmtPct(w.pct)+'</strong><small>'+teamPlnenieFmtMoney(w.sales)+' / '+teamPlnenieFmtMoney(w.plan)+'</small></div><div><span>East</span><strong>'+teamPlnenieFmtPct(e.pct)+'</strong><small>'+teamPlnenieFmtMoney(e.sales)+' / '+teamPlnenieFmtMoney(e.plan)+'</small></div></div></div>'+teamPlnenieGroupHtml('rep west',west,current)+teamPlnenieGroupHtml('rep east',east,current);
+  if(title)title.textContent='Tímové plnenie'; if(!reps.length){body.innerHTML='<div class="team-plnenie-empty">Pre '+appEsc(teamName)+' zatiaľ nie sú dostupné údaje o plnení.</div>';return;}
+  reps.sort(function(a,b){var ap=a.pct==null?-1:a.pct,bp=b.pct==null?-1:b.pct;return bp-ap||String(a.name).localeCompare(String(b.name),'sk');});
+  var groupKeys=teamPlnenieGroupKeys(), all=teamPlnenieAggregate(reps),
+      g0reps=reps.filter(function(r){return String(r.role).toLowerCase()===groupKeys[0];}),
+      g1reps=reps.filter(function(r){return String(r.role).toLowerCase()===groupKeys[1];}),
+      g0=teamPlnenieAggregate(g0reps), g1=teamPlnenieAggregate(g1reps);
+  body.innerHTML='<div class="team-plnenie-hero"><div class="team-plnenie-eyebrow">'+appEsc(teamName)+' · Q'+q+' '+year+'</div><div class="team-plnenie-hero-row"><div class="team-plnenie-hero-pct">'+teamPlnenieFmtPct(all.pct)+'</div><div class="team-plnenie-hero-meta"><strong>'+reps.length+' reprezentant'+(reps.length===1?'':'i')+'</strong><br>'+teamPlnenieFmtMoney(all.sales)+' z '+teamPlnenieFmtMoney(all.plan)+'</div></div><div class="team-plnenie-team-totals"><div><span>'+teamPlnenieRoleName(groupKeys[0])+'</span><strong>'+teamPlnenieFmtPct(g0.pct)+'</strong><small>'+teamPlnenieFmtMoney(g0.sales)+' / '+teamPlnenieFmtMoney(g0.plan)+'</small></div><div><span>'+teamPlnenieRoleName(groupKeys[1])+'</span><strong>'+teamPlnenieFmtPct(g1.pct)+'</strong><small>'+teamPlnenieFmtMoney(g1.sales)+' / '+teamPlnenieFmtMoney(g1.plan)+'</small></div></div></div>'+teamPlnenieGroupHtml(groupKeys[0],g0reps,current)+teamPlnenieGroupHtml(groupKeys[1],g1reps,current);
 }
 
 document.addEventListener('click',function(event){ var back=event.target && event.target.closest && event.target.closest('#team-plnenie-back'); if(!back)return; event.preventDefault(); event.stopPropagation(); teamPlnenieBack(); },true);
@@ -6302,8 +6351,9 @@ function openSklady(focusKey){
   var sub = document.getElementById('sklady-sub'), line = appLineTag();
   if (sub) sub.textContent = (line === 'gyn' ? 'Gynekológia' : (line === 'reagila' ? 'Reagila' : 'Golem')) + ' · aktuálny stav zásob';
   _panelShow('sklady-overlay'); stockLoad();
+  setTimeout(function(){ try { satoriGuideMaybeHint('stocks'); } catch(e){} }, 700);
 }
-function closeSklady(){ var target = SKLADY_STATE.returnTo; usageSectionClose(); SKLADY_STATE.open = false; SKLADY_STATE.request++; SKLADY_STATE.returnTo = null; stockRestoreReturn(target); }
+function closeSklady(){ try { satoriGuideHideHint(); } catch(e){} var target = SKLADY_STATE.returnTo; usageSectionClose(); SKLADY_STATE.open = false; SKLADY_STATE.request++; SKLADY_STATE.returnTo = null; stockRestoreReturn(target); }
 // Ťuknutie na položku menu ho zavrie — inak by ostalo visieť nad panelom,
 // ktorý práve otvorilo.
 document.addEventListener('click', function (ev) {
@@ -6583,6 +6633,7 @@ function openHistory() {
   if(!overlay || !body) return;
 
   _panelShow('hist-overlay');
+  satoriGuideQueueHint('visits', 550);
   dateEl.textContent = getTodayStr();
   if(searchEl) searchEl.value = '';
 
@@ -7657,6 +7708,20 @@ function settingsAppHtml(s){
             '<button type="button" class="set-switch' + (hOn ? ' on' : '') + '" role="switch" aria-checked="' + (hOn ? 'true' : 'false') + '" aria-label="Haptická odozva" onclick="settingsToggleHaptics()"></button>' +
           '</div>';
 
+  // Satori sprievodca — úvodná prehliadka a kontextové tipy. Stav sa ukladá
+  // do rovnakých osobných nastavení ako haptika, preto ho používateľ dostane
+  // aj na ďalšom zariadení bez ďalšieho backendu.
+  var guide = (typeof satoriGuidePrefs === 'function') ? satoriGuidePrefs() : { enabled:true };
+  html += '<div class="set-row"><div class="set-row-label">Satori sprievodca<br>' +
+            '<span style="font-weight:600;color:#64748B">' + (guide.enabled ? 'tipy pri prvom otvorení funkcie' : 'automatické tipy sú vypnuté') + '</span></div>' +
+            '<button type="button" class="set-switch' + (guide.enabled ? ' on' : '') + '" role="switch" aria-checked="' + (guide.enabled ? 'true' : 'false') + '" aria-label="Satori sprievodca" onclick="settingsToggleSatoriGuide()"></button>' +
+          '</div>' +
+          '<div class="set-row-desc" style="margin:-2px 0 9px">Krátko vysvetlí navigáciu a dostupné prehľady, produkty, trhové dáta aj nástroje tvojej roly. Každý tip sa zobrazí iba raz.</div>' +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:9px">' +
+            '<button type="button" class="set-action-btn" style="flex:1;margin:0" onclick="satoriGuideStart(true)">✦ Spustiť sprievodcu znova</button>' +
+            '<button type="button" class="set-mini-btn" onclick="satoriGuideResetHints()">Obnoviť tipy</button>' +
+          '</div><div class="set-cache-status" id="set-guide-status"></div>';
+
   // Globálne vyhľadávanie — možnosť skryť/vypnúť (uloží sa do Sheetu, stĺpec „nastavenia")
   var gsOn = gsEnabled();
   html += '<div class="set-row"><div class="set-row-label">Globálne vyhľadávanie<br>' +
@@ -8105,6 +8170,7 @@ function openDetail(idx) {
   if(item.type === 'lonelix-new'){ lonelixDoctorDetail(item.lon, { canAddGp: true }); return; }
   _currentDetailIdx = idx;
   _currentDetailItem = item;
+  satoriGuideQueueHint('doctor', 650);
   // Znovuotvorenie po úprave hľadá záznam podľa čísla riadku, nie podľa indexu.
   // saveEditRecord() totiž najprv zavolá histRender(), ktorý _histDetailItems
   // postaví nanovo — s aktuálnym filtrom aj zoradením. Zapamätaný index tak mohol
@@ -8656,267 +8722,282 @@ function updateOnline(){
 window.addEventListener('online',updateOnline);
 window.addEventListener('offline',updateOnline);
 updateOnline();
-// ── tutorial ──
-var TUTORIAL_KEY = 'potencial_vl_tutorial_done';
+// ── Satori sprievodca (len náhľad) ───────────────────────────────────────
+// Jedna spoločná prehliadka pre všetky línie + krátke tipy pri prvom otvorení
+// konkrétnej časti. Stav je v existujúcich osobných nastaveniach, takže nerobí
+// nový backend ani neukladá žiadne dáta o používaní navyše.
+var SATORI_GUIDE_STATE = { open:false, manual:false, step:0, restoreOverflow:'', scheduled:false, hintKey:'', hintTimer:0, touchReady:false };
+var SATORI_GUIDE_STEPS = [
+  { icon:'✦', kicker:'SATORI · SPRIEVODCA', title:'Vitaj v Satori', copy:'Za minútu ti ukážeme najdôležitejšie miesta v aplikácii. Užitočné tipy môžeš kedykoľvek vypnúť alebo znovu spustiť v Nastaveniach.', info:'Sprievodca nemení tvoje údaje ani nastavenia aplikácie.' },
+  { icon:'⌂', kicker:'ORIENTÁCIA', title:'Všetko má svoje miesto', copy:'Spodná lišta ťa privedie na Domov, Plnenie, Kalendár, Nástenku a Menu. Ťuknutím na aktívnu položku sa vždy vrátiš na jej začiatok.' },
+  { icon:'↻', kicker:'AKTUÁLNE DÁTA', title:'Obnov dáta potiahnutím', copy:'Keď si úplne hore na obrazovke s dátami, potiahni nadol a pusť. Krúžok ukáže, kedy sa začne obnova.', info:'Formuláre sa potiahnutím neobnovujú, aby si nestratil rozpracovaný záznam.' },
+  { icon:'☰', kicker:'TVOJE NÁSTROJE', title:'Všetko ostatné je v Menu', copy:'V Menu nájdeš nástroje, ktoré máš dostupné pre svoju rolu a aktuálnu líniu. Nastavenia sú vždy úplne dole.' },
+  { icon:'▣', kicker:'STAV ZÁSOB', title:'Sklady pod kontrolou', copy:'Dni pokrytia hovoria, na koľko dní vystačí zásoba pri aktuálnom tempe. Ťuknutím na produkt otvoríš jeho detail.', info:'Červená znamená kritickú zásobu, oranžová položku na sledovanie a zelená stabilný stav.' },
+  { icon:'✦', kicker:'SI PRIPRAVENÝ', title:'Pomoc je vždy poruke', copy:'V Kalendári riešiš udalosti a dovolenky, na Nástenke zdieľaš informácie s ľuďmi vo svojej línii. Sprievodcu si môžeš kedykoľvek znovu otvoriť v Nastaveniach.' }
+];
+var SATORI_GUIDE_HINTS = {
+  home: { title:'Domov je tvoj prehľad', copy:'Tu nájdeš to, čo je dnes dôležité: stav plnenia, upozornenia, kalendár a rýchle odkazy na detail.' },
+  menu: { title:'Nástroje podľa tvojej roly', copy:'Menu ukazuje iba funkcie, ku ktorým máš prístup v aktuálnej línii. Nastavenia sú vždy naspodku.' },
+  visits: { title:'História na jednom mieste', copy:'Tu si vyhľadáš predchádzajúce záznamy a otvoríš detail lekára alebo návštevy.' },
+  doctor: { title:'Detail lekára', copy:'Na karte máš súvislosti k lekárovi, predchádzajúce návštevy a ďalší odporúčaný krok.' },
+  plnenie: { title:'Ako čítať Plnenie', copy:'Percento porovnáva aktuálny predaj s plánom. Prepínaj kvartály a ťukni na produkt pre detail jeho výsledku.' },
+  leaderboard: { title:'Rebríček plnenia', copy:'Poradie ukazuje výsledky aktuálneho kvartálu. Ťuknutím na položku sa dostaneš k podrobnejšiemu pohľadu.' },
+  team: { title:'Tímové plnenie', copy:'Vidíš súhrn plnenia tímov West aj East. Ťuknutím na kolegu otvoríš jeho produkty bez informácií o lekároch.' },
+  lekarne: { title:'Príležitosti v lekárňach', copy:'Filtre ti pomôžu nájsť príležitosti podľa situácie. V detaile lekárne nájdeš konkrétny dôvod zaradenia.' },
+  products: { title:'Detail produktu', copy:'Tu porovnáš plán, predaj a predikciu produktu. Ďalšie súvislosti otvoríš ťuknutím na dostupné karty.' },
+  rep_detail: { title:'Výsledok reprezentanta', copy:'Tento pohľad rozkladá celkové plnenie na jednotlivé produkty a umožňuje porovnať ich tempo.' },
+  market: { title:'Trhový podiel', copy:'Graf porovnáva vývoj produktu s trhom v zvolenom území. Legendou môžeš zvýrazniť alebo skryť jednotlivé línie.' },
+  districts: { title:'Vývoj v okresoch', copy:'Tu porovnáš trhový podiel okresov v čase. Dáta majú význam najmä pri sledovaní trendu, nie pri jednom izolovanom mesiaci.' },
+  district_list: { title:'Prehľad okresov', copy:'Okresy pomáhajú rozložiť výsledok teritória na menšie oblasti. Rozbaľ položku pre detail produktu a konkrétneho okresu.' },
+  activity: { title:'Aktivita tímu', copy:'Prehľad ukazuje využívanie aplikácie tímom. Výberom kolegu otvoríš jeho detail bez zásahu do jeho dát.' },
+  reports: { title:'Interaktívny report', copy:'Nastav rozsah a reprezentanta. Report prepája plnenie, produkty a dostupné trhové dáta do jedného pohľadu.' },
+  tuyory: { title:'Prieskum Tuyory', copy:'Najprv si pozri súhrn a potom doplň jednotlivé odpovede. Rozpracované údaje sa zobrazia priamo v tomto nástroji.' },
+  apixaban: { title:'Prieskum Apixaban', copy:'Tu máš súhrn cieľov a záznamov. Nový záznam pridáš až po výbere správnej odbornosti a lekára.' },
+  lonelix: { title:'Prieskum Lonelix', copy:'Prehľad udržuje záznamy na jednom mieste. Pri novom zázname si najprv vyber existujúceho alebo pridaj nového lekára.' },
+  stocks: { title:'Ako čítať Sklady', copy:'Dni pokrytia ukazujú, na koľko dní vystačí zásoba pri aktuálnom tempe. Ťuknutím na položku otvoríš detail produktu.' },
+  calendar: { title:'Kalendár na jednom mieste', copy:'Tu pridáš dovolenku alebo udalosť a hneď vidíš jej stav. Schválené absencie sa zobrazia aj kolegom v tvojej línii.' },
+  board: { title:'Zdieľaj informácie s tímom', copy:'Príspevky na Nástenke vidia iba ľudia v aktuálnej línii. Nový vytvoríš cez tlačidlo + Pridať príspevok.' }
+};
 
-var _tutorialCurrent = 1;
-var _tutorialTotal = 7;
-
-function tutorialGo(step) {
-  if(step < 1 || step > _tutorialTotal) return;
-  // steps handled by transform
-  var next = document.getElementById('tstep-' + step);
-  if(next) next.classList.add('active');
-  _tutorialCurrent = step;
+function satoriGuidePrefs(){
+  var p = (typeof userPrefsGet === 'function' ? userPrefsGet() : {}) || {};
+  var hints = (p.satoriGuideHints && typeof p.satoriGuideHints === 'object') ? p.satoriGuideHints : {};
+  return { enabled:p.satoriGuideEnabled !== false, seen:p.satoriGuideSeen === true || satoriGuideSeenOnDevice(), hints:hints };
 }
-
-function tutorialNext(step) { tutorialGo(step); }
-function tutorialBack(step) { tutorialGo(step); }
-
-// Swipe support – plynulé ťahanie + dismiss v ľubovoľnom smere na poslednej stránke
-(function(){
-  var startX = 0, startY = 0, dragX = 0, dragY = 0, dragging = false;
-  var gestureType = null; // 'horizontal' | 'dismiss'
-  var threshold = 50;
-  var dismissDist = 100; // minimálna vzdialenosť pre dismiss
-
-  function getTrack(){ return document.getElementById('tutorial-track'); }
-  function getModal(){ return document.querySelector('.tutorial-modal'); }
-  function getOverlay(){ return document.getElementById('tutorial-overlay'); }
-
-  function updateDots() {
-    document.querySelectorAll('.tutorial-dots').forEach(function(group){
-      group.querySelectorAll('.tutorial-dot').forEach(function(d,i){
-        d.classList.toggle('active', i === _tutorialCurrent-1);
-      });
-    });
-  }
-
-  function tutorialGoSmooth(step) {
-    if(step < 1 || step > _tutorialTotal) return;
-    var prevStep = _tutorialCurrent;
-    _tutorialCurrent = step;
-    var t = getTrack(); if(!t) return;
-    var m = getModal();
-    if(m){ m.style.transition='transform .38s cubic-bezier(.4,0,.2,1),opacity .38s'; m.style.transform=''; m.style.opacity='1'; }
-    t.classList.remove('no-transition');
-    // Animate icon on target step
-    var steps = t.querySelectorAll('.tutorial-step');
-    var targetStep = steps[step-1];
-    if(targetStep){
-      var icon = targetStep.querySelector('.tutorial-icon-circle');
-      if(icon){
-        icon.classList.remove('icon-anim-forward','icon-anim-back');
-        void icon.offsetWidth; // reflow
-        icon.classList.add(step > prevStep ? 'icon-anim-forward' : 'icon-anim-back');
-      }
-    }
-    var cardW = t.children[0] ? t.children[0].offsetWidth : 0; var gap = 16; t.style.transform = 'translateX(calc(-' + (_tutorialCurrent-1) + ' * (' + cardW + 'px + ' + gap + 'px)))';
-    updateDots();
-  }
-
-  window.tutorialGo = tutorialGoSmooth;
-  window.tutorialGoSmooth = tutorialGoSmooth;
-  window.tutorialNext = function(s){ tutorialGoSmooth(s); };
-  window.tutorialBack = function(s){ tutorialGoSmooth(s); };
-
-  // Footer drag zone — velka plocha, plynule sledovanie prsta
-  function initFooterDrag() {
-    var footers = document.querySelectorAll('.tutorial-footer');
-    footers.forEach(function(footer) {
-      var fStartX = 0, fCurX = 0, fDragging = false;
-
-      footer.addEventListener('touchstart', function(e){
-        if(!getOverlay() || !getOverlay().classList.contains('show')) return;
-        fStartX = e.touches[0].clientX;
-        fCurX = fStartX;
-        footer._startY = e.touches[0].clientY;
-        fDragging = true;
-        var modal = document.querySelector('.tutorial-modal');
-        if(modal){ modal.style.transition='none'; modal.style.transform=''; modal.style.opacity='1'; }
-        var t = getTrack(); if(t) t.classList.add('no-transition');
-        e.stopPropagation();
-      }, {passive:true});
-
-      footer.addEventListener('touchmove', function(e){
-        if(!fDragging) return;
-        fCurX = e.touches[0].clientX;
-        var dragX = fCurX - fStartX;
-        var dragY = e.touches[0].clientY - (footer._startY || e.touches[0].clientY);
-        var t = getTrack(); if(!t) return;
-        var cardW = t.children[0] ? t.children[0].offsetWidth : 0;
-        var isFirst = _tutorialCurrent === 1;
-        var isLast = _tutorialCurrent === _tutorialTotal;
-        // On last page — move the whole modal (dismiss gesture)
-        if(isLast && dragX < 0) {
-          var modal = document.querySelector('.tutorial-modal');
-          var dist = Math.sqrt(dragX*dragX + dragY*dragY);
-          var pct = Math.min(dist / 200, 1);
-          if(modal){ modal.style.transition='none'; modal.style.transform='translateX('+dragX+'px) translateY('+dragY+'px) rotate('+(dragX*0.04)+'deg) scale('+(1-pct*0.08)+')'; modal.style.opacity=String(Math.max(0,1-pct*0.6)); }
-          t.style.transform = 'translateX(calc(-' + (_tutorialCurrent-1) + ' * (' + cardW + 'px + 16px)))';
-        } else {
-          var offset = (isFirst && dragX > 0) ? dragX * 0.12 : dragX;
-          t.style.transform = 'translateX(calc(-' + (_tutorialCurrent-1) + ' * (' + cardW + 'px + 16px) + ' + offset + 'px))';
-        }
-        e.stopPropagation();
-      }, {passive:true});
-
-      footer.addEventListener('touchend', function(e){
-        if(!fDragging) return; fDragging = false;
-        var dragX = fCurX - fStartX;
-        var isLast = _tutorialCurrent === _tutorialTotal;
-        var modal = document.querySelector('.tutorial-modal');
-        if(isLast && dragX < 0) {
-          var dist = Math.abs(dragX);
-          if(dist > 100) {
-            // dismiss
-            if(modal){ modal.style.transition='transform .35s cubic-bezier(.4,0,.2,1),opacity .3s'; modal.style.transform='translateX(-110%) scale(0.8)'; modal.style.opacity='0'; setTimeout(function(){ tutorialSkip(); }, 320); }
-            else { tutorialSkip(); }
-          } else {
-            // snap back
-            if(modal){ modal.style.transition='transform .45s cubic-bezier(.34,1.56,.64,1),opacity .35s'; modal.style.transform=''; modal.style.opacity='1'; }
-            tutorialGoSmooth(_tutorialCurrent);
-          }
-        } else if(dragX < -40 && _tutorialCurrent < _tutorialTotal) {
-          tutorialGoSmooth(_tutorialCurrent + 1);
-        } else if(dragX > 40 && _tutorialCurrent > 1) {
-          tutorialGoSmooth(_tutorialCurrent - 1);
-        } else {
-          tutorialGoSmooth(_tutorialCurrent);
-        }
-        e.stopPropagation();
-      }, {passive:true});
-    });
-  }
-  setTimeout(initFooterDrag, 200);
-
-
-
-  document.addEventListener('DOMContentLoaded', function(){
-    var t = getTrack(); if(t){ t.classList.add('no-transition'); t.style.transform = 'translateX(0)'; }
-  });
-
-  document.addEventListener('touchstart', function(e){
-    if(!getOverlay() || !getOverlay().classList.contains('show')) return;
-    var modal = getModal();
-    if(modal && !modal.contains(e.target)) return;
-    startX = e.touches[0].clientX;
-    startY = e.touches[0].clientY;
-    dragX = 0; dragY = 0;
-    dragging = true;
-    gestureType = null;
-    var t = getTrack(); if(t) t.classList.add('no-transition');
-    if(modal){ modal.style.transition='none'; modal.style.transform=''; modal.style.opacity='1'; }
-  }, {passive:true});
-
-  document.addEventListener('touchmove', function(e){
-    if(!dragging) return;
-    e.stopPropagation();
-    dragX = e.touches[0].clientX - startX;
-    dragY = e.touches[0].clientY - startY;
-    var dist = Math.sqrt(dragX*dragX + dragY*dragY);
-    var t = getTrack(); if(!t) return;
-    var modal = getModal();
-    var isLast = _tutorialCurrent === _tutorialTotal;
-    var isFirst = _tutorialCurrent === 1;
-
-    // Determine gesture type once we have enough movement
-    if(!gestureType && dist > 10) {
-      var isMoreHorizontal = Math.abs(dragX) > Math.abs(dragY);
-      if(isLast && !isMoreHorizontal) gestureType = 'dismiss';
-      else if(isLast && dragX < 0) gestureType = 'dismiss';
-      else gestureType = 'horizontal';
-    }
-
-    if(gestureType === 'dismiss') {
-      // Sleduj prst v akomkoľvek smere
-      var pct = Math.min(dist / 200, 1);
-      var angle = Math.atan2(dragY, dragX) * 180 / Math.PI;
-      if(modal){
-        modal.style.transform = 'translateX(' + dragX + 'px) translateY(' + dragY + 'px) rotate(' + (dragX * 0.04) + 'deg) scale(' + (1 - pct * 0.08) + ')';
-        modal.style.opacity = String(Math.max(0, 1 - pct * 0.6));
-      }
-      var cardW = t.children[0] ? t.children[0].offsetWidth : 0; var gap = 16; t.style.transform = 'translateX(calc(-' + (_tutorialCurrent-1) + ' * (' + cardW + 'px + ' + gap + 'px)))';
-    } else if(gestureType === 'horizontal') {
-      if(isFirst && dragX > 0) {
-        var cardW3 = t.children[0] ? t.children[0].offsetWidth : 0; t.style.transform = 'translateX(calc(-' + (_tutorialCurrent-1) + ' * (' + cardW3 + 'px + 16px) + ' + (dragX*0.15) + 'px))';
-      } else {
-        var cardW2 = t.children[0] ? t.children[0].offsetWidth : 0; t.style.transform = 'translateX(calc(-' + (_tutorialCurrent-1) + ' * (' + cardW2 + 'px + 16px) + ' + dragX + 'px))';
-      }
-    }
-  }, {passive:true});
-
-  document.addEventListener('touchend', function(e){
-    if(!dragging) return; dragging = false;
-    var isLast = _tutorialCurrent === _tutorialTotal;
-    var modal = getModal();
-    var dist = Math.sqrt(dragX*dragX + dragY*dragY);
-
-    if(gestureType === 'dismiss' && dist > dismissDist) {
-      // Dosť ďaleko — odletí v smere prsta a zavrie sa
-      var flyX = dragX * 3;
-      var flyY = dragY * 3;
-      if(modal){
-        modal.style.transition = 'transform .35s cubic-bezier(.4,0,.2,1), opacity .3s';
-        modal.style.transform = 'translateX(' + flyX + 'px) translateY(' + flyY + 'px) rotate(' + (dragX * 0.08) + 'deg) scale(0.7)';
-        modal.style.opacity = '0';
-        setTimeout(function(){ tutorialSkip(); }, 320);
-      } else { tutorialSkip(); }
-    } else if(gestureType === 'dismiss') {
-      // Nedotiahol — spring back
-      if(modal){
-        modal.style.transition = 'transform .45s cubic-bezier(.34,1.56,.64,1), opacity .35s';
-        modal.style.transform = '';
-        modal.style.opacity = '1';
-      }
-    } else if(dragX < -threshold && _tutorialCurrent < _tutorialTotal) {
-      tutorialGoSmooth(_tutorialCurrent + 1);
-    } else if(dragX > threshold && _tutorialCurrent > 1) {
-      tutorialGoSmooth(_tutorialCurrent - 1);
-    } else {
-      tutorialGoSmooth(_tutorialCurrent);
-    }
-    gestureType = null;
-  }, {passive:true});
-})();
-
-function tutorialSkip() {
-  localStorage.setItem(TUTORIAL_KEY, '1');
-  var overlay = document.getElementById('tutorial-overlay');
-  if(overlay) overlay.classList.remove('show');
-  document.body.style.overflow = '';
-  window.scrollTo(0, 0);
-  // Zobraziť What's New po dokončení tutoriálu (pre nových používateľov)
-  var session = getSession();
-  var isManager = session && (['admin','bum','boss','pm','am','asistent'].indexOf(session.role) !== -1);
-  setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(isManager);}else{checkMilestone();} }, 400);
+function satoriGuideSave(patch){ try { if(typeof userPrefsSet === 'function') userPrefsSet(patch); } catch(e){} }
+// Nastavenia sa synchronizujú cez líniu. Tento malý lokálny marker navyše
+// bráni tomu, aby ten istý človek videl úvodnú prehliadku znovu len preto,
+// že si v rámci tej istej appky prepne Golem, Gyn alebo Reagilu.
+function satoriGuideSeenKey(){
+  try {
+    var s = getSession(), user = s && s.username ? String(s.username).trim().toLowerCase() : '';
+    return user ? 'satori-guide-seen:' + user : '';
+  } catch(e){ return ''; }
 }
-
-function initTutorial() {
-  var session = getSession();
-  if(!session) return;
-  if(localStorage.getItem(TUTORIAL_KEY)) return; // už videl tutoriál
-  var overlay = document.getElementById('tutorial-overlay');
-  if(overlay) overlay.classList.add('show');
-  // Bezpečný scroll lock — bez position:fixed na body (iOS bug)
-  document.body.style.overflow = 'hidden';
-  document.body.dataset.scrollY = window.scrollY;
-  // Animácia ikony na prvom kroku
-  setTimeout(function(){
-    var track = document.getElementById('tutorial-track');
-    if(track){
-      var firstStep = track.querySelector('.tutorial-step');
-      if(firstStep){
-        var icon = firstStep.querySelector('.tutorial-icon-circle');
-        if(icon){
-          icon.classList.remove('icon-anim-forward','icon-anim-back');
-          void icon.offsetWidth;
-          icon.classList.add('icon-anim-forward');
-        }
-      }
-    }
-  }, 400);
+function satoriGuideSeenOnDevice(){
+  try { var key = satoriGuideSeenKey(); return !!(key && localStorage.getItem(key) === '1'); } catch(e){ return false; }
 }
+function satoriGuideMarkSeen(){ try { var key = satoriGuideSeenKey(); if(key) localStorage.setItem(key, '1'); } catch(e){} }
+function satoriGuideClearSeen(){ try { var key = satoriGuideSeenKey(); if(key) localStorage.removeItem(key); } catch(e){} }
+function satoriGuideOverlay(){ return document.getElementById('satori-guide-overlay'); }
+function satoriGuideHideHint(){
+  clearTimeout(SATORI_GUIDE_STATE.hintTimer);
+  SATORI_GUIDE_STATE.hintTimer = 0; SATORI_GUIDE_STATE.hintKey = '';
+  var el = document.getElementById('satori-hint');
+  if(el){ el.classList.remove('show'); el.innerHTML = ''; }
+}
+function satoriGuideBlocked(hintKey){
+  if(SATORI_GUIDE_STATE.open) return true;
+  var ids = ['login-screen','satori-overlay','wn-overlay','line-chooser-overlay','av-overlay','av-confirm-overlay','logout-overlay','confirm-overlay','settings-overlay','edit-overlay','detail-overlay','session-expired-overlay','rpt-progress-overlay','gpp-overlay','lk-prompt-overlay','lk-confirm-overlay','pharma-ms-overlay','pharma-okres-overlay','pl-prod-sheet','nst-compose','gyn-ms-picker-overlay'];
+  // Pri kontextovom tipe je otvorená obrazovka samotným dôvodom na zobrazenie.
+  // Pri úvodnom sprievodcovi (bez hintKey) však naďalej blokuje všetky modaly.
+  var allowed = {
+    doctor:['detail-overlay'], products:['pl-prod-sheet'], market:['pharma-ms-overlay'],
+    districts:['pharma-okres-overlay','pharma-ms-overlay']
+  }[hintKey] || [];
+  for(var i=0;i<ids.length;i++){
+    if(allowed.indexOf(ids[i]) >= 0) continue;
+    var el = document.getElementById(ids[i]);
+    if(el && el.classList.contains('show')) return true;
+  }
+  try { if(document.querySelector('.gyn-cal-sheet.show, .gyn-ms-picker-overlay.show')) return true; } catch(e){}
+  return false;
+}
+function satoriGuideBuildSteps(){
+  var steps = SATORI_GUIDE_STEPS.slice();
+  try {
+    if(typeof mgrShouldShowLineToggle === 'function' && mgrShouldShowLineToggle()){
+      steps[1] = Object.assign({}, steps[1], { info:'Máš prístup do viacerých línií. Prepneš ich v Menu; po prepnutí sa otvorí Domov vybratej línie.' });
+    }
+  } catch(e){}
+  return steps;
+}
+function satoriGuidePageHtml(step, index, enabled){
+  var toggle = index === 0 ? '<div class="sg-toggle-row"><div><div class="sg-toggle-title">Zobrazovať užitočné tipy</div><div class="sg-toggle-sub">Krátko vysvetlia funkciu pri prvom otvorení.</div></div><button type="button" id="sg-enabled" class="sg-toggle' + (enabled ? ' on' : '') + '" role="switch" aria-checked="' + (enabled ? 'true' : 'false') + '" aria-label="Zobrazovať užitočné tipy" onclick="satoriGuideToggleEnabled()"></button></div>' : '';
+  var info = step.info ? '<div class="sg-info"><span class="sg-info-mark" aria-hidden="true">i</span><span>' + step.info + '</span></div>' : '';
+  return '<article class="sg-page" aria-hidden="' + (index === SATORI_GUIDE_STATE.step ? 'false' : 'true') + '"><div class="sg-page-inner"><div class="sg-icon" aria-hidden="true">' + step.icon + '</div><div class="sg-kicker">' + step.kicker + '</div><h2 class="sg-title"' + (index === 0 ? ' id="satori-guide-title"' : '') + '>' + step.title + '</h2><p class="sg-copy">' + step.copy + '</p>' + info + toggle + '</div></article>';
+}
+function satoriGuideFooterHtml(total){
+  var step = SATORI_GUIDE_STATE.step;
+  var dots = '';
+  for(var i=0;i<total;i++) dots += '<button type="button" class="sg-dot' + (i === step ? ' active' : '') + '" aria-label="Krok ' + (i+1) + ' z ' + total + '" aria-current="' + (i === step ? 'step' : 'false') + '" onclick="satoriGuideSetStep(' + i + ')"></button>';
+  var last = step === total - 1;
+  return '<div class="sg-dots">' + dots + '</div><div class="sg-actions' + (step === 0 ? ' first' : '') + '"><button type="button" class="sg-next" onclick="' + (last ? 'satoriGuideFinish()' : 'satoriGuideSetStep(' + (step+1) + ')') + '">' + (last ? 'Začať používať Satori ✓' : (step === 0 ? 'Začíname →' : 'Ďalej →')) + '</button>' + (step > 0 ? '<button type="button" class="sg-back" onclick="satoriGuideSetStep(' + (step-1) + ')">← Späť</button>' : '') + '</div><button type="button" class="sg-skip" onclick="satoriGuideSkip()">' + (step === 0 ? 'Teraz nie' : 'Preskočiť sprievodcu') + '</button>';
+}
+function satoriGuideRender(){
+  var body = document.getElementById('satori-guide-body'); if(!body) return;
+  var prefs = satoriGuidePrefs(), steps = satoriGuideBuildSteps();
+  if(SATORI_GUIDE_STATE.step < 0 || SATORI_GUIDE_STATE.step >= steps.length) SATORI_GUIDE_STATE.step = 0;
+  body.innerHTML = '<div class="sg-shell"><div class="sg-top"><div class="sg-brand"><span>Satori · pomocník</span><button type="button" class="sg-close" aria-label="Zavrieť sprievodcu" onclick="satoriGuideSkip()">×</button></div></div><div class="sg-track-viewport"><div class="sg-track" id="sg-track">' + steps.map(function(step, i){ return satoriGuidePageHtml(step, i, prefs.enabled); }).join('') + '</div></div><div class="sg-footer" id="sg-footer">' + satoriGuideFooterHtml(steps.length) + '</div></div>';
+  satoriGuideUpdate(false);
+}
+function satoriGuideUpdate(animate){
+  var track = document.getElementById('sg-track'), footer = document.getElementById('sg-footer');
+  var steps = satoriGuideBuildSteps();
+  if(!track || !footer) return;
+  track.classList.toggle('dragging', animate === false);
+  track.style.transform = 'translateX(-' + (SATORI_GUIDE_STATE.step * 100) + '%)';
+  if(animate === false) setTimeout(function(){ if(track) track.classList.remove('dragging'); }, 30);
+  track.querySelectorAll('.sg-page').forEach(function(page, i){ page.setAttribute('aria-hidden', i === SATORI_GUIDE_STATE.step ? 'false' : 'true'); });
+  footer.innerHTML = satoriGuideFooterHtml(steps.length);
+  if(animate !== false) try { haptic('selection'); } catch(e){}
+}
+function satoriGuideSetStep(step){
+  var total = satoriGuideBuildSteps().length;
+  if(step < 0 || step >= total || !SATORI_GUIDE_STATE.open) return;
+  SATORI_GUIDE_STATE.step = step; satoriGuideUpdate(true);
+}
+function satoriGuideStart(manual){
+  var prefs = satoriGuidePrefs();
+  if(!manual && (!prefs.enabled || prefs.seen || satoriGuideBlocked())) return false;
+  if(SATORI_GUIDE_STATE.open) return true;
+  satoriGuideHideHint();
+  var overlay = satoriGuideOverlay(); if(!overlay) return false;
+  SATORI_GUIDE_STATE.open = true; SATORI_GUIDE_STATE.manual = !!manual; SATORI_GUIDE_STATE.step = 0;
+  SATORI_GUIDE_STATE.restoreOverflow = document.body.style.overflow || '';
+  satoriGuideRender(); overlay.classList.add('show'); overlay.setAttribute('aria-hidden','false'); document.body.style.overflow = 'hidden';
+  setTimeout(function(){ var btn=document.querySelector('#satori-guide-overlay .sg-next'); if(btn) btn.focus(); }, 80);
+  return true;
+}
+function satoriGuideClose(){
+  var overlay = satoriGuideOverlay();
+  if(overlay){ overlay.classList.remove('show'); overlay.setAttribute('aria-hidden','true'); }
+  if(SATORI_GUIDE_STATE.open) document.body.style.overflow = SATORI_GUIDE_STATE.restoreOverflow || '';
+  SATORI_GUIDE_STATE.open = false; SATORI_GUIDE_STATE.manual = false;
+}
+function satoriGuideSkip(){ satoriGuideMarkSeen(); satoriGuideSave({satoriGuideSeen:true}); satoriGuideClose(); }
+function satoriGuideFinish(){ satoriGuideMarkSeen(); satoriGuideSave({satoriGuideSeen:true}); try { haptic('success'); } catch(e){} satoriGuideClose(); }
+function satoriGuideDisable(){ satoriGuideMarkSeen(); satoriGuideSave({satoriGuideEnabled:false,satoriGuideSeen:true}); satoriGuideClose(); }
+function satoriGuideToggleEnabled(){
+  var prefs = satoriGuidePrefs();
+  if(prefs.enabled){ satoriGuideDisable(); return; }
+  satoriGuideSave({satoriGuideEnabled:true}); satoriGuideRender();
+}
+function satoriGuideBack(){ if(SATORI_GUIDE_STATE.step > 0) satoriGuideSetStep(SATORI_GUIDE_STATE.step - 1); else satoriGuideSkip(); }
+function satoriGuideSchedule(){
+  clearTimeout(SATORI_GUIDE_STATE.scheduleTimer);
+  var began = Date.now(); SATORI_GUIDE_STATE.scheduled = true;
+  (function waitForSafeMoment(){
+    if(!SATORI_GUIDE_STATE.scheduled) return;
+    var prefs = satoriGuidePrefs();
+    if(!prefs.enabled || prefs.seen){ SATORI_GUIDE_STATE.scheduled = false; return; }
+    if(!satoriGuideBlocked() && satoriGuideStart(false)){ SATORI_GUIDE_STATE.scheduled = false; return; }
+    if(Date.now() - began < 15000) SATORI_GUIDE_STATE.scheduleTimer = setTimeout(waitForSafeMoment, 350);
+    else SATORI_GUIDE_STATE.scheduled = false;
+  })();
+}
+function satoriGuideResetHints(){
+  satoriGuideClearSeen();
+  satoriGuideSave({satoriGuideSeen:false,satoriGuideHints:{}});
+  var s = getSession(); if(s) renderSettings(s);
+  var status = document.getElementById('set-guide-status');
+  if(status){ status.textContent = 'Sprievodca a tipy sú pripravené na ďalšie zobrazenie.'; status.classList.add('show'); }
+  try { haptic('success'); } catch(e){}
+}
+function settingsToggleSatoriGuide(){
+  var prefs = satoriGuidePrefs(); satoriGuideSave({satoriGuideEnabled:!prefs.enabled});
+  var s = getSession(); if(s) renderSettings(s);
+  try { haptic('selection'); } catch(e){}
+}
+function satoriGuideShown(id){ var el = document.getElementById(id); return !!(el && el.classList.contains('show')); }
+function satoriGuideGynNav(tab){ try { return typeof GYN_APP !== 'undefined' && GYN_APP.nav === tab && satoriGuideShown('gyn-view'); } catch(e){ return false; } }
+function satoriGuideHintScreenOpen(key){
+  if(key === 'home') return satoriGuideShown('dnes-overlay');
+  if(key === 'menu') return satoriGuideShown('viac-overlay');
+  if(key === 'visits') return satoriGuideShown('hist-overlay') || satoriGuideGynNav('visits');
+  if(key === 'doctor') return satoriGuideShown('detail-overlay');
+  if(key === 'plnenie') return satoriGuideShown('rep-plnenie-overlay') || document.body.classList.contains('mgr-subtab-plnenie') || satoriGuideGynNav('plnenie');
+  if(key === 'leaderboard') return satoriGuideShown('lb-overlay') || document.body.classList.contains('mgr-subtab-leaderboard') || satoriGuideGynNav('leaderboard');
+  if(key === 'team') return typeof TEAM_PL_STATE !== 'undefined' && TEAM_PL_STATE.open && satoriGuideShown('team-plnenie-overlay');
+  if(key === 'lekarne') return satoriGuideShown('lk-overlay') || satoriGuideGynNav('lekarne');
+  if(key === 'products') return satoriGuideShown('pl-prod-sheet-bd') || satoriGuideShown('pl-prod-sheet');
+  if(key === 'rep_detail') return document.body.classList.contains('mgr-plnenie-detail-open') || satoriGuideShown('mgr-detail') || (typeof TEAM_PL_STATE !== 'undefined' && TEAM_PL_STATE.open && !!TEAM_PL_STATE.detailUser) || !!(typeof GYN_APP !== 'undefined' && GYN_APP.detailLogin);
+  if(key === 'market') return satoriGuideShown('pharma-ms-overlay');
+  if(key === 'districts') return satoriGuideShown('pharma-okres-overlay');
+  if(key === 'district_list') return typeof OKRESY_STATE !== 'undefined' && OKRESY_STATE.open && satoriGuideShown('okresy-overlay');
+  if(key === 'activity') return document.body.classList.contains('mgr-subtab-activity') || satoriGuideGynNav('activity');
+  if(key === 'reports') return document.body.classList.contains('mgr-subtab-reporty');
+  if(key === 'tuyory') return satoriGuideShown('tuyory-overlay');
+  if(key === 'apixaban') return satoriGuideShown('apixaban-overlay');
+  if(key === 'lonelix') return satoriGuideShown('lonelix-overlay');
+  if(key === 'stocks') return typeof SKLADY_STATE !== 'undefined' && SKLADY_STATE.open && satoriGuideShown('sklady-overlay');
+  if(key === 'board') return satoriGuideShown('nastenka-overlay');
+  if(key === 'calendar') return satoriGuideShown('golem-cal-overlay') || document.body.classList.contains('mgr-subtab-kalendar') || satoriGuideGynNav('kalendar');
+  return false;
+}
+function satoriGuideHintReady(key){
+  if(key === 'stocks') return !!(SKLADY_STATE.payload && Array.isArray(SKLADY_STATE.payload.products));
+  if(key === 'team') return !!(TEAM_PL_STATE.payload && Array.isArray(TEAM_PL_STATE.payload.reps));
+  if(key === 'products') return !!document.getElementById('pl-ps-body');
+  if(key === 'market'){
+    var marketBody = document.getElementById('pharma-ms-body');
+    return !!(marketBody && marketBody.textContent.trim() && !document.getElementById('gyn-ph-prog-ring') && !marketBody.querySelector('.skel-pharma-card,.gyn-pharma-loading,.app-error-card'));
+  }
+  if(key === 'districts'){ var districtChart = document.getElementById('pharma-okres-chart-svg'); return !!(districtChart && districtChart.textContent.indexOf('Načítavam') < 0); }
+  return true;
+}
+function satoriGuideHintForNav(tab){
+  return ({ plnenie:'plnenie', leaderboard:'leaderboard', visits:'visits', lekarne:'lekarne', activity:'activity', reporty:'reports', kalendar:'calendar' })[tab] || '';
+}
+function satoriGuideQueueHint(key, delay){
+  if(!key) return;
+  setTimeout(function(){ try { satoriGuideMaybeHint(key); } catch(e){} }, delay || 550);
+}
+function satoriGuideMaybeHint(key){
+  var prefs = satoriGuidePrefs();
+  // Najprv nech prebehne spoločný úvod. Kontextové tipy potom človeka
+  // sprevádzajú postupne pri obrazovkách, ktoré jeho rola naozaj sprístupní.
+  if(!SATORI_GUIDE_HINTS[key] || !prefs.enabled || !prefs.seen || prefs.hints[key] || SATORI_GUIDE_STATE.hintKey || SATORI_GUIDE_STATE.open) return;
+  SATORI_GUIDE_STATE.hintKey = key;
+  var attempts = 0;
+  (function waitForScreen(){
+    if(SATORI_GUIDE_STATE.hintKey !== key) return;
+    if(!satoriGuideHintScreenOpen(key)){ SATORI_GUIDE_STATE.hintKey = ''; return; }
+    // Interaktívne prehľady majú tip ukázať až nad ich reálnym obsahom, nie
+    // nad skeletonom alebo progress indikátorom pri pomalom načítaní.
+    if(!satoriGuideHintReady(key)){
+      if(++attempts < 48){ SATORI_GUIDE_STATE.hintTimer = setTimeout(waitForScreen, 350); } else SATORI_GUIDE_STATE.hintKey = '';
+      return;
+    }
+    if(satoriGuideBlocked(key)){ if(++attempts < 8){ SATORI_GUIDE_STATE.hintTimer = setTimeout(waitForScreen, 350); } else SATORI_GUIDE_STATE.hintKey = ''; return; }
+    satoriGuideRenderHint(key);
+  })();
+}
+function satoriGuideRenderHint(key){
+  var hint = SATORI_GUIDE_HINTS[key], el = document.getElementById('satori-hint');
+  if(!hint || !el || !satoriGuideHintScreenOpen(key)){ SATORI_GUIDE_STATE.hintKey = ''; return; }
+  var hintCopy = hint.copy;
+  if(key === 'team' && typeof teamPlnenieIsGyn === 'function' && teamPlnenieIsGyn()) hintCopy = 'Vidíš súhrn plnenia tímov PIL aj Patch. Ťuknutím na kolegu otvoríš jeho produkty bez informácií o lekároch.';
+  el.innerHTML = '<div class="sg-hint-card"><div class="sg-hint-row"><div class="sg-hint-icon" aria-hidden="true">✦</div><div><div class="sg-hint-title">' + hint.title + '</div><div class="sg-hint-copy">' + hintCopy + '</div></div></div><div class="sg-hint-actions"><button type="button" class="sg-hint-btn" onclick="satoriGuideDismissHint(\'' + key + '\',true)">Už neukazovať</button><button type="button" class="sg-hint-btn primary" onclick="satoriGuideDismissHint(\'' + key + '\',false)">Rozumiem</button></div></div>';
+  el.classList.add('show');
+}
+function satoriGuideDismissHint(key, disableAll){
+  var prefs = satoriGuidePrefs(), hints = Object.assign({}, prefs.hints || {}); hints[key] = true;
+  satoriGuideSave(disableAll ? {satoriGuideEnabled:false,satoriGuideHints:hints} : {satoriGuideHints:hints});
+  satoriGuideHideHint(); try { haptic('selection'); } catch(e){}
+}
+function satoriGuideInitTouch(){
+  if(SATORI_GUIDE_STATE.touchReady) return;
+  var overlay = satoriGuideOverlay(); if(!overlay) return;
+  SATORI_GUIDE_STATE.touchReady = true;
+  var startX=0,startY=0,dragX=0,dragging=false;
+  function track(){ return document.getElementById('sg-track'); }
+  overlay.addEventListener('touchstart',function(e){
+    if(!SATORI_GUIDE_STATE.open || (e.target.closest && e.target.closest('button,input'))) return;
+    startX=e.touches[0].clientX; startY=e.touches[0].clientY; dragX=0; dragging=true; var t=track(); if(t) t.classList.add('dragging');
+  },{passive:true});
+  overlay.addEventListener('touchmove',function(e){
+    if(!dragging) return; var dx=e.touches[0].clientX-startX,dy=e.touches[0].clientY-startY;
+    if(Math.abs(dy)>Math.abs(dx) && Math.abs(dy)>12){ dragging=false; var vt=track(); if(vt) vt.classList.remove('dragging'); return; }
+    dragX=dx; var t=track(); if(!t) return; var w=overlay.clientWidth||1,atStart=SATORI_GUIDE_STATE.step===0,atEnd=SATORI_GUIDE_STATE.step===satoriGuideBuildSteps().length-1;
+    var resistance=(atStart&&dx>0)||(atEnd&&dx<0)?0.22:1; t.style.transform='translateX(calc(-'+(SATORI_GUIDE_STATE.step*100)+'% + '+(dx*resistance)+'px))';
+  },{passive:true});
+  overlay.addEventListener('touchend',function(){
+    if(!dragging) return; dragging=false; var t=track(); if(t) t.classList.remove('dragging');
+    if(dragX<-52) satoriGuideSetStep(SATORI_GUIDE_STATE.step+1); else if(dragX>52) satoriGuideSetStep(SATORI_GUIDE_STATE.step-1); else satoriGuideUpdate(true);
+  },{passive:true});
+}
+document.addEventListener('DOMContentLoaded', satoriGuideInitTouch);
 // ── USERS sú uložení v Google Sheets (hárok Pouzivatelia) ──
 
 var SESSION_KEY = 'potencial_gp_session';
@@ -9599,14 +9680,13 @@ function loginSuccess(username, name, role, region, extra) {
     setTimeout(function(){ try { pushMaybePrompt(); } catch(e){} }, LOGIN_FOLLOWUP_DELAY_MS.push);
     // One-time onboarding tip pre avatar — 4s delay aby WN/satori modal stihli skončiť
     setTimeout(function(){ try { hdrAvatarShowTipIfNeeded(); } catch(e){} }, 1500);
+    setTimeout(function(){ try { satoriGuideSchedule(); } catch(e){} }, 1500);
     appBootWaitForHomeData(user);
     return;
   }
-  if(localStorage.getItem(TUTORIAL_KEY)){
-    setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(false);}else{checkMilestone();} }, LOGIN_FOLLOWUP_DELAY_MS.satoriWn);
-  }
+  setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(false);}else{checkMilestone();} }, LOGIN_FOLLOWUP_DELAY_MS.satoriWn);
   usageEnterGolemHome(user);   // zaznamenaj úvodnú obrazovku (fix „0 s · nič nepozeral")
-  initTutorial();
+  setTimeout(function(){ try { satoriGuideSchedule(); } catch(e){} }, 1500);
   // refreshBadgeFromSheets je nahradená loadInitData() vyššie — história sa načíta cez getInitData
   // Skontroluj notifikácie od admina — výsledky sú pravdepodobne už v cache z prefetchu
   checkNotifications();
@@ -9995,6 +10075,7 @@ function closeLogoutConfirm() {
 }
 
 function confirmLogout() {
+  try { satoriGuideHideHint(); satoriGuideClose(); } catch(e){}
   _isLoggingOut = true;
   try {
     var s = getSession();
@@ -10570,11 +10651,13 @@ function initLogin() {
       }, 2500);
       // One-time onboarding tip pre avatar — 4s delay aby modal-y stihli skončiť
       setTimeout(function(){ try { hdrAvatarShowTipIfNeeded(); } catch(e){} }, 1500);
+      setTimeout(function(){ try { satoriGuideSchedule(); } catch(e){} }, 1500);
       return;
     }
     usageEnterGolemHome(session);   // zaznamenaj úvodnú obrazovku (fix „0 s · nič nepozeral")
     setTimeout(function(){ updateHdrForUser(session); }, 300);
     setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(false);}else{checkMilestone();} }, 600);
+    setTimeout(function(){ try { satoriGuideSchedule(); } catch(e){} }, 1500);
     // refreshBadgeFromSheets nahradená loadInitData() vyššie
     if (!REP_PL_STATE.loading && !REP_PL_STATE.loaded) {
       plnenieApplyDefaultPeriod(REP_PL_STATE, true);
@@ -12261,6 +12344,7 @@ function gynEnter(user) {
   // (ak je otvorený WN/satori modal, hdrAvatarShowTipIfNeeded počká kým sa zatvorí)
   setTimeout(function(){ try { hdrAvatarUpdateHint(); } catch(e){} }, 600);
   setTimeout(function(){ try { hdrAvatarShowTipIfNeeded(); } catch(e){} }, 1500);
+  setTimeout(function(){ try { satoriGuideSchedule(); } catch(e){} }, 1500);
   // Ponuka push notifikácií (gyn) — nie admin
   setTimeout(function(){ try { pushMaybePrompt(); } catch(e){} }, 3500);
   // In-app notifikácie (banner + polling) — admin je odosielateľ, ten ich nepotrebuje
@@ -12611,6 +12695,7 @@ function gynActivityAllowed(u) {
 
 // ── Navigácia medzi tabmi ──
 function gynNavTo(tab) {
+  try { satoriGuideHideHint(); } catch(e){}
   // Obnov aktívny povrch aj po prepnutí línie alebo oneskorenom GP callbacku.
   var session = getSession();
   if (!session || session.line !== 'gyn') return;
@@ -12647,6 +12732,7 @@ function gynNavTo(tab) {
   });
   gynRenderContent(getSession());
   window.scrollTo(0, 0);
+  satoriGuideQueueHint(satoriGuideHintForNav(tab), 550);
 }
 
 function gynSwitchQ(q) {
@@ -12696,6 +12782,7 @@ function gynQTabsHtml() {
     }).join('') +
   '</div>';
 }
+
 
 // Preload — všetky 4 Q plnenia paralelne (cache GYN_APP.plCache)
 function gynPreloadAllQuarters() {
@@ -13065,6 +13152,7 @@ function gynOpenProdSheet(prodLabel) {
     void sheet.offsetWidth;
     sheet.classList.add('show');
   }
+  satoriGuideQueueHint('products', 550);
 }
 
 function gynProdSheetRenderRepList(prodLabel, data) {
@@ -13424,6 +13512,7 @@ function gynOpenPharma(productName, oblast, repLogin) {
 
   overlay.classList.remove('panel-anim-r','pl-detail-exit-r');
   overlay.classList.add('show');
+  satoriGuideQueueHint('market', 650);
   overlay.scrollTop = 0;
   void overlay.offsetWidth;
   overlay.classList.add('panel-anim-r');
@@ -14449,11 +14538,13 @@ function gynOpenRepDetail(login, meno, region) {
   GYN_APP.detailLogin  = login;
   GYN_APP.detailMeno   = meno;
   GYN_APP.detailRegion = region;
+  satoriGuideQueueHint('rep_detail', 550);
   window.scrollTo(0, 0);
   gynRenderContent(getSession());
 }
 
 function gynCloseRepDetail() {
+  try { satoriGuideHideHint(); } catch(e){}
   GYN_APP.detailLogin = null;
   GYN_APP.detailMeno  = '';
   GYN_APP.detailRegion = '';
@@ -14815,7 +14906,7 @@ function gynLkDetailHtml(ph){
       rowsH + reaChipForDetail(pe) + twin + contact +
     '</div>';
   }).join('');
-  return '<button type="button" class="lk-det-back" style="margin-bottom:12px" onclick="gynLkCloseDetail()">← Späť</button>' +
+  return '<button type="button" class="lk-det-back" data-app-back style="margin-bottom:12px" onclick="gynLkCloseDetail()">← Späť</button>' +
     gynLkDetailNameHtml(ph) +
     '<div class="lk-item-sub" style="margin:2px 0 4px"><b>'+gynEsc(ph.okres)+'</b> · '+gynEsc(ph.mesto)+'</div>' +
     body;
@@ -15021,7 +15112,7 @@ function gynPlnenieRenderRepDetail(el, data) {
   var avGd = gynAvatarContent(login, meno);
   var html =
     '<div class="mgr-plnenie-detail" style="display:block">' +
-      '<button type="button" class="mgr-back" onclick="gynCloseRepDetail()" style="margin-bottom:10px">← Späť</button>' +
+      '<button type="button" class="mgr-back" data-app-back onclick="gynCloseRepDetail()" style="margin-bottom:10px">← Späť</button>' +
       '<div class="dhdr">' +
         '<div class="dhdr-avatar' + (avGd.hasAvatar ? ' has-avatar' : '') + '" data-username="' + login + '" style="background:'+avatarColor+'">' + avGd.html + '</div>' +
         '<div style="flex:1;min-width:0">' +
@@ -15722,6 +15813,13 @@ function gynLbColor(login){
 function gynLbScopeReps(){
   return (GYN_LB.repList && GYN_LB.repList.length) ? GYN_LB.repList : (GYN_STATE.repList || []);
 }
+// Tímové plnenie zdieľa presne tie isté fullLine dáta ako Rebríček (rovnaký
+// roster aj rovnaké plnenie za Q) — prekreslí sa, nech dáta dorazia z
+// ktoréhokoľvek volania (rebríček ich mohol natiahnuť už skôr, alebo naopak).
+function gynLbOrTeamRerenderIfReady(){
+  if(GYN_APP.nav === 'leaderboard') gynLbRender();
+  if(typeof TEAM_PL_STATE !== 'undefined' && TEAM_PL_STATE.open && teamPlnenieIsGyn()) teamPlnenieLoadGyn();
+}
 function gynLbRepListLoaded(data){
   if(!(data && data.ok && data.reps)) return;
   GYN_LB.repList = data.reps;
@@ -15746,7 +15844,7 @@ function gynLbEnsureRepList(){
       GYN_LB.repLoading = false;
       gynLbRepListLoaded(d);
       if(d && d.ok && d.reps && d.reps.length) gynCacheWrite(rosterKey, d);
-      if(GYN_APP.nav === 'leaderboard') gynLbRender();
+      gynLbOrTeamRerenderIfReady();
       try { dnesRefreshIfOpen(); } catch(e){}
       try { gynOpenDnesWhenReady(); } catch(e){}
     })
@@ -15756,7 +15854,7 @@ function gynLbEnsureRepList(){
       if(!GYN_LB.repFetched && GYN_STATE.repList && GYN_STATE.repList.length){
         GYN_LB.repList = GYN_STATE.repList;
         GYN_LB.repFetched = true;
-        if(GYN_APP.nav === 'leaderboard') gynLbRender();
+        gynLbOrTeamRerenderIfReady();
       }
       try { gynOpenDnesWhenReady(); } catch(e){}
     });
@@ -15808,7 +15906,7 @@ function gynLbEnsureData(q, key, _attempt){
       gynCacheWrite(key, d);
       GYN_LB.dataReady[q] = true;
       delete GYN_LB.failed[q];
-      if(GYN_APP.nav === 'leaderboard') gynLbRender();
+      gynLbOrTeamRerenderIfReady();
       try { dnesRefreshIfOpen(); } catch(e){}
       try { gynOpenDnesWhenReady(); } catch(e){}
     })
@@ -15831,6 +15929,8 @@ function gynLbEnsureData(q, key, _attempt){
             retryLabel: 'Načítať znova'
           }));
         }
+      } else if(typeof TEAM_PL_STATE !== 'undefined' && TEAM_PL_STATE.open && teamPlnenieIsGyn() && !GYN_LB.plCache[q] && !TEAM_PL_STATE.payload){
+        teamPlnenieLoadError();
       }
       try { dnesRefreshIfOpen(); } catch(e){}
       try { gynOpenDnesWhenReady(); } catch(e){}
@@ -15919,7 +16019,7 @@ function gynLbRender(el){
     var cls = pctCls(rep.pct);
     var av = gynAvatarContent(rep.username, rep.name);
     podiumHtml +=
-      '<div class="lb-p-item ' + podiumClasses[pi] + '">' +
+      '<div class="lb-p-item ' + podiumClasses[pi] + ' gyn-lb-open-team" role="button" tabindex="0" aria-label="Zobraziť plnenie '+gynEsc(rep.name)+'" onclick="teamPlnenieOpenFromLeaderboard(\''+String(rep.username).replace(/'/g,"\\'")+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();teamPlnenieOpenFromLeaderboard(\''+String(rep.username).replace(/'/g,"\\'")+'\')}">' +
         (isFirst ? '<span class="lb-p-crown">👑</span>' : '') +
         '<div class="lb-p-avatar' + (av.hasAvatar ? ' has-avatar' : '') + '" data-username="' + gynEsc(rep.username) + '" style="background:' + rep.color + '">' + av.html + '</div>' +
         (medal ? '<span class="lb-p-medal">' + medal + '</span>' : '') +
@@ -15939,7 +16039,7 @@ function gynLbRender(el){
     var cls = pctCls(rep.pct);
     var av2 = gynAvatarContent(rep.username, rep.name);
     listHtml +=
-      '<div class="lb-row' + (isMe ? ' me' : '') + '">' +
+      '<div class="lb-row gyn-lb-open-team' + (isMe ? ' me' : '') + '" role="button" tabindex="0" aria-label="Zobraziť plnenie '+gynEsc(rep.name)+'" onclick="teamPlnenieOpenFromLeaderboard(\''+String(rep.username).replace(/'/g,"\\'")+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();teamPlnenieOpenFromLeaderboard(\''+String(rep.username).replace(/'/g,"\\'")+'\')}">' +
         '<div class="lb-rank">' + rank + '</div>' +
         '<div class="lb-avatar' + (av2.hasAvatar ? ' has-avatar' : '') + '" data-username="' + gynEsc(rep.username) + '" style="background:' + rep.color + '">' + av2.html + '</div>' +
         '<div class="lb-info">' +
@@ -17108,7 +17208,7 @@ function gynCalOpenDetail(dk, id){
   sh.innerHTML=
     '<div class="gyn-cal-sheet-grip"></div>'+
     '<div class="gyn-cal-sheet-hdr">'+
-      '<button class="gyn-cal-sheet-back" onclick="gynCalRenderDayView(getSession(),\''+dk+'\')" aria-label="Späť">‹</button>'+
+      '<button type="button" class="gyn-cal-sheet-back" data-app-back onclick="gynCalRenderDayView(getSession(),\''+dk+'\')" aria-label="Späť">‹</button>'+
       '<div class="gyn-cal-sheet-date">Udalosť</div>'+
       '<div class="gyn-cal-sheet-hdr-actions">'+
         (canEdit?'<button class="gyn-cal-sheet-edit" onclick="gynCalOpenForm(\''+dk+'\',\''+id+'\')" aria-label="Upraviť">✏️</button>':'')+
@@ -17169,7 +17269,7 @@ function gynCalOpenForm(dk, editId){
   sh.innerHTML=
     '<div class="gyn-cal-sheet-grip"></div>'+
     '<div class="gyn-cal-sheet-hdr">'+
-      '<button class="gyn-cal-sheet-back" onclick="gynCalRenderDayView(getSession(),\''+dk+'\')" aria-label="Späť">‹</button>'+
+      '<button type="button" class="gyn-cal-sheet-back" data-app-back onclick="gynCalRenderDayView(getSession(),\''+dk+'\')" aria-label="Späť">‹</button>'+
       '<div class="gyn-cal-sheet-date">'+(editId?'Upraviť udalosť':'Nová udalosť')+'</div>'+
       '<button class="gyn-cal-sheet-x" onclick="gynCalSheetClose()" aria-label="Zavrieť">×</button>'+
     '</div>'+
@@ -18342,6 +18442,7 @@ function gpSetMgrSubH(){
 }
 function mgrOpenRep(username){
   MGR_STATE.currentRep = username;
+  satoriGuideQueueHint('rep_detail', 550);
   gpSetMgrSubH();
   // Detail repa vždy otvor na tabe GP's
   MGR_STATE.detailTab = 'gp';
@@ -19059,6 +19160,7 @@ function mgrOpenVisit(idx){
 }
 
 function mgrCloseRep(){
+  try { satoriGuideHideHint(); } catch(e){}
   var detailEl = document.getElementById('mgr-detail');
   detailEl.classList.remove('panel-anim-r');
   void detailEl.offsetWidth;
@@ -19111,6 +19213,7 @@ document.addEventListener('DOMContentLoaded', function(){
   initAndroidBack();
   initEdgeSwipeBack();
   initGlobalSwipeBack();
+  initReliableBackTargets();
 });
 
 // Edge-swipe-back (od ľavej hrany, do 24px) ostáva už len pre lk-detail — má vlastnú,
@@ -19371,6 +19474,75 @@ function initGlobalSwipeBack() {
   document.addEventListener('touchcancel', function() { reset(true); }, { passive: true, capture: true });
 }
 
+// ── SPOĽAHLIVÉ TLAČIDLÁ SPÄŤ ───────────────────────────────────────────────
+// Staršie obrazovky vznikali postupne a ich návratové šípky preto mali rôznu
+// veľkosť i implementáciu. Na iPhone sa pri malom kruhu dalo ľahko ťuknúť do
+// tieňa alebo medzi šípku a kartu, takže click vôbec nedošiel k tlačidlu.
+// Nezasahujeme do konkrétnych návratových funkcií: zachováme pôvodný onclick
+// každej obrazovky a iba mu dáme jednotnú, veľkorysú zásahovú zónu.
+var _reliableBackTargetsInited = false;
+var RELIABLE_BACK_SELECTOR = [
+  '[data-app-back]', 'button[aria-label="Späť"]', '.mgr-back', '.pl-detail-back', '.lk-floating-back',
+  '.sklady-back', '.team-plnenie-back', '.gpp-back', '.nst-back',
+  '.lk-det-back', '.pharma-ms-back', '.set-back', '.gyn-cal-sheet-back'
+].join(',');
+
+function reliableBackTargetButtons(){
+  var all = Array.prototype.slice.call(document.querySelectorAll(RELIABLE_BACK_SELECTOR));
+  all.forEach(function(button){ button.setAttribute('data-app-back', ''); });
+  return all.filter(function(button){
+    if(!button || !button.isConnected || button.disabled) return false;
+    var rect = button.getBoundingClientRect();
+    var style = window.getComputedStyle(button);
+    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+  });
+}
+
+function reliableBackTargetFrom(node){
+  return node && node.closest ? node.closest('[data-app-back]') : null;
+}
+
+function initReliableBackTargets(){
+  if(_reliableBackTargetsInited) return;
+  _reliableBackTargetsInited = true;
+  reliableBackTargetButtons();
+
+  // Gyn aj manažérsky detail sa prekresľujú za behu. Označ novú šípku hneď
+  // po renderi, aby dostala rovnakú CSS zónu ako statické tlačidlá.
+  if(typeof MutationObserver === 'function' && document.body){
+    var queued = false;
+    new MutationObserver(function(){
+      if(queued) return;
+      queued = true;
+      requestAnimationFrame(function(){ queued = false; reliableBackTargetButtons(); });
+    }).observe(document.body, { childList:true, subtree:true });
+  }
+
+  document.addEventListener('click', function(event){
+    // Normálny dotyk priamo na tlačidlo ponechaj jeho vlastnému onclicku.
+    var direct = reliableBackTargetFrom(event.target);
+    if(direct) return;
+    var buttons = reliableBackTargetButtons();
+    direct = reliableBackTargetFrom(event.target);
+    if(direct) return;
+
+    // Ak dotyk trafí tieň alebo bezprostredné okolie viditeľnej šípky,
+    // prevezmi ho v capture fáze a spusti PRESNE pôvodnú akciu daného tlačidla.
+    // Tak sa neobjaví dvojité zatvorenie ani nesprávny návratový krok.
+    var x = event.clientX, y = event.clientY;
+    if(!isFinite(x) || !isFinite(y)) return;
+    for(var i=0;i<buttons.length;i++){
+      var button = buttons[i], rect = button.getBoundingClientRect(), pad = 10;
+      if(x >= rect.left-pad && x <= rect.right+pad && y >= rect.top-pad && y <= rect.bottom+pad){
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        button.click();
+        return;
+      }
+    }
+  }, true);
+}
+
 // ── ANDROID BACK BUTTON — História API pre PWA standalone mód ──
 // Na Androide tlačidlo Späť vyvolá popstate. Zachytíme ho a zatvoríme
 // najvnútornejší otvorený overlay namiesto ukončenia appky.
@@ -19443,11 +19615,8 @@ _backRegister('detail-overlay', closeDetail);
 _backRegister('satori-overlay', satoriClose);
 _backRegister('wn-overlay', wnClose);
 
-// 2. Tutorial — krok späť, na kroku 1 zatvoriť tutoriál
-_backRegister('tutorial-overlay', function () {
-  if (_tutorialCurrent > 1) window.tutorialBack(_tutorialCurrent - 1);
-  else tutorialSkip();
-});
+// 2. Satori sprievodca — krok späť, na prvej karte bezpečne zavrieť.
+_backRegister('satori-guide-overlay', satoriGuideBack);
 
 // 3. District chart overlay (pharma → okres graf)
 _backRegister('pharma-okres-overlay', closePharmaOkresChart);
@@ -21212,7 +21381,7 @@ function hdrAvatarShowTipIfNeeded(_stableTicks) {
                        'detail-overlay','edit-overlay','restore-overlay','hist-overlay',
                        'lb-overlay','rep-plnenie-overlay','lk-overlay','golem-cal-overlay','lk-detail',
                        'pharma-ms-overlay','pharma-okres-overlay',
-                       'tutorial-overlay','session-expired-overlay','rpt-progress-overlay','thankyou'];
+                       'satori-guide-overlay','session-expired-overlay','rpt-progress-overlay','thankyou'];
     var isBlocked = false;
     for (var bi = 0; bi < blockingIds.length; bi++) {
       var bel = document.getElementById(blockingIds[bi]);
@@ -21711,6 +21880,7 @@ function openLeaderboard(){
   LB_STATE.mode = 'plnenie';
   usageSectionEnter('Rebríček');
   _panelShow('lb-overlay');
+  satoriGuideQueueHint('leaderboard', 550);
   LB_STATE.showConfetti = true;
   lbSyncTabs();
   // Rovno renderuj Plnenie rebríček — neťahaj históriu návštev (getHistory × N repov).
@@ -23434,6 +23604,7 @@ function mgrSwitchSubtab(tab) {
   }
   if (tab === 'kalendar') {
     mgrRenderCalendarView(true);
+    setTimeout(function(){ try { satoriGuideMaybeHint('calendar'); } catch(e){} }, 550);
   }
   if (tab === 'activity') {
     USAGE_VIEW.line = 'gp';
@@ -23444,6 +23615,7 @@ function mgrSwitchSubtab(tab) {
   if (tab === 'reporty') {
     rptViewOpen();
   }
+  satoriGuideQueueHint(satoriGuideHintForNav(tab), 550);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -24951,6 +25123,7 @@ function openProdSheet(prodKey, prodLabel) {
   sheet.classList.remove('show');
   void sheet.offsetWidth;
   sheet.classList.add('show');
+  satoriGuideQueueHint('products', 550);
   prodSheetInitSwipe();
   prodSheetInitSubtabSwipe();
 
@@ -26865,6 +27038,7 @@ function plnenieOpenDetail(username) {
   if (!username) return;
   PL_STATE.detailRep = username;
   document.body.classList.add('mgr-plnenie-detail-open');
+  satoriGuideQueueHint('rep_detail', 550);
   plnenieRenderDetail();
   var lekarneEl = document.getElementById('pl-detail-lekarne');
   if (lekarneEl && lekarneEl.style.display !== 'none') {
@@ -27341,6 +27515,7 @@ function openRepPlnenie() {
   if (!session || !session.username) return;
   usageSectionEnter('Plnenie');
   _panelShow('rep-plnenie-overlay');
+  satoriGuideQueueHint('plnenie', 550);
   // Default: DÁTOVÝ kvartál (podľa notif_predaje), nie kalendárny — pri prelome Q sa nemá
   // skočiť na nový Q, kým doň nepribudli predaje (rovnaká logika ako manažér/gyn).
   var dp = plnenieDefaultPeriod();
@@ -28517,6 +28692,7 @@ function openPharmaMs(prodKey, label, oblastOverride, repLoginOverride, periodOv
 
   overlay.classList.remove('panel-anim-r', 'pl-detail-exit-r');
   overlay.classList.add('show');
+  satoriGuideQueueHint('market', 650);
   overlay.scrollTop = 0;
   void overlay.offsetWidth;
   overlay.classList.add('panel-anim-r');
@@ -29251,6 +29427,7 @@ function openPharmaOkresChart(r, prodLabel) {
   legEl.innerHTML     = '';
 
   overlay.classList.add('show');
+  satoriGuideQueueHint('districts', 650);
   document.body.style.overflow = 'hidden';
 
   // Predtým sa pri zlyhaní fetchu (aj pri resp.ok===true s málo riadkami)
@@ -31801,6 +31978,7 @@ function rptViewOpen() {
   rptViewRenderControls();
   rptViewRender();
   rptViewEnsurePharma();
+  satoriGuideQueueHint('reports', 550);
 }
 
 function rptViewAllowedScopes() {
@@ -34458,6 +34636,7 @@ function openLekarne() {
   LK_STATE.searchQ = '';
   lkFilterReset(); LK_FILTER._ctx = 'rep'; lkFilterUpdateBadges();
   _panelShow('lk-overlay');
+  satoriGuideQueueHint('lekarne', 550);
   var searchEl = document.getElementById('lk-search');
   if (searchEl) searchEl.value = '';
   var login = (getSession() || {}).username || '';
@@ -34540,7 +34719,7 @@ function okresyOpen(ctx, containerId) {
   OKRESY_STATE.detail = null;
   var reqId = (++OKRESY_STATE.reqId);
 
-  if (OKRESY_STATE.ctx === 'rep') { usageSectionEnter('Okresy'); _panelShow('okresy-overlay'); }
+  if (OKRESY_STATE.ctx === 'rep') { usageSectionEnter('Okresy'); _panelShow('okresy-overlay'); satoriGuideQueueHint('district_list', 550); }
 
   var oblast = pharmaGetOblast();
   OKRESY_STATE.oblast = oblast;
@@ -34981,6 +35160,7 @@ function mgrRenderCalendarView(resetMonth) {
 function openGolemKalendar() {
   if (document.body.classList.contains('manager-mode')) {
     mgrSwitchSubtab('kalendar');
+    setTimeout(function(){ try { satoriGuideMaybeHint('calendar'); } catch(e){} }, 550);
     return;
   }
   usageSectionEnter('Kalendár');
@@ -34999,8 +35179,10 @@ function openGolemKalendar() {
   if (host) gynKalShow(host, getSession());
   try { gynCalSync(); } catch(e){}                  // načítaj zo Sheets (ak Golem backend beží)
   gynCalUpdateBadge();
+  setTimeout(function(){ try { satoriGuideMaybeHint('calendar'); } catch(e){} }, 550);
 }
 function closeGolemKalendar() {
+  try { satoriGuideHideHint(); } catch(e){}
   usageSectionClose();
   closeAllPanels();
   if (document.body.classList.contains('manager-mode')) {
@@ -36222,6 +36404,7 @@ function tuyorySaveLocal(arr){ surveySaveLocal(tuyoryLocalKey(), arr); }
 function openTuyory(){
   usageSectionEnter('Tuyory');
   _panelShow('tuyory-overlay');
+  satoriGuideQueueHint('tuyory', 550);
   TUYORY.records = tuyoryLoadLocal();
   TUYORY.answers = {};
   TUYORY.znacky = [];
@@ -37110,8 +37293,10 @@ function openNastenka(){
   nstRender();
   try { ov.scrollTop = 0; } catch(e){}
   nstFetch(function(){ NST.loading = false; nstRender(); nstMarkSeen(); });
+  setTimeout(function(){ try { satoriGuideMaybeHint('board'); } catch(e){} }, 550);
 }
 function closeNastenka(){
+  try { satoriGuideHideHint(); } catch(e){}
   var returnToDomov = !!NST.returnToDomov;
   NST.returnToDomov = false;
   try { usageSectionClose(); } catch(e){}
@@ -38030,6 +38215,7 @@ function apixSaveLocal(arr){ surveySaveLocal(apixLocalKey(), arr); }
 function openApixaban(){
   usageSectionEnter('Apixaban');
   _panelShow('apixaban-overlay');
+  satoriGuideQueueHint('apixaban', 550);
   APIX.records = apixLoadLocal();
   APIX.answers = {};
   APIX.flash = null;
@@ -39139,6 +39325,7 @@ function lonelixSaveLocal(arr){ surveySaveLocal(lonelixLocalKey(), arr); }
 function openLonelix(){
   usageSectionEnter('Lonelix');
   _panelShow('lonelix-overlay');
+  satoriGuideQueueHint('lonelix', 550);
   LONELIX.records = lonelixLoadLocal();
   LONELIX.answers = {};
   LONELIX.flash = null;
