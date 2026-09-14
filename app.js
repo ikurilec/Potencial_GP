@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.19';
+var APP_VERSION = '2.88.20';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -818,6 +818,13 @@ function authSessionParams() {
   }
 }
 
+// Pull-to-refresh vždy označí serverové čítania ako čerstvé. Skripty tak
+// obídu krátku cache a jedinečný identifikátor zabráni vráteniu starej odpovede.
+var APP_MANUAL_REFRESH_UNTIL = 0;
+var APP_MANUAL_REFRESH_ID = '';
+function appStartManualRefresh(){ APP_MANUAL_REFRESH_UNTIL = Date.now() + 15000; APP_MANUAL_REFRESH_ID = String(Date.now()); }
+function appFreshReadParams(){ return Date.now() < APP_MANUAL_REFRESH_UNTIL ? '&fresh=1&_refresh=' + encodeURIComponent(APP_MANUAL_REFRESH_ID) : ''; }
+
 function scriptUrl(params) {
   // Golem render používa scriptUrl(...) priamo. Pre Reagila aj Gyn líniu
   // (session.line) presmeruj všetky tieto volania na ich vlastný backend —
@@ -829,12 +836,12 @@ function scriptUrl(params) {
   // session nebolo nič zle.
   var _s = (typeof getSession === 'function') ? getSession() : null;
   if (_s && _s.line === 'reagila' && typeof REAGILA_SCRIPT_URL === 'string') {
-    return REAGILA_SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(REAGILA_API_TOKEN) + authSessionParams('reagila');
+    return REAGILA_SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(REAGILA_API_TOKEN) + authSessionParams('reagila') + appFreshReadParams();
   }
   if (_s && _s.line === 'gyn' && typeof GYN_SCRIPT_URL === 'string') {
-    return GYN_SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(GYN_API_TOKEN) + authSessionParams('gyn');
+    return GYN_SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(GYN_API_TOKEN) + authSessionParams('gyn') + appFreshReadParams();
   }
-  return SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(API_TOKEN) + authSessionParams('gp');
+  return SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(API_TOKEN) + authSessionParams('gp') + appFreshReadParams();
 }
 
 function appLineTag() {
@@ -906,14 +913,14 @@ function stockNormalizePayload(payload, line){
 var GYN_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwOZxhmwH9jwGTQroagVzhibavO8XowAQpiryp4567SNfHWevk9UHSwqY_v-zuZd5WQ/exec';
 var GYN_API_TOKEN  = 'gr-gyn-2026';
 function gynScriptUrl(params) {
-  return GYN_SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(GYN_API_TOKEN) + authSessionParams('gyn');
+  return GYN_SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(GYN_API_TOKEN) + authSessionParams('gyn') + appFreshReadParams();
 }
 
 // ── REAGILA LINKA (tretia línia) ──
 var REAGILA_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyxFneKum7D0NLWtIQZHochosWtXeWjCZxr9AH_f0TmesIDqe1_jetga_RwDjNWF1-W/exec';
 var REAGILA_API_TOKEN  = 'gr-reagila-2026';
 function reagilaScriptUrl(params) {
-  return REAGILA_SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(REAGILA_API_TOKEN) + authSessionParams('reagila');
+  return REAGILA_SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(REAGILA_API_TOKEN) + authSessionParams('reagila') + appFreshReadParams();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -30313,6 +30320,7 @@ function appAttachOverlayPtr(opt) {
     }
     // Poistka: keby sieť nikdy neodpovedala, krúžok sa musí zastaviť sám.
     setTimeout(function () { hardStop = true; finish(); }, 12000);
+    try { appStartManualRefresh(); } catch (e) {}
     try { opt.onRefresh(function () { setTimeout(finish, 250); }); }
     catch (e) { finish(); }
   });
@@ -30335,7 +30343,7 @@ function appAttachOverlayPtr(opt) {
       var pending = 2;
       function step() { if (--pending <= 0) { try { dnesRender(); } catch (e) {} done(); } }
       gpHistForceRefresh(session ? session.username : '', step);
-      try { nstFetch(step); } catch (e) { step(); }
+      try { nstFetch(step, 'critical', true); } catch (e) { step(); }
     }
   });
 
@@ -30359,7 +30367,7 @@ function appAttachOverlayPtr(opt) {
     blockedBy: ['nst-compose', 'confirm-overlay', 'session-expired-overlay'],
     onRefresh: function (done) {
       NST.loading = true;
-      nstFetch(function () { NST.loading = false; try { nstRender(); } catch (e) {} done(); });
+      nstFetch(function () { NST.loading = false; try { nstRender(); } catch (e) {} done(); }, 'critical', true);
     }
   });
 
@@ -37179,7 +37187,13 @@ function nstSaveLocal(arr){
     if (typeof lsSafeSet === 'function') lsSafeSet(nstLocalKey(), payload); else localStorage.setItem(nstLocalKey(), payload);
   } catch(e){}
 }
-function nstTime(ts){ var t = Date.parse(ts || ''); return isNaN(t) ? 0 : t; }
+function nstTime(ts){
+  if (ts instanceof Date) return ts.getTime();
+  var s = String(ts || '').trim(); if (!s) return 0;
+  var t = Date.parse(s); if (!isNaN(t)) return t;
+  var m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+  return m ? new Date(+m[3], +m[2] - 1, +m[1], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0)).getTime() : 0;
+}
 function nstSeenTs(){ try { return parseInt(localStorage.getItem(nstSeenKey()) || '0', 10) || 0; } catch(e){ return 0; } }
 function nstMarkSeen(){
   try {
@@ -37292,7 +37306,7 @@ function openNastenka(){
   try { repTabSetActive('nastenka-overlay'); } catch (e) {}
   nstRender();
   try { ov.scrollTop = 0; } catch(e){}
-  nstFetch(function(){ NST.loading = false; nstRender(); nstMarkSeen(); });
+  nstFetch(function(){ NST.loading = false; nstRender(); nstMarkSeen(); }, 'critical', true);
   setTimeout(function(){ try { satoriGuideMaybeHint('board'); } catch(e){} }, 550);
 }
 function closeNastenka(){
@@ -37320,7 +37334,7 @@ function nstApply(posts){
   NST.loaded = true;
   nstSaveLocal(posts);
 }
-function nstFetch(cb){
+function nstFetch(cb, priority, forceFresh){
   if (typeof IS_DEV !== 'undefined' && IS_DEV){
     NST.loaded = true;
     setTimeout(function(){ nstDevSeed(); NST.loading = false; if (cb) cb(); }, 900);   // dev — simuluj sieť
@@ -37331,8 +37345,9 @@ function nstFetch(cb){
   var reqCtx = appLineCapture();
   NST.loading = true;
   var url;
-  try { url = nstUrl('action=getNastenka'); } catch(e){ NST.loading = false; if (cb) cb(); return; }
-  appQueuedFetchJson(url, { cache: 'no-store' }, undefined, 'background')
+  try { var params = 'action=getNastenka'; if (forceFresh) params += '&fresh=1&_refresh=' + Date.now(); url = nstUrl(params); }
+  catch(e){ NST.loading = false; if (cb) cb(); return; }
+  appQueuedFetchJson(url, { cache: 'no-store' }, undefined, priority === 'critical' ? 'critical' : 'background')
     .then(function(d){
       if (reqId !== NST._reqId || !appLineContextActive(reqCtx)) return;
       NST.loading = false;
