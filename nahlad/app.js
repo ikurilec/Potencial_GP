@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.20';
+var APP_VERSION = '2.88.21';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -37347,7 +37347,13 @@ function nstFetch(cb, priority, forceFresh){
   var url;
   try { var params = 'action=getNastenka'; if (forceFresh) params += '&fresh=1&_refresh=' + Date.now(); url = nstUrl(params); }
   catch(e){ NST.loading = false; if (cb) cb(); return; }
-  appQueuedFetchJson(url, { cache: 'no-store' }, undefined, priority === 'critical' ? 'critical' : 'background')
+  // Pri výslovnom otvorení alebo potiahnutí nesmie Nástenka čakať na dva
+  // už bežiace prefetchy. Tie môžu mať na Apps Scripte cold start a predtým
+  // po 15 s zobrazili starú lokálnu kartu napriek tomu, že server už mal novú.
+  var request = priority === 'critical'
+    ? appFetchJson(url, { cache: 'no-store' }, APP_FETCH_TIMEOUT_MS)
+    : appQueuedFetchJson(url, { cache: 'no-store' }, undefined, 'background');
+  request
     .then(function(d){
       if (reqId !== NST._reqId || !appLineContextActive(reqCtx)) return;
       NST.loading = false;
