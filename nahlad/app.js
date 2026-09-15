@@ -10317,10 +10317,14 @@ function gynBirthdayBannerHtml(user){
     lines.push('<div class="gyn-hdr-bday own">🎉 Dnes máš narodeniny, ' + gynEsc(fn) + '! 🎂 Všetko najlepšie!</div>');
   }
   if(user && user.role !== 'gyn-rep'){
-    gynBirthdayOthers().forEach(function(o){
+    var others = gynBirthdayOthers();
+    console.log('[BDAY] banner others=' + JSON.stringify(others) + ' forEach start');
+    others.forEach(function(o){
+      console.log('[BDAY] forEach o=' + JSON.stringify(o));
       if(o.when === 0) lines.push('<div class="gyn-hdr-bday today">🎉 ' + gynEsc(o.name) + ' má dnes narodeniny!</div>');
       else             lines.push('<div class="gyn-hdr-bday soon">🎂 ' + gynEsc(o.name) + ' má zajtra narodeniny</div>');
     });
+    console.log('[BDAY] banner lines=' + JSON.stringify(lines));
   }
   return lines.join('');
 }
