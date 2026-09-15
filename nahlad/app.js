@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.21';
+var APP_VERSION = '2.88.23';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -5588,18 +5588,29 @@ function dnesRender() {
       var pocet = (post.comments || []).length;
       var odpHtml = '';
       if (odp) {
+        var odpText = appEsc(odp.text || '');
+        var odpCountHtml = '';
+        if (pocet > 1) {
+          var odpLabel = pocet === 2 ? 'odpovede' : (pocet >= 5 ? 'odpovedí' : 'odpovede');
+          odpCountHtml = '<div class="dnes-post-odp-n">' + pocet + ' ' + odpLabel + '</div>';
+        }
         odpHtml = '<div class="dnes-post-odp">' +
                     appRepAvatarHtml(odp.rep, odp.meno || odp.rep, 24, 'dnes-rep-avatar') +
                     '<span class="dnes-post-odp-txt"><span class="dnes-post-odp-kto">' + appEsc(odp.meno || odp.rep || '—') + ':</span> ' +
-                    appEsc(odp.text || '') +
-                    (pocet > 1 ? '<span class="dnes-post-odp-n">' + pocet + ' odpovedí</span>' : '') + '</span>' +
+                    odpText + '</span>' +
+                    odpCountHtml +
                   '</div>';
       }
       return '<div class="dnes-post-item' + (pix === 0 ? ' prvy' : '') + '"' +
                ' onclick="event.stopPropagation();appGoNastenka(' + (pid ? '\'' + pid + '\'' : '') + ')">' +
+               '<div class="dnes-post-autor-row">' +
+                 appRepAvatarHtml(post.rep, post.meno || post.rep, 32, 'dnes-rep-avatar') +
+                 '<div class="dnes-post-autor-meta">' +
+                   '<span class="dnes-post-autor-meno">' + autor + '</span>' +
+                   (kedy ? '<span class="dnes-post-autor-kedy">' + appEsc(kedy) + '</span>' : '') +
+                 '</div>' +
+               '</div>' +
                '<div class="dnes-post">' + pin + appEsc(post.text || '') + '</div>' +
-               '<div class="dnes-post-meta-row">' + appRepAvatarHtml(post.rep, post.meno || post.rep, 22, 'dnes-rep-avatar') +
-                 '<span>' + autor + (kedy ? ' · ' + appEsc(kedy) : '') + '</span></div>' +
                odpHtml +
              '</div>';
     }).join('');
