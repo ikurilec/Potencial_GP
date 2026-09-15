@@ -10295,7 +10295,6 @@ function gynBirthdayOthers(){
     var src = (typeof GYN_STATE !== 'undefined' && GYN_STATE.userList && GYN_STATE.userList.length)
       ? GYN_STATE.userList
       : ((typeof GYN_STATE !== 'undefined' && GYN_STATE.repList) || []);
-    console.log('[BDAY] src.len=' + src.length);
     var out = [];
     src.forEach(function(u){
       var login = String(u.login||'').toLowerCase();
@@ -10303,28 +10302,22 @@ function gynBirthdayOthers(){
       var w = birthdayWhen(u.narodeniny);
       if(w === 0 || w === 1) out.push({ login: login, name: u.meno || u.login, when: w });
     });
-    console.log('[BDAY] others=' + JSON.stringify(out));
     out.sort(function(a,b){ return a.when - b.when || String(a.name).localeCompare(String(b.name)); });
     return out;
   } catch(e){ return []; }
 }
 // HTML banner pod meninami: vlastné narodeniny (každý) + tím (len manažér)
 function gynBirthdayBannerHtml(user){
-  console.log('[BDAY] banner user=' + JSON.stringify(user ? {name:user.name,username:user.username,role:user.role,nar:user.narodeniny} : null));
   var lines = [];
   if(user && birthdayWhen(gynOwnNarodeniny(user)) === 0){
     var fn = String(user.name||'').trim().split(/\s+/)[0];
     lines.push('<div class="gyn-hdr-bday own">🎉 Dnes máš narodeniny, ' + gynEsc(fn) + '! 🎂 Všetko najlepšie!</div>');
   }
   if(user && user.role !== 'gyn-rep'){
-    var others = gynBirthdayOthers();
-    console.log('[BDAY] banner others=' + JSON.stringify(others) + ' forEach start');
-    others.forEach(function(o){
-      console.log('[BDAY] forEach o=' + JSON.stringify(o));
+    gynBirthdayOthers().forEach(function(o){
       if(o.when === 0) lines.push('<div class="gyn-hdr-bday today">🎉 ' + gynEsc(o.name) + ' má dnes narodeniny!</div>');
       else             lines.push('<div class="gyn-hdr-bday soon">🎂 ' + gynEsc(o.name) + ' má zajtra narodeniny</div>');
     });
-    console.log('[BDAY] banner lines=' + JSON.stringify(lines));
   }
   return lines.join('');
 }
@@ -10332,7 +10325,6 @@ function gynBirthdayBannerHtml(user){
 function gynBirthdayRefresh(){
   try {
     var el = document.getElementById('gyn-bday-banner');
-    console.log('[BDAY] refresh el=' + (el?'FOUND':'MISSING')) ;
     if(!el) return;
     var s = (typeof getSession === 'function') ? getSession() : null;
     el.innerHTML = gynBirthdayBannerHtml(s);
@@ -12454,6 +12446,8 @@ function gynApplyRepListData(data, user) {
         if (data.users && data.users.length) {
           gynApplyUsersList(data.users);
           try { gynCacheWrite(gynUsersLsKey(), data.users); } catch(e){}
+          // Prekresli narodeninový banner okamžite po načítaní plného zoznamu
+          try { gynBirthdayRefresh(); } catch(e){}
         }
         // Naplň USERS_LOCAL — aby avatarGetConfig našiel avatary gyn reprezentantov vo všetkých render miestach
         data.reps.forEach(function(r) {
