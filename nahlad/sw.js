@@ -5,7 +5,7 @@
 // ║  cache-first pre ostatné assety (rýchly štart, offline ready).║
 // ╚══════════════════════════════════════════════════════════════╝
 
-var CACHE_NAME = 'potencial-nahlad-ve5df520fed18';
+var CACHE_NAME = 'potencial-nahlad-v5b9f9e9047a3';
 // Názvy súborov nižšie aj CACHE_NAME vyššie píše "node scripts/build.mjs" —
 // nemeniť ručne, prepíše sa to pri ďalšom builde. Hash v názve = odtlačok
 // obsahu app.js/app.css, nie čísla verzie — zmení sa len keď sa obsah zmení.
@@ -14,8 +14,8 @@ var APP_SHELL = [
   './index.html',
   './apple-touch-icon.png',
   './satori-notification-icon.png',
-  './dist/app.ed18bcdd.css',
-  './dist/app.e5df520f.js'
+  './dist/app.47a3e33c.css',
+  './dist/app.5b9f9e90.js'
 ];
 
 self.addEventListener('install', function(event){
