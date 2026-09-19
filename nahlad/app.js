@@ -17923,6 +17923,28 @@ function mgrLoadData(){
   }
 }
 
+// PERF (audit 2026-09-18): mgrLoadReps() a lbLoadData() donedávna nezávisle
+// sťahovali CELÚ históriu všetkých repov (action=getAllHistory) v priebehu
+// pár sekúnd od seba pri vstupe manažéra (mgrLoadReps synchrónne pri mgrEnter,
+// lbLoadData o +2000ms neskôr) — bez zdieľanej cache medzi nimi. Zdieľa sa tu
+// len ÚSPEŠNÝ výsledok na krátke okno (nie prebiehajúci fetch/retry logika —
+// obe miesta majú vlastný, odlišný retry/fallback mechanizmus, ktorý ostáva
+// nedotknutý; zdieľanie len ušetrí druhému volajúcemu network round-trip,
+// keď prvý už stihol uspieť).
+var _allHistShared = { data: null, ts: 0 };
+var ALL_HIST_SHARE_WINDOW_MS = 15000;
+function allHistShareGet() {
+  if (_allHistShared.data && (Date.now() - _allHistShared.ts) < ALL_HIST_SHARE_WINDOW_MS) {
+    return _allHistShared.data;
+  }
+  return null;
+}
+function allHistShareStore(data) {
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    _allHistShared = { data: data, ts: Date.now() };
+  }
+}
+
 function mgrFetchWithRetry(url, retries, priority){
   retries = retries === undefined ? 3 : retries;
   // Všetky čítania manažérskej časti zdieľajú frontu. Aktuálny kvartál má
@@ -17988,8 +18010,16 @@ function mgrLoadReps(repList){
 
   var loginPromise = mgrFetchWithRetry(scriptUrl('action=getLastLogins'), undefined, 'critical').catch(function(){ return {}; });
 
-  // Jeden request pre všetky histórie naraz — najrýchlejšie
-  var allHistPromise = mgrFetchWithRetry(scriptUrl('action=getAllHistory'), undefined, 'critical').catch(function(){ return null; });
+  // Jeden request pre všetky histórie naraz — najrýchlejšie. Ak lbLoadData
+  // (Rebríček) už čerstvo stiahol to isté (zdieľané okno, viď allHistShare*),
+  // znova sa nefetchuje.
+  var _allHistSharedNow = allHistShareGet();
+  var allHistPromise = _allHistSharedNow
+    ? Promise.resolve(_allHistSharedNow)
+    : mgrFetchWithRetry(scriptUrl('action=getAllHistory'), undefined, 'critical').then(function(data){
+        allHistShareStore(data);
+        return data;
+      }).catch(function(){ return null; });
 
   Promise.all([loginPromise, managersPromise, allHistPromise]).then(function(meta){
     MGR_STATE.lastLogins = meta[0] || {};
@@ -22829,9 +22859,17 @@ function lbLoadData(force){
     });
   }
 
-  // Cache buster — vždy fetchni čerstvé
+  // Cache buster — vždy fetchni čerstvé (okrem prvého pokusu, kde sa skúsi
+  // zdieľaný výsledok z mgrLoadReps, ak práve doniesol to isté — viď allHistShare*).
   function fetchAllHistoryAttempt(attempt) {
-    appFetchJson(scriptUrl('action=getAllHistory&_t=' + Date.now()))
+    var _sharedFirstTry = (attempt === 0) ? allHistShareGet() : null;
+    var _histFetch = _sharedFirstTry
+      ? Promise.resolve(_sharedFirstTry)
+      : appFetchJson(scriptUrl('action=getAllHistory&_t=' + Date.now())).then(function(data){
+          allHistShareStore(data);
+          return data;
+        });
+    _histFetch
     .then(function(allHist){
       if(allHist && allHist.ok !== false && typeof allHist === 'object' && !Array.isArray(allHist)){
         if(window.console) console.log('[lb-debug] getAllHistory keys:', Object.keys(allHist), '| LB_ALL_REPS:', LB_ALL_REPS);
