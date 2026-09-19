@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.48';
+var APP_VERSION = '2.88.49';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -37751,6 +37751,7 @@ function nstRender(){
     regs.map(function(r){ return '<option value="' + nstEsc(r) + '"' + (NST.region === r ? ' selected' : '') + '>' + nstEsc(r) + '</option>'; }).join('');
 
   body.innerHTML =
+    '<button type="button" class="nst-compose-bar" onclick="nstComposeOpen()"><span class="nst-cb-plus">＋</span><span class="nst-cb-txt">Pridať príspevok…</span></button>' +
     (function(){
       var activeN = nstActiveFilterCount();
       var open = !!NST._filterOpen;
@@ -37779,7 +37780,6 @@ function nstRender(){
       '</div>';
     })() +
     '<div id="nst-list"></div>';
-  var ttl = document.getElementById('nst-topbar-sub'); if (ttl) ttl.textContent = nstLineLabel();
   nstRenderList();
 }
 
