@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.41';
+var APP_VERSION = '2.88.42';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -28795,13 +28795,16 @@ function pharmaTeamAccessParams(){ return PHARMA_STATE.teamRepAccess && PHARMA_S
 function pharmaGrafContextKey(){ return PHARMA_STATE.teamRepAccess && PHARMA_STATE.repLogin ? '_team_' + PHARMA_STATE.repLogin : ''; }
 function pharmaGrafCacheKey(code, oblast){ return code + '_' + oblast + pharmaGrafContextKey(); }
 function pharmaGrafRequestUrl(code, oblast){ return scriptUrl('action=getPharmaGraf&oblast=' + encodeURIComponent(oblast) + '&produkt=' + encodeURIComponent(code) + pharmaTeamAccessParams()); }
-function pharmaDataRequestUrl(code, oblast, kvartal){ return scriptUrl('action=getPharmaData&oblast=' + encodeURIComponent(oblast) + '&produkt=' + encodeURIComponent(code) + '&kvartal=' + encodeURIComponent(kvartal) + pharmaTeamAccessParams()); }
+// withPrev → server vráti v jednej odpovedi aj okresy predchádzajúceho kvartálu (okresy_prev) — netreba druhé volanie.
+function pharmaDataRequestUrl(code, oblast, kvartal, withPrev){ return scriptUrl('action=getPharmaData&oblast=' + encodeURIComponent(oblast) + '&produkt=' + encodeURIComponent(code) + '&kvartal=' + encodeURIComponent(kvartal) + (withPrev ? '&prev=1' : '') + pharmaTeamAccessParams()); }
 function pharmaOkresGrafRequestUrl(code, oblast, okres){ return scriptUrl('action=getPharmaOkresGraf&produkt=' + encodeURIComponent(code) + '&oblast=' + encodeURIComponent(oblast) + '&okres=' + encodeURIComponent(okres) + pharmaTeamAccessParams()); }
 
 function pharmaAttachPrevDistrictsForCurrent(code, oblast, kvartal, resp, done) {
   if(!pharmaIsCurrentKvartal(kvartal)) { done(resp); return; }
   var prevKv = pharmaKvartalPrev(kvartal);
   if(!prevKv || prevKv === kvartal) { resp.okresy_prev = resp.okresy_prev || []; done(resp); return; }
+  // Server už poslal okresy predchádzajúceho kvartálu spolu s hlavnou odpoveďou (prev=1).
+  if(Array.isArray(resp.okresy_prev) && resp.kvartal_prev === prevKv) { done(resp); return; }
   var prevKey = code + '_' + oblast + '_' + prevKv;
   // Skontroluj in-memory cache, potom localStorage
   var cachedPrev = PHARMA_STATE.cache[prevKey];
@@ -29015,7 +29018,7 @@ function loadPharmaDataNetwork(code, oblast, kvartal) {
   }
 
   appQueuedFetchJson(
-    pharmaDataRequestUrl(code, oblast, kvartal),
+    pharmaDataRequestUrl(code, oblast, kvartal, pharmaIsCurrentKvartal(kvartal)),
     { cache: 'no-store' }, undefined, 'critical'
   )
     .then(function(resp) {
