@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.30';
+var APP_VERSION = '2.88.31';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -986,24 +986,57 @@ function appRequestQueueDrain(){
       .then(function(){ APP_REQUEST_QUEUE.active--; appRequestQueueDrain(); }, function(){ APP_REQUEST_QUEUE.active--; appRequestQueueDrain(); });
   }
 }
-function appQueuedFetchJson(url, opts, timeoutMs, priority){
+function appQueueInsert(job){
+  // 'boot' = presne to, na čo čaká boot obrazovka (roster z getInitData + aktuálny
+  // kvartál Plnenia pre manažéra). Predtým boli obe len 'critical', ktoré sa vkladá
+  // na ZAČIATOK fronty (LIFO) — takže najstaršia critical (getInitData) sa dostala
+  // na rad ako posledná (meranie 2026-09-19: 20–25 s po logine) a boot obrazovka
+  // vždy dorazila na 15 s failsafe. 'boot' ide pred všetky 'critical' (FIFO medzi
+  // sebou); správanie 'critical' a 'background' ostáva nezmenené.
+  if(job.prio === 'boot' || job.prio === 'critical'){
+    var _ins = 0;
+    while(_ins < APP_REQUEST_QUEUE.items.length && APP_REQUEST_QUEUE.items[_ins].prio === 'boot') _ins++;
+    APP_REQUEST_QUEUE.items.splice(_ins, 0, job);
+  }
+  else APP_REQUEST_QUEUE.items.push(job);
+}
+function appQueuedFetchJsonRaw(url, opts, timeoutMs, priority, rec){
   return new Promise(function(resolve, reject){
     var job = { url:url, opts:opts || { cache:'no-store' }, timeoutMs:timeoutMs, resolve:resolve, reject:reject };
     job.prio = priority;
-    // 'boot' = presne to, na čo čaká boot obrazovka (roster z getInitData + aktuálny
-    // kvartál Plnenia pre manažéra). Predtým boli obe len 'critical', ktoré sa vkladá
-    // na ZAČIATOK fronty (LIFO) — takže najstaršia critical (getInitData) sa dostala
-    // na rad ako posledná (meranie 2026-09-19: 20–25 s po logine) a boot obrazovka
-    // vždy dorazila na 15 s failsafe. 'boot' ide pred všetky 'critical' (FIFO medzi
-    // sebou); správanie 'critical' a 'background' ostáva nezmenené.
-    if(priority === 'boot' || priority === 'critical'){
-      var _ins = 0;
-      while(_ins < APP_REQUEST_QUEUE.items.length && APP_REQUEST_QUEUE.items[_ins].prio === 'boot') _ins++;
-      APP_REQUEST_QUEUE.items.splice(_ins, 0, job);
-    }
-    else APP_REQUEST_QUEUE.items.push(job);
+    if(rec) rec.job = job;
+    appQueueInsert(job);
     appRequestQueueDrain();
   });
+}
+// getConfig je čisté čítanie a tú istú hodnotu (notif_predaje, notif_pharma) si počas
+// prihlásenia pýta viac miest naraz (prefetch, checkNotifications, Plnenie, Rebríček…) —
+// meranie 2026-09-19: 8 getConfig na jedno prihlásenie, každé ~2 s v 2-slotovej fronte.
+// Súbežné IDENTICKÉ getConfig (rovnaké URL) sa preto zlúčia do jednej požiadavky; ostatné
+// akcie (zápisy, čítania s vlastnou sémantikou) sa NEZLUČUJÚ. Ak sa zlučuje s ešte
+// nezačatou požiadavkou s nižšou prioritou, požiadavka sa povýši (nikdy nezníži).
+var _cfgInflight = {};
+var APP_PRIO_RANK = { boot: 3, critical: 2 };
+function appQueuedFetchJson(url, opts, timeoutMs, priority){
+  if(typeof url === 'string' && url.indexOf('action=getConfig&') !== -1){
+    var ex = _cfgInflight[url];
+    if(ex){
+      var qi = ex.job ? APP_REQUEST_QUEUE.items.indexOf(ex.job) : -1;
+      if(qi !== -1 && (APP_PRIO_RANK[priority] || 0) > (APP_PRIO_RANK[ex.job.prio] || 0)){
+        APP_REQUEST_QUEUE.items.splice(qi, 1);
+        ex.job.prio = priority;
+        appQueueInsert(ex.job);
+      }
+      return ex.p;
+    }
+    var rec = {};
+    rec.p = appQueuedFetchJsonRaw(url, opts, timeoutMs, priority, rec);
+    _cfgInflight[url] = rec;
+    var _clr = function(){ if(_cfgInflight[url] === rec) delete _cfgInflight[url]; };
+    rec.p.then(_clr, _clr);
+    return rec.p;
+  }
+  return appQueuedFetchJsonRaw(url, opts, timeoutMs, priority);
 }
 
 // Jednotný retry mechanizmus nad appQueuedFetchJson (F0, boot audit) — predtým
