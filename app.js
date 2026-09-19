@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.44';
+var APP_VERSION = '2.88.45';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -37924,9 +37924,94 @@ function nstLikesLineHtml(p){
   var clickable = names.length > 2;
   return '<div class="nst-likes' + (clickable ? ' is-click' : '') + '"' +
     (clickable ? ' onclick="nstToggleLikes(\'' + id.replace(/'/g, "\\'") + '\')"' : '') + '>' +
-    '<span class="nst-likes-ico">👍</span>'+nstAvatarStackHtml(ordered,3,'nst-like-avatar')+
+    nstRxEmoStackHtml(p)+nstAvatarStackHtml(ordered,3,'nst-like-avatar')+
     '<span class="nst-likes-txt">' + nstEsc(txt) + '</span></div>';
 }
+// ── REAKCIE (ako na Facebooku) — príspevky aj komentáre ──
+// Backend drží v stĺpci likes "login" (= 👍) alebo "login:kod"; `likes` ostáva zoznam loginov, `rx` mapa login→kód.
+var NST_RX = [
+  { k: 'like', e: '👍', l: 'Pomohlo' },
+  { k: 'love', e: '❤️', l: 'Super' },
+  { k: 'haha', e: '😂', l: 'Haha' },
+  { k: 'wow',  e: '😮', l: 'Wow' },
+  { k: 'sad',  e: '😢', l: 'Smutné' },
+  { k: 'clap', e: '👏', l: 'Bravo' }
+];
+function nstRxDef(k){ for (var i = 0; i < NST_RX.length; i++) if (NST_RX[i].k === k) return NST_RX[i]; return NST_RX[0]; }
+function nstRxMapOf(it){
+  var m = {};
+  (it.likes || []).forEach(function(u){ u = String(u || '').trim().toLowerCase(); if (u) m[u] = 'like'; });
+  var rx = it.rx || {};
+  Object.keys(rx).forEach(function(u){ m[String(u).toLowerCase()] = nstRxDef(String(rx[u] || '')).k; });
+  return m;
+}
+function nstRxMine(it){ return nstRxMapOf(it)[nstUser()] || ''; }
+// najčastejšie reakcie (max 3 emoji), pri rovnosti podľa poradia v NST_RX
+function nstRxEmoStackHtml(it){
+  var m = nstRxMapOf(it), cnt = {};
+  Object.keys(m).forEach(function(u){ cnt[m[u]] = (cnt[m[u]] || 0) + 1; });
+  var ks = NST_RX.map(function(d){ return d.k; }).filter(function(k){ return cnt[k]; })
+    .sort(function(a, b){ return cnt[b] - cnt[a]; }).slice(0, 3);
+  if (!ks.length) return '';
+  return '<span class="nst-emo-stack">' + ks.map(function(k){ return '<span class="nst-emo">' + nstRxDef(k).e + '</span>'; }).join('') + '</span>';
+}
+function nstRxPickerHtml(id){
+  if (String(NST.rxPick || '') !== String(id)) return '';
+  var it = nstFindItem(id); var mine = it ? nstRxMine(it) : '';
+  var idArg = "'" + String(id).replace(/'/g, "\\'") + "'";
+  return '<div class="nst-rxpick" role="menu">' + NST_RX.map(function(d){
+    return '<button type="button" class="nst-rxpick-b' + (mine === d.k ? ' on' : '') + '" title="' + d.l + '" aria-label="' + d.l + '" onclick="nstRx(' + idArg + ',\'' + d.k + '\')">' + d.e + '</button>';
+  }).join('') + '</div>';
+}
+function nstFindItem(id){
+  var out = null;
+  (NST.posts || []).forEach(function(p){
+    if (String(p.id) === String(id)) out = p;
+    (p.comments || []).forEach(function(c){ if (String(c.id) === String(id)) out = c; });
+  });
+  return out;
+}
+var _nstLpT = null;
+function nstRxDown(id){
+  nstRxCancel();
+  _nstLpT = setTimeout(function(){ _nstLpT = null; NST._lp = Date.now(); NST.rxPick = id; nstRenderList(); try { haptic('selection'); } catch(e){} }, 450);
+}
+function nstRxCancel(){ if (_nstLpT){ clearTimeout(_nstLpT); _nstLpT = null; } }
+function nstRxPicker(id){ NST.rxPick = (String(NST.rxPick || '') === String(id)) ? null : id; nstRenderList(); try { haptic('selection'); } catch(e){} }
+// klik: nemá reakciu → 👍; má → odoberie (dlhé podržanie / 😊 otvorí výber)
+function nstRxTap(id){
+  if (Date.now() - (NST._lp || 0) < 800) return;
+  var it = nstFindItem(id); if (!it) return;
+  var mine = nstRxMine(it);
+  nstRx(id, mine || 'like');
+}
+function nstRx(id, code){
+  var it = nstFindItem(id); if (!it) return;
+  var me = nstUser(); if (!me) return;
+  code = nstRxDef(code).k;
+  var on = nstRxMine(it) !== code;             // rovnaká reakcia druhýkrát = zrušenie
+  it.likes = (it.likes || []).filter(function(u){ return String(u || '').toLowerCase() !== me; });
+  it.rx = it.rx || {};
+  delete it.rx[me];
+  if (on){ it.likes.push(me); it.rx[me] = code; }
+  NST.rxPick = null;
+  nstSaveLocal(NST.posts);
+  nstRenderList();
+  try { haptic('selection'); } catch(e){}
+  nstSend({ action: 'nastenkaLike', id: id, on: on ? '1' : '0', rx: code });
+}
+// Malý riadok reakcií pod komentárom
+function nstCommentRxHtml(cm){
+  var id = String(cm.id || ''), idArg = "'" + id.replace(/'/g, "\\'") + "'";
+  var mine = nstRxMine(cm), def = mine ? nstRxDef(mine) : null;
+  var n = Object.keys(nstRxMapOf(cm)).length;
+  return '<div class="nst-crx">' +
+    '<button type="button" class="nst-crx-b' + (mine ? ' on' : '') + '" onclick="nstRxTap(' + idArg + ')" onpointerdown="nstRxDown(' + idArg + ')" onpointerup="nstRxCancel()" onpointerleave="nstRxCancel()" onpointercancel="nstRxCancel()" oncontextmenu="return false">' + (mine ? def.e + ' ' + def.l : 'Páči sa mi') + '</button>' +
+    '<button type="button" class="nst-crx-b nst-crx-more" onclick="nstRxPicker(' + idArg + ')" aria-label="Ďalšie reakcie">😊</button>' +
+    (n ? '<span class="nst-crx-sum">' + nstRxEmoStackHtml(cm) + '<span>' + n + '</span></span>' : '') +
+    '</div>' + nstRxPickerHtml(id);
+}
+
 function nstToggleLikes(id){ NST.likesOpen[id] = !NST.likesOpen[id]; nstRenderList(); }
 
 // Riadok nad tlačidlami: vľavo kto dal palec, vpravo koľko je odpovedí.
@@ -37962,6 +38047,7 @@ function nstPostHtml(p){
   var me = nstUser();
   var likes = p.likes || [];
   var iLike = likes.some(function(u){ return String(u || '').toLowerCase() === me; });
+  var mineRx = nstRxMine(p);
   var canDel = nstIsMgr() || String(p.rep || '').toLowerCase() === me;
   var canPin = nstIsMgr();
   var id = String(p.id || '');
@@ -38002,6 +38088,7 @@ function nstPostHtml(p){
         '<span class="nst-comment-who">' + nstEsc(cm.meno || cm.rep || '—') + '</span>' +
         '<span class="nst-comment-when">' + nstEsc(cwhen) + '</span>' + cDel + '</div>' +
       '<div class="nst-comment-txt">' + nstEsc(cm.text || '').replace(/\n/g, '<br>') + '</div>' +
+      nstCommentRxHtml(cm) +
     '</div>';
   }
 
@@ -38039,11 +38126,13 @@ function nstPostHtml(p){
     nstPollHtml(p) +
     nstMetaLineHtml(p) +
     '<div class="nst-actions">' +
-      '<button type="button" class="nst-act' + (iLike ? ' on' : '') + '" onclick="nstLike(' + idArg + ')">👍 <span>' + (likes.length || '') + '</span> Pomohlo</button>' +
+      '<button type="button" class="nst-act nst-rxbtn' + (mineRx ? ' on' : '') + '" onclick="nstRxTap(' + idArg + ')" onpointerdown="nstRxDown(' + idArg + ')" onpointerup="nstRxCancel()" onpointerleave="nstRxCancel()" onpointercancel="nstRxCancel()" oncontextmenu="return false">' + (mineRx ? nstRxDef(mineRx).e : '👍') + ' <span>' + (likes.length || '') + '</span> ' + (mineRx ? nstRxDef(mineRx).l : 'Pomohlo') + '</button>' +
+      '<button type="button" class="nst-act nst-act-more" onclick="nstRxPicker(' + idArg + ')" aria-label="Ďalšie reakcie" title="Ďalšie reakcie">😊</button>' +
       '<button type="button" class="nst-act' + (open ? ' on' : '') + '" onclick="nstFocusReply(' + idArg + ')">💬 Odpovedať</button>' +
       (canPin ? '<button type="button" class="nst-act nst-act-icon" onclick="nstPin(' + idArg + ',' + (nstPinned(p) ? 'false' : 'true') + ')" title="' + (nstPinned(p) ? 'Odopnúť' : 'Pripnúť navrch') + '">📌</button>' : '') +
       (canDel ? '<button type="button" class="nst-act nst-act-icon nst-act-del" onclick="nstDelete(' + idArg + ')" title="Zmazať">🗑</button>' : '') +
     '</div>' +
+    nstRxPickerHtml(id) +
     commentsHtml +
   '</div>';
 }
@@ -38134,18 +38223,7 @@ function nstToggleComments(id){
   try { haptic('selection'); } catch(e){}
   if (NST.open[id]){ var el = document.getElementById('nst-c-' + id); if (el) try { el.focus({ preventScroll: true }); } catch(e){} }
 }
-function nstLike(id){
-  var p = nstFindPost(id); if (!p) return;
-  var me = nstUser();
-  p.likes = p.likes || [];
-  var i = -1;
-  p.likes.forEach(function(u, ix){ if (String(u || '').toLowerCase() === me) i = ix; });
-  if (i >= 0) p.likes.splice(i, 1); else p.likes.push(me);
-  nstSaveLocal(NST.posts);
-  nstRenderList();
-  try { haptic('selection'); } catch(e){}
-  nstSend({ action: 'nastenkaLike', id: id, on: (i >= 0 ? '0' : '1') });
-}
+function nstLike(id){ nstRx(id, 'like'); }
 function nstPin(id, on){
   var p = nstFindPost(id); if (!p) return;
   p.pin = on ? '1' : '';
