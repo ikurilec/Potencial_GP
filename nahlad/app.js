@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.42';
+var APP_VERSION = '2.88.43';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -28580,6 +28580,17 @@ var PHARMA_STATE = {
 };
 
 var PHARMA_GRAF_STATE = { cache: {}, loading: {} };
+// Kto si pýta graf, kým ten istý ešte sťahuje niekto iný (napr. príprava prehľadu produktu na pozadí),
+// sa zaradí sem a dostane výsledok, keď dorazí. Predtým sa jeho callback ticho zahodil a graf
+// zostal navždy na „Načítavam trend…“ (nahlásené: „graf sa ani nenačíta“).
+var PHARMA_GRAF_WAITERS = {};
+function pharmaGrafAddWaiter(cacheKey, cb){ if (cb) (PHARMA_GRAF_WAITERS[cacheKey] = PHARMA_GRAF_WAITERS[cacheKey] || []).push(cb); }
+function pharmaGrafFlushWaiters(cacheKey, resp){
+  var w = PHARMA_GRAF_WAITERS[cacheKey];
+  if (!w) return;
+  delete PHARMA_GRAF_WAITERS[cacheKey];
+  w.forEach(function(cb){ try { cb(resp); } catch(e){} });
+}
 var PHARMA_OKRES_STATE = { cache: {}, loading: {}, current: null };
 
 // ── Leaderboard history localStorage SWR ─────────────────────────
@@ -29112,7 +29123,7 @@ function loadPharmaGrafData(code, oblast, callback) {
     if (callback) callback(PHARMA_GRAF_STATE.cache[cacheKey]);
     return;
   }
-  if (PHARMA_GRAF_STATE.loading[cacheKey]) return;
+  if (PHARMA_GRAF_STATE.loading[cacheKey]) { pharmaGrafAddWaiter(cacheKey, callback); return; }
 
   if (IS_DEV) {
     var mockEntry = MOCK_PHARMA_GRAF[code] || MOCK_PHARMA_GRAF['VID'];
@@ -29139,11 +29150,11 @@ function loadPharmaGrafData(code, oblast, callback) {
       }, function(err) { delete PHARMA_GRAF_STATE.loading[cacheKey]; throw err; });
     },
     maxAgeMs: DS_CACHE_MAX_AGE_MS,
-    onFresh: function(resp) { PHARMA_GRAF_STATE.cache[cacheKey] = resp; if (callback) callback(resp); },
+    onFresh: function(resp) { PHARMA_GRAF_STATE.cache[cacheKey] = resp; if (callback) callback(resp); pharmaGrafFlushWaiters(cacheKey, resp); },
     // Predtým sa pri zlyhaní fetchu nestalo NIČ — žiadny callback, žiadna chybová
     // hláška. fillGrafChart() po 6s len ticho skryl "Načítavam trend…" a graf sa
     // stratil bez vysvetlenia (nahlásené Ivanom: "v Goleme niekde nenačíta graf").
-    onError: function(){ if (callback) callback(null); }
+    onError: function(){ if (callback) callback(null); pharmaGrafFlushWaiters(cacheKey, null); }
   });
   if (r.data) {
     PHARMA_GRAF_STATE.cache[cacheKey] = r.data;
@@ -29153,7 +29164,7 @@ function loadPharmaGrafData(code, oblast, callback) {
 
 function loadPharmaGrafDataFresh(code, oblast, callback) {
   var cacheKey = pharmaGrafCacheKey(code, oblast);
-  if (PHARMA_GRAF_STATE.loading[cacheKey]) return;
+  if (PHARMA_GRAF_STATE.loading[cacheKey]) { pharmaGrafAddWaiter(cacheKey, callback); return; }
 
   if (IS_DEV) {
     var mockEntry = MOCK_PHARMA_GRAF[code] || MOCK_PHARMA_GRAF['VID'];
@@ -29177,11 +29188,11 @@ function loadPharmaGrafDataFresh(code, oblast, callback) {
         return resp;
       }, function(err) { delete PHARMA_GRAF_STATE.loading[cacheKey]; throw err; });
     },
-    onFresh: function(resp) { PHARMA_GRAF_STATE.cache[cacheKey] = resp; if (callback) callback(resp); },
+    onFresh: function(resp) { PHARMA_GRAF_STATE.cache[cacheKey] = resp; if (callback) callback(resp); pharmaGrafFlushWaiters(cacheKey, resp); },
     // Rovnaký bug ako v loadPharmaGrafData() pred opravou (2.87.16): bez
     // callback(null) tu ostane "Načítavam trend…" navždy, keď zlyhá aj RETRY
     // (fillGrafChart()'s retry() volá presne túto funkciu).
-    onError: function(){ delete PHARMA_GRAF_STATE.loading[cacheKey]; if (callback) callback(null); }
+    onError: function(){ delete PHARMA_GRAF_STATE.loading[cacheKey]; if (callback) callback(null); pharmaGrafFlushWaiters(cacheKey, null); }
   });
 }
 
