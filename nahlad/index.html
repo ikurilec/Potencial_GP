@@ -863,7 +863,7 @@
 <div class="footer">Intern&#253; n&#225;stroj pre medic&#237;nskych reprezentantov<br><span style="font-size:10px;color:#B0BAC4">Designed &amp; developed by Ivan Kurilec &middot; 2026</span></div>
 </div>
 
-<script src="dist/app.2000c2bb.js"></script>
+<script src="dist/app.8f9cfd70.js"></script>
 
 <!-- ── LOGOUT CONFIRM ── -->
 <div class="logout-overlay" id="logout-overlay">
@@ -1578,8 +1578,13 @@
     <div class="av-confirm-icon" id="lk-prompt-icon" style="background:linear-gradient(180deg,#DBEAFE,#BFDBFE)">💾</div>
     <div class="av-confirm-title" id="lk-prompt-title">Uložiť filter</div>
     <div class="av-confirm-sub" id="lk-prompt-sub">Zadaj názov, pod ktorým si filter uložíš.</div>
-    <input type="text" id="lk-prompt-input" class="lk-prompt-input" autocomplete="off" spellcheck="false"
+    <!-- Skryté meno účtu: správca hesiel (Google/iCloud) ponúka uložené heslo len k poľu hesla,
+         ktoré má vedľa seba pole s menom. Vypĺňa sa v lkPrompt() pri type 'password'. -->
+    <input type="text" id="lk-prompt-user" name="username" autocomplete="username" tabindex="-1" aria-hidden="true" readonly
+           style="position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none;border:0;padding:0">
+    <input type="text" id="lk-prompt-input" name="lk-prompt-input" class="lk-prompt-input" autocomplete="off" spellcheck="false"
            onkeydown="if(event.key==='Enter')lkPromptOk()" placeholder="Napr. Komárno – ponuka krému">
+    <button type="button" id="lk-prompt-fill-btn" style="display:none;margin-top:10px;width:100%;border:1.5px solid #BFDBFE;background:#EFF6FF;color:#1D4ED8;border-radius:11px;padding:10px 14px;font-size:14px;font-weight:700;font-family:var(--font-body)" onclick="lkPromptFillSaved()">🔑 Vyplniť uložené heslo</button>
     <div class="av-confirm-btns" style="margin-top:18px">
       <button type="button" class="av-confirm-btn av-confirm-cancel" id="lk-prompt-cancel-btn" onclick="lkPromptClose()">Zrušiť</button>
       <button type="button" class="av-confirm-btn lk-prompt-ok" id="lk-prompt-ok-btn" onclick="lkPromptOk()">Uložiť</button>

@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.39';
+var APP_VERSION = '2.88.40';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -35866,10 +35866,34 @@ function lkPrompt(title, sub, placeholder, prefill, onOk, type) {
     inp.type = isPwd ? 'password' : 'text';
     inp.autocomplete = isPwd ? 'current-password' : 'off';
   }
+  // Heslo z telefónu (správca hesiel): skryté meno účtu + tlačidlo „Vyplniť uložené heslo“.
+  var puEl = document.getElementById('lk-prompt-user');
+  var fillBtn = document.getElementById('lk-prompt-fill-btn');
+  if (puEl) { try { var _ps = getSession(); puEl.value = (isPwd && _ps && _ps.username) ? _ps.username : ''; } catch(e) { puEl.value = ''; } }
+  if (fillBtn) fillBtn.style.display = (isPwd && window.PasswordCredential && navigator.credentials && navigator.credentials.get) ? 'block' : 'none';
   var ov = document.getElementById('lk-prompt-overlay'); if (ov) ov.classList.add('show');
   setTimeout(function() { if (inp) { inp.focus(); inp.select(); } }, 80);
 }
+// Vyplní heslo uložené v správcovi hesiel telefónu (Google Password Manager — odomkne ho odtlačok/tvár/PIN).
+// Použije sa len uložené heslo PRIHLÁSENÉHO účtu, aby sa nepoužil cudzí účet.
+function lkPromptFillSaved() {
+  try {
+    if (!(window.PasswordCredential && navigator.credentials && navigator.credentials.get)) return;
+    var s = getSession(), me = s && s.username ? String(s.username).toLowerCase() : '';
+    navigator.credentials.get({ password: true, mediation: 'required' }).then(function(c) {
+      if (!c || c.type !== 'password') return;
+      if (me && String(c.id || '').toLowerCase() !== me) {
+        try { mgrShowToast('Uložené heslo patrí inému účtu (' + c.id + '). Vyber účet ' + me + '.'); } catch(e) {}
+        return;
+      }
+      var inp = document.getElementById('lk-prompt-input');
+      if (inp && !inp.disabled) { inp.value = c.password || ''; inp.focus(); }
+    }).catch(function() {});
+  } catch(e) {}
+}
 function lkPromptClose() {
+  var pu = document.getElementById('lk-prompt-user'); if (pu) pu.value = '';
+  var fb = document.getElementById('lk-prompt-fill-btn'); if (fb) fb.style.display = 'none';
   var ov = document.getElementById('lk-prompt-overlay'); if (ov) ov.classList.remove('show');
   var inp = document.getElementById('lk-prompt-input');
   if (inp) { inp.type = 'text'; inp.autocomplete = 'off'; inp.value = ''; inp.disabled = false; }   // nenechaj heslo v DOM po zatvorení
