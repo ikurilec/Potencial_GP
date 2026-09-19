@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.33';
+var APP_VERSION = '2.88.35';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -6035,7 +6035,7 @@ function viacRender() {
       '<div class="viac-me-av">' + av + '</div>' +
       '<div class="viac-me-txt">' +
         '<div class="viac-me-name">' + appEsc(meno) + '</div>' +
-        '<div class="viac-me-sub">' + appEsc(sess.region || 'Gedeon Richter Slovakia') + '</div>' +
+        '<div class="viac-me-sub">' + appEsc(sess.region || 'Satori') + '</div>' +
       '</div>' +
       '<button type="button" class="viac-me-btn" onclick="openSettings()" aria-label="Nastavenia">›</button>';
   }
@@ -19964,7 +19964,7 @@ var WN_HISTORY = [
   {
     key: 'potencial_vl_wn_v2_19',
     rep: {
-      icon: '👆', title: 'Posúvaj prstom', sub: 'v2.19 · Gedeon Richter Slovakia',
+      icon: '👆', title: 'Posúvaj prstom', sub: 'v2.19',
       items: [
         { icon: '↔️', bg: '#EFF6FF', title: 'Swipe medzi kvartálmi', desc: 'V Plnení môžeš prejsť prstom doľava/doprava medzi Q1, Q2, Q3, Q4 — taby ostávajú ako skratky.' },
         { icon: '◀️', bg: '#F0FDF4', title: 'Swipe-back zo zľava', desc: 'V plnoobrazovkových paneloch (História, Rebríček, Plnenie, Trhový podiel) potiahni od ľavej hrany doprava — zatvorí sa.' },
@@ -19973,7 +19973,7 @@ var WN_HISTORY = [
       ]
     },
     mgr: {
-      icon: '👆', title: 'Posúvaj prstom', sub: 'v2.19 · Gedeon Richter Slovakia',
+      icon: '👆', title: 'Posúvaj prstom', sub: 'v2.19',
       items: [
         { icon: '↔️', bg: '#EFF6FF', title: 'Swipe medzi kvartálmi', desc: 'V Plnení môžeš prejsť prstom doľava/doprava medzi Q1–Q4. V Trhový podiel sheete swipe medzi subtabmi (Tablety/Sáčky/Krém).' },
         { icon: '◀️', bg: '#F0FDF4', title: 'Swipe-back zo zľava', desc: 'V plnoobrazovkových paneloch (Plnenie, Trhový podiel, História, Rebríček, detail reprezentanta) potiahni od ľavej hrany doprava — zatvorí sa.' },
@@ -19987,7 +19987,7 @@ var WN_HISTORY = [
   {
     key: 'potencial_vl_wn_v2_20',
     rep: {
-      icon: '🎨', title: 'Tvoj vlastný avatar', sub: 'v2.20 · Gedeon Richter Slovakia',
+      icon: '🎨', title: 'Tvoj vlastný avatar', sub: 'v2.20',
       items: [
         { icon: '🎨', bg: '#EFF6FF', title: 'Vyber si vzhľad', desc: 'Vpravo hore pri Odhlásiť ťukni na ikonu — otvorí sa designér kde si vyberieš vlasy, oči, ústa, pleť aj doplnky.' },
         { icon: '👤', bg: '#F0FDF4', title: 'Muž / Žena', desc: 'Appka pozná tvoje pohlavie a predvyplní správne vlasy. Kedykoľvek vieš prepnúť.' },
@@ -19996,7 +19996,7 @@ var WN_HISTORY = [
       ]
     },
     mgr: {
-      icon: '🎨', title: 'Avatary v aplikácii', sub: 'v2.20 · Gedeon Richter Slovakia',
+      icon: '🎨', title: 'Avatary v aplikácii', sub: 'v2.20',
       items: [
         { icon: '🎨', bg: '#EFF6FF', title: 'Vlastný avatar', desc: 'Vpravo hore pri Odhlásiť ťukni na ikonu — otvor designér pre svoj avatar.' },
         { icon: '👥', bg: '#F0FDF4', title: 'Avatary reprezentantov', desc: 'V rebríčku, Plnení aj zozname reprezentantov uvidíš ich avatary. Kto si nenastavil → iniciály ako predtým.' },
@@ -20009,7 +20009,7 @@ var WN_HISTORY = [
   {
     key: 'potencial_vl_wn_v2_21_31_action_summary',
     rep: {
-      icon: '⚡', title: 'Novinka v Plnení', sub: 'v2.21.31 · Gedeon Richter Slovakia',
+      icon: '⚡', title: 'Novinka v Plnení', sub: 'v2.21.31',
       items: [
         { icon: '⚡', bg: '#EFF6FF', title: 'Akčný súhrn', desc: 'V Plnení pribudol nový panel, ktorý ukáže, ktorý produkt sa oplatí riešiť ako prvý.' },
         { icon: '📊', bg: '#F0FDF4', title: 'Počíta váhu produktu', desc: 'Odporúčanie zohľadňuje tempo predaja, chýbajúce €, aj to, koľko produkt tvorí z tvojho celkového plánu.' },
@@ -20018,7 +20018,7 @@ var WN_HISTORY = [
       ]
     },
     mgr: {
-      icon: '⚡', title: 'Novinka v detaile reprezentanta', sub: 'v2.21.31 · Gedeon Richter Slovakia',
+      icon: '⚡', title: 'Novinka v detaile reprezentanta', sub: 'v2.21.31',
       items: [
         { icon: '⚡', bg: '#EFF6FF', title: 'Na čo sa zamerať', desc: 'V Plnení reprezentanta pribudol panel, ktorý rýchlo ukáže, ktorý produkt má najväčší dopad na jeho celkový plán.' },
         { icon: '📊', bg: '#F0FDF4', title: 'Váha produktu v pláne', desc: 'Odporúčanie nepozerá len na %, ale aj na chýbajúce € a podiel produktu v celkovom pláne reprezentanta.' },
@@ -20031,7 +20031,7 @@ var WN_HISTORY = [
   {
     key: 'potencial_vl_wn_v2_21_product_signal',
     rep: {
-      icon: '📌', title: 'Aktuálny signál produktu', sub: 'Gedeon Richter Slovakia',
+      icon: '📌', title: 'Aktuálny signál produktu', sub: 'Satori',
       items: [
         { icon: '📌', bg: '#EFF6FF', title: 'Stručné zhrnutie pri produkte', desc: 'Do Plnenia pribudol prehľad, ktorý pri každom produkte ukáže, čo je práve obchodne dôležité.' },
         { icon: '🎯', bg: '#F0FDF4', title: 'Zamerané na terén', desc: 'Signál berie do úvahy predikciu, váhu produktu v pláne, trhový podiel, okresy, konkurenciu aj veľkosť trhu.' },
@@ -20040,7 +20040,7 @@ var WN_HISTORY = [
       ]
     },
     mgr: {
-      icon: '📌', title: 'Aktuálny signál produktu', sub: 'Gedeon Richter Slovakia',
+      icon: '📌', title: 'Aktuálny signál produktu', sub: 'Satori',
       items: [
         { icon: '📌', bg: '#EFF6FF', title: 'Stručné zhrnutie pri produkte', desc: 'V detaile reprezentanta pribudol prehľad, ktorý pri každom produkte ukáže najdôležitejší obchodný signál.' },
         { icon: '🎯', bg: '#F0FDF4', title: 'Zamerané na výkon v teréne', desc: 'Signál zohľadňuje predikciu, váhu produktu v pláne, trhový podiel, okresy, konkurenciu aj veľkosť trhu.' },
@@ -20053,7 +20053,7 @@ var WN_HISTORY = [
   {
     key: 'potencial_vl_wn_v2_25_nastavenia',
     rep: {
-      icon: '✨', title: 'Nový vzhľad a Nastavenia', sub: 'v2.25 · Gedeon Richter Slovakia',
+      icon: '✨', title: 'Nový vzhľad a Nastavenia', sub: 'v2.25',
       items: [
         { icon: '⚙️', bg: '#EFF6FF', title: 'Nastavenia na jednom mieste', desc: 'Vpravo hore nájdeš ⚙️ Nastavenia — úprava avatara, upozornenia, čistenie pamäte aj odhlásenie pohromade.' },
         { icon: '🧭', bg: '#F0FDF4', title: 'Jednoduchšie prepínanie medzi sekciami', desc: 'Lišta so záložkami (Formulár, História, Rebríček, Plnenie, Lekárne) je teraz vždy hore. Prepneš sa jedným ťuknutím a Formulár je plnohodnotná záložka.' },
@@ -20062,7 +20062,7 @@ var WN_HISTORY = [
       ]
     },
     mgr: {
-      icon: '✨', title: 'Nový vzhľad a Nastavenia', sub: 'v2.25 · Gedeon Richter Slovakia',
+      icon: '✨', title: 'Nový vzhľad a Nastavenia', sub: 'v2.25',
       items: [
         { icon: '⚙️', bg: '#EFF6FF', title: 'Nastavenia na jednom mieste', desc: 'Vpravo hore nájdeš ⚙️ Nastavenia — úprava avatara, upozornenia, čistenie pamäte aj odhlásenie pohromade.' },
         { icon: '🧭', bg: '#F0FDF4', title: 'Jednoduchšie prepínanie medzi sekciami', desc: 'Lišta so záložkami (Formulár, História, Rebríček, Plnenie, Lekárne) je teraz vždy hore. Prepneš sa jedným ťuknutím a Formulár je plnohodnotná záložka.' },
@@ -20076,13 +20076,13 @@ var WN_HISTORY = [
     key: 'potencial_vl_wn_v2_29_17_ms_picker_abc',
     line: 'gyn',
     rep: {
-      icon: '🔤', title: 'Konkurenti podľa abecedy', sub: 'v2.29.17 · Gedeon Richter Slovakia',
+      icon: '🔤', title: 'Konkurenti podľa abecedy', sub: 'v2.29.17',
       items: [
         { icon: '🔤', bg: '#EFF6FF', title: 'Zoradené abecedne', desc: 'V Trhovom podiele po ťuknutí na ceruzku (✎) — pri celom teritóriu aj pri okresoch — sú konkurenti vo výbere zoradení podľa abecedy, takže konkrétneho ľahšie nájdeš a zaškrtneš.' }
       ]
     },
     mgr: {
-      icon: '🔤', title: 'Konkurenti podľa abecedy', sub: 'v2.29.17 · Gedeon Richter Slovakia',
+      icon: '🔤', title: 'Konkurenti podľa abecedy', sub: 'v2.29.17',
       items: [
         { icon: '🔤', bg: '#EFF6FF', title: 'Zoradené abecedne', desc: 'V Trhovom podiele po ťuknutí na ceruzku (✎) — pri celom teritóriu aj pri okresoch — sú konkurenti vo výbere zoradení podľa abecedy. Ľahšie nájdeš a zaškrtneš konkrétneho konkurenta.' }
       ]
@@ -20093,7 +20093,7 @@ var WN_HISTORY = [
     key: 'potencial_vl_wn_v2_30_kalendar',
     line: 'gp',
     rep: {
-      icon: '📅', title: 'Nový Kalendár', sub: 'v2.30 · Gedeon Richter Slovakia',
+      icon: '📅', title: 'Nový Kalendár', sub: 'v2.30',
       items: [
         { icon: '📅', bg: '#EFF6FF', title: 'Tímový kalendár', desc: 'Pridaj si dovolenku, paragraf, OČR, administratívu, náhradné voľno aj vlastné poznámky. Klikni na deň → Pridať udalosť.' },
         { icon: '🏖️', bg: '#FFF7ED', title: 'Schvaľovanie absencií', desc: 'Keď zadáš dovolenku, administratívu alebo náhradné voľno, žiadosť ide tvojej priradenej schvaľujúcej osobe na schválenie. Kým ju neschváli, svieti ako „čaká"; po schválení ju vidí celý tím. Paragraf a OČR schválenie nepotrebujú. Schvaľovanie emailom stále platí a je nadradené aplikácii.' },
@@ -20104,7 +20104,7 @@ var WN_HISTORY = [
       ]
     },
     mgr: {
-      icon: '📅', title: 'Kalendár + schvaľovanie', sub: 'v2.30 · Gedeon Richter Slovakia',
+      icon: '📅', title: 'Kalendár + schvaľovanie', sub: 'v2.30',
       items: [
         { icon: '📅', bg: '#EFF6FF', title: 'Tímový kalendár', desc: 'Kongres, míting, tréning, webinár, cycle meeting, uzávierka, poznámka aj absencie tímu na jednom mieste. Pri zakladaní udalosti zvolíš, kto ju uvidí — konkrétni ľudia alebo celý tím.' },
         { icon: '✅', bg: '#F0FDF4', title: 'Schvaľovanie absencií', desc: 'Žiadosti o dovolenku, administratívu a náhradné voľno od reprezentantov schvaľuje priradená schvaľujúca osoba podľa nastavenia v systéme. Paragraf a OČR sa neschvaľujú. Schvaľovanie emailom stále platí a je nadradené aplikácii.' },
@@ -20119,7 +20119,7 @@ var WN_HISTORY = [
     key: 'potencial_vl_wn_v2_37_lekarne_hladanie',
     line: 'gp',
     rep: {
-      icon: '🔍', title: 'Lepšie hľadanie v Lekárňach', sub: 'v2.37 · Gedeon Richter Slovakia',
+      icon: '🔍', title: 'Lepšie hľadanie v Lekárňach', sub: 'v2.37',
       items: [
         { icon: '💊', bg: '#EFF6FF', title: 'Hľadaj aj podľa produktu', desc: 'V záložke Lekárne stačí napísať produkt — napr. „vido" — a appka ti vypíše všetky lekárne, kde išiel predaj daného produktu (Vidonorm). Funguje pre celé portfólio.' },
         { icon: '✨', bg: '#F0FDF4', title: 'Bez diakritiky', desc: 'Nemusíš riešiť mäkčene a dĺžne. Napíšeš „dunajska" a nájde aj „Dunajská", „kosice" nájde „Košice".' },
@@ -20127,7 +20127,7 @@ var WN_HISTORY = [
       ]
     },
     mgr: {
-      icon: '🔍', title: 'Lepšie hľadanie v Lekárňach', sub: 'v2.37 · Gedeon Richter Slovakia',
+      icon: '🔍', title: 'Lepšie hľadanie v Lekárňach', sub: 'v2.37',
       items: [
         { icon: '💊', bg: '#EFF6FF', title: 'Hľadaj aj podľa produktu', desc: 'V Lekárňach reprezentanta stačí napísať produkt — napr. „vido" — a vypíšu sa všetky lekárne, kde išiel predaj daného produktu (Vidonorm). Funguje pre celé portfólio.' },
         { icon: '✨', bg: '#F0FDF4', title: 'Bez diakritiky', desc: 'Mäkčene a dĺžne netreba riešiť — „dunajska" nájde „Dunajská", „kosice" nájde „Košice".' },
@@ -20140,7 +20140,7 @@ var WN_HISTORY = [
     key: 'potencial_vl_wn_v2_40_lekarne_filter',
     line: 'gp',
     rep: {
-      icon: '⚙️', title: 'Filtre v Lekárňach', sub: 'v2.40 · Gedeon Richter Slovakia',
+      icon: '⚙️', title: 'Filtre v Lekárňach', sub: 'v2.40',
       items: [
         { icon: '⚙️', bg: '#EFF6FF', title: 'Filtre v Lekárňach', desc: 'Vedľa hľadania pribudlo tlačidlo Filtre. Lekárne si prefiltruješ naraz podľa okresu, mesta, produktov, stavu a ďalších kritérií.' },
         { icon: '💊', bg: '#F0FDF4', title: 'Podľa produktu a počtu', desc: 'Navolíš si, ktorý produkt lekáreň odoberá či neodoberá a koľko kusov — priemer za 3 mesiace, alebo aspoň raz za 2 roky.' },
@@ -20150,7 +20150,7 @@ var WN_HISTORY = [
       ]
     },
     mgr: {
-      icon: '⚙️', title: 'Filtre v Lekárňach', sub: 'v2.40 · Gedeon Richter Slovakia',
+      icon: '⚙️', title: 'Filtre v Lekárňach', sub: 'v2.40',
       items: [
         { icon: '⚙️', bg: '#EFF6FF', title: 'Filtre v Lekárňach repa', desc: 'V detaile reprezentanta → Lekárne pribudlo tlačidlo Filtre — lekárne repa prefiltruješ podľa okresu, mesta, produktov, trendu a ďalších.' },
         { icon: '💊', bg: '#F0FDF4', title: 'Produkt a počet kusov', desc: 'Vyfiltruješ lekárne podľa toho, čo odoberajú či neodoberajú a v akom množstve (priemer 3 mes. alebo aspoň raz za 2 roky).' },
@@ -20166,7 +20166,7 @@ var WN_HISTORY = [
     line: 'gp',
     golemOnly: true,
     rep: {
-      icon: '📍', title: 'Nová záložka Okresy', sub: 'v2.45 · Gedeon Richter Slovakia',
+      icon: '📍', title: 'Nová záložka Okresy', sub: 'v2.45',
       items: [
         { icon: '📍', bg: '#EFF6FF', title: 'Celý okres na jednom mieste', desc: 'Pribudla záložka Okresy — ťukni na okres a rozbalí sa so všetkými produktami naraz. Už sa nemusíš vracať späť pri každom produkte.' },
         { icon: '📊', bg: '#F0FDF4', title: 'Ako sa ti darí', desc: 'Pri každom produkte hneď vidíš svoj trhový podiel, trend (▲/▼), počty pacientov (tvoji/celkovo) aj top konkurenta v okrese.' },
@@ -20175,7 +20175,7 @@ var WN_HISTORY = [
       ]
     },
     mgr: {
-      icon: '📍', title: 'Okresy v detaile reprezentanta', sub: 'v2.45 · Gedeon Richter Slovakia',
+      icon: '📍', title: 'Okresy v detaile reprezentanta', sub: 'v2.45',
       items: [
         { icon: '📍', bg: '#EFF6FF', title: 'Nový sub-tab Okresy', desc: 'V detaile reprezentanta pribudol sub-tab Okresy — vidíš, ako sa mu darí po okresoch naprieč všetkými produktami, na jednom mieste.' },
         { icon: '📊', bg: '#F0FDF4', title: 'Prehľad po okresoch', desc: 'Pri každom produkte trhový podiel, trend, pacienti (jeho/celkovo) aj top konkurent v danom okrese.' },
@@ -20190,7 +20190,7 @@ var WN_HISTORY = [
     line: 'gyn',
     mgrOnly: true,
     mgr: {
-      icon: '🎂', title: 'Meniny a narodeniny v tíme', sub: 'v2.46 · Gedeon Richter Slovakia',
+      icon: '🎂', title: 'Meniny a narodeniny v tíme', sub: 'v2.46',
       items: [
         { icon: '⚙️', bg: '#EFF6FF', title: 'Nový prepínač v Nastaveniach', desc: 'V ⚙️ Nastaveniach → Notifikácie pribudol prepínač „Meniny a narodeniny v tíme" — je vypnutý, kým si ho sám nezapneš.' },
         { icon: '🌙', bg: '#F0FDF4', title: 'Push o polnoci', desc: 'Keď si ho zapneš, o polnoci ti príde push upozornenie, ak má v ten deň niekto z tímu meniny alebo narodeniny.' },
@@ -20204,7 +20204,7 @@ var WN_HISTORY = [
     line: 'gp',
     golemOnly: true,
     rep: {
-      icon: '📈', title: 'Sleduj svoj potenciál', sub: 'v2.48.0 · Gedeon Richter Slovakia',
+      icon: '📈', title: 'Sleduj svoj potenciál', sub: 'v2.48.0',
       items: [
         { icon: '🔄', bg: '#EFF6FF', title: 'Aktualizuj záznam lekára', desc: 'V Histórii otvor lekára a klikni „Aktualizovať záznam". Uprav počty podľa aktuálnej reality — kapitácia, Aflamil, Suprax, Vidonorm, Cavinton.' },
         { icon: '📈', bg: '#F0FDF4', title: 'Vývoj tvojho teritória', desc: 'Na tabe „🩺 GP\'s" navrchu vidíš, ako sa vyvíja potenciál tvojho teritória od začiatku, a aktuálny mesačný súhrn po produktoch.' },
@@ -20213,7 +20213,7 @@ var WN_HISTORY = [
       ]
     },
     mgr: {
-      icon: '🩺', title: 'Vývoj potenciálu Golemu', sub: 'v2.48.0 · Gedeon Richter Slovakia',
+      icon: '🩺', title: 'Vývoj potenciálu Golemu', sub: 'v2.48.0',
       items: [
         { icon: '🩺', bg: '#EFF6FF', title: 'Celá línia Golem', desc: 'Na tabe „GP\'s" vidíš vývoj celej línie: priemer potenciálu na jedného lekára (od začiatku po teraz), počet aktualizovaných lekárov a rozpad po produktoch.' },
         { icon: '🎯', bg: '#F0FDF4', title: 'Reprezentant oproti línii', desc: 'Klikni na repa → uvidíš, kde stojí voči priemeru línie (na lekára), jeho vývoj od začiatku a aktuálny mesačný súhrn po produktoch.' },
@@ -20227,7 +20227,7 @@ var WN_HISTORY = [
     key: 'potencial_vl_wn_v2_56',
     golemOnly: true,
     rep: {
-      icon: '🩺', title: 'Nové: záložka Lekári', sub: 'v2.56.0 · Gedeon Richter Slovakia',
+      icon: '🩺', title: 'Nové: záložka Lekári', sub: 'v2.56.0',
       items: [
         { icon: '🩺', bg: '#EFF6FF', title: 'História je teraz Lekári', desc: 'Tvoja záložka „História" sa volá Lekári. Nájdeš tam všetkých svojich lekárov ako doteraz, len prehľadnejšie.' },
         { icon: '💡', bg: '#F0FDF4', title: 'Príležitosti na prvý pohľad', desc: 'Pri každom lekárovi je štítok, kde sa oplatí zabrať: 💎 veľká rezerva, 📈 odporúčané zvýšiť, ➖ nepíše niektorý produkt, 🔍 nezistený potenciál.' },
@@ -20237,7 +20237,7 @@ var WN_HISTORY = [
       ]
     },
     mgr: {
-      icon: '🩺', title: 'Nové: záložka Lekári', sub: 'v2.56.0 · Gedeon Richter Slovakia',
+      icon: '🩺', title: 'Nové: záložka Lekári', sub: 'v2.56.0',
       items: [
         { icon: '🩺', bg: '#EFF6FF', title: 'Návštevy sú teraz Lekári', desc: 'Pri každom repovi vidíš jeho zoznam lekárov, prehľadnejšie.' },
         { icon: '💡', bg: '#F0FDF4', title: 'Kde má rep príležitosti', desc: 'Pri každom lekárovi štítok: 💎 rezerva, 📈 zvýšiť, ➖ chýba produkt, 🔍 nezistený potenciál. Ideálne na koučing — vidíš, kde môže rep rásť.' },
@@ -20251,7 +20251,7 @@ var WN_HISTORY = [
   {
     key: 'potencial_vl_wn_v2_67',
     rep: {
-      icon: '🔍', title: 'Nájdeš čokoľvek naraz', sub: 'v2.67.0 · Gedeon Richter Slovakia',
+      icon: '🔍', title: 'Nájdeš čokoľvek naraz', sub: 'v2.67.0',
       items: [
         { icon: '🔍', bg: '#EFF6FF', title: 'Jedno pole na všetko', desc: 'Vpravo dole máš nové tlačidlo 🔍. Nájde lekára, lekáreň, okres, produkt, udalosť v kalendári aj samotnú záložku — nemusíš sa preklikávať appkou.' },
         { icon: '✍️', bg: '#F0FDF4', title: 'Píš ako ti napadne', desc: 'Diakritiku riešiť nemusíš — „zigray" nájde Žigraya. A stačí význam: napíš „dovolenka" a ponúkne ti Kalendár.' },
@@ -20261,7 +20261,7 @@ var WN_HISTORY = [
       ]
     },
     mgr: {
-      icon: '🔍', title: 'Celý tím na jedno napísanie', sub: 'v2.67.0 · Gedeon Richter Slovakia',
+      icon: '🔍', title: 'Celý tím na jedno napísanie', sub: 'v2.67.0',
       items: [
         { icon: '🔍', bg: '#EFF6FF', title: 'Hľadaj v celej appke', desc: 'Nové tlačidlo 🔍 vpravo dole, na počítači aj skratka Ctrl/Cmd + K. Nájde reprezentanta, lekára, lekáreň, okres, produkt aj udalosť v kalendári.' },
         { icon: '👤', bg: '#F0FDF4', title: 'Napíš meno reprezentanta', desc: 'Rovno ti ponúkne, kam pri ňom ísť — Lekári, Plnenie, Lekárne, Okresy a ak máš záložku Reporty, aj jeho Report. Bez hľadania v zozname.' },
@@ -20275,7 +20275,7 @@ var WN_HISTORY = [
   {
     key: 'potencial_vl_wn_v2_75_nastenka',
     rep: {
-      icon: '📌', title: 'Nové: Nástenka', sub: 'v2.75.0 · Gedeon Richter Slovakia',
+      icon: '📌', title: 'Nové: Nástenka', sub: 'v2.75.0',
       items: [
         { icon: '📌', bg: '#EFF6FF', title: 'Zdieľajte medzi sebou', desc: 'Pribudla záložka Nástenka — spoločná pre celú tvoju líniu. Čo tam napíšeš, vidia hneď všetci kolegovia aj manažér.' },
         { icon: '🔥', bg: '#FEF2F2', title: 'Čo robí konkurencia', desc: 'Napíš, čo konkurencia sľubuje lekárom, akú námietku si počul a ako si ju zvládol, alebo čo ti u lekára zabralo. Ostatní sa to dozvedia skôr, než na to nabehnú sami.' },
@@ -20285,7 +20285,7 @@ var WN_HISTORY = [
       ]
     },
     mgr: {
-      icon: '📌', title: 'Nové: Nástenka', sub: 'v2.75.0 · Gedeon Richter Slovakia',
+      icon: '📌', title: 'Nové: Nástenka', sub: 'v2.75.0',
       items: [
         { icon: '📌', bg: '#EFF6FF', title: 'Prečítaš si terén', desc: 'Nová záložka Nástenka — tvoji repi si tam zdieľajú, čo robí konkurencia, aké námietky dostávajú a čo im zabralo. Vidíš to všetko na jednom mieste.' },
         { icon: '📢', bg: '#FFFBEB', title: 'Oznam pre celú líniu', desc: 'Kategória „Dôležité“ je len pre teba — príspevok sa pripne navrch nástenky a všetkým v línii príde notifikácia.' },
@@ -20443,9 +20443,16 @@ function wnClose(){
 // ── Satori rebrand overlay ──
 var SATORI_KEY = 'satori_rebrand_v1';
 
+// Starý „rebrand" uvítací overlay je vyradený — na novom zariadení sa namiesto neho (a namiesto
+// celého backlogu „Čo je nové") zobrazí nový Satori sprievodca (satoriGuideSchedule). Funkcia
+// zostáva, lebo ju volá kaskáda po prihlásení: pri prvom prihlásení na zariadení označí WN
+// backlog za videný, uloží SATORI_KEY a vráti false → kaskáda pokračuje bez starého tutoriálu.
 function satoriShouldShow() {
-  if (IS_DEV || window.location.hostname === 'localhost') return true;
-  try { return !localStorage.getItem(SATORI_KEY); } catch(e) { return false; }
+  try {
+    wnSuppressBacklogForFirstLogin();
+    if (!localStorage.getItem(SATORI_KEY)) localStorage.setItem(SATORI_KEY, '1');
+  } catch(e) {}
+  return false;
 }
 
 function satoriShow() {
@@ -23132,7 +23139,7 @@ function lbRender(){
     var lastQ2 = lbLastCompletedQ();
     if(sub2) {
       var _st = appDataStampText('predaje');
-      sub2.textContent = 'Gedeon Richter Slovakia \u00b7 ' + (lastQ2 >= 1 ? 'Q' + lastQ2 + ' ' + (new Date()).getFullYear() : '')
+      sub2.textContent = 'Satori \u00b7 ' + (lastQ2 >= 1 ? 'Q' + lastQ2 + ' ' + (new Date()).getFullYear() : '')
                        + (_st ? ' \u00b7 ' + _st : '');
     }
     lbRenderPlnenie(body);
@@ -23140,7 +23147,7 @@ function lbRender(){
   }
 
   var sub = document.getElementById('lb-hdr-sub');
-  if(sub) sub.textContent = 'Gedeon Richter Slovakia \u00b7 ' + lbPeriodLabel();
+  if(sub) sub.textContent = 'Satori \u00b7 ' + lbPeriodLabel();
 
   if(!LB_STATE.data){
     body.innerHTML = skelLb();
@@ -31198,7 +31205,7 @@ function rptCss() {
 function rptFooterHtml() {
   var now = new Date();
   var d = now.getDate() + '. ' + (now.getMonth()+1) + '. ' + now.getFullYear();
-  return '<div class="rpt-footer"><div class="rpt-footer-brand">Gedeon Richter Slovakia s.r.o.</div><div class="rpt-footer-date">Vygenerované: ' + d + '</div></div>';
+  return '<div class="rpt-footer"><div class="rpt-footer-brand">Satori</div><div class="rpt-footer-date">Vygenerované: ' + d + '</div></div>';
 }
 
 // ── Segment row helpers ──
@@ -33192,7 +33199,7 @@ function rptBuildRepHtml(username) {
 
   var header = '<div class="rpt-header">' +
     '<div class="rpt-header-top">' +
-      '<div><div class="rpt-brand">Gedeon Richter Slovakia · Potenciál GP</div>' +
+      '<div><div class="rpt-brand">Satori · Potenciál GP</div>' +
       '<div class="rpt-rep-name">' + repName + '</div>' +
       '<div class="rpt-rep-region">Región: ' + region + ' · ' + groupLbl + '</div></div>' +
       '<div class="rpt-period-badge">' +
@@ -33369,7 +33376,7 @@ function rptBuildAmHtml(isWest) {
 
   var header = '<div class="rpt-header">' +
     '<div class="rpt-header-top">' +
-      '<div><div class="rpt-brand">Gedeon Richter Slovakia · Potenciál GP</div>' +
+      '<div><div class="rpt-brand">Satori · Potenciál GP</div>' +
       '<div class="rpt-rep-name">AM ' + label + ' — Súhrnný report</div>' +
       '<div class="rpt-rep-region">Región: ' + label + ' · ' + reps.length + ' reprezentantov</div></div>' +
       '<div class="rpt-period-badge"><div class="rpt-period-month">' + p.labelCap + '</div>' +
@@ -33501,7 +33508,7 @@ function rptBuildMgmtHtml() {
 
   var header = '<div class="rpt-header">' +
     '<div class="rpt-header-top">' +
-      '<div><div class="rpt-brand">Gedeon Richter Slovakia · Potenciál GP</div>' +
+      '<div><div class="rpt-brand">Satori · Potenciál GP</div>' +
       '<div class="rpt-rep-name">Management — Slovensko</div>' +
       '<div class="rpt-rep-region">Admin / Boss / PM / BUM</div></div>' +
       '<div class="rpt-period-badge"><div class="rpt-period-month">' + p.labelCap + '</div>' +
@@ -33727,7 +33734,7 @@ function downloadAllReportsPdf() {
     // JSON.stringify + escape script-closing tag aby HTML parser neskrachoval
     var hubJson = JSON.stringify(hubList).replace(/<\/script/gi, '<\\/script');
     var combined = '<!DOCTYPE html><html><head>' +
-      '<meta charset="UTF-8"><meta name="viewport" content="width=794"><title>Reporty — Gedeon Richter</title>' +
+      '<meta charset="UTF-8"><meta name="viewport" content="width=794"><title>Reporty — Satori</title>' +
       rptCss() +
       '<style>' +
       '.rpt-hn{position:fixed;top:0;left:0;right:0;z-index:9999;background:#0C1E35;display:flex;align-items:center;gap:5px;padding:9px 10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;box-shadow:0 2px 12px rgba(0,0,0,.35)}' +
@@ -38584,7 +38591,7 @@ function apixRenderDashboard(){
     '<div class="tuy-hero">' +
       '<div class="tuy-hero-top">' +
         '<div class="tuy-hero-badge">🫀</div>' +
-        '<div><div class="tuy-hero-title">Apixaban</div><div class="tuy-hero-sub">Launch · apixaban · Gedeon Richter</div></div>' +
+        '<div><div class="tuy-hero-title">Apixaban</div><div class="tuy-hero-sub">Launch · apixaban</div></div>' +
       '</div>' +
       targetHtml +
     '</div>' +
