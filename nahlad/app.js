@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.34';
+var APP_VERSION = '2.88.35';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -20443,9 +20443,16 @@ function wnClose(){
 // ── Satori rebrand overlay ──
 var SATORI_KEY = 'satori_rebrand_v1';
 
+// Starý „rebrand" uvítací overlay je vyradený — na novom zariadení sa namiesto neho (a namiesto
+// celého backlogu „Čo je nové") zobrazí nový Satori sprievodca (satoriGuideSchedule). Funkcia
+// zostáva, lebo ju volá kaskáda po prihlásení: pri prvom prihlásení na zariadení označí WN
+// backlog za videný, uloží SATORI_KEY a vráti false → kaskáda pokračuje bez starého tutoriálu.
 function satoriShouldShow() {
-  if (IS_DEV || window.location.hostname === 'localhost') return true;
-  try { return !localStorage.getItem(SATORI_KEY); } catch(e) { return false; }
+  try {
+    wnSuppressBacklogForFirstLogin();
+    if (!localStorage.getItem(SATORI_KEY)) localStorage.setItem(SATORI_KEY, '1');
+  } catch(e) {}
+  return false;
 }
 
 function satoriShow() {
