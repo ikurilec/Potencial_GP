@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.47';
+var APP_VERSION = '2.88.48';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -37751,14 +37751,6 @@ function nstRender(){
     regs.map(function(r){ return '<option value="' + nstEsc(r) + '"' + (NST.region === r ? ' selected' : '') + '>' + nstEsc(r) + '</option>'; }).join('');
 
   body.innerHTML =
-    '<div class="nst-hero">' +
-      '<div class="nst-hero-top">' +
-        '<div class="nst-hero-badge">📌</div>' +
-        '<div><div class="nst-hero-title">Nástenka</div>' +
-        '<div class="nst-hero-sub">' + nstEsc(nstLineLabel()) + ' · zdieľané medzi reprezentantmi línie</div></div>' +
-      '</div>' +
-      '<button type="button" class="nst-new-btn" onclick="nstComposeOpen()">＋ Pridať príspevok</button>' +
-    '</div>' +
     (function(){
       var activeN = nstActiveFilterCount();
       var open = !!NST._filterOpen;
@@ -37787,6 +37779,7 @@ function nstRender(){
       '</div>';
     })() +
     '<div id="nst-list"></div>';
+  var ttl = document.getElementById('nst-topbar-sub'); if (ttl) ttl.textContent = nstLineLabel();
   nstRenderList();
 }
 
