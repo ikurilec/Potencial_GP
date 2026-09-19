@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.36';
+var APP_VERSION = '2.88.37';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -13546,7 +13546,7 @@ function gynPharmaStartWatchdog() {
     if(GYN_PHARMA_STATE.open && document.getElementById('gyn-ph-prog-ring')) {
       gynPharmaShowError();
     }
-  }, 52000);
+  }, 75000);
 }
 function gynPharmaShowError() {
   if(GYN_PHARMA_STATE._watchdog){ clearTimeout(GYN_PHARMA_STATE._watchdog); GYN_PHARMA_STATE._watchdog = null; }
@@ -14056,7 +14056,7 @@ function gynPharmaFetchAndProcess_(key, persistentKey, silent) {
         '&kvartal=' + encodeURIComponent(GYN_PHARMA_STATE.kvartal) +
         '&extra=1'
       ), {
-        retries: 1,
+        retries: 2,  // Apps Script občas vráti prechodné 404 — ďalší pokus už býva z cache
         timeoutMs: 24000,  // studené čítanie hárkov na serveri trvá až ~17 s (meranie 2026-09-19)
         priority: 'critical',
         delayFn: function(){ return 800; },
