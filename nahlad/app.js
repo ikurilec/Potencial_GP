@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.37';
+var APP_VERSION = '2.88.39';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -662,8 +662,9 @@ function appReload(){
   try {
     if(window._serverVersion) sessionStorage.setItem('potencial_gp_reloaded_for', window._serverVersion);
   } catch(e){}
-  try { if(typeof clearSession === 'function') clearSession(); } catch(e){}
-  try { localStorage.setItem('potencial_gp_update_msg', '1'); } catch(e){}
+  // Session sa pri aktualizácii NEmaže — používateľ zostane prihlásený (predtým sa po každej
+  // aktualizácii musel prihlasovať znova). Kto sa odhlasuje (doLogout, gynExit), volá
+  // clearSession() sám pred appReload().
   try { location.reload(); } catch(e){}
 }
 
@@ -9988,6 +9989,48 @@ function enterLineFromLogin(username, line, data){
   else { loginSuccess(username, data.gp.name, data.gp.role, data.gp.region, data.gp); }
 }
 
+// ── Zapamätanie prihlásenia ──
+// Meno si appka pamätá sama (localStorage). Heslo NIKDY neukladáme do vlastného úložiska —
+// nechávame ho na správcu hesiel prehliadača/telefónu (Google Password Manager, iCloud Keychain),
+// ktorý ho odomyká odtlačkom, tvárou alebo PIN-om. PasswordCredential (Chrome/Android) spustí
+// ponuku „Uložiť heslo"; <form> s autocomplete pokrýva Safari/iOS aj ostatné prehliadače.
+var LOGIN_LAST_USER_KEY = 'satori_last_username';
+function loginFormSubmit(ev){
+  try { if(ev && ev.preventDefault) ev.preventDefault(); } catch(e){}
+  doLogin();
+  return false;
+}
+function loginRememberCredentials(username, password){
+  try { localStorage.setItem(LOGIN_LAST_USER_KEY, username); } catch(e){}
+  try {
+    if(window.PasswordCredential && navigator.credentials && navigator.credentials.store){
+      navigator.credentials.store(new PasswordCredential({ id: username, password: password, name: username })).catch(function(){});
+    }
+  } catch(e){}
+}
+function loginPrefillUser(){
+  try {
+    var el = document.getElementById('login-user');
+    if(el && !el.value){ var u = localStorage.getItem(LOGIN_LAST_USER_KEY); if(u) el.value = u; }
+  } catch(e){}
+}
+var _loginCredAsked = false;
+function loginTryStoredCredential(){
+  if(_loginCredAsked) return;
+  try {
+    if(!(window.PasswordCredential && navigator.credentials && navigator.credentials.get)) return;
+    if(getSession()) return;
+    _loginCredAsked = true;
+    navigator.credentials.get({ password: true, mediation: 'optional' }).then(function(c){
+      if(!c || c.type !== 'password' || getSession()) return;
+      var u = document.getElementById('login-user'), p = document.getElementById('login-pass');
+      if(!u || !p) return;
+      u.value = c.id || ''; p.value = c.password || '';
+      if(u.value && p.value) doLogin();
+    }).catch(function(){});
+  } catch(e){}
+}
+
 function doLogin() {
   var userEl = document.getElementById('login-user');
   var passEl = document.getElementById('login-pass');
@@ -10098,6 +10141,8 @@ function doLogin() {
       }
       return;
     }
+
+    loginRememberCredentials(username, password);
 
     // Zapamätaná voľba: miestna voľba je zámer používateľa z posledného nastavenia
     // na tomto zariadení a musí mať prednosť pred oneskoreným/stale údajom zo Sheetu.
@@ -10396,10 +10441,16 @@ function gynBirthdayBannerHtml(user){
 // Prekresli banner (volá sa po načítaní rosteru, keď dorazia ostatní)
 function gynBirthdayRefresh(){
   try {
-    var el = document.getElementById('gyn-bday-banner');
-    if(!el) return;
     var s = (typeof getSession === 'function') ? getSession() : null;
-    el.innerHTML = gynBirthdayBannerHtml(s);
+    // Zdieľaná hlavička (#hdr-bday) — od nového vizuálu je to jediná viditeľná hlavička aj v Gyn línii;
+    // pôvodný banner v gyn shelli (#gyn-bday-banner) je skrytý.
+    var hb = document.getElementById('hdr-bday');
+    if(hb){
+      hb.innerHTML = (s && s.line === 'gyn') ? gynBirthdayBannerHtml(s) : '';
+      try { if(typeof repTopbarSync === 'function'){ repTopbarSync(); setTimeout(repTopbarSync, 60); } } catch(e){}
+    }
+    var el = document.getElementById('gyn-bday-banner');
+    if(el) el.innerHTML = gynBirthdayBannerHtml(s);
   } catch(e){}
 }
 // Oslava vlastných narodenín — raz za deň, celoobrazovkový modal + konfety
@@ -10581,6 +10632,8 @@ function updateHdrForUser(user) {
     svEl.textContent = sv ? ('🇸🇰 ' + sv) : '';
     svEl.style.display = sv ? 'block' : 'none';
   }
+  // Narodeniny v tíme (len Gyn) — banner v zdieľanej hlavičke
+  try { gynBirthdayRefresh(); } catch(e){}
   // Nastav region do skrytého poľa
   var regEl = document.getElementById('reprezentant');
   if(regEl && user && user.region) regEl.value = user.region;
@@ -10684,6 +10737,10 @@ function initLogin() {
   }
   var session = getSession();
   loginScreenSetExclusive(!(session && session.username));
+  if(!(session && session.username)){
+    loginPrefillUser();
+    setTimeout(loginTryStoredCredential, 700);
+  }
   // Predtým sa vypršaná session (12h neaktivita / session_expires_at) vrátila
   // na login OBRAZOVKU TICHO — človek nevedel, prečo sa zrazu musí prihlásiť
   // znova. getSession() teraz pri vypršaní nastaví príznak, tu ho premeníme
@@ -17787,8 +17844,8 @@ function gynRenderDashboard(user) { gynRenderContent(user); }
 document.addEventListener('DOMContentLoaded', function(){
   var userEl = document.getElementById('login-user');
   var passEl = document.getElementById('login-pass');
-  if(userEl) userEl.addEventListener('keydown', function(e){ if(e.key==='Enter') { var p=document.getElementById('login-pass'); if(p) p.focus(); } });
-  if(passEl) passEl.addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
+  // Enter v poli hesla odošle <form> (loginFormSubmit) — vlastný handler by prihlásenie spustil 2×.
+  if(userEl) userEl.addEventListener('keydown', function(e){ if(e.key==='Enter') { e.preventDefault(); var p=document.getElementById('login-pass'); if(p) p.focus(); } });
 });
 
 // ═══════════════════════════════════════════════════════════

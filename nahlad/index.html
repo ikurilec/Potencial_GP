@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@700&display=swap">
-<link rel="stylesheet" href="dist/app.aae0553a.css">
+<link rel="stylesheet" href="dist/app.2866f54a.css">
 <!-- Firebase Cloud Messaging — natívne push notifikácie (defer aby nebrzdil štart) -->
 <script defer src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js"></script>
@@ -72,6 +72,7 @@
        vedľa ozubeného kolieska by sa text zalomil pod tlačidlá. -->
   <div class="hdr-nameday" id="hdr-nameday"></div>
   <div class="hdr-sviatok" id="hdr-sviatok" style="display:none"></div>
+  <div class="hdr-bday" id="hdr-bday"></div>
   </div>
 </div>
 
@@ -862,7 +863,7 @@
 <div class="footer">Intern&#253; n&#225;stroj pre medic&#237;nskych reprezentantov<br><span style="font-size:10px;color:#B0BAC4">Designed &amp; developed by Ivan Kurilec &middot; 2026</span></div>
 </div>
 
-<script src="dist/app.86f00c39.js"></script>
+<script src="dist/app.2000c2bb.js"></script>
 
 <!-- ── LOGOUT CONFIRM ── -->
 <div class="logout-overlay" id="logout-overlay">
@@ -1708,15 +1709,18 @@
     <div class="login-card-title">Vitaj v Satori</div>
     <div class="login-card-sub" id="login-card-sub">Prihlás sa do svojho účtu</div>
 
+    <!-- <form> kvôli správcovi hesiel (Google/iCloud): bez formulára prehliadač neponúkne uloženie ani
+         doplnenie mena a hesla (odtlačok/tvár/PIN telefónu). Odoslanie rieši loginFormSubmit(). -->
+    <form id="login-form" method="post" action="#" autocomplete="on" onsubmit="return loginFormSubmit(event)">
     <div class="login-field">
-      <label class="login-label">Prihlasovacie meno</label>
-      <input class="login-input" id="login-user" type="text" placeholder="Zadaj svoje prihlasovacie meno" autocomplete="username" autocapitalize="none" spellcheck="false">
+      <label class="login-label" for="login-user">Prihlasovacie meno</label>
+      <input class="login-input" id="login-user" name="username" type="text" placeholder="Zadaj svoje prihlasovacie meno" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false">
     </div>
 
     <div class="login-field">
-      <label class="login-label">Heslo</label>
+      <label class="login-label" for="login-pass">Heslo</label>
       <div class="login-input-wrap">
-        <input class="login-input" id="login-pass" type="password" placeholder="Zadaj svoje heslo" autocomplete="current-password">
+        <input class="login-input" id="login-pass" name="password" type="password" placeholder="Zadaj svoje heslo" autocomplete="current-password">
         <button class="login-eye" id="login-eye-btn" type="button" onclick="toggleLoginEye()">👁</button>
       </div>
       <div class="login-err-msg" id="login-err">Nesprávne meno alebo heslo. Skús znova.</div>
@@ -1724,10 +1728,11 @@
 
     <label class="login-remember-row" for="login-remember">
       <input type="checkbox" id="login-remember" checked>
-      <span>Zostať prihlásený</span>
+      <span>Zapamätať si prihlásenie</span>
     </label>
 
-    <button class="login-btn" id="login-btn" type="button" onclick="doLogin()">Prihlásiť sa →</button>
+    <button class="login-btn" id="login-btn" type="submit">Prihlásiť sa →</button>
+    </form>
 
     <div class="login-help">Problémy s prihlásením? Kontaktuj svojho manažéra.</div>
   </div>
