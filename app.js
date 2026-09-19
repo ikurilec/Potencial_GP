@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.40';
+var APP_VERSION = '2.88.41';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -21997,6 +21997,11 @@ function loadInitData(username, _lineCtx) {
   var q   = plnenieCurrentQ();
   var url = scriptUrl('action=getInitData&reprezentant=' + encodeURIComponent(username)
                       + '&rok=' + rok + '&Q=' + q);
+  // Dátum „predaje nahraté" (getConfig notif_predaje) rozhoduje o dátovom kvartáli, na ktorý čaká
+  // Plnenie. Pýtame si ho HNEĎ spolu s getInitData (obe priorita 'boot'), nie až keď sa Plnenie
+  // dostane na rad — inak sa oba sloty fronty stihnú zaplniť inými požiadavkami a Plnenie štartuje
+  // o niekoľko sekúnd neskôr (meranie 2026-09-19: getConfig sa odoslal až 2 s po getInitData).
+  try { if (typeof plnenieDataTsFetch === 'function') plnenieDataTsFetch(); } catch(e){}
 
   // Rovnaký appFetchWithRetry mechanizmus ako mgrFetchWithRetry (pozri jeho
   // komentár) — tu s vlastným, pomalším exponenciálnym odstupom s náhodným
