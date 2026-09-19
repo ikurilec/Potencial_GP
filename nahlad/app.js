@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.43';
+var APP_VERSION = '2.88.44';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -28807,7 +28807,8 @@ function pharmaGrafContextKey(){ return PHARMA_STATE.teamRepAccess && PHARMA_STA
 function pharmaGrafCacheKey(code, oblast){ return code + '_' + oblast + pharmaGrafContextKey(); }
 function pharmaGrafRequestUrl(code, oblast){ return scriptUrl('action=getPharmaGraf&oblast=' + encodeURIComponent(oblast) + '&produkt=' + encodeURIComponent(code) + pharmaTeamAccessParams()); }
 // withPrev → server vráti v jednej odpovedi aj okresy predchádzajúceho kvartálu (okresy_prev) — netreba druhé volanie.
-function pharmaDataRequestUrl(code, oblast, kvartal, withPrev){ return scriptUrl('action=getPharmaData&oblast=' + encodeURIComponent(oblast) + '&produkt=' + encodeURIComponent(code) + '&kvartal=' + encodeURIComponent(kvartal) + (withPrev ? '&prev=1' : '') + pharmaTeamAccessParams()); }
+// withGraf → server pribalí do odpovede aj trend (PharmaData_Graf) — netreba samostatné getPharmaGraf.
+function pharmaDataRequestUrl(code, oblast, kvartal, withPrev, withGraf){ return scriptUrl('action=getPharmaData&oblast=' + encodeURIComponent(oblast) + '&produkt=' + encodeURIComponent(code) + '&kvartal=' + encodeURIComponent(kvartal) + (withPrev ? '&prev=1' : '') + (withGraf ? '&graf=1' : '') + pharmaTeamAccessParams()); }
 function pharmaOkresGrafRequestUrl(code, oblast, okres){ return scriptUrl('action=getPharmaOkresGraf&produkt=' + encodeURIComponent(code) + '&oblast=' + encodeURIComponent(oblast) + '&okres=' + encodeURIComponent(okres) + pharmaTeamAccessParams()); }
 
 function pharmaAttachPrevDistrictsForCurrent(code, oblast, kvartal, resp, done) {
@@ -29028,12 +29029,17 @@ function loadPharmaDataNetwork(code, oblast, kvartal) {
     return;
   }
 
+  // Trend pýtame v tej istej odpovedi, ak ho ešte nemáme ani nikto iný nesťahuje (jedno volanie namiesto dvoch).
+  var _gkMain = pharmaGrafCacheKey(code, oblast);
+  var _wantGraf = !PHARMA_GRAF_STATE.cache[_gkMain] && !PHARMA_GRAF_STATE.loading[_gkMain];
+  if (_wantGraf) PHARMA_GRAF_STATE.loading[_gkMain] = true;
   appQueuedFetchJson(
-    pharmaDataRequestUrl(code, oblast, kvartal, pharmaIsCurrentKvartal(kvartal)),
+    pharmaDataRequestUrl(code, oblast, kvartal, pharmaIsCurrentKvartal(kvartal), _wantGraf),
     { cache: 'no-store' }, undefined, 'critical'
   )
     .then(function(resp) {
       delete PHARMA_STATE.loading[cacheKey];
+      if (_wantGraf) pharmaGrafFromMain(code, oblast, resp);
       if (resp.ok) {
         // Skontroluj či dáta obsahujú reálne hodnoty (nie len prázdne riadky)
         var hasRealSumm = resp.summary && resp.summary.some(function(s){
@@ -29099,6 +29105,7 @@ function loadPharmaDataNetwork(code, oblast, kvartal) {
     })
     .catch(function() {
       delete PHARMA_STATE.loading[cacheKey];
+      if (_wantGraf) pharmaGrafFromMain(code, oblast, null);
       if (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal) {
         // F6-5: holá hláška bez akcie nahradená zdieľanou kartou s "Skúsiť znova"
         appShowErrorCard('pharma-ms-body', {
@@ -29117,13 +29124,41 @@ function loadPharmaDataNetwork(code, oblast, kvartal) {
     });
 }
 
+// Hlavná odpoveď getPharmaData mohla niesť aj trend (graf=1). Uloží ho do cache a dá vedieť všetkým, čo naň čakajú.
+// Ak trend nepriniesla (starý backend / chyba), čakajúci dostanú samostatný dopyt (pôvodná cesta).
+function pharmaGrafFromMain(code, oblast, resp) {
+  var gk = pharmaGrafCacheKey(code, oblast);
+  delete PHARMA_GRAF_STATE.loading[gk];
+  var rows = (resp && resp.ok && resp.graf && Array.isArray(resp.graf.rows)) ? resp.graf.rows : null;
+  if (rows && rows.length) {
+    var obj = { ok: true, produkt: code, oblast: oblast, rows: rows };
+    PHARMA_GRAF_STATE.cache[gk] = obj;
+    try { DataStore.set(_pgLsKey(code, oblast), obj); } catch(e){}
+    pharmaGrafFlushWaiters(gk, obj);
+    return;
+  }
+  var w = PHARMA_GRAF_WAITERS[gk];
+  if (w && w.length) {
+    delete PHARMA_GRAF_WAITERS[gk];
+    loadPharmaGrafData(code, oblast, function(r){ w.forEach(function(cb){ try { cb(r); } catch(e){} }); });
+  }
+}
+
 function loadPharmaGrafData(code, oblast, callback) {
   var cacheKey = pharmaGrafCacheKey(code, oblast);
   if (PHARMA_GRAF_STATE.cache[cacheKey]) {
     if (callback) callback(PHARMA_GRAF_STATE.cache[cacheKey]);
     return;
   }
-  if (PHARMA_GRAF_STATE.loading[cacheKey]) { pharmaGrafAddWaiter(cacheKey, callback); return; }
+  if (PHARMA_GRAF_STATE.loading[cacheKey]) {
+    // Ak už máme čerstvú lokálnu kópiu, ukáž ju hneď; inak počkaj na prebiehajúce sťahovanie.
+    try {
+      var frLocal = DataStore.get(_pgLsKey(code, oblast), { maxAgeMs: DS_CACHE_MAX_AGE_MS });
+      if (frLocal && frLocal.data) { PHARMA_GRAF_STATE.cache[cacheKey] = frLocal.data; if (callback) callback(frLocal.data); return; }
+    } catch(e){}
+    pharmaGrafAddWaiter(cacheKey, callback);
+    return;
+  }
 
   if (IS_DEV) {
     var mockEntry = MOCK_PHARMA_GRAF[code] || MOCK_PHARMA_GRAF['VID'];
