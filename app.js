@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.25';
+var APP_VERSION = '2.88.31';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -986,13 +986,57 @@ function appRequestQueueDrain(){
       .then(function(){ APP_REQUEST_QUEUE.active--; appRequestQueueDrain(); }, function(){ APP_REQUEST_QUEUE.active--; appRequestQueueDrain(); });
   }
 }
-function appQueuedFetchJson(url, opts, timeoutMs, priority){
+function appQueueInsert(job){
+  // 'boot' = presne to, na čo čaká boot obrazovka (roster z getInitData + aktuálny
+  // kvartál Plnenia pre manažéra). Predtým boli obe len 'critical', ktoré sa vkladá
+  // na ZAČIATOK fronty (LIFO) — takže najstaršia critical (getInitData) sa dostala
+  // na rad ako posledná (meranie 2026-09-19: 20–25 s po logine) a boot obrazovka
+  // vždy dorazila na 15 s failsafe. 'boot' ide pred všetky 'critical' (FIFO medzi
+  // sebou); správanie 'critical' a 'background' ostáva nezmenené.
+  if(job.prio === 'boot' || job.prio === 'critical'){
+    var _ins = 0;
+    while(_ins < APP_REQUEST_QUEUE.items.length && APP_REQUEST_QUEUE.items[_ins].prio === 'boot') _ins++;
+    APP_REQUEST_QUEUE.items.splice(_ins, 0, job);
+  }
+  else APP_REQUEST_QUEUE.items.push(job);
+}
+function appQueuedFetchJsonRaw(url, opts, timeoutMs, priority, rec){
   return new Promise(function(resolve, reject){
     var job = { url:url, opts:opts || { cache:'no-store' }, timeoutMs:timeoutMs, resolve:resolve, reject:reject };
-    if(priority === 'critical') APP_REQUEST_QUEUE.items.unshift(job);
-    else APP_REQUEST_QUEUE.items.push(job);
+    job.prio = priority;
+    if(rec) rec.job = job;
+    appQueueInsert(job);
     appRequestQueueDrain();
   });
+}
+// getConfig je čisté čítanie a tú istú hodnotu (notif_predaje, notif_pharma) si počas
+// prihlásenia pýta viac miest naraz (prefetch, checkNotifications, Plnenie, Rebríček…) —
+// meranie 2026-09-19: 8 getConfig na jedno prihlásenie, každé ~2 s v 2-slotovej fronte.
+// Súbežné IDENTICKÉ getConfig (rovnaké URL) sa preto zlúčia do jednej požiadavky; ostatné
+// akcie (zápisy, čítania s vlastnou sémantikou) sa NEZLUČUJÚ. Ak sa zlučuje s ešte
+// nezačatou požiadavkou s nižšou prioritou, požiadavka sa povýši (nikdy nezníži).
+var _cfgInflight = {};
+var APP_PRIO_RANK = { boot: 3, critical: 2 };
+function appQueuedFetchJson(url, opts, timeoutMs, priority){
+  if(typeof url === 'string' && url.indexOf('action=getConfig&') !== -1){
+    var ex = _cfgInflight[url];
+    if(ex){
+      var qi = ex.job ? APP_REQUEST_QUEUE.items.indexOf(ex.job) : -1;
+      if(qi !== -1 && (APP_PRIO_RANK[priority] || 0) > (APP_PRIO_RANK[ex.job.prio] || 0)){
+        APP_REQUEST_QUEUE.items.splice(qi, 1);
+        ex.job.prio = priority;
+        appQueueInsert(ex.job);
+      }
+      return ex.p;
+    }
+    var rec = {};
+    rec.p = appQueuedFetchJsonRaw(url, opts, timeoutMs, priority, rec);
+    _cfgInflight[url] = rec;
+    var _clr = function(){ if(_cfgInflight[url] === rec) delete _cfgInflight[url]; };
+    rec.p.then(_clr, _clr);
+    return rec.p;
+  }
+  return appQueuedFetchJsonRaw(url, opts, timeoutMs, priority);
 }
 
 // Jednotný retry mechanizmus nad appQueuedFetchJson (F0, boot audit) — predtým
@@ -9631,12 +9675,15 @@ function loginSuccess(username, name, role, region, extra) {
     }
   }
   setSession(user);
-  try { nstResetForActiveLine(); nstPrime(); } catch(e){}
+  try { nstResetForActiveLine(); } catch(e){}
+  // Prednačítanie Nástenky sa posúva o tick: v prázdnej fronte by hneď obsadilo slot
+  // a getInitData (boot) by čakal ~2 s. Zaradí sa až po boot požiadavkách nižšie.
+  setTimeout(function(){ try { nstPrime(); } catch(e){} }, 0);
   try { userPrefsApplyMirror(user); } catch(e){}
   // Kalendár (Golem) — spusti načítanie udalostí HNEĎ pri prihlásení, paralelne s init dátami,
   // nech sú udalosti pripravené ešte pred prvým otvorením (nie až po kliknutí na Kalendár).
   // Golem aj Reagila zdieľajú kalendár (scriptUrl podľa línie); gyn má vlastný prefetch v gynEnter. _synced guard chráni pred dvojitým fetchom.
-  try { var _pl = (user.line || 'gp'); if ((_pl === 'gp' || _pl === 'reagila') && typeof gynCalPrefetch === 'function') gynCalPrefetch(); } catch(e){}
+  setTimeout(function(){ try { var _pl = (user.line || 'gp'); if ((_pl === 'gp' || _pl === 'reagila') && typeof gynCalPrefetch === 'function') gynCalPrefetch(); } catch(e){} }, 0); // po boot požiadavkách (viď nstPrime vyššie)
   usageTrack('app_open', '', 'prihlásenie · rola: ' + (role || ''));
   // Reagila: hydratuj výber konkurentov (MS picker) — localStorage (instant) + zo Sheets (login response)
   if (user.line === 'reagila') {
@@ -9654,7 +9701,9 @@ function loginSuccess(username, name, role, region, extra) {
   try { mgrDedupUnique(); } catch(e){}
   updateHdrForUser(user);
   setTimeout(function(){ try { nameDayCelebrate(user); } catch(e){} }, 1500);
-  pingLogin(username);
+  // pingLogin (zápis času posledného prihlásenia) nie je potrebný pre boot — o tick neskôr,
+  // aby v prázdnej fronte neobsadil slot pred getInitData.
+  setTimeout(function(){ try { pingLogin(username); } catch(e){} }, 0);
   loadInitData(username); // nahrádza loadRepList() + refreshBadgeFromSheets() — 1 request namiesto 3
   // Súhrn tímu sa warmne počas boot obrazovky; Menu sa potom otvorí okamžite z cache.
   if (!mgrDetectRole(user) && !user.line && /^(rep west|rep east)$/i.test(String(role || '').trim())) setTimeout(teamPlneniePreload, 1100);
@@ -17923,6 +17972,47 @@ function mgrLoadData(){
   }
 }
 
+// PERF (audit 2026-09-18): mgrLoadReps() a lbLoadData() donedávna nezávisle
+// sťahovali CELÚ históriu všetkých repov (action=getAllHistory) v priebehu
+// pár sekúnd od seba pri vstupe manažéra (mgrLoadReps synchrónne pri mgrEnter,
+// lbLoadData o +2000ms neskôr) — bez zdieľanej cache medzi nimi. Zdieľa sa tu
+// len ÚSPEŠNÝ výsledok na krátke okno (nie prebiehajúci fetch/retry logika —
+// obe miesta majú vlastný, odlišný retry/fallback mechanizmus, ktorý ostáva
+// nedotknutý; zdieľanie len ušetrí druhému volajúcemu network round-trip,
+// keď prvý už stihol uspieť).
+var _allHistShared = { data: null, ts: 0 };
+var ALL_HIST_SHARE_WINDOW_MS = 15000;
+function allHistShareGet() {
+  if (_allHistShared.data && (Date.now() - _allHistShared.ts) < ALL_HIST_SHARE_WINDOW_MS) {
+    return _allHistShared.data;
+  }
+  return null;
+}
+function allHistShareStore(data) {
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    _allHistShared = { data: data, ts: Date.now() };
+  }
+}
+// OPRAVA po meraní (2026-09-19): samotné zdieľanie hotového výsledku nestačilo —
+// fronta má 2 sloty a druhý fetch sa reálne odosiela až ~7 s po zaradení, vtedy
+// prvý ešte nedobehol. Preto sa zdieľa aj ROZBEHNUTÝ fetch: kto príde druhý,
+// pripojí sa na jeho promise. Zlyhanie sa nezdieľa "ticho" — pripojený volajúci
+// ide cez vlastný catch/retry ako doteraz (lb: pokusy 1+, mgr: per-rep fallback).
+var _allHistInflight = null; // { p: Promise, ts }
+var ALL_HIST_INFLIGHT_MAX_MS = 20000;
+function allHistJoin() {
+  var d = allHistShareGet();
+  if (d) return Promise.resolve(d);
+  if (_allHistInflight && (Date.now() - _allHistInflight.ts) < ALL_HIST_INFLIGHT_MAX_MS) return _allHistInflight.p;
+  return null;
+}
+function allHistTrack(p) {
+  var rec = { p: p, ts: Date.now() };
+  _allHistInflight = rec;
+  p.then(allHistShareStore, function(){}).then(function(){ if (_allHistInflight === rec) _allHistInflight = null; });
+  return p;
+}
+
 function mgrFetchWithRetry(url, retries, priority){
   retries = retries === undefined ? 3 : retries;
   // Všetky čítania manažérskej časti zdieľajú frontu. Aktuálny kvartál má
@@ -17988,8 +18078,12 @@ function mgrLoadReps(repList){
 
   var loginPromise = mgrFetchWithRetry(scriptUrl('action=getLastLogins'), undefined, 'critical').catch(function(){ return {}; });
 
-  // Jeden request pre všetky histórie naraz — najrýchlejšie
-  var allHistPromise = mgrFetchWithRetry(scriptUrl('action=getAllHistory'), undefined, 'critical').catch(function(){ return null; });
+  // Jeden request pre všetky histórie naraz — najrýchlejšie. Ak lbLoadData
+  // (Rebríček) už čerstvo stiahol to isté (zdieľané okno, viď allHistShare*),
+  // znova sa nefetchuje.
+  var _allHistJoined = allHistJoin();
+  var allHistPromise = (_allHistJoined || allHistTrack(mgrFetchWithRetry(scriptUrl('action=getAllHistory'), undefined, 'critical')))
+    .catch(function(){ return null; });
 
   Promise.all([loginPromise, managersPromise, allHistPromise]).then(function(meta){
     MGR_STATE.lastLogins = meta[0] || {};
@@ -21829,7 +21923,7 @@ function loadInitData(username, _lineCtx) {
       return Math.round(delays[attempt] * (0.5 + Math.random()));
     },
     fetcher: function(){
-      return appQueuedFetchJson(url, undefined, 20000, 'critical').then(function(data){
+      return appQueuedFetchJson(url, undefined, 20000, 'boot').then(function(data){
         if(!data || !data.ok) throw new Error('getInitData: no data');
         return data;
       });
@@ -22829,9 +22923,15 @@ function lbLoadData(force){
     });
   }
 
-  // Cache buster — vždy fetchni čerstvé
+  // Cache buster — vždy fetchni čerstvé (okrem prvého pokusu, kde sa skúsi
+  // zdieľaný výsledok z mgrLoadReps, ak práve doniesol to isté — viď allHistShare*).
   function fetchAllHistoryAttempt(attempt) {
-    appFetchJson(scriptUrl('action=getAllHistory&_t=' + Date.now()))
+    var _histFetch = (attempt === 0) ? allHistJoin() : null;
+    if (!_histFetch) {
+      var _histP = appFetchJson(scriptUrl('action=getAllHistory&_t=' + Date.now()));
+      _histFetch = (attempt === 0) ? allHistTrack(_histP) : _histP.then(function(data){ allHistShareStore(data); return data; });
+    }
+    _histFetch
     .then(function(allHist){
       if(allHist && allHist.ok !== false && typeof allHist === 'object' && !Array.isArray(allHist)){
         if(window.console) console.log('[lb-debug] getAllHistory keys:', Object.keys(allHist), '| LB_ALL_REPS:', LB_ALL_REPS);
@@ -23312,7 +23412,7 @@ function plnenieDataTsFetch(cb) {
   if (typeof IS_DEV !== 'undefined' && IS_DEV) { if (cb) cb(false); return; }
   if (typeof notifUrl !== 'function') { if (cb) cb(false); return; }
   var tag = (typeof notifLineTag === 'function') ? notifLineTag() : '';
-  appQueuedFetchJson(notifUrl('action=getConfig&key=notif_predaje'), undefined, undefined, 'critical')
+  appQueuedFetchJson(notifUrl('action=getConfig&key=notif_predaje'), undefined, undefined, 'boot')
     .then(function(d){
       var ts = (d && d.ok && d.value) ? String(d.value) : '';
       var prev = PLNENIE_DATA_TS[tag] || '';
@@ -24557,7 +24657,7 @@ function plnenieLoadAllQuarters() {
 
   function fetchQuarter(q) {
     var url = scriptUrl('action=getPlnenieAll&rok=' + year + '&Q=' + q);
-    mgrFetchWithRetry(url, 3, q === currentQ ? 'critical' : 'background')
+    mgrFetchWithRetry(url, 3, q === currentQ ? 'boot' : 'background')
       .then(function(resp) {
         if(!active()) return;
         if (!resp || !resp.ok) throw new Error('No data for Q' + q);
