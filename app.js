@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.31';
+var APP_VERSION = '2.88.32';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -7981,8 +7981,31 @@ function settingsRememberLine(){
 // budget (20+25=45s) nestačil — admin so zamknutou líniou dostal chybu na prvý
 // pokus a na druhý (appka je už "zohriata") to prešlo. Vráti buď odpoveď
 // servera, alebo {ok:false,_failed:true} pri vyčerpaní všetkých pokusov.
+// PRIHLÁSENIE cez POST — heslo ide v tele požiadavky (JSON), NIE v URL. Predtým
+// action=login&password=... zostávalo v histórii prehliadača, v logoch Apps Scriptu a
+// v perf buffri (perfRecordCall si ukladá URL). Volajúci dál skladajú `lp` ako doteraz
+// (?action=login&username=...&password=...&device_id=...&remember=...); tu sa z neho
+// heslo vyberie a pošle v tele. text/plain = bez CORS preflightu (rovnako ako changePassword).
+// Poistka na čas nasadenia: ak backend ešte nemá POST login (odpovie 'Unsupported POST
+// action'), zopakuje sa pôvodné GET volanie — po nasadení všetkých troch backendov sa
+// táto vetva nikdy nevykoná a dá sa odstrániť.
+function appLoginFetch(url, lp, timeoutMs){
+  var qs = new URLSearchParams(String(lp || '').replace(/^\?/, ''));
+  var pwd = qs.get('password') || '';
+  qs.delete('password');
+  return appFetchJson(url + '?' + qs.toString(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ password: pwd }),
+    cache: 'no-store'
+  }, timeoutMs).then(function(d){
+    if(d && d.ok === false && /Unsupported POST action/i.test(String(d.error || ''))) return appFetchJson(url + lp, undefined, timeoutMs);
+    return d;
+  });
+}
+
 function lineColdLoginFetch(url, lp){
-  function one(tmo){ return appFetchJson(url + lp, undefined, tmo).catch(function(){ return { ok:false, _failed:true }; }); }
+  function one(tmo){ return appLoginFetch(url, lp, tmo).catch(function(){ return { ok:false, _failed:true }; }); }
   return one(20000).then(function(d){
     return (d && d._failed) ? one(25000) : d;
   }).then(function(d){
@@ -9233,7 +9256,7 @@ function lineRetryFailedSilently(username, pwd, dataMap, onLine, delayMs){
       need.forEach(function(n){
         function attempt(ix){
           var limits=[18000,24000];
-          appFetchJson(n[1] + lp, undefined, limits[ix])
+          appLoginFetch(n[1], lp, limits[ix])
             .then(function(d){
               if(d && d.ok){
                 dataMap[n[0]]=d;
@@ -10007,7 +10030,7 @@ function doLogin() {
   // skúšajú druhý pokus s dlhším limitom — prihlásenie samotné to doteraz nerobilo.
   function loginFetch(url, tmo){
     function attempt(t){
-      return appFetchJson(url + loginParams, undefined, t).catch(function(){ return { ok:false, _failed:true }; });
+      return appLoginFetch(url, loginParams, t).catch(function(){ return { ok:false, _failed:true }; });
     }
     return attempt(tmo).then(function(d){
       return (d && d._failed) ? attempt(20000) : d;   // cold start → druhý pokus, dlhší limit
