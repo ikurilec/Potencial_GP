@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.26';
+var APP_VERSION = '2.88.27';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -17944,6 +17944,25 @@ function allHistShareStore(data) {
     _allHistShared = { data: data, ts: Date.now() };
   }
 }
+// OPRAVA po meraní (2026-09-19): samotné zdieľanie hotového výsledku nestačilo —
+// fronta má 2 sloty a druhý fetch sa reálne odosiela až ~7 s po zaradení, vtedy
+// prvý ešte nedobehol. Preto sa zdieľa aj ROZBEHNUTÝ fetch: kto príde druhý,
+// pripojí sa na jeho promise. Zlyhanie sa nezdieľa "ticho" — pripojený volajúci
+// ide cez vlastný catch/retry ako doteraz (lb: pokusy 1+, mgr: per-rep fallback).
+var _allHistInflight = null; // { p: Promise, ts }
+var ALL_HIST_INFLIGHT_MAX_MS = 20000;
+function allHistJoin() {
+  var d = allHistShareGet();
+  if (d) return Promise.resolve(d);
+  if (_allHistInflight && (Date.now() - _allHistInflight.ts) < ALL_HIST_INFLIGHT_MAX_MS) return _allHistInflight.p;
+  return null;
+}
+function allHistTrack(p) {
+  var rec = { p: p, ts: Date.now() };
+  _allHistInflight = rec;
+  p.then(allHistShareStore, function(){}).then(function(){ if (_allHistInflight === rec) _allHistInflight = null; });
+  return p;
+}
 
 function mgrFetchWithRetry(url, retries, priority){
   retries = retries === undefined ? 3 : retries;
@@ -18013,13 +18032,9 @@ function mgrLoadReps(repList){
   // Jeden request pre všetky histórie naraz — najrýchlejšie. Ak lbLoadData
   // (Rebríček) už čerstvo stiahol to isté (zdieľané okno, viď allHistShare*),
   // znova sa nefetchuje.
-  var _allHistSharedNow = allHistShareGet();
-  var allHistPromise = _allHistSharedNow
-    ? Promise.resolve(_allHistSharedNow)
-    : mgrFetchWithRetry(scriptUrl('action=getAllHistory'), undefined, 'critical').then(function(data){
-        allHistShareStore(data);
-        return data;
-      }).catch(function(){ return null; });
+  var _allHistJoined = allHistJoin();
+  var allHistPromise = (_allHistJoined || allHistTrack(mgrFetchWithRetry(scriptUrl('action=getAllHistory'), undefined, 'critical')))
+    .catch(function(){ return null; });
 
   Promise.all([loginPromise, managersPromise, allHistPromise]).then(function(meta){
     MGR_STATE.lastLogins = meta[0] || {};
@@ -22862,13 +22877,11 @@ function lbLoadData(force){
   // Cache buster — vždy fetchni čerstvé (okrem prvého pokusu, kde sa skúsi
   // zdieľaný výsledok z mgrLoadReps, ak práve doniesol to isté — viď allHistShare*).
   function fetchAllHistoryAttempt(attempt) {
-    var _sharedFirstTry = (attempt === 0) ? allHistShareGet() : null;
-    var _histFetch = _sharedFirstTry
-      ? Promise.resolve(_sharedFirstTry)
-      : appFetchJson(scriptUrl('action=getAllHistory&_t=' + Date.now())).then(function(data){
-          allHistShareStore(data);
-          return data;
-        });
+    var _histFetch = (attempt === 0) ? allHistJoin() : null;
+    if (!_histFetch) {
+      var _histP = appFetchJson(scriptUrl('action=getAllHistory&_t=' + Date.now()));
+      _histFetch = (attempt === 0) ? allHistTrack(_histP) : _histP.then(function(data){ allHistShareStore(data); return data; });
+    }
     _histFetch
     .then(function(allHist){
       if(allHist && allHist.ok !== false && typeof allHist === 'object' && !Array.isArray(allHist)){
