@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.32';
+var APP_VERSION = '2.88.33';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -21447,8 +21447,9 @@ function buildRepData(reps) {
   try { avatarRefreshAllInDom(); } catch(e){}
   // Update header hint — ak má prihlásený user už custom avatar zo Sheets, vypneme pulse
   try { hdrAvatarUpdateHint(); } catch(e){}
-  // Preload lekární na pozadí — aby neskôr otvorenie tabu bolo bez čakania
-  try { lkPreloadAll(); } catch(e){}
+  // Lekárne VŠETKÝCH repov sa po prihlásení už nesťahujú (lkPreloadAll) — pre admina/manažéra to
+  // bolo 7,5–12 MB a 10–15 s (meranie 2026-09-19). Vlastné lekárne repa načíta lkPreload();
+  // manažér si dotiahne lekárne konkrétneho repa až pri jeho otvorení (lkFetch per-rep).
   // Race condition fix: ak rebríček má dáta ale bol renderovaný so starými LB_ALL_REPS,
   // re-renderuj teraz keď máme správne Sheets logins
   try {
@@ -36461,8 +36462,7 @@ function lkMgrLoadForRep(login) {
     lkLoadVariants(login, LK_MGR_ALL);
   });
 
-  // Background refresh všetkých repov (žiadny re-render — iba naplní cache pre ostatných)
-  lkFetchAll(function() {});
+  // Hromadný refresh všetkých repov tu už nie je — načítava sa len otvorený rep (lkFetch vyššie).
 }
 
 function lkMgrItem(l, tab) {
