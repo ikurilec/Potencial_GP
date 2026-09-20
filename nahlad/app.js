@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.51';
+var APP_VERSION = '2.88.52';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -17936,7 +17936,6 @@ var GOLEM_ACTIVITY_ROLES = ['boss','bum','pm','amwest','ameast'];
 function golemActivityAllowed(roleKey){
   if (roleKey === 'admin') return true;                       // admin vidí Aktivitu vo všetkých líniách (ako doteraz)
   if (GOLEM_ACTIVITY_ROLES.indexOf(roleKey) < 0) return false;
-  try { var s = getSession(); if (s && s.line === 'reagila') return false; } catch(e){}  // nové role len v Golem línii
   return true;
 }
 
