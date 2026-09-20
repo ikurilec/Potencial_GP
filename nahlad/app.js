@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.71';
+var APP_VERSION = '2.88.72';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -32391,6 +32391,7 @@ function rptViewOpen() {
   rp2LoadCennik();
   rp2LoadAbs();
   rp2LoadOv();
+  rp2DohLoad();
   rptViewRenderControls();
   rptViewRender();
   satoriGuideQueueHint('reports', 550);
@@ -33157,6 +33158,162 @@ function rp2CompareHtml(m, reps, p) {
   return out ? '<div class="rv-card">' + out + '</div>' : '';
 }
 
+// ═══ Dohody z 1:1 — čo manažér dohodol s repom a ako sa to plní ═══
+// Hárok „Dohody" v Sheete línie. Vidia ich všetci manažéri, ktorí repa vidia; upraviť sa dá aj po zápise.
+// Plnenie: pri zápise sa uloží, koľko rep dovtedy predal daného produktu (zaklad_eur); pribudnuté € sa prepočítajú na balenia cenou z Cenníka.
+var RP2_DOH = { list: null, loading: false, err: false, draft: null, busy: false };
+var RP2_LAST = { m: null, p: null };
+function rp2DohLoad() {
+  if (RP2_DOH.loading) return;
+  if (typeof IS_DEV !== 'undefined' && IS_DEV) { if (!RP2_DOH.list) RP2_DOH.list = []; return; }
+  RP2_DOH.loading = true;
+  var url = scriptUrl('action=getDohody');
+  appFetchWithRetry(url, { retries: 1, timeoutMs: 24000, priority: 'critical', delayFn: function() { return 800; },
+    fetcher: function() { return appQueuedFetchJson(url, { cache: 'no-store' }, 24000, 'critical'); } }).then(function(d) {
+    RP2_DOH.loading = false;
+    if (d && d.ok && Array.isArray(d.dohody)) { RP2_DOH.list = d.dohody; RP2_DOH.err = false; } else { RP2_DOH.list = RP2_DOH.list || []; RP2_DOH.err = true; }
+    rp2Schedule();
+  }).catch(function() { RP2_DOH.loading = false; RP2_DOH.list = RP2_DOH.list || []; RP2_DOH.err = true; rp2Schedule(); });
+}
+function rp2DohSave(d, done) {
+  RP2_DOH.busy = true; rp2Schedule();
+  var url = scriptUrl('action=saveDohoda&d=' + encodeURIComponent(JSON.stringify(d)));
+  appQueuedFetchJson(url, { cache: 'no-store' }, 24000, 'critical').then(function(r) {
+    RP2_DOH.busy = false;
+    if (r && r.ok && r.dohoda) {
+      var l = RP2_DOH.list || (RP2_DOH.list = []), i = -1;
+      l.forEach(function(x, ix) { if (x.id === r.dohoda.id) i = ix; });
+      if (i >= 0) l[i] = r.dohoda; else l.push(r.dohoda);
+      try { showSwToast('✓ Dohoda uložená'); } catch (e) {}
+      if (done) done(true);
+    } else { try { showSwToast('Nepodarilo sa uložiť dohodu'); } catch (e) {} if (done) done(false); }
+    rp2Schedule();
+  }).catch(function() { RP2_DOH.busy = false; try { showSwToast('Nepodarilo sa uložiť dohodu'); } catch (e) {} if (done) done(false); rp2Schedule(); });
+}
+function rp2DohForRep(u, p) {
+  return (RP2_DOH.list || []).filter(function(d) { return String(d.rep).toLowerCase() === String(u).toLowerCase(); });
+}
+function rp2DohToday() { var t = new Date(); return t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2); }
+function rp2DohQEnd(p) { var mm = plnenieQuarterMonths(p.q), y = PL_STATE.year || p.year, d = new Date(y, mm[mm.length - 1], 0); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+function rp2DohFmt(iso) { var d = rp2D(iso); return d ? d.getDate() + '. ' + (d.getMonth() + 1) + '. ' + d.getFullYear() : ''; }
+// Plnenie dohody: { txt, pct, unit } alebo null (text / iné obdobie)
+function rp2DohProgress(d, m, p) {
+  if (!m || !p || String(d.rok) !== String(PL_STATE.year || p.year) || String(d.q) !== String(p.q)) return null;
+  var x = d.produkt ? m.prods.filter(function(y) { return y.key === d.produkt; })[0] : null;
+  var cur = x ? x.predajeEUR : m.actual, base = parseFloat(d.zaklad_eur);
+  if (isNaN(base)) return null;
+  var delta = Math.max(0, cur - base), goal = parseFloat(String(d.ciel).replace(',', '.'));
+  if (!(goal > 0)) return null;
+  if (d.typ === 'eur') return { got: delta, goal: goal, pct: delta / goal * 100, txt: rptFmtEur(delta) + ' z ' + rptFmtEur(goal) };
+  if (d.typ === 'bal') {
+    var price = x ? x.price : null;
+    if (!price) { return { got: null, goal: goal, pct: null, txt: 'pribudlo ' + rptFmtEur(delta) + ' (chýba cena balenia)' }; }
+    var packs = delta / price;
+    return { got: packs, goal: goal, pct: packs / goal * 100, txt: rp2Num(packs) + ' z ' + rp2Num(goal) + ' bal.' };
+  }
+  return null;
+}
+function rp2DohStatus(d, pr) {
+  if (d.stav === 'done') return ['ok', 'Splnené'];
+  if (d.stav === 'cancelled') return ['muted', 'Zrušené'];
+  if (pr && pr.pct !== null && pr.pct >= 100) return ['ok', 'Splnené podľa predajov'];
+  if (d.termin && d.termin < rp2DohToday()) return ['bad', 'Po termíne'];
+  return ['warn', 'Plní sa'];
+}
+function rp2DohDraftNew(m, p) {
+  return { id: '', produkt: '', typ: 'bal', ciel: '', termin: rp2DohQEnd(p), poznamka: '' };
+}
+function rp2DohSet(k, v) { if (RP2_DOH.draft) RP2_DOH.draft[k] = v; }
+function rp2DohSuggest(key, packs) {
+  var m = RP2_LAST.m, p = RP2_LAST.p; if (!m) return;
+  RP2_DOH.draft = RP2_DOH.draft || rp2DohDraftNew(m, p);
+  RP2_DOH.draft.produkt = key; RP2_DOH.draft.typ = 'bal'; RP2_DOH.draft.ciel = String(packs);
+  RPT_VIEW.open = RPT_VIEW.open || {}; RPT_VIEW.open.doh = true;
+  rptViewRender(true);
+  setTimeout(function() { try { var el = document.getElementById('rp2-doh-form'); if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {} }, 60);
+}
+function rp2DohEdit(id) {
+  var d = (RP2_DOH.list || []).filter(function(x) { return x.id === id; })[0]; if (!d) return;
+  RP2_DOH.draft = { id: d.id, produkt: d.produkt || '', typ: d.typ || 'text', ciel: String(d.ciel), termin: d.termin || '', poznamka: d.poznamka || '' };
+  RPT_VIEW.open = RPT_VIEW.open || {}; RPT_VIEW.open.doh = true;
+  rptViewRender(true);
+  setTimeout(function() { try { var el = document.getElementById('rp2-doh-form'); if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {} }, 60);
+}
+function rp2DohCancelEdit() { RP2_DOH.draft = null; rptViewRender(true); }
+function rp2DohSubmit() {
+  var dr = RP2_DOH.draft, m = RP2_LAST.m, p = RP2_LAST.p; if (!dr || !m || RP2_DOH.busy) return;
+  var goal = String(dr.ciel || '').trim();
+  if (!goal) { try { showSwToast(dr.typ === 'text' ? 'Napíš, na čom ste sa dohodli' : 'Zadaj cieľ'); } catch (e) {} return; }
+  if (dr.typ !== 'text' && !(parseFloat(goal.replace(',', '.')) > 0)) { try { showSwToast('Cieľ musí byť číslo väčšie ako 0'); } catch (e) {} return; }
+  var x = dr.produkt ? m.prods.filter(function(y) { return y.key === dr.produkt; })[0] : null;
+  var old = dr.id ? (RP2_DOH.list || []).filter(function(z) { return z.id === dr.id; })[0] : null;
+  var payload = { id: dr.id || '', rep: RPT_VIEW.username, rok: (old ? old.rok : (PL_STATE.year || p.year)), q: (old ? old.q : p.q), produkt: dr.produkt || '', typ: dr.typ, ciel: goal.replace(',', '.'),
+                  termin: dr.termin || '', poznamka: dr.poznamka || '', stav: old ? old.stav : 'open' };
+  if (!old) payload.zaklad_eur = x ? x.predajeEUR : m.actual;       // základ pre sledovanie plnenia
+  rp2DohSave(payload, function(ok) { if (ok) RP2_DOH.draft = null; });
+}
+function rp2DohStav(id, stav) {
+  var d = (RP2_DOH.list || []).filter(function(x) { return x.id === id; })[0]; if (!d) return;
+  rp2DohSave({ id: d.id, rep: d.rep, rok: d.rok, q: d.q, produkt: d.produkt, typ: d.typ, ciel: d.ciel, termin: d.termin, poznamka: d.poznamka, stav: stav });
+}
+function rp2DohDel(id) {
+  var run = function() {
+    var url = scriptUrl('action=deleteDohoda&id=' + encodeURIComponent(id));
+    appQueuedFetchJson(url, { cache: 'no-store' }, 24000, 'critical').then(function(r) {
+      if (r && r.ok) { RP2_DOH.list = (RP2_DOH.list || []).filter(function(x) { return x.id !== id; }); try { showSwToast('Dohoda zmazaná'); } catch (e) {} }
+      else { try { showSwToast('Nepodarilo sa zmazať (zmazať môže autor alebo admin)'); } catch (e) {} }
+      rp2Schedule();
+    }).catch(function() { try { showSwToast('Nepodarilo sa zmazať'); } catch (e) {} });
+  };
+  if (typeof lkConfirm === 'function') lkConfirm('Zmazať dohodu?', 'Dohoda sa natrvalo odstráni.', 'Zmazať', run); else run();
+}
+function rp2DohHtml(m, p) {
+  RP2_LAST = { m: m, p: p };
+  var u = RPT_VIEW.username, list = rp2DohForRep(u, p);
+  var order = { open: 0, done: 1, cancelled: 2 };
+  list.sort(function(a, b) { return (order[a.stav] - order[b.stav]) || String(a.termin || '').localeCompare(String(b.termin || '')); });
+  var cards = list.map(function(d) {
+    var pr = rp2DohProgress(d, m, p), st = rp2DohStatus(d, pr);
+    var x = d.produkt ? m.prods.filter(function(y) { return y.key === d.produkt; })[0] : null;
+    var lbl = x ? x.label : (d.produkt ? d.produkt : 'Celkovo');
+    var goalTxt = d.typ === 'bal' ? rp2Num(parseFloat(d.ciel)) + ' bal.' : (d.typ === 'eur' ? rptFmtEur(parseFloat(d.ciel)) : rp2Esc(d.ciel));
+    var bar = (pr && pr.pct !== null) ? '<div class="rp2-pbar"><i style="width:' + Math.min(100, Math.max(0, pr.pct)) + '%;background:' + (pr.pct >= 100 ? '#059669' : '#2563EB') + '"></i></div><div class="rp2-dh-prog">' + pr.txt + ' · ' + Math.round(pr.pct) + ' %</div>'
+      : (pr ? '<div class="rp2-dh-prog">' + pr.txt + '</div>' : (d.typ !== 'text' && String(d.q) !== String(p.q) ? '<div class="rp2-dh-prog">Dohoda z Q' + rp2Esc(d.q) + ' — plnenie sa počíta v jej kvartáli.</div>' : ''));
+    var open = d.stav === 'open';
+    return '<div class="rp2-dh ' + st[0] + '"><div class="rp2-dh-hd"><b>' + rp2Esc(lbl) + '</b><span class="rp2-rc ' + (st[0] === 'muted' ? '' : st[0]) + '">' + st[1] + '</span></div>' +
+      '<div class="rp2-dh-goal">' + (d.typ === 'text' ? goalTxt : '+' + goalTxt) + (d.termin ? ' · do ' + rp2DohFmt(d.termin) : '') + '</div>' +
+      (d.poznamka ? '<div class="rp2-dh-note">' + rp2Esc(d.poznamka) + '</div>' : '') + bar +
+      '<div class="rp2-dh-meta">zapísal ' + rp2Esc(d.manager) + (d.ts ? ' · ' + rp2DohFmt(String(d.ts).slice(0, 10)) : '') + '</div>' +
+      '<div class="rp2-dh-btns">' + (open ? '<button type="button" onclick="rp2DohStav(\'' + d.id + '\',\'done\')">✓ Splnené</button>' : '<button type="button" onclick="rp2DohStav(\'' + d.id + '\',\'open\')">↺ Znova otvoriť</button>') +
+      '<button type="button" onclick="rp2DohEdit(\'' + d.id + '\')">✎ Upraviť</button>' + (open ? '<button type="button" onclick="rp2DohStav(\'' + d.id + '\',\'cancelled\')">Zrušiť</button>' : '') +
+      '<button type="button" class="del" onclick="rp2DohDel(\'' + d.id + '\')">🗑</button></div></div>';
+  }).join('');
+  var dr = RP2_DOH.draft;
+  var opts = '<option value=""' + (dr && !dr.produkt ? ' selected' : '') + '>Celkovo (všetky produkty)</option>' + m.prods.map(function(x) { return '<option value="' + x.key + '"' + (dr && dr.produkt === x.key ? ' selected' : '') + '>' + rp2Esc(x.label) + '</option>'; }).join('');
+  var sug = m.closed ? '' : m.prods.filter(function(x) { return x.g95 > 0 && x.packs95 !== null; }).slice(0, 4).map(function(x) {
+    return '<button type="button" class="rp2-chip2 rp2-sugg" onclick="rp2DohSuggest(\'' + x.key + '\',' + x.packs95 + ')"><b>' + rp2Esc(x.label) + '</b> +' + rp2Num(x.packs95) + ' bal. (95 %)</button>';
+  }).join('');
+  var form = '<div class="rv-card" id="rp2-doh-form"><div class="rp2-blk-t" style="margin-top:0">' + (dr && dr.id ? 'Upraviť dohodu' : 'Nová dohoda') + '</div>' +
+    (sug && !(dr && dr.id) ? '<div class="rp2-chips" style="margin-bottom:10px"><span class="rp2-ideas-l" style="align-self:center">Návrhy:</span>' + sug + '</div>' : '') +
+    '<div class="rp2-dh-f"><label>Produkt</label><select onchange="rp2DohSet(\'produkt\',this.value)">' + opts + '</select></div>' +
+    '<div class="rp2-dh-f"><label>Typ cieľa</label><select onchange="rp2DohSet(\'typ\',this.value);rptViewRender(true)"><option value="bal"' + ((dr ? dr.typ : 'bal') === 'bal' ? ' selected' : '') + '>Balenia</option><option value="eur"' + ((dr && dr.typ === 'eur') ? ' selected' : '') + '>€</option><option value="text"' + ((dr && dr.typ === 'text') ? ' selected' : '') + '>Len text</option></select></div>' +
+    '<div class="rp2-dh-f"><label>' + ((dr && dr.typ === 'text') ? 'Na čom ste sa dohodli' : 'Cieľ (pribudnúť do termínu)') + '</label><input type="' + ((dr && dr.typ === 'text') ? 'text' : 'text') + '" inputmode="' + ((dr && dr.typ === 'text') ? 'text' : 'decimal') + '" value="' + rp2Esc(dr ? dr.ciel : '') + '" oninput="rp2DohSet(\'ciel\',this.value)" placeholder="' + ((dr && dr.typ === 'text') ? 'napr. osloviť 5 spiacich lekární v Senici' : 'napr. 30') + '"></div>' +
+    '<div class="rp2-dh-f"><label>Termín</label><input type="date" value="' + rp2Esc(dr ? dr.termin : rp2DohQEnd(p)) + '" onchange="rp2DohSet(\'termin\',this.value)"></div>' +
+    '<div class="rp2-dh-f"><label>Poznámka</label><input type="text" value="' + rp2Esc(dr ? dr.poznamka : '') + '" oninput="rp2DohSet(\'poznamka\',this.value)" placeholder="voliteľné"></div>' +
+    '<div class="rp2-dh-fb"><button type="button" class="rp2-copy" style="margin-top:4px" onclick="rp2DohSubmit()"' + (RP2_DOH.busy ? ' disabled' : '') + '>' + (RP2_DOH.busy ? 'Ukladám…' : (dr && dr.id ? 'Uložiť zmeny' : 'Uložiť dohodu')) + '</button>' +
+    (dr ? '<button type="button" class="rp2-dh-cancel" onclick="rp2DohCancelEdit()">Zrušiť</button>' : '') + '</div></div>';
+  if (!dr) { RP2_DOH.draft = null; }
+  var head = RP2_DOH.err ? '<div class="rp2-warn" style="margin:0 0 10px">⚠ Dohody sa nepodarilo načítať — skontroluj nový kód a nasadenú verziu Apps Scriptu (akcie getDohody, saveDohoda).</div>' : '';
+  var empty = (!list.length && RP2_DOH.list !== null) ? '<div class="rv-card"><div style="font-size:12.5px;color:#64748B">Zatiaľ žiadna dohoda s týmto reprezentantom. Zapíš prvú nižšie — pri ďalšom otvorení Reportu uvidíš, ako sa plní.</div></div>' : '';
+  var loading = (RP2_DOH.list === null) ? '<div class="rv-card"><div class="rp2-load"><span class="rp2-spin"></span>Načítavam dohody…</div></div>' : '';
+  var startBtn = dr ? '' : '<button type="button" class="rp2-copy" style="margin:0 0 4px" onclick="RP2_DOH.draft=rp2DohDraftNew(RP2_LAST.m,RP2_LAST.p);rptViewRender(true)">＋ Nová dohoda</button>';
+  return head + loading + empty + (cards ? '<div class="rp2-dhs">' + cards + '</div>' : '') + (dr ? form : startBtn);
+}
+function rp2DohSub(u, p) {
+  var l = rp2DohForRep(u, p).filter(function(d) { return d.stav === 'open'; }).length;
+  return RP2_DOH.list === null ? 'čo je dohodnuté a ako sa plní' : (l ? l + ' otvorené · čo je dohodnuté a ako sa plní' : 'čo je dohodnuté a ako sa plní');
+}
+
 // ═══ Na 1:1 rozhovor — text na skopírovanie ═══
 function rp2TalkLines(m, p, title, ideas, warns) {
   var L = [];
@@ -33171,6 +33328,16 @@ function rp2TalkLines(m, p, title, ideas, warns) {
     L.push((i + 1) + ') ' + x.label + ' (' + rp2Pct(x.pct) + '): chýba ' + rptFmtEur(x.g100) + pk + (id && id.list.length ? ' — priestor: ' + id.list.map(function(o) { return o.okres; }).join(', ') : '') + '.');
   });
   (warns || []).slice(0, 4).forEach(function(w) { L.push('⚠ ' + w.t.replace(/<[^>]+>/g, '')); });
+  try {
+    var open = rp2DohForRep(RPT_VIEW.username, p).filter(function(d) { return d.stav === 'open'; });
+    if (open.length && RPT_VIEW.scope === 'rep') {
+      L.push('Dohody z minule: ' + open.slice(0, 4).map(function(d) {
+        var pr = rp2DohProgress(d, m, p), x = d.produkt ? m.prods.filter(function(y) { return y.key === d.produkt; })[0] : null;
+        var g = d.typ === 'bal' ? '+' + rp2Num(parseFloat(d.ciel)) + ' bal.' : (d.typ === 'eur' ? '+' + rptFmtEur(parseFloat(d.ciel)) : d.ciel);
+        return (x ? x.label + ' ' : '') + g + (d.termin ? ' do ' + rp2DohFmt(d.termin) : '') + (pr && pr.pct !== null ? ' (zatiaľ ' + Math.round(pr.pct) + ' %)' : '');
+      }).join('; ') + '.');
+    }
+  } catch (e) {}
   var q = [];
   var dec = (warns || []).filter(function(w) { return /klesaj|nižší/.test(w.t); })[0];
   if (dec) q.push('Čo spôsobilo pokles (' + dec.t.split(':')[0].replace(/<[^>]+>/g, '') + ')?');
@@ -33424,6 +33591,7 @@ function rptViewRender(fromPharma) {
   if (!reps.length) { body.innerHTML = '<div class="rv-empty">Vyber reprezentanta.</div>'; return; }
   var m = rp2Model(reps, p);
   if (!m || m.empty) { body.innerHTML = '<div class="rv-empty">Pre toto obdobie nie sú dáta plnenia.</div>'; return; }
+  RP2_LAST = { m: m, p: p };
   var isGroup = RPT_VIEW.scope !== 'rep';
   var title = rptViewScopeTitle(), sub = rptViewScopeSub(reps, p);
   var ideas = (!isGroup && !m.closed) ? rp2DistrictIdeas(reps, m.prods, p) : null;
@@ -33432,6 +33600,7 @@ function rptViewRender(fromPharma) {
   html += rp2VerdictHtml(m, p, title, sub);
   html += rp2WarnCardHtml(warns);
   html += rp2Fold('act', 1, m.closed ? 'Výsledok kvartálu' : 'Čo spraviť, aby sa splnil plán', m.closed ? '' : (isGroup ? 'súčet za skupinu — rozpis podľa produktov' : 'koľko a čoho predať do konca kvartálu'), rp2ActionHtml(m, p, ideas, isGroup), true);
+  if (!isGroup) html += rp2Fold('doh', '🤝', 'Dohody z 1:1', rp2DohSub(RPT_VIEW.username, p), function() { return rp2DohHtml(m, p); }, false);
   html += rp2Fold('prod', 2, 'Produkty', 'plnenie, tempo a podiel na trhu', rp2ProductsHtml(m, reps), false);
   var _n = 3;
   var _dataMemo = null, getData = function() { return _dataMemo || (_dataMemo = rptViewData(reps, p)); };
