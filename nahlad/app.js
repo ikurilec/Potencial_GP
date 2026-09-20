@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.53';
+var APP_VERSION = '2.88.54';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -9017,7 +9017,7 @@ function satoriGuideHintReady(key){
   if(key === 'products') return !!document.getElementById('pl-ps-body');
   if(key === 'market'){
     var marketBody = document.getElementById('pharma-ms-body');
-    return !!(marketBody && marketBody.textContent.trim() && !document.getElementById('gyn-ph-prog-ring') && !marketBody.querySelector('.skel-pharma-card,.gyn-pharma-loading,.app-error-card'));
+    return !!(marketBody && marketBody.textContent.trim() && !document.getElementById('gyn-ph-prog-ring') && !marketBody.querySelector('.skel-pharma-card,.gyn-pharma-loading,.app-ring-loading,.app-error-card'));
   }
   if(key === 'districts'){ var districtChart = document.getElementById('pharma-okres-chart-svg'); return !!(districtChart && districtChart.textContent.indexOf('Načítavam') < 0); }
   return true;
@@ -23164,25 +23164,46 @@ function skelMgrList(){
   var row='<div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:55%"></div><div class="skel skel-line" style="width:38%"></div></div></div>';
   return '<div class="skel-wrap">'+row+row+row+row+row+'</div>';
 }
-// Pharma overlay skeleton (Trhový podiel) — total card + per-okres rows
-function skelPharma(){
-  var totalCard = '<div class="skel-pharma-card" style="background:#0C1E35;border-radius:14px;padding:18px 20px;margin-bottom:14px">' +
-    '<div class="skel" style="width:40%;height:10px;background:rgba(255,255,255,.10);margin:0 auto 14px;border-radius:5px"></div>' +
-    '<div style="display:flex;gap:0;justify-content:center;align-items:flex-end">' +
-      '<div style="flex:1;text-align:center"><div class="skel" style="width:50%;height:9px;background:rgba(255,255,255,.10);margin:0 auto 8px;border-radius:5px"></div><div class="skel" style="width:80%;height:30px;background:rgba(255,255,255,.12);margin:0 auto;border-radius:6px"></div></div>' +
-      '<div style="flex:1;text-align:center;border-left:1px solid rgba(255,255,255,.10)"><div class="skel" style="width:50%;height:9px;background:rgba(255,255,255,.10);margin:0 auto 8px;border-radius:5px"></div><div class="skel" style="width:80%;height:30px;background:rgba(255,255,255,.12);margin:0 auto;border-radius:6px"></div></div>' +
+// ── Kruhový indikátor načítavania (rovnaký ako v Gyn Trhovom podiele) ──
+// Plynule sa plní modrou, asymptoticky k ~95 % (nezostane visieť na „100 %"); keď dáta dorazia, obsah ho
+// nahradí. Jeden globálny časovač obslúži všetky kruhy v DOM a sám sa zastaví, keď žiadny nie je.
+var APP_RING_C = 201.06;   // obvod kruhu (2π·r, r=32)
+var _appRingTimer = null;
+function appRingLoadingHtml(title, sub, pad){
+  setTimeout(appRingAnimate, 0);
+  return '<div class="app-ring-loading" style="padding:' + (pad || 56) + 'px 18px;text-align:center;color:#64748B">' +
+    '<div class="app-ring-wrap" style="position:relative;width:76px;height:76px;margin:0 auto 16px">' +
+      '<svg width="76" height="76" viewBox="0 0 76 76" style="transform:rotate(-90deg)">' +
+        '<circle cx="38" cy="38" r="32" fill="none" stroke="#DBEAFE" stroke-width="6"></circle>' +
+        '<circle class="app-ring-arc" cx="38" cy="38" r="32" fill="none" stroke="#2563EB" stroke-width="6" stroke-linecap="round" stroke-dasharray="' + APP_RING_C + '" stroke-dashoffset="' + APP_RING_C + '"></circle>' +
+      '</svg>' +
+      '<div class="app-ring-num" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:850;color:#0C1E35;font-size:18px;font-variant-numeric:tabular-nums">0%</div>' +
     '</div>' +
+    '<div style="font-family:var(--font-display);font-weight:850;color:#0C1E35;font-size:16px;margin-bottom:5px">' + title + '</div>' +
+    '<div style="font-size:12.5px;line-height:1.4">' + (sub || 'prosím chvíľu počkaj.') + '</div>' +
   '</div>';
-  var district = function(){
-    return '<div class="skel-pharma-card" style="padding:0 0 12px">' +
-      '<div style="background:#0C1E35;padding:10px 14px;margin-bottom:8px"><div class="skel" style="width:40%;height:10px;background:rgba(255,255,255,.12);border-radius:5px"></div></div>' +
-      '<div style="padding:4px 14px"><div class="skel-pharma-row"><div class="skel" style="flex:1;height:11px;border-radius:5px"></div><div class="skel" style="width:50px;height:11px;border-radius:5px"></div></div>' +
-      '<div class="skel-pharma-row"><div class="skel" style="flex:1;height:11px;border-radius:5px"></div><div class="skel" style="width:50px;height:11px;border-radius:5px"></div></div>' +
-      '<div class="skel-pharma-row"><div class="skel" style="flex:1;height:11px;border-radius:5px"></div><div class="skel" style="width:50px;height:11px;border-radius:5px"></div></div>' +
-      '<div class="skel-pharma-row"><div class="skel" style="flex:1;height:11px;border-radius:5px"></div><div class="skel" style="width:50px;height:11px;border-radius:5px"></div></div></div>' +
-    '</div>';
-  };
-  return '<div class="pharma-ms-loading">'+totalCard+district()+district()+'</div>';
+}
+function appRingAnimate(){
+  if (_appRingTimer) return;
+  _appRingTimer = setInterval(function(){
+    var rings = document.querySelectorAll('.app-ring-arc');
+    if (!rings.length){ clearInterval(_appRingTimer); _appRingTimer = null; return; }
+    for (var i = 0; i < rings.length; i++){
+      var r = rings[i], t0 = +r.getAttribute('data-t0');
+      if (!t0){ t0 = Date.now(); r.setAttribute('data-t0', t0); }
+      var p = 95 * (1 - Math.exp(-((Date.now() - t0) / 1000) / 3.2));
+      r.setAttribute('stroke-dashoffset', (APP_RING_C * (1 - p / 100)).toFixed(2));
+      var wrap = r.closest ? r.closest('.app-ring-wrap') : null, num = wrap && wrap.querySelector('.app-ring-num');
+      if (num) num.textContent = Math.round(p) + '%';
+    }
+  }, 80);
+}
+// Trhový podiel (Golem/Reagila) — kým sa dáta sťahujú
+function skelPharma(){
+  var t = '';
+  try { t = (document.getElementById('pharma-ms-title') || {}).textContent || ''; } catch(e){}
+  var prod = t.indexOf(' · ') >= 0 ? t.split(' · ').pop() : '';
+  return appRingLoadingHtml('Načítavam trhové dáta', (prod ? 'Produkt ' + mgrEscape(prod) + ' · ' : '') + 'prosím chvíľu počkaj.');
 }
 
 function lbGetBody(){
@@ -23908,7 +23929,7 @@ function usageStatsLoad(rep, _retry) {
   var cache = rep ? USAGE_VIEW.repCache : USAGE_VIEW.teamCache;
   // Načítané dáta držíme v appke max 3 min (predtým do reloadu appky → nový záznam si nikdy neuvidel).
   if (cache[cacheKey] && (Date.now() - (cache[cacheKey]._at || 0)) < 180000) { usageRenderStats(cache[cacheKey], rep); return; }
-  body.innerHTML = '<div class="skel-wrap"><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:55%"></div><div class="skel skel-line" style="width:38%"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:62%"></div><div class="skel skel-line" style="width:30%"></div></div></div></div>';
+  body.innerHTML = appRingLoadingHtml('Načítavam aktivitu', rep ? 'Zbieram údaje o používaní reprezentanta…' : 'Zbieram údaje o používaní appky…', 44);
   if (typeof IS_DEV !== 'undefined' && IS_DEV) {
     var mock = usageMockResponse(rep, USAGE_VIEW.dni);
     cache[cacheKey] = mock;
