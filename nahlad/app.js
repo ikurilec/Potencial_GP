@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.63';
+var APP_VERSION = '2.88.65';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -32517,21 +32517,22 @@ function rptExpectedPace(p) {
   return total > 0 ? Math.round(upto / total * 10000) / 100 : 100;
 }
 
-// Odhad ceny za balenie = € predané (report mesiac) ÷ naše balenia (Σ nas_pat z PharmaData)
+// Cena za balenie pre produkt a množinu repov — z hárkov Cennik_Region (cena územia repa) a Cennik (záloha), rovnaká ako
+// v karte „Čo spraviť". Pre skupinu vážený priemer podľa plánu repov v produkte (balenia = € ÷ cena).
+// Predtým „Čo keby" odhadoval balenia z € a IQVIA jednotiek, čo sa rozchádzalo s Cenníkom.
 function rptViewEurPerPkg(reps, planKey, p) {
-  var codes = Object.keys(RPT_PHARMA_PLAN_KEY).filter(function(c) { return RPT_PHARMA_PLAN_KEY[c] === planKey; });
-  if (!codes.length) return null;
-  var oblasts = rptViewOblasts(reps);
-  if (!oblasts.length) return null;
-  var pkgs = 0, found = false;
-  codes.forEach(function(code) {
-    var sig = rptDistrictSignalsForCode(code, oblasts, p, 999);
-    if (sig && sig.rows) sig.rows.forEach(function(r) { if (r.vol !== null && r.vol !== undefined) { pkgs += r.vol; found = true; } });
+  var qc = PL_STATE.qCache[p.q], plan = qc && qc.data && qc.data.plan;
+  var national = rp2Price(planKey), sumW = 0, sumP = 0;
+  (reps || []).forEach(function(u) {
+    var pk = plan && plan[u] ? rptResolvePlanProductKey(plan[u], planKey) : null;
+    var w = (pk && plan[u][pk] > 0) ? plan[u][pk] : 0;
+    if (!(w > 0)) return;
+    var pu = rp2RepPrice(u, planKey) || national;
+    if (!pu) return;
+    sumW += w; sumP += w / pu;
   });
-  if (!found || pkgs <= 0) return null;
-  var eur = rptViewMonthActual(reps, planKey, p.month, p.year);
-  if (eur === null || eur <= 0) return null;
-  return eur / pkgs;
+  if (sumW > 0 && sumP > 0) return sumW / sumP;
+  return national || null;
 }
 
 // ── Ovládanie (výber repa + rozsah) ──
@@ -32723,6 +32724,17 @@ function rp2SkuLine(x, closed) {
     return '<span class="rp2-chip">' + rp2Esc(k.sku) + ' <i>(' + k.cena.toFixed(2).replace('.', ',') + ' €)</i> · ' + Math.round(a).toLocaleString('sk') + ' / ' + Math.round(b).toLocaleString('sk') + ' bal.</span>';
   }).join('') + '</div>';
 }
+// Jednotka, v ktorej sa ukazuje tempo predaja: deň (1 pracovný deň), týždeň (5), mesiac (priemerný počet pracovných dní).
+function rp2Unit(m) {
+  var u = RPT_VIEW.unit || 'day';
+  var wd = (m && m.qWd > 0) ? m.qWd / 3 : 21;
+  if (u === 'week') return { k: 'week', f: 5, lbl: 'týždeň' };
+  if (u === 'month') return { k: 'month', f: wd, lbl: 'mesiac' };
+  return { k: 'day', f: 1, lbl: 'deň' };
+}
+function rp2SetUnit(u) { RPT_VIEW.unit = u; if (MGR_STATE.subtab === 'reporty') rptViewRender(true); }
+function rp2Num(n) { return Math.round(n).toLocaleString('sk'); }
+function rp2Up(need, avg) { if (!(avg > 0)) return ''; var d = Math.round((need / avg - 1) * 100); return (d >= 0 ? '+' : '') + d + ' %'; }
 function rp2Bal(n) { return Math.round(n).toLocaleString('sk') + ' bal.'; }
 
 // Model pre množinu repov a kvartál. Všetky čísla idú z plnenieBuildAggregates.
@@ -32746,6 +32758,9 @@ function rp2Model(reps, p) {
   // zostávajúce pracovné dni kvartálu (rovnaké pracovné dni ako Plnenie)
   var _qWd = 0; try { _qWd = plnenieWorkingDaysForMonths(PL_STATE.year || p.year, plnenieQuarterMonths(p.q)); } catch (e) {}
   m.remDays = m.closed ? 0 : Math.round(_qWd * (100 - exp) / 100);
+  m.qWd = _qWd;
+  m.elapsedDays = _qWd * exp / 100;              // pracovné dni kvartálu, za ktoré máme predaje
+  m.reps = reps; m.p = p;
   m.gap100 = Math.max(0, m.plan - m.actual);
   m.gap95  = Math.max(0, 0.95 * m.plan - m.actual);
   var short = 0;
@@ -32866,6 +32881,20 @@ function rp2VerdictHtml(m, p, title, sub) {
   '</div>';
 }
 
+// Predaje produktu po mesiacoch kvartálu (€). Rozrobený mesiac je označený *.
+function rp2MonthsHtml(x, m) {
+  var p = m.p, reps = m.reps; if (!p || !reps) return '';
+  var months = (RPT_Q_MONTHS[p.q] || []), out = [], sig = null;
+  try { sig = plnenieDataSignal(); } catch (e) {}
+  months.forEach(function(mm) {
+    var v = rptViewMonthActual(reps, x.key, mm, p.year);
+    if (v === null || v === undefined || v <= 0) return;
+    var part = sig && sig.partM && p.year === sig.partY && mm === sig.partM;
+    out.push('<span class="rp2-mchip">' + RPT_M[mm] + ' <b>' + rptFmtEur(v) + '</b>' + (part ? '*' : '') + '</span>');
+  });
+  return out.length > 1 ? '<div class="rp2-months">' + out.join('') + '</div>' : '';
+}
+
 // Karta produktu: veľké čísla (balenia na 95 % a 100 %), pod tým balenia podľa SKU a okresy s priestorom
 function rp2ProductCardHtml(x, m, ideas, i) {
   var id = ideas && ideas[x.key];
@@ -32874,6 +32903,17 @@ function rp2ProductCardHtml(x, m, ideas, i) {
   if (x.g95 > 0) to95 = x.packs95 !== null ? rp2Bal(x.packs95) : (x.range95 ? rp2Range(x.range95) : rptFmtEur(x.g95)); else to95 = '✓';
   to100 = x.packs100 !== null ? rp2Bal(x.packs100) : (x.range100 ? rp2Range(x.range100) : rptFmtEur(x.g100));
   var packsKnown = x.packs100 !== null;
+  var un = rp2Unit(m);
+  var paceHtml = '';
+  if (!m.closed && m.elapsedDays >= 1 && m.remDays >= 1) {
+    var avgE = x.predajeEUR / m.elapsedDays * un.f, n95E = x.g95 / m.remDays * un.f, n100E = x.g100 / m.remDays * un.f;
+    var pk = x.price && x.price > 0;
+    var f = function(e) { return pk ? rp2Num(e / x.price) + ' bal.' : rptFmtEur(e); };
+    paceHtml = '<div class="rp2-pace3"><div class="rp2-pcell"><em>Doteraz Ø</em><b>' + f(avgE) + '</b><small>na ' + un.lbl + '</small></div>' +
+      '<div class="rp2-pcell p95"><em>Treba na 95 %</em><b>' + (x.g95 > 0 ? f(n95E) : '✓') + '</b><small>' + (x.g95 > 0 ? 'na ' + un.lbl + ' · ' + rp2Up(n95E, avgE) : 'splnené') + '</small></div>' +
+      '<div class="rp2-pcell p100"><em>Treba na 100 %</em><b>' + f(n100E) + '</b><small>na ' + un.lbl + ' · ' + rp2Up(n100E, avgE) + '</small></div></div>';
+  }
+  var monthsHtml = rp2MonthsHtml(x, m);
   var need = m.closed ? '' :
     '<div class="rp2-need2"><div class="rp2-nb n95"><em>na 95 %</em><b>' + to95 + '</b>' + (x.g95 > 0 && packsKnown ? '<small>' + rptFmtEur(x.g95) + '</small>' : '') + '</div>' +
     '<div class="rp2-nb n100"><em>na 100 %</em><b>' + to100 + '</b>' + (packsKnown ? '<small>' + rptFmtEur(x.g100) + '</small>' : '') + '</div></div>';
@@ -32896,7 +32936,7 @@ function rp2ProductCardHtml(x, m, ideas, i) {
     '<div class="rp2-pc-hd"><span class="rp2-rank">' + (i + 1) + '</span><div class="rp2-pc-name">' + rp2Esc(x.label) + '</div><span class="rp2-chip-pct ' + pcls + '">' + rp2Pct(x.pct) + '</span></div>' +
     '<div class="rp2-pbar"><i style="width:' + Math.min(100, x.pct || 0) + '%;background:' + rptColorHex(x.pct) + '"></i></div>' +
     '<div class="rp2-pc-gap">Plán ' + rptFmtEur(x.planEUR) + ' · predané ' + rptFmtEur(x.predajeEUR) + ' · chýba <b>' + rptFmtEur(x.g100) + '</b></div>' +
-    need + sku + ok + '</div>';
+    monthsHtml + need + paceHtml + sku + ok + '</div>';
 }
 
 // Karta „Čo spraviť": dva ciele (95 % a 100 %) + karty produktov s dierou
@@ -32905,7 +32945,10 @@ function rp2ActionHtml(m, p, ideas, isGroup) {
   function targetBox(lbl, ico, gap, packs, cls) {
     if (gap <= 0) return '<div class="rp2-tgt ok"><div class="rp2-tgt-l">' + ico + ' ' + lbl + '</div><div class="rp2-tgt-big">✓ splnené</div></div>';
     var packTxt = (m.packsComplete && packs > 0) ? '<div class="rp2-tgt-pk">≈ <b>' + rp2Bal(packs) + '</b></div>' : '';
-    var perDay = days ? '<div class="rp2-tgt-m">≈ ' + rptFmtEur(gap / days) + '/deň' + ((m.packsComplete && packs > 0) ? ' · ' + rp2Bal(Math.ceil(packs / days)) + '/deň' : '') + '</div>' : '';
+    var un = rp2Unit(m);
+    var avgE = (m.elapsedDays >= 1) ? m.actual / m.elapsedDays * un.f : 0, needE = days ? gap / days * un.f : 0;
+    var perDay = days ? '<div class="rp2-tgt-m">treba <b>' + rptFmtEur(needE) + '</b>/' + un.lbl + ((m.packsComplete && packs > 0) ? ' · ' + rp2Bal(Math.ceil(packs / days * un.f)) : '') +
+      (avgE > 0 ? '<br>doteraz Ø ' + rptFmtEur(avgE) + '/' + un.lbl + ' (' + rp2Up(needE, avgE) + ')' : '') + '</div>' : '';
     return '<div class="rp2-tgt ' + cls + '"><div class="rp2-tgt-l">' + ico + ' ' + lbl + '</div><div class="rp2-tgt-big">' + rptFmtEur(gap) + '</div><div class="rp2-tgt-s">chýba do cieľa</div>' + packTxt + perDay + '</div>';
   }
   var head;
@@ -32925,24 +32968,34 @@ function rp2ActionHtml(m, p, ideas, isGroup) {
     if (m.rangeOnly.length) warn += '<div class="rp2-warn">ℹ ' + rp2Esc(m.rangeOnly.join(', ')) + ': viac balení bez zadaného podielu predaja — ukazujem rozpätie. Pre presný odhad doplň v Cenníku <b>podiel_pct</b>.</div>';
   }
   var cards = m.prods.filter(function(x) { return x.g100 > 0; }).slice(0, 6).map(function(x, i) { return rp2ProductCardHtml(x, m, ideas, i); }).join('');
-  return '<div class="rv-card">' + head + (days && !m.closed ? '<div class="rp2-sub">Do konca kvartálu ostáva približne <b>' + days + ' pracovných dní</b> — čísla nižšie sú aj denný predaj.</div>' : '') + warn + '</div>' +
+  var unit = rp2Unit(m);
+  var unitBar = (!m.closed && days) ? '<div class="rp2-unit"><span>Tempo predaja:</span><div class="rp2-pills">' +
+    [['day', 'Deň'], ['week', 'Týždeň'], ['month', 'Mesiac']].map(function(u) { return '<button class="rp2-pill' + (unit.k === u[0] ? ' on' : '') + '" onclick="rp2SetUnit(\'' + u[0] + '\')">' + u[1] + '</button>'; }).join('') + '</div></div>' : '';
+  return '<div class="rv-card">' + unitBar + head + (days && !m.closed ? '<div class="rp2-sub">Do konca kvartálu ostáva približne <b>' + days + ' pracovných dní</b>. „Doteraz Ø“ je priemerný predaj za doterajšie pracovné dni kvartálu, „Treba“ je predaj na zostávajúci čas.</div>' : '') + warn + '</div>' +
     (cards ? '<div class="rp2-pcs">' + cards + '</div>' +
       (m.closed ? '' : '<div class="rp2-foot">95 % je rozdelené na produkty pomerne podľa veľkosti diery. Balenia = chýbajúce € ÷ cena balenia (cena územia repa z konvertora predajov, inak z hárka Cennik). Priestor v okresoch = trh okresu × (najlepší dosiahnuteľný podiel v teritóriu − terajší podiel).</div>') : '');
 }
 
-// Kompaktná tabuľka produktov: plán, predané, %, tempo, podiel na trhu
+// Produkty: riadok na produkt (bez tabuľky, aby sa nemuselo posúvať do strany)
 function rp2ProductsHtml(m, reps) {
   var oblasts = rptViewOblasts(reps), rows = '';
   m.prods.forEach(function(x) {
     var code = rptViewCodeForPlanKey(x.key);
     var ms = code ? rptMsForProd(code, oblasts) : null;
-    var msTxt = ms ? (rp2Pct(ms.nasPct) + (ms.trend ? ' <span style="color:' + (ms.trend > 0 ? '#059669' : '#DC2626') + '">' + (ms.trend > 0 ? '▲' : '▼') + '</span>' : '')) : '—';
-    var tempo = (x.tempoPct === null || x.tempoPct === undefined) ? '—' : (x.tempoPct >= 100 ? '<span style="color:#059669">▲</span>' : x.tempoPct >= 90 ? '<span style="color:#D97706">●</span>' : '<span style="color:#DC2626">▼</span>');
-    rows += '<tr><td><span class="rv-prod-dot" style="background:' + x.dot + '"></span>' + rp2Esc(x.label) + '</td><td class="n">' + rptFmtEur(x.planEUR) + '</td><td class="n">' + rptFmtEur(x.predajeEUR) + '</td>' +
-      '<td class="n"><b style="color:' + rptColorHex(x.pct) + '">' + rp2Pct(x.pct) + '</b><div class="rp2-mini"><i style="width:' + Math.min(100, x.pct || 0) + '%;background:' + rptColorHex(x.pct) + '"></i></div></td><td class="n">' + tempo + '</td><td class="n">' + msTxt + '</td></tr>';
+    var tags = '';
+    if (x.tempoPct !== null && x.tempoPct !== undefined) {
+      var tc = x.tempoPct >= 100 ? ['ok', '▲ nad tempom'] : (x.tempoPct >= 90 ? ['warn', '● mierne pod tempom'] : ['bad', '▼ pod tempom']);
+      tags += '<span class="rp2-tag ' + tc[0] + '">' + tc[1] + '</span>';
+    }
+    if (ms) tags += '<span class="rp2-tag">podiel na trhu <b>' + rp2Pct(ms.nasPct) + '</b>' + (ms.trend ? ' <span style="color:' + (ms.trend > 0 ? '#059669' : '#DC2626') + '">' + (ms.trend > 0 ? '▲' : '▼') + '</span>' : '') + '</span>';
+    rows += '<div class="rp2-pr">' +
+      '<div class="rp2-pr-l"><span class="rv-prod-dot" style="background:' + x.dot + '"></span><b>' + rp2Esc(x.label) + '</b></div>' +
+      '<div class="rp2-pr-r"><b style="color:' + rptColorHex(x.pct) + '">' + rp2Pct(x.pct) + '</b></div>' +
+      '<div class="rp2-pr-s">' + rptFmtEur(x.predajeEUR) + ' z ' + rptFmtEur(x.planEUR) + '</div>' +
+      '<div class="rp2-pbar rp2-pr-bar"><i style="width:' + Math.min(100, x.pct || 0) + '%;background:' + rptColorHex(x.pct) + '"></i></div>' +
+      (tags ? '<div class="rp2-pr-t">' + tags + '</div>' : '') + rp2MonthsHtml(x, m) + '</div>';
   });
-  return '<div class="rv-card rp2-tblwrap"><table class="rp2-tbl"><thead><tr><th>Produkt</th><th class="n">Plán</th><th class="n">Predané</th><th class="n">Plnenie</th><th class="n">Tempo</th><th class="n">Podiel</th></tr></thead><tbody>' + rows + '</tbody></table>' +
-    '<div class="rp2-foot">Tempo: ▲ nad očakávaným, ● do 10 % pod, ▼ výrazne pod. Podiel = náš podiel na trhu v teritóriu (IQVIA), šípka = zmena za posledný mesiac.</div></div>';
+  return '<div class="rv-card rp2-prlist">' + rows + '<div class="rp2-foot">Podiel = náš podiel na trhu v teritóriu (IQVIA), šípka = zmena za posledný mesiac. * = rozrobený mesiac (predaje ešte nie sú úplné).</div></div>';
 }
 
 // Tím: kto zaostáva a kde je jeho najväčšia diera
@@ -33703,8 +33756,8 @@ function rvWhatifHtml(reps, data, p) {
 function rvWiNoteHtml() {
   var anyEpp = RPT_WI.prods.some(function(x) { return x.eurPerPkg; });
   if (RPT_WI.mode === 'bal') {
-    var txt = anyEpp ? 'Balenia sú odhad: predané € ÷ predané balenia (z trhových dát).'
-      : (rptViewPharmaReadyForScope() ? 'Pre tieto produkty nemáme dáta na odhad balení — posúvaj v €.' : 'Odhad balení sa dopočíta po načítaní trhových dát…');
+    var txt = anyEpp ? 'Balenia sú odhad: € ÷ cena balenia (cena územia repa z konvertora predajov, inak z hárka Cennik).'
+      : ((RP2.ceny === null || RP2.cenyLoading) ? 'Cenník sa ešte načítava…' : 'Pre tieto produkty chýba cena v hárku Cennik — posúvaj v €.');
     return '<div style="font-size:10px;color:#C2410C;margin:-4px 0 12px">' + txt + '</div>';
   }
   return '<div style="font-size:10px;color:#94A3B8;margin:-4px 0 12px">Posúvaj slider a sleduj, ako sa mení plnenie plánu.</div>';
