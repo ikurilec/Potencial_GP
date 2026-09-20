@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.58';
+var APP_VERSION = '2.88.59';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -32651,11 +32651,23 @@ function rp2LoadCennik() {
     fetcher: function() { return appQueuedFetchJson(url, { cache: 'no-store' }, 24000, 'critical'); }
   }).then(done).catch(function() { done(null); });
 }
-function rp2Price(key) {
+// Cenník produktu: { cena (vážený priemer alebo jediná cena | null), min, max, skus:[{sku,cena,podiel}] } | null
+function rp2PriceInfo(key) {
   var c = RP2.ceny && RP2.ceny[plnenieNormalizeKey(key)];
-  return (c && c.cena > 0) ? c.cena : null;
+  if (!c) return null;
+  if (c.cena > 0 || (c.skus && c.skus.length)) return c;
+  return null;
 }
+function rp2Price(key) { var c = rp2PriceInfo(key); return (c && c.cena > 0) ? c.cena : null; }
 function rp2Pct(v) { if (v === null || v === undefined || isNaN(v)) return '—'; return (Math.round(v * 10) / 10).toLocaleString('sk') + ' %'; }
+function rp2Range(r) { return r[0] === r[1] ? rp2Bal(r[0]) : Math.round(r[0]).toLocaleString('sk') + '–' + Math.round(r[1]).toLocaleString('sk') + ' bal.'; }
+function rp2SkuLine(x, closed) {
+  if (!x.skus || x.skus.length < 2 || closed) return '';
+  return '<div class="rp2-sku"><span class="rp2-ideas-l">Podľa balenia (na 95 % / 100 %):</span>' + x.skus.map(function(k) {
+    var a = x.g95 > 0 ? Math.ceil(x.g95 / k.cena) : 0, b = Math.ceil(x.g100 / k.cena);
+    return '<span class="rp2-chip">' + rp2Esc(k.sku) + ' <i>(' + k.cena.toFixed(2).replace('.', ',') + ' €)</i> · ' + Math.round(a).toLocaleString('sk') + ' / ' + Math.round(b).toLocaleString('sk') + ' bal.</span>';
+  }).join('') + '</div>';
+}
 function rp2Bal(n) { return Math.round(n).toLocaleString('sk') + ' bal.'; }
 
 // Model pre množinu repov a kvartál. Všetky čísla idú z plnenieBuildAggregates.
@@ -32685,16 +32697,25 @@ function rp2Model(reps, p) {
   prods.forEach(function(x) { x.g100 = Math.max(0, x.planEUR - x.predajeEUR); short += x.g100; });
   prods.forEach(function(x) {
     x.g95 = (short > 0 && m.gap95 > 0) ? Math.min(x.g100, m.gap95 * x.g100 / short) : 0;   // 95 % rozdelené podľa veľkosti diery
-    x.price = rp2Price(x.key);
+    var info = rp2PriceInfo(x.key);
+    x.price = (info && info.cena > 0) ? info.cena : null;          // vážený priemer / jediná cena
+    x.skus = (info && info.skus && info.skus.length > 1) ? info.skus : ((info && info.skus && info.skus.length === 1) ? info.skus : null);
+    x.hasPrice = !!info;
     x.packs100 = x.price ? Math.ceil(x.g100 / x.price) : null;
     x.packs95  = x.price ? Math.ceil(x.g95 / x.price) : null;
+    // viac balení bez podielov → rozpätie (najdrahšie balenie = najmenej kusov, najlacnejšie = najviac)
+    x.range100 = (!x.price && info && info.min > 0) ? [Math.ceil(x.g100 / info.max), Math.ceil(x.g100 / info.min)] : null;
+    x.range95  = (!x.price && info && info.min > 0 && x.g95 > 0) ? [Math.ceil(x.g95 / info.max), Math.ceil(x.g95 / info.min)] : null;
   });
   m.prods = prods.slice().sort(function(a, b) { return b.g100 - a.g100; });
-  m.packs100 = 0; m.packs95 = 0; m.missingPrice = [];
+  m.packs100 = 0; m.packs95 = 0; m.missingPrice = []; m.rangeOnly = [];
   m.prods.forEach(function(x) {
     if (x.g100 <= 0) return;
-    if (x.price) { m.packs100 += x.packs100; m.packs95 += x.packs95; } else m.missingPrice.push(x.label);
+    if (x.price) { m.packs100 += x.packs100; m.packs95 += x.packs95; }
+    else if (x.range100) m.rangeOnly.push(x.label);
+    else m.missingPrice.push(x.label);
   });
+  m.packsComplete = (m.missingPrice.length === 0 && m.rangeOnly.length === 0);   // súčet balení len keď je cena všade
   m.projEUR = m.predPct !== null ? m.plan * m.predPct / 100 : null;
   return m;
 }
@@ -32746,7 +32767,7 @@ function rp2ActionHtml(m, p, ideas, isGroup) {
   function targetBox(lbl, gap, packs, cls) {
     if (gap <= 0) return '<div class="rp2-tgt ok"><div class="rp2-tgt-l">' + lbl + '</div><div class="rp2-tgt-v">✓ splnené</div></div>';
     var line1 = 'chýba <b>' + rptFmtEur(gap) + '</b>';
-    var line2 = (m.missingPrice.length === 0 && packs > 0) ? '≈ <b>' + rp2Bal(packs) + '</b>' : '';
+    var line2 = (m.packsComplete && packs > 0) ? '≈ <b>' + rp2Bal(packs) + '</b>' : '';
     var line3 = days ? ('≈ ' + rptFmtEur(gap / days) + '/deň' + (line2 ? ' · ' + rp2Bal(Math.ceil(packs / days)) + '/deň' : '')) : '';
     return '<div class="rp2-tgt ' + cls + '"><div class="rp2-tgt-l">' + lbl + '</div><div class="rp2-tgt-v">' + line1 + '</div>' +
       (line2 ? '<div class="rp2-tgt-s">' + line2 + '</div>' : '') + (line3 ? '<div class="rp2-tgt-m">' + line3 + '</div>' : '') + '</div>';
@@ -32760,19 +32781,20 @@ function rp2ActionHtml(m, p, ideas, isGroup) {
       (days ? '<div class="rp2-sub">Do konca kvartálu ostáva približne ' + days + ' pracovných dní — v kartách je potrebný denný predaj.</div>' : '');
   }
   var warn = '';
-  if (m.missingPrice.length && (m.gap95 > 0 || m.gap100 > 0) && !m.closed) {
-    warn = '<div class="rp2-warn">⚠ Balenia nie sú spočítané pre: ' + rp2Esc(m.missingPrice.join(', ')) + '. Doplň cenu za balenie do hárka <b>Cennik</b> v Sheete.</div>';
+  if (!m.closed && (m.gap95 > 0 || m.gap100 > 0)) {
+    if (m.missingPrice.length) warn += '<div class="rp2-warn">⚠ Balenia nie sú spočítané pre: ' + rp2Esc(m.missingPrice.join(', ')) + '. Doplň cenu za balenie do hárka <b>Cennik</b> v Sheete.</div>';
+    if (m.rangeOnly.length) warn += '<div class="rp2-warn">ℹ ' + rp2Esc(m.rangeOnly.join(', ')) + ': viac balení bez zadaného podielu predaja — ukazujem rozpätie. Pre presný odhad doplň v Cenníku <b>podiel_pct</b> pri baleniach.</div>';
   }
   // Riadky produktov s dierou
   var rows = '';
   m.prods.filter(function(x) { return x.g100 > 0; }).slice(0, 6).forEach(function(x, i) {
-    var to95 = x.g95 > 0 ? (x.packs95 !== null ? rp2Bal(x.packs95) : rptFmtEur(x.g95)) : '—';
-    var to100 = x.packs100 !== null ? rp2Bal(x.packs100) : rptFmtEur(x.g100);
+    var to95 = x.g95 > 0 ? (x.packs95 !== null ? rp2Bal(x.packs95) : (x.range95 ? rp2Range(x.range95) : rptFmtEur(x.g95))) : '—';
+    var to100 = x.packs100 !== null ? rp2Bal(x.packs100) : (x.range100 ? rp2Range(x.range100) : rptFmtEur(x.g100));
     var id = ideas && ideas[x.key];
     var idHtml = '';
     if (id) {
       idHtml = '<div class="rp2-ideas"><span class="rp2-ideas-l">Kde je priestor' + ((x.packs100 !== null && !m.closed) ? ' (bal. na 95 % / 100 %)' : '') + ':</span>' + id.list.map(function(o) {
-        var pk = (x.packs100 !== null && !m.closed) ? ' · ~' + Math.round(x.packs95 * o.share) + ' / ' + Math.max(1, Math.round(x.packs100 * o.share)) + ' bal.' : '';
+        var pk = (x.packs100 !== null && !m.closed) ? ' · ~' + Math.round(x.packs95 * o.share) + ' / ' + Math.max(1, Math.round(x.packs100 * o.share)) + ' bal.' : '';   // len pri váženej cene
         return '<span class="rp2-chip">' + rp2Esc(o.okres) + ' <i>(trh ' + Math.round(o.total) + ', náš podiel ' + rp2Pct(o.cur) + ')</i>' + pk + '</span>';
       }).join('') + '</div>' +
         (id.rising ? '<div class="rp2-ideas-w">Pozor: v okrese <b>' + rp2Esc(id.rising.okres) + '</b> rastie ' + rp2Esc(id.rising.fastestComp ? id.rising.fastestComp.name : 'konkurent') + '.</div>' : '');
@@ -32780,7 +32802,7 @@ function rp2ActionHtml(m, p, ideas, isGroup) {
     rows += '<div class="rv-act-row"><div class="rv-act-num">' + (i + 1) + '</div><div class="rv-act-body">' +
       '<div class="rv-act-title"><span class="rv-prod-dot" style="background:' + x.dot + '"></span>' + rp2Esc(x.label) + '<span class="rv-act-gap">' + rp2Pct(x.pct) + ' · chýba ' + rptFmtEur(x.g100) + '</span></div>' +
       (m.closed ? '' : '<div class="rp2-need"><span>na 95 %: <b>' + to95 + '</b></span><span>na 100 %: <b>' + to100 + '</b></span></div>') +
-      idHtml + '</div></div>';
+      rp2SkuLine(x, m.closed) + idHtml + '</div></div>';
   });
   return '<div class="rv-card">' + head + warn + '</div>' +
     (rows ? '<div class="rv-card" style="margin-top:10px"><div class="rv-mini-lbl">' + (m.closed ? 'Produkty pod plánom' : 'Čo predať — podľa veľkosti diery') + '</div>' + rows +
