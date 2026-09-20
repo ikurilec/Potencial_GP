@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.62';
+var APP_VERSION = '2.88.63';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -32543,30 +32543,19 @@ function rptViewRenderControls() {
   }).join('');
   var scopes = rptViewAllowedScopes();
   var sc = scopes.map(function(s) {
-    return '<button class="rv-scope-btn' + (RPT_VIEW.scope === s[0] ? ' active' : '') + '" onclick="rptViewSetScope(\'' + s[0] + '\')">' + s[1] + '</button>';
+    return '<button class="rp2-pill' + (RPT_VIEW.scope === s[0] ? ' on' : '') + '" onclick="rptViewSetScope(\'' + s[0] + '\')">' + s[1] + '</button>';
   }).join('');
   var p = rptViewPeriod();
   var qBtns = '';
   for (var q = 1; q <= 4; q++) {
     var has = rptViewQuarterHasData(q);
-    qBtns += '<button class="rv-scope-btn' + (p.q === q ? ' active' : '') + '"' + (has ? '' : ' disabled') +
-             ' onclick="rptViewSetQuarter(' + q + ')">Q' + q + '</button>';
+    qBtns += '<button class="rp2-pill' + (p.q === q ? ' on' : '') + '"' + (has ? '' : ' disabled') + ' onclick="rptViewSetQuarter(' + q + ')">Q' + q + '</button>';
   }
   c.innerHTML =
-    '<div class="rv-ctrl-group rv-ctrl-rep">' +
-      '<div class="rv-ctrl-lbl">👤 Reprezentant</div>' +
-      '<div class="rv-sel-wrap">' +
-        '<select class="rv-select" id="rv-rep-select" onchange="rptViewSelectRep(this.value)">' + opts + '</select>' +
-        '<span class="rv-sel-chev">▼</span>' +
-      '</div>' +
-    '</div>' +
-    '<div class="rv-ctrl-group">' +
-      '<div class="rv-ctrl-lbl">📅 Kvartál</div>' +
-      '<div class="rv-scope">' + qBtns + '</div>' +
-    '</div>' +
-    '<div class="rv-ctrl-group">' +
-      '<div class="rv-ctrl-lbl">Rozsah reportu</div>' +
-      '<div class="rv-scope">' + sc + '</div>' +
+    '<div class="rp2-ctrl">' +
+      '<div class="rp2-ctrl-row"><span class="rp2-ctrl-l">👤</span>' +
+        '<div class="rv-sel-wrap" style="flex:1"><select class="rv-select" id="rv-rep-select" onchange="rptViewSelectRep(this.value)">' + opts + '</select><span class="rv-sel-chev">▼</span></div></div>' +
+      '<div class="rp2-ctrl-row rp2-ctrl-wrap"><div class="rp2-pills">' + qBtns + '</div><div class="rp2-pills">' + sc + '</div></div>' +
     '</div>';
 }
 
@@ -32848,38 +32837,83 @@ function rp2DistrictIdeas(reps, prods, p) {
   return out;
 }
 
+// Nadpis sekcie: číslo kroku + názov + podnadpis
+function rp2Sec(n, title, sub) {
+  return '<div class="rp2-sec"><span class="rp2-sec-n">' + n + '</span><div><div class="rp2-sec-t">' + rp2Esc(title) + '</div>' + (sub ? '<div class="rp2-sec-s">' + sub + '</div>' : '') + '</div></div>';
+}
+
+// Hlavná karta: veľké plnenie, stav voči tempu a ukazovateľ s medzníkmi 95 % / 100 % a očakávaným tempom
 function rp2VerdictHtml(m, p, title, sub) {
-  var pct = m.pct, cls = rptColorClass(pct);
-  var ahead = pct !== null && pct >= m.exp;
-  var tempo = m.closed ? 'kvartál uzavretý' : (ahead ? 'nad tempom ✓' : 'pod tempom');
-  var pace = '<div class="rp2-kv"><b>' + rp2Pct(m.exp) + '</b><span>očakávané tempo · ' + tempo + '</span></div>';
-  var proj = (m.predPct !== null && !m.closed) ? '<div class="rp2-kv"><b>' + rp2Pct(m.predPct) + '</b><span>odhad konca Q pri terajšom tempe</span></div>' : '';
-  return '<div class="rv-hero">' +
-    '<div class="rv-hero-top"><div><div class="rv-hero-name">' + rp2Esc(title) + '</div><div class="rv-hero-sub">' + rp2Esc(sub) + '</div></div>' +
-    '<div class="rv-hero-period"><div class="rv-hero-period-m">' + p.labelCap + '</div><div class="rv-hero-period-q">celý kvartál</div></div></div>' +
-    '<div class="rp2-hero-row"><div class="rp2-kv"><b class="rv-hero-big ' + cls + '">' + rp2Pct(pct) + '</b><span>plnenie Q' + p.q + ' · ' + rptFmtEur(m.actual) + ' z ' + rptFmtEur(m.plan) + '</span></div>' + pace + proj + '</div>' +
-    '<div class="rv-hero-bar"><div class="rv-hero-bar-fill" data-w="' + Math.min(100, pct || 0) + '%" style="background:' + rptGradientVal(pct) + '"></div></div>' +
+  var pct = m.pct || 0;
+  var st;
+  if (m.closed) st = pct >= 100 ? ['ok', 'Plán splnený'] : (pct >= 95 ? ['warn', 'Nad 95 %'] : ['bad', 'Pod 95 %']);
+  else if (pct >= 100) st = ['ok', 'Plán splnený'];
+  else if (pct >= m.exp) st = ['ok', 'Nad tempom'];
+  else if (pct >= m.exp - 5) st = ['warn', 'Mierne pod tempom'];
+  else st = ['bad', 'Pod tempom'];
+  var scale = Math.max(110, Math.ceil(pct / 10) * 10 + 5);
+  var pos = function(v) { return Math.min(100, Math.max(0, v / scale * 100)).toFixed(1) + '%'; };
+  var pctCol = pct >= 100 ? '#34D399' : (pct >= 95 ? '#FBBF24' : (pct >= m.exp ? '#FBBF24' : '#F87171'));
+  var proj = (m.predPct !== null && !m.closed) ? '<div class="rp2-hk"><b>' + rp2Pct(m.predPct) + '</b><span>odhad konca Q pri terajšom tempe</span></div>' : '';
+  return '<div class="rp2-h">' +
+    '<div class="rp2-h-top"><div><div class="rp2-h-name">' + rp2Esc(title) + '</div><div class="rp2-h-sub">' + rp2Esc(sub) + ' · ' + p.labelCap + '</div></div><span class="rp2-status ' + st[0] + '">' + st[1] + '</span></div>' +
+    '<div class="rp2-h-main"><div class="rp2-h-pct" style="color:' + pctCol + '">' + rp2Pct(pct) + '</div>' +
+      '<div class="rp2-h-kpis"><div class="rp2-hk"><b>' + rp2Pct(m.exp) + '</b><span>očakávané tempo</span></div>' + proj + '</div></div>' +
+    '<div class="rp2-bar"><div class="rp2-bar-fill" data-w="' + pos(pct) + '" style="background:' + rptGradientVal(pct) + '"></div>' +
+      '<i class="rp2-pace" style="left:' + pos(m.exp) + '" title="očakávané tempo"></i>' +
+      '<i class="rp2-tick t95" style="left:' + pos(95) + '"><em>95 %</em></i><i class="rp2-tick t100" style="left:' + pos(100) + '"><em>100 %</em></i></div>' +
+    '<div class="rp2-h-cap">Predané <b>' + rptFmtEur(m.actual) + '</b> z plánu <b>' + rptFmtEur(m.plan) + '</b> · biely prúžok = očakávané tempo</div>' +
   '</div>';
 }
 
-// Karta „Čo spraviť": dva ciele (95 % a 100 %) — koľko € a balení chýba, koľko mesačne; pod tým produkty.
+// Karta produktu: veľké čísla (balenia na 95 % a 100 %), pod tým balenia podľa SKU a okresy s priestorom
+function rp2ProductCardHtml(x, m, ideas, i) {
+  var id = ideas && ideas[x.key];
+  var pcls = x.pct >= 100 ? 'ok' : (x.pct >= 95 ? 'warn' : 'bad');
+  var to95, to100;
+  if (x.g95 > 0) to95 = x.packs95 !== null ? rp2Bal(x.packs95) : (x.range95 ? rp2Range(x.range95) : rptFmtEur(x.g95)); else to95 = '✓';
+  to100 = x.packs100 !== null ? rp2Bal(x.packs100) : (x.range100 ? rp2Range(x.range100) : rptFmtEur(x.g100));
+  var packsKnown = x.packs100 !== null;
+  var need = m.closed ? '' :
+    '<div class="rp2-need2"><div class="rp2-nb n95"><em>na 95 %</em><b>' + to95 + '</b>' + (x.g95 > 0 && packsKnown ? '<small>' + rptFmtEur(x.g95) + '</small>' : '') + '</div>' +
+    '<div class="rp2-nb n100"><em>na 100 %</em><b>' + to100 + '</b>' + (packsKnown ? '<small>' + rptFmtEur(x.g100) + '</small>' : '') + '</div></div>';
+  var sku = '';
+  if (!m.closed && x.skus && x.skus.length > 1) {
+    sku = '<div class="rp2-blk"><div class="rp2-blk-t">Podľa balenia <i>(na 95 % / 100 %)</i></div><div class="rp2-chips">' + x.skus.map(function(k) {
+      var a = x.g95 > 0 ? Math.ceil(x.g95 / k.cena) : 0, b = Math.ceil(x.g100 / k.cena);
+      return '<span class="rp2-chip2"><b>' + rp2Esc(k.sku) + '</b> ' + k.cena.toFixed(2).replace('.', ',') + ' € · ' + Math.round(a).toLocaleString('sk') + ' / ' + Math.round(b).toLocaleString('sk') + '</span>';
+    }).join('') + '</div></div>';
+  }
+  var ok = '';
+  if (id && !m.closed) {
+    ok = '<div class="rp2-blk"><div class="rp2-blk-t">Kde je priestor' + (packsKnown ? ' <i>(bal. na 95 % / 100 %)</i>' : '') + '</div>' + id.list.map(function(o) {
+      var pk = packsKnown ? Math.round(x.packs95 * o.share).toLocaleString('sk') + ' / ' + Math.max(1, Math.round(x.packs100 * o.share)).toLocaleString('sk') : '';
+      return '<div class="rp2-ok"><div class="rp2-ok-n"><b>' + rp2Esc(o.okres) + '</b><small>trh ' + Math.round(o.total) + ' · náš podiel ' + rp2Pct(o.cur) + '</small></div>' +
+        '<div class="rp2-ok-b"><i style="width:' + Math.round(o.share * 100) + '%"></i></div>' + (pk ? '<div class="rp2-ok-p">' + pk + '</div>' : '') + '</div>';
+    }).join('') + (id.rising ? '<div class="rp2-rise">⚠ V okrese <b>' + rp2Esc(id.rising.okres) + '</b> rastie ' + rp2Esc(id.rising.fastestComp ? id.rising.fastestComp.name : 'konkurent') + '.</div>' : '') + '</div>';
+  }
+  return '<div class="rp2-pc" style="--pc:' + x.dot + '">' +
+    '<div class="rp2-pc-hd"><span class="rp2-rank">' + (i + 1) + '</span><div class="rp2-pc-name">' + rp2Esc(x.label) + '</div><span class="rp2-chip-pct ' + pcls + '">' + rp2Pct(x.pct) + '</span></div>' +
+    '<div class="rp2-pbar"><i style="width:' + Math.min(100, x.pct || 0) + '%;background:' + rptColorHex(x.pct) + '"></i></div>' +
+    '<div class="rp2-pc-gap">Plán ' + rptFmtEur(x.planEUR) + ' · predané ' + rptFmtEur(x.predajeEUR) + ' · chýba <b>' + rptFmtEur(x.g100) + '</b></div>' +
+    need + sku + ok + '</div>';
+}
+
+// Karta „Čo spraviť": dva ciele (95 % a 100 %) + karty produktov s dierou
 function rp2ActionHtml(m, p, ideas, isGroup) {
   var days = m.remDays >= 1 ? m.remDays : 0;
-  function targetBox(lbl, gap, packs, cls) {
-    if (gap <= 0) return '<div class="rp2-tgt ok"><div class="rp2-tgt-l">' + lbl + '</div><div class="rp2-tgt-v">✓ splnené</div></div>';
-    var line1 = 'chýba <b>' + rptFmtEur(gap) + '</b>';
-    var line2 = (m.packsComplete && packs > 0) ? '≈ <b>' + rp2Bal(packs) + '</b>' : '';
-    var line3 = days ? ('≈ ' + rptFmtEur(gap / days) + '/deň' + (line2 ? ' · ' + rp2Bal(Math.ceil(packs / days)) + '/deň' : '')) : '';
-    return '<div class="rp2-tgt ' + cls + '"><div class="rp2-tgt-l">' + lbl + '</div><div class="rp2-tgt-v">' + line1 + '</div>' +
-      (line2 ? '<div class="rp2-tgt-s">' + line2 + '</div>' : '') + (line3 ? '<div class="rp2-tgt-m">' + line3 + '</div>' : '') + '</div>';
+  function targetBox(lbl, ico, gap, packs, cls) {
+    if (gap <= 0) return '<div class="rp2-tgt ok"><div class="rp2-tgt-l">' + ico + ' ' + lbl + '</div><div class="rp2-tgt-big">✓ splnené</div></div>';
+    var packTxt = (m.packsComplete && packs > 0) ? '<div class="rp2-tgt-pk">≈ <b>' + rp2Bal(packs) + '</b></div>' : '';
+    var perDay = days ? '<div class="rp2-tgt-m">≈ ' + rptFmtEur(gap / days) + '/deň' + ((m.packsComplete && packs > 0) ? ' · ' + rp2Bal(Math.ceil(packs / days)) + '/deň' : '') + '</div>' : '';
+    return '<div class="rp2-tgt ' + cls + '"><div class="rp2-tgt-l">' + ico + ' ' + lbl + '</div><div class="rp2-tgt-big">' + rptFmtEur(gap) + '</div><div class="rp2-tgt-s">chýba do cieľa</div>' + packTxt + perDay + '</div>';
   }
   var head;
   if (m.closed) {
     head = m.gap100 <= 0 ? '<div class="rp2-note ok">Plán Q' + p.q + ' bol splnený.</div>'
       : '<div class="rp2-note bad">Kvartál je uzavretý — do 100 % chýbalo ' + rptFmtEur(m.gap100) + '. Nižšie vidno, ktoré produkty plán stiahli.</div>';
   } else {
-    head = '<div class="rp2-tgts">' + targetBox('Na 95 %', m.gap95, m.packs95, 'w95') + targetBox('Na 100 %', m.gap100, m.packs100, 'w100') + '</div>' +
-      (days ? '<div class="rp2-sub">Do konca kvartálu ostáva približne ' + days + ' pracovných dní — v kartách je potrebný denný predaj.</div>' : '');
+    head = '<div class="rp2-tgts">' + targetBox('Na 95 %', '🎯', m.gap95, m.packs95, 'w95') + targetBox('Na 100 %', '🏁', m.gap100, m.packs100, 'w100') + '</div>';
   }
   var warn = '';
   if (!m.closed && (m.gap95 > 0 || m.gap100 > 0)) {
@@ -32888,30 +32922,12 @@ function rp2ActionHtml(m, p, ideas, isGroup) {
     else if (!m.pricesLoaded) warn += '<div class="rp2-warn">⚠ Cenník je prázdny — doplň ceny do hárka <b>Cennik</b> (stĺpec <b>cena_ks_eur</b>) alebo vlož ceny z konvertora do <b>Cennik_Region</b>.</div>';
     else if (m.missingPrice.length) warn += '<div class="rp2-warn">⚠ Balenia nie sú spočítané pre: ' + rp2Esc(m.missingPrice.join(', ')) + '. Pre tieto produkty chýba cena v hárku <b>Cennik</b>.' +
       (m.unmatched.length ? ' Nerozpoznané názvy v Cenníku: <b>' + rp2Esc(m.unmatched.join(', ')) + '</b> — názov musí zodpovedať produktu v pláne.' : '') + '</div>';
-    if (m.rangeOnly.length) warn += '<div class="rp2-warn">ℹ ' + rp2Esc(m.rangeOnly.join(', ')) + ': viac balení bez zadaného podielu predaja — ukazujem rozpätie. Pre presný odhad doplň v Cenníku <b>podiel_pct</b> pri baleniach.</div>';
+    if (m.rangeOnly.length) warn += '<div class="rp2-warn">ℹ ' + rp2Esc(m.rangeOnly.join(', ')) + ': viac balení bez zadaného podielu predaja — ukazujem rozpätie. Pre presný odhad doplň v Cenníku <b>podiel_pct</b>.</div>';
   }
-  // Riadky produktov s dierou
-  var rows = '';
-  m.prods.filter(function(x) { return x.g100 > 0; }).slice(0, 6).forEach(function(x, i) {
-    var to95 = x.g95 > 0 ? (x.packs95 !== null ? rp2Bal(x.packs95) : (x.range95 ? rp2Range(x.range95) : rptFmtEur(x.g95))) : '—';
-    var to100 = x.packs100 !== null ? rp2Bal(x.packs100) : (x.range100 ? rp2Range(x.range100) : rptFmtEur(x.g100));
-    var id = ideas && ideas[x.key];
-    var idHtml = '';
-    if (id) {
-      idHtml = '<div class="rp2-ideas"><span class="rp2-ideas-l">Kde je priestor' + ((x.packs100 !== null && !m.closed) ? ' (bal. na 95 % / 100 %)' : '') + ':</span>' + id.list.map(function(o) {
-        var pk = (x.packs100 !== null && !m.closed) ? ' · ~' + Math.round(x.packs95 * o.share) + ' / ' + Math.max(1, Math.round(x.packs100 * o.share)) + ' bal.' : '';   // len pri váženej cene
-        return '<span class="rp2-chip">' + rp2Esc(o.okres) + ' <i>(trh ' + Math.round(o.total) + ', náš podiel ' + rp2Pct(o.cur) + ')</i>' + pk + '</span>';
-      }).join('') + '</div>' +
-        (id.rising ? '<div class="rp2-ideas-w">Pozor: v okrese <b>' + rp2Esc(id.rising.okres) + '</b> rastie ' + rp2Esc(id.rising.fastestComp ? id.rising.fastestComp.name : 'konkurent') + '.</div>' : '');
-    }
-    rows += '<div class="rv-act-row"><div class="rv-act-num">' + (i + 1) + '</div><div class="rv-act-body">' +
-      '<div class="rv-act-title"><span class="rv-prod-dot" style="background:' + x.dot + '"></span>' + rp2Esc(x.label) + '<span class="rv-act-gap">' + rp2Pct(x.pct) + ' · chýba ' + rptFmtEur(x.g100) + '</span></div>' +
-      (m.closed ? '' : '<div class="rp2-need"><span>na 95 %: <b>' + to95 + '</b></span><span>na 100 %: <b>' + to100 + '</b></span></div>') +
-      rp2SkuLine(x, m.closed) + idHtml + '</div></div>';
-  });
-  return '<div class="rv-card">' + head + warn + '</div>' +
-    (rows ? '<div class="rv-card" style="margin-top:10px"><div class="rv-mini-lbl">' + (m.closed ? 'Produkty pod plánom' : 'Čo predať — podľa veľkosti diery') + '</div>' + rows +
-      (m.closed ? '' : '<div class="rp2-foot">Rozdelenie 95 % ide pomerne podľa veľkosti diery v produkte. Balenia sú odhad = chýbajúce € ÷ cena balenia (cena územia repa z konvertora predajov, inak z hárka Cennik). Okresy: trh okresu × (najlepší dosiahnuteľný podiel v teritóriu − terajší podiel).</div>') + '</div>' : '');
+  var cards = m.prods.filter(function(x) { return x.g100 > 0; }).slice(0, 6).map(function(x, i) { return rp2ProductCardHtml(x, m, ideas, i); }).join('');
+  return '<div class="rv-card">' + head + (days && !m.closed ? '<div class="rp2-sub">Do konca kvartálu ostáva približne <b>' + days + ' pracovných dní</b> — čísla nižšie sú aj denný predaj.</div>' : '') + warn + '</div>' +
+    (cards ? '<div class="rp2-pcs">' + cards + '</div>' +
+      (m.closed ? '' : '<div class="rp2-foot">95 % je rozdelené na produkty pomerne podľa veľkosti diery. Balenia = chýbajúce € ÷ cena balenia (cena územia repa z konvertora predajov, inak z hárka Cennik). Priestor v okresoch = trh okresu × (najlepší dosiahnuteľný podiel v teritóriu − terajší podiel).</div>') : '');
 }
 
 // Kompaktná tabuľka produktov: plán, predané, %, tempo, podiel na trhu
@@ -32923,9 +32939,9 @@ function rp2ProductsHtml(m, reps) {
     var msTxt = ms ? (rp2Pct(ms.nasPct) + (ms.trend ? ' <span style="color:' + (ms.trend > 0 ? '#059669' : '#DC2626') + '">' + (ms.trend > 0 ? '▲' : '▼') + '</span>' : '')) : '—';
     var tempo = (x.tempoPct === null || x.tempoPct === undefined) ? '—' : (x.tempoPct >= 100 ? '<span style="color:#059669">▲</span>' : x.tempoPct >= 90 ? '<span style="color:#D97706">●</span>' : '<span style="color:#DC2626">▼</span>');
     rows += '<tr><td><span class="rv-prod-dot" style="background:' + x.dot + '"></span>' + rp2Esc(x.label) + '</td><td class="n">' + rptFmtEur(x.planEUR) + '</td><td class="n">' + rptFmtEur(x.predajeEUR) + '</td>' +
-      '<td class="n"><b style="color:' + rptColorHex(x.pct) + '">' + rp2Pct(x.pct) + '</b></td><td class="n">' + tempo + '</td><td class="n">' + msTxt + '</td></tr>';
+      '<td class="n"><b style="color:' + rptColorHex(x.pct) + '">' + rp2Pct(x.pct) + '</b><div class="rp2-mini"><i style="width:' + Math.min(100, x.pct || 0) + '%;background:' + rptColorHex(x.pct) + '"></i></div></td><td class="n">' + tempo + '</td><td class="n">' + msTxt + '</td></tr>';
   });
-  return '<div class="rv-card rp2-tblwrap"><table class="rp2-tbl"><thead><tr><th>Produkt</th><th class="n">Plán</th><th class="n">Predané</th><th class="n">%</th><th class="n">Tempo</th><th class="n">Podiel</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+  return '<div class="rv-card rp2-tblwrap"><table class="rp2-tbl"><thead><tr><th>Produkt</th><th class="n">Plán</th><th class="n">Predané</th><th class="n">Plnenie</th><th class="n">Tempo</th><th class="n">Podiel</th></tr></thead><tbody>' + rows + '</tbody></table>' +
     '<div class="rp2-foot">Tempo: ▲ nad očakávaným, ● do 10 % pod, ▼ výrazne pod. Podiel = náš podiel na trhu v teritóriu (IQVIA), šípka = zmena za posledný mesiac.</div></div>';
 }
 
@@ -32952,17 +32968,20 @@ function rp2TeamHtml(reps, p) {
 // Trh a konkurencia — najviac 3 signály (kde rastie konkurent)
 function rp2MarketHtml(reps, m, p) {
   if (RPT_VIEW.scope !== 'rep') return '<div class="rv-card"><div style="font-size:12.5px;color:#64748B">Trhové dáta a konkurencia sa ukazujú v pohľade jedného reprezentanta (pre skupinu by sa sťahovali stovky dopytov).</div></div>';
-  if (!rptViewPharmaReadyForScope()) return '<div class="rv-card"><div class="rv-empty" style="padding:14px 0">Načítavam trhové dáta…</div></div>';
+  if (!rptViewPharmaReadyForScope()) return '<div class="rv-card"><div class="rp2-load"><span class="rp2-spin"></span>Načítavam trhové dáta…</div></div>';
   var oblasts = rptViewOblasts(reps), items = [];
   m.prods.forEach(function(x) {
     var code = rptViewCodeForPlanKey(x.key); if (!code) return;
     var sig = rptDistrictSignalsForCode(code, oblasts, p, 1); if (!sig) return;
     var r = sig.risingCompetitors && sig.risingCompetitors[0];
-    if (r && r.fastestComp) items.push({ score: (r.total || 0) * (r.fastestComp.delta || 0), t: '<b>' + rp2Esc(x.label) + '</b> — v okrese <b>' + rp2Esc(r.okres) + '</b> rastie ' + rp2Esc(r.fastestComp.name) + ' (+' + (r.fastestComp.delta || 0).toFixed(1) + ' p. b.), náš podiel ' + rp2Pct(r.cur) + '.' });
+    if (r && r.fastestComp) items.push({ score: (r.total || 0) * (r.fastestComp.delta || 0), prod: x, r: r });
   });
   items.sort(function(a, b) { return b.score - a.score; });
-  if (!items.length) return '<div class="rv-card"><div style="font-size:12.5px;color:#64748B">Žiadny výrazný rast konkurencie v okresoch.</div></div>';
-  return '<div class="rv-card">' + items.slice(0, 3).map(function(i) { return '<div class="rp2-sig">' + i.t + '</div>'; }).join('') + '</div>';
+  if (!items.length) return '<div class="rv-card"><div style="font-size:12.5px;color:#64748B">✓ Žiadny výrazný rast konkurencie v okresoch.</div></div>';
+  return '<div class="rv-card">' + items.slice(0, 3).map(function(i) {
+    return '<div class="rp2-sig"><span class="rp2-sig-ic">⚠</span><div><b style="color:' + i.prod.dot + '">' + rp2Esc(i.prod.label) + '</b> — v okrese <b>' + rp2Esc(i.r.okres) + '</b> rastie ' + rp2Esc(i.r.fastestComp.name) +
+      ' (+' + (i.r.fastestComp.delta || 0).toFixed(1).replace('.', ',') + ' p. b.). Náš podiel tam je ' + rp2Pct(i.r.cur) + '.</div></div>';
+  }).join('') + '</div>';
 }
 
 // ── Hlavný render ──
@@ -32985,10 +33004,10 @@ function rptViewRender(fromPharma) {
   var ideas = (!isGroup && !m.closed) ? rp2DistrictIdeas(reps, m.prods, p) : null;
   var html = '';
   html += rp2VerdictHtml(m, p, title, sub);
-  html += '<div><div class="rv-sec-lbl">' + (m.closed ? 'Výsledok kvartálu' : 'Čo spraviť, aby sa splnil plán') + '</div>' + rp2ActionHtml(m, p, ideas, isGroup) + '</div>';
-  html += '<div><div class="rv-sec-lbl">Produkty</div>' + rp2ProductsHtml(m, reps) + '</div>';
-  if (isGroup) html += '<div><div class="rv-sec-lbl">Tím — kto potrebuje pomoc</div>' + rp2TeamHtml(reps, p) + '</div>';
-  html += '<div><div class="rv-sec-lbl">Trh a konkurencia</div>' + rp2MarketHtml(reps, m, p) + '</div>';
+  html += '<div>' + rp2Sec(1, m.closed ? 'Výsledok kvartálu' : 'Čo spraviť, aby sa splnil plán', m.closed ? '' : (isGroup ? 'súčet za skupinu — rozpis podľa produktov' : 'koľko a čoho predať do konca kvartálu')) + rp2ActionHtml(m, p, ideas, isGroup) + '</div>';
+  html += '<div>' + rp2Sec(2, 'Produkty', 'plnenie, tempo a podiel na trhu') + rp2ProductsHtml(m, reps) + '</div>';
+  if (isGroup) html += '<div>' + rp2Sec(3, 'Tím — kto potrebuje pomoc', 'zoradené podľa toho, koľko chýba do 95 %') + rp2TeamHtml(reps, p) + '</div>';
+  html += '<div>' + rp2Sec(isGroup ? 4 : 3, 'Trh a konkurencia', 'kde rastie konkurent') + rp2MarketHtml(reps, m, p) + '</div>';
   // Doplnkové (zbalené): vývoj v čase, územie, čo-keby
   var data = rptViewData(reps, p);
   var trend = rvTrendCard(reps, data, p);
