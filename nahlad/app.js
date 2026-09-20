@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.74';
+var APP_VERSION = '2.88.75';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -16325,6 +16325,8 @@ var GYN_CAL_TYPES = [
   { id:'nahradne_volno', label:'Náhradné voľno', icon:'🔁', color:'#14B8A6', cat:'absencia', roles:['rep','mgr','admin'], time:true,  loc:false, approval:true, comp:true },
   { id:'ocr',        label:'OČR / rodinné', icon:'👨‍👩‍👧', color:'#8B5CF6', cat:'absencia', roles:['rep','mgr','admin'], time:true,  loc:false, approval:false },
   { id:'kongres',    label:'Kongres',       icon:'🎤', color:'#2563EB', cat:'firemne',  roles:['rep','mgr','admin'], time:true,  loc:true  },
+  { id:'vip',        label:'VIP',           icon:'⭐', color:'#DB2777', cat:'firemne',  roles:['rep','mgr','admin'], time:true,  loc:true  },
+  { id:'seminar',    label:'Seminár',       icon:'📚', color:'#EA580C', cat:'firemne',  roles:['rep','mgr','admin'], time:true,  loc:true  },
   { id:'uzavierka',  label:'Uzávierka',     icon:'⏰', color:'#D97706', cat:'firemne',  roles:['rep','mgr','admin'], time:true,  loc:false },
   { id:'trening',    label:'Tréning',       icon:'🎓', color:'#0EA5E9', cat:'firemne',  roles:['mgr','admin'], time:true,  loc:true  },
   { id:'webinar',    label:'Webinár',       icon:'💻', color:'#06B6D4', cat:'firemne',  roles:['mgr','admin'], time:true,  loc:false },
@@ -41693,6 +41695,7 @@ function gsRepContext(rep){
 var GS_CALTYPE_KW = {
   webinar:'webinar online prednaska', miting:'miting meeting stretnutie porada schodza',
   cyklus:'cycle meeting cyklus meeting stretnutie', kongres:'kongres konferencia congress podujatie',
+  vip:'vip host hostia podujatie', seminar:'seminar seminár prednaska skolenie',
   trening:'trening training skolenie', uzavierka:'uzavierka deadline termin',
   dovolenka:'dovolenka volno absencia', paragraf:'paragraf lekar absencia',
   ocr:'ocr rodinne opatrovanie', nahradne_volno:'nahradne volno absencia',
