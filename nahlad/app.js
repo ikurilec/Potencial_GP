@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.60';
+var APP_VERSION = '2.88.61';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -32653,8 +32653,28 @@ function rp2LoadCennik() {
   }).then(done).catch(function() { done(null); });
 }
 // Cenník produktu: { cena (vážený priemer alebo jediná cena | null), min, max, skus:[{sku,cena,podiel}] } | null
+// Názvy v Cenníku sa párujú s produktmi v pláne tolerantne: bez diakritiky, veľkosti písmen a medzier/podčiarkovníkov,
+// a to podľa kľúča (aflamil_kr) aj podľa zobrazovaného názvu (Aflamil krém). Predtým musel byť názov presne rovnaký.
+function rp2Norm(t) {
+  var x = String(t == null ? '' : t).toLowerCase();
+  try { x = x.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (e) {}
+  return x.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+}
+function rp2NameKeys(key) {
+  var out = [rp2Norm(key)];
+  try { var lbl = plnenieDisplayName(key); if (lbl) out.push(rp2Norm(lbl)); } catch (e) {}
+  return out;
+}
+function rp2Find(map, key) {
+  if (!map) return null;
+  var ks = rp2NameKeys(key);
+  var norm = {};
+  Object.keys(map).forEach(function(k) { norm[rp2Norm(k)] = map[k]; });
+  for (var i = 0; i < ks.length; i++) if (norm[ks[i]] !== undefined) return norm[ks[i]];
+  return null;
+}
 function rp2PriceInfo(key) {
-  var c = RP2.ceny && RP2.ceny[plnenieNormalizeKey(key)];
+  var c = rp2Find(RP2.ceny, key);
   if (!c) return null;
   if (c.cena > 0 || (c.skus && c.skus.length)) return c;
   return null;
@@ -32663,7 +32683,7 @@ function rp2PriceInfo(key) {
 // každý rep/územie má iný mix balení aj iné ceny.
 function rp2RepPrice(u, key) {
   var t = RP2.cenyRep && RP2.cenyRep[String(u || '').toLowerCase()];
-  var v = t && t[plnenieNormalizeKey(key)];
+  var v = rp2Find(t, key);
   return v > 0 ? v : null;
 }
 function rp2Price(key) { var c = rp2PriceInfo(key); return (c && c.cena > 0) ? c.cena : null; }
@@ -32725,17 +32745,19 @@ function rp2Model(reps, p) {
     });
     prods.forEach(function(x) {
       if (!(x.g100 > 0)) return;
-      var sumG = 0, sumP = 0, usedRep = false, covered = true;
+      var sumG = 0, sumP = 0, usedRep = false, missG = 0;
       reps.forEach(function(u) {
         var pr = repAgg[u] && repAgg[u][x.key];
         if (!pr || !(pr.planEUR > 0)) return;
         var g = Math.max(0, pr.planEUR - pr.predajeEUR); if (g <= 0) return;
         var pu = rp2RepPrice(u, x.key);
         if (pu) usedRep = true; else pu = x.price;
-        if (!pu) { covered = false; return; }
+        if (!pu) { missG += g; return; }
         sumG += g; sumP += g / pu;
       });
-      if (usedRep && covered && sumG > 0) {
+      // repi bez vlastnej ceny (a bez ceny v Cenníku) dostanú priemernú cenu ostatných
+      if (usedRep && missG > 0 && sumG > 0) { sumP += missG / (sumG / sumP); sumG += missG; x.partialPrice = true; }
+      if (usedRep && sumG > 0) {
         x.price = sumG / sumP; x.priceSrc = 'uzemie'; x.hasPrice = true;
         x.packs100 = Math.ceil(x.g100 / x.price);
         x.packs95 = x.g95 > 0 ? Math.ceil(x.g95 / x.price) : 0;
@@ -32751,7 +32773,12 @@ function rp2Model(reps, p) {
     else if (x.range100) m.rangeOnly.push(x.label);
     else m.missingPrice.push(x.label);
   });
-  m.packsComplete = (m.missingPrice.length === 0 && m.rangeOnly.length === 0);   // súčet balení len keď je cena všade
+  m.packsComplete = (m.missingPrice.length === 0 && m.rangeOnly.length === 0);
+  // Diagnostika: riadky Cenníka, ktoré nezodpovedajú žiadnemu produktu v pláne
+  var known = {};
+  prods.forEach(function(x) { rp2NameKeys(x.key).forEach(function(k) { known[k] = 1; }); });
+  m.unmatched = Object.keys(RP2.ceny || {}).filter(function(k) { return !known[rp2Norm(k)]; });
+  m.pricesLoaded = !!(RP2.ceny && Object.keys(RP2.ceny).length) || !!(RP2.cenyRep && Object.keys(RP2.cenyRep).length);   // súčet balení len keď je cena všade
   m.projEUR = m.predPct !== null ? m.plan * m.predPct / 100 : null;
   return m;
 }
@@ -32818,7 +32845,11 @@ function rp2ActionHtml(m, p, ideas, isGroup) {
   }
   var warn = '';
   if (!m.closed && (m.gap95 > 0 || m.gap100 > 0)) {
-    if (m.missingPrice.length) warn += '<div class="rp2-warn">⚠ Balenia nie sú spočítané pre: ' + rp2Esc(m.missingPrice.join(', ')) + '. Doplň cenu za balenie do hárka <b>Cennik</b> v Sheete.</div>';
+    if (RP2.ceny === null || RP2.cenyLoading) warn += '<div class="rp2-warn">⏳ Cenník sa ešte načítava…</div>';
+    else if (RP2.cenyErr) warn += '<div class="rp2-warn">⚠ Cenník sa nepodarilo načítať — skontroluj, či je v Apps Scripte tejto línie nový kód a či je nasadená nová verzia (akcia getCennik).</div>';
+    else if (!m.pricesLoaded) warn += '<div class="rp2-warn">⚠ Cenník je prázdny — doplň ceny do hárka <b>Cennik</b> (stĺpec <b>cena_ks_eur</b>) alebo vlož ceny z konvertora do <b>Cennik_Region</b>.</div>';
+    else if (m.missingPrice.length) warn += '<div class="rp2-warn">⚠ Balenia nie sú spočítané pre: ' + rp2Esc(m.missingPrice.join(', ')) + '. Pre tieto produkty chýba cena v hárku <b>Cennik</b>.' +
+      (m.unmatched.length ? ' Nerozpoznané názvy v Cenníku: <b>' + rp2Esc(m.unmatched.join(', ')) + '</b> — názov musí zodpovedať produktu v pláne.' : '') + '</div>';
     if (m.rangeOnly.length) warn += '<div class="rp2-warn">ℹ ' + rp2Esc(m.rangeOnly.join(', ')) + ': viac balení bez zadaného podielu predaja — ukazujem rozpätie. Pre presný odhad doplň v Cenníku <b>podiel_pct</b> pri baleniach.</div>';
   }
   // Riadky produktov s dierou
