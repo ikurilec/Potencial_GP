@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.54';
+var APP_VERSION = '2.88.55';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -23927,9 +23927,14 @@ function usageStatsLoad(rep, _retry) {
   var myToken = ++_usageLoadToken;
   var cacheKey = line + '_' + (rep || '_team') + '_' + USAGE_VIEW.dni;
   var cache = rep ? USAGE_VIEW.repCache : USAGE_VIEW.teamCache;
-  // Načítané dáta držíme v appke max 3 min (predtým do reloadu appky → nový záznam si nikdy neuvidel).
-  if (cache[cacheKey] && (Date.now() - (cache[cacheKey]._at || 0)) < 180000) { usageRenderStats(cache[cacheKey], rep); return; }
-  body.innerHTML = appRingLoadingHtml('Načítavam aktivitu', rep ? 'Zbieram údaje o používaní reprezentanta…' : 'Zbieram údaje o používaní appky…', 44);
+  // Čerstvé dáta (do 3 min) rovno ukáž. Staršie ukáž tiež hneď (nech sa nečaká na prázdnej obrazovke)
+  // a na pozadí ich obnov — po príchode čerstvých sa zobrazenie prekreslí.
+  var _cached = cache[cacheKey];
+  var _age = _cached ? (Date.now() - (_cached._at || 0)) : Infinity;
+  if (_cached && _age < 180000) { usageRenderStats(_cached, rep); return; }
+  var _showedStale = false;
+  if (_cached) { usageRenderStats(_cached, rep); _showedStale = true; }
+  else body.innerHTML = appRingLoadingHtml('Načítavam aktivitu', rep ? 'Zbieram údaje o používaní reprezentanta…' : 'Zbieram údaje o používaní appky…', 44);
   if (typeof IS_DEV !== 'undefined' && IS_DEV) {
     var mock = usageMockResponse(rep, USAGE_VIEW.dni);
     cache[cacheKey] = mock;
@@ -23941,29 +23946,37 @@ function usageStatsLoad(rep, _retry) {
   var _fresh = !!USAGE_VIEW._fresh; USAGE_VIEW._fresh = false;
   var params = 'action=getUsageStats&dni=' + USAGE_VIEW.dni + (rep ? '&rep=' + encodeURIComponent(rep) : '') + (_fresh ? '&fresh=1' : '');
   var url = (line === 'gyn') ? gynScriptUrl(params) : scriptUrl(params);
+  var isCurrent = function(){ return _usageLoadToken === myToken && USAGE_VIEW.line === line && USAGE_VIEW.currentRep === (rep || null); };
   var settled = false;
-  // Watchdog — ak odpoveď nepríde do 15 s, neostaň visieť na skeletone, ukáž chybu.
-  setTimeout(function(){
-    if (settled) return;
-    settled = true;
-    if (_usageLoadToken === myToken && USAGE_VIEW.line === line && USAGE_VIEW.currentRep === (rep || null)) usageRenderError();
-  }, 15000);
-  appQueuedFetchJson(url, { cache: 'no-store' }, 14000, 'critical')
+  var fail = function(detail){
+    if (settled) return; settled = true;
+    if (!isCurrent()) return;
+    if (_showedStale) return;            // stará verzia ostáva na obrazovke, chybu neukazuj
+    usageRenderError(detail);
+  };
+  // Watchdog — poistka pre prípad, že by sa nič nestalo. Musí byť dlhší než celý reťazec pokusov
+  // (3 × 30 s + pauzy), inak by chyba vyskočila, kým appka ešte legitímne skúša znova.
+  setTimeout(function(){ fail(); }, 100000);
+  // Apps Script občas vráti prechodné 404 alebo studený štart trvá aj 20+ s → viac pokusov a dlhší limit
+  // (predtým jeden pokus s limitom 14 s a po 15 s chyba, z ktorej sa nedalo nič spraviť).
+  appFetchWithRetry(url, {
+    retries: 2,
+    timeoutMs: 30000,
+    priority: 'critical',
+    delayFn: function(){ return 800; },
+    active: isCurrent,
+    fetcher: function(){ return appQueuedFetchJson(url, { cache: 'no-store' }, 30000, 'critical'); }
+  })
     .then(function(data){
       if (settled) return;
       settled = true;
-      // Ak medzitým používateľ prepol líniu/repa/period, zahoď neskorú odpoveď.
-      if (_usageLoadToken !== myToken || USAGE_VIEW.line !== line) return;
-      if (!data || !data.ok) { if (USAGE_VIEW.currentRep === (rep || null)) usageRenderError(data && data.error); return; }
+      if (!isCurrent()) return;
+      if (!data || !data.ok) { if (!_showedStale) usageRenderError(data && data.error); return; }
       data._at = Date.now();
       cache[cacheKey] = data;
-      if (USAGE_VIEW.currentRep === (rep || null)) usageRenderStats(data, rep);
+      usageRenderStats(data, rep);
     })
-    .catch(function(){
-      if (settled) return;
-      settled = true;
-      if (_usageLoadToken === myToken && USAGE_VIEW.line === line && USAGE_VIEW.currentRep === (rep || null)) usageRenderError();
-    });
+    .catch(function(){ fail(); });
 }
 
 // Tlačidlo „Obnoviť": zahodí lokálnu aj serverovú (2 min) cache a načíta dáta nanovo.
@@ -23981,8 +23994,16 @@ function usageToolbarHtml(data) {
 
 function usageRenderError(detail) {
   var body = usageBody();
-  if (body) body.innerHTML = '<div class="act-empty">Štatistiku sa nepodarilo načítať.<br>Skús to znova alebo skontroluj pripojenie.' +
-    (detail ? '<br><span style="font-size:11px;opacity:.6">(' + mgrEscape(String(detail)) + ')</span>' : '') + '</div>';
+  if (!body) return;
+  appRegisterRetry('usage', function(){ USAGE_VIEW._fresh = true; usageStatsLoad(USAGE_VIEW.currentRep || undefined); });
+  body.innerHTML =
+    (USAGE_VIEW.currentRep ? '<button class="act-back" onclick="usageBackToTeam()">&larr; Späť na tím</button>' : '') +
+    appErrorCardHtml({
+      id: 'usage',
+      title: 'Nepodarilo sa načítať aktivitu',
+      desc: 'Server odpovedal pomaly alebo vôbec.' + (detail ? ' (' + String(detail) + ')' : '') + ' Skús to znova.',
+      retryLabel: 'Skúsiť znova'
+    });
 }
 
 function usageRenderStats(data, rep) {
