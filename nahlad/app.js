@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.52';
+var APP_VERSION = '2.88.53';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -24321,12 +24321,14 @@ function usageRenderRep(data, login) {
   if (secKeys.length) {
     var maxT = Math.max.apply(null, secKeys.map(function(s){ return sectionTime[s]||0; }).concat([1]));
     html += '<div class="act-section-lbl">Najpoužívanejšie sekcie</div>';
+    html += '<div class="act-card">';
     secKeys.forEach(function(s){
       var w = Math.round(((sectionTime[s]||0) / maxT) * 100);
       html += '<div class="act-bar-row"><div class="act-bar-lbl">' + mgrEscape(s || '—') + '</div>' +
               '<div class="act-bar-track"><div class="act-bar-fill" style="width:0%" data-w="' + w + '%"></div></div>' +
               '<div class="act-bar-val">' + (sectionCount[s]||0) + '× · ' + usageFmtDur(sectionTime[s]||0) + '</div></div>';
     });
+    html += '</div>';
   }
 
   html += '<details class="act-fold"><summary>🧭 Funkcie a záujmy — čo používa a čo pozerá</summary>';
@@ -24397,6 +24399,7 @@ function usageRenderRep(data, login) {
   if (kaKeys.length) {
     var maxC = Math.max.apply(null, kaKeys.map(function(k){ return keyActs[k].n; }).concat([1]));
     html += '<div class="act-section-lbl">⭐ Kľúčové akcie</div>';
+    html += '<div class="act-card">';
     kaKeys.forEach(function(k){
       var w = Math.round((keyActs[k].n / maxC) * 100);
       var ic = keyActs[k].wl ? '✅ ' : '';
@@ -24404,6 +24407,7 @@ function usageRenderRep(data, login) {
               '<div class="act-bar-track"><div class="act-bar-fill" style="width:0%" data-w="' + w + '%"></div></div>' +
               '<div class="act-bar-val">' + keyActs[k].n + '×</div></div>';
     });
+    html += '</div>';
   }
 
   html += '<details class="act-fold"><summary>🕒 Kedy appku používa</summary>';
