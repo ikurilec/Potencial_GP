@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.59';
+var APP_VERSION = '2.88.60';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -32631,7 +32631,7 @@ function rptViewAnimateBars() {
 //   • jeden zdroj čísel: plnenieBuildAggregates (rovnaké čísla ako záložka Plnenie)
 //   • ciele 95 % a 100 %: chýbajúce € → balenia (cena z hárka Cennik) → návrh okresov podľa potenciálu
 // ═══════════════════════════════════════════════════════════════════════════
-var RP2 = { ceny: null, cenyLoading: false, cenyErr: false };
+var RP2 = { ceny: null, cenyRep: {}, cenyLoading: false, cenyErr: false };
 function rp2Line() { var s = (typeof getSession === 'function') ? getSession() : null; return (s && s.line) ? s.line : 'gp'; }
 function rp2Esc(t) { return (typeof mgrEscape === 'function') ? mgrEscape(String(t == null ? '' : t)) : String(t == null ? '' : t); }
 
@@ -32644,6 +32644,7 @@ function rp2LoadCennik() {
     RP2.cenyLoading = false;
     RP2.cenyErr = !(r && r.ok);
     RP2.ceny = (r && r.ok && r.ceny) ? r.ceny : {};
+    RP2.cenyRep = (r && r.ok && r.ceny_rep) ? r.ceny_rep : {};
     if (MGR_STATE.subtab === 'reporty') rptViewRender();
   };
   appFetchWithRetry(url, {
@@ -32657,6 +32658,13 @@ function rp2PriceInfo(key) {
   if (!c) return null;
   if (c.cena > 0 || (c.skus && c.skus.length)) return c;
   return null;
+}
+// Cena za balenie podľa repa (Cennik_Region z konvertora predajov) — presnejšia než jedna cena na produkt, lebo
+// každý rep/územie má iný mix balení aj iné ceny.
+function rp2RepPrice(u, key) {
+  var t = RP2.cenyRep && RP2.cenyRep[String(u || '').toLowerCase()];
+  var v = t && t[plnenieNormalizeKey(key)];
+  return v > 0 ? v : null;
 }
 function rp2Price(key) { var c = rp2PriceInfo(key); return (c && c.cena > 0) ? c.cena : null; }
 function rp2Pct(v) { if (v === null || v === undefined || isNaN(v)) return '—'; return (Math.round(v * 10) / 10).toLocaleString('sk') + ' %'; }
@@ -32707,6 +32715,34 @@ function rp2Model(reps, p) {
     x.range100 = (!x.price && info && info.min > 0) ? [Math.ceil(x.g100 / info.max), Math.ceil(x.g100 / info.min)] : null;
     x.range95  = (!x.price && info && info.min > 0 && x.g95 > 0) ? [Math.ceil(x.g95 / info.max), Math.ceil(x.g95 / info.min)] : null;
   });
+  // Cena podľa územia: pri každom repovi jeho vlastná cena; za produkt vážený priemer podľa diery repov.
+  if (RP2.cenyRep && Object.keys(RP2.cenyRep).length) {
+    var repAgg = {};
+    reps.forEach(function(u) {
+      var ra = plnenieBuildAggregates(qc.data, p.q, [u]), mp = {};
+      (ra.products || []).forEach(function(pr) { mp[pr.key] = pr; });
+      repAgg[u] = mp;
+    });
+    prods.forEach(function(x) {
+      if (!(x.g100 > 0)) return;
+      var sumG = 0, sumP = 0, usedRep = false, covered = true;
+      reps.forEach(function(u) {
+        var pr = repAgg[u] && repAgg[u][x.key];
+        if (!pr || !(pr.planEUR > 0)) return;
+        var g = Math.max(0, pr.planEUR - pr.predajeEUR); if (g <= 0) return;
+        var pu = rp2RepPrice(u, x.key);
+        if (pu) usedRep = true; else pu = x.price;
+        if (!pu) { covered = false; return; }
+        sumG += g; sumP += g / pu;
+      });
+      if (usedRep && covered && sumG > 0) {
+        x.price = sumG / sumP; x.priceSrc = 'uzemie'; x.hasPrice = true;
+        x.packs100 = Math.ceil(x.g100 / x.price);
+        x.packs95 = x.g95 > 0 ? Math.ceil(x.g95 / x.price) : 0;
+        x.range100 = null; x.range95 = null;
+      }
+    });
+  }
   m.prods = prods.slice().sort(function(a, b) { return b.g100 - a.g100; });
   m.packs100 = 0; m.packs95 = 0; m.missingPrice = []; m.rangeOnly = [];
   m.prods.forEach(function(x) {
@@ -32806,7 +32842,7 @@ function rp2ActionHtml(m, p, ideas, isGroup) {
   });
   return '<div class="rv-card">' + head + warn + '</div>' +
     (rows ? '<div class="rv-card" style="margin-top:10px"><div class="rv-mini-lbl">' + (m.closed ? 'Produkty pod plánom' : 'Čo predať — podľa veľkosti diery') + '</div>' + rows +
-      (m.closed ? '' : '<div class="rp2-foot">Rozdelenie 95 % ide pomerne podľa veľkosti diery v produkte. Balenia sú odhad = chýbajúce € ÷ cena balenia z hárka Cennik. Okresy: trh okresu × (najlepší dosiahnuteľný podiel v teritóriu − terajší podiel).</div>') + '</div>' : '');
+      (m.closed ? '' : '<div class="rp2-foot">Rozdelenie 95 % ide pomerne podľa veľkosti diery v produkte. Balenia sú odhad = chýbajúce € ÷ cena balenia (cena územia repa z konvertora predajov, inak z hárka Cennik). Okresy: trh okresu × (najlepší dosiahnuteľný podiel v teritóriu − terajší podiel).</div>') + '</div>' : '');
 }
 
 // Kompaktná tabuľka produktov: plán, predané, %, tempo, podiel na trhu
