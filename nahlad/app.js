@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.50';
+var APP_VERSION = '2.88.51';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -23907,7 +23907,8 @@ function usageStatsLoad(rep, _retry) {
   var myToken = ++_usageLoadToken;
   var cacheKey = line + '_' + (rep || '_team') + '_' + USAGE_VIEW.dni;
   var cache = rep ? USAGE_VIEW.repCache : USAGE_VIEW.teamCache;
-  if (cache[cacheKey]) { usageRenderStats(cache[cacheKey], rep); return; }
+  // Načítané dáta držíme v appke max 3 min (predtým do reloadu appky → nový záznam si nikdy neuvidel).
+  if (cache[cacheKey] && (Date.now() - (cache[cacheKey]._at || 0)) < 180000) { usageRenderStats(cache[cacheKey], rep); return; }
   body.innerHTML = '<div class="skel-wrap"><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:55%"></div><div class="skel skel-line" style="width:38%"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:62%"></div><div class="skel skel-line" style="width:30%"></div></div></div></div>';
   if (typeof IS_DEV !== 'undefined' && IS_DEV) {
     var mock = usageMockResponse(rep, USAGE_VIEW.dni);
@@ -23917,7 +23918,8 @@ function usageStatsLoad(rep, _retry) {
   }
   // Endpoint podľa práve zobrazenej línie Aktivity (nie podľa session.line —
   // admin môže byť v oboch a prepínať medzi nimi).
-  var params = 'action=getUsageStats&dni=' + USAGE_VIEW.dni + (rep ? '&rep=' + encodeURIComponent(rep) : '');
+  var _fresh = !!USAGE_VIEW._fresh; USAGE_VIEW._fresh = false;
+  var params = 'action=getUsageStats&dni=' + USAGE_VIEW.dni + (rep ? '&rep=' + encodeURIComponent(rep) : '') + (_fresh ? '&fresh=1' : '');
   var url = (line === 'gyn') ? gynScriptUrl(params) : scriptUrl(params);
   var settled = false;
   // Watchdog — ak odpoveď nepríde do 15 s, neostaň visieť na skeletone, ukáž chybu.
@@ -23933,6 +23935,7 @@ function usageStatsLoad(rep, _retry) {
       // Ak medzitým používateľ prepol líniu/repa/period, zahoď neskorú odpoveď.
       if (_usageLoadToken !== myToken || USAGE_VIEW.line !== line) return;
       if (!data || !data.ok) { if (USAGE_VIEW.currentRep === (rep || null)) usageRenderError(data && data.error); return; }
+      data._at = Date.now();
       cache[cacheKey] = data;
       if (USAGE_VIEW.currentRep === (rep || null)) usageRenderStats(data, rep);
     })
@@ -23941,6 +23944,19 @@ function usageStatsLoad(rep, _retry) {
       settled = true;
       if (_usageLoadToken === myToken && USAGE_VIEW.line === line && USAGE_VIEW.currentRep === (rep || null)) usageRenderError();
     });
+}
+
+// Tlačidlo „Obnoviť": zahodí lokálnu aj serverovú (2 min) cache a načíta dáta nanovo.
+function usageRefresh() {
+  USAGE_VIEW.teamCache = {}; USAGE_VIEW.repCache = {};
+  USAGE_VIEW._fresh = true;
+  usageStatsLoad(USAGE_VIEW.currentRep || undefined);
+}
+function usageToolbarHtml(data) {
+  var t = new Date((data && data._at) || Date.now());
+  var hm = ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2);
+  return '<div class="act-toolbar"><span>Aktualizované o ' + hm + '</span>' +
+         '<button type="button" class="act-refresh" onclick="usageRefresh()">↻ Obnoviť</button></div>';
 }
 
 function usageRenderError(detail) {
@@ -24025,13 +24041,17 @@ function usageRenderTeam(data) {
   var _gpMgrOnlyReps = (USAGE_VIEW.line !== 'gyn') && (typeof MGR_STATE !== 'undefined' && !!MGR_STATE.role && MGR_STATE.role !== 'admin');
   var _onlyReps = _gynMgrOnlyReps || _gpMgrOnlyReps;
   // pulz: aktívni dnes / týždeň, spolu otvorení
+  // „Dnes" = kalendárny deň v Bratislave (server posiela `today` a `lastDay`), nie posledných 24 hodín.
+  // Staršiemu backendu (bez týchto polí) ostáva pôvodný výpočet.
   var today = 0, week = 0, opens = 0;
+  var _dayNum = function(k){ return Date.parse(k + 'T00:00:00Z') / 86400000; };
   list.forEach(function(l){
     var r = reps[l];
     if (!r || !r.last) return;
-    var dni = (Date.now() - Date.parse(r.last)) / (24*60*60*1000);
-    if (dni < 1) today++;
-    if (dni < 7) week++;
+    var ago = (data.today && r.lastDay) ? (_dayNum(data.today) - _dayNum(r.lastDay))
+                                        : Math.floor((Date.now() - Date.parse(r.last)) / 86400000);
+    if (ago < 1) today++;
+    if (ago < 7) week++;
     opens += r.opens || 0;
   });
   // zoradenie: aktívni najprv (podľa last), neaktívni dole
@@ -24042,9 +24062,10 @@ function usageRenderTeam(data) {
     return tb - ta;
   });
   var html = '';
+  html += usageToolbarHtml(data);
   html += '<div class="act-pulse">';
   html += '<div class="act-pulse-card"><div class="act-pulse-num">' + today + '<span style="font-size:14px;color:#7AABCC">/' + list.length + '</span></div><div class="act-pulse-lbl">Aktívni dnes</div></div>';
-  html += '<div class="act-pulse-card"><div class="act-pulse-num">' + week + '<span style="font-size:14px;color:#7AABCC">/' + list.length + '</span></div><div class="act-pulse-lbl">Tento týždeň</div></div>';
+  html += '<div class="act-pulse-card"><div class="act-pulse-num">' + week + '<span style="font-size:14px;color:#7AABCC">/' + list.length + '</span></div><div class="act-pulse-lbl">Za 7 dní</div></div>';
   html += '<div class="act-pulse-card"><div class="act-pulse-num">' + opens + '</div><div class="act-pulse-lbl">Otvorení appky</div></div>';
   html += '</div>';
   html += '<div class="act-section-lbl">' + (_onlyReps ? 'Reprezentanti' : 'Používatelia') + ' · posledných ' + USAGE_VIEW.dni + ' dní</div>';
@@ -24060,7 +24081,7 @@ function usageRenderTeam(data) {
     var topSec = '';
     var maxC = 0;
     Object.keys(canonSecs).forEach(function(s){ if (canonSecs[s] > maxC) { maxC = canonSecs[s]; topSec = s; } });
-    var st = usageStatusClass(r.last);
+    var st = usageHealth(r.last).cls;   // rovnaká škála ako štítok (Aktívny ≤1 d · Vlažný ≤4 d · Spí)
     var color = (typeof strHash === 'function') ? ('hsl(' + (strHash(l) % 360) + ',55%,45%)') : '#0C1E35';
     var meta = r.last ? ('<b>' + (r.opens||0) + '</b> otvorení · ' + usageFmtDur(r.timeS) + (topSec ? ' · ' + topSec : '')) : 'zatiaľ žiadna aktivita';
     var hasPush = !!pushMap[l];
@@ -24077,6 +24098,7 @@ function usageRenderTeam(data) {
     '</div>';
   });
 
+  html += '<details class="act-fold"><summary>📊 Detaily tímu — sekcie, adopcia, trend, produkty</summary>';
   // ── Agreguj kanonické sekcie naprieč tímom: čas (ak backend posiela sectionsTime),
   //    počet otvorení a koľko ľudí sekciu vôbec otvorilo. ──
   var secOpens = {}, secTime = {}, secUsers = {}, hasTime = false;
@@ -24174,6 +24196,7 @@ function usageRenderTeam(data) {
     });
   }
 
+  html += '</details>';
   body.innerHTML = html;
   // animuj bary + trend stĺpce
   body.querySelectorAll('.act-bar-fill[data-w]').forEach(function(el){ setTimeout(function(){ el.style.width = el.getAttribute('data-w'); }, 60); });
@@ -24271,6 +24294,7 @@ function usageRenderRep(data, login) {
 
   var html = '';
   html += '<button class="act-back" onclick="usageBackToTeam()">&larr; Späť na tím</button>';
+  html += usageToolbarHtml(data);
   html += '<div class="act-dhdr"><div class="act-dhdr-avatar" data-username="' + login + '" style="background:' + color + '">' + (typeof mgrInitials==='function'?mgrInitials(name):'') + '</div>' +
           '<div><div class="act-dhdr-name">' + mgrEscape(name) + '</div><div class="act-dhdr-sub">naposledy ' + usageAgo(last) + ' · posledných ' + USAGE_VIEW.dni + ' dní</div></div></div>';
 
@@ -24306,18 +24330,15 @@ function usageRenderRep(data, login) {
     });
   }
 
+  html += '<details class="act-fold"><summary>🧭 Funkcie a záujmy — čo používa a čo pozerá</summary>';
   // ── Nepoužívané funkcie — čo reprezentant ešte nikdy neotvoril (coaching) ──
+  // Kanonické názvy (bez prefixov „Gyn ·" / „Manažér ·") — musia sedieť s usageCanonSection.
   var canonicalSections = (USAGE_VIEW.line === 'gyn')
-    ? ['Gyn · Plnenie', 'Gyn · Rebríček', 'Gyn · História', 'Trhový podiel']
-    : ['História', 'Rebríček', 'Plnenie', 'Lekárne', 'Trhový podiel'];
+    ? ['Plnenie', 'Rebríček', 'História návštev', 'Lekárne', 'Kalendár', 'Trhový podiel', 'Nástenka']
+    : ['Plnenie', 'Lekárne', 'Trhový podiel', 'Okresy', 'Rebríček', 'História návštev', 'Kalendár', 'Nástenka'];
   var usedSet = {};
   Object.keys(sectionCount).forEach(function(s){ usedSet[s] = 1; });
-  // 'Manažér · X' a 'Gyn · X' sekcie sa berú ako matchnuté podľa kľúčového slova
-  function _secUsed(canon){
-    if (usedSet[canon]) return true;
-    var bare = canon.replace(/^Gyn · /, '');
-    return Object.keys(usedSet).some(function(u){ return u === bare || u.indexOf(bare) !== -1 || u.indexOf(canon) !== -1; });
-  }
+  function _secUsed(canon){ return !!usedSet[canon]; }
   var usedSecs = canonicalSections.filter(_secUsed);
   var unusedSecs = canonicalSections.filter(function(s){ return !_secUsed(s); });
   html += '<div class="act-section-lbl">🧭 Používané vs. nepoužívané funkcie</div>';
@@ -24358,6 +24379,7 @@ function usageRenderRep(data, login) {
     });
   }
 
+  html += '</details>';
   // ── Kľúčové akcie — najprv whitelist akcie (type 'action'), doplnené očistenými klikmi. ──
   // Zjednoť kľúč: akcie z whitelistu majú prednosť a vlastnú ikonu; kliky sú doplnok.
   var keyActs = {};
@@ -24385,6 +24407,7 @@ function usageRenderRep(data, login) {
     });
   }
 
+  html += '<details class="act-fold"><summary>🕒 Kedy appku používa</summary>';
   // heatmapa dni × hodiny
   var maxHm = Math.max.apply(null, hm.concat([1]));
   var days = ['Po','Ut','St','Št','Pi','So','Ne'];
@@ -24403,6 +24426,7 @@ function usageRenderRep(data, login) {
   }
   html += '</div></div>';
 
+  html += '</details>';
   // ── Príbeh relácií — čo reprezentant reálne robil, krok po kroku ──
   // Zoskupíme eventy do relácií (každé otvorenie appky = nová relácia; dlhé ticho tiež).
   // Z každej relácie poskladáme čitateľný sled: otvoril → bol v sekcii X s → … → odišiel.
