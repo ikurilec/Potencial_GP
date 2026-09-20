@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.53';
+var APP_VERSION = '2.88.57';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -1081,7 +1081,21 @@ var _appRetryRegistry = {};
 function appRegisterRetry(id, fn){ if (id) _appRetryRegistry[id] = fn; }
 function appRetry(id){
   var fn = _appRetryRegistry[id];
-  if (typeof fn === 'function') { try { haptic('selection'); } catch(e){} fn(); }
+  if (typeof fn !== 'function') return;
+  var card = null;
+  try { var ev = window.event; card = (ev && ev.target && ev.target.closest) ? ev.target.closest('.app-err-card') : null; } catch(e){}
+  try { haptic('selection'); } catch(e){}
+  fn();
+  // Predtým sa po ťuknutí nič nezmenilo, kým nedorazila odpoveď → vyzeralo to, že tlačidlo nefunguje.
+  // Ak retry sám obsah nenahradil (karta je stále na obrazovke), ukáž v nej načítavanie.
+  if (card && card.isConnected) {
+    var orig = card.innerHTML;
+    card.innerHTML = appRingLoadingHtml('Načítavam…', 'Skúšam to znova, chvíľu počkaj.', 10);
+    // poistka: ak sa do 45 s nič nestalo, vráť pôvodnú kartu (nech sa dá skúsiť znova)
+    setTimeout(function(){
+      if (card.isConnected && card.querySelector('.app-ring-loading')) card.innerHTML = orig;
+    }, 45000);
+  }
 }
 
 // Jednotná chybová karta. opts: { id, title, desc, retryLabel }
@@ -1987,35 +2001,85 @@ function usageLabelFor(target) {
   } catch(e){ return null; }
 }
 
-// Zisti, v ktorej obrazovke sme práve teraz.
-function usageCurrentSection() {
-  function shown(id) { var x = document.getElementById(id); return x && (x.classList.contains('show') || (x.style && x.style.display && x.style.display !== 'none' && getComputedStyle(x).display !== 'none')); }
+// Zisti, na ktorej obrazovke je používateľ PRÁVE TERAZ (podľa toho, čo je vidno v DOM), a prípadne čo si na nej pozerá.
+// Jediný zdroj pravdy pre zber aktivity: používa ho kliknutie aj časovač usageSyncScreen() nižšie.
+// Predtým sa sekcia zaznamenávala len tam, kde ju niekto ručne zavolal pri otvorení — po zatvorení
+// detailu, návrate z pozadia alebo pri paneli bez volania (Domov, Menu, Nástenka…) sa čas a pozeranie stratili.
+var USAGE_PANEL_SECTIONS = [
+  ['dnes-overlay', 'Dnes'], ['hist-overlay', 'História'], ['lb-overlay', 'Rebríček'],
+  ['rep-plnenie-overlay', 'Plnenie'], ['lk-overlay', 'Lekárne'], ['okresy-overlay', 'Okresy'],
+  ['sklady-overlay', 'Sklady'], ['team-plnenie-overlay', 'Tímové plnenie'], ['tuyory-overlay', 'Tuyory'],
+  ['lonelix-overlay', 'Lonelix'], ['apixaban-overlay', 'Apixaban'], ['golem-cal-overlay', 'Kalendár'],
+  ['nastenka-overlay', 'Nástenka'], ['viac-overlay', 'Menu'], ['gpp-overlay', 'Aktualizácia potenciálu']
+];
+function usageDetectScreen() {
+  function shown(id) { var x = document.getElementById(id); return !!(x && (x.classList.contains('show') || (x.style && x.style.display && x.style.display !== 'none' && getComputedStyle(x).display !== 'none'))); }
   try {
-    if (shown('pharma-okres-overlay')) return 'Trhový podiel · graf okresu';
-    if (shown('pharma-ms-overlay'))    return 'Trhový podiel';
-    if (shown('golem-cal-overlay'))    return 'Kalendár';
-    if (shown('lk-overlay') || (typeof LK_STATE !== 'undefined' && LK_STATE.open)) return 'Lekárne';
-    if (shown('okresy-overlay') || (typeof OKRESY_STATE !== 'undefined' && OKRESY_STATE.open && OKRESY_STATE.ctx === 'rep')) return 'Okresy';
-    if (shown('rep-plnenie-overlay'))  return 'Plnenie';
-    if (shown('hist-overlay'))         return 'Lekári';
-    if (shown('lb-overlay'))           return 'Rebríček';
-    if (shown('detail-overlay'))       return 'Karta lekára';
-    if (shown('av-overlay'))           return 'Avatar';
+    if (document.body.classList.contains('login-active')) return null;   // prihlasovacia obrazovka
+    // ── vrstvy navrchu (detaily / modály nad panelom) ──
+    if (shown('pharma-okres-overlay')) return { section: 'Trhový podiel · graf okresu', detail: '' };
+    if (shown('pharma-ms-overlay')) {
+      var pt = ''; try { pt = (document.getElementById('pharma-ms-title') || {}).textContent || ''; } catch(e){}
+      var pp = pt.indexOf(' · ') >= 0 ? pt.split(' · ').pop().trim() : '';
+      return { section: 'Trhový podiel', detail: pp ? 'produkt: ' + pp : '' };
+    }
+    if (shown('gs-overlay')) return { section: 'Vyhľadávanie', detail: '' };
+    if (shown('settings-overlay') || shown('pwd-change-overlay')) return { section: 'Nastavenia', detail: '' };
+    if (shown('av-overlay')) return { section: 'Avatar', detail: '' };
+    if (shown('detail-overlay') || shown('edit-overlay')) return { section: 'Karta lekára', detail: '' };
+    if (shown('tuy-detail-overlay')) return { section: 'Tuyory', detail: '' };
+    if (shown('nday-overlay')) return { section: 'Kalendár', detail: '' };
+    if (shown('pl-prod-sheet') || shown('rep-detail-prod-panel') || shown('mgr-detail-prod-panel')) return { section: 'Plnenie', detail: '' };
+    // ── panely (Domov, Plnenie, Lekárne, Nástenka, Menu, …) ──
+    for (var i = 0; i < USAGE_PANEL_SECTIONS.length; i++) {
+      if (shown(USAGE_PANEL_SECTIONS[i][0])) {
+        var sec = USAGE_PANEL_SECTIONS[i][1], det = '';
+        if (sec === 'Lekárne' && typeof LK_STATE !== 'undefined') det = ({ reaktivacia:'Krém', priority:'Dobropis', sleeping:'Spiace', 'new':'Nové', all:'Všetky' }[LK_STATE.activeTab] || '');
+        return { section: sec, detail: det };
+      }
+    }
     if (document.body.classList.contains('manager-mode')) {
-      if (document.body.classList.contains('mgr-subtab-kalendar'))    return 'Manažér · Kalendár';
-      if (document.body.classList.contains('mgr-subtab-leaderboard')) return 'Manažér · Rebríček';
-      if (document.body.classList.contains('mgr-subtab-activity'))    return 'Manažér · Aktivita';
-      if (document.body.classList.contains('mgr-subtab-plnenie'))     return 'Manažér · Plnenie';
-      return 'Manažér · Lekári';
+      var m = 'Návštevy';
+      if (document.body.classList.contains('mgr-subtab-kalendar'))         m = 'Kalendár';
+      else if (document.body.classList.contains('mgr-subtab-leaderboard')) m = 'Rebríček';
+      else if (document.body.classList.contains('mgr-subtab-activity'))    m = 'Aktivita';
+      else if (document.body.classList.contains('mgr-subtab-plnenie'))     m = 'Plnenie';
+      else if (document.body.classList.contains('mgr-subtab-reporty'))     m = 'Reporty';
+      return { section: 'Manažér · ' + m, detail: '' };
     }
-    if (document.getElementById('gyn-view') && getComputedStyle(document.getElementById('gyn-view')).display !== 'none') {
+    var gv = document.getElementById('gyn-view');
+    if (gv && getComputedStyle(gv).display !== 'none') {
       var nav = (typeof GYN_APP !== 'undefined' && GYN_APP.nav) ? GYN_APP.nav : '';
-      var gmap = { plnenie:'Plnenie', leaderboard:'Rebríček', kalendar:'Kalendár', visits:'Lekári', lekarne:'Lekárne', activity:'Aktivita' };
-      return 'Gyn · ' + (gmap[nav] || 'Plnenie');
+      var gmap = { plnenie:'Plnenie', leaderboard:'Rebríček', kalendar:'Kalendár', visits:'História', lekarne:'Lekárne', activity:'Aktivita' };
+      return { section: 'Gyn · ' + (gmap[nav] || 'Plnenie'), detail: '' };
     }
-    return 'Hľadanie lekára';   // Golem rep úvodná obrazovka (predtým 'Formulár')
-  } catch(e){ return ''; }
+    return { section: 'Hľadanie lekára', detail: '' };   // Golem rep úvodná obrazovka
+  } catch(e){ return null; }
 }
+function usageCurrentSection() {
+  var d = usageDetectScreen();
+  return d ? d.section : '';
+}
+
+// Časovač: drží zaznamenanú sekciu v súlade s tým, čo je naozaj na obrazovke. Prepne až keď rozdiel trvá
+// dva behy po sebe (~3 s) — aby nekmital medzi ručnými volaniami usageSectionEnter a detektorom.
+var _usageSyncPending = '';
+function usageSyncScreen() {
+  try {
+    if (document.hidden) return;
+    var s = (typeof getSession === 'function') ? getSession() : null;
+    if (!s || !s.username || s.role === 'admin') return;
+    var cur = usageDetectScreen();
+    if (!cur || !cur.section) { _usageSyncPending = ''; return; }
+    var act = USAGE.active;
+    var want = usageCanonSection(cur.section);
+    if (act && usageCanonSection(act.section) === want) { _usageSyncPending = ''; return; }
+    if (_usageSyncPending !== want) { _usageSyncPending = want; return; }
+    _usageSyncPending = '';
+    usageSectionEnter(cur.section, cur.detail);
+  } catch(e){}
+}
+setInterval(usageSyncScreen, 1500);
 
 // Globálny zachytávač klikov — zaznamená každé ťuknutie na klikateľný prvok.
 document.addEventListener('click', function(e){
@@ -5858,6 +5922,7 @@ function appGoPlnenieProduct(productKey) {
 function dnesOpenTeamProduct(productKey, productLabel) {
   var key = plnenieNormalizeKey(productKey);
   var label = String(productLabel || productKey || '').trim();
+  try { usageDrill('Dnes', 'produkt: ' + (label || productKey)); } catch(e){}
   if (!key || !label) { appGoPlnenie(); return; }
   try { if (typeof haptic === 'function') haptic('selection'); } catch (e) {}
 
@@ -6290,7 +6355,7 @@ function stockRender(){
     if (target) { try { target.scrollIntoView({ block:'center' }); } catch(e) {} }
   }
 }
-function stockToggle(key){ SKLADY_STATE.expanded[key] = !SKLADY_STATE.expanded[key]; try { haptic('selection'); } catch(e) {} stockRender(); }
+function stockToggle(key){ SKLADY_STATE.expanded[key] = !SKLADY_STATE.expanded[key]; if (SKLADY_STATE.expanded[key]) { try { usageDrill('Sklady', 'produkt: ' + key); } catch(e){} } try { haptic('selection'); } catch(e) {} stockRender(); }
 function stockRequestUrl(){ return appLineTag() === 'gyn' ? gynScriptUrl('action=getStockData') : scriptUrl('action=getStockData'); }
 // Sklady sa aktualizujú cca raz týždenne (Ivan) — netreba pri každom otvorení
 // čakať na sieť. SWR: cache (DataStore, localStorage) sa ukáže OKAMŽITE bez
@@ -9017,7 +9082,7 @@ function satoriGuideHintReady(key){
   if(key === 'products') return !!document.getElementById('pl-ps-body');
   if(key === 'market'){
     var marketBody = document.getElementById('pharma-ms-body');
-    return !!(marketBody && marketBody.textContent.trim() && !document.getElementById('gyn-ph-prog-ring') && !marketBody.querySelector('.skel-pharma-card,.gyn-pharma-loading,.app-error-card'));
+    return !!(marketBody && marketBody.textContent.trim() && !document.getElementById('gyn-ph-prog-ring') && !marketBody.querySelector('.skel-pharma-card,.gyn-pharma-loading,.app-ring-loading,.app-error-card'));
   }
   if(key === 'districts'){ var districtChart = document.getElementById('pharma-okres-chart-svg'); return !!(districtChart && districtChart.textContent.indexOf('Načítavam') < 0); }
   return true;
@@ -23164,25 +23229,46 @@ function skelMgrList(){
   var row='<div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:55%"></div><div class="skel skel-line" style="width:38%"></div></div></div>';
   return '<div class="skel-wrap">'+row+row+row+row+row+'</div>';
 }
-// Pharma overlay skeleton (Trhový podiel) — total card + per-okres rows
-function skelPharma(){
-  var totalCard = '<div class="skel-pharma-card" style="background:#0C1E35;border-radius:14px;padding:18px 20px;margin-bottom:14px">' +
-    '<div class="skel" style="width:40%;height:10px;background:rgba(255,255,255,.10);margin:0 auto 14px;border-radius:5px"></div>' +
-    '<div style="display:flex;gap:0;justify-content:center;align-items:flex-end">' +
-      '<div style="flex:1;text-align:center"><div class="skel" style="width:50%;height:9px;background:rgba(255,255,255,.10);margin:0 auto 8px;border-radius:5px"></div><div class="skel" style="width:80%;height:30px;background:rgba(255,255,255,.12);margin:0 auto;border-radius:6px"></div></div>' +
-      '<div style="flex:1;text-align:center;border-left:1px solid rgba(255,255,255,.10)"><div class="skel" style="width:50%;height:9px;background:rgba(255,255,255,.10);margin:0 auto 8px;border-radius:5px"></div><div class="skel" style="width:80%;height:30px;background:rgba(255,255,255,.12);margin:0 auto;border-radius:6px"></div></div>' +
+// ── Kruhový indikátor načítavania (rovnaký ako v Gyn Trhovom podiele) ──
+// Plynule sa plní modrou, asymptoticky k ~95 % (nezostane visieť na „100 %"); keď dáta dorazia, obsah ho
+// nahradí. Jeden globálny časovač obslúži všetky kruhy v DOM a sám sa zastaví, keď žiadny nie je.
+var APP_RING_C = 201.06;   // obvod kruhu (2π·r, r=32)
+var _appRingTimer = null;
+function appRingLoadingHtml(title, sub, pad){
+  setTimeout(appRingAnimate, 0);
+  return '<div class="app-ring-loading" style="padding:' + (pad || 56) + 'px 18px;text-align:center;color:#64748B">' +
+    '<div class="app-ring-wrap" style="position:relative;width:76px;height:76px;margin:0 auto 16px">' +
+      '<svg width="76" height="76" viewBox="0 0 76 76" style="transform:rotate(-90deg)">' +
+        '<circle cx="38" cy="38" r="32" fill="none" stroke="#DBEAFE" stroke-width="6"></circle>' +
+        '<circle class="app-ring-arc" cx="38" cy="38" r="32" fill="none" stroke="#2563EB" stroke-width="6" stroke-linecap="round" stroke-dasharray="' + APP_RING_C + '" stroke-dashoffset="' + APP_RING_C + '"></circle>' +
+      '</svg>' +
+      '<div class="app-ring-num" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:850;color:#0C1E35;font-size:18px;font-variant-numeric:tabular-nums">0%</div>' +
     '</div>' +
+    '<div style="font-family:var(--font-display);font-weight:850;color:#0C1E35;font-size:16px;margin-bottom:5px">' + title + '</div>' +
+    '<div style="font-size:12.5px;line-height:1.4">' + (sub || 'prosím chvíľu počkaj.') + '</div>' +
   '</div>';
-  var district = function(){
-    return '<div class="skel-pharma-card" style="padding:0 0 12px">' +
-      '<div style="background:#0C1E35;padding:10px 14px;margin-bottom:8px"><div class="skel" style="width:40%;height:10px;background:rgba(255,255,255,.12);border-radius:5px"></div></div>' +
-      '<div style="padding:4px 14px"><div class="skel-pharma-row"><div class="skel" style="flex:1;height:11px;border-radius:5px"></div><div class="skel" style="width:50px;height:11px;border-radius:5px"></div></div>' +
-      '<div class="skel-pharma-row"><div class="skel" style="flex:1;height:11px;border-radius:5px"></div><div class="skel" style="width:50px;height:11px;border-radius:5px"></div></div>' +
-      '<div class="skel-pharma-row"><div class="skel" style="flex:1;height:11px;border-radius:5px"></div><div class="skel" style="width:50px;height:11px;border-radius:5px"></div></div>' +
-      '<div class="skel-pharma-row"><div class="skel" style="flex:1;height:11px;border-radius:5px"></div><div class="skel" style="width:50px;height:11px;border-radius:5px"></div></div></div>' +
-    '</div>';
-  };
-  return '<div class="pharma-ms-loading">'+totalCard+district()+district()+'</div>';
+}
+function appRingAnimate(){
+  if (_appRingTimer) return;
+  _appRingTimer = setInterval(function(){
+    var rings = document.querySelectorAll('.app-ring-arc');
+    if (!rings.length){ clearInterval(_appRingTimer); _appRingTimer = null; return; }
+    for (var i = 0; i < rings.length; i++){
+      var r = rings[i], t0 = +r.getAttribute('data-t0');
+      if (!t0){ t0 = Date.now(); r.setAttribute('data-t0', t0); }
+      var p = 95 * (1 - Math.exp(-((Date.now() - t0) / 1000) / 3.2));
+      r.setAttribute('stroke-dashoffset', (APP_RING_C * (1 - p / 100)).toFixed(2));
+      var wrap = r.closest ? r.closest('.app-ring-wrap') : null, num = wrap && wrap.querySelector('.app-ring-num');
+      if (num) num.textContent = Math.round(p) + '%';
+    }
+  }, 80);
+}
+// Trhový podiel (Golem/Reagila) — kým sa dáta sťahujú
+function skelPharma(){
+  var t = '';
+  try { t = (document.getElementById('pharma-ms-title') || {}).textContent || ''; } catch(e){}
+  var prod = t.indexOf(' · ') >= 0 ? t.split(' · ').pop() : '';
+  return appRingLoadingHtml('Načítavam trhové dáta', (prod ? 'Produkt ' + mgrEscape(prod) + ' · ' : '') + 'prosím chvíľu počkaj.');
 }
 
 function lbGetBody(){
@@ -23906,9 +23992,14 @@ function usageStatsLoad(rep, _retry) {
   var myToken = ++_usageLoadToken;
   var cacheKey = line + '_' + (rep || '_team') + '_' + USAGE_VIEW.dni;
   var cache = rep ? USAGE_VIEW.repCache : USAGE_VIEW.teamCache;
-  // Načítané dáta držíme v appke max 3 min (predtým do reloadu appky → nový záznam si nikdy neuvidel).
-  if (cache[cacheKey] && (Date.now() - (cache[cacheKey]._at || 0)) < 180000) { usageRenderStats(cache[cacheKey], rep); return; }
-  body.innerHTML = '<div class="skel-wrap"><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:55%"></div><div class="skel skel-line" style="width:38%"></div></div></div><div class="skel-card"><div class="skel skel-avatar"></div><div class="skel-lines"><div class="skel skel-line" style="width:62%"></div><div class="skel skel-line" style="width:30%"></div></div></div></div>';
+  // Čerstvé dáta (do 3 min) rovno ukáž. Staršie ukáž tiež hneď (nech sa nečaká na prázdnej obrazovke)
+  // a na pozadí ich obnov — po príchode čerstvých sa zobrazenie prekreslí.
+  var _cached = cache[cacheKey];
+  var _age = _cached ? (Date.now() - (_cached._at || 0)) : Infinity;
+  if (_cached && _age < 180000) { usageRenderStats(_cached, rep); return; }
+  var _showedStale = false;
+  if (_cached) { usageRenderStats(_cached, rep); _showedStale = true; }
+  else body.innerHTML = appRingLoadingHtml('Načítavam aktivitu', rep ? 'Zbieram údaje o používaní reprezentanta…' : 'Zbieram údaje o používaní appky…', 44);
   if (typeof IS_DEV !== 'undefined' && IS_DEV) {
     var mock = usageMockResponse(rep, USAGE_VIEW.dni);
     cache[cacheKey] = mock;
@@ -23920,29 +24011,37 @@ function usageStatsLoad(rep, _retry) {
   var _fresh = !!USAGE_VIEW._fresh; USAGE_VIEW._fresh = false;
   var params = 'action=getUsageStats&dni=' + USAGE_VIEW.dni + (rep ? '&rep=' + encodeURIComponent(rep) : '') + (_fresh ? '&fresh=1' : '');
   var url = (line === 'gyn') ? gynScriptUrl(params) : scriptUrl(params);
+  var isCurrent = function(){ return _usageLoadToken === myToken && USAGE_VIEW.line === line && USAGE_VIEW.currentRep === (rep || null); };
   var settled = false;
-  // Watchdog — ak odpoveď nepríde do 15 s, neostaň visieť na skeletone, ukáž chybu.
-  setTimeout(function(){
-    if (settled) return;
-    settled = true;
-    if (_usageLoadToken === myToken && USAGE_VIEW.line === line && USAGE_VIEW.currentRep === (rep || null)) usageRenderError();
-  }, 15000);
-  appQueuedFetchJson(url, { cache: 'no-store' }, 14000, 'critical')
+  var fail = function(detail){
+    if (settled) return; settled = true;
+    if (!isCurrent()) return;
+    if (_showedStale) return;            // stará verzia ostáva na obrazovke, chybu neukazuj
+    usageRenderError(detail);
+  };
+  // Watchdog — poistka pre prípad, že by sa nič nestalo. Musí byť dlhší než celý reťazec pokusov
+  // (3 × 30 s + pauzy), inak by chyba vyskočila, kým appka ešte legitímne skúša znova.
+  setTimeout(function(){ fail(); }, 100000);
+  // Apps Script občas vráti prechodné 404 alebo studený štart trvá aj 20+ s → viac pokusov a dlhší limit
+  // (predtým jeden pokus s limitom 14 s a po 15 s chyba, z ktorej sa nedalo nič spraviť).
+  appFetchWithRetry(url, {
+    retries: 2,
+    timeoutMs: 30000,
+    priority: 'critical',
+    delayFn: function(){ return 800; },
+    active: isCurrent,
+    fetcher: function(){ return appQueuedFetchJson(url, { cache: 'no-store' }, 30000, 'critical'); }
+  })
     .then(function(data){
       if (settled) return;
       settled = true;
-      // Ak medzitým používateľ prepol líniu/repa/period, zahoď neskorú odpoveď.
-      if (_usageLoadToken !== myToken || USAGE_VIEW.line !== line) return;
-      if (!data || !data.ok) { if (USAGE_VIEW.currentRep === (rep || null)) usageRenderError(data && data.error); return; }
+      if (!isCurrent()) return;
+      if (!data || !data.ok) { if (!_showedStale) usageRenderError(data && data.error); return; }
       data._at = Date.now();
       cache[cacheKey] = data;
-      if (USAGE_VIEW.currentRep === (rep || null)) usageRenderStats(data, rep);
+      usageRenderStats(data, rep);
     })
-    .catch(function(){
-      if (settled) return;
-      settled = true;
-      if (_usageLoadToken === myToken && USAGE_VIEW.line === line && USAGE_VIEW.currentRep === (rep || null)) usageRenderError();
-    });
+    .catch(function(){ fail(); });
 }
 
 // Tlačidlo „Obnoviť": zahodí lokálnu aj serverovú (2 min) cache a načíta dáta nanovo.
@@ -23960,8 +24059,16 @@ function usageToolbarHtml(data) {
 
 function usageRenderError(detail) {
   var body = usageBody();
-  if (body) body.innerHTML = '<div class="act-empty">Štatistiku sa nepodarilo načítať.<br>Skús to znova alebo skontroluj pripojenie.' +
-    (detail ? '<br><span style="font-size:11px;opacity:.6">(' + mgrEscape(String(detail)) + ')</span>' : '') + '</div>';
+  if (!body) return;
+  appRegisterRetry('usage', function(){ USAGE_VIEW._fresh = true; usageStatsLoad(USAGE_VIEW.currentRep || undefined); });
+  body.innerHTML =
+    (USAGE_VIEW.currentRep ? '<button class="act-back" onclick="usageBackToTeam()">&larr; Späť na tím</button>' : '') +
+    appErrorCardHtml({
+      id: 'usage',
+      title: 'Nepodarilo sa načítať aktivitu',
+      desc: 'Server odpovedal pomaly alebo vôbec.' + (detail ? ' (' + String(detail) + ')' : '') + ' Skús to znova.',
+      retryLabel: 'Skúsiť znova'
+    });
 }
 
 function usageRenderStats(data, rep) {
@@ -24335,8 +24442,8 @@ function usageRenderRep(data, login) {
   // ── Nepoužívané funkcie — čo reprezentant ešte nikdy neotvoril (coaching) ──
   // Kanonické názvy (bez prefixov „Gyn ·" / „Manažér ·") — musia sedieť s usageCanonSection.
   var canonicalSections = (USAGE_VIEW.line === 'gyn')
-    ? ['Plnenie', 'Rebríček', 'História návštev', 'Lekárne', 'Kalendár', 'Trhový podiel', 'Nástenka']
-    : ['Plnenie', 'Lekárne', 'Trhový podiel', 'Okresy', 'Rebríček', 'História návštev', 'Kalendár', 'Nástenka'];
+    ? ['Plnenie', 'Rebríček', 'História návštev', 'Lekárne', 'Kalendár', 'Trhový podiel', 'Sklady', 'Nástenka']
+    : ['Plnenie', 'Lekárne', 'Trhový podiel', 'Okresy', 'Sklady', 'Rebríček', 'História návštev', 'Kalendár', 'Nástenka'];
   var usedSet = {};
   Object.keys(sectionCount).forEach(function(s){ usedSet[s] = 1; });
   function _secUsed(canon){ return !!usedSet[canon]; }
@@ -24560,6 +24667,13 @@ function usageEventText(ev) {
 function usageSectionIcon(sec) {
   var s = String(sec || '');
   if (s.indexOf('Trhový') !== -1)  return '📈';
+  if (s === 'Dnes')               return '🏠';
+  if (s === 'Menu')               return '☰';
+  if (s === 'Nástenka')           return '📌';
+  if (s === 'Sklady')             return '📦';
+  if (s === 'Okresy')             return '🗺️';
+  if (s === 'Reporty')            return '📑';
+  if (s === 'Tímové plnenie')     return '👥';
   if (s.indexOf('Plnenie') !== -1) return '💊';
   if (s.indexOf('Rebríček') !== -1) return '🏆';
   if (s.indexOf('Návštev') !== -1) return '📋';
@@ -29060,10 +29174,16 @@ function loadPharmaDataNetwork(code, oblast, kvartal) {
   var _gkMain = pharmaGrafCacheKey(code, oblast);
   var _wantGraf = !PHARMA_GRAF_STATE.cache[_gkMain] && !PHARMA_GRAF_STATE.loading[_gkMain];
   if (_wantGraf) PHARMA_GRAF_STATE.loading[_gkMain] = true;
-  appQueuedFetchJson(
-    pharmaDataRequestUrl(code, oblast, kvartal, pharmaIsCurrentKvartal(kvartal), _wantGraf),
-    { cache: 'no-store' }, undefined, 'critical'
-  )
+  var _phUrl = pharmaDataRequestUrl(code, oblast, kvartal, pharmaIsCurrentKvartal(kvartal), _wantGraf);
+  // Apps Script občas vráti prechodné 404 alebo studený štart trvá aj 20+ s → viac pokusov a dlhší limit
+  // (predtým jediný pokus; pri výpadku hneď chyba).
+  appFetchWithRetry(_phUrl, {
+    retries: 2,
+    timeoutMs: 30000,
+    priority: 'critical',
+    delayFn: function(){ return 800; },
+    fetcher: function(){ return appQueuedFetchJson(_phUrl, { cache: 'no-store' }, 30000, 'critical'); }
+  })
     .then(function(resp) {
       delete PHARMA_STATE.loading[cacheKey];
       if (_wantGraf) pharmaGrafFromMain(code, oblast, resp);
@@ -29140,7 +29260,10 @@ function loadPharmaDataNetwork(code, oblast, kvartal) {
           title: 'Nepodarilo sa načítať trhový podiel',
           desc: 'Skontroluj pripojenie a skús to znova.',
           retryLabel: 'Načítať znova'
-        }, function () { loadPharmaDataNetwork(code, oblast, kvartal); });
+        }, function () {
+          var _b = document.getElementById('pharma-ms-body'); if (_b) _b.innerHTML = skelPharma();
+          loadPharmaDataNetwork(code, oblast, kvartal);
+        });
       }
       // Chyba tu ovplyvňuje aj MS chip "Aflamil Family" vnútri Plnenia (iná
       // obrazovka než pharma-ms-body vyššie) — ten sa doteraz o zlyhaní vôbec
@@ -35387,6 +35510,7 @@ function okresyFindRow(dIdx, pIdx) {
 function okresyOpenDetail(dIdx, pIdx) {
   var ctx = okresyFindRow(dIdx, pIdx);
   if (!ctx) return;
+  try { usageDrill('Okresy', 'okres: ' + ctx.d.name + ' ▸ ' + okresyLabel(ctx.p.code)); } catch(e){}
   var resp = ctx.entry.resp, rkv = ctx.entry.kvartal;
   var q = parseInt(String(rkv).slice(2), 10);
   var map = pharmaDistrictMonthMap(resp, rkv);
@@ -36319,6 +36443,7 @@ function lkRender() {
 }
 
 function lkOpenDetail(key, isRefresh) {
+  if (!isRefresh) { try { usageDrill('Lekárne', 'detail lekárne'); } catch(e){} }   // len počet, bez názvu
   var lekarne = [];
   if (Array.isArray(LK_STATE._rows) && LK_STATE._rows.length) lekarne = lekarne.concat(LK_STATE._rows);
   if (Array.isArray(LK_MGR_ALL) && LK_MGR_ALL.length) {
