@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.66';
+var APP_VERSION = '2.88.67';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -32390,6 +32390,7 @@ function rptViewOpen() {
   if (!PL_STATE.loaded && !PL_STATE.loading) plnenieLoadAllQuarters();
   rp2LoadCennik();
   rp2LoadAbs();
+  rp2LoadOv();
   rptViewRenderControls();
   rptViewRender();
   satoriGuideQueueHint('reports', 550);
@@ -32998,6 +32999,51 @@ function rp2WarnCardHtml(w) {
   return '<div class="rp2-warncard"><div class="rp2-blk-t" style="margin-top:0">⚠ Na čo si dať pozor</div>' + w.map(function(x) { return '<div class="rp2-wl ' + x.l + '"><i></i><span>' + x.t + '</span></div>'; }).join('') + '</div>';
 }
 
+// ═══ Trhový potenciál území (IQVIA): veľkosť trhu a náš podiel v každej oblasti — základ férového porovnania ═══
+var RP2_OV = { rows: null, loading: false };
+function rp2LoadOv() {
+  if (rp2Line() !== 'gp' || RP2_OV.loading || RP2_OV.rows) return;
+  if (typeof IS_DEV !== 'undefined' && IS_DEV) { RP2_OV.rows = RP2_OV.rows || {}; return; }
+  RP2_OV.loading = true;
+  var url = scriptUrl('action=getPharmaOverview');
+  appFetchWithRetry(url, { retries: 1, timeoutMs: 40000, priority: 'background', delayFn: function() { return 800; },
+    fetcher: function() { return appQueuedFetchJson(url, { cache: 'no-store' }, 40000, 'background'); } }).then(function(d) {
+    RP2_OV.loading = false;
+    var idx = {};
+    if (d && d.ok && Array.isArray(d.rows)) d.rows.forEach(function(r) { idx[r.p + '|' + r.o] = r.m; });
+    RP2_OV.rows = idx;
+    if (MGR_STATE.subtab === 'reporty') rptViewRender(true);
+  }).catch(function() { RP2_OV.loading = false; RP2_OV.rows = {}; });
+}
+function rp2OvStat(months) {
+  var n = months.length, mk = 0, ours = 0;
+  months.forEach(function(x) { mk += x[1]; ours += x[2]; });
+  mk /= n; ours /= n;
+  return { mk: mk, ours: ours, ms: mk > 0 ? ours / mk * 100 : null };
+}
+function rp2OvAll(code) {
+  var out = [];
+  Object.keys(RP2_OV.rows || {}).forEach(function(k) {
+    var pr = k.split('|'); if (pr[0] !== code || !RP2_OV.rows[k].length) return;
+    var st = rp2OvStat(RP2_OV.rows[k]); st.o = pr[1]; out.push(st);
+  });
+  return out;
+}
+// Férové porovnanie územia repa: potenciál (veľkosť trhu), podiel voči národnému a poradie medzi územiami
+function rp2MarketBench(code, me, roster) {
+  var oblast = USERS_LOCAL[me] && USERS_LOCAL[me].region ? String(USERS_LOCAL[me].region).toUpperCase() : '';
+  if (!code || !oblast || !RP2_OV.rows) return null;
+  var all = rp2OvAll(code); if (all.length < 2) return null;
+  var mine = all.filter(function(x) { return x.o === oblast; })[0]; if (!mine || !(mine.ms > 0)) return null;
+  var totMk = 0, totOurs = 0; all.forEach(function(x) { totMk += x.mk; totOurs += x.ours; });
+  var nat = totMk > 0 ? totOurs / totMk * 100 : null;
+  var sorted = all.filter(function(x) { return x.ms !== null; }).sort(function(a, b) { return b.ms - a.ms; });
+  var idx = sorted.map(function(x) { return x.o; }).indexOf(oblast), best = sorted[0];
+  var bestRep = ''; (roster || []).forEach(function(u) { if (!bestRep && USERS_LOCAL[u] && String(USERS_LOCAL[u].region || '').toUpperCase() === best.o) bestRep = rptShortName(MGR_REP_NAMES[u] || u); });
+  return { mk: mine.mk, ours: mine.ours, ms: mine.ms, nat: nat, pot: mine.mk / (totMk / all.length) * 100, perf: nat > 0 ? mine.ms / nat * 100 : null,
+           rank: idx + 1, total: sorted.length, best: best, bestRep: bestRep || best.o, expected: nat !== null ? mine.mk * nat / 100 : null };
+}
+
 // ═══ Porovnanie s tímom a najlepším repom — férovo cez plnenie plánu (plán je nastavený podľa potenciálu územia) ═══
 function rp2BenchHtml(m, reps, p) {
   if (RPT_VIEW.scope !== 'rep') return '';
@@ -33022,13 +33068,23 @@ function rp2BenchHtml(m, reps, p) {
     var myPlan = per[me] && per[me][x.key] ? per[me][x.key].planEUR : 0, avgPlan = sumP / list.length;
     var pot = avgPlan > 0 ? myPlan / avgPlan * 100 : null;
     var d = (x.pct || 0) - teamPct;
+    var mb = rp2MarketBench(rptViewCodeForPlanKey(x.key), me, roster);
+    var mbHtml = '';
+    if (mb) {
+      var pf = mb.perf !== null ? Math.round(mb.perf) : null, diff = mb.expected !== null ? mb.ours - mb.expected : null;
+      mbHtml = '<div class="rp2-bn-g rp2-bn-m">' +
+        '<div><em>trh v území</em><b>' + Math.round(mb.mk).toLocaleString('sk') + '</b><small>potenciál ' + Math.round(mb.pot) + ' % priemeru území</small></div>' +
+        '<div><em>náš podiel</em><b>' + rp2Pct(mb.ms) + '</b><small>národný ' + rp2Pct(mb.nat) + (pf !== null ? ' · <span class="' + (pf >= 100 ? 'up' : 'dn') + '">' + pf + ' %</span>' : '') + '</small></div>' +
+        '<div><em>poradie území</em><b>#' + mb.rank + ' z ' + mb.total + '</b><small>najlepšie: ' + rp2Esc(mb.bestRep) + ' ' + rp2Pct(mb.best.ms) + '</small></div></div>' +
+        (diff !== null ? '<div class="rp2-bn-p">Pri národnom podiele by v tomto území mal predávať ~<b>' + Math.round(mb.expected).toLocaleString('sk') + '</b> jednotiek mesačne, predáva <b>' + Math.round(mb.ours).toLocaleString('sk') + '</b> (<span class="' + (diff >= 0 ? 'up' : 'dn') + '">' + (diff >= 0 ? '+' : '') + Math.round(diff).toLocaleString('sk') + '</span>).</div>' : '');
+    }
     rows += '<div class="rp2-bn"><div class="rp2-bn-h"><span class="rv-prod-dot" style="background:' + x.dot + '"></span><b>' + rp2Esc(x.label) + '</b>' + (idx >= 0 ? '<span class="rp2-rank2">#' + (idx + 1) + ' z ' + sorted.length + '</span>' : '') + '</div>' +
       '<div class="rp2-bn-g"><div><em>tento rep</em><b style="color:' + rptColorHex(x.pct) + '">' + rp2Pct(x.pct) + '</b></div><div><em>priemer tímu</em><b>' + rp2Pct(teamPct) + '</b><small class="' + (d >= 0 ? 'up' : 'dn') + '">' + (d >= 0 ? '+' : '') + (Math.round(d * 10) / 10).toLocaleString('sk') + ' p. b.</small></div>' +
       '<div><em>najlepší</em><b>' + rp2Pct(best.pct) + '</b><small>' + rp2Esc(rptShortName(MGR_REP_NAMES[best.u] || best.u)) + '</small></div></div>' +
-      (pot !== null ? '<div class="rp2-bn-p">Potenciál územia (podľa plánu): <b>' + Math.round(pot) + ' %</b> priemerného plánu v tíme</div>' : '') + '</div>';
+      mbHtml + (!mb && pot !== null ? '<div class="rp2-bn-p">Potenciál územia (podľa plánu): <b>' + Math.round(pot) + ' %</b> priemerného plánu v tíme</div>' : '') + '</div>';
   });
   if (!rows) return '';
-  return '<div class="rv-card">' + rows + '<div class="rp2-foot">Porovnávame plnenie plánu, nie hrubé predaje: plán je nastavený podľa potenciálu územia, takže rep s väčším územím nie je zvýhodnený ani znevýhodnený. „Potenciál“ = plán repa voči priemernému plánu v tíme.</div></div>';
+  return '<div class="rv-card">' + rows + '<div class="rp2-foot">Férové porovnanie: plnenie plánu (nie hrubé predaje) a trhový potenciál územia. Potenciál = veľkosť trhu (IQVIA) v území voči priemeru území; výkon = náš podiel voči národnému podielu (nad 100 % = rep predáva nad priemerom trhu, bez ohľadu na veľkosť územia). Jednotky sú IQVIA (pacienti alebo balenia podľa produktu).</div></div>';
 }
 
 // ═══ Porovnanie s minulým kvartálom a rokom ═══
