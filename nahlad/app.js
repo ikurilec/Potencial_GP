@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.61';
+var APP_VERSION = '2.88.62';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -32391,7 +32391,6 @@ function rptViewOpen() {
   rp2LoadCennik();
   rptViewRenderControls();
   rptViewRender();
-  rptViewEnsurePharma();
   satoriGuideQueueHint('reports', 550);
 }
 
@@ -32571,19 +32570,19 @@ function rptViewRenderControls() {
     '</div>';
 }
 
-function rptViewSelectRep(u) { RPT_VIEW.username = u; RPT_VIEW.scope = 'rep'; RPT_VIEW.expanded = {}; RPT_VIEW.cmpExpanded = {}; rptViewRenderControls(); rptViewRender(); rptViewEnsurePharma(); }
-function rptViewSetScope(s) { RPT_VIEW.scope = s; RPT_VIEW.expanded = {}; RPT_VIEW.cmpExpanded = {}; rptViewRenderControls(); rptViewRender(); rptViewEnsurePharma(); }
+function rptViewSelectRep(u) { RPT_VIEW.username = u; RPT_VIEW.scope = 'rep'; RPT_VIEW.expanded = {}; RPT_VIEW.cmpExpanded = {}; rptViewRenderControls(); rptViewRender(); }
+function rptViewSetScope(s) { RPT_VIEW.scope = s; RPT_VIEW.expanded = {}; RPT_VIEW.cmpExpanded = {}; rptViewRenderControls(); rptViewRender(); }
 function rptViewSetQuarter(q) {
   var yr = (RPT_VIEW.period && RPT_VIEW.period.year) || rptPeriod().year;
   RPT_VIEW.period = { q: q, month: null, year: yr }; // celý kvartál (bez konkrétneho mesiaca)
   RPT_VIEW.expanded = {}; RPT_VIEW.cmpExpanded = {};
-  rptViewRenderControls(); rptViewRender(); rptViewEnsurePharma();
+  rptViewRenderControls(); rptViewRender();
 }
 function rptViewSetMonth(m) {
   var yr = (RPT_VIEW.period && RPT_VIEW.period.year) || rptPeriod().year;
   RPT_VIEW.period = { q: Math.ceil(m / 3), month: m, year: yr };
   RPT_VIEW.expanded = {}; RPT_VIEW.cmpExpanded = {};
-  rptViewRenderControls(); rptViewRender(); rptViewEnsurePharma();
+  rptViewRenderControls(); rptViewRender();
 }
 
 function rptViewToggleProd(key) {
@@ -32596,27 +32595,66 @@ function rptViewToggleProd(key) {
 // Načítaj PharmaData IBA pre oblasti aktuálneho rozsahu (rep = 1 región → rýchle).
 // Loadnuté oblasti si pamätáme, aby sme pri prepínaní nefetchovali znova.
 function rptViewPharmaReadyForScope() {
+  if (RPT_VIEW.scope !== 'rep') return false;   // skupina: trhové dáta sa nesťahujú (rýchlosť)
   // Príznaky sa ukladajú s kvartálom (oblasť|rokQq) — predtým sa kontroloval kľúč bez kvartálu, takže
   // „trhové dáta načítané" nikdy neplatilo a konkurenti/okresy sa v Reportoch vôbec neukázali.
   var p = rptViewPeriod(), pk = p.year + 'Q' + p.q;
   var need = rptViewOblasts(rptViewScopeReps());
-  return need.every(function(o) { return RPT_VIEW.pharmaLoadedOblasts[o + '|' + pk]; });
+  return need.length > 0 && need.every(function(o) { return RPT_VIEW.pharmaLoadedOblasts[o + '|' + pk]; });
 }
 
-function rptViewEnsurePharma() {
-  if (RPT_VIEW.pharmaLoading) return;
-  var p = rptViewPeriod();
-  var pk = p.year + 'Q' + p.q; // cache-key vrátane kvartálu → prepnutie obdobia dofetchuje pharma
+// Trhové dáta pre report jedného repa: len jeho oblasť a len produkty s dierou do plánu (max 6).
+// Jedna požiadavka na produkt vráti aj predošlý kvartál aj trend (prev=1, graf=1) — rovnaký tvar ako Trhový podiel,
+// takže sa trafí do zahriatej cache servera. Report sa vykreslí hneď a trh sa doplní, keď dorazí.
+function rptViewEnsurePharma(model) {
+  if (RPT_VIEW.pharmaLoading || RPT_VIEW.scope !== 'rep') return;
+  var p = rptViewPeriod(), pk = p.year + 'Q' + p.q;
   var oblasts = rptViewOblasts(rptViewScopeReps());
   var need = oblasts.filter(function(o) { return !RPT_VIEW.pharmaLoadedOblasts[o + '|' + pk]; });
   if (!need.length) return;
+  var m = model;
+  if (!m) { try { m = rp2Model(rptViewScopeReps(), p); } catch (e) {} }
+  if (!m || m.empty) return;
+  var codes = [];
+  m.prods.filter(function(x) { return x.g100 > 0; }).slice(0, 6).forEach(function(x) {
+    var c = rptViewCodeForPlanKey(x.key); if (c && codes.indexOf(c) < 0) codes.push(c);
+  });
+  if (!codes.length) { need.forEach(function(o) { RPT_VIEW.pharmaLoadedOblasts[o + '|' + pk] = true; }); return; }
+  var kvartal = pharmaKvartalCode(p.year, p.q), prevKv = pharmaKvartalPrev(kvartal);
+  var tasks = [];
+  need.forEach(function(o) { codes.forEach(function(code) { tasks.push({ o: o, code: code }); }); });
   RPT_VIEW.pharmaLoading = true;
-  rptFetchPharmaForAllReps(need, function() {
+  var left = tasks.length;
+  function finishOne() {
+    left--;
+    if (left > 0) return;
     need.forEach(function(o) { RPT_VIEW.pharmaLoadedOblasts[o + '|' + pk] = true; });
     RPT_VIEW.pharmaLoading = false;
-    if (MGR_STATE.subtab === 'reporty') rptViewRender();
-    rptViewEnsurePharma(); // ak sa medzitým prepol rozsah/obdobie na ďalšie oblasti
-  }, p);
+    if (MGR_STATE.subtab === 'reporty') rptViewRender(true);
+  }
+  tasks.forEach(function(t) {
+    var key = t.code + '_' + t.o + '_' + kvartal;
+    if (PHARMA_STATE.cache[key] && PHARMA_STATE.cache[key].okresy_prev && PHARMA_GRAF_STATE.cache[pharmaGrafCacheKey(t.code, t.o)]) { finishOne(); return; }
+    var url = pharmaDataRequestUrl(t.code, t.o, kvartal, true, true);
+    appFetchWithRetry(url, {
+      retries: 1, timeoutMs: 30000, priority: 'critical', delayFn: function() { return 800; },
+      fetcher: function() { return appQueuedFetchJson(url, { cache: 'no-store' }, 30000, 'critical'); }
+    }).then(function(resp) {
+      if (resp && resp.ok) {
+        PHARMA_STATE.cache[key] = resp;
+        try { _phPersistSave(t.code, t.o, kvartal, resp); } catch (e) {}
+        try { pharmaGrafFromMain(t.code, t.o, resp); } catch (e) {}
+        // starší backend (bez prev/graf) → doplň chýbajúce samostatne, ale nečakaj naň so zobrazením
+        if (!resp.okresy_prev && prevKv && prevKv !== kvartal) {
+          rptFetchPharmaDataDirect(t.code, t.o, prevKv).then(function() {
+            var pv = PHARMA_STATE.cache[t.code + '_' + t.o + '_' + prevKv], cur = PHARMA_STATE.cache[key];
+            if (cur && pv && Array.isArray(pv.okresy)) { cur.kvartal_prev = prevKv; cur.okresy_prev = pv.okresy; if (MGR_STATE.subtab === 'reporty') rptViewRender(true); }
+          });
+        }
+        if (!(resp.graf && resp.graf.rows)) { try { loadPharmaGrafData(t.code, t.o, function() { if (MGR_STATE.subtab === 'reporty') rptViewRender(true); }); } catch (e) {} }
+      }
+    }).catch(function() {}).then(finishOne);
+  });
 }
 
 function rptViewAnimateBars() {
@@ -32648,8 +32686,8 @@ function rp2LoadCennik() {
     if (MGR_STATE.subtab === 'reporty') rptViewRender();
   };
   appFetchWithRetry(url, {
-    retries: 2, timeoutMs: 24000, priority: 'critical', delayFn: function() { return 800; },
-    fetcher: function() { return appQueuedFetchJson(url, { cache: 'no-store' }, 24000, 'critical'); }
+    retries: 2, timeoutMs: 24000, priority: 'boot', delayFn: function() { return 800; },
+    fetcher: function() { return appQueuedFetchJson(url, { cache: 'no-store' }, 24000, 'boot'); }
   }).then(done).catch(function() { done(null); });
 }
 // Cenník produktu: { cena (vážený priemer alebo jediná cena | null), min, max, skus:[{sku,cena,podiel}] } | null
@@ -32913,6 +32951,7 @@ function rp2TeamHtml(reps, p) {
 
 // Trh a konkurencia — najviac 3 signály (kde rastie konkurent)
 function rp2MarketHtml(reps, m, p) {
+  if (RPT_VIEW.scope !== 'rep') return '<div class="rv-card"><div style="font-size:12.5px;color:#64748B">Trhové dáta a konkurencia sa ukazujú v pohľade jedného reprezentanta (pre skupinu by sa sťahovali stovky dopytov).</div></div>';
   if (!rptViewPharmaReadyForScope()) return '<div class="rv-card"><div class="rv-empty" style="padding:14px 0">Načítavam trhové dáta…</div></div>';
   var oblasts = rptViewOblasts(reps), items = [];
   m.prods.forEach(function(x) {
@@ -32927,7 +32966,7 @@ function rp2MarketHtml(reps, m, p) {
 }
 
 // ── Hlavný render ──
-function rptViewRender() {
+function rptViewRender(fromPharma) {
   var body = document.getElementById('rv-body'); if (!body) return;
   var p = rptViewPeriod();
   if (!rptViewReady(p)) {
@@ -32960,6 +32999,7 @@ function rptViewRender() {
   body.classList.remove('rv-fade'); void body.offsetWidth; body.classList.add('rv-fade');
   requestAnimationFrame(function() { rptViewAnimateBars(); try { rvAnimateTrendPath(); } catch (e) {} });
   try { rptWiRecalc(); } catch (e) {}
+  if (!fromPharma) rptViewEnsurePharma(m);
 }
 
 // ── Sekcia 1: Hero ──
