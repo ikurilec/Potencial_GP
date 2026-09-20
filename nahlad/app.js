@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.70';
+var APP_VERSION = '2.88.71';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -32776,8 +32776,9 @@ function rp2Model(reps, p) {
   });
   var _nR = reps.length || 1;
   m.absPast = _ap / _nR; m.absFuture = _afu / _nR; m.absList = _alist; m.cutoff = _cut;
-  m.elapsedEff = Math.max(1, m.elapsedDays - m.absPast);
-  m.remEff = m.closed ? 0 : Math.max(0, m.remDays - m.absFuture);
+  // Absencie sa berú LEN AKO POZNÁMKA — čísla (tempo, odhady, balenia) zostávajú rovnaké ako v Plnení.
+  m.elapsedEff = m.elapsedDays;
+  m.remEff = m.closed ? 0 : m.remDays;
   m.gap100 = Math.max(0, m.plan - m.actual);
   m.gap95  = Math.max(0, 0.95 * m.plan - m.actual);
   var short = 0;
@@ -32964,7 +32965,8 @@ function rp2AbsNoteHtml(m) {
     var det = a.items.map(function(it) { var ds = rp2D(it.ds), de = rp2D(it.de); return RP2_ABS_TYPES[it.type] + ' ' + (ds && de && it.ds !== it.de ? rp2FmtDay(ds) + '–' + rp2FmtDay(de) : (ds ? rp2FmtDay(ds) : '')) + ' (' + it.days + ' d)'; }).join(', ');
     return (one ? '' : '<b>' + rp2Esc(rptShortName(MGR_REP_NAMES[a.u] || a.u)) + '</b>: ') + det;
   });
-  return '<div class="rp2-abs">🗓 Zohľadnené absencie z Kalendára: ' + lines.join(' · ') + '. Na predaj ostáva <b>' + (Math.round(m.remEff * 10) / 10).toLocaleString('sk') + '</b> z ' + m.remDays + ' pracovných dní.' + '</div>';
+  var tot = Math.round(m.absList.reduce(function(t, x) { return t + x.days; }, 0) * 10) / 10;
+  return '<div class="rp2-abs">🗓 Absencie do konca kvartálu (z Kalendára): ' + lines.join(' · ') + (one ? '' : ' (spolu ' + tot + ' dní)') + '. Čísla v Reporte s absenciami nepočítajú — ide len o poznámku pre rozhovor.</div>';
 }
 
 // ═══ Varovania — na čo si dať pozor ═══
@@ -32976,7 +32978,7 @@ function rp2Warnings(m, reps, p) {
     var _fb = rp2FutureBase(m), up = _fb.abs > 0 ? m.gap100 / _fb.abs - 1 : null;
     if (up !== null && up > 0.6) w.push({ l: 'bad', t: 'Na 100 % treba zvýšiť tempo o ' + Math.round(up * 100) + ' % — bez zmeny prístupu nereálne.' });
   }
-  if (m.remDays >= 1 && m.remEff < m.remDays * 0.7) w.push({ l: 'warn', t: 'Absencie zaberú ' + Math.round((m.remDays - m.remEff) / m.remDays * 100) + ' % zostávajúcich pracovných dní.' });
+  if (m.remDays >= 1 && m.absFuture >= m.remDays * 0.3) w.push({ l: 'warn', t: 'Rep má do konca kvartálu absencie na ' + Math.round(m.absFuture / m.remDays * 100) + ' % zostávajúcich pracovných dní.' });
   var sig = null; try { sig = plnenieDataSignal(); } catch (e) {}
   m.prods.forEach(function(x) {
     if (!(x.planEUR > 0)) return;
@@ -33161,7 +33163,7 @@ function rp2TalkLines(m, p, title, ideas, warns) {
   L.push(title + ' — ' + p.labelCap + ': plnenie ' + rp2Pct(m.pct) + ' (očakávané tempo ' + rp2Pct(m.exp) + '). ' + (m.closed ? (m.gap100 > 0 ? 'Do 100 % chýbalo ' + rptFmtEur(m.gap100) + '.' : 'Plán splnený.') : 'Do 95 % chýba ' + rptFmtEur(m.gap95) + ', do 100 % ' + rptFmtEur(m.gap100) + '.'));
   if (!m.closed && m.elapsedEff >= 1 && m.remEff >= 1 && m.actual > 0) {
     var avg = m.actual / m.elapsedEff, n95 = m.gap95 / m.remEff, n100 = m.gap100 / m.remEff;
-    L.push('Tempo: doteraz Ø ' + rptFmtEur(avg) + '/deň; na 95 % treba ' + rptFmtEur(n95) + '/deň (' + (n95 / avg - 1 >= 0 ? '+' : '') + Math.round((n95 / avg - 1) * 100) + ' %), na 100 % ' + rptFmtEur(n100) + '/deň (+' + Math.round((n100 / avg - 1) * 100) + ' %). Na predaj ostáva ' + (Math.round(m.remEff * 10) / 10) + ' pracovných dní.');
+    L.push('Tempo: doteraz Ø ' + rptFmtEur(avg) + '/deň; na 95 % treba ' + rptFmtEur(n95) + '/deň (' + (n95 / avg - 1 >= 0 ? '+' : '') + Math.round((n95 / avg - 1) * 100) + ' %), na 100 % ' + rptFmtEur(n100) + '/deň (+' + Math.round((n100 / avg - 1) * 100) + ' %). Do konca kvartálu ostáva ' + m.remDays + ' pracovných dní' + (m.absFuture > 0 ? ' (absencia: ' + (Math.round(m.absFuture * 10) / 10) + ' d)' : '') + '.');
   }
   m.prods.filter(function(x) { return x.g100 > 0; }).slice(0, 3).forEach(function(x, i) {
     var id = ideas && ideas[x.key];
@@ -33336,8 +33338,8 @@ function rp2ActionHtml(m, p, ideas, isGroup) {
   var unit = rp2Unit(m);
   var unitBar = (!m.closed && days) ? '<div class="rp2-unit"><span>Tempo predaja:</span><div class="rp2-pills">' +
     [['day', 'Deň'], ['week', 'Týždeň'], ['month', 'Mesiac']].map(function(u) { return '<button class="rp2-pill' + (unit.k === u[0] ? ' on' : '') + '" onclick="rp2SetUnit(\'' + u[0] + '\')">' + u[1] + '</button>'; }).join('') + '</div></div>' : '';
-  var noDays = (!m.closed && m.remDays >= 1 && m.remEff < 1) ? '<div class="rp2-warn">⚠ Do konca kvartálu nemá rep žiadny pracovný deň na predaj (absencie z Kalendára), preto sa denné tempo neráta.</div>' : '';
-  return '<div class="rv-card">' + unitBar + head + (days && !m.closed ? '<div class="rp2-sub">Do konca kvartálu ostáva približne <b>' + m.remDays + ' pracovných dní</b>' + (m.absFuture > 0 ? ', po odpočítaní absencií <b>' + (Math.round(m.remEff * 10) / 10).toLocaleString('sk') + '</b>' : '') + '. „Doteraz Ø“ je priemerný predaj za doterajšie pracovné dni kvartálu, „Treba“ je predaj na zostávajúci čas.</div>' : '') + rp2AbsNoteHtml(m) + noDays + warn + '</div>' + rp2ScenarioHtml(m) +
+  var noDays = '';
+  return '<div class="rv-card">' + unitBar + head + (days && !m.closed ? '<div class="rp2-sub">Do konca kvartálu ostáva približne <b>' + m.remDays + ' pracovných dní</b>' + '. „Doteraz Ø“ je priemerný predaj za doterajšie pracovné dni kvartálu, „Treba“ je predaj na zostávajúci čas.</div>' : '') + rp2AbsNoteHtml(m) + noDays + warn + '</div>' + rp2ScenarioHtml(m) +
     (cards ? '<div class="rp2-pcs">' + cards + '</div>' +
       (m.closed ? '' : '<div class="rp2-foot">95 % je rozdelené na produkty pomerne podľa veľkosti diery. Balenia = chýbajúce € ÷ cena balenia (cena územia repa z konvertora predajov, inak z hárka Cennik). Priestor v okresoch = trh okresu × (najlepší dosiahnuteľný podiel v teritóriu − terajší podiel).</div>') : '');
 }
