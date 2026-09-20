@@ -855,7 +855,7 @@
 <div class="footer">Intern&#253; n&#225;stroj pre medic&#237;nskych reprezentantov<br><span style="font-size:10px;color:#B0BAC4">Designed &amp; developed by Ivan Kurilec &middot; 2026</span></div>
 </div>
 
-<script src="dist/app.7f199521.js"></script>
+<script src="dist/app.201b3d2d.js"></script>
 
 <!-- ── LOGOUT CONFIRM ── -->
 <div class="logout-overlay" id="logout-overlay">
@@ -1300,6 +1300,30 @@
   .nst-post.nst-focus{box-shadow:0 0 0 2px #2563EB,0 10px 26px rgba(37,99,235,.18);transition:box-shadow .3s ease}
   .nst-back{background:#fff;border:1px solid #E2E8F0;border-radius:11px;color:#0F172A;font-size:13px;font-weight:700;font-family:inherit;padding:9px 14px;cursor:pointer;-webkit-tap-highlight-color:transparent;box-shadow:0 2px 8px rgba(15,23,42,.06)}
   .nst-back:active{transform:scale(.97)}
+  /* Aktivita: zbaliteľné bloky + obnovenie */
+  .act-fold{background:#fff;border:1px solid #E2E8F0;border-radius:14px;margin:14px 0 4px;padding:0 12px}
+  .act-fold>summary{list-style:none;cursor:pointer;padding:13px 2px;font-weight:800;font-size:13.5px;color:#0F172A;display:flex;justify-content:space-between;align-items:center;gap:8px;-webkit-tap-highlight-color:transparent}
+  .act-fold>summary::-webkit-details-marker{display:none}
+  .act-fold>summary::after{content:'▾';color:#94A3B8;font-size:13px;flex-shrink:0}
+  .act-fold[open]>summary::after{content:'▴'}
+  .act-fold[open]{padding-bottom:12px}
+  .act-toolbar{display:flex;align-items:center;justify-content:space-between;margin:2px 2px 10px;font-size:11.5px;font-weight:600;color:#94A3B8}
+  .act-refresh{background:#fff;border:1px solid #E2E8F0;border-radius:9px;color:#334155;font-size:12px;font-weight:800;font-family:inherit;padding:6px 11px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .act-refresh:active{transform:scale(.96)}
+  /* Aktivita — vzhľad zladený s Nástenkou a novou hlavičkou (biele karty, jemný okraj, rovnaké tlačidlá) */
+  .act-period{border:1px solid #E2E8F0;border-radius:11px;box-shadow:none}
+  .act-period-btn{border-radius:8px}
+  .act-back{background:#fff;border:1px solid #E2E8F0;border-radius:11px;color:#0F172A;font-size:13px;font-weight:700;box-shadow:0 2px 8px rgba(15,23,42,.06);margin-bottom:10px}
+  .act-pulse-card{border-radius:16px}
+  .act-rep{border-radius:16px;border:1px solid #EEF2F7;box-shadow:0 2px 10px rgba(15,23,42,.06);padding:12px 14px}
+  .act-card{background:#fff;border:1px solid #EEF2F7;border-radius:16px;padding:14px 14px 6px;box-shadow:0 2px 10px rgba(15,23,42,.06)}
+  .act-dhdr{background:#fff;border:1px solid #EEF2F7;border-radius:16px;padding:12px 14px;box-shadow:0 2px 10px rgba(15,23,42,.06)}
+  .act-day{border:1px solid #EEF2F7;border-radius:16px;box-shadow:0 2px 10px rgba(15,23,42,.06)}
+  .act-fold{border-color:#EEF2F7;border-radius:16px;box-shadow:0 2px 10px rgba(15,23,42,.06)}
+  .act-fold>summary{font-family:var(--font-display)}
+  .act-heatmap,.act-trend{border:1px solid #EEF2F7;border-radius:14px;box-shadow:none}
+  .act-refresh{border-radius:11px;box-shadow:0 2px 8px rgba(15,23,42,.06)}
+  .act-section-lbl{color:#64748B;font-weight:800}
   /* Plávajúce „＋“ (nový príspevok) — nad vyhľadávacím tlačidlom, viditeľné len kým je Nástenka otvorená */
   #nst-fab{display:none;position:fixed;right:16px;bottom:calc(86px + var(--sab,0px));z-index:2060;width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;align-items:center;justify-content:center;background:linear-gradient(180deg,#3B82F6,#2563EB 60%,#1E40AF);box-shadow:0 8px 20px rgba(37,99,235,.45),inset 0 1px 0 rgba(255,255,255,.22);-webkit-tap-highlight-color:transparent;transition:transform .12s}
   body.app-nav #nst-fab{bottom:calc(80px + var(--tabbar-h,62px) + var(--sab,0px))}
