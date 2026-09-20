@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.67';
+var APP_VERSION = '2.88.68';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -33179,6 +33179,15 @@ function rp2CopyTalk() {
   try { navigator.clipboard.writeText(RP2_TALK).then(function() { try { showSwToast('✓ Text skopírovaný'); } catch (e) {} }); } catch (e) {}
 }
 
+// Rozbaliteľná sekcia. Stav (otvorená/zatvorená) sa pamätá, aby sa po dosypaní dát (trh, cenník, absencie) nezavrela.
+function rp2Fold(key, badge, title, sub, inner, defOpen) {
+  var st = RPT_VIEW.open || (RPT_VIEW.open = {});
+  var open = (st[key] === undefined) ? !!defOpen : !!st[key];
+  var b = (typeof badge === 'number') ? '<span class="rp2-sec-n">' + badge + '</span>' : '<span class="rp2-sec-n ico">' + badge + '</span>';
+  return '<details class="rp2-fold"' + (open ? ' open' : '') + ' ontoggle="RPT_VIEW.open[\'' + key + '\']=this.open">' +
+    '<summary>' + b + '<div><div class="rp2-sec-t">' + title + '</div>' + (sub ? '<div class="rp2-sec-s">' + sub + '</div>' : '') + '</div><span class="rp2-chev"></span></summary>' +
+    '<div class="rp2-fold-b">' + inner + '</div></details>';
+}
 // Nadpis sekcie: číslo kroku + názov + podnadpis
 function rp2Sec(n, title, sub) {
   return '<div class="rp2-sec"><span class="rp2-sec-n">' + n + '</span><div><div class="rp2-sec-t">' + rp2Esc(title) + '</div>' + (sub ? '<div class="rp2-sec-s">' + sub + '</div>' : '') + '</div></div>';
@@ -33388,22 +33397,22 @@ function rptViewRender(fromPharma) {
   var warns = rp2Warnings(m, reps, p);
   html += rp2VerdictHtml(m, p, title, sub);
   html += rp2WarnCardHtml(warns);
-  html += '<div>' + rp2Sec(1, m.closed ? 'Výsledok kvartálu' : 'Čo spraviť, aby sa splnil plán', m.closed ? '' : (isGroup ? 'súčet za skupinu — rozpis podľa produktov' : 'koľko a čoho predať do konca kvartálu')) + rp2ActionHtml(m, p, ideas, isGroup) + '</div>';
-  html += '<div>' + rp2Sec(2, 'Produkty', 'plnenie, tempo a podiel na trhu') + rp2ProductsHtml(m, reps) + '</div>';
+  html += rp2Fold('act', 1, m.closed ? 'Výsledok kvartálu' : 'Čo spraviť, aby sa splnil plán', m.closed ? '' : (isGroup ? 'súčet za skupinu — rozpis podľa produktov' : 'koľko a čoho predať do konca kvartálu'), rp2ActionHtml(m, p, ideas, isGroup), true);
+  html += rp2Fold('prod', 2, 'Produkty', 'plnenie, tempo a podiel na trhu', rp2ProductsHtml(m, reps), false);
   var _n = 3;
-  if (isGroup) html += '<div>' + rp2Sec(_n++, 'Tím — kto potrebuje pomoc', 'zoradené podľa toho, koľko chýba do 95 %') + rp2TeamHtml(reps, p) + '</div>';
+  if (isGroup) html += rp2Fold('team', _n++, 'Tím — kto potrebuje pomoc', 'zoradené podľa toho, koľko chýba do 95 %', rp2TeamHtml(reps, p), false);
   var bench = rp2BenchHtml(m, reps, p);
-  if (bench) html += '<div>' + rp2Sec(_n++, 'Porovnanie s tímom', 'férovo — podľa plnenia plánu a potenciálu územia') + bench + '</div>';
+  if (bench) html += rp2Fold('bench', _n++, 'Porovnanie s tímom', 'férovo — podľa plnenia plánu a potenciálu územia', bench, false);
   var cmp = rp2CompareHtml(m, reps, p);
-  if (cmp) html += '<div>' + rp2Sec(_n++, 'Vývoj oproti minulosti', 'minulý kvartál a minulý rok') + cmp + '</div>';
-  html += '<div>' + rp2Sec(_n++, 'Trh a konkurencia', 'kde rastie konkurent') + rp2MarketHtml(reps, m, p) + '</div>';
-  html += '<div>' + rp2Sec(_n++, 'Na 1:1 rozhovor', 'zhrnutie, ktoré môžeš skopírovať do poznámky') + rp2TalkHtml(m, p, title, ideas, warns) + '</div>';
-  // Doplnkové (zbalené): vývoj v čase, územie, čo-keby
+  if (cmp) html += rp2Fold('cmp', _n++, 'Vývoj oproti minulosti', 'minulý kvartál a minulý rok', cmp, false);
+  html += rp2Fold('mkt', _n++, 'Trh a konkurencia', 'kde rastie konkurent', rp2MarketHtml(reps, m, p), false);
+  html += rp2Fold('talk', _n++, 'Na 1:1 rozhovor', 'zhrnutie, ktoré môžeš skopírovať do poznámky', rp2TalkHtml(m, p, title, ideas, warns), false);
+  // Doplnkové: vývoj v čase, územie, čo-keby
   var data = rptViewData(reps, p);
   var trend = rvTrendCard(reps, data, p);
-  html += '<details class="act-fold"><summary>📈 Vývoj v čase</summary>' + (trend || '<div class="rv-empty">Málo dát na graf.</div>') + '</details>';
-  html += '<details class="act-fold"><summary>🗺️ Teritórium — kde je príležitosť</summary>' + rvTerritoryHtml(reps, data, p) + '</details>';
-  html += '<details class="act-fold"><summary>🧮 Čo keby — simulácia dopadu</summary><div class="rv-card">' + rvWhatifHtml(reps, data, p) + '</div></details>';
+  html += rp2Fold('trend', '📈', 'Vývoj v čase', 'graf predajov po mesiacoch', trend || '<div class="rv-card"><div class="rv-empty">Málo dát na graf.</div></div>', false);
+  html += rp2Fold('terr', '🗺️', 'Teritórium', 'kde je príležitosť', rvTerritoryHtml(reps, data, p), false);
+  html += rp2Fold('wi', '🧮', 'Čo keby', 'simulácia dopadu na plán', '<div class="rv-card">' + rvWhatifHtml(reps, data, p) + '</div>', false);
   body.innerHTML = html;
   body.classList.remove('rv-fade'); void body.offsetWidth; body.classList.add('rv-fade');
   requestAnimationFrame(function() { rptViewAnimateBars(); try { rvAnimateTrendPath(); } catch (e) {} });
