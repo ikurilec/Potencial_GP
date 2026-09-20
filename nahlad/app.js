@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.55';
+var APP_VERSION = '2.88.56';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -1081,7 +1081,21 @@ var _appRetryRegistry = {};
 function appRegisterRetry(id, fn){ if (id) _appRetryRegistry[id] = fn; }
 function appRetry(id){
   var fn = _appRetryRegistry[id];
-  if (typeof fn === 'function') { try { haptic('selection'); } catch(e){} fn(); }
+  if (typeof fn !== 'function') return;
+  var card = null;
+  try { var ev = window.event; card = (ev && ev.target && ev.target.closest) ? ev.target.closest('.app-err-card') : null; } catch(e){}
+  try { haptic('selection'); } catch(e){}
+  fn();
+  // Predtým sa po ťuknutí nič nezmenilo, kým nedorazila odpoveď → vyzeralo to, že tlačidlo nefunguje.
+  // Ak retry sám obsah nenahradil (karta je stále na obrazovke), ukáž v nej načítavanie.
+  if (card && card.isConnected) {
+    var orig = card.innerHTML;
+    card.innerHTML = appRingLoadingHtml('Načítavam…', 'Skúšam to znova, chvíľu počkaj.', 10);
+    // poistka: ak sa do 45 s nič nestalo, vráť pôvodnú kartu (nech sa dá skúsiť znova)
+    setTimeout(function(){
+      if (card.isConnected && card.querySelector('.app-ring-loading')) card.innerHTML = orig;
+    }, 45000);
+  }
 }
 
 // Jednotná chybová karta. opts: { id, title, desc, retryLabel }
@@ -29102,10 +29116,16 @@ function loadPharmaDataNetwork(code, oblast, kvartal) {
   var _gkMain = pharmaGrafCacheKey(code, oblast);
   var _wantGraf = !PHARMA_GRAF_STATE.cache[_gkMain] && !PHARMA_GRAF_STATE.loading[_gkMain];
   if (_wantGraf) PHARMA_GRAF_STATE.loading[_gkMain] = true;
-  appQueuedFetchJson(
-    pharmaDataRequestUrl(code, oblast, kvartal, pharmaIsCurrentKvartal(kvartal), _wantGraf),
-    { cache: 'no-store' }, undefined, 'critical'
-  )
+  var _phUrl = pharmaDataRequestUrl(code, oblast, kvartal, pharmaIsCurrentKvartal(kvartal), _wantGraf);
+  // Apps Script občas vráti prechodné 404 alebo studený štart trvá aj 20+ s → viac pokusov a dlhší limit
+  // (predtým jediný pokus; pri výpadku hneď chyba).
+  appFetchWithRetry(_phUrl, {
+    retries: 2,
+    timeoutMs: 30000,
+    priority: 'critical',
+    delayFn: function(){ return 800; },
+    fetcher: function(){ return appQueuedFetchJson(_phUrl, { cache: 'no-store' }, 30000, 'critical'); }
+  })
     .then(function(resp) {
       delete PHARMA_STATE.loading[cacheKey];
       if (_wantGraf) pharmaGrafFromMain(code, oblast, resp);
@@ -29182,7 +29202,10 @@ function loadPharmaDataNetwork(code, oblast, kvartal) {
           title: 'Nepodarilo sa načítať trhový podiel',
           desc: 'Skontroluj pripojenie a skús to znova.',
           retryLabel: 'Načítať znova'
-        }, function () { loadPharmaDataNetwork(code, oblast, kvartal); });
+        }, function () {
+          var _b = document.getElementById('pharma-ms-body'); if (_b) _b.innerHTML = skelPharma();
+          loadPharmaDataNetwork(code, oblast, kvartal);
+        });
       }
       // Chyba tu ovplyvňuje aj MS chip "Aflamil Family" vnútri Plnenia (iná
       // obrazovka než pharma-ms-body vyššie) — ten sa doteraz o zlyhaní vôbec
