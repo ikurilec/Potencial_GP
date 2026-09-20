@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.73';
+var APP_VERSION = '2.88.74';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -6064,7 +6064,9 @@ function viacLinesHtml() {
   // Ukáže sa každému s manažérskou rolou (rovnaká podmienka ako v Nastaveniach),
   // nie len tomu, kto už má 2+ línie potvrdené — chýbajúca línia (🔒) sa tu teraz
   // dá rovno dotiahnuť heslom, namiesto toho, aby zo zoznamu jednoducho zmizla.
-  if (!(typeof mgrDetectRole === 'function' && mgrDetectRole(getSession()))) return '';
+  var lineMgr = typeof mgrDetectRole === 'function' && !!mgrDetectRole(getSession());
+  // Nemanažér (napr. KAM v Reagile) vidí výber línií, len ak už má 2+ línie v dual session.
+  if (!lineMgr && !(typeof mgrLineSwitchAvailable === 'function' && mgrLineSwitchAvailable())) return '';
   var dual = mgrGetDual() || {};
   var current = mgrCurrentLine();
   var lines = [{line:'gp',label:'Golem'}, {line:'gyn',label:'Gynekológia'}, {line:'reagila',label:'Reagila'}];
@@ -6074,6 +6076,7 @@ function viacLinesHtml() {
       var has = !!dual[it.line];
       var active = it.line === current;
       if (!has) {
+        if (!lineMgr) return '';
         return '<button type="button" class="viac-line" data-viac-line="' + it.line + '" onclick="settingsLoadLine(\'' + it.line + '\')">' +
           '<span>' + it.label + '</span><span class="viac-line-mark" aria-hidden="true">🔒</span></button>';
       }
@@ -7868,7 +7871,10 @@ function settingsAppHtml(s){
   // Riadok „Prepnúť líniu" ukazuje VŠETKY ostatné línie, nielen tie, ktoré sú už
   // v dual session — chýbajúca línia (🔒) sa dá rovno kliknutím dotiahnuť cez heslo,
   // namiesto toho, aby jednoducho zo zoznamu zmizla.
-  if((typeof mgrDetectRole === 'function') && mgrDetectRole(s)){
+  // Prepínač sa ukáže manažérovi (aj s 🔒 pre chýbajúcu líniu) a tiež komukoľvek, kto už má 2+ línie
+  // (napr. KAM v Reagile, ktorá je v Goleme area managerka) — inak by mu zostal skrytý podľa roly v aktuálnej línii.
+  var _lineMgr = (typeof mgrDetectRole === 'function') && !!mgrDetectRole(s);
+  if(_lineMgr || mgrLineSwitchAvailable()){
     var _cur = (typeof mgrCurrentLine === 'function') ? mgrCurrentLine() : 'gp';
     var _dual = (typeof mgrGetDual === 'function') ? mgrGetDual() : null;
     var _allLines = [
@@ -7883,7 +7889,7 @@ function settingsAppHtml(s){
                   var lbl = (typeof lineChooserMeta === 'function') ? lineChooserMeta(t.line).label : t.line;
                   return t.has
                     ? '<button type="button" class="set-mini-btn" onclick="settingsSwitchLineTo(\'' + t.line + '\')">→ ' + settingsEsc(lbl) + '</button>'
-                    : '<button type="button" class="set-mini-btn" onclick="settingsLoadLine(\'' + t.line + '\')">🔒 ' + settingsEsc(lbl) + '</button>';
+                    : (_lineMgr ? '<button type="button" class="set-mini-btn" onclick="settingsLoadLine(\'' + t.line + '\')">🔒 ' + settingsEsc(lbl) + '</button>' : '');
                 }).join('') +
               '</div></div>';
     }
@@ -7907,11 +7913,14 @@ function settingsAppHtml(s){
   // (cold start Apps Scriptu / timeout), v dual session ostane len časť línií a prepínač
   // sa nezobrazí. Týmto sa dá kedykoľvek doplniť/obnoviť celá dual session cez heslo.
   var _isMgrLines = (typeof mgrDetectRole === 'function') && !!mgrDetectRole(s);
-  if(_isMgrLines){
+  // Zobrazí sa VŠETKÝM (nielen manažérom): rola sa určuje z aktuálnej línie, takže napr. KAM v Reagile,
+  // ktorá je v Goleme area managerka, inak nemala ako doplniť Golem. Jednoriadková kontrola nič nemení,
+  // ak účet v inej línii nie je — appka len oznámi, že sa našla jedna línia.
+  {
     var _switchOn = (typeof mgrShouldShowLineToggle === 'function') && mgrShouldShowLineToggle();
     linesHtml += '<div class="set-row"><div class="set-row-label">Moje línie<br>' +
               '<span style="font-weight:600;color:#64748B">' +
-                (_switchOn ? 'prepínač je aktívny' : 'chýba ti prepínač línie?') + '</span></div>' +
+                (_switchOn ? 'prepínač je aktívny' : (_isMgrLines ? 'chýba ti prepínač línie?' : 'máš účet aj v inej línii?')) + '</span></div>' +
               '<button type="button" class="set-mini-btn" onclick="settingsReloadAllLines()">↻ Načítať línie</button></div>';
   }
   // Záchrana chýbajúcej Golem línie — ak Golem login pri štarte zlyhal (cold start / pomalé
