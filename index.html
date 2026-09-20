@@ -855,7 +855,7 @@
 <div class="footer">Intern&#253; n&#225;stroj pre medic&#237;nskych reprezentantov<br><span style="font-size:10px;color:#B0BAC4">Designed &amp; developed by Ivan Kurilec &middot; 2026</span></div>
 </div>
 
-<script src="dist/app.ae143021.js"></script>
+<script src="dist/app.0c265bf9.js"></script>
 
 <!-- ── LOGOUT CONFIRM ── -->
 <div class="logout-overlay" id="logout-overlay">
@@ -1310,6 +1310,172 @@
   .act-toolbar{display:flex;align-items:center;justify-content:space-between;margin:2px 2px 10px;font-size:11.5px;font-weight:600;color:#94A3B8}
   .act-refresh{background:#fff;border:1px solid #E2E8F0;border-radius:9px;color:#334155;font-size:12px;font-weight:800;font-family:inherit;padding:6px 11px;cursor:pointer;-webkit-tap-highlight-color:transparent}
   .act-refresh:active{transform:scale(.96)}
+  /* Reporty v2 — dizajn */
+  #rv-body{display:flex;flex-direction:column;gap:18px}
+  .rp2-ctrl{background:#fff;border:1px solid #EEF2F7;border-radius:16px;padding:10px 12px;box-shadow:0 2px 10px rgba(15,23,42,.06);display:flex;flex-direction:column;gap:9px}
+  .rp2-ctrl-row{display:flex;align-items:center;gap:10px}.rp2-ctrl-wrap{justify-content:space-between;flex-wrap:wrap;gap:8px}
+  .rp2-ctrl-l{font-size:16px}
+  .rp2-pills{display:flex;gap:4px;background:#F1F5F9;border-radius:11px;padding:3px}
+  .rp2-pill{border:none;background:transparent;font-family:inherit;font-size:12.5px;font-weight:800;color:#64748B;padding:7px 12px;border-radius:9px;cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap}
+  .rp2-pill.on{background:#0C1E35;color:#fff;box-shadow:0 2px 6px rgba(12,30,53,.25)}.rp2-pill:disabled{opacity:.35;cursor:default}
+  /* sekcie */
+  .rp2-sec{display:flex;align-items:center;gap:10px;margin:2px 2px 10px}
+  .rp2-sec-n{width:24px;height:24px;border-radius:50%;background:#2563EB;color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 8px rgba(37,99,235,.35)}
+  .rp2-sec-t{font-family:var(--font-display);font-size:16px;font-weight:800;color:#0F172A;letter-spacing:-.01em;line-height:1.15}
+  .rp2-sec-s{font-size:11.5px;color:#64748B;margin-top:1px}
+  /* hlavná karta */
+  .rp2-h{background:linear-gradient(155deg,#0C1E35 0%,#13294B 60%,#1A3A5C 100%);border-radius:20px;padding:18px 18px 16px;color:#fff;box-shadow:0 10px 26px rgba(12,30,53,.28)}
+  .rp2-h-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .rp2-h-name{font-family:var(--font-display);font-size:19px;font-weight:800;letter-spacing:-.01em;line-height:1.15}
+  .rp2-h-sub{font-size:11.5px;color:#AFC6E4;margin-top:3px}
+  .rp2-status{font-size:11px;font-weight:800;padding:5px 10px;border-radius:999px;white-space:nowrap;flex-shrink:0}
+  .rp2-status.ok{background:rgba(52,211,153,.18);color:#6EE7B7}.rp2-status.warn{background:rgba(251,191,36,.18);color:#FCD34D}.rp2-status.bad{background:rgba(248,113,113,.2);color:#FCA5A5}
+  .rp2-h-main{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:14px 0 18px;flex-wrap:wrap}
+  .rp2-h-pct{font-family:var(--font-display);font-size:46px;font-weight:800;letter-spacing:-.03em;line-height:1}
+  .rp2-h-kpis{display:flex;gap:16px;text-align:right}
+  .rp2-hk b{display:block;font-family:var(--font-display);font-size:19px;font-weight:800;line-height:1.1}
+  .rp2-hk span{display:block;font-size:10.5px;color:#AFC6E4;font-weight:600;margin-top:2px;max-width:110px}
+  .rp2-bar{position:relative;height:12px;background:rgba(255,255,255,.14);border-radius:999px;margin:0 0 24px}
+  .rp2-bar-fill{height:100%;border-radius:999px;width:0;transition:width .8s cubic-bezier(.16,1,.3,1)}
+  .rp2-tick{position:absolute;top:-3px;width:2px;height:18px;background:rgba(255,255,255,.55);transform:translateX(-1px)}
+  .rp2-tick em{position:absolute;top:19px;left:50%;transform:translateX(-50%);font-style:normal;font-size:10px;font-weight:800;color:#AFC6E4}
+  .rp2-tick em{white-space:nowrap}
+  .rp2-tick.t95 em{transform:translateX(-95%)}.rp2-tick.t100 em{transform:translateX(-5%)}
+  .rp2-pace{position:absolute;top:-6px;width:3px;height:24px;background:#fff;border-radius:2px;transform:translateX(-1.5px);box-shadow:0 0 0 2px rgba(255,255,255,.15)}
+  .rp2-h-cap{font-size:11.5px;color:#AFC6E4;line-height:1.4}.rp2-h-cap b{color:#fff}
+  /* ciele */
+  .rp2-tgts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .rp2-tgt{border-radius:16px;padding:13px 12px;border:1px solid #E2E8F0;background:#F8FAFC}
+  .rp2-tgt.w95{background:#FFF7ED;border-color:#FED7AA}.rp2-tgt.w100{background:#EFF6FF;border-color:#BFDBFE}.rp2-tgt.ok{background:#F0FDF4;border-color:#BBF7D0}
+  .rp2-tgt-l{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#64748B}
+  .rp2-tgt-big{font-family:var(--font-display);font-size:24px;font-weight:800;color:#0F172A;margin-top:5px;letter-spacing:-.02em;line-height:1.1}
+  .rp2-tgt-s{font-size:11px;color:#64748B;margin-top:1px}
+  .rp2-tgt-pk{font-size:14px;color:#0F172A;margin-top:8px}.rp2-tgt-pk b{font-family:var(--font-display);font-size:17px}
+  .rp2-tgt-m{font-size:11.5px;color:#475569;margin-top:5px;padding-top:6px;border-top:1px dashed rgba(100,116,139,.35)}
+  .rp2-sub{font-size:12px;color:#64748B;margin-top:12px;line-height:1.4}.rp2-sub b{color:#0F172A}
+  .rp2-note{font-size:13.5px;font-weight:700;padding:4px 0}.rp2-note.ok{color:#047857}.rp2-note.bad{color:#B91C1C}
+  .rp2-warn{margin-top:10px;font-size:12px;color:#92400E;background:#FEF3C7;border:1px solid #FCD34D;border-radius:10px;padding:8px 10px;line-height:1.4}
+  /* karty produktov */
+  .rp2-pcs{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+  .rp2-pc{background:#fff;border:1px solid #EEF2F7;border-left:5px solid var(--pc,#94A3B8);border-radius:16px;padding:14px 14px 12px;box-shadow:0 2px 10px rgba(15,23,42,.06)}
+  .rp2-pc-hd{display:flex;align-items:center;gap:10px}
+  .rp2-rank{width:22px;height:22px;border-radius:50%;background:#0C1E35;color:#fff;font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .rp2-pc-name{font-family:var(--font-display);font-size:16px;font-weight:800;color:#0F172A;flex:1;min-width:0}
+  .rp2-chip-pct{font-size:12px;font-weight:800;padding:4px 10px;border-radius:999px}
+  .rp2-chip-pct.ok{background:#DCFCE7;color:#047857}.rp2-chip-pct.warn{background:#FEF3C7;color:#B45309}.rp2-chip-pct.bad{background:#FEE2E2;color:#B91C1C}
+  .rp2-pbar,.rp2-mini{height:6px;background:#EEF2F7;border-radius:999px;overflow:hidden;margin-top:9px}.rp2-mini{height:4px;margin-top:4px;width:60px;margin-left:auto}
+  .rp2-pbar i,.rp2-mini i{display:block;height:100%;border-radius:999px}
+  .rp2-pc-gap{font-size:12px;color:#64748B;margin-top:7px}.rp2-pc-gap b{color:#0F172A}
+  .rp2-need2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:11px}
+  .rp2-nb{border-radius:12px;padding:10px 11px}.rp2-nb.n95{background:#FFF7ED}.rp2-nb.n100{background:#EFF6FF}
+  .rp2-nb em{display:block;font-style:normal;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#64748B}
+  .rp2-nb b{display:block;font-family:var(--font-display);font-size:21px;font-weight:800;color:#0F172A;margin-top:3px;letter-spacing:-.01em;line-height:1.1}
+  .rp2-nb small{display:block;font-size:11px;color:#64748B;margin-top:2px}
+  .rp2-blk{margin-top:12px;padding-top:11px;border-top:1px solid #F1F5F9}
+  .rp2-blk-t{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#64748B;margin-bottom:7px}.rp2-blk-t i{font-style:normal;font-weight:600;text-transform:none;letter-spacing:0;color:#94A3B8}
+  .rp2-chips{display:flex;flex-wrap:wrap;gap:6px}
+  .rp2-chip2{background:#F1F5F9;border-radius:9px;padding:5px 9px;font-size:12px;color:#334155}.rp2-chip2 b{color:#0F172A}
+  .rp2-ok{display:grid;grid-template-columns:1fr 54px auto;align-items:center;gap:9px;padding:6px 0}
+  .rp2-ok+.rp2-ok{border-top:1px dashed #EEF2F7}
+  .rp2-ok-n b{display:block;font-size:13.5px;color:#0F172A}.rp2-ok-n small{display:block;font-size:11px;color:#64748B;margin-top:1px}
+  .rp2-ok-b{height:6px;background:#EEF2FF;border-radius:999px;overflow:hidden}.rp2-ok-b i{display:block;height:100%;background:#6366F1;border-radius:999px}
+  .rp2-ok-p{font-family:var(--font-display);font-size:13px;font-weight:800;color:#3730A3;white-space:nowrap;text-align:right}
+  .rp2-rise{margin-top:8px;font-size:12px;color:#B45309;background:#FFFBEB;border-radius:9px;padding:6px 9px}
+  .rp2-foot{font-size:10.5px;color:#94A3B8;margin-top:10px;line-height:1.4}
+  /* signály trhu */
+  .rp2-sig{display:flex;gap:9px;font-size:13px;color:#334155;line-height:1.45;padding:9px 0;border-top:1px solid #F1F5F9}.rp2-sig:first-child{border-top:none;padding-top:0}.rp2-sig:last-child{padding-bottom:0}
+  .rp2-sig-ic{width:22px;height:22px;border-radius:50%;background:#FEF3C7;color:#B45309;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+  .rp2-load{display:flex;align-items:center;gap:10px;font-size:12.5px;color:#64748B}
+  .rp2-spin{width:16px;height:16px;border:2.5px solid #DBEAFE;border-top-color:#2563EB;border-radius:50%;animation:rp2spin .8s linear infinite;will-change:transform}@keyframes rp2spin{to{transform:rotate(360deg)}}
+  /* tabuľky */
+  .rp2-tblwrap{overflow-x:auto}
+  .rp2-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+  .rp2-tbl th{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#94A3B8;text-align:left;padding:4px 6px 8px;white-space:nowrap}
+  .rp2-tbl td{padding:9px 6px;border-top:1px solid #F1F5F9;color:#0F172A;white-space:nowrap}
+  .rp2-tbl .n{text-align:right;font-variant-numeric:tabular-nums}
+  .rp2-click{cursor:pointer}.rp2-click:active{background:#F8FAFC}
+  /* tempo predaja */
+  .rp2-unit{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  .rp2-unit>span{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#64748B}
+  .rp2-pace3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+  .rp2-pcell{background:#F8FAFC;border-radius:12px;padding:9px 9px}.rp2-pcell.p95{background:#FFF7ED}.rp2-pcell.p100{background:#EFF6FF}
+  .rp2-pcell em{display:block;font-style:normal;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#64748B;line-height:1.2}
+  .rp2-pcell b{display:block;font-family:var(--font-display);font-size:16px;font-weight:800;color:#0F172A;margin-top:4px;line-height:1.1}
+  .rp2-pcell small{display:block;font-size:10.5px;color:#64748B;margin-top:2px;line-height:1.25}
+  .rp2-months{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+  .rp2-mchip{background:#F1F5F9;border-radius:8px;padding:3px 8px;font-size:11.5px;color:#475569}.rp2-mchip b{color:#0F172A}
+  /* produkty: riadky */
+  .rp2-prlist{display:flex;flex-direction:column;gap:0}
+  .rp2-pr{display:grid;grid-template-columns:1fr auto;column-gap:10px;padding:12px 0;border-top:1px solid #F1F5F9}.rp2-pr:first-child{border-top:none;padding-top:2px}
+  .rp2-pr-l{display:flex;align-items:center;gap:8px;min-width:0}.rp2-pr-l b{font-size:14.5px;color:#0F172A}
+  .rp2-pr-r b{font-family:var(--font-display);font-size:18px;font-weight:800}.rp2-pr-r{text-align:right}
+  .rp2-pr-s{font-size:12px;color:#64748B;margin-top:2px}
+  .rp2-pr-bar{grid-column:1 / -1;margin-top:7px}
+  .rp2-pr-t{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .rp2-pr .rp2-months{grid-column:1 / -1}
+  .rp2-tag{background:#F1F5F9;border-radius:8px;padding:3px 8px;font-size:11.5px;color:#475569}.rp2-tag b{color:#0F172A}
+  .rp2-tag.ok{background:#DCFCE7;color:#047857}.rp2-tag.warn{background:#FEF3C7;color:#B45309}.rp2-tag.bad{background:#FEE2E2;color:#B91C1C}
+  /* Reporty — rozbaliteľné sekcie */
+  .rp2-fold>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:12px 14px;background:#fff;border:1px solid #EEF2F7;border-radius:16px;box-shadow:0 2px 10px rgba(15,23,42,.06);-webkit-tap-highlight-color:transparent}
+  .rp2-fold>summary::-webkit-details-marker{display:none}
+  .rp2-fold>summary>div{flex:1;min-width:0}
+  .rp2-fold>summary:active{background:#F8FAFC}
+  .rp2-chev{width:9px;height:9px;border-right:2.5px solid #94A3B8;border-bottom:2.5px solid #94A3B8;transform:rotate(45deg);transition:transform .2s;flex-shrink:0;margin:-3px 4px 0 0}
+  .rp2-fold[open]>summary .rp2-chev{transform:rotate(-135deg);margin-top:3px}
+  .rp2-fold[open]>summary{margin-bottom:10px}
+  .rp2-fold-b{display:flex;flex-direction:column}
+  .rp2-sec-n.ico{background:#EEF2FF;box-shadow:none;font-size:13px}
+  /* Reporty — nástroje pre area managera */
+  .rp2-rc{font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px}
+  .rp2-rc.ok{background:#DCFCE7;color:#047857}.rp2-rc.warn{background:#FEF3C7;color:#B45309}.rp2-rc.bad{background:#FEE2E2;color:#B91C1C}
+  .rp2-pc-real{margin-top:8px;font-size:11.5px;color:#64748B}
+  .rp2-scs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:9px 0 12px}
+  .rp2-scs.four{grid-template-columns:repeat(2,1fr)}
+  .rp2-sc{background:#F8FAFC;border-radius:12px;padding:10px 8px;text-align:center}
+  .rp2-sc em{display:block;font-style:normal;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#64748B}
+  .rp2-sc b{display:block;font-family:var(--font-display);font-size:20px;font-weight:800;margin-top:4px}
+  .rp2-real{display:flex;flex-direction:column;gap:6px;font-size:13px;color:#0F172A}
+  .rp2-abs{margin-top:10px;font-size:12px;color:#1E40AF;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:8px 10px;line-height:1.45}
+  .rp2-warncard{background:#fff;border:1px solid #FED7AA;border-left:5px solid #F59E0B;border-radius:16px;padding:13px 14px;box-shadow:0 2px 10px rgba(15,23,42,.06)}
+  .rp2-wl{display:flex;gap:9px;font-size:13px;color:#334155;line-height:1.4;padding:5px 0}
+  .rp2-wl i{width:8px;height:8px;border-radius:50%;background:#F59E0B;margin-top:6px;flex-shrink:0}.rp2-wl.bad i{background:#DC2626}
+  .rp2-bn{padding:12px 0;border-top:1px solid #F1F5F9}.rp2-bn:first-child{border-top:none;padding-top:0}
+  .rp2-bn-h{display:flex;align-items:center;gap:8px}.rp2-bn-h b{font-size:14.5px;color:#0F172A;flex:1}
+  .rp2-rank2{font-size:11px;font-weight:800;background:#EEF2FF;color:#3730A3;padding:3px 9px;border-radius:999px}
+  .rp2-bn-g{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:9px}
+  .rp2-bn-g>div{background:#F8FAFC;border-radius:10px;padding:8px}
+  .rp2-bn-g em{display:block;font-style:normal;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#64748B}
+  .rp2-bn-g b{display:block;font-family:var(--font-display);font-size:16px;font-weight:800;color:#0F172A;margin-top:3px}
+  .rp2-bn-g small{display:block;font-size:10.5px;color:#64748B;margin-top:1px}.rp2-bn-g small.up{color:#059669}.rp2-bn-g small.dn{color:#DC2626}
+  .rp2-bn-m{margin-top:8px}.rp2-bn-m>div{background:#F5F3FF}.rp2-bn-m small .up{color:#059669;font-weight:800}.rp2-bn-m small .dn{color:#DC2626;font-weight:800}.rp2-bn-p .up{color:#059669;font-weight:800}.rp2-bn-p .dn{color:#DC2626;font-weight:800}
+  .rp2-bn-p{margin-top:8px;font-size:11.5px;color:#64748B}.rp2-bn-p b{color:#0F172A}
+  .rp2-cmp+.rp2-cmp{margin-top:14px;padding-top:14px;border-top:1px solid #F1F5F9}
+  .rp2-cmp-big{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}.rp2-cmp-big b{font-family:var(--font-display);font-size:26px;font-weight:800}.rp2-cmp-big span{font-size:12px;color:#64748B;flex:1;min-width:160px}
+  .rp2-cmp b.up,.rp2-cmp-r .up{color:#059669}.rp2-cmp b.dn,.rp2-cmp-r .dn{color:#DC2626}
+  .rp2-cmp-s{font-size:12px;color:#475569;margin-top:8px;line-height:1.4}
+  .rp2-cmp-r{display:flex;justify-content:space-between;font-size:12.5px;padding:6px 0;border-top:1px dashed #EEF2F7;color:#0F172A}.rp2-cmp-r .up,.rp2-cmp-r .dn{font-weight:800}
+  .rp2-talk{display:flex;flex-direction:column;gap:9px}
+  .rp2-tl{font-size:13px;color:#0F172A;line-height:1.5;padding-left:12px;border-left:3px solid #BFDBFE}
+  .rp2-copy{margin-top:12px;width:100%;border:none;border-radius:11px;padding:11px;font-family:inherit;font-size:13.5px;font-weight:800;color:#fff;background:linear-gradient(180deg,#3B82F6,#2563EB 60%,#1E40AF);cursor:pointer;box-shadow:0 4px 12px rgba(37,99,235,.3);-webkit-tap-highlight-color:transparent}
+  .rp2-copy:active{transform:scale(.98)}
+  .rp2-copy:disabled{opacity:.6}
+  /* dohody z 1:1 */
+  .rp2-dhs{display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
+  .rp2-dh{background:#fff;border:1px solid #EEF2F7;border-left:5px solid #F59E0B;border-radius:16px;padding:12px 14px;box-shadow:0 2px 10px rgba(15,23,42,.06)}
+  .rp2-dh.ok{border-left-color:#059669}.rp2-dh.bad{border-left-color:#DC2626}.rp2-dh.muted{border-left-color:#CBD5E1;opacity:.75}
+  .rp2-dh-hd{display:flex;align-items:center;justify-content:space-between;gap:8px}.rp2-dh-hd b{font-family:var(--font-display);font-size:15px;color:#0F172A}
+  .rp2-dh-goal{font-size:13.5px;font-weight:700;color:#0F172A;margin-top:6px}
+  .rp2-dh-note{font-size:12.5px;color:#475569;margin-top:4px;line-height:1.4}
+  .rp2-dh-prog{font-size:11.5px;color:#64748B;margin-top:5px}
+  .rp2-dh-meta{font-size:10.5px;color:#94A3B8;margin-top:8px}
+  .rp2-dh-btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+  .rp2-dh-btns button{border:1px solid #E2E8F0;background:#fff;border-radius:9px;padding:6px 10px;font-family:inherit;font-size:12px;font-weight:700;color:#334155;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .rp2-dh-btns button.del{margin-left:auto;color:#B91C1C}
+  .rp2-dh-f{margin-bottom:10px}.rp2-dh-f label{display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#64748B;margin-bottom:4px}
+  .rp2-dh-f select,.rp2-dh-f input{width:100%;height:42px;padding:0 12px;border-radius:11px;border:1px solid #E2E8F0;background:#fff;font-family:inherit;font-size:14px;color:#0F172A;box-sizing:border-box}
+  .rp2-dh-fb{display:flex;gap:8px;align-items:center}.rp2-dh-cancel{border:1px solid #E2E8F0;background:#fff;border-radius:11px;padding:11px 16px;font-family:inherit;font-size:13.5px;font-weight:800;color:#64748B;cursor:pointer;margin-top:4px}
+  .rp2-sugg{border:none;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent}
+  @media (max-width:380px){.rp2-tgts,.rp2-need2{grid-template-columns:1fr}.rp2-h-pct{font-size:38px}}
   /* Aktivita — vzhľad zladený s Nástenkou a novou hlavičkou (biele karty, jemný okraj, rovnaké tlačidlá) */
   .act-period{border:1px solid #E2E8F0;border-radius:11px;box-shadow:none}
   .act-period-btn{border-radius:8px}
