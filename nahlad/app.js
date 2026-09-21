@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.82';
+var APP_VERSION = '2.88.83';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -39093,8 +39093,30 @@ function nstPeopleMap(){
   return m;
 }
 function nstPersonName(login){ return nstPeopleMap()[String(login || '').trim().toLowerCase()] || ''; }
+// Koho možno označiť: LEN kolegov aktuálnej línie. Zoznam zo servera (hárok Pouzivatelia danej línie) je jediný správny zdroj;
+// staršie zoznamy v appke (rebríček, manažérske mapy) môžu pochádzať z INEJ línie (Golem ostane v pamäti aj po prepnutí
+// do Gyn), preto sa použijú len ako záloha, keď server zoznam neposlal, a to len zdroje patriace do tejto línie.
 function nstMentionCandidates(){
-  var m = nstPeopleMap(), me = nstUser(), out = [];
+  var me = nstUser(), m = {}, out = [];
+  function add(l, nm){ l = String(l || '').trim().toLowerCase(); nm = String(nm || '').trim(); if (l && nm && nm.toLowerCase() !== l && !m[l]) m[l] = nm; }
+  if ((NST.people || []).length){
+    NST.people.forEach(function(x){ add(x.login, x.meno); });
+  } else {
+    (NST.posts || []).forEach(function(p){            // autori príspevkov a komentárov tejto línie
+      add(p.rep, p.meno);
+      (p.comments || []).forEach(function(c){ add(c.rep, c.meno); });
+    });
+    var line = nstLine();
+    try {
+      if (line === 'gyn'){
+        if (typeof GYN_STATE === 'object' && GYN_STATE && Array.isArray(GYN_STATE.userList)) GYN_STATE.userList.forEach(function(u){ add(u && u.login, u && (u.meno || u.name)); });
+      } else if (line === 'gp'){
+        if (typeof LB_REP_INFO === 'object' && LB_REP_INFO) Object.keys(LB_REP_INFO).forEach(function(l){ add(l, LB_REP_INFO[l] && LB_REP_INFO[l].name); });
+        if (typeof MGR_REP_NAMES === 'object' && MGR_REP_NAMES) Object.keys(MGR_REP_NAMES).forEach(function(l){ add(l, MGR_REP_NAMES[l]); });
+        if (typeof MGR_STATE === 'object' && MGR_STATE && Array.isArray(MGR_STATE.managers)) MGR_STATE.managers.forEach(function(x){ add(x && x.username, x && (x.name || x.meno)); });
+      }
+    } catch(e){}
+  }
   Object.keys(m).forEach(function(l){ if (l !== me) out.push({ login: l, meno: m[l] }); });
   out.sort(function(a, b){ return a.meno.localeCompare(b.meno, 'sk'); });
   return out;
