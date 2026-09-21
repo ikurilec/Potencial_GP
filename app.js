@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.78';
+var APP_VERSION = '2.88.79';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -6800,7 +6800,6 @@ function openHistory() {
   if (_stabs) Array.prototype.forEach.call(_stabs.querySelectorAll('.hist-subtab'), function(b){
     var _on = b.getAttribute('data-hf') === _startF;
     b.classList.toggle('active', _on);
-    if (_on && _startF !== 'all') { try { b.scrollIntoView({ inline: 'center', block: 'nearest' }); } catch(e){} }
   });
   var _ochips = document.getElementById('hist-oppfilter');
   if (_ochips) Array.prototype.forEach.call(_ochips.querySelectorAll('.hist-oppchip'), function(b){
