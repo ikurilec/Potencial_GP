@@ -692,6 +692,7 @@
         <button type="button" class="hist-subtab" data-hf="gp" onclick="histSetFilter('gp',this)">🩺 GP's<span class="hist-subtab-count" id="hist-cnt-gp"></span></button>
         <button type="button" class="hist-subtab" data-hf="tuyory" onclick="histSetFilter('tuyory',this)">🧬 Tuyory<span class="hist-subtab-count" id="hist-cnt-tuyory"></span></button>
         <button type="button" class="hist-subtab" data-hf="apixaban" onclick="histSetFilter('apixaban',this)">🫀 Apixaban<span class="hist-subtab-count" id="hist-cnt-apix"></span></button>
+        <button type="button" class="hist-subtab" data-hf="lonelix" onclick="histSetFilter('lonelix',this)">🛡️ Lonelix<span class="hist-subtab-count" id="hist-cnt-lonelix"></span></button>
       </div>
       <div class="hist-oppfilter" id="hist-oppfilter">
         <button type="button" class="hist-oppchip active" data-of="all" onclick="histSetOppFilter('all',this)">Všetko</button>
@@ -863,7 +864,7 @@
 <div class="footer">Intern&#253; n&#225;stroj pre medic&#237;nskych reprezentantov<br><span style="font-size:10px;color:#B0BAC4">Designed &amp; developed by Ivan Kurilec &middot; 2026</span></div>
 </div>
 
-<script src="dist/app.5abede8d.js"></script>
+<script src="dist/app.a68f80e9.js"></script>
 
 <!-- ── LOGOUT CONFIRM ── -->
 <div class="logout-overlay" id="logout-overlay">
@@ -1114,7 +1115,15 @@
   .tuy-scope .tuy-extra.show{display:block;animation:tuyReveal .22s cubic-bezier(.16,1,.3,1) both}
 
   /* História — sub-taby (mini filter Všetko / Všeobecní / Tuyory) */
-  .hist-subtabs{display:flex;gap:6px;background:#fff;border-radius:14px;padding:5px;margin-bottom:10px;box-shadow:0 2px 8px rgba(15,23,42,.06)}
+  .hist-subtabs{display:flex;gap:6px;background:#fff;border-radius:14px;padding:5px;margin-bottom:10px;box-shadow:0 2px 8px rgba(15,23,42,.06);overflow-x:auto;scrollbar-width:none}
+  .hist-subtabs::-webkit-scrollbar{display:none}
+  .hist-subtabs .hist-subtab{flex:1 0 auto;white-space:nowrap}
+  /* Preklik z karty „Oslovených lekárov" (Tuyory / Apixaban / Lonelix) do zoznamu lekárov v História */
+  .tuy-stat-link{cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .12s,box-shadow .12s}
+  .tuy-stat-link:active{transform:scale(.97)}
+  .tuy-stat-go{font-size:10.5px;font-weight:800;color:#2563EB;margin-top:6px;letter-spacing:.01em}
+  .tuy-target-link{cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .tuy-target-go{margin-top:9px;font-size:11.5px;font-weight:800;color:#93C5FD}
   .hist-subtab{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:5px;border:none;background:transparent;color:#64748B;font-size:12.5px;font-weight:700;font-family:inherit;padding:10px 6px;border-radius:10px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .15s,color .15s;white-space:nowrap}
   .hist-subtab.active{background:#0C1E35;color:#fff}
   .hist-subtab-count{font-size:11px;font-weight:800;opacity:.75;font-variant-numeric:tabular-nums}
