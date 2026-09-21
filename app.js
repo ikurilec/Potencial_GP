@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.76';
+var APP_VERSION = '2.88.78';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -4153,7 +4153,22 @@ function histFilterItems(items){
   if (_histFilter === 'gp')     return items.filter(function(it){ return !(it && (it.type === 'tuyory' || it.type === 'apixaban')); });
   if (_histFilter === 'tuyory') return items.filter(function(it){ return it && it.type === 'tuyory'; });
   if (_histFilter === 'apixaban') return items.filter(function(it){ return it && it.type === 'apixaban'; });
+  if (_histFilter === 'lonelix') return items.filter(histIsLonelixItem);
   return items;
+}
+// Lekár s Lonelix záznamom: buď „doplniť GP" karta (lonelix-new), alebo GP lekár, ku ktorému existuje Lonelix záznam.
+function histIsLonelixItem(it){
+  if (!it) return false;
+  if (it.type === 'lonelix-new') return true;
+  if (it.type === 'tuyory' || it.type === 'apixaban') return false;
+  return typeof lonelixHasRecord === 'function' && lonelixHasRecord(it.lekar, it.okres);
+}
+// Rýchly skok z karty „Oslovených lekárov" (Tuyory / Apixaban / Lonelix) do Histórie s filtrom daného produktu.
+var _histPendingFilter = null;
+function histOpenFiltered(f){
+  try { haptic('selection'); } catch(e){}
+  _histPendingFilter = f || 'all';
+  openHistory();
 }
 // Príležitostný filter (v rámci GP's) — 'all' | nezisteny | rezerva | zvysit | kategoria | chyba
 function histOppFilterItems(items){
@@ -4175,10 +4190,10 @@ function histSetOppFilter(f, btn){
   histRender();
 }
 function histUpdateCounts(all){
-  var g = 0, t = 0, ax = 0;
-  all.forEach(function(it){ if (it && it.type === 'tuyory') t++; else if (it && it.type === 'apixaban') ax++; else g++; });
+  var g = 0, t = 0, ax = 0, ln = 0;
+  all.forEach(function(it){ if (it && it.type === 'tuyory') t++; else if (it && it.type === 'apixaban') ax++; else g++; if (histIsLonelixItem(it)) ln++; });
   function setC(id, n){ var el = document.getElementById(id); if (el) el.textContent = n ? (' ' + n) : ''; }
-  setC('hist-cnt-all', all.length); setC('hist-cnt-gp', g); setC('hist-cnt-tuyory', t); setC('hist-cnt-apix', ax);
+  setC('hist-cnt-all', all.length); setC('hist-cnt-gp', g); setC('hist-cnt-tuyory', t); setC('hist-cnt-apix', ax); setC('hist-cnt-lonelix', ln);
 }
 function histSetFilter(f, btn){
   _histFilter = f || 'all';
@@ -4195,7 +4210,7 @@ function histRender(){
   var scoped = histFilterItems(all);
   // Príležitostný filter — len pre GP kontext; na Tuyory/Apixaban tabe chips skry
   var oppBar = document.getElementById('hist-oppfilter');
-  var _histNoOpp = (_histFilter === 'tuyory' || _histFilter === 'apixaban');
+  var _histNoOpp = (_histFilter === 'tuyory' || _histFilter === 'apixaban' || _histFilter === 'lonelix');
   if(oppBar) oppBar.style.display = _histNoOpp ? 'none' : 'flex';
   if(!_histNoOpp) scoped = histOppFilterItems(scoped);
   // Hľadanie ignoruje diakritiku aj veľkosť písmen — na mobilnej klávesnici skoro nikto
@@ -6776,12 +6791,16 @@ function openHistory() {
   if (!(TUYORY.records && TUYORY.records.length)){ try { TUYORY.records = tuyoryLoadLocal(); } catch(e){} }
   if (!(LONELIX.records && LONELIX.records.length)){ try { LONELIX.records = lonelixLoadLocal(); } catch(e){} }
   if (!(APIX.records && APIX.records.length)){ try { APIX.records = apixLoadLocal(); } catch(e){} }
-  // Reset mini filtra na „Všetko" pri každom otvorení
-  _histFilter = 'all';
+  // Reset mini filtra na „Všetko" pri každom otvorení (okrem skoku z karty Tuyory / Apixaban / Lonelix)
+  var _startF = _histPendingFilter || 'all';
+  _histPendingFilter = null;
+  _histFilter = _startF;
   _histOppFilter = 'all';
   var _stabs = document.getElementById('hist-subtabs');
   if (_stabs) Array.prototype.forEach.call(_stabs.querySelectorAll('.hist-subtab'), function(b){
-    b.classList.toggle('active', b.getAttribute('data-hf') === 'all');
+    var _on = b.getAttribute('data-hf') === _startF;
+    b.classList.toggle('active', _on);
+    if (_on && _startF !== 'all') { try { b.scrollIntoView({ inline: 'center', block: 'nearest' }); } catch(e){} }
   });
   var _ochips = document.getElementById('hist-oppfilter');
   if (_ochips) Array.prototype.forEach.call(_ochips.querySelectorAll('.hist-oppchip'), function(b){
@@ -37991,7 +38010,7 @@ function tuyoryRenderDashboard(){
 
   var statsHtml =
     '<div class="tuy-stats">' +
-      '<div class="tuy-stat"><div class="tuy-stat-num is-ok">' + oslov + '</div><div class="tuy-stat-lbl">Oslovených lekárov</div></div>' +
+      '<div class="tuy-stat tuy-stat-link" role="button" tabindex="0" aria-label="Zobraziť oslovených lekárov" onclick="histOpenFiltered(\'tuyory\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();histOpenFiltered(\'tuyory\')}"><div class="tuy-stat-num is-ok">' + oslov + '</div><div class="tuy-stat-lbl">Oslovených lekárov</div><div class="tuy-stat-go">Zobraziť lekárov ›</div></div>' +
       '<div class="tuy-stat"><div class="tuy-stat-num ' + (zostava > 0 ? 'is-warn' : 'is-ok') + '">' + (target > 0 ? zostava : '—') + '</div><div class="tuy-stat-lbl">Zostáva osloviť</div></div>' +
       '<div class="tuy-stat"><div class="tuy-stat-num is-ok">' + switchLek + '</div><div class="tuy-stat-lbl">Ochotní switchnúť</div></div>' +
       '<div class="tuy-stat"><div class="tuy-stat-num is-ok">' + noviLek + '</div><div class="tuy-stat-lbl">Ochotní nastavovať nových</div></div>' +
@@ -40032,7 +40051,7 @@ function apixRenderDashboard(){
 
   var statsHtml =
     '<div class="tuy-stats">' +
-      '<div class="tuy-stat"><div class="tuy-stat-num is-ok">' + st.oslov + '</div><div class="tuy-stat-lbl">Oslovených lekárov</div></div>' +
+      '<div class="tuy-stat tuy-stat-link" role="button" tabindex="0" aria-label="Zobraziť oslovených lekárov" onclick="histOpenFiltered(\'apixaban\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();histOpenFiltered(\'apixaban\')}"><div class="tuy-stat-num is-ok">' + st.oslov + '</div><div class="tuy-stat-lbl">Oslovených lekárov</div><div class="tuy-stat-go">Zobraziť lekárov ›</div></div>' +
       '<div class="tuy-stat"><div class="tuy-stat-num ' + (zostava > 0 ? 'is-warn' : 'is-ok') + '">' + (target > 0 ? zostava : '—') + '</div><div class="tuy-stat-lbl">Zostáva osloviť</div></div>' +
       '<div class="tuy-stat"><div class="tuy-stat-num is-ok">' + st.switchLek + '</div><div class="tuy-stat-lbl">Ochotní prestaviť z originálu</div></div>' +
       '<div class="tuy-stat"><div class="tuy-stat-num is-ok">' + st.noviLek + '</div><div class="tuy-stat-lbl">Ochotní nastavovať nových</div></div>' +
@@ -41020,7 +41039,7 @@ function lonelixRenderDashboard(){
         '<div class="tuy-hero-badge">🛡️</div>' +
         '<div><div class="tuy-hero-title">Lonelix</div><div class="tuy-hero-sub">Launch · inozín pranobex (isoprinosín)</div></div>' +
       '</div>' +
-      '<div class="tuy-target"><div class="tuy-target-lbl">Oslovených lekárov</div><div class="tuy-target-set"><span class="tuy-target-num">' + oslov + '</span><span class="tuy-target-cap">záznamov</span></div></div>' +
+      '<div class="tuy-target tuy-target-link" role="button" tabindex="0" aria-label="Zobraziť oslovených lekárov" onclick="histOpenFiltered(\'lonelix\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();histOpenFiltered(\'lonelix\')}"><div class="tuy-target-lbl">Oslovených lekárov</div><div class="tuy-target-set"><span class="tuy-target-num">' + oslov + '</span><span class="tuy-target-cap">záznamov</span></div><div class="tuy-target-go">Zobraziť lekárov ›</div></div>' +
     '</div>' +
     '<div class="tuy-sum-lbl-top">Potenciál teritória</div>' +
     '<div class="tuy-summary">' +
