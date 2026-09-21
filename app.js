@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.80';
+var APP_VERSION = '2.88.82';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -39080,6 +39080,15 @@ function nstPeopleMap(){
     var l = String(p.rep || '').toLowerCase(); if (l && !m[l] && p.meno) m[l] = p.meno;
     (p.comments || []).forEach(function(c){ var k = String(c.rep || '').toLowerCase(); if (k && !m[k] && c.meno) m[k] = c.meno; });
   });
+  // Záloha, keby server zoznam neposlal (starší nasadený Apps Script, výpadok): roster, ktorý appka už pozná
+  // z rebríčka a z manažérskych zoznamov — reprezentanti aj manažéri línie.
+  function _add(l, nm){ l = String(l || '').trim().toLowerCase(); nm = String(nm || '').trim(); if (l && nm && nm.toLowerCase() !== l && !m[l]) m[l] = nm; }
+  try { if (typeof LB_REP_INFO === 'object' && LB_REP_INFO) Object.keys(LB_REP_INFO).forEach(function(l){ _add(l, LB_REP_INFO[l] && LB_REP_INFO[l].name); }); } catch(e){}
+  try { if (typeof MGR_REP_NAMES === 'object' && MGR_REP_NAMES) Object.keys(MGR_REP_NAMES).forEach(function(l){ _add(l, MGR_REP_NAMES[l]); }); } catch(e){}
+  try { if (typeof MGR_STATE === 'object' && MGR_STATE && Array.isArray(MGR_STATE.managers)) MGR_STATE.managers.forEach(function(x){ _add(x && x.username, x && (x.name || x.meno)); }); } catch(e){}
+  // USERS_LOCAL + zoznam používateľov Gyn (reprezentanti, AM/PM/BUM, asistentky) — mená, ktoré appka už načítala
+  try { if (typeof USERS_LOCAL === 'object' && USERS_LOCAL) Object.keys(USERS_LOCAL).forEach(function(l){ _add(l, USERS_LOCAL[l] && (USERS_LOCAL[l].name || USERS_LOCAL[l].meno)); }); } catch(e){}
+  try { if (typeof GYN_STATE === 'object' && GYN_STATE && Array.isArray(GYN_STATE.userList)) GYN_STATE.userList.forEach(function(u){ _add(u && u.login, u && (u.meno || u.name)); }); } catch(e){}
   NST._pmap = m;
   return m;
 }
@@ -39183,6 +39192,7 @@ function nstNameFor(login){
     if (!found && String(p.rep || '').toLowerCase() === l && p.meno) found = p.meno;
     (p.comments || []).forEach(function(c){ if (!found && String(c.rep || '').toLowerCase() === l && c.meno) found = c.meno; });
   });
+  if (!found){ try { found = nstPersonName(l); } catch(e){} }
   if (!found){ try { if (typeof MGR_REP_NAMES !== 'undefined' && MGR_REP_NAMES[l]) found = MGR_REP_NAMES[l]; } catch(e){} }
   // roster rebríčka / manažérske mapy — pokryje aj tichých kolegov, čo ešte nič nenapísali
   if (!found){ try { if (typeof gynCalPersonName === 'function'){ var n = gynCalPersonName(l); if (n && n !== l) found = n; } } catch(e){} }
