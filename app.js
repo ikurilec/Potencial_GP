@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.79';
+var APP_VERSION = '2.88.80';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -38580,7 +38580,12 @@ var NST = {
   composeCat: '', composeProd: '', composeOpts: ['', ''], composeImage: null,
   _reqId: 0, _sending: false, _loadT: null, _opened: false, _primed: false,
   returnToDomov: false,
-  _filterOpen: false
+  _filterOpen: false,
+  people: [],          // kolegovia línie (login + meno) zo servera — na označovanie cez @
+  replyBox: null,      // { postId, cid } — otvorené pole odpovede pod komentárom
+  replyOpen: {},       // id koreňového komentára → rozbalené odpovede vo vlákne
+  mMap: {},            // id vstupu → { login: meno } označení vložených cez @
+  _mp: null            // otvorený výber @
 };
 // Limity pre fotky na nástenke — komprimujeme na klientovi PRED odoslaním
 // (mobilná fotka vie mať aj 8-12 MB, to by cez appkinu spoločnú frontu
@@ -38733,6 +38738,7 @@ function nstResetForActiveLine(){
   NST.posts = nstLoadLocal();
   NST.loaded = false; NST.loading = false; NST.err = ''; NST._primed = false;
   NST.open = {}; NST.likesOpen = {}; NST.votersOpen = {};
+  NST.people = nstLoadPeople(); NST.replyBox = null; NST.replyOpen = {}; NST.mMap = {};
 }
 function nstPrime(){
   try {
@@ -38740,13 +38746,16 @@ function nstPrime(){
     if (NST._primed) return;
     NST._primed = true;
     NST.posts = nstLoadLocal();
+    NST.people = nstLoadPeople();
     nstUpdateBadge();
     nstFetch(function(){ nstUpdateBadge(); try { dnesRefreshIfOpen(); } catch(e){} });
-    var fromPush = false;
-    try { fromPush = (new URLSearchParams(window.location.search)).get('nst') === '1'; } catch(e){}
+    var fromPush = false, pushPost = '';
+    try { var _qs = new URLSearchParams(window.location.search); fromPush = _qs.get('nst') === '1'; pushPost = String(_qs.get('post') || ''); } catch(e){}
     if (fromPush && !NST._opened){
       NST._opened = true;
-      setTimeout(function(){ try { openNastenka(); } catch(e){} }, 400);
+      // Upozornenie na komentár / odpoveď / označenie vedie rovno na príspevok s rozbalenou diskusiou
+      if (pushPost) setTimeout(function(){ try { NST._focusThreads = pushPost; nstOpenPost(pushPost); } catch(e){ try { openNastenka(); } catch(e2){} } }, 400);
+      else setTimeout(function(){ try { openNastenka(); } catch(e){} }, 400);
     }
     var calendarFromPush = false;
     try { calendarFromPush = (new URLSearchParams(window.location.search)).get('cal') === '1'; } catch(e){}
@@ -38826,7 +38835,7 @@ function nstFetch(cb, priority, forceFresh){
     .then(function(d){
       if (reqId !== NST._reqId || !appLineContextActive(reqCtx)) return;
       NST.loading = false;
-      if (d && d.ok && Array.isArray(d.posts)){ NST.err = ''; nstApply(d.posts); }
+      if (d && d.ok && Array.isArray(d.posts)){ NST.err = ''; nstApply(d.posts); if (Array.isArray(d.people)) nstApplyPeople(d.people); }
       else NST.err = (d && d.error) ? String(d.error) : '';
       if (cb) cb();
     })
@@ -39007,8 +39016,27 @@ function nstRenderList(){
     list.innerHTML = '<div class="nst-empty"><div class="nst-empty-ico">📌</div><div class="nst-empty-t">' + title + '</div><div class="nst-empty-s">' + sub + '</div></div>';
     return;
   }
+  NST._pmap = null;
+  // Rozpísaný komentár/odpoveď nesmie zmiznúť, keď sa zoznam prekreslí (napr. po načítaní nových dát).
+  var _keep = {}, _act = document.activeElement, _actId = '', _actPos = 0;
+  Array.prototype.forEach.call(list.querySelectorAll('.nst-mentionable'), function(x){ if (x.id && x.value) _keep[x.id] = x.value; });
+  try { if (_act && _act.classList && _act.classList.contains('nst-mentionable')){ _actId = _act.id; _actPos = _act.selectionStart; } } catch(e){}
+  nstMentionHide();
   list.innerHTML = (NST.loading ? '<div class="nst-refresh"><span class="nst-spin"></span>Obnovujem…</div>' : '') +
     items.map(nstPostHtml).join('');
+  Object.keys(_keep).forEach(function(k){ var x = document.getElementById(k); if (x) x.value = _keep[k]; });
+  if (_actId){ var fx = document.getElementById(_actId); if (fx){ try { fx.focus({ preventScroll: true }); fx.setSelectionRange(_actPos, _actPos); } catch(e){} } }
+  // Prišlo sa cez upozornenie na komentár/odpoveď/označenie — rozbaľ diskusiu (aj vlákna) toho príspevku.
+  if (NST._focusThreads){
+    var fp = nstFindPost(NST._focusThreads);
+    if (fp){
+      NST._focusThreads = '';
+      NST.open[fp.id] = true;
+      (fp.comments || []).forEach(function(c){ if (c.replyTo) NST.replyOpen[c.replyTo] = true; });
+      nstRenderList();
+      return;
+    }
+  }
   // Príspevok, na ktorý sa ťuklo z Domova — doskroluj naň a krátko ho zvýrazni.
   setTimeout(nstFocusPending, 30);
 }
@@ -39031,6 +39059,119 @@ function nstSkeletonHtml(){
   return '<div class="nst-loading"><span class="nst-spin"></span>Načítavam príspevky…</div>' + one + one + one;
 }
 
+
+// ── KOLEGOVIA A OZNAČOVANIE (@) ──────────────────────────────────────
+function nstPeopleKey(){ return 'nastenka_people_' + nstLine(); }
+function nstLoadPeople(){
+  try { var a = JSON.parse(localStorage.getItem(nstPeopleKey()) || '[]'); return Array.isArray(a) ? a : []; } catch(e){ return []; }
+}
+function nstApplyPeople(list){
+  NST.people = (list || []).filter(function(x){ return x && x.login && x.meno; })
+    .map(function(x){ return { login: String(x.login).trim().toLowerCase(), meno: String(x.meno).trim() }; });
+  NST._pmap = null;
+  try { var j = JSON.stringify(NST.people); if (typeof lsSafeSet === 'function') lsSafeSet(nstPeopleKey(), j); else localStorage.setItem(nstPeopleKey(), j); } catch(e){}
+}
+// login → meno (server + autori príspevkov a komentárov ako záloha); NIKDY „Ty"
+function nstPeopleMap(){
+  if (NST._pmap) return NST._pmap;
+  var m = {};
+  (NST.people || []).forEach(function(x){ m[x.login] = x.meno; });
+  (NST.posts || []).forEach(function(p){
+    var l = String(p.rep || '').toLowerCase(); if (l && !m[l] && p.meno) m[l] = p.meno;
+    (p.comments || []).forEach(function(c){ var k = String(c.rep || '').toLowerCase(); if (k && !m[k] && c.meno) m[k] = c.meno; });
+  });
+  NST._pmap = m;
+  return m;
+}
+function nstPersonName(login){ return nstPeopleMap()[String(login || '').trim().toLowerCase()] || ''; }
+function nstMentionCandidates(){
+  var m = nstPeopleMap(), me = nstUser(), out = [];
+  Object.keys(m).forEach(function(l){ if (l !== me) out.push({ login: l, meno: m[l] }); });
+  out.sort(function(a, b){ return a.meno.localeCompare(b.meno, 'sk'); });
+  return out;
+}
+// Text s podfarbenými označeniami (@Meno). Označenia sa skladajú cez zástupné znaky, aby sa kratšie meno nikdy
+// nevnorilo do dlhšieho (napr. „@Ana" v „@Ana Nová").
+function nstTextHtml(text, mentions){
+  var html = nstEsc(text || ''), me = nstUser(), spans = [];
+  var list = (mentions || []).map(function(l){ return { l: String(l || '').toLowerCase(), n: nstPersonName(l) }; })
+    .filter(function(x){ return x.n; }).sort(function(a, b){ return b.n.length - a.n.length; });
+  list.forEach(function(x){
+    var tag = '@' + nstEsc(x.n);
+    if (html.indexOf(tag) < 0) return;
+    var ph = '' + spans.length + '';
+    spans.push('<span class="nst-mention' + (x.l === me ? ' me' : '') + '">' + tag + '</span>');
+    html = html.split(tag).join(ph);
+  });
+  html = html.replace(/\n/g, '<br>');
+  spans.forEach(function(sp, i){ html = html.split('' + i + '').join(sp); });
+  return html;
+}
+function nstMentionsFor(el){
+  if (!el) return [];
+  var map = (NST.mMap || {})[el.id] || {}, txt = String(el.value || '');
+  return Object.keys(map).filter(function(l){ return txt.indexOf('@' + map[l]) >= 0; });
+}
+function nstMentionsClear(el){ if (el && el.id && NST.mMap) delete NST.mMap[el.id]; }
+function nstNormQ(t){ try { return appNorm(String(t || '')).trim(); } catch(e){ return String(t || '').toLowerCase().trim(); } }
+function nstMentionUpdate(el){
+  var caret = (el.selectionStart != null) ? el.selectionStart : String(el.value || '').length;
+  var before = String(el.value || '').slice(0, caret);
+  var m = /(^|\s)@([^@\n]{0,30})$/.exec(before);
+  if (!m){ nstMentionHide(); return; }
+  var q = nstNormQ(m[2]);
+  var start = before.length - m[2].length - 1;      // pozícia znaku „@"
+  var items = nstMentionCandidates().filter(function(c){
+    if (!q) return true;
+    var n = nstNormQ(c.meno), lg = nstNormQ(c.login);
+    return q.split(/\s+/).every(function(w){ return n.indexOf(w) >= 0 || lg.indexOf(w) >= 0; });
+  }).slice(0, 6);
+  if (!items.length){ nstMentionHide(); return; }
+  NST._mp = { el: el, items: items, start: start, end: caret, sel: 0 };
+  nstMentionRender();
+}
+function nstMentionRender(){
+  var mp = NST._mp; if (!mp) return;
+  var host = mp.el.closest('.nst-mwrap, .nst-creply') || mp.el.parentElement; if (!host) return;
+  host.classList.add('nst-mhost');
+  var pop = document.getElementById('nst-mpop');
+  if (!pop){ pop = document.createElement('div'); pop.id = 'nst-mpop'; pop.className = 'nst-mpop'; }
+  if (pop.parentNode !== host) host.appendChild(pop);
+  pop.innerHTML = mp.items.map(function(c, i){
+    return '<button type="button" class="nst-mpop-i' + (i === mp.sel ? ' on' : '') + '" onpointerdown="event.preventDefault();nstMentionPick(' + i + ')">' +
+      appRepAvatarHtml(c.login, c.meno, 26, '') + '<span class="nst-mpop-n">' + nstEsc(c.meno) + '</span></button>';
+  }).join('');
+}
+function nstMentionHide(){
+  NST._mp = null;
+  var pop = document.getElementById('nst-mpop'); if (pop && pop.parentNode) pop.parentNode.removeChild(pop);
+}
+function nstMentionPick(i){
+  var mp = NST._mp; if (!mp || !mp.items[i]) return;
+  var c = mp.items[i], el = mp.el, v = String(el.value || '');
+  var ins = '@' + c.meno + ' ';
+  el.value = v.slice(0, mp.start) + ins + v.slice(mp.end);
+  var pos = mp.start + ins.length;
+  try { el.setSelectionRange(pos, pos); el.focus(); } catch(e){}
+  NST.mMap = NST.mMap || {};
+  (NST.mMap[el.id] = NST.mMap[el.id] || {})[c.login] = c.meno;
+  nstMentionHide();
+  try { haptic('selection'); } catch(e){}
+}
+document.addEventListener('input', function(e){
+  var el = e.target; if (el && el.classList && el.classList.contains('nst-mentionable')) nstMentionUpdate(el);
+}, true);
+document.addEventListener('keydown', function(e){
+  var mp = NST._mp; if (!mp || e.target !== mp.el) return;
+  if (e.key === 'Escape'){ nstMentionHide(); e.preventDefault(); e.stopPropagation(); return; }
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp'){
+    mp.sel = (mp.sel + (e.key === 'ArrowDown' ? 1 : mp.items.length - 1)) % mp.items.length; nstMentionRender(); e.preventDefault(); return;
+  }
+  if (e.key === 'Enter' || e.key === 'Tab'){ nstMentionPick(mp.sel); e.preventDefault(); e.stopPropagation(); }
+}, true);
+document.addEventListener('focusout', function(e){
+  if (NST._mp && e.target === NST._mp.el) setTimeout(function(){ if (NST._mp && document.activeElement !== NST._mp.el) nstMentionHide(); }, 180);
+}, true);
 
 // Meno k loginu — z autorov príspevkov/komentárov, z manažérskeho rostra alebo z vlastnej session
 function nstNameFor(login){
@@ -39230,8 +39371,9 @@ function nstRx(id, code){
   nstSend({ action: 'nastenkaLike', id: id, on: on ? '1' : '0', rx: code });
 }
 // Malý riadok reakcií pod komentárom
-function nstCommentRxHtml(cm){
+function nstCommentRxHtml(cm, postId){
   var id = String(cm.id || ''), idArg = "'" + id.replace(/'/g, "\\'") + "'";
+  var postArg = "'" + String(postId || '').replace(/'/g, "\\'") + "'";
   var mine = nstRxMine(cm), def = mine ? nstRxDef(mine) : null;
   var n = Object.keys(nstRxMapOf(cm)).length;
   return '<div class="nst-crx">' +
@@ -39239,6 +39381,7 @@ function nstCommentRxHtml(cm){
       '<button type="button" class="nst-crx-b' + (mine ? ' on' : '') + '" onclick="nstRxTap(' + idArg + ')" oncontextmenu="return false">' + (mine ? def.e + ' ' + def.l : 'Páči sa mi') + '</button>' +
       nstRxFloatHtml(id) +
     '</span>' +
+    '<button type="button" class="nst-crx-b" onclick="nstReplyOpen(' + postArg + ',' + idArg + ')">Odpovedať</button>' +
     (n ? '<span class="nst-crx-sum" onclick="nstRxWho(' + idArg + ')">' + nstRxEmoStackHtml(cm) + '<span>' + n + '</span></span>' : '') +
     '</div>';
 }
@@ -39280,7 +39423,7 @@ function nstMetaLineHtml(p){
   var n = (p.comments || []).length;
   if (!lajky && !n) return '';
   var id = String(p.id || '').replace(/'/g, "\\'");
-  var slovo = n === 1 ? 'odpoveď' : (n < 5 ? 'odpovede' : 'odpovedí');
+  var slovo = n === 1 ? 'komentár' : (n < 5 ? 'komentáre' : 'komentárov');
   return '<div class="nst-metaline">' +
     '<div class="nst-metaline-l">' + lajky + '</div>' +
     (n ? '<button type="button" class="nst-cnt" onclick="nstToggleComments(\'' + id + '\')">' +
@@ -39324,41 +39467,69 @@ function nstPostHtml(p){
   if (String(p.produkt || '').trim()) meta.push('<span class="nst-tag nst-tag-prod">💊 ' + nstEsc(p.produkt) + '</span>');
   if (String(p.okres || '').trim()) meta.push('<span class="nst-tag">📍 ' + nstEsc(p.okres) + '</span>');
   if (String(p.region || '').trim()) meta.push('<span class="nst-tag">' + nstEsc(p.region) + '</span>');
-  var comments = p.comments || [];
+  // Komentáre pod príspevkom + odpovede vo vlákne (ako na Facebooku): koreňové komentáre idú pod príspevok,
+  // odpovede na komentár sú odsadené pod ním a dajú sa zbaliť.
+  var allComments = p.comments || [];
+  var roots = allComments.filter(function(c){ return !c.replyTo; });
+  var repliesOf = {};
+  allComments.forEach(function(c){ if (c.replyTo){ (repliesOf[c.replyTo] = repliesOf[c.replyTo] || []).push(c); } });
   var open = !!NST.open[id];
-  // Ako na Facebooku: posledné dve odpovede vidno rovno, zvyšok si vypnúť tlačidlom.
-  // Pole na odpoveď sa ukáže až po kliknutí na „Odpovedať“ (alebo po rozbalení).
-  var shown = open ? comments : comments.slice(-2);
-  var hiddenCnt = comments.length - shown.length;
-  // Kde už diskusia beží, musí byť vidieť aj kam písať. Predtým sa pole
-  // ukázalo až po ťuknutí na „Odpovedať" — kto prišiel k rozbehnutej diskusii,
-  // nemal ako uhádnuť, čo má spraviť.
-  var poleVidno = open || comments.length > 0;
+  // Posledné dva komentáre vidno rovno, zvyšok si vypnúť tlačidlom.
+  var shown = open ? roots : roots.slice(-2);
+  var hiddenCnt = roots.length - shown.length;
+  // Kde už diskusia beží, musí byť vidieť aj kam písať.
+  var poleVidno = open || allComments.length > 0;
 
-  function nstCommentHtml(cm){
+  function nstReplyBoxHtml(cm){
+    var cidArg = "'" + String(cm.id || '').replace(/'/g, "\\'") + "'";
+    var nm = (String(cm.rep || '').toLowerCase() === me) ? '' : (cm.meno || nstPersonName(cm.rep) || cm.rep || '');
+    return '<div class="nst-creply nst-reply-box">' +
+      '<input type="text" class="nst-creply-in nst-mentionable" id="nst-r-' + nstEsc(cm.id) + '" placeholder="' + (nm ? 'Odpoveď pre ' + nstEsc(nm) : 'Napíš odpoveď') + '…" autocomplete="off" ' +
+        'onkeydown="if(event.key===\'Enter\'){event.preventDefault();nstAddReply(' + idArg + ',' + cidArg + ')}">' +
+      '<button type="button" class="nst-creply-btn" onclick="nstAddReply(' + idArg + ',' + cidArg + ')">Odoslať</button>' +
+      '<button type="button" class="nst-reply-x" onclick="nstReplyClose()" aria-label="Zrušiť">✕</button>' +
+    '</div>';
+  }
+  function nstOneCommentHtml(cm, isReply){
     var cwhen = '';
     try { cwhen = (typeof mgrTimeAgo === 'function') ? mgrTimeAgo(nstTime(cm.ts)) : ''; } catch(e){}
     var cDel = (nstIsMgr() || String(cm.rep || '').toLowerCase() === me)
       ? '<button type="button" class="nst-cdel" onclick="nstDelete(\'' + String(cm.id || '').replace(/'/g, "\\'") + '\')" aria-label="Zmazať">✕</button>' : '';
-    return '<div class="nst-comment">' +
-      '<div class="nst-comment-hd">' + appRepAvatarHtml(cm.rep, cm.meno || cm.rep, 25, 'nst-comment-avatar') +
+    return '<div class="nst-comment' + (isReply ? ' nst-comment-reply' : '') + '" data-nst-cid="' + nstEsc(cm.id) + '">' +
+      '<div class="nst-comment-hd">' + appRepAvatarHtml(cm.rep, cm.meno || cm.rep, isReply ? 22 : 25, 'nst-comment-avatar') +
         '<span class="nst-comment-who">' + nstEsc(cm.meno || cm.rep || '—') + '</span>' +
         '<span class="nst-comment-when">' + nstEsc(cwhen) + '</span>' + cDel + '</div>' +
-      '<div class="nst-comment-txt">' + nstEsc(cm.text || '').replace(/\n/g, '<br>') + '</div>' +
-      nstCommentRxHtml(cm) +
-    '</div>';
+      '<div class="nst-comment-txt">' + nstTextHtml(cm.text || '', cm.mentions) + '</div>' +
+      nstCommentRxHtml(cm, id) +
+    '</div>' +
+    ((NST.replyBox && String(NST.replyBox.cid) === String(cm.id)) ? nstReplyBoxHtml(cm) : '');
+  }
+  function nstThreadHtml(cm){
+    var reps = repliesOf[cm.id] || [];
+    var html = nstOneCommentHtml(cm, false);
+    if (reps.length){
+      var cArg = "'" + String(cm.id || '').replace(/'/g, "\\'") + "'";
+      if (NST.replyOpen[cm.id]){
+        html += '<div class="nst-thread">' + reps.map(function(r){ return nstOneCommentHtml(r, true); }).join('') +
+          '<button type="button" class="nst-rmore" onclick="nstToggleReplies(' + cArg + ')">Skryť odpovede</button></div>';
+      } else {
+        var w = reps.length === 1 ? 'odpoveď' : (reps.length < 5 ? 'odpovede' : 'odpovedí');
+        html += '<button type="button" class="nst-rmore nst-rmore-open" onclick="nstToggleReplies(' + cArg + ')">↳ ' + reps.length + ' ' + w + '</button>';
+      }
+    }
+    return html;
   }
 
   var commentsHtml = '';
-  if (comments.length || open){
+  if (allComments.length || open){
     commentsHtml = '<div class="nst-comments">' +
       (hiddenCnt > 0
-        ? '<button type="button" class="nst-cmore" onclick="nstShowAllComments(' + idArg + ')">Zobraziť ďalšie odpovede (' + hiddenCnt + ')</button>'
+        ? '<button type="button" class="nst-cmore" onclick="nstShowAllComments(' + idArg + ')">Zobraziť ďalšie komentáre (' + hiddenCnt + ')</button>'
         : '') +
-      shown.map(nstCommentHtml).join('') +
+      shown.map(nstThreadHtml).join('') +
       (poleVidno
         ? '<div class="nst-creply">' +
-            '<input type="text" class="nst-creply-in" id="nst-c-' + nstEsc(id) + '" placeholder="Napíš odpoveď…" onkeydown="if(event.key===\'Enter\')nstAddComment(' + idArg + ')">' +
+            '<input type="text" class="nst-creply-in nst-mentionable" id="nst-c-' + nstEsc(id) + '" placeholder="Napíš komentár…  (@ označí kolegu)" autocomplete="off" onkeydown="if(event.key===\'Enter\')nstAddComment(' + idArg + ')">' +
             '<button type="button" class="nst-creply-btn" onclick="nstAddComment(' + idArg + ')">Odoslať</button>' +
           '</div>'
         : '') +
@@ -39374,7 +39545,7 @@ function nstPostHtml(p){
       '<span class="nst-catbadge nst-cat-' + c.k + '">' + c.ico + ' ' + c.lbl + '</span>' +
     '</div>' +
     (meta.length ? '<div class="nst-tags">' + meta.join('') + '</div>' : '') +
-    '<div class="nst-text">' + nstEsc(p.text || '').replace(/\n/g, '<br>') + '</div>' +
+    '<div class="nst-text">' + nstTextHtml(p.text || '', p.mentions) + '</div>' +
     (String(p.image || '').trim()
       ? '<div class="nst-post-img" onclick="event.stopPropagation();nstImageZoom(\'' + nstEsc(nstImageDisplayUrl_(p.image)).replace(/'/g, '&#39;') + '\')">' +
           '<img src="' + nstEsc(nstImageDisplayUrl_(p.image)) + '" loading="lazy" alt="">' +
@@ -39387,7 +39558,7 @@ function nstPostHtml(p){
         '<button type="button" class="nst-act nst-rxbtn' + (mineRx ? ' on' : '') + '" onclick="nstRxTap(' + idArg + ')" oncontextmenu="return false">' + (mineRx ? nstRxDef(mineRx).e : '👍') + ' <span>' + (likes.length || '') + '</span> ' + (mineRx ? nstRxDef(mineRx).l : 'Pomohlo') + '</button>' +
         nstRxFloatHtml(id) +
       '</span>' +
-      '<button type="button" class="nst-act' + (open ? ' on' : '') + '" onclick="nstFocusReply(' + idArg + ')">💬 Odpovedať</button>' +
+      '<button type="button" class="nst-act' + (open ? ' on' : '') + '" onclick="nstFocusReply(' + idArg + ')">💬 Komentovať</button>' +
       (canPin ? '<button type="button" class="nst-act nst-act-icon" onclick="nstPin(' + idArg + ',' + (nstPinned(p) ? 'false' : 'true') + ')" title="' + (nstPinned(p) ? 'Odopnúť' : 'Pripnúť navrch') + '">📌</button>' : '') +
       (canDel ? '<button type="button" class="nst-act nst-act-icon nst-act-del" onclick="nstDelete(' + idArg + ')" title="Zmazať">🗑</button>' : '') +
     '</div>' +
@@ -39494,11 +39665,12 @@ function nstPin(id, on){
 // štýlu appky) — nahradený existujúcim vlastným modálom (lkConfirm), ktorý
 // appka už používa napr. pri mazaní uloženého filtra.
 function nstDelete(id){
-  lkConfirm('Zmazať príspevok?', 'Príspevok sa natrvalo odstráni.', 'Zmazať', function(){
+  var _isPost = !!nstFindPost(id);
+  lkConfirm(_isPost ? 'Zmazať príspevok?' : 'Zmazať komentár?', _isPost ? 'Príspevok sa natrvalo odstráni.' : 'Komentár (aj odpovede pod ním) sa natrvalo odstráni.', 'Zmazať', function(){
     var posts = [];
     (NST.posts || []).forEach(function(p){
       if (String(p.id) === String(id)) return;
-      p.comments = (p.comments || []).filter(function(c){ return String(c.id) !== String(id); });
+      p.comments = (p.comments || []).filter(function(c){ return String(c.id) !== String(id) && String(c.replyTo || '') !== String(id); });
       posts.push(p);
     });
     NST.posts = posts;
@@ -39515,12 +39687,56 @@ function nstAddComment(id){
   var p = nstFindPost(id); if (!p) return;
   var s = nstSession() || {};
   var cid = 'c' + Date.now() + Math.floor(Math.random() * 1000);
-  p.comments = (p.comments || []).concat([{ id: cid, ts: new Date().toISOString(), rep: nstUser(), meno: s.name || nstUser(), text: txt }]);
+  var ments = nstMentionsFor(el);
+  nstMentionsClear(el);
+  if (el) el.value = '';   // odoslané — pole sa nesmie obnoviť ochranou proti strate textu pri prekreslení
+  p.comments = (p.comments || []).concat([{ id: cid, ts: new Date().toISOString(), rep: nstUser(), meno: s.name || nstUser(), text: txt, mentions: ments }]);
   nstSaveLocal(NST.posts);
   NST.open[id] = true;
   nstRenderList();
   try { haptic('success'); } catch(e){}
-  nstSend({ action: 'saveNastenka', typ: 'comment', id: cid, parent_id: id, text: txt });
+  nstSend({ action: 'saveNastenka', typ: 'comment', id: cid, parent_id: id, text: txt, mentions: ments.join(',') });
+}
+// Odpoveď na komentár (ako na Facebooku): otvorí pole pod komentárom s označením toho, komu odpovedáš.
+function nstReplyOpen(postId, cid){
+  var cm = nstFindItem(cid); if (!cm) return;
+  var rootId = String(cm.replyTo || cm.id);
+  NST.open[postId] = true;
+  NST.replyOpen[rootId] = true;
+  NST.replyBox = { postId: String(postId), cid: String(cid) };
+  nstRenderList();
+  setTimeout(function(){
+    var inp = document.getElementById('nst-r-' + cid); if (!inp) return;
+    var nm = nstPersonName(cm.rep) || cm.meno || '';
+    if (String(cm.rep || '').toLowerCase() !== nstUser() && nm && !inp.value){
+      inp.value = '@' + nm + ' ';
+      NST.mMap = NST.mMap || {}; (NST.mMap[inp.id] = NST.mMap[inp.id] || {})[String(cm.rep).toLowerCase()] = nm;
+    }
+    try { inp.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch(e){}
+    try { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); } catch(e){}
+  }, 40);
+  try { haptic('selection'); } catch(e){}
+}
+function nstReplyClose(){ NST.replyBox = null; nstMentionHide(); nstRenderList(); }
+function nstToggleReplies(cid){ NST.replyOpen[cid] = !NST.replyOpen[cid]; nstRenderList(); try { haptic('selection'); } catch(e){} }
+function nstAddReply(postId, cid){
+  var el = document.getElementById('nst-r-' + cid);
+  var txt = el ? String(el.value || '').trim() : '';
+  if (!txt){ if (el) el.focus(); return; }
+  var p = nstFindPost(postId), target = nstFindItem(cid); if (!p || !target) return;
+  var s = nstSession() || {};
+  var rootId = String(target.replyTo || target.id);
+  var nid = 'c' + Date.now() + Math.floor(Math.random() * 1000);
+  var ments = nstMentionsFor(el);
+  nstMentionsClear(el);
+  if (el) el.value = '';   // odoslané — pole sa nesmie obnoviť ochranou proti strate textu pri prekreslení
+  p.comments = (p.comments || []).concat([{ id: nid, ts: new Date().toISOString(), rep: nstUser(), meno: s.name || nstUser(), text: txt,
+    replyTo: rootId, replyLogin: String(target.rep || '').toLowerCase(), mentions: ments }]);
+  nstSaveLocal(NST.posts);
+  NST.replyBox = null; NST.replyOpen[rootId] = true; NST.open[postId] = true;
+  nstRenderList();
+  try { haptic('success'); } catch(e){}
+  nstSend({ action: 'saveNastenka', typ: 'comment', id: nid, parent_id: postId, reply_to: cid, text: txt, mentions: ments.join(',') });
 }
 
 // Odoslanie do Sheetu — rovnaký iframe mechanizmus ako ostatné formuláre
@@ -39708,8 +39924,8 @@ function nstComposeRender(){
     '<div class="nst-f-lbl">Okres <span class="nst-f-opt">(nepovinné)</span></div>' +
     '<input type="text" class="nst-in" id="nst-okres" placeholder="napr. Nitra" autocomplete="off">' +
     '<div class="nst-f-lbl">' + (isPoll ? 'Otázka ankety' : 'Text príspevku') + '</div>' +
-    '<textarea class="nst-in nst-ta" id="nst-text" rows="' + (isPoll ? 3 : 5) + '" placeholder="' +
-      (isPoll ? 'Na čo sa chceš kolegov opýtať?' : 'Napíš, čo chceš zdieľať s kolegami…') + '">' + nstEsc(txt) + '</textarea>' +
+    '<div class="nst-mwrap"><textarea class="nst-in nst-ta nst-mentionable" id="nst-text" rows="' + (isPoll ? 3 : 5) + '" placeholder="' +
+      (isPoll ? 'Na čo sa chceš kolegov opýtať?' : 'Napíš, čo chceš zdieľať s kolegami…  (@ označí kolegu)') + '">' + nstEsc(txt) + '</textarea></div>' +
     (isPoll ? nstComposeOptsHtml() : '<div id="nst-photo-area">' + nstComposePhotoAreaInner_() + '</div>') +
     '<div class="nst-err" id="nst-err"></div>' +
     '<button type="button" class="nst-submit" id="nst-submit" onclick="nstSubmit()">Pridať na nástenku</button>';
@@ -39753,7 +39969,8 @@ function nstSubmit(){
     text: txt,
     pin: (cat === 'dolezite' && isMgr) ? '1' : '',
     likes: [], comments: [],
-    options: pollOpts, votes: {}, image: ''
+    options: pollOpts, votes: {}, image: '',
+    mentions: nstMentionsFor(t)
   };
 
   if (NST.composeImage && NST.composeImage.dataUrl && cat !== 'anketa'){
@@ -39766,7 +39983,7 @@ function nstSubmit(){
   nstSend({
     action: 'saveNastenka', typ: 'post', id: rec.id, produkt: rec.produkt, okres: rec.okres,
     kategoria: rec.kategoria, text: rec.text, pin: rec.pin,
-    moznosti: pollOpts.join('|')
+    moznosti: pollOpts.join('|'), mentions: (rec.mentions || []).join(',')
   });
   nstSubmitFinish_();
 }
@@ -39786,7 +40003,8 @@ function nstSubmitWithImage_(rec){
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({
       id: rec.id, text: rec.text, produkt: rec.produkt, okres: rec.okres,
-      kategoria: rec.kategoria, imageBase64: img.dataUrl, imageMime: img.mime
+      kategoria: rec.kategoria, imageBase64: img.dataUrl, imageMime: img.mime,
+      mentions: (rec.mentions || []).join(',')
     }),
     cache: 'no-store'
   }, APP_FETCH_TIMEOUT_UPLOAD_MS, 'critical').then(function(resp){
@@ -39815,6 +40033,7 @@ function nstSubmitWithImage_(rec){
 }
 // Spoločný záver úspešného odoslania (s fotkou aj bez nej).
 function nstSubmitFinish_(){
+  nstMentionHide(); if (NST.mMap) delete NST.mMap['nst-text'];
   nstComposeClose();
   NST.composeOpts = ['', ''];
   NST.composeImage = null;
