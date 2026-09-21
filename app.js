@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.75';
+var APP_VERSION = '2.88.76';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -25030,7 +25030,27 @@ var PL_FAMILY_DEFS = {
 function plnenieFamilyDef(key) { return (key && PL_FAMILY_DEFS[key]) || null; }
 function plnenieFamilyKeys() { return Object.keys(PL_FAMILY_DEFS); }
 
+// Produkty BEZ plánu v Goleme (Terrosa): predaje aj PharmaData existujú, plán nie. Zobrazia sa ako karta
+// s € predaja (bez %, bez cieľa) pre reprezentanta aj manažéra a do celkového plnenia sa nepočítajú.
+var PL_GOLEM_NOPLAN_PRODUCTS = ['terrosa'];
+function plnenieIsGolemNoPlan(key) { return PL_GOLEM_NOPLAN_PRODUCTS.indexOf(plnenieNormalizeKey(key)) >= 0; }
+// Doplní do zoznamu produktov (resp.planProducts) tie bez plánu, ktoré majú predaje. Idempotentné; volá sa pri
+// každom zostavení agregátov, takže platí pre všetky pohľady, ktoré čítajú tú istú odpoveď (aj z cache).
+function plnenieAddNoPlanProducts(resp) {
+  try {
+    var s = (typeof getSession === 'function') ? getSession() : null;
+    if (!resp || (s && s.line && s.line !== 'gp')) return;
+    var pp = resp.planProducts || (resp.planProducts = []), have = {};
+    pp.forEach(function(p) { have[plnenieNormalizeKey(p)] = true; });
+    (resp.predajeProducts || []).forEach(function(p) {
+      var k = plnenieNormalizeKey(p);
+      if (plnenieIsGolemNoPlan(k) && !have[k]) { pp.push(p); have[k] = true; }
+    });
+  } catch (e) {}
+}
+
 function plnenieBuildAggregates(resp, q, scopeReps) {
+  plnenieAddNoPlanProducts(resp);
   var plan = resp.plan || {};
   var predaje = resp.predaje || {};
   var planProducts = resp.planProducts || [];
@@ -25149,7 +25169,7 @@ function plnenieBuildAggregates(resp, q, scopeReps) {
         var predParts = repPredictionParts[rep] || [];
         sSumDone += predActualForProduct(rByMonth, predParts, key);
         sPredPlanDone += predBasisForProduct(p, predParts);
-      } else if (_plReagila) {
+      } else if (_plReagila || plnenieIsGolemNoPlan(key)) {
         sSalesNoPlan += prodVal(rTot, key);
       }
     });
@@ -25167,7 +25187,7 @@ function plnenieBuildAggregates(resp, q, scopeReps) {
         expectedPct: _t.expectedPct,
         tempoPct: _t.tempoPct
       });
-    } else if (_plReagila && sSalesNoPlan > 0) {
+    } else if ((_plReagila || plnenieIsGolemNoPlan(key)) && sSalesNoPlan > 0) {
       productsToShow.push({
         key: key,
         label: plnenieDisplayName(allProdsMap[key]),
@@ -25437,7 +25457,7 @@ function openProdSheet(prodKey, prodLabel) {
   // Subtaby (napr. Tablety / Sáčky pre Aflamil)
   var subtabsEl = document.getElementById('pl-ps-subtabs');
   if (subtabsEl) {
-    var PHARMA_CODE_LABELS = { AFLtbl: 'Tablety', AFLsach: 'Sáčky', AFLcrm: 'Krém', CAV: 'Cavinton', JUN: 'Junod', KOGGOL: 'Kogavant', SUP: 'Suprax', TEL: 'Telexer', VID: 'Vidonorm' };
+    var PHARMA_CODE_LABELS = { AFLtbl: 'Tablety', AFLsach: 'Sáčky', AFLcrm: 'Krém', CAV: 'Cavinton', JUN: 'Junod', KOGGOL: 'Kogavant', SUP: 'Suprax', TEL: 'Telexer', TER: 'Terrosa', VID: 'Vidonorm' };
     if (pharmaCodes.length > 1) {
       subtabsEl.innerHTML = pharmaCodes.map(function(c) {
         return '<button type="button" class="pl-ps-subtab' + (c === pharmaCode ? ' active' : '') + '" onclick="prodSheetSwitchPharmaCode(\'' + c + '\')">' + (PHARMA_CODE_LABELS[c] || c) + '</button>';
@@ -28661,12 +28681,13 @@ var PHARMA_CODES = {
   'kogavant':              ['KOGGOL'],
   'suprax':                ['SUP'],
   'telexer':               ['TEL'],
+  'terrosa':               ['TER'],
   'vidonorm':              ['VID']
 };
 
 var PHARMA_PROD_LABEL = {
   'AFLcrm':'AFLAMIL Crm','AFLsach':'AFLAMIL Sáčky','AFLtbl':'AFLAMIL Tbl',
-  'CAV':'CAVINTON','JUN':'JUNOD','KOGGOL':'KOGAVANT','SUP':'SUPRAX','TEL':'TELEXER','VID':'VIDONORM'
+  'CAV':'CAVINTON','JUN':'JUNOD','KOGGOL':'KOGAVANT','SUP':'SUPRAX','TEL':'TELEXER','TER':'TERROSA','VID':'VIDONORM'
 };
 
 // Mapovanie pharma kódu → kľúč v predajoch pre split zobrazenie (napr. AFLtbl → aflamiltb)
@@ -31657,7 +31678,8 @@ var RPT_PHARMA_PLAN_KEY = {
   CAV: 'cavinton',
   JUN: 'junod',
   KOGGOL: 'kogavant',
-  TEL: 'telexer'
+  TEL: 'telexer',
+  TER: 'terrosa'
 };
 
 function rptNum(v) {
@@ -36094,10 +36116,10 @@ function closeLekarne() {
 var OKRESY_STATE = { open:false, ctx:'rep', oblast:null, kvartal:null, byCode:{}, expandedName:null, containerId:null, reqId:0, _raf:null, _districts:[], detail:null };
 
 // Golem pharma kódy v preferovanom poradí + farby bodiek (zhoda s PL_PROD_DOT_COLORS)
-var OKRESY_CODE_LIST  = ['VID','SUP','CAV','KOGGOL','TEL','JUN','AFLtbl','AFLsach','AFLcrm'];
+var OKRESY_CODE_LIST  = ['VID','SUP','CAV','KOGGOL','TEL','TER','JUN','AFLtbl','AFLsach','AFLcrm'];
 var OKRESY_CODE_COLOR = {
   'VID':'#34D399','SUP':'#C084FC','CAV':'#FCD34D','KOGGOL':'#2DD4BF',
-  'TEL':'#F87171','JUN':'#A78BFA','AFLtbl':'#60A5FA','AFLsach':'#60A5FA','AFLcrm':'#60A5FA'
+  'TEL':'#F87171','TER':'#E879F9','JUN':'#A78BFA','AFLtbl':'#60A5FA','AFLsach':'#60A5FA','AFLcrm':'#60A5FA'
 };
 function okresyCodes() {
   // Reagila používa zdieľaný Golem okresný render, ale s vlastnými produktami — odvoď kódy
