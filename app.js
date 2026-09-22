@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.83';
+var APP_VERSION = '2.88.84';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -166,7 +166,7 @@ window.addEventListener('unhandledrejection', function(ev){
 // zaplní (~5MB limit) → QuotaExceededError. Ak nie je odchytený, zhodí štart appky
 // (sivá obrazovka). Tieto cache kľúče sú re-fetchovateľné (sú aj v IndexedDB alebo
 // sa dotiahnu zo Sheets), takže ich môžeme bezpečne zmazať keď treba uvoľniť miesto.
-var LS_CACHE_PREFIXES = ['ph_c_', 'ph_graf_', 'pl_c_', 'pl_rc_', 'hist_', 'lb_allhist_', 'lekarne_cache_', 'potencial_gyn_cache_v2:'];
+var LS_CACHE_PREFIXES = ['ph_c_', 'ph_graf_', 'pl_c_', 'pl_rc_', 'hist_', 'lb_allhist_', 'lekarne_cache_', 'potencial_gyn_cache_v2:', 'satori-stock:'];
 function lsIsCacheKey(key) {
   if (!key) return false;
   for (var j = 0; j < LS_CACHE_PREFIXES.length; j++) {
@@ -6412,6 +6412,26 @@ function stockLoad(){
 // (dnesStockWatchItems) ostala prázdna, kým používateľ sám prvýkrát neotvorí
 // panel Sklady (cache sa dovtedy inak vôbec nezapíše). Rovnaká DataStore SWR
 // cesta ako stockLoad(), len bez akejkoľvek väzby na otvorený panel/DOM.
+// Vynútené obnovenie (obíde 24h vek cache) — pre potiahnutie nadol aj pre „Skúsiť znova".
+// Bez tohto appka po novom nahratí reportu do Sheets ukazovala starý report celých 24 hodín,
+// lebo DataStore.get() pri „fresh" cache fetch vôbec nespúšťa.
+function stockForceRefresh(onDone){
+  var request = ++SKLADY_STATE.request;
+  var line = appLineTag();
+  DataStore.refresh(stockCacheKey_(line), {
+    fetcher: function(){
+      return appQueuedFetchJson(stockRequestUrl(), { cache:'no-store' }, APP_FETCH_TIMEOUT_MS, 'critical').then(function(payload){
+        if (!payload || payload.ok === false) throw new Error((payload && payload.error) || 'stock endpoint unavailable');
+        return payload;
+      });
+    },
+    onFresh: function(payload){
+      if (request === SKLADY_STATE.request && SKLADY_STATE.open) { SKLADY_STATE.payload = stockNormalizePayload(payload, line); stockRender(); }
+      if (onDone) onDone();
+    },
+    onError: function(){ if (onDone) onDone(); }
+  });
+}
 function stockPreload(){
   try {
     var line = appLineTag();
@@ -30993,6 +31013,18 @@ function appAttachOverlayPtr(opt) {
         // stav načítavania už ukazuje krúžok a zoznam sa nemá vyprázdniť.
         okresyLoadAll(reqId, OKRESY_STATE._cacheVer, cont, false, true, done);
       } catch (e) { done(); }
+    }
+  });
+
+  // Sklady — platí pre všetky tri línie (Golem/Gyn/Reagila zdieľajú ten istý panel a rovnaký
+  // fetch podľa appLineTag()). Bez potiahnutia nadol nemal používateľ ako obísť 24h vek cache
+  // (Ivan: appka po novom nahratí reportu do Sheets ukazovala starý report).
+  appAttachOverlayPtr({
+    overlayId: 'sklady-overlay',
+    mountSelector: '.sklady-inner',
+    blockedBy: COMMON_BLOCK,
+    onRefresh: function (done) {
+      try { stockForceRefresh(done); } catch (e) { done(); }
     }
   });
 })();
