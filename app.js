@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.84';
+var APP_VERSION = '2.88.85';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -6379,7 +6379,7 @@ function stockRequestUrl(){ return appLineTag() === 'gyn' ? gynScriptUrl('action
 // čakať na sieť. SWR: cache (DataStore, localStorage) sa ukáže OKAMŽITE bez
 // ohľadu na vek, appka ju na pozadí potichu overí/doplní, len keď je staršia
 // než STOCK_CACHE_MAX_AGE_MS — rovnaký princíp ako Golem Trhový podiel.
-var STOCK_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+var STOCK_CACHE_MAX_AGE_MS = 6 * 60 * 60 * 1000;   // 6 h (Ivan) — pri otvorení do 6 h ukáže cache, potom potichu dotiahne nové dáta
 function stockCacheKey_(line){ return 'satori-stock:' + String(line || '').trim().toLowerCase(); }
 function stockLoad(){
   var body = document.getElementById('sklady-body');
