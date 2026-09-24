@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.85';
+var APP_VERSION = '2.88.86';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -22482,6 +22482,54 @@ function prefetchNotifications() {
 }
 
 // Po prihlásení — GP použije prefetch cache (rýchle), Gyn fetchne fresh cez gyn backend
+// Predaje boli aktualizované (server timestamp sa zmenil oproti tomu, čo appka naposledy videla).
+// ROOT CAUSE (Ivan, 24.9.): appka fetchuje Plnenie len RAZ za session — manažér aj reprezentant
+// (Golem/Gyn/Reagila) po prvom otvorení Plnenia už ďalej žijú z pamäte (PL_STATE/REP_PL_STATE/
+// GYN_APP.plCache), aj keď medzitým prišli nové predaje a admin klikol „Odoslať". Banner
+// „Dáta boli aktualizované" bol dovtedy len informačný — kliknutie „OK, rozumiem" cache nijako
+// nezneplatnilo. Táto funkcia sa volá HNEĎ, ako appka zistí nový timestamp (nie až pri kliknutí
+// na banner), aby sa Plnenie samo obnovilo — otvorené sa dotiahne ihneď, zatvorené nabudúce.
+function plnenieOnPredajeUpdated() {
+  try {   // Manažér (Golem/Reagila) — Plnenie tab
+    if (typeof PL_STATE !== 'undefined') {
+      PL_STATE.qCache = {};
+      PL_STATE.loaded = false;
+      if (document.body.classList.contains('manager-mode') && typeof MGR_STATE !== 'undefined' &&
+          MGR_STATE.subtab === 'plnenie' && !PL_STATE.loading && typeof plnenieLoadAllQuarters === 'function') {
+        plnenieLoadAllQuarters();
+      }
+    }
+  } catch(e){}
+  try {   // Reprezentant (Golem/Reagila) — vlastné Plnenie
+    if (typeof REP_PL_STATE !== 'undefined') {
+      REP_PL_STATE.qCache = {};
+      REP_PL_STATE.loaded = false;
+      var repOv = document.getElementById('rep-plnenie-overlay');
+      if (repOv && repOv.classList.contains('show') && !REP_PL_STATE.loading && typeof repPlnenieLoad === 'function') repPlnenieLoad();
+    }
+  } catch(e){}
+  try {   // Tímové plnenie (rep west/east aj gyn) — má vlastný force-refresh
+    if (typeof TEAM_PL_STATE !== 'undefined' && typeof teamPlnenieRefresh === 'function') {
+      if (typeof DataStore !== 'undefined' && typeof teamPlnenieCacheKey === 'function') DataStore.invalidate(teamPlnenieCacheKey());
+      if (TEAM_PL_STATE.open) teamPlnenieRefresh();
+    }
+  } catch(e){}
+  try {   // Rebríček (Golem/Reagila, mód Plnenie)
+    if (typeof LB_PLNENIE_CACHE !== 'undefined') {
+      LB_PLNENIE_CACHE = null;
+      if (typeof LB_STATE !== 'undefined' && LB_STATE.mode === 'plnenie' && typeof lbPreloadPlnenie === 'function') lbPreloadPlnenie();
+    }
+  } catch(e){}
+  try {   // Gyn — Plnenie (hlavný tab) + Rebríček
+    if (typeof GYN_APP !== 'undefined') GYN_APP.plCache = {};
+    if (typeof GYN_LB !== 'undefined') { GYN_LB.dataReady = {}; GYN_LB.plCache = {}; }
+    if (typeof GYN_APP !== 'undefined' && GYN_APP.nav === 'plnenie') {
+      var gv = document.getElementById('gyn-view');
+      if (gv && gv.classList.contains('show') && typeof gynRenderContent === 'function' && typeof getSession === 'function') gynRenderContent(getSession());
+    }
+  } catch(e){}
+}
+
 function checkNotifications() {
   if (IS_DEV) return;
   var usePrefetch = notifUsesPrefetch();   // len Golem; Gyn aj Reagila fetchujú fresh
@@ -22492,6 +22540,7 @@ function checkNotifications() {
       // Zapamätaj dátum dát do localStorage (per línia) — používa ho plnenieDefaultPeriod
       try { if (serverTs) localStorage.setItem(settingsDateLsKey(n.key), serverTs); } catch(e){}
       if (serverTs && serverTs !== (localStorage.getItem(lsKey) || '')) {
+        if (n.key === 'predaje') plnenieOnPredajeUpdated();
         showNotifBanner(n.icon, n.text, lsKey, serverTs);
       }
       return;
@@ -22502,6 +22551,7 @@ function checkNotifications() {
         // Zapamätaj dátum dát do localStorage (per línia) — používa ho plnenieDefaultPeriod
         try { if (serverTs) localStorage.setItem(settingsDateLsKey(n.key), serverTs); } catch(e){}
         if (serverTs && serverTs !== (localStorage.getItem(lsKey) || '')) {
+          if (n.key === 'predaje') plnenieOnPredajeUpdated();
           showNotifBanner(n.icon, n.text, lsKey, serverTs);
         }
       })
@@ -22529,6 +22579,7 @@ function startNotifPolling() {
         .then(function(d){
           if (!d || !d.ok || !d.value) return;
           if (d.value !== (localStorage.getItem(lsKey) || '')) {
+            if (n.key === 'predaje') plnenieOnPredajeUpdated();
             showNotifBanner(n.icon, n.text, lsKey, d.value);
           }
         })
@@ -22550,6 +22601,7 @@ document.addEventListener('visibilitychange', function() {
         .then(function(d){
           if (!d || !d.ok || !d.value) return;
           if (d.value !== (localStorage.getItem(lsKey) || '')) {
+            if (n.key === 'predaje') plnenieOnPredajeUpdated();
             showNotifBanner(n.icon, n.text, lsKey, d.value);
           }
         })
