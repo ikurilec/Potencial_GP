@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.86';
+var APP_VERSION = '2.88.87';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
@@ -17520,7 +17520,8 @@ function gynCalOpenForm(dk, editId){
   } else {
     GYN_CAL._formAud=null;   // nastaví sa default pri výbere typu
   }
-  var picker=gynCalTypesForRole(gynCalRoleGroup(user)).map(function(t){
+  var openFormGroup=gynCalRoleGroup(user);   // „Náhradné voľno za" je povinné len pre repov (Ivan, 25.9.)
+  var picker=gynCalTypesForRole(openFormGroup).map(function(t){
     return '<button type="button" class="gyn-cal-type'+(GYN_CAL._formType===t.id?' active':'')+'" data-type="'+t.id+'" onclick="gynCalFormPickType(\''+t.id+'\')">'+
       '<span class="gyn-cal-type-ic" style="background:'+t.color+'22;color:'+t.color+'">'+t.icon+'</span>'+
       '<span class="gyn-cal-type-lb">'+t.label+'</span></button>';
@@ -17551,7 +17552,7 @@ function gynCalOpenForm(dk, editId){
       '<div id="gyn-cal-f-loc-wrap"><input id="gyn-cal-f-loc" class="gyn-cal-sheet-input" type="text" placeholder="Miesto (nepovinné)" maxlength="80" value="'+gynEsc(loc)+'"></div>'+
       '<div id="gyn-cal-f-comp-wrap" style="display:none">'+
         '<div class="gyn-cal-sheet-label">Náhradné voľno za</div>'+
-        '<input id="gyn-cal-f-comp-for" class="gyn-cal-sheet-input" type="text" placeholder="Za akú akciu (napr. kongres, víkendová akcia)" maxlength="100" value="'+gynEsc(compFor)+'">'+
+        '<input id="gyn-cal-f-comp-for" class="gyn-cal-sheet-input" type="text" placeholder="'+(openFormGroup==='rep'?'Za akú akciu (napr. kongres, víkendová akcia)':'Za akú akciu (nepovinné)')+'" maxlength="100" value="'+gynEsc(compFor)+'">'+
         '<div class="gyn-cal-f-field" style="margin-top:8px"><span class="gyn-cal-f-lbl">Dátum akcie</span>'+
           '<input id="gyn-cal-f-comp-date" class="gyn-cal-sheet-input" type="date" value="'+gynEsc(compDate)+'">'+
         '</div>'+
@@ -17872,7 +17873,7 @@ function gynCalFormSave(){
   // Náhradné voľno — „za akú akciu" je povinné
   var compForVal=(gynCalFormVal('gyn-cal-f-comp-for')||'').trim();
   var compDateVal=(gynCalFormVal('gyn-cal-f-comp-date')||'').trim();
-  if(t.comp && !compForVal){
+  if(t.comp && !compForVal && group === 'rep'){   // manažér/admin nemusí uvádzať, za čo je náhradné voľno (Ivan, 25.9.)
     var shc=document.getElementById('gyn-cal-sheet'), cin=shc&&shc.querySelector('#gyn-cal-f-comp-for');
     if(cin){ cin.classList.remove('shake'); void cin.offsetWidth; cin.classList.add('shake'); try{ cin.focus(); }catch(e){} }
     try { haptic('warning'); } catch(e){}
