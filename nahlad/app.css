@@ -271,7 +271,12 @@
   .av-box{background:var(--color-surface-2);border-radius:0;width:100%;max-width:480px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(12,30,53,.4);animation:avSlideUp .32s cubic-bezier(.16,1,.3,1) both}
   @keyframes avSlideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
   @media(min-width:520px){.av-box{border-radius:20px;margin:auto;max-height:calc(100vh - 40px)}.av-overlay{padding:var(--space-5);align-items:center}}
-  .av-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#fff;border-bottom:1px solid var(--color-border);flex-shrink:0}
+  /* Fullscreen modal zhora — rovnaký prípad ako .settings-inner: bez
+     env(safe-area-inset-top) sedí "Uložiť" pod status barom / dynamic
+     islandom a nedá sa naň ťuknúť (nahlásené Ivanom, avatar editor). */
+  .av-hdr{display:flex;align-items:center;justify-content:space-between;padding:calc(14px + var(--sat)) 16px 14px;background:#fff;border-bottom:1px solid var(--color-border);flex-shrink:0}
+  /* Na širšej obrazovke je box vycentrovaný, nie pri hornej hrane — safe-area tam netreba. */
+  @media(min-width:520px){.av-hdr{padding-top:14px}}
   .av-hdr-title{font-size:16px;font-weight:800;color:var(--color-navy);font-family:var(--font-display);letter-spacing:-.01em}
   .av-hdr-btn{background:var(--color-border-light);border:none;color:#475569;font-size:16px;width:36px;height:36px;border-radius:var(--radius-base);cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;-webkit-tap-highlight-color:transparent;transition:background var(--t-fast)}
   .av-hdr-btn:active{background:var(--color-border)}

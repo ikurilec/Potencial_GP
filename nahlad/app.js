@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.86';
+var APP_VERSION = '2.88.87';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
