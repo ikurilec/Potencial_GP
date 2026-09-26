@@ -275,6 +275,12 @@
      env(safe-area-inset-top) sedí "Uložiť" pod status barom / dynamic
      islandom a nedá sa naň ťuknúť (nahlásené Ivanom, avatar editor). */
   .av-hdr{display:flex;align-items:center;justify-content:space-between;padding:calc(14px + var(--sat)) 16px 14px;background:#fff;border-bottom:1px solid var(--color-border);flex-shrink:0}
+  /* Poistka: v nainštalovanej PWA (black-translucent status bar) vracia
+     env(safe-area-inset-top) na niektorých iPhonoch 0 a hlavička opäť
+     vyjde pod hodinami. 62px je výška status baru aj s dynamic islandom —
+     max() vezme väčšie z oboch, takže tam, kde env() funguje, sa nič nemení. */
+  @media(display-mode:standalone) and (max-width:519px){.av-hdr{padding-top:max(calc(14px + var(--sat)),62px)}}
+  @media(-webkit-min-device-pixel-ratio:0) and (max-width:519px){@supports(-webkit-touch-callout:none){.av-hdr{padding-top:max(calc(14px + var(--sat)),62px)}}}
   /* Na širšej obrazovke je box vycentrovaný, nie pri hornej hrane — safe-area tam netreba. */
   @media(min-width:520px){.av-hdr{padding-top:14px}}
   .av-hdr-title{font-size:16px;font-weight:800;color:var(--color-navy);font-family:var(--font-display);letter-spacing:-.01em}
