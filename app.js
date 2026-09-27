@@ -32,7 +32,25 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.87';
+var APP_VERSION = '2.88.89';
+
+// ── Nainštalovaná PWA na iOS — trieda na <html> ──
+// Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
+// pridaní na plochu si obsah berie aj pás pod hodinami. Tam, kde má appka
+// vlastnú hlavičku pri hornej hrane (avatar editor), sa bez odsadenia nedá
+// ťuknúť na tlačidlá — systémový status bar ten dotyk zoberie.
+// Robí sa to triedou, nie cez @media, lebo:
+//   • display-mode:standalone na starších iOS nesadne,
+//   • -webkit-touch-callout hack chytí AJ obyčajný Safari tab, kde sa obsah
+//     pod status bar nedostane a odsadenie by tam bolo len zbytočná diera.
+// navigator.standalone je iOS-ová vlajka, ktorá vie presne to jedno, čo treba.
+(function(){
+  try {
+    var iosPwa = (navigator.standalone === true);
+    var otherPwa = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+    if (iosPwa || otherPwa) document.documentElement.classList.add('pwa-standalone');
+  } catch (e) {}
+})();
 
 // ═══════════════════════════════════════════════════════════════════════════
 //   MERANIE ČASU (F1-4 vo vykonávacom pláne) — nie kliky, ale čas.
