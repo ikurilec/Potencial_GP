@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.2';
+var APP_VERSION = '2.89.3';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -33985,12 +33985,12 @@ function rptViewRender(fromPharma) {
   var warns = rp2Warnings(m, reps, p);
   html += rp2VerdictHtml(m, p, title, sub);
   html += rp2WarnCardHtml(warns);
-  html += rp2Fold('act', '🎯', m.closed ? 'Výsledok kvartálu' : 'Čo spraviť, aby sa splnil plán', m.closed ? '' : (isGroup ? 'súčet za skupinu — rozpis podľa produktov' : 'koľko a čoho predať do konca kvartálu'), rp2ActionHtml(m, p, ideas, isGroup), true);
+  html += rp2Fold('act', '🎯', m.closed ? 'Výsledok kvartálu' : 'Čo spraviť, aby sa splnil plán', m.closed ? '' : (isGroup ? 'súčet za skupinu — rozpis podľa produktov' : 'koľko a čoho predať do konca kvartálu'), rp2ActionHtml(m, p, ideas, isGroup), false);
   if (!isGroup) html += rp2Fold('doh', '🤝', 'Dohody z 1:1', rp2DohSub(RPT_VIEW.username, p), function() { return rp2DohHtml(m, p); }, false);
   html += rp2Fold('prod', '💊', 'Produkty', 'plnenie, tempo a podiel na trhu', rp2ProductsHtml(m, reps), false);
   var _dataMemo = null, getData = function() { return _dataMemo || (_dataMemo = rptViewData(reps, p)); };
   if (isGroup) html += rp2Fold('team', '👥', 'Tím — kto potrebuje pomoc', 'zoradené podľa toho, koľko chýba do 95 %', function() { return rp2TeamHtml(reps, p); }, false);
-  if (!isGroup && RP2_ROSTER_OK()) html += rp2Fold('bench', '⚖️', 'Porovnanie s tímom', 'férovo — podľa plnenia plánu a potenciálu územia', function() { return rp2BenchHtml(m, reps, p) || '<div class="rv-card"><div class="rv-empty">Porovnanie nie je dostupné.</div></div>'; }, false);
+  if (!isGroup && RP2_ROSTER_OK()) html += rp2Fold('bench', '⚖️', 'Porovnanie s tímom', 'férovo — podľa plnenia plánu a potenciálu územia', function() { return rp2BenchHtml(m, reps, p) || '<div class="rv-card"><div class="rv-empty">Porovnanie nie je dostupné — žiadny iný reprezentant nemá plán na rovnaké produkty ako tento.</div></div>'; }, false);
   html += rp2Fold('cmp', '🕒', 'Vývoj oproti minulosti', 'minulý kvartál a minulý rok', function() { return rp2CompareHtml(m, reps, p) || '<div class="rv-card"><div class="rv-empty">Minulé obdobie nemá dáta na porovnanie.</div></div>'; }, false);
   // Golem/Reagila: okresné trhové signály z PharmaData. Gyn ich nemá — namiesto toho
   // ukáže lekárne na reaktiváciu (jediný ekvivalent, ktorý gyn dnes má).
