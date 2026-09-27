@@ -6065,7 +6065,12 @@ function viacDlazdice() {
       { ic: '📦', t: 'Sklady', fn: 'openSklady()', panel: 'sklady' }
     ];
     if (s.role === 'gyn-rep') g.push({ ic: '🏪', t: 'Lekárne', fn: "gynNavTo('lekarne')" });
-    try { if (gynActivityAllowed(s)) g.push({ ic: '📈', t: 'Aktivita', fn: "gynNavTo('activity')" }); } catch (e) {}
+    try {
+      if (gynActivityAllowed(s)) {
+        g.push({ ic: '📈', t: 'Aktivita', fn: "gynNavTo('activity')" });
+        g.push({ ic: '📄', t: 'Reporty', fn: 'gynOpenReporty()' });
+      }
+    } catch (e) {}
     return g;
   }
   if (r === 'reagila') {
