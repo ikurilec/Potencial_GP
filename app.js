@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.91';
+var APP_VERSION = '2.89.0';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -12912,6 +12912,7 @@ function gynRenderShell(user) {
         '<button class="gyn-nav-btn"        data-tab="leaderboard" onclick="gynNavTo(\'leaderboard\')"><span class="st-emoji">🏆</span><span class="st-lbl">Rebríček</span></button>' +
         '<button class="gyn-nav-btn" id="gyn-nav-nastenka-btn" onclick="openNastenka()"><span class="st-emoji">📌</span><span class="st-lbl">Nástenka</span></button>' +
         (gynActivityAllowed(user) ? '<button class="gyn-nav-btn" data-tab="activity" onclick="gynNavTo(\'activity\')"><span class="st-emoji">📈</span><span class="st-lbl">Aktivita</span></button>' : '') +
+        (gynActivityAllowed(user) ? '<button class="gyn-nav-btn" onclick="gynOpenReporty()"><span class="st-emoji">📄</span><span class="st-lbl">Reporty</span></button>' : '') +
       '</nav>' +
       '<div class="app-ptr" id="gyn-ptr-indicator" aria-hidden="true">' +
         appPtrRingHtml() +
@@ -12975,6 +12976,29 @@ function gynApplyDefaultNav(user) {
 // gyn manažér (AM/PM/BUM) vidí iba reprezentantov (filter v usageRenderTeam).
 function gynActivityAllowed(u) {
   return !!u && (u.role === 'admin' || u.role === 'gyn-am' || u.role === 'gyn-pm' || u.role === 'gyn-bum');
+}
+
+// ── Reporty (zdieľané s Golem/Reagila) — gyn nemá vlastný manažérsky shell s podzáložkami,
+// takže si na čas Reportov požičia Golem kontajner (.mgr-reporty-view, vnorený v .app),
+// ktorý inak gyn session nikdy nevidí (gynNavTo ho schová cez .app{display:none}).
+function gynOpenReporty() {
+  var session = getSession(); if (!session || session.line !== 'gyn') return;
+  if (!gynActivityAllowed(session)) return;
+  var gv = document.getElementById('gyn-view'); if (gv) gv.classList.remove('show');
+  var app = document.querySelector('.app'); if (app) app.style.display = '';
+  // body.gyn-line.app-nav{.app{display:none!important}} skrýva .app, kým je otvorený
+  // #gyn-view (gynNavTo obe triedy pridáva spolu) — pre Reporty musí app-nav preč.
+  // manager-mode naopak MUSÍ zostať — .mgr-view (obal .mgr-reporty-view) je bez neho display:none.
+  document.body.classList.remove('reagila-line', 'app-nav');
+  document.body.classList.add('gyn-line', 'manager-mode', 'mgr-subtab-reporty');
+  try { usageSectionEnter('Manažér (gyn) · Reporty'); } catch (e) {}
+  rptViewOpen();
+}
+function gynCloseReporty() {
+  document.body.classList.remove('mgr-subtab-reporty', 'manager-mode');
+  var app = document.querySelector('.app'); if (app) app.style.display = 'none';
+  document.body.classList.add('app-nav');
+  var gv = document.getElementById('gyn-view'); if (gv) gv.classList.add('show');
 }
 
 // ── Navigácia medzi tabmi ──
@@ -19927,6 +19951,9 @@ _backRegister('nday-overlay', ndayClose);                  // z-index 9600 — m
 _backRegister('tuy-detail-overlay', tuyoryDetailClose);     // z-index 6200 — detail Tuyory záznamu
 _backRegister('lk-prompt-overlay', lkPromptClose);          // z-index 6100 — heslo / názov filtra
 _backRegister('lk-confirm-overlay', lkConfirmClose);        // z-index 6100 — potvrdenie (lekárne)
+_backRegister('mgr-reporty-view', gynCloseReporty, function () {
+  return rp2Line() === 'gyn' && document.body.classList.contains('mgr-subtab-reporty');
+});                                                          // gyn Reporty — požičaný Golem kontajner, Späť sa vráti do #gyn-view
 
 // -1. Globálne vyhľadávanie — z-index 3200, nad úplne všetkým vrátane
 // bočného menu a Nastavení. Predtým tu chýbalo: systémové Späť ho
@@ -31301,7 +31328,7 @@ function rptAllVisits(username) {
 }
 
 function rptPlnenieForRep(username, q, month, year) {
-  var qc = PL_STATE.qCache[q];
+  var qc = rp2QCache_(q);
   if (!qc || !qc.data) return null;
   var data = qc.data;
   var planRep    = data.plan    && data.plan[username];
@@ -31473,7 +31500,7 @@ function rptProductMonthValue(monthObj, prodKey) {
 }
 
 function rptPredikciaProd(username, q, month, year, prodRawKey) {
-  var qc = PL_STATE.qCache[q]; if (!qc || !qc.data) return null;
+  var qc = rp2QCache_(q); if (!qc || !qc.data) return null;
   var plan = qc.data.plan && qc.data.plan[username];
   var predaje = qc.data.predaje && qc.data.predaje[username];
   var prodKey = rptResolvePlanProductKey(plan, prodRawKey);
@@ -31493,7 +31520,7 @@ function rptPredikciaProd(username, q, month, year, prodRawKey) {
 }
 
 function rptPredikcia(username, q, month, year) {
-  var qc = PL_STATE.qCache[q]; if (!qc || !qc.data) return null;
+  var qc = rp2QCache_(q); if (!qc || !qc.data) return null;
   var plan = qc.data.plan && qc.data.plan[username];
   var predaje = qc.data.predaje && qc.data.predaje[username];
   if (!plan || !predaje) return null;
@@ -31517,7 +31544,7 @@ function rptPredikcia(username, q, month, year) {
 // Agregovaná predikcia pre skupinu reprezentantov (AM East/West, SK celok)
 // Rovnaká logika ako rptPredikcia ale sčíta cez všetkých repov v poli
 function rptPredikciaSummary(reps, q, month, year) {
-  var qc = PL_STATE.qCache[q]; if (!qc || !qc.data) return null;
+  var qc = rp2QCache_(q); if (!qc || !qc.data) return null;
   var qStart = (q - 1) * 3 + 1;
   var sumPlan = 0, sumPred = 0, qPlanTotal = 0;
   reps.forEach(function(username) {
@@ -32009,7 +32036,7 @@ function rptPharmaHasUsefulRows(resp) {
 function rptFetchPharmaDataDirect(code, oblast, kvartal) {
   var cacheKey = code + '_' + oblast + '_' + kvartal;
   var req = appQueuedFetchJson(
-    scriptUrl('action=getPharmaData'
+    rp2Url_('action=getPharmaData'
       + '&oblast=' + encodeURIComponent(oblast)
       + '&produkt=' + encodeURIComponent(code)
       + '&kvartal=' + encodeURIComponent(kvartal)),
@@ -32335,7 +32362,7 @@ function rptAggregatePlnenieForReps(reps, q, month, year) {
 }
 
 function rptPredikciaProdForReps(reps, q, month, year, prodKey) {
-  var qc = PL_STATE.qCache[q]; if (!qc || !qc.data) return null;
+  var qc = rp2QCache_(q); if (!qc || !qc.data) return null;
   var qStart = (q - 1) * 3 + 1;
   var qEnd = qStart + 2;
   var endMonth = Math.min(month, qEnd);
@@ -32612,13 +32639,13 @@ function rptViewPeriod() {
 
 // Kvartál má dáta plnenia, ak má načítanú cache s aspoň jedným plánom.
 function rptViewQuarterHasData(q) {
-  var qc = PL_STATE.qCache[q];
+  var qc = rp2QCache_(q);
   return !!(qc && qc.data && qc.data.plan && Object.keys(qc.data.plan).length);
 }
 
 // Najnovší mesiac v kvartáli, ku ktorému existujú predaje (na default pri prepnutí kvartálu).
 function rptViewLatestMonthWithData(q) {
-  var qc = PL_STATE.qCache[q];
+  var qc = rp2QCache_(q);
   if (!qc || !qc.data || !qc.data.predaje) return null;
   var months = RPT_Q_MONTHS[q] || [], best = null;
   Object.keys(qc.data.predaje).forEach(function(u) {
@@ -32637,7 +32664,7 @@ var RPT_M = { 1:'Jan',2:'Feb',3:'Mar',4:'Apr',5:'Máj',6:'Jún',7:'Júl',8:'Aug'
 function rptViewMonthlyFor(reps, onlyKey, p) {
   var plan = {}, actual = {}, have = {};
   for (var q = 1; q <= 4; q++) {
-    if (!PL_STATE.qCache[q] || !PL_STATE.qCache[q].data) continue;
+    if (!rp2QCache_(q) || !rp2QCache_(q).data) continue;
     (reps || []).forEach(function(u) {
       var pl = rptPlnenieForRep(u, q, q * 3, p.year);
       if (!pl) return;
@@ -32660,11 +32687,12 @@ function rptViewMonthlyFor(reps, onlyKey, p) {
 
 // ── Vstup do záložky ──
 function rptViewOpen() {
-  var reps = (typeof plnenieGetActiveReps === 'function') ? plnenieGetActiveReps() : [];
+  var reps = rp2ActiveReps_();
   if (!RPT_VIEW.username || reps.indexOf(RPT_VIEW.username) < 0) RPT_VIEW.username = reps[0] || null;
   var allowed = rptViewAllowedScopes().map(function(s){ return s[0]; });
   if (allowed.indexOf(RPT_VIEW.scope) < 0) RPT_VIEW.scope = 'rep';
-  if (!PL_STATE.loaded && !PL_STATE.loading) plnenieLoadAllQuarters();
+  MGR_STATE.subtab = 'reporty';
+  rp2EnsureQuarter_(rptViewPeriod().q);
   rp2LoadCennik();
   rp2LoadAbs();
   rp2LoadOv();
@@ -32676,7 +32704,7 @@ function rptViewOpen() {
 
 function rptViewAllowedScopes() {
   var r = MGR_STATE.role;
-  if (rp2Line() === 'reagila') return [['rep','Reprezentant'],['sk','Celá línia']];   // Reagila nemá rozdelenie West/East
+  if (rp2Line() === 'reagila' || rp2Line() === 'gyn') return [['rep','Reprezentant'],['sk','Celá línia']];   // Reagila a Gyn nemajú rozdelenie West/East
   if (r === 'amwest') return [['rep','Reprezentant'],['west','AM West']];
   if (r === 'ameast') return [['rep','Reprezentant'],['east','AM East']];
   return [['rep','Reprezentant'],['west','AM West'],['east','AM East'],['sk','Celé SK']];
@@ -32686,7 +32714,7 @@ function rptViewScopeReps() {
   switch (RPT_VIEW.scope) {
     case 'west': return MGR_AM_WEST.slice();
     case 'east': return MGR_AM_EAST.slice();
-    case 'sk':   return (rp2Line() === 'reagila' && typeof plnenieGetActiveReps === 'function') ? plnenieGetActiveReps().slice() : MGR_ALL.slice();
+    case 'sk':   return (rp2Line() === 'reagila' || rp2Line() === 'gyn') ? rp2ActiveReps_().slice() : MGR_ALL.slice();
     default:     return RPT_VIEW.username ? [RPT_VIEW.username] : [];
   }
 }
@@ -32695,8 +32723,8 @@ function rptViewScopeTitle() {
   switch (RPT_VIEW.scope) {
     case 'west': return 'AM West';
     case 'east': return 'AM East';
-    case 'sk':   return rp2Line() === 'reagila' ? 'Celá línia' : 'Celé SK';
-    default:     return MGR_REP_NAMES[RPT_VIEW.username] || RPT_VIEW.username || '—';
+    case 'sk':   return (rp2Line() === 'reagila' || rp2Line() === 'gyn') ? 'Celá línia' : 'Celé SK';
+    default:     return rp2Name_(RPT_VIEW.username) || RPT_VIEW.username || '—';
   }
 }
 
@@ -32704,7 +32732,7 @@ function rptViewScopeSub(reps, p) {
   if (RPT_VIEW.scope === 'rep') {
     var u = RPT_VIEW.username;
     var region = (USERS_LOCAL[u] && USERS_LOCAL[u].region) || '—';
-    if (rp2Line() === 'reagila') return 'Región ' + region;
+    if (rp2Line() === 'reagila' || rp2Line() === 'gyn') return 'Región ' + region;
     var g = MGR_AM_WEST.indexOf(u) >= 0 ? 'West' : 'East';
     return 'Región ' + region + ' · ' + g;
   }
@@ -32721,7 +32749,7 @@ function rptViewOblasts(reps) {
 }
 
 function rptViewReady(p) {
-  return !!(PL_STATE.qCache && PL_STATE.qCache[p.q] && PL_STATE.qCache[p.q].data);
+  return !!(PL_STATE.qCache && rp2QCache_(p.q) && rp2QCache_(p.q).data);
 }
 
 // ── Agregát dát pre ľubovoľnú množinu repov (funguje aj pre 1 repa) ──
@@ -32754,7 +32782,7 @@ function rptViewData(reps, p) {
   // Súčty a produkty prebrať z plnenieBuildAggregates — rovnaké čísla ako v záložke Plnenie
   // (predtým Reporty počítali vlastnou kópiou a čísla sa mohli rozísť).
   try {
-    var _qcAgg = PL_STATE.qCache[p.q];
+    var _qcAgg = rp2QCache_(p.q);
     if (_qcAgg && _qcAgg.data) {
       var _ag = plnenieBuildAggregates(_qcAgg.data, p.q, reps || []);
       if (_ag && _ag.sk && _ag.sk.planEUR > 0) {
@@ -32778,7 +32806,7 @@ function rptViewData(reps, p) {
 // € predané za konkrétny mesiac pre daný produkt (súčet cez repov) — pre medzimesačný posun
 function rptViewMonthActual(reps, key, m, yr) {
   var q = Math.ceil(m / 3);
-  var qc = PL_STATE.qCache[q];
+  var qc = rp2QCache_(q);
   if (!qc || !qc.data) return null;
   var sum = 0, any = false;
   (reps || []).forEach(function(u) {
@@ -32801,7 +32829,7 @@ function rptExpectedPace(p) {
 // v karte „Čo spraviť". Pre skupinu vážený priemer podľa plánu repov v produkte (balenia = € ÷ cena).
 // Predtým „Čo keby" odhadoval balenia z € a IQVIA jednotiek, čo sa rozchádzalo s Cenníkom.
 function rptViewEurPerPkg(reps, planKey, p) {
-  var qc = PL_STATE.qCache[p.q], plan = qc && qc.data && qc.data.plan;
+  var qc = rp2QCache_(p.q), plan = qc && qc.data && qc.data.plan;
   var national = rp2Price(planKey), sumW = 0, sumP = 0;
   (reps || []).forEach(function(u) {
     var pk = plan && plan[u] ? rptResolvePlanProductKey(plan[u], planKey) : null;
@@ -32820,7 +32848,7 @@ function rptViewRenderControls() {
   var c = document.getElementById('rv-controls'); if (!c) return;
   var reps = (typeof plnenieGetActiveReps === 'function') ? plnenieGetActiveReps() : [];
   var opts = reps.map(function(u) {
-    return '<option value="' + u + '"' + (u === RPT_VIEW.username ? ' selected' : '') + '>' + (MGR_REP_NAMES[u] || u) + '</option>';
+    return '<option value="' + u + '"' + (u === RPT_VIEW.username ? ' selected' : '') + '>' + (rp2Name_(u) || u) + '</option>';
   }).join('');
   var scopes = rptViewAllowedScopes();
   var sc = scopes.map(function(s) {
@@ -32942,11 +32970,42 @@ var RP2 = { ceny: null, cenyRep: {}, cenyLoading: false, cenyErr: false };
 function rp2Line() { var s = (typeof getSession === 'function') ? getSession() : null; return (s && s.line) ? s.line : 'gp'; }
 function rp2Esc(t) { return (typeof mgrEscape === 'function') ? mgrEscape(String(t == null ? '' : t)) : String(t == null ? '' : t); }
 
+// ── Gyn adaptér — Reporty pôvodne počítal len s Golem/Reagila (PL_STATE, scriptUrl,
+// MGR_REP_NAMES). Tieto funkcie sú jediné miesto, kade sa vetví podľa línie — zvyšok
+// rp2*/rptView* kódu cez ne pristupuje k dátam a nemusí o gyn vedieť.
+function rp2Url_(params) { return (rp2Line() === 'gyn') ? gynScriptUrl(params) : scriptUrl(params); }
+function rp2Year_() { return (rp2Line() === 'gyn') ? (GYN_APP.year || (new Date()).getFullYear()) : (PL_STATE.year || (new Date()).getFullYear()); }
+function rp2Name_(u) { return (typeof USERS_LOCAL !== 'undefined' && USERS_LOCAL[u] && USERS_LOCAL[u].name) || (typeof MGR_REP_NAMES !== 'undefined' && MGR_REP_NAMES[u]) || u; }
+// Zoznam reprezentantov aktuálnej línie (bez manažérov) — gyn nemá West/East, jeden spoločný tím.
+function rp2ActiveReps_() {
+  if (rp2Line() === 'gyn') return (typeof GYN_STATE !== 'undefined' && GYN_STATE.repList || []).map(function(r) { return String(r.login || '').toLowerCase(); }).filter(Boolean);
+  return (typeof plnenieGetActiveReps === 'function') ? plnenieGetActiveReps() : [];
+}
+// { data, aggregates } pre daný kvartál — Golem/Reagila z PL_STATE.qCache (predpočítané inde),
+// gyn z GYN_APP.plCache (agregáty sa dopočítajú JIT a zacachujú, kým referencia na dáta nezmení).
+var RP2_GYN_AGG = {};
+function rp2QCache_(q) {
+  if (rp2Line() === 'gyn') {
+    var data = typeof GYN_APP !== 'undefined' && GYN_APP.plCache && GYN_APP.plCache[q];
+    if (!data) return null;
+    var cached = RP2_GYN_AGG[q];
+    if (!cached || cached.src !== data) { cached = { src: data, aggregates: plnenieBuildAggregates(data, q, rp2ActiveReps_()) }; RP2_GYN_AGG[q] = cached; }
+    return { data: data, aggregates: cached.aggregates };
+  }
+  return PL_STATE.qCache[q];
+}
+// Dotiahni dáta daného kvartálu, ak ešte nie sú — gyn má vlastný per-Q loader s cache/loading guardom
+// (gynEnsureQuarterData), Golem/Reagila si ťahajú všetky 4 kvartály naraz cez plnenieLoadAllQuarters.
+function rp2EnsureQuarter_(q) {
+  if (rp2Line() === 'gyn') { if (typeof gynEnsureQuarterData === 'function') gynEnsureQuarterData(q, function() { rp2Schedule(); }); return; }
+  if (!PL_STATE.loaded && !PL_STATE.loading && typeof plnenieLoadAllQuarters === 'function') plnenieLoadAllQuarters();
+}
+
 function rp2LoadCennik() {
   if (RP2.cenyLoading) return;
   if (typeof IS_DEV !== 'undefined' && IS_DEV) { if (!RP2.ceny) RP2.ceny = {}; return; }
   RP2.cenyLoading = true;
-  var url = (rp2Line() === 'gyn') ? gynScriptUrl('action=getCennik') : scriptUrl('action=getCennik');
+  var url = (rp2Line() === 'gyn') ? gynScriptUrl('action=getCennik') : rp2Url_('action=getCennik');
   var done = function(r) {
     RP2.cenyLoading = false;
     RP2.cenyErr = !(r && r.ok);
@@ -33018,7 +33077,7 @@ function rp2Bal(n) { return Math.round(n).toLocaleString('sk') + ' bal.'; }
 
 // Model pre množinu repov a kvartál. Všetky čísla idú z plnenieBuildAggregates.
 function rp2Model(reps, p) {
-  var qc = PL_STATE.qCache[p.q];
+  var qc = rp2QCache_(p.q);
   if (!qc || !qc.data) return null;
   var agg = plnenieBuildAggregates(qc.data, p.q, reps);
   var sk = agg && agg.sk;
@@ -33035,13 +33094,13 @@ function rp2Model(reps, p) {
   };
   m.remMonths = Math.max(0, (100 - exp) / 100 * 3);
   // zostávajúce pracovné dni kvartálu (rovnaké pracovné dni ako Plnenie)
-  var _qWd = 0; try { _qWd = plnenieWorkingDaysForMonths(PL_STATE.year || p.year, plnenieQuarterMonths(p.q)); } catch (e) {}
+  var _qWd = 0; try { _qWd = plnenieWorkingDaysForMonths(rp2Year_() || p.year, plnenieQuarterMonths(p.q)); } catch (e) {}
   m.remDays = m.closed ? 0 : Math.round(_qWd * (100 - exp) / 100);
   m.qWd = _qWd;
   m.elapsedDays = _qWd * exp / 100;              // pracovné dni kvartálu, za ktoré máme predaje
   m.reps = reps; m.p = p;
   // Absencie z Kalendára: odpočítaj od uplynulých aj zostávajúcich pracovných dní (priemer na repa pri skupine)
-  var _mths = plnenieQuarterMonths(p.q), _yr = PL_STATE.year || p.year;
+  var _mths = plnenieQuarterMonths(p.q), _yr = rp2Year_() || p.year;
   var _qs = new Date(_yr, _mths[0] - 1, 1), _qe = new Date(_yr, _mths[_mths.length - 1], 0);
   var _cut = m.closed ? _qe : rp2DataCutoff(p.q, _yr), _af = rp2AddDays(_cut, 1);
   var _ap = 0, _afu = 0, _alist = [];
@@ -33243,7 +33302,7 @@ function rp2AbsNoteHtml(m) {
   var one = (reps.length === 1);
   var lines = m.absList.slice().sort(function(a, b) { return b.days - a.days; }).slice(0, one ? 1 : 3).map(function(a) {
     var det = a.items.map(function(it) { var ds = rp2D(it.ds), de = rp2D(it.de); return RP2_ABS_TYPES[it.type] + ' ' + (ds && de && it.ds !== it.de ? rp2FmtDay(ds) + '–' + rp2FmtDay(de) : (ds ? rp2FmtDay(ds) : '')) + ' (' + it.days + ' d)'; }).join(', ');
-    return (one ? '' : '<b>' + rp2Esc(rptShortName(MGR_REP_NAMES[a.u] || a.u)) + '</b>: ') + det;
+    return (one ? '' : '<b>' + rp2Esc(rptShortName(rp2Name_(a.u) || a.u)) + '</b>: ') + det;
   });
   var tot = Math.round(m.absList.reduce(function(t, x) { return t + x.days; }, 0) * 10) / 10;
   return '<div class="rp2-abs">🗓 Absencie do konca kvartálu (z Kalendára): ' + lines.join(' · ') + (one ? '' : ' (spolu ' + tot + ' dní)') + '. Čísla v Reporte s absenciami nepočítajú — ide len o poznámku pre rozhovor.</div>';
@@ -33266,7 +33325,7 @@ function rp2Warnings(m, reps, p) {
     // pokles v posledných celých mesiacoch
     var vals = [];
     (RPT_Q_MONTHS[p.q] || []).forEach(function(mm) {
-      var part = rp2MonthPartial(mm, PL_STATE.year || p.year, m.cutoff);
+      var part = rp2MonthPartial(mm, rp2Year_() || p.year, m.cutoff);
       var v = rptViewMonthActual(reps, x.key, mm, p.year);
       if (!part && v !== null && v !== undefined) vals.push(v);
     });
@@ -33296,7 +33355,7 @@ function rp2LoadOv() {
   if (rp2Line() !== 'gp' || RP2_OV.loading || RP2_OV.rows) return;
   if (typeof IS_DEV !== 'undefined' && IS_DEV) { RP2_OV.rows = RP2_OV.rows || {}; return; }
   RP2_OV.loading = true;
-  var url = scriptUrl('action=getPharmaOverview');
+  var url = rp2Url_('action=getPharmaOverview');
   appFetchWithRetry(url, { retries: 1, timeoutMs: 40000, priority: 'background', delayFn: function() { return 800; },
     fetcher: function() { return appQueuedFetchJson(url, { cache: 'no-store' }, 40000, 'background'); } }).then(function(d) {
     RP2_OV.loading = false;
@@ -33330,7 +33389,7 @@ function rp2MarketBench(code, me, roster) {
   var nat = totMk > 0 ? totOurs / totMk * 100 : null;
   var sorted = all.filter(function(x) { return x.ms !== null; }).sort(function(a, b) { return b.ms - a.ms; });
   var idx = sorted.map(function(x) { return x.o; }).indexOf(oblast), best = sorted[0];
-  var bestRep = ''; (roster || []).forEach(function(u) { if (!bestRep && USERS_LOCAL[u] && String(USERS_LOCAL[u].region || '').toUpperCase() === best.o) bestRep = rptShortName(MGR_REP_NAMES[u] || u); });
+  var bestRep = ''; (roster || []).forEach(function(u) { if (!bestRep && USERS_LOCAL[u] && String(USERS_LOCAL[u].region || '').toUpperCase() === best.o) bestRep = rptShortName(rp2Name_(u) || u); });
   return { mk: mine.mk, ours: mine.ours, ms: mine.ms, nat: nat, pot: mine.mk / (totMk / all.length) * 100, perf: nat > 0 ? mine.ms / nat * 100 : null,
            rank: idx + 1, total: sorted.length, best: best, bestRep: bestRep || best.o, expected: nat !== null ? mine.mk * nat / 100 : null };
 }
@@ -33338,7 +33397,7 @@ function rp2MarketBench(code, me, roster) {
 // ═══ Porovnanie s tímom a najlepším repom — férovo cez plnenie plánu (plán je nastavený podľa potenciálu územia) ═══
 function rp2BenchHtml(m, reps, p) {
   if (RPT_VIEW.scope !== 'rep') return '';
-  var qc = PL_STATE.qCache[p.q]; if (!qc || !qc.data) return '';
+  var qc = rp2QCache_(p.q); if (!qc || !qc.data) return '';
   var roster = (typeof plnenieGetActiveReps === 'function') ? plnenieGetActiveReps() : [];
   if (roster.length < 2) return '';
   var fam = {}; try { plnenieFamilyKeys().forEach(function(k) { fam[k] = 1; }); } catch (e) {}
@@ -33371,7 +33430,7 @@ function rp2BenchHtml(m, reps, p) {
     }
     rows += '<div class="rp2-bn"><div class="rp2-bn-h"><span class="rv-prod-dot" style="background:' + x.dot + '"></span><b>' + rp2Esc(x.label) + '</b>' + (idx >= 0 ? '<span class="rp2-rank2">#' + (idx + 1) + ' z ' + sorted.length + '</span>' : '') + '</div>' +
       '<div class="rp2-bn-g"><div><em>tento rep</em><b style="color:' + rptColorHex(x.pct) + '">' + rp2Pct(x.pct) + '</b></div><div><em>priemer tímu</em><b>' + rp2Pct(teamPct) + '</b><small class="' + (d >= 0 ? 'up' : 'dn') + '">' + (d >= 0 ? '+' : '') + (Math.round(d * 10) / 10).toLocaleString('sk') + ' p. b.</small></div>' +
-      '<div><em>najlepší</em><b>' + rp2Pct(best.pct) + '</b><small>' + rp2Esc(rptShortName(MGR_REP_NAMES[best.u] || best.u)) + '</small></div></div>' +
+      '<div><em>najlepší</em><b>' + rp2Pct(best.pct) + '</b><small>' + rp2Esc(rptShortName(rp2Name_(best.u) || best.u)) + '</small></div></div>' +
       mbHtml + (!mb && pot !== null ? '<div class="rp2-bn-p">Potenciál územia (podľa plánu): <b>' + Math.round(pot) + ' %</b> priemerného plánu v tíme</div>' : '') + '</div>';
   });
   if (!rows) return '';
@@ -33384,16 +33443,16 @@ function rp2LoadYoy(p) {
   var key = (p.year - 1) + 'Q' + p.q;
   if (RP2_YOY[key] || (typeof IS_DEV !== 'undefined' && IS_DEV)) return;
   RP2_YOY[key] = { loading: true, data: null };
-  var url = scriptUrl('action=getPlnenieAll&rok=' + (p.year - 1) + '&Q=' + p.q);
+  var url = rp2Url_('action=getPlnenieAll&rok=' + (p.year - 1) + '&Q=' + p.q);
   appQueuedFetchJson(url, { cache: 'no-store' }, 30000, 'background').then(function(d) {
     RP2_YOY[key] = { loading: false, data: (d && d.ok) ? d : null };
     rp2Schedule();
   }).catch(function() { RP2_YOY[key] = { loading: false, data: null }; });
 }
 function rp2CompareHtml(m, reps, p) {
-  var yr = PL_STATE.year || p.year, out = '';
+  var yr = rp2Year_() || p.year, out = '';
   // minulý kvartál
-  var qp = p.q - 1, qcp = qp >= 1 ? PL_STATE.qCache[qp] : null;
+  var qp = p.q - 1, qcp = qp >= 1 ? rp2QCache_(qp) : null;
   if (qcp && qcp.data && m.qWd > 0) {
     var ap = plnenieBuildAggregates(qcp.data, qp, reps), skp = ap && ap.sk;
     var wdp = plnenieWorkingDaysForMonths(yr, plnenieQuarterMonths(qp));
@@ -33423,7 +33482,7 @@ function rp2CompareHtml(m, reps, p) {
         var pr = yy.data.predaje[u], bm = pr && pr.byMonth; if (!bm) return;
         months.forEach(function(mm) { var row = bm[mm]; if (row) Object.keys(row).forEach(function(k) { prev += parseFloat(row[k]) || 0; }); });
       });
-      var qc = PL_STATE.qCache[p.q];
+      var qc = rp2QCache_(p.q);
       reps.forEach(function(u) {
         var pr = qc && qc.data && qc.data.predaje && qc.data.predaje[u], bm = pr && pr.byMonth; if (!bm) return;
         months.forEach(function(mm) { var row = bm[mm]; if (row) Object.keys(row).forEach(function(k) { cur += parseFloat(row[k]) || 0; }); });
@@ -33446,7 +33505,7 @@ function rp2DohLoad() {
   if (RP2_DOH.loading) return;
   if (typeof IS_DEV !== 'undefined' && IS_DEV) { if (!RP2_DOH.list) RP2_DOH.list = []; return; }
   RP2_DOH.loading = true;
-  var url = scriptUrl('action=getDohody');
+  var url = rp2Url_('action=getDohody');
   appFetchWithRetry(url, { retries: 1, timeoutMs: 24000, priority: 'critical', delayFn: function() { return 800; },
     fetcher: function() { return appQueuedFetchJson(url, { cache: 'no-store' }, 24000, 'critical'); } }).then(function(d) {
     RP2_DOH.loading = false;
@@ -33456,7 +33515,7 @@ function rp2DohLoad() {
 }
 function rp2DohSave(d, done) {
   RP2_DOH.busy = true; rp2Schedule();
-  var url = scriptUrl('action=saveDohoda&d=' + encodeURIComponent(JSON.stringify(d)));
+  var url = rp2Url_('action=saveDohoda&d=' + encodeURIComponent(JSON.stringify(d)));
   appQueuedFetchJson(url, { cache: 'no-store' }, 24000, 'critical').then(function(r) {
     RP2_DOH.busy = false;
     if (r && r.ok && r.dohoda) {
@@ -33473,11 +33532,11 @@ function rp2DohForRep(u, p) {
   return (RP2_DOH.list || []).filter(function(d) { return String(d.rep).toLowerCase() === String(u).toLowerCase(); });
 }
 function rp2DohToday() { var t = new Date(); return t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2); }
-function rp2DohQEnd(p) { var mm = plnenieQuarterMonths(p.q), y = PL_STATE.year || p.year, d = new Date(y, mm[mm.length - 1], 0); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+function rp2DohQEnd(p) { var mm = plnenieQuarterMonths(p.q), y = rp2Year_() || p.year, d = new Date(y, mm[mm.length - 1], 0); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 function rp2DohFmt(iso) { var d = rp2D(iso); return d ? d.getDate() + '. ' + (d.getMonth() + 1) + '. ' + d.getFullYear() : ''; }
 // Plnenie dohody: { txt, pct, unit } alebo null (text / iné obdobie)
 function rp2DohProgress(d, m, p) {
-  if (!m || !p || String(d.rok) !== String(PL_STATE.year || p.year) || String(d.q) !== String(p.q)) return null;
+  if (!m || !p || String(d.rok) !== String(rp2Year_() || p.year) || String(d.q) !== String(p.q)) return null;
   var x = d.produkt ? m.prods.filter(function(y) { return y.key === d.produkt; })[0] : null;
   var cur = x ? x.predajeEUR : m.actual, base = parseFloat(d.zaklad_eur);
   if (isNaN(base)) return null;
@@ -33526,7 +33585,7 @@ function rp2DohSubmit() {
   if (dr.typ !== 'text' && !(parseFloat(goal.replace(',', '.')) > 0)) { try { showSwToast('Cieľ musí byť číslo väčšie ako 0'); } catch (e) {} return; }
   var x = dr.produkt ? m.prods.filter(function(y) { return y.key === dr.produkt; })[0] : null;
   var old = dr.id ? (RP2_DOH.list || []).filter(function(z) { return z.id === dr.id; })[0] : null;
-  var payload = { id: dr.id || '', rep: RPT_VIEW.username, rok: (old ? old.rok : (PL_STATE.year || p.year)), q: (old ? old.q : p.q), produkt: dr.produkt || '', typ: dr.typ, ciel: goal.replace(',', '.'),
+  var payload = { id: dr.id || '', rep: RPT_VIEW.username, rok: (old ? old.rok : (rp2Year_() || p.year)), q: (old ? old.q : p.q), produkt: dr.produkt || '', typ: dr.typ, ciel: goal.replace(',', '.'),
                   termin: dr.termin || '', poznamka: dr.poznamka || '', stav: old ? old.stav : 'open' };
   if (!old) payload.zaklad_eur = x ? x.predajeEUR : m.actual;       // základ pre sledovanie plnenia
   rp2DohSave(payload, function(ok) { if (ok) RP2_DOH.draft = null; });
@@ -33537,7 +33596,7 @@ function rp2DohStav(id, stav) {
 }
 function rp2DohDel(id) {
   var run = function() {
-    var url = scriptUrl('action=deleteDohoda&id=' + encodeURIComponent(id));
+    var url = rp2Url_('action=deleteDohoda&id=' + encodeURIComponent(id));
     appQueuedFetchJson(url, { cache: 'no-store' }, 24000, 'critical').then(function(r) {
       if (r && r.ok) { RP2_DOH.list = (RP2_DOH.list || []).filter(function(x) { return x.id !== id; }); try { showSwToast('Dohoda zmazaná'); } catch (e) {} }
       else { try { showSwToast('Nepodarilo sa zmazať (zmazať môže autor alebo admin)'); } catch (e) {} }
@@ -33639,7 +33698,7 @@ function rp2CopyTalk() {
 // Rozbaliteľná sekcia. Stav (otvorená/zatvorená) sa pamätá. Obsah sa počíta LENIVO — až keď je sekcia otvorená (predtým
 // sa pri každom dosypaní dát prepočítalo všetko vrátane zatvorených sekcií, čo zasekávalo obrazovku).
 var RP2_LAZY = {};
-function RP2_ROSTER_OK() { var r = (typeof plnenieGetActiveReps === 'function') ? plnenieGetActiveReps() : []; return r.length >= 2; }
+function RP2_ROSTER_OK() { var r = rp2ActiveReps_(); return r.length >= 2; }
 function rp2Fold(key, badge, title, sub, inner, defOpen) {
   var st = RPT_VIEW.open || (RPT_VIEW.open = {});
   var open = (st[key] === undefined) ? !!defOpen : !!st[key];
@@ -33702,7 +33761,7 @@ function rp2MonthsHtml(x, m) {
   months.forEach(function(mm) {
     var v = rptViewMonthActual(reps, x.key, mm, p.year);
     if (v === null || v === undefined || v <= 0) return;
-    var part = rp2MonthPartial(mm, PL_STATE.year || p.year, m.cutoff);
+    var part = rp2MonthPartial(mm, rp2Year_() || p.year, m.cutoff);
     out.push('<span class="rp2-mchip">' + RPT_M[mm] + ' <b>' + rptFmtEur(v) + '</b>' + (part ? '*' : '') + '</span>');
   });
   return out.length > 1 ? '<div class="rp2-months">' + out.join('') + '</div>' : '';
@@ -33815,7 +33874,7 @@ function rp2ProductsHtml(m, reps) {
 
 // Tím: kto zaostáva a kde je jeho najväčšia diera
 function rp2TeamHtml(reps, p) {
-  var qc = PL_STATE.qCache[p.q]; if (!qc || !qc.data) return '';
+  var qc = rp2QCache_(p.q); if (!qc || !qc.data) return '';
   var fam = {}; try { plnenieFamilyKeys().forEach(function(k) { fam[k] = 1; }); } catch (e) {}
   var rows = reps.map(function(u) {
     var a = plnenieBuildAggregates(qc.data, p.q, [u]);
@@ -33826,7 +33885,7 @@ function rp2TeamHtml(reps, p) {
   }).filter(Boolean).sort(function(a, b) { return b.gap95 - a.gap95 || a.pct - b.pct; });
   if (!rows.length) return '';
   var body = rows.map(function(r) {
-    return '<tr class="rp2-click" onclick="rptViewSelectRep(\'' + r.u + '\')"><td>' + rp2Esc(rptShortName(MGR_REP_NAMES[r.u] || r.u)) + '</td><td class="n"><b style="color:' + rptColorHex(r.pct) + '">' + rp2Pct(r.pct) + '</b></td>' +
+    return '<tr class="rp2-click" onclick="rptViewSelectRep(\'' + r.u + '\')"><td>' + rp2Esc(rptShortName(rp2Name_(r.u) || r.u)) + '</td><td class="n"><b style="color:' + rptColorHex(r.pct) + '">' + rp2Pct(r.pct) + '</b></td>' +
       '<td class="n">' + (r.gap95 > 0 ? rptFmtEur(r.gap95) : '<span style="color:#059669">✓</span>') + '</td><td>' + (r.best ? rp2Esc(r.best.label) : '—') + '</td></tr>';
   }).join('');
   return '<div class="rv-card rp2-tblwrap"><table class="rp2-tbl"><thead><tr><th>Reprezentant</th><th class="n">Plnenie</th><th class="n">Do 95 %</th><th>Najväčšia diera</th></tr></thead><tbody>' + body + '</tbody></table>' +
@@ -33856,12 +33915,53 @@ function rp2MarketHtml(reps, m, p) {
   }).join('') + '</div>';
 }
 
+// ═══ Lekárne — príležitosti (gyn) ═══
+// Golem/Reagila nemajú tento koncept — gyn namiesto neho v Reportoch nahrádza sekcie
+// „Trh a konkurencia" a „Teritórium" (obe stoja na okresných PharmaData signáloch,
+// ktoré gyn nemá). Reaktivácia = lekáreň, ktorá kedysi kupovala a teraz 2 mesiace nekupuje.
+var RP2_LK = { cache: {}, loading: {} };
+function rp2LekarneLoad(username) {
+  if (!username || RP2_LK.cache[username] || RP2_LK.loading[username]) return;
+  if (typeof IS_DEV !== 'undefined' && IS_DEV) { RP2_LK.cache[username] = { pharmacies: [] }; return; }
+  RP2_LK.loading[username] = true;
+  var url = gynScriptUrl('action=getGynLekarne&login=' + encodeURIComponent(username) + '&osloveneMonth=' + encodeURIComponent(gynLkMonthKey()));
+  appQueuedFetchJson(url, { cache: 'no-store' }, 24000, 'background').then(function(d) {
+    delete RP2_LK.loading[username];
+    RP2_LK.cache[username] = (d && d.ok && Array.isArray(d.rows)) ? gynLkBuild(d.rows) : { pharmacies: [], err: true };
+    rp2Schedule();
+  }).catch(function() { delete RP2_LK.loading[username]; RP2_LK.cache[username] = { pharmacies: [], err: true }; rp2Schedule(); });
+}
+function rp2LekarneHtml(reps, p) {
+  if (RPT_VIEW.scope !== 'rep') return '<div class="rv-card"><div style="font-size:12.5px;color:#64748B">Príležitosti v lekárňach sa ukazujú v pohľade jedného reprezentanta.</div></div>';
+  var u = RPT_VIEW.username;
+  var built = RP2_LK.cache[u];
+  if (!built) { rp2LekarneLoad(u); return '<div class="rv-card"><div class="rp2-load"><span class="rp2-spin"></span>Načítavam lekárne…</div></div>'; }
+  if (built.err) return '<div class="rv-card"><div class="rv-empty">Lekárne sa nepodarilo načítať.</div></div>';
+  var cands = [];
+  (built.pharmacies || []).forEach(function(ph) {
+    Object.keys(ph.prods || {}).forEach(function(prodName) {
+      var pe = ph.prods[prodName];
+      if (pe && pe.isReaktivacia && !pe.oslovena) cands.push({ ph: ph, prod: prodName, maxOld: pe.maxOld || 0 });
+    });
+  });
+  if (!cands.length) return '<div class="rv-card"><div style="font-size:12.5px;color:#64748B">✓ Žiadna neoslovená lekáreň na reaktiváciu.</div></div>';
+  cands.sort(function(a, b) { return b.maxOld - a.maxOld; });
+  var rows = cands.slice(0, 6).map(function(c) {
+    return '<div class="rp2-sig"><span class="rp2-sig-ic">💤</span><div><b>' + rp2Esc(gynLkDispName(c.ph)) + '</b> — ' + rp2Esc(c.ph.mesto) + ', okres ' + rp2Esc(c.ph.okres) +
+      '<br>kedysi kupovala <b>' + rp2Esc(prodName_(c.prod)) + '</b> (až ' + Math.round(c.maxOld) + ' bal.), teraz 2 mesiace nič — zatiaľ neoslovená.</div></div>';
+  }).join('');
+  var more = cands.length > 6 ? '<div class="rp2-foot">+ ďalších ' + (cands.length - 6) + ' — celý zoznam v Lekárňach.</div>' : '';
+  function prodName_(p) { return (typeof LK_PROD_DISPLAY !== 'undefined' && LK_PROD_DISPLAY[p]) || p; }
+  return '<div class="rv-card rp2-sigs">' + rows + '</div>' + more;
+}
+
 // ── Hlavný render ──
 function rptViewRender(fromPharma) {
   var body = document.getElementById('rv-body'); if (!body) return;
   var p = rptViewPeriod();
   if (!rptViewReady(p)) {
-    body.innerHTML = appRingLoadingHtml('Načítavam report', 'Sťahujem plnenie za Q' + p.q + '…', 40);
+    rp2EnsureQuarter_(p.q);
+    body.innerHTML = (rp2Line() === 'gyn' ? '<button type="button" class="rp2-gyn-back" onclick="gynCloseReporty()">← Späť do Gyn</button>' : '') + appRingLoadingHtml('Načítavam report', 'Sťahujem plnenie za Q' + p.q + '…', 40);
     RPT_VIEW._pollTries = (RPT_VIEW._pollTries || 0) + 1;
     if (RPT_VIEW._pollTries < 60) setTimeout(function() { if (MGR_STATE.subtab === 'reporty') rptViewRender(); }, 500);
     return;
@@ -33876,6 +33976,7 @@ function rptViewRender(fromPharma) {
   var title = rptViewScopeTitle(), sub = rptViewScopeSub(reps, p);
   var ideas = (!isGroup && !m.closed) ? rp2DistrictIdeas(reps, m.prods, p) : null;
   var html = '';
+  if (rp2Line() === 'gyn') html += '<button type="button" class="rp2-gyn-back" onclick="gynCloseReporty()">← Späť do Gyn</button>';
   var warns = rp2Warnings(m, reps, p);
   html += rp2VerdictHtml(m, p, title, sub);
   html += rp2WarnCardHtml(warns);
@@ -33886,10 +33987,13 @@ function rptViewRender(fromPharma) {
   if (isGroup) html += rp2Fold('team', '👥', 'Tím — kto potrebuje pomoc', 'zoradené podľa toho, koľko chýba do 95 %', function() { return rp2TeamHtml(reps, p); }, false);
   if (!isGroup && RP2_ROSTER_OK()) html += rp2Fold('bench', '⚖️', 'Porovnanie s tímom', 'férovo — podľa plnenia plánu a potenciálu územia', function() { return rp2BenchHtml(m, reps, p) || '<div class="rv-card"><div class="rv-empty">Porovnanie nie je dostupné.</div></div>'; }, false);
   html += rp2Fold('cmp', '🕒', 'Vývoj oproti minulosti', 'minulý kvartál a minulý rok', function() { return rp2CompareHtml(m, reps, p) || '<div class="rv-card"><div class="rv-empty">Minulé obdobie nemá dáta na porovnanie.</div></div>'; }, false);
-  html += rp2Fold('mkt', '⚔️', 'Trh a konkurencia', 'kde rastie konkurent', function() { return rp2MarketHtml(reps, m, p); }, false);
+  // Golem/Reagila: okresné trhové signály z PharmaData. Gyn ich nemá — namiesto toho
+  // ukáže lekárne na reaktiváciu (jediný ekvivalent, ktorý gyn dnes má).
+  if (rp2Line() === 'gyn') html += rp2Fold('lek', '🏥', 'Lekárne — príležitosti', 'neoslovené lekárne na reaktiváciu', function() { return rp2LekarneHtml(reps, p); }, false);
+  else html += rp2Fold('mkt', '⚔️', 'Trh a konkurencia', 'kde rastie konkurent', function() { return rp2MarketHtml(reps, m, p); }, false);
   html += rp2Fold('talk', '💬', 'Na 1:1 rozhovor', 'zhrnutie, ktoré môžeš skopírovať do poznámky', function() { return rp2TalkHtml(m, p, title, ideas, warns); }, false);
   html += rp2Fold('trend', '📈', 'Vývoj v čase', 'graf predajov po mesiacoch', function() { var d = getData(), t = rvTrendCard(reps, d, p); return t || '<div class="rv-card"><div class="rv-empty">Málo dát na graf.</div></div>'; }, false);
-  html += rp2Fold('terr', '🗺️', 'Teritórium', 'kde je príležitosť', function() { return rvTerritoryHtml(reps, getData(), p); }, false);
+  if (rp2Line() !== 'gyn') html += rp2Fold('terr', '🗺️', 'Teritórium', 'kde je príležitosť', function() { return rvTerritoryHtml(reps, getData(), p); }, false);
   html += rp2Fold('wi', '🧮', 'Čo keby', 'simulácia dopadu na plán', function() { return '<div class="rv-card">' + rvWhatifHtml(reps, getData(), p) + '</div>'; }, false);
   body.innerHTML = html;
   body.classList.remove('rv-fade'); void body.offsetWidth; body.classList.add('rv-fade');
@@ -34669,7 +34773,7 @@ function rvSkScenarioHtml(reps, data, p) {
 // ══ REP REPORT ══
 function rptBuildRepHtml(username) {
   var p = rptPeriod();
-  var repName  = MGR_REP_NAMES[username] || username;
+  var repName  = rp2Name_(username) || username;
   var region   = (USERS_LOCAL[username] && USERS_LOCAL[username].region) || '';
   var groupLbl = MGR_AM_WEST.indexOf(username) !== -1 ? 'West' : 'East';
   var now = new Date();
@@ -34841,7 +34945,7 @@ function rptBuildAmHtml(isWest) {
   var qMonthsAm = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[p.q] || [];
 
   reps.forEach(function(username) {
-    var name   = MGR_REP_NAMES[username] || username;
+    var name   = rp2Name_(username) || username;
     var allV2  = rptAllVisits(username);
     var pl     = rptPlnenieForRep(username, p.q, p.month, p.year);
     var pct    = pl && pl.totalPct !== null ? pl.totalPct : null;
@@ -34964,7 +35068,7 @@ function rptBuildMgmtHtml() {
   var qMonthsMgmt = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[p.q] || [];
 
   allReps.forEach(function(username) {
-    var name   = MGR_REP_NAMES[username] || username;
+    var name   = rp2Name_(username) || username;
     var isWest = MGR_AM_WEST.indexOf(username) !== -1;
     var allV3  = rptAllVisits(username);
     var pl     = rptPlnenieForRep(username, p.q, p.month, p.year);
@@ -35189,7 +35293,7 @@ function downloadAllReportsPdf() {
     mgrShowToast('Dáta návštev sa ešte načítavajú. Počkaj chvíľu a skús znova.');
     return;
   }
-  if (!PL_STATE.qCache[p.q]) {
+  if (!rp2QCache_(p.q)) {
     mgrShowToast('Dáta plnenia za Q' + p.q + ' sa ešte načítavajú. Počkaj chvíľu a skús znova.');
     return;
   }
@@ -35232,7 +35336,7 @@ function downloadAllReportsPdf() {
         var html, navTitle;
         if (task.type === 'rep') {
           html = rptBuildRepHtml(task.username);
-          navTitle = rptShortName(MGR_REP_NAMES[task.username] || task.username);
+          navTitle = rptShortName(rp2Name_(task.username) || task.username);
         } else if (task.type === 'amwest') {
           html = rptBuildAmHtml(true);
           navTitle = 'AM West';
@@ -35395,8 +35499,8 @@ function downloadAllReportsPdf() {
   // Zostav zoznam PDF-iek
   var tasks = [];
   MGR_ALL.forEach(function(username) {
-    var name = (MGR_REP_NAMES[username] || username).replace(/\s+/g, '_');
-    tasks.push({ label: MGR_REP_NAMES[username] || username, filename: 'Report_' + name + '_' + monthSlug + '.pdf', html: null, type: 'rep', username: username });
+    var name = (rp2Name_(username) || username).replace(/\s+/g, '_');
+    tasks.push({ label: rp2Name_(username) || username, filename: 'Report_' + name + '_' + monthSlug + '.pdf', html: null, type: 'rep', username: username });
   });
   tasks.push({ label: 'AM West', filename: 'AM_West_' + monthSlug + '.pdf', html: null, type: 'amwest' });
   tasks.push({ label: 'AM East', filename: 'AM_East_' + monthSlug + '.pdf', html: null, type: 'ameast' });
