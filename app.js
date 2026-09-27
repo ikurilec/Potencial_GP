@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.89';
+var APP_VERSION = '2.88.90';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -22549,6 +22549,43 @@ function plnenieOnPredajeUpdated() {
   } catch(e){}
 }
 
+// Trhový podiel bol aktualizovaný — rovnaký princíp ako plnenieOnPredajeUpdated (predaje), len
+// pre pharma dáta. Bez tohto appka (Golem/Reagila/Gyn) po prvom zobrazení produktu v danej
+// oblasti+kvartáli tento kombo cachovala prakticky natrvalo (revalidácia len raz za session) —
+// admin klikol „Odoslať" pri trhovom podiele, ale kto si ho už raz v tejto session pozrel,
+// videl ho ďalej starý. Okresy (samostatná záložka) toto riešia už samé cez notif_pharma
+// verziu pri každom otvorení, preto sa sem nezasahuje.
+function pharmaOnDataUpdated() {
+  try {   // Golem/Reagila — hlavný panel Trhový podiel
+    if (typeof PHARMA_STATE !== 'undefined') {
+      PHARMA_STATE.cache = {};
+      PHARMA_STATE.revalidated = {};
+      if (PHARMA_STATE.open && PHARMA_STATE.activeCode && typeof loadPharmaDataNetwork === 'function') {
+        loadPharmaDataNetwork(PHARMA_STATE.activeCode, PHARMA_STATE.oblast, PHARMA_STATE.kvartal);
+      }
+    }
+    if (typeof PHARMA_GRAF_STATE !== 'undefined') PHARMA_GRAF_STATE.cache = {};
+  } catch(e){}
+  try {   // Gyn — vlastný panel Trhový podiel
+    if (typeof GYN_PHARMA_STATE !== 'undefined') {
+      var wasOpen = GYN_PHARMA_STATE.open, prodBefore = GYN_PHARMA_STATE.produkt, oblBefore = GYN_PHARMA_STATE.oblast, kvBefore = GYN_PHARMA_STATE.kvartal;
+      GYN_PHARMA_STATE.cache = {};
+      if (wasOpen && prodBefore && typeof gynPharmaFetchAndProcess_ === 'function' && typeof gynPharmaCacheKey === 'function') {
+        var key = prodBefore + '|' + oblBefore + '|' + kvBefore;
+        var persistentKey = (typeof GYN_CACHE_PREFIX !== 'undefined' ? GYN_CACHE_PREFIX : '') + gynPharmaCacheKey(prodBefore, oblBefore, kvBefore);
+        if (!GYN_PHARMA_STATE.loading[key]) gynPharmaFetchAndProcess_(key, persistentKey, true);
+      }
+    }
+  } catch(e){}
+  try {   // Reporty — signály trhu sa prepočítajú samy (obsahovo adresovaná pamäť); len si nech
+    // manažér, čo má Reporty práve otvorené, dotiahne trh znova namiesto toho, čo už raz videl.
+    if (typeof RPT_VIEW !== 'undefined') {
+      RPT_VIEW.pharmaLoadedOblasts = {};
+      if (typeof MGR_STATE !== 'undefined' && MGR_STATE.subtab === 'reporty' && typeof rp2Schedule === 'function') rp2Schedule();
+    }
+  } catch(e){}
+}
+
 function checkNotifications() {
   if (IS_DEV) return;
   var usePrefetch = notifUsesPrefetch();   // len Golem; Gyn aj Reagila fetchujú fresh
@@ -22560,6 +22597,7 @@ function checkNotifications() {
       try { if (serverTs) localStorage.setItem(settingsDateLsKey(n.key), serverTs); } catch(e){}
       if (serverTs && serverTs !== (localStorage.getItem(lsKey) || '')) {
         if (n.key === 'predaje') plnenieOnPredajeUpdated();
+        else if (n.key === 'pharma') pharmaOnDataUpdated();
         showNotifBanner(n.icon, n.text, lsKey, serverTs);
       }
       return;
@@ -22571,6 +22609,7 @@ function checkNotifications() {
         try { if (serverTs) localStorage.setItem(settingsDateLsKey(n.key), serverTs); } catch(e){}
         if (serverTs && serverTs !== (localStorage.getItem(lsKey) || '')) {
           if (n.key === 'predaje') plnenieOnPredajeUpdated();
+          else if (n.key === 'pharma') pharmaOnDataUpdated();
           showNotifBanner(n.icon, n.text, lsKey, serverTs);
         }
       })
@@ -22599,6 +22638,7 @@ function startNotifPolling() {
           if (!d || !d.ok || !d.value) return;
           if (d.value !== (localStorage.getItem(lsKey) || '')) {
             if (n.key === 'predaje') plnenieOnPredajeUpdated();
+            else if (n.key === 'pharma') pharmaOnDataUpdated();
             showNotifBanner(n.icon, n.text, lsKey, d.value);
           }
         })
@@ -22621,6 +22661,7 @@ document.addEventListener('visibilitychange', function() {
           if (!d || !d.ok || !d.value) return;
           if (d.value !== (localStorage.getItem(lsKey) || '')) {
             if (n.key === 'predaje') plnenieOnPredajeUpdated();
+            else if (n.key === 'pharma') pharmaOnDataUpdated();
             showNotifBanner(n.icon, n.text, lsKey, d.value);
           }
         })
@@ -38775,17 +38816,33 @@ function nstSeenTs(){ try { return parseInt(localStorage.getItem(nstSeenKey()) |
 function nstMarkSeen(){
   try {
     var newest = 0;
-    (NST.posts || []).forEach(function(p){ var t = nstTime(p.ts); if (t > newest) newest = t; });
+    (NST.posts || []).forEach(function(p){
+      var t = nstTime(p.ts); if (t > newest) newest = t;
+      (p.comments || []).forEach(function(c){ var ct = nstTime(c.ts); if (ct > newest) newest = ct; });
+    });
     if (newest) localStorage.setItem(nstSeenKey(), String(newest));
   } catch(e){}
   nstUpdateBadge();
 }
-// Počet nových cudzích príspevkov od poslednej návštevy
+// Počet nových vecí, ktoré sa ťa osobne týkajú, od poslednej návštevy: nový cudzí príspevok,
+// niekto ťa označil (@), odpovedal na tvoj komentár, alebo okomentoval tvoj príspevok. Predtým
+// odznak reagoval len na nové príspevky — komentár či odpoveď na teba appka nijako neukázala,
+// kým si sám neotvoril Nástenku (Ivan, 27.9.). Rovnaké priority ako pri push notifikáciách
+// (nstNotifyActivity_ na serveri), len bez 4. pravidla „vlákno, v ktorom si už písal" — pre
+// odznak stačí, že sa ťa to týka priamo.
 function nstUnread(){
   var seen = nstSeenTs(), me = nstUser(), n = 0;
   (NST.posts || []).forEach(function(p){
-    if (String(p.rep || '').toLowerCase() === me) return;
-    if (nstTime(p.ts) > seen) n++;
+    var mine = String(p.rep || '').toLowerCase() === me;
+    if (!mine && nstTime(p.ts) > seen) n++;
+    (p.comments || []).forEach(function(c){
+      if (String(c.rep || '').toLowerCase() === me) return;   // vlastný komentár sa nepočíta
+      if (nstTime(c.ts) <= seen) return;
+      var relevant = mine ||                                                    // komentár pod mojím príspevkom
+        String(c.replyLogin || '').toLowerCase() === me ||                      // odpoveď na môj komentár
+        (c.mentions || []).some(function(l){ return String(l || '').toLowerCase() === me; });   // označenie
+      if (relevant) n++;
+    });
   });
   return n;
 }
