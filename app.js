@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.1';
+var APP_VERSION = '2.89.2';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -32851,7 +32851,7 @@ function rptViewEurPerPkg(reps, planKey, p) {
 // ── Ovládanie (výber repa + rozsah) ──
 function rptViewRenderControls() {
   var c = document.getElementById('rv-controls'); if (!c) return;
-  var reps = (typeof plnenieGetActiveReps === 'function') ? plnenieGetActiveReps() : [];
+  var reps = rp2ActiveReps_();
   var opts = reps.map(function(u) {
     return '<option value="' + u + '"' + (u === RPT_VIEW.username ? ' selected' : '') + '>' + (rp2Name_(u) || u) + '</option>';
   }).join('');
@@ -33403,7 +33403,7 @@ function rp2MarketBench(code, me, roster) {
 function rp2BenchHtml(m, reps, p) {
   if (RPT_VIEW.scope !== 'rep') return '';
   var qc = rp2QCache_(p.q); if (!qc || !qc.data) return '';
-  var roster = (typeof plnenieGetActiveReps === 'function') ? plnenieGetActiveReps() : [];
+  var roster = rp2ActiveReps_();
   if (roster.length < 2) return '';
   var fam = {}; try { plnenieFamilyKeys().forEach(function(k) { fam[k] = 1; }); } catch (e) {}
   var per = {};
@@ -34057,7 +34057,7 @@ function rvBenchmarkHtml(reps, data, p) {
   }).join('');
   var rankHtml = '';
   if (RPT_VIEW.scope === 'rep' && reps.length === 1) {
-    var all = ((typeof plnenieGetActiveReps === 'function') ? plnenieGetActiveReps() : []).slice();
+    var all = rp2ActiveReps_().slice();
     var pcts = {}; all.forEach(function(u) { pcts[u] = rptViewData([u], p).totalPct; });
     var sorted = all.filter(function(u) { return pcts[u] !== null; }).sort(function(a, b) { return pcts[b] - pcts[a]; });
     var idx = sorted.indexOf(reps[0]);
