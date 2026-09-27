@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@700&display=swap">
-<link rel="stylesheet" href="dist/app.6ad92aac.css">
+<link rel="stylesheet" href="dist/app.dc65e24e.css">
 <!-- Firebase Cloud Messaging — natívne push notifikácie (defer aby nebrzdil štart) -->
 <script defer src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js"></script>
@@ -861,10 +861,32 @@
   </section>
 </div>
 <div class="satori-hint" id="satori-hint" aria-live="polite" aria-atomic="true"></div>
+<div class="satori-guide-overlay" id="avatar-nudge-overlay" aria-hidden="true">
+  <section class="satori-guide-modal an-modal" role="dialog" aria-modal="true" aria-labelledby="an-title">
+    <div class="satori-guide-aurora" aria-hidden="true"></div>
+    <div class="sg-shell an-shell">
+      <div class="sg-top">
+        <div class="sg-brand"><span>SATORI · UPOZORNENIE</span><button type="button" class="sg-close" aria-label="Zavrieť" onclick="avatarNudgeDismiss()">×</button></div>
+      </div>
+      <div class="sg-page an-page">
+        <div class="sg-page-inner">
+          <div class="sg-icon" aria-hidden="true">🥸</div>
+          <div class="sg-kicker">EŠTE STÁLE INKOGNITO</div>
+          <h2 class="sg-title" id="an-title">Stále nemáš avatara!</h2>
+          <p class="sg-copy">Tvoji kolegovia už majú svoje tváričky, len ty si tam ako záhadná silueta. Vyzeráš trochu ako agent v utajení — čo je super v akčnom filme, menej super na Nástenke či v rebríčku. Daj si 30 sekúnd a vyber si niečo, čo ťa vystihuje (aj keby to mali byť len okuliare a extravagantný účes).</p>
+        </div>
+      </div>
+      <div class="sg-footer an-footer">
+        <div class="sg-actions first"><button type="button" class="sg-next" onclick="avatarNudgeGo()">Nastaviť avatara →</button></div>
+        <button type="button" class="sg-skip" onclick="avatarNudgeDismiss()">Teraz nie, chcem zostať záhadou</button>
+      </div>
+    </div>
+  </section>
+</div>
 <div class="footer">Intern&#253; n&#225;stroj pre medic&#237;nskych reprezentantov<br><span style="font-size:10px;color:#B0BAC4">Designed &amp; developed by Ivan Kurilec &middot; 2026</span></div>
 </div>
 
-<script src="dist/app.9e502fc7.js"></script>
+<script src="dist/app.ac318ac0.js"></script>
 
 <!-- ── LOGOUT CONFIRM ── -->
 <div class="logout-overlay" id="logout-overlay">

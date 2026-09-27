@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.88.90';
+var APP_VERSION = '2.88.91';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -9902,12 +9902,14 @@ function loginSuccess(username, name, role, region, extra) {
     // One-time onboarding tip pre avatar — 4s delay aby WN/satori modal stihli skončiť
     setTimeout(function(){ try { hdrAvatarShowTipIfNeeded(); } catch(e){} }, 1500);
     setTimeout(function(){ try { satoriGuideSchedule(); } catch(e){} }, 1500);
+  setTimeout(function(){ try { avatarNudgeMaybeShow(); } catch(e){} }, 1500);
     appBootWaitForHomeData(user);
     return;
   }
   setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(false);}else{checkMilestone();} }, LOGIN_FOLLOWUP_DELAY_MS.satoriWn);
   usageEnterGolemHome(user);   // zaznamenaj úvodnú obrazovku (fix „0 s · nič nepozeral")
   setTimeout(function(){ try { satoriGuideSchedule(); } catch(e){} }, 1500);
+  setTimeout(function(){ try { avatarNudgeMaybeShow(); } catch(e){} }, 1500);
   // refreshBadgeFromSheets je nahradená loadInitData() vyššie — história sa načíta cez getInitData
   // Skontroluj notifikácie od admina — výsledky sú pravdepodobne už v cache z prefetchu
   checkNotifications();
@@ -10929,12 +10931,14 @@ function initLogin() {
       // One-time onboarding tip pre avatar — 4s delay aby modal-y stihli skončiť
       setTimeout(function(){ try { hdrAvatarShowTipIfNeeded(); } catch(e){} }, 1500);
       setTimeout(function(){ try { satoriGuideSchedule(); } catch(e){} }, 1500);
+  setTimeout(function(){ try { avatarNudgeMaybeShow(); } catch(e){} }, 1500);
       return;
     }
     usageEnterGolemHome(session);   // zaznamenaj úvodnú obrazovku (fix „0 s · nič nepozeral")
     setTimeout(function(){ updateHdrForUser(session); }, 300);
     setTimeout(function(){ if(satoriShouldShow()){satoriShow();}else if(wnShouldShow()){wnShow(false);}else{checkMilestone();} }, 600);
     setTimeout(function(){ try { satoriGuideSchedule(); } catch(e){} }, 1500);
+  setTimeout(function(){ try { avatarNudgeMaybeShow(); } catch(e){} }, 1500);
     // refreshBadgeFromSheets nahradená loadInitData() vyššie
     if (!REP_PL_STATE.loading && !REP_PL_STATE.loaded) {
       plnenieApplyDefaultPeriod(REP_PL_STATE, true);
@@ -12622,6 +12626,7 @@ function gynEnter(user) {
   setTimeout(function(){ try { hdrAvatarUpdateHint(); } catch(e){} }, 600);
   setTimeout(function(){ try { hdrAvatarShowTipIfNeeded(); } catch(e){} }, 1500);
   setTimeout(function(){ try { satoriGuideSchedule(); } catch(e){} }, 1500);
+  setTimeout(function(){ try { avatarNudgeMaybeShow(); } catch(e){} }, 1500);
   // Ponuka push notifikácií (gyn) — nie admin
   setTimeout(function(){ try { pushMaybePrompt(); } catch(e){} }, 3500);
   // In-app notifikácie (banner + polling) — admin je odosielateľ, ten ich nepotrebuje
@@ -21693,6 +21698,73 @@ function hdrAvatarUpdateHint() {
       if (s) renderSettings(s);
     }
   } catch(e){}
+}
+
+// ── Avatar nudge — vtipné upozornenie pre tých, čo si ešte nenastavili avatara.
+// Zobrazí sa raz za prihlásenie (kým nemajú avatara), v štýle SATORI sprievodcu,
+// s priamym prekliknutím do avatar customizera.
+var AVATAR_NUDGE_STATE = { open:false, restoreOverflow:'' };
+function avatarNudgeLine() {
+  try {
+    var s = getSession();
+    return (s && s.line === 'gyn') ? 'gyn' : (s && s.line === 'reagila') ? 'reagila' : 'gp';
+  } catch(e){ return 'gp'; }
+}
+function avatarNudgeSessionKey() {
+  try {
+    var s = getSession(); if(!s || !s.username) return '';
+    return 'avatar_nudge_shown_' + avatarNudgeLine() + '_' + s.username;
+  } catch(e){ return ''; }
+}
+function avatarNudgeAlreadyShown() {
+  try { var k = avatarNudgeSessionKey(); return !!(k && sessionStorage.getItem(k) === '1'); } catch(e){ return false; }
+}
+function avatarNudgeMarkShown() {
+  try { var k = avatarNudgeSessionKey(); if(k) sessionStorage.setItem(k, '1'); } catch(e){}
+}
+function avatarNudgeBlocked() {
+  if (AVATAR_NUDGE_STATE.open) return true;
+  var ids = ['login-screen','satori-overlay','wn-overlay','line-chooser-overlay','av-overlay','av-confirm-overlay',
+             'logout-overlay','confirm-overlay','settings-overlay','edit-overlay','detail-overlay','session-expired-overlay',
+             'rpt-progress-overlay','gpp-overlay','lk-prompt-overlay','lk-confirm-overlay','pharma-ms-overlay',
+             'pharma-okres-overlay','pl-prod-sheet','nst-compose','gyn-ms-picker-overlay','satori-guide-overlay'];
+  for (var i = 0; i < ids.length; i++) {
+    var el = document.getElementById(ids[i]);
+    if (el && el.classList.contains('show')) return true;
+  }
+  try { if (document.querySelector('.gyn-cal-sheet.show, .gyn-ms-picker-overlay.show')) return true; } catch(e){}
+  return false;
+}
+function avatarNudgeShow() {
+  var overlay = document.getElementById('avatar-nudge-overlay'); if (!overlay) return;
+  avatarNudgeMarkShown();
+  AVATAR_NUDGE_STATE.open = true;
+  AVATAR_NUDGE_STATE.restoreOverflow = document.body.style.overflow || '';
+  overlay.classList.add('show'); overlay.setAttribute('aria-hidden', 'false');
+  document.body.style.overflow = 'hidden';
+  try { haptic('selection'); } catch(e){}
+}
+function avatarNudgeClose() {
+  var overlay = document.getElementById('avatar-nudge-overlay');
+  if (overlay) { overlay.classList.remove('show'); overlay.setAttribute('aria-hidden', 'true'); }
+  if (AVATAR_NUDGE_STATE.open) document.body.style.overflow = AVATAR_NUDGE_STATE.restoreOverflow || '';
+  AVATAR_NUDGE_STATE.open = false;
+}
+function avatarNudgeDismiss() { avatarNudgeClose(); }
+function avatarNudgeGo() {
+  avatarNudgeClose();
+  setTimeout(function(){ try { avatarOpenCustomizer(); } catch(e){} }, 220);
+}
+function avatarNudgeMaybeShow() {
+  if (typeof userHasAvatar !== 'function' || userHasAvatar()) return;
+  if (avatarNudgeAlreadyShown()) return;
+  var attempts = 0;
+  (function waitForSafeMoment(){
+    if (avatarNudgeAlreadyShown()) return;
+    if (typeof userHasAvatar === 'function' && userHasAvatar()) return;
+    if (!avatarNudgeBlocked()) { avatarNudgeShow(); return; }
+    if (++attempts < 40) setTimeout(waitForSafeMoment, 350);
+  })();
 }
 
 // One-time onboarding tooltip — ZRUŠENÉ.
