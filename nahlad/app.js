@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.3';
+var APP_VERSION = '2.89.4';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -32709,7 +32709,8 @@ function rptViewOpen() {
 
 function rptViewAllowedScopes() {
   var r = MGR_STATE.role;
-  if (rp2Line() === 'reagila' || rp2Line() === 'gyn') return [['rep','Reprezentant'],['sk','Celá línia']];   // Reagila a Gyn nemajú rozdelenie West/East
+  if (rp2Line() === 'gyn') return [['rep','Reprezentant'],['pill','PILL'],['patch','PATCH'],['sk','Celá línia']];
+  if (rp2Line() === 'reagila') return [['rep','Reprezentant'],['sk','Celá línia']];   // Reagila nemá rozdelenie West/East
   if (r === 'amwest') return [['rep','Reprezentant'],['west','AM West']];
   if (r === 'ameast') return [['rep','Reprezentant'],['east','AM East']];
   return [['rep','Reprezentant'],['west','AM West'],['east','AM East'],['sk','Celé SK']];
@@ -32719,6 +32720,8 @@ function rptViewScopeReps() {
   switch (RPT_VIEW.scope) {
     case 'west': return MGR_AM_WEST.slice();
     case 'east': return MGR_AM_EAST.slice();
+    case 'pill':
+    case 'patch': return rp2ActiveReps_().filter(function(u) { return rp2GynTeam_(u) === RPT_VIEW.scope; });
     case 'sk':   return (rp2Line() === 'reagila' || rp2Line() === 'gyn') ? rp2ActiveReps_().slice() : MGR_ALL.slice();
     default:     return RPT_VIEW.username ? [RPT_VIEW.username] : [];
   }
@@ -32728,6 +32731,8 @@ function rptViewScopeTitle() {
   switch (RPT_VIEW.scope) {
     case 'west': return 'AM West';
     case 'east': return 'AM East';
+    case 'pill': return 'Tím PILL';
+    case 'patch': return 'Tím PATCH';
     case 'sk':   return (rp2Line() === 'reagila' || rp2Line() === 'gyn') ? 'Celá línia' : 'Celé SK';
     default:     return rp2Name_(RPT_VIEW.username) || RPT_VIEW.username || '—';
   }
@@ -32985,6 +32990,13 @@ function rp2Name_(u) { return (typeof USERS_LOCAL !== 'undefined' && USERS_LOCAL
 function rp2ActiveReps_() {
   if (rp2Line() === 'gyn') return (typeof GYN_STATE !== 'undefined' && GYN_STATE.repList || []).map(function(r) { return String(r.login || '').toLowerCase(); }).filter(Boolean);
   return (typeof plnenieGetActiveReps === 'function') ? plnenieGetActiveReps() : [];
+}
+// Gyn tím podľa regiónu: ...PI = pill, ...PA = patch.
+function rp2GynTeam_(u) {
+  var reg = (USERS_LOCAL[u] && USERS_LOCAL[u].region) || '';
+  if (!reg && typeof GYN_STATE !== 'undefined') { var r = (GYN_STATE.repList || []).filter(function(x) { return String(x.login || '').toLowerCase() === u; })[0]; reg = r ? r.region : ''; }
+  reg = String(reg || '').trim().toUpperCase();
+  return /PA$/.test(reg) ? 'patch' : /PI$/.test(reg) ? 'pill' : '';
 }
 // { data, aggregates } pre daný kvartál — Golem/Reagila z PL_STATE.qCache (predpočítané inde),
 // gyn z GYN_APP.plCache (agregáty sa dopočítajú JIT a zacachujú, kým referencia na dáta nezmení).
