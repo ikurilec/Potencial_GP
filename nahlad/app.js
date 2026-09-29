@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.4';
+var APP_VERSION = '2.89.5';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -37139,9 +37139,14 @@ function lkBuildDevVariants(list) {
   });
 }
 
+var LK_VARIANT_LOADING = false, _lkVariantReq = 0;
 function lkLoadVariants(login, dataset) {
   lkVariantsReset();
+  LK_VARIANT_LOADING = true;
+  var req = ++_lkVariantReq;
   var done = function() {
+    if (req !== _lkVariantReq) return;   // medzitým sa spustilo novšie načítanie (iný rep / zoznam)
+    LK_VARIANT_LOADING = false;
     LK_VARIANT_LOADED = true;
     var sh = document.getElementById('lk-filter-sheet');
     if (sh && sh.classList.contains('show')) lkFilterRenderSheet();
@@ -37152,7 +37157,7 @@ function lkLoadVariants(login, dataset) {
   };
   if (typeof IS_DEV !== 'undefined' && IS_DEV) { lkBuildDevVariants(dataset); done(); return; }
   appQueuedFetchJson(scriptUrl('action=getLekarneDetail&login=' + encodeURIComponent(login || '') + '&_t=' + Date.now()), { cache: 'no-store' }, undefined, 'background')
-    .then(function(d) { if (d && d.ok && d.rows) lkIngestDetail(d.rows); done(); })
+    .then(function(d) { if (req === _lkVariantReq && d && d.ok && d.rows) lkIngestDetail(d.rows); done(); })
     .catch(function() { done(); });
 }
 
@@ -37908,12 +37913,9 @@ function lkOpenDetail(key, isRefresh) {
     missingHtml +
     '<div class="lk-section-lbl">História nákupov</div>' +
     '<div style="background:#fff;border-radius:12px;padding:8px 14px;box-shadow:0 2px 8px rgba(15,23,42,.06)">' +
-      (LK_VARIANT_LOADED ? monthsHtml :
-        '<div class="lk-detail-loading">' +
-          '<div class="lk-detail-spin"></div>' +
-          '<div class="lk-detail-loading-t">Načítavam dáta<span class="lk-loading-dots"></span></div>' +
-          '<div class="lk-detail-loading-s">vrátane balení a počtu kusov — chvíľku počkajte…</div>' +
-        '</div>') +
+      // Mesiace sú hneď k dispozícii — balenia (Lekarne_Detail) sa len doplnia, keď dorazia.
+      (!LK_VARIANT_LOADED && LK_VARIANT_LOADING ? '<div class="lk-detail-loading-s" style="padding:6px 0 4px">Dopĺňam rozpad podľa balení…</div>' : '') +
+      (monthsHtml || '<div class="lk-detail-loading-s" style="padding:10px 0">Bez nákupov v sledovanom období.</div>') +
     '</div>';
 
   var d = document.getElementById('lk-detail');
