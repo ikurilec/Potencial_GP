@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.5';
+var APP_VERSION = '2.89.6';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -20049,15 +20049,18 @@ _backRegister('mgr-subtab', function () {
   return document.body.classList.contains('manager-mode') && !!MGR_STATE.subtab && MGR_STATE.subtab !== 'plnenie';
 });
 
-// Reagila (KAM reprezentant): domov = Plnenie, NIE Golem formulár.
-// Back z Lekární/Rebríčka → Plnenie; back z Plnenia → nič (neodkrývaj formulár pod ním).
+// Reagila (KAM reprezentant): domov = Plnenie ALEBO Domov, NIE Golem formulár.
+// Back z Lekární/Rebríčka → Plnenie; back z Plnenia alebo Domova → nič
+// (neodkrývaj formulár pod nimi). Predtým tu Domov chýbal úplne — Späť naň
+// padal cez tento layer bez zásahu (isOpen() vrátil false), takže o kúsok
+// nižšie v reťazci sa mohol vynoriť základný formulár spod prekryvov.
 var _reagilaBackDecision = null;
 _backRegister('reagila-nav', function () {
   var d = _reagilaBackDecision;
   _reagilaBackDecision = null;
   if (d === 'lk-detail') { closeLkarneDetail(); return; }
   if (d === 'to-plnenie') { try { openRepPlnenie(); } catch (e) {} return; }
-  // d === 'noop' → Plnenie je domov, Späť nerobí nič (ale je "handled")
+  // d === 'noop' → Plnenie/Domov je domov, Späť nerobí nič (ale je "handled")
 }, function () {
   if (!(document.body.classList.contains('reagila-line') && !document.body.classList.contains('manager-mode'))) {
     _reagilaBackDecision = null; return false;
@@ -20072,7 +20075,8 @@ _backRegister('reagila-nav', function () {
     _reagilaBackDecision = 'to-plnenie'; return true;
   }
   var _rPl = document.getElementById('rep-plnenie-overlay');
-  if (_rPl && _rPl.classList.contains('show')) { _reagilaBackDecision = 'noop'; return true; }
+  var _rDnes = document.getElementById('dnes-overlay');
+  if ((_rPl && _rPl.classList.contains('show')) || (_rDnes && _rDnes.classList.contains('show'))) { _reagilaBackDecision = 'noop'; return true; }
   _reagilaBackDecision = null;
   return false;
 });
