@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.6';
+var APP_VERSION = '2.89.7';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -39143,7 +39143,7 @@ function openNastenka(){
   try { repTabSetActive('nastenka-overlay'); } catch (e) {}
   nstRender();
   try { ov.scrollTop = 0; } catch(e){}
-  nstFetch(function(){ NST.loading = false; nstRender(); nstMarkSeen(); }, 'critical', true);
+  nstFetch(function(){ NST.loading = false; nstRender(); if (!NST.err) nstMarkSeen(); }, 'critical', true);
   setTimeout(function(){ try { satoriGuideMaybeHint('board'); } catch(e){} }, 550);
 }
 function closeNastenka(){
@@ -39174,45 +39174,57 @@ function nstApply(posts){
 function nstFetch(cb, priority, forceFresh){
   if (typeof IS_DEV !== 'undefined' && IS_DEV){
     NST.loaded = true;
-    setTimeout(function(){ nstDevSeed(); NST.loading = false; if (cb) cb(); }, 900);   // dev — simuluj sieť
+    setTimeout(function(){ nstDevSeed(); NST.loading = false; if (cb) cb(); }, 900);
     return;
   }
   if (!nstUser()){ if (cb) cb(); return; }
-  var reqId = (++NST._reqId);
-  var reqCtx = appLineCapture();
-  NST.loading = true;
-  var url;
-  try { var params = 'action=getNastenka'; if (forceFresh) params += '&fresh=1&_refresh=' + Date.now(); url = nstUrl(params); }
-  catch(e){ NST.loading = false; if (cb) cb(); return; }
-  // Pri výslovnom otvorení alebo potiahnutí nesmie Nástenka čakať na dva
-  // už bežiace prefetchy. Tie môžu mať na Apps Scripte cold start a predtým
-  // po 15 s zobrazili starú lokálnu kartu napriek tomu, že server už mal novú.
-  var request = priority === 'critical'
-    ? appFetchJson(url, { cache: 'no-store' }, APP_FETCH_TIMEOUT_MS)
-    : appQueuedFetchJson(url, { cache: 'no-store' }, undefined, 'background');
-  request
-    .then(function(d){
-      if (reqId !== NST._reqId || !appLineContextActive(reqCtx)) return;
-      NST.loading = false;
-      if (d && d.ok && Array.isArray(d.posts)){ NST.err = ''; nstApply(d.posts); if (Array.isArray(d.people)) nstApplyPeople(d.people); }
-      else NST.err = (d && d.error) ? String(d.error) : '';
-      if (cb) cb();
-    })
-    .catch(function(){
-      if (reqId !== NST._reqId || !appLineContextActive(reqCtx)) return;
-      NST.loading = false; NST.loaded = true;
-      if (!NST.posts.length) NST.err = 'offline';
-      if (cb) cb();
-    });
-  // poistka — keby odpoveď nikdy neprišla, kostru nenechávaj visieť donekonečna
+  // Prefetch nesmie zneplatniť obnovu, ktorú používateľ práve otvoril.
+  if (priority !== 'critical' && NST.loading && NST._foregroundReq === NST._reqId){
+    if (cb) cb();
+    return;
+  }
+  var reqId = (++NST._reqId), reqCtx = appLineCapture();
+  if (priority === 'critical') NST._foregroundReq = reqId;
   clearTimeout(NST._loadT);
-  NST._loadT = setTimeout(function(){
-    if (reqId === NST._reqId && appLineContextActive(reqCtx) && NST.loading){
-      NST.loading = false; NST.loaded = true;
-      nstRenderList();
-      try { dnesRefreshIfOpen(); } catch(e){}
-    }
-  }, 15000);
+  NST.loading = true; NST.err = '';
+  function active(){ return reqId === NST._reqId && appLineContextActive(reqCtx); }
+  function render(){
+    try { nstRenderList(); } catch(e){}
+    try { nstUpdateBadge(); } catch(e){}
+    try { dnesRefreshIfOpen(); } catch(e){}
+  }
+  function finish(d, error){
+    if (!active()) return;
+    NST.loading = false; NST.loaded = true;
+    NST._foregroundReq = 0;
+    if (!error && d && d.ok && Array.isArray(d.posts)){
+      NST.err = ''; nstApply(d.posts);
+      if (Array.isArray(d.people)) nstApplyPeople(d.people);
+    } else NST.err = error || (d && d.error) || 'invalid-response';
+    render();
+    if (cb) cb();
+  }
+  function attempt(number){
+    if (!active()) return;
+    var request;
+    try {
+      var params = 'action=getNastenka';
+      if (forceFresh) params += '&fresh=1&_refresh=' + Date.now() + '-' + number;
+      var url = nstUrl(params);
+      request = priority === 'critical'
+        ? appFetchJson(url, { cache: 'no-store' }, 25000)
+        : appQueuedFetchJson(url, { cache: 'no-store' }, undefined, 'background');
+    } catch(e){ finish(null, 'request-error'); return; }
+    // Iba sieťové zlyhanie zopakujeme; odmietnutú reláciu servera nie.
+    Promise.resolve(request).then(function(d){ finish(d); }, function(){
+      if (!active()) return;
+      if (priority === 'critical' && number === 0){
+        setTimeout(function(){ attempt(1); }, 700);
+      } else finish(null, 'offline');
+    });
+  }
+  render();
+  attempt(0);
 }
 
 
@@ -39365,7 +39377,15 @@ function nstRenderList(){
   var list = document.getElementById('nst-list');
   if (!list) return;
   var items = nstFiltered();
+  var refreshError = '';
+  if (NST.err && !NST.loading){
+    appRegisterRetry('nst-refresh', function(){ nstFetch(null, 'critical', true); });
+    refreshError = appErrorCardHtml({ id: 'nst-refresh', title: 'Nepodarilo sa obnoviť nástenku',
+      desc: NST.posts.length ? 'Zobrazené príspevky môžu byť staršie. Skús obnovu znova.' : 'Skontroluj pripojenie a skús obnovu znova.',
+      retryLabel: 'Obnoviť nástenku' });
+  }
   if (!items.length){
+    if (refreshError){ list.innerHTML = refreshError; return; }
     // ešte sa ťahajú dáta → kostra príspevkov (nie „prázdna nástenka")
     if (NST.loading){ list.innerHTML = nstSkeletonHtml(); return; }
     var filtered = (NST.q || NST.cat !== 'all' || NST.prod !== 'all' || NST.region !== 'all');
@@ -39381,7 +39401,7 @@ function nstRenderList(){
   Array.prototype.forEach.call(list.querySelectorAll('.nst-mentionable'), function(x){ if (x.id && x.value) _keep[x.id] = x.value; });
   try { if (_act && _act.classList && _act.classList.contains('nst-mentionable')){ _actId = _act.id; _actPos = _act.selectionStart; } } catch(e){}
   nstMentionHide();
-  list.innerHTML = (NST.loading ? '<div class="nst-refresh"><span class="nst-spin"></span>Obnovujem…</div>' : '') +
+  list.innerHTML = refreshError + (NST.loading ? '<div class="nst-refresh"><span class="nst-spin"></span>Obnovujem…</div>' : '') +
     items.map(nstPostHtml).join('');
   Object.keys(_keep).forEach(function(k){ var x = document.getElementById(k); if (x) x.value = _keep[k]; });
   if (_actId){ var fx = document.getElementById(_actId); if (fx){ try { fx.focus({ preventScroll: true }); fx.setSelectionRange(_actPos, _actPos); } catch(e){} } }
