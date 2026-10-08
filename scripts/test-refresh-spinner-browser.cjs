@@ -15,4 +15,3 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT || 'playwright-core');
  assert.equal(result.sameNode,true);assert.equal(result.sameAnimation,true);assert.ok(result.elapsed>900,JSON.stringify(result));
  console.log('Browser: spinner node and animation preserved across polling, elapsed='+Math.round(result.elapsed)+'ms');await browser.close();
 })().catch(e=>{console.error(e);process.exit(1)});
-
