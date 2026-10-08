@@ -25,7 +25,7 @@ for(const file of ['app.js','nahlad/app.js']){
  let transportResolve,rendered=0,active=true;
  Object.assign(ctx,{PL_STATE:{year:2026,q:3,loaded:true,loading:false,data:{ok:true,value:1},qCache:{3:{data:{ok:true,value:1}},2:{data:{ok:true,value:9}}}},
  REP_PL_STATE:{},MGR_STATE:{subtab:'plnenie'},PL_PROD_SHEET_STATE:{open:false},appLineCapture:()=>({line:'gp'}),appLineContextActive:()=>active,
- getSession:()=>({username:'synthetic'}),_plLsKey:(y,q)=>'sales-'+y+'-'+q,_plRepLsKey:(u,y,q)=>'rep-'+u+'-'+q,
+ getSession:()=>({username:'synthetic'}),plnenieCalendarPeriod:()=>({q:3,year:2026}),_plLsKey:(y,q)=>'sales-'+y+'-'+q,_plRepLsKey:(u,y,q)=>'rep-'+u+'-'+q,
  scriptUrl:p=>p,appFetchWithRetry:()=>new Promise(r=>transportResolve=r),
  plnenieBuildAggregates:d=>({value:d.value}),lbLastCompletedQ:()=>3,lbScopeReps:()=>[],
  plnenieRunSilentRender:fn=>fn(),plnenieRenderAll:()=>rendered++,repPlnenieRender:()=>rendered++,rp2Schedule:()=>{},

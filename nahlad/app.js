@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.9';
+var APP_VERSION = '2.89.10';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -508,9 +508,9 @@ function appCheckSalesQuarter(rep,period){
   var url=scriptUrl('action=getPlnenieAll&rok='+year+'&Q='+q+'&fresh=1&_check='+Date.now());
   function apply(d){
     if(!appLineContextActive(ctx) || state.year!==year)return;
-    var agg=plnenieBuildAggregates(d,q,rep?[login]:undefined);
+    var agg=plnenieBuildAggregates(d,q,rep?[login]:undefined,year);
     state.qCache[q]={data:d,aggregates:agg};
-    if(q===lbLastCompletedQ())LB_PLNENIE_CACHE={q:q,data:d,aggregates:plnenieBuildAggregates(d,q,lbScopeReps())};
+    if(year===plnenieCalendarPeriod().year && q===lbLastCompletedQ())LB_PLNENIE_CACHE={q:q,data:d,aggregates:plnenieBuildAggregates(d,q,lbScopeReps(),year)};
     if(MGR_STATE.subtab==='reporty')rp2Schedule();
     if(state.q===q){
       state.data=d;state.aggregates=agg;state.loaded=true;
@@ -531,13 +531,14 @@ function appCheckSalesQuarter(rep,period){
 }
 function appCheckHome(){
   var session=getSession();if(!session)return;
+  plnenieRefreshPlansAndRerender();
   if(!NST.loading)nstFetch(null,'critical',true);
   stockPreload(true);
   try{gynCalSync();}catch(e){}
   if(session.line==='gyn'){
     // Rebríček zdieľa fullLine dáta aj s domovskou kartou.
     delete GYN_LB.dataReady[gynLbLastCompletedQ()];
-    gynLbEnsureData(gynLbLastCompletedQ(),gynPlnenieCacheKey(GYN_APP.year,gynLbLastCompletedQ())+'|lb-fullLine');
+    gynLbEnsureData(gynLbLastCompletedQ(),gynPlnenieCacheKey(plnenieCalendarPeriod().year,gynLbLastCompletedQ())+'|lb-fullLine');
     return;
   }
   appCheckSalesQuarter(appRole()==='gp');
@@ -4741,7 +4742,7 @@ function dnesPlnenie() {
     var dp = plnenieDefaultPeriod();
     var q = dp.q, year = dp.year;
     var agg = null;
-    if (REP_PL_STATE.qCache && REP_PL_STATE.qCache[q] && REP_PL_STATE.qCache[q].aggregates) {
+    if (REP_PL_STATE.year===year && REP_PL_STATE.qCache && REP_PL_STATE.qCache[q] && REP_PL_STATE.qCache[q].aggregates) {
       agg = REP_PL_STATE.qCache[q].aggregates;
     } else {
       var cached = _plLsLoad(_plRepLsKey(uname, year, q));
@@ -4768,9 +4769,9 @@ function dnesPlnenieTim() {
     var agg = null;
     // Najprv pamäť, potom localStorage — karta musí byť na obrazovke hneď
     // pri prvom vykreslení, nie až keď dobehne sieť.
-    if (PL_STATE.qCache && PL_STATE.qCache[q] && PL_STATE.qCache[q].aggregates) {
+    if (PL_STATE.year===year && PL_STATE.qCache && PL_STATE.qCache[q] && PL_STATE.qCache[q].aggregates) {
       agg = PL_STATE.qCache[q].aggregates;
-    } else if (PL_STATE.aggregates && PL_STATE.q === q) {
+    } else if (PL_STATE.year===year && PL_STATE.aggregates && PL_STATE.q === q) {
       agg = PL_STATE.aggregates;
     } else {
       var cached = _plLsLoad(_plLsKey(year, q));
@@ -4815,7 +4816,7 @@ function dnesPlnenieGyn() {
     var q = dp.q, year = dp.year;
     // Rebríček potrebuje dáta celej línie. Po prihlásení sa prednačítajú do
     // GYN_LB cache; bežná cache Plnenia reprezentanta obsahuje iba jeho región.
-    var data = (GYN_LB.plCache && GYN_LB.plCache[q]) ||
+    var data = (year===plnenieCalendarPeriod().year && GYN_LB.plCache && GYN_LB.plCache[q]) ||
                (GYN_APP.plCache && GYN_APP.plCache[q]) || gynCacheRead(gynPlnenieCacheKey(year, q));
     if (!data) return null;
     try { gynPreprocessData(data); } catch (e) {}
@@ -4847,7 +4848,7 @@ function dnesPlnenieProdukty() {
     var q = dp.q, year = dp.year;
     var agg = null;
     if (appRole() === 'gyn') {
-      var data = (GYN_APP.plCache && GYN_APP.plCache[q]) || gynCacheRead(gynPlnenieCacheKey(year, q));
+      var data = (GYN_APP.year===year && GYN_APP.plCache && GYN_APP.plCache[q]) || gynCacheRead(gynPlnenieCacheKey(year, q));
       if (!data) return null;
       gynPreprocessData(data);
       var sess = getSession() || {};
@@ -4868,11 +4869,11 @@ function dnesPlnenieProdukty() {
         var p = products[key]; p.key = key; p.pct = p.planEUR > 0 ? p.predajeEUR / p.planEUR * 100 : null; return p;
       })};
     } else if (appRole() === 'mgr') {
-      if (PL_STATE.qCache && PL_STATE.qCache[q] && PL_STATE.qCache[q].aggregates) agg = PL_STATE.qCache[q].aggregates;
+      if (PL_STATE.year===year && PL_STATE.qCache && PL_STATE.qCache[q] && PL_STATE.qCache[q].aggregates) agg = PL_STATE.qCache[q].aggregates;
       else { var c = _plLsLoad(_plLsKey(year, q)); if (c && c.agg) agg = c.agg; }
     } else {
       var uname = (getSession() || {}).username;
-      if (REP_PL_STATE.qCache && REP_PL_STATE.qCache[q] && REP_PL_STATE.qCache[q].aggregates) agg = REP_PL_STATE.qCache[q].aggregates;
+      if (REP_PL_STATE.year===year && REP_PL_STATE.qCache && REP_PL_STATE.qCache[q] && REP_PL_STATE.qCache[q].aggregates) agg = REP_PL_STATE.qCache[q].aggregates;
       else if (uname) { var c2 = _plLsLoad(_plRepLsKey(uname, year, q)); if (c2 && c2.agg) agg = c2.agg; }
     }
     if (!agg || !agg.products || !agg.products.length) return null;
@@ -4994,16 +4995,16 @@ function dnesRebricekPct(pct) {
   return (pct === null || pct === undefined) ? '—' : pct.toFixed(1).replace('.', ',') + ' %';
 }
 function dnesRebricekData() {
-  var dp = plnenieDefaultPeriod();
+  var dp = plnenieCalendarPeriod();
   var q = dp.q, year = dp.year;
   var data = null;
   try {
     if (appRole() === 'mgr') {
-      if (PL_STATE.qCache && PL_STATE.qCache[q] && PL_STATE.qCache[q].data) data = PL_STATE.qCache[q].data;
+      if (PL_STATE.year===year && PL_STATE.qCache && PL_STATE.qCache[q] && PL_STATE.qCache[q].data) data = PL_STATE.qCache[q].data;
       if (!data) { var c = _plLsLoad(_plLsKey(year, q)); if (c && c.data) data = c.data; }
     } else {
       var uname = (getSession() || {}).username;
-      if (REP_PL_STATE.qCache && REP_PL_STATE.qCache[q] && REP_PL_STATE.qCache[q].data) data = REP_PL_STATE.qCache[q].data;
+      if (REP_PL_STATE.year===year && REP_PL_STATE.qCache && REP_PL_STATE.qCache[q] && REP_PL_STATE.qCache[q].data) data = REP_PL_STATE.qCache[q].data;
       if (!data && uname) { var c2 = _plLsLoad(_plRepLsKey(uname, year, q)); if (c2 && c2.data) data = c2.data; }
     }
   } catch (e) {}
@@ -5012,12 +5013,12 @@ function dnesRebricekData() {
 // Moje miesto v rebríčku gyn línie — plnenie za aktuálny kvartál.
 function dnesRebricekGyn(me) {
   try {
-    var dp = plnenieDefaultPeriod();
+    var dp = plnenieCalendarPeriod();
     var q = dp.q, year = dp.year;
     var reps = gynLbScopeReps();
     if (!reps.length) reps = GYN_STATE.repList || [];
     var data = (GYN_LB.plCache && GYN_LB.plCache[q]) ||
-               (GYN_APP.plCache && GYN_APP.plCache[q]) || gynCacheRead(gynPlnenieCacheKey(year, q));
+               (GYN_APP.year===year && GYN_APP.plCache && GYN_APP.plCache[q]) || gynCacheRead(gynPlnenieCacheKey(year, q));
     if (!data || !reps.length) return null;
     try { gynPreprocessData(data); } catch (e) {}
     var rank = reps.map(function (r) {
@@ -5161,11 +5162,11 @@ function dnesRepSummaryBandPct(p, q, year) {
 function dnesRepSummaryBuild(username) {
   var role = appRole();
   var u = String(username || '').toLowerCase();
-  var dp = plnenieDefaultPeriod(), q = dp.q, year = dp.year;
+  var dp = plnenieCalendarPeriod(), q = dp.q, year = dp.year;
   var info = dnesRepSummaryInfo(u, role), data = null, overall = null, products = [];
 
   if (role === 'gyn') {
-    data = (GYN_APP.plCache && GYN_APP.plCache[q]) || gynCacheRead(gynPlnenieCacheKey(year, q));
+    data = (GYN_LB.plCache && GYN_LB.plCache[q]) || (GYN_APP.year===year && GYN_APP.plCache && GYN_APP.plCache[q]) || gynCacheRead(gynPlnenieCacheKey(year, q));
     if (!data) return { loading:true, role:role, username:u, name:info.name, region:info.region, q:q, year:year, products:[] };
     try { gynPreprocessData(data); } catch (e) {}
     var ga = gynBuildRepAgg(u, data, q);
@@ -5181,7 +5182,7 @@ function dnesRepSummaryBuild(username) {
     var source = dnesRebricekData();
     if (!source || !source.data) return { loading:true, role:role, username:u, name:info.name, region:info.region, q:q, year:year, products:[] };
     data = source.data; q = source.q; year = source.year;
-    var pa = plnenieBuildAggregates(data, q, [u]);
+    var pa = plnenieBuildAggregates(data, q, [u],year);
     var rr = pa.reps && pa.reps[0];
     overall = { pct:rr ? rr.pct : null, plan:rr ? rr.planEUR : 0, sales:rr ? rr.predajeEUR : 0 };
     var plan = (data.plan && (data.plan[u] || data.plan[username])) || {};
@@ -5408,7 +5409,8 @@ function dnesOpenFullRepDetail() {
   if (m.role === 'gyn') { openTeamPlnenie(m.username); return; }
   appGoPlnenie();
   setTimeout(function() {
-    PL_STATE.year = m.year; PL_STATE.q = m.q;
+    plnenieSetDefaultState(PL_STATE,{year:m.year,q:m.q});
+    PL_STATE._planDefaultAuto=false;
     var cached = PL_STATE.qCache && PL_STATE.qCache[m.q];
     if (cached) { PL_STATE.data = cached.data; PL_STATE.aggregates = cached.aggregates; PL_STATE.loaded = true; }
     plnenieOpenDetail(m.username);
@@ -5427,7 +5429,8 @@ function dnesOpenRepProduct(username, productKey) {
   if (m.role === 'gyn') { openTeamPlnenie(m.username); return; }
   appGoPlnenie();
   setTimeout(function() {
-    PL_STATE.year = m.year; PL_STATE.q = m.q;
+    plnenieSetDefaultState(PL_STATE,{year:m.year,q:m.q});
+    PL_STATE._planDefaultAuto=false;
     var cached = PL_STATE.qCache && PL_STATE.qCache[m.q];
     if (cached) { PL_STATE.data = cached.data; PL_STATE.aggregates = cached.aggregates; PL_STATE.loaded = true; }
     plnenieOpenDetail(m.username);
@@ -5786,7 +5789,7 @@ function dnesRender() {
   var reb = dnesRebricek();
   if (reb && reb.kind === 'tim' && !(reb.top && reb.top.length)) reb = null;
   if (!reb) {
-    var dpR = plnenieDefaultPeriod();
+    var dpR = plnenieCalendarPeriod();
     // rola==='mgr' závisí od triedy 'manager-mode' na <body>, ktorú nastaví až
     // mgrEnter() — pri prvom vykreslení Domova z cache (pred jej dobehnutím)
     // to u manažéra/admina ešte nemusí byť nastavené. mgrDetectRole() číta
@@ -6380,7 +6383,7 @@ function teamPlnenieAllowed(){
   } catch(e) { return false; }
 }
 function teamPlnenieQuarter(){ if(teamPlnenieIsGyn()) return gynLbLastCompletedQ(); return (typeof plnenieCurrentQ === 'function') ? plnenieCurrentQ() : Math.ceil((new Date().getMonth() + 1) / 3); }
-function teamPlnenieYear(){ return teamPlnenieIsGyn() ? GYN_APP.year : new Date().getFullYear(); }
+function teamPlnenieYear(){ return new Date().getFullYear(); }
 function teamPlnenieCacheKey(){ var s = getSession() || {}; return 'team_plnenie_west_east_v2_' + String(s.username || 'anonymous').toLowerCase() + '_' + teamPlnenieYear() + '_' + teamPlnenieQuarter(); }
 function teamPlnenieGroupKeys(){ return teamPlnenieIsGyn() ? ['pill','patch'] : ['rep west','rep east']; }
 function teamPlnenieFmtPct(value){ return value === null || value === undefined || !isFinite(value) ? '—' : Number(value).toLocaleString('sk-SK', {maximumFractionDigits:1}) + ' %'; }
@@ -6440,7 +6443,7 @@ function teamPlnenieApplyPayload(payload){ TEAM_PL_STATE.payload=payload; teamPl
 // cesta). Sem sa len normalizujú do rovnakého tvaru ako Golemov payload.
 function teamPlnenieGynPayload(reps, plnenie, q){
   return {
-    Q: q, rok: GYN_APP.year,
+    Q: q, rok: teamPlnenieYear(),
     reps: reps.map(function(rep){
       var agg = gynBuildRepAgg(rep.login, plnenie, q);
       var line = /^[A-Z]{2}PA$/i.test(String(rep.region||'').trim()) ? 'patch' : 'pill';
@@ -6455,7 +6458,7 @@ function teamPlnenieGynPayload(reps, plnenie, q){
 function teamPlnenieLoadGyn(){
   var q = gynLbLastCompletedQ();
   gynLbEnsureRepList();
-  var key = gynPlnenieCacheKey(GYN_APP.year, q) + '|lb-fullLine';
+  var key = gynPlnenieCacheKey(teamPlnenieYear(), q) + '|lb-fullLine';
   gynLbEnsureData(q, key);
   var reps = gynLbScopeReps(), plnenie = GYN_LB.plCache[q];
   if(!GYN_LB.repFetched || !reps.length || !plnenie){
@@ -10081,8 +10084,9 @@ function loginSuccess(username, name, role, region, extra) {
   startNotifPolling();
   // Plnenie Domova spusti okamžite. Rebríček môže dobehnúť na pozadí o chvíľu,
   // ale karta Plnenie už nesmie čakať na používateľovo otvorenie panelu.
+  plnenieApplyDefaultPeriod(REP_PL_STATE,true);
   if (!REP_PL_STATE.loading && !REP_PL_STATE.loaded) {
-    plnenieApplyDefaultPeriod(REP_PL_STATE, true);
+
     repPlnenieLoad();
   }
   setTimeout(function(){
@@ -11104,8 +11108,9 @@ function initLogin() {
     setTimeout(function(){ try { satoriGuideSchedule(); } catch(e){} }, 1500);
   setTimeout(function(){ try { avatarNudgeMaybeShow(); } catch(e){} }, 1500);
     // refreshBadgeFromSheets nahradená loadInitData() vyššie
+    plnenieApplyDefaultPeriod(REP_PL_STATE,true);
     if (!REP_PL_STATE.loading && !REP_PL_STATE.loaded) {
-      plnenieApplyDefaultPeriod(REP_PL_STATE, true);
+
       repPlnenieLoad();
     }
     setTimeout(function(){
@@ -12314,22 +12319,24 @@ function gynEnsureQuarterData(qq, onReady, force){
   // GYN_CACHE_PREFIX MUSÍ sedieť s gynCacheRead/gynCacheWrite — inak DataStore
   // a gynBootstrap (ktorý cache zapisuje priamo cez gynCacheWrite) skončia na
   // DVOCH rôznych localStorage kľúčoch pre tie isté dáta.
+  var year=GYN_APP.year,ctx=appLineCapture();
+  function active(){return appLineContextActive(ctx)&&GYN_APP.year===year;}
   var key = GYN_CACHE_PREFIX + gynPlnenieCacheKey(GYN_APP.year, qq);
-  function populate(d){ gynPreprocessData(d); GYN_APP.plCache[qq] = d; }
+  function populate(d){ if(!active())return false;gynPreprocessData(d);GYN_APP.plCache[qq]=d;return true; }
   // F2-1: DataStore vráti cache OKAMŽITE aj keď je staršia než DS_CACHE_MAX_AGE_MS
   // (predtým raz uložený starý záznam blokoval akékoľvek ďalšie overenie zo servera
   // navždy) a fetch na revalidáciu spustí na pozadí sám.
   var r = DataStore[force?'refresh':'get'](key, {
     fetcher: function(){
       GYN_APP.plLoading[qq] = true;
-      return appQueuedFetchJson(gynScriptUrl('action=getPlnenieAll&rok=' + GYN_APP.year + '&Q=' + qq), { cache:'no-store' }, undefined, 'critical')
-        .then(function(d){ delete GYN_APP.plLoading[qq]; return d; },
-              function(err){ delete GYN_APP.plLoading[qq]; throw err; });
+      return appQueuedFetchJson(gynScriptUrl('action=getPlnenieAll&rok=' + year + '&Q=' + qq), { cache:'no-store' }, undefined, 'critical')
+        .then(function(d){ if(active())delete GYN_APP.plLoading[qq]; return d; },
+              function(err){ if(active())delete GYN_APP.plLoading[qq]; throw err; });
     },
     maxAgeMs: DS_CACHE_MAX_AGE_MS,
-    onFresh: function(d){ populate(d); if(onReady) onReady(); }
+    onFresh: function(d){ if(populate(d)&&onReady)onReady(); }
   });
-  if(r.data){ populate(r.data); if(onReady) setTimeout(onReady, 0); }
+  if(r.data && populate(r.data) && onReady)setTimeout(function(){if(active())onReady();},0);
 }
 
 // Predošlá predikcia produktovej skupiny (na zobrazenie pohybu „posunula sa z … na …").
@@ -13010,7 +13017,7 @@ function gynHomeBootstrapReady(){
   try {
     var q = GYN_APP.q;
     return !!(GYN_APP.plCache && GYN_APP.plCache[q] &&
-      GYN_LB.plCache && GYN_LB.plCache[q] && gynLbScopeReps().length);
+      GYN_LB.plCache && GYN_LB.plCache[gynLbLastCompletedQ()] && gynLbScopeReps().length);
   } catch(e){ return false; }
 }
 function gynOpenDnesWhenReady(force) {
@@ -13185,6 +13192,7 @@ function gynNavTo(tab) {
     try { gynCalSync(); } catch(e){}   // refresh zo Sheets pri vstupe
   }
   var prevNav = GYN_APP.nav;
+  if(tab==='plnenie')plnenieApplyDefaultPeriod(GYN_APP,true);
   GYN_APP.nav = tab;
   try { appTabSyncFromTab(tab); } catch(e){}
   if(tab === 'leaderboard'){
@@ -13209,13 +13217,15 @@ function gynNavTo(tab) {
 }
 
 function gynSwitchQ(q) {
+  if(q<1||q>plnenieMaxQ(GYN_APP.year))return;
+  GYN_APP._planDefaultAuto=false;
   GYN_APP.q = q;
   var gynEl = document.getElementById('gyn-content');
   if(gynEl) gynEl.querySelectorAll('.pl-q-tab').forEach(function(b){
     var bq = parseInt(b.getAttribute('data-q'));
     b.classList.toggle('active',   bq === q);
-    b.classList.toggle('current',  bq === plnenieCurrentQ());
-    b.classList.toggle('future',   bq > plnenieCurrentQ());
+    b.classList.toggle('current',  bq === plnenieDefaultPeriod().q && GYN_APP.year===plnenieDefaultPeriod().year);
+    b.classList.toggle('future',   bq > plnenieMaxQ(GYN_APP.year));
   });
   gynRenderContent(getSession());
 }
@@ -13247,10 +13257,10 @@ function gynActivityShow(el, user) {
 
 // ── Q tabs HTML — rovnaké triedy ako Golem ──
 function gynQTabsHtml() {
-  var curQ = plnenieCurrentQ();
+  var dp=plnenieDefaultPeriod(),curQ=dp.year===GYN_APP.year?dp.q:0,maxQ=plnenieMaxQ(GYN_APP.year);
   return '<div class="pl-q-tabs">' +
     [1,2,3,4].map(function(q){
-      var cls = (q === GYN_APP.q ? ' active' : '') + (q === curQ ? ' current' : '') + (q > curQ ? ' future' : '');
+      var cls = (q === GYN_APP.q ? ' active' : '') + (q === curQ ? ' current' : '') + (q > maxQ ? ' future' : '');
       return '<button class="pl-q-tab'+cls+'" data-q="'+q+'" onclick="gynSwitchQ('+q+')">Q'+q+'</button>';
     }).join('') +
   '</div>';
@@ -13273,7 +13283,7 @@ function gynPreloadAllQuarters() {
     if(GYN_APP.plLoading[q]) return;     // už sa načítava (gynPlnenieShow)
     var reqId = ((GYN_APP._plReqIds[q] || 0) + 1);
     GYN_APP._plReqIds[q] = reqId;
-    function active(){ return appLineContextActive(preloadCtx) && GYN_APP._plReqIds[q] === reqId; }
+    function active(){ return appLineContextActive(preloadCtx) && GYN_APP.year===year && GYN_APP._plReqIds[q] === reqId; }
     GYN_APP.plLoading[q] = true;
     appQueuedFetchJson(gynScriptUrl('action=getPlnenieAll&rok='+year+'&Q='+q), undefined, APP_FETCH_TIMEOUT_PRELOAD_MS, 'background')
       .then(function(data){
@@ -13313,13 +13323,8 @@ function gynPreloadAllQuarters() {
 function gynLbPreload() {
   try {
     if(typeof gynLbEnsureRepList === 'function') gynLbEnsureRepList();
-    var currentQ = GYN_APP.q;
-    var currentKey = gynPlnenieCacheKey(GYN_APP.year, currentQ) + '|lb-fullLine';
-    gynLbEnsureData(currentQ, currentKey);
-    var lastQ = gynLbLastCompletedQ();
-    if(lastQ < 1 || lastQ === currentQ) return;
-    var key = gynPlnenieCacheKey(GYN_APP.year, lastQ) + '|lb-fullLine';
-    gynLbEnsureData(lastQ, key);
+    var q=gynLbLastCompletedQ();
+    gynLbEnsureData(q,gynPlnenieCacheKey(plnenieCalendarPeriod().year,q)+'|lb-fullLine');
   } catch(e){}
 }
 
@@ -13346,7 +13351,7 @@ function gynPlnenieShow(el, user, _attempt) {
   PL_SUPPRESS_COUNT_ANIM = false;
   PL_SUPPRESS_COUNT_ANIM_UNTIL = 0;
   if(!_attempt) GYN_APP._currentLoadFailed = false;
-  var q = GYN_APP.q;
+  var q = GYN_APP.q,year=GYN_APP.year;
   var cacheKey = gynPlnenieCacheKey(GYN_APP.year, q);
   var cached = GYN_APP.plCache[q] || gynCacheRead(cacheKey);
   if(cached) {
@@ -13360,7 +13365,7 @@ function gynPlnenieShow(el, user, _attempt) {
   var reqId = ((GYN_APP._plReqIds[q] || 0) + 1);
   GYN_APP._plReqIds[q] = reqId;
   var reqCtx = appLineCapture();
-  function active(){ return appLineContextActive(reqCtx) && GYN_APP._plReqIds[q] === reqId; }
+  function active(){ return appLineContextActive(reqCtx) && GYN_APP.year===year && GYN_APP._plReqIds[q] === reqId; }
   GYN_APP.plLoading[q] = true;
   appFetchJson(gynScriptUrl('action=getPlnenieAll&rok='+GYN_APP.year+'&Q='+q), undefined, 12000)
     .then(function(data){
@@ -16374,7 +16379,7 @@ function gynLbEnsureData(q, key, _attempt){
   }
   delete GYN_LB.failed[q];
   GYN_LB.plLoading[q] = true;
-  appQueuedFetchJson(gynScriptUrl('action=getPlnenieAll&rok=' + GYN_APP.year + '&Q=' + q + '&fullLine=1'), undefined, APP_FETCH_TIMEOUT_PRELOAD_MS, 'critical')
+  appQueuedFetchJson(gynScriptUrl('action=getPlnenieAll&rok=' + plnenieCalendarPeriod().year + '&Q=' + q + '&fullLine=1'), undefined, APP_FETCH_TIMEOUT_PRELOAD_MS, 'critical')
     .then(function(d){
       delete GYN_LB.plLoading[q];
       // Apps Script pri chybe vracia HTTP 200 s {ok:false}. Táto odpoveď nie je
@@ -16431,11 +16436,11 @@ function gynLbRender(el){
       '<div class="gyn-empty-sub">Rebríček bude dostupný po skončení Q1.</div></div>');
     return;
   }
-  var qLabel = 'Q' + lastQ + ' ' + GYN_APP.year;
+  var qLabel = 'Q' + lastQ + ' ' + plnenieCalendarPeriod().year;
 
   // Spusti čerstvý fetch dát pre správny Q (ak ešte nedobehol) — na pozadí, aj keď
   // nižšie už vykreslíme z cache (gynLbEnsureData ju natiahne synchrónne, viď nižšie).
-  var key = gynPlnenieCacheKey(GYN_APP.year, lastQ) + '|lb-fullLine';
+  var key = gynPlnenieCacheKey(plnenieCalendarPeriod().year, lastQ) + '|lb-fullLine';
   gynLbEnsureData(lastQ, key);
   var data = GYN_LB.plCache[lastQ];
   if(data) gynPreprocessData(data);
@@ -24010,14 +24015,7 @@ function plnenieCurrentQ() {
   return Math.ceil(m / 3);
 }
 
-// ── Default ZOBRAZENÝ kvartál + rok (nie kalendárny) ─────────────────────────────
-// Pri prelome kvartálu (napr. 1.7.) sa nemá automaticky skočiť na nový Q, kým doň ešte
-// nepribudli predaje. Riadime sa dátumom poslednej notifikácie „predaje boli aktualizované"
-// (per línia). Z dátumu odvodíme posledný mesiac s dátami — rovnaká logika ako predikcia:
-// deň < 15 = nahral CELÝ predošlý mesiac, deň >= 15 = priebežný mesiac (k 15., resp. k 22.
-// v poslednom mesiaci Q to dorieši plnenieCurMonthMode). Kým posledné dáta patria do staršieho
-// Q, default zostane na ňom; na nový Q sa prepne, až keď pribudnú jeho predaje.
-// Bez známeho dátumu → kalendárny Q (pôvodné správanie, poistka).
+// ── Dátum predajov pre štítky a predikciu (nikdy neurčuje predvolený Q) ──
 var PLNENIE_DATA_TS = {};   // notifLineTag() → ISO ts z Google Sheet configu (posledné „predaje nahraté")
 // Autoritatívny zdroj = Google Sheet config (notif_predaje), NIE prefetch/localStorage cache
 // (tá je z času načítania stránky — keď admin odošle notifikáciu neskôr, je stará). Načíta sa
@@ -24051,69 +24049,146 @@ function plnenieLastPredajeTs() {
   }
   return ts;
 }
-// ROOT CAUSE (Ivan, 13.9.): appka ukazovala Q2 aj keď v Sheetoch dávno boli
-// predaje za Q3 (vo všetkých troch líniách) — signál, z ktorého si táto
-// funkcia predtým odvodzovala "posledný kvartál s dátami" (notif_predaje),
-// je len časová pečiatka toho, KEDY admin naposledy KLIKOL na tlačidlo
-// „Odoslať" pri push notifikácii „Dáta predajov boli aktualizované"
-// (plnenieDoSetNotif) — nie signál z importu dát samotného. Kliknutie na
-// notifikáciu a skutočná prítomnosť dát v Sheete sú dve rôzne veci, ktoré
-// sa vedia rozísť (notifikácia sa nemusí poslať vôbec, alebo sa pošle
-// neskoro) — presne to sa tu stalo. Default je teraz vždy kalendárny
-// kvartál; plnenieLastPredajeTs() ostáva nezmenená (banner "dáta
-// aktualizované" aj predikcia ju používajú ďalej, len už nie výber Q).
-function plnenieDefaultPeriod() {
-  var now = new Date();
-  return { q: plnenieCurrentQ(), year: now.getFullYear() };
+// Fulfilment defaults only. Calendar, leaderboard and team fulfilment keep their own Q.
+var PLNENIE_PLAN_PERIODS = {};
+var PLNENIE_PLAN_CHECKS = {};
+function plnenieCalendarPeriod(){ var now=new Date();return {q:Math.ceil((now.getMonth()+1)/3),year:now.getFullYear()}; }
+function plneniePlanScope(){ var s=getSession()||{};return 'pl_plan_period_v1_'+(s.line||'gp')+'_'+String(s.username||'_').toLowerCase(); }
+function plneniePlanCandidates(){
+  var p=plnenieCalendarPeriod(),list=[];
+  for(var i=0;i<5;i++){list.push({q:p.q,year:p.year});p={q:p.q===1?4:p.q-1,year:p.q===1?p.year-1:p.year};}
+  return list;
 }
+function plnenieHasPlans(data){
+  if(!data || data.ok!==true || !data.plan || typeof data.plan!=='object' || Array.isArray(data.plan))return null;
+  return Object.keys(data.plan).some(function(u){
+    var plan=data.plan[u];if(!plan || typeof plan!=='object' || Array.isArray(plan))return false;
+    return Object.keys(plan).some(function(k){var v=Number(plan[k]);return isFinite(v)&&v>0;});
+  });
+}
+function plneniePlanKnown(){
+  var key=plneniePlanScope();
+  if(!PLNENIE_PLAN_PERIODS[key]){
+    var stored=null;try{stored=dsRead(key);}catch(e){}
+    PLNENIE_PLAN_PERIODS[key]=(stored && stored.data && typeof stored.data==='object')?stored.data:{};
+  }
+  return PLNENIE_PLAN_PERIODS[key];
+}
+function plnenieDefaultPeriod(){
+  var known=plneniePlanKnown(),s=getSession()||{},list=plneniePlanCandidates();
+  for(var i=0;i<list.length;i++){
+    var p=list[i],key=p.year+':'+p.q;
+    if(known[key]===true)return p;
+    if(known[key]===false)continue;
+    // Seed positive evidence only; an own-region cache cannot prove that a whole line has no plans.
+    var data=null;
+    try{
+      if(s.line==='gyn')data=gynCacheRead(gynPlnenieCacheKey(p.year,p.q)+'|lb-fullLine')||gynCacheRead(gynPlnenieCacheKey(p.year,p.q));
+      else {var cached=_plLsLoad(_plRepLsKey(s.username,p.year,p.q))||_plLsLoad(_plLsKey(p.year,p.q));data=cached&&cached.data;}
+    }catch(e){}
+    if(plnenieHasPlans(data)===true)return p;
+  }
+  return plnenieCalendarPeriod();
+}
+function plneniePlansCheck(){
+  if(typeof IS_DEV!=='undefined'&&IS_DEV)return Promise.resolve(plnenieDefaultPeriod());
+  var scope=plneniePlanScope(),ctx=appLineCapture(),checkKey=scope+'|'+ctx.epoch;
+  if(PLNENIE_PLAN_CHECKS[checkKey])return PLNENIE_PLAN_CHECKS[checkKey];
+  var known=plneniePlanKnown(),s=getSession()||{},list=plneniePlanCandidates();
+  function active(){return appLineContextActive(ctx)&&scope===plneniePlanScope();}
+  function next(i){
+    if(i>=list.length || !active())return Promise.resolve(plnenieDefaultPeriod());
+    var p=list[i],query='action=getPlnenieAll&rok='+p.year+'&Q='+p.q+'&fresh=1&_planCheck='+Date.now();
+    if(s.line==='gyn')query+='&fullLine=1';
+    var url=s.line==='gyn'?gynScriptUrl(query):scriptUrl(query);
+    return appFetchWithRetry(url,{retries:1,timeoutMs:25000,priority:'critical',delayFn:function(){return 700;},active:active}).then(function(data){
+      if(!active())return plnenieDefaultPeriod();
+      var has=plnenieHasPlans(data);if(has===null)throw new Error('Plan availability response unavailable');
+      known[p.year+':'+p.q]=has;dsWrite(scope,{data:known});
+      if(s.line!=='gyn'){
+        dsWrite(_plRepLsKey(s.username,p.year,p.q),{data:data});
+        var isMgr=typeof mgrDetectRole==='function'&&mgrDetectRole(s),state=isMgr?PL_STATE:REP_PL_STATE;
+        if(isMgr)dsWrite(_plLsKey(p.year,p.q),{data:data});
+        if(state.year===p.year)state.qCache[p.q]={data:data,aggregates:plnenieBuildAggregates(data,p.q,isMgr?undefined:[s.username],p.year)};
+      }else{
+        gynPreprocessData(data);
+        gynCacheWrite(gynPlnenieCacheKey(p.year,p.q)+'|lb-fullLine',data);
+        if(p.year===plnenieCalendarPeriod().year)GYN_LB.plCache[p.q]=data;
+      }
+      if(has)return p;
+      return next(i+1);
+    });
+  }
+  var promise=next(0).catch(function(){return plnenieDefaultPeriod();}).then(function(period){
+    if(PLNENIE_PLAN_CHECKS[checkKey]===promise)delete PLNENIE_PLAN_CHECKS[checkKey];return period;
+  });
+  PLNENIE_PLAN_CHECKS[checkKey]=promise;return promise;
+}
+function plnenieMaxQ(year){var p=plnenieCalendarPeriod();return year<p.year?4:(year===p.year?p.q:0);}
+function plnenieSetDefaultState(state,period){
+  var yearChanged=state.year!==period.year,changed=yearChanged||state.q!==period.q;
+  if(yearChanged){
+    state.qCache={};state.plCache={};state.loaded=false;state.loading=false;
+    state._loadId=(state._loadId||0)+1;
+    if(typeof window!=='undefined'){window.PL_DOM_CACHE={};window.REP_PL_DOM_CACHE={};}
+    if(state._loadWatchdog){clearTimeout(state._loadWatchdog);state._loadWatchdog=null;}
+    if(state===GYN_APP){state.plLoading={};state._plReqIds={};state._bootstrapId=(state._bootstrapId||0)+1;}
+  }
+  state.q=period.q;state.year=period.year;
+  if(state!==GYN_APP){
+    var user=getSession()||{},key=state===PL_STATE?_plLsKey(period.year,period.q):_plRepLsKey(user.username,period.year,period.q);
+    var persisted=_plLsLoad(key);
+    if(persisted&&persisted.data){
+      state.qCache[period.q]={data:persisted.data,aggregates:plnenieBuildAggregates(persisted.data,period.q,state===PL_STATE?undefined:[user.username],period.year)};
+    }
+    var cached=state.qCache&&state.qCache[state.q];
+    state.data=cached?cached.data:null;state.aggregates=cached?cached.aggregates:null;state.loaded=!!cached;
+  }
+  return changed;
+}
+function plnenieRefreshPlansAndRerender(){
+  var ctx=appLineCapture(),scope=plneniePlanScope();
+  return plneniePlansCheck().then(function(dp){
+    if(!appLineContextActive(ctx)||scope!==plneniePlanScope())return;
+    var s=getSession()||{},state=s.line==='gyn'?GYN_APP:((typeof mgrDetectRole==='function'&&mgrDetectRole(s))?PL_STATE:REP_PL_STATE);
+    if(state._planDefaultAuto===false){try{dnesRefreshIfOpen();}catch(e){}return;}
+    var oldYear=state.year,changed=plnenieSetDefaultState(state,dp);
+    if(changed || s.line!=='gyn'){
+      if(s.line==='gyn'){
+        if(oldYear!==dp.year)gynBootstrap(s);
+        else if(GYN_APP.nav==='plnenie')gynRenderContent(s);
+        else gynEnsureQuarterData(dp.q,function(){try{dnesRefreshIfOpen();}catch(e){}},true);
+      }else if(state===PL_STATE){
+        plnenieUpdateQTabs();
+        if(state.loaded){if(MGR_STATE.subtab==='plnenie')plnenieRunSilentRender(plnenieRenderAll);}
+        else if(!state.loading)plnenieLoadAllQuarters();
+        else if(MGR_STATE.subtab==='plnenie')plnenieRenderLoading();
+      }else{
+        repPlnenieUpdateQTabs();
+        var ov=document.getElementById('rep-plnenie-overlay');
+        if(state.loaded){if(ov&&ov.classList.contains('show'))plnenieRunSilentRender(repPlnenieRender);}
+        else if(!state.loading)repPlnenieLoad();
+        else if(ov&&ov.classList.contains('show'))repPlnenieRenderLoading();
+      }
+    }
+    try{dnesRefreshIfOpen();}catch(e){}
+  });
+}
+
 function plnenieDefaultQ() { return plnenieDefaultPeriod().q; }
 // Nastav default obdobie (Q + rok) do state objektu (REP_PL_STATE / PL_STATE / GYN_APP).
 // Bez force prepíše len ak Q ešte nie je zvolené (zachová voľbu používateľa).
 function plnenieApplyDefaultPeriod(state, force) {
-  if (!state) return;
-  if (!force && state.q) return;
-  var dp = plnenieDefaultPeriod();
-  state.q = dp.q;
-  state.year = dp.year;
-  // Pri prvom nastavení (force) dotiahni ČERSTVÝ dátum z Google Sheet configu a ak sa tým
-  // zmení default kvartál, prekresli otvorené Plnenie (config je autoritatívny, cache môže byť stará).
-  if (force && typeof plnenieRefreshDataTsAndRerender === 'function') {
-    setTimeout(plnenieRefreshDataTsAndRerender, 50);
+  if(!state || (!force && state.q))return;
+  state._planDefaultAuto=true;
+  plnenieSetDefaultState(state,plnenieDefaultPeriod());
+  if(force){
+    var ctx=appLineCapture(),scope=plneniePlanScope();
+    setTimeout(function(){if(appLineContextActive(ctx)&&scope===plneniePlanScope()&&state._planDefaultAuto!==false){plnenieRefreshDataTsAndRerender();plnenieRefreshPlansAndRerender();}},50);
   }
 }
-// Dotiahni čerstvý dátum „predaje nahraté" z configu; ak posunie default kvartál, prekresli
-// aktuálne otvorené Plnenie (manažér / gyn). Rep otvára Plnenie na dopyt — dovtedy je už dotiahnuté.
-function plnenieRefreshDataTsAndRerender() {
-  plnenieDataTsFetch(function(changed){
-    if (!changed) return;
-    var dp = plnenieDefaultPeriod();
-    // Gyn
-    if (typeof GYN_APP !== 'undefined') {
-      var gv = document.getElementById('gyn-view');
-      if (gv && gv.classList.contains('show')) {
-        if (GYN_APP.year !== dp.year) GYN_APP.year = dp.year;
-        if (GYN_APP.q !== dp.q && typeof gynSwitchQ === 'function') { try { gynSwitchQ(dp.q); } catch(e){} }
-        return;
-      }
-    }
-    // Manažér (Golem/Reagila)
-    if (document.body.classList.contains('manager-mode') && typeof PL_STATE !== 'undefined' && !PL_STATE.detailRep) {
-      if (PL_STATE.year !== dp.year) PL_STATE.year = dp.year;
-      if (PL_STATE.q !== dp.q && typeof plnenieSwitchQ === 'function') { try { plnenieSwitchQ(dp.q); } catch(e){} }
-      return;
-    }
-    // Reprezentant (Golem/Reagila)
-    if (typeof REP_PL_STATE !== 'undefined') {
-      REP_PL_STATE.year = dp.year;
-      var repOv = document.getElementById('rep-plnenie-overlay');
-      var repOpen = repOv && repOv.classList.contains('show');
-      if (REP_PL_STATE.q !== dp.q) {
-        if (repOpen && typeof repPlnenieSwitchQ === 'function') { try { repPlnenieSwitchQ(dp.q); } catch(e){} }
-        else { REP_PL_STATE.q = dp.q; if (typeof repPlnenieUpdateQTabs === 'function') { try { repPlnenieUpdateQTabs(); } catch(e){} } }
-      }
-    }
-  });
-}
+// Keep data timestamps for prediction/update labels; they never select the default Q.
+function plnenieRefreshDataTsAndRerender(){ plnenieDataTsFetch(function(){}); }
 
 // ── „Kde sme s dátami" podľa notif_predaje (nie podľa kalendára) ──────────────────
 // Posledný mesiac Q sa nahráva 3×: k 15., k 22. a za CELÝ mesiac. Predikcia (má byť X %)
@@ -24295,7 +24370,7 @@ function mgrAnimateSubtab(tab, dir) {
 }
 
 // Sub-tab switch medzi "Návštevy" a "Plnenie"
-function mgrSwitchSubtab(tab) {
+function mgrSwitchSubtab(tab, preservePeriod) {
   // Aktivita (usage analytics) — admin + Golem manažéri (pozri golemActivityAllowed)
   if (tab === 'activity' && !golemActivityAllowed(MGR_STATE.role)) return;
   // Reporty (interaktívny mesačný report) — rovnaké role ako Aktivita
@@ -24319,6 +24394,9 @@ function mgrSwitchSubtab(tab) {
   window.scrollTo(0, 0);
   if (prevTab !== tab) mgrAnimateSubtab(tab, dir);
   if (tab === 'plnenie') {
+    if(!preservePeriod)plnenieApplyDefaultPeriod(PL_STATE,true);
+    else PL_STATE._planDefaultAuto=false;
+    if(PL_STATE.loaded)plnenieRenderAll();
     if (!PL_STATE.loaded && !PL_STATE.loading) plnenieLoadAllQuarters();
     else appCheckSalesQuarter(false);
   }
@@ -25186,9 +25264,10 @@ function _animPlQ(elId, dir) {
 function plnenieSwitchQ(q) {
   if (q === PL_STATE.q) return;
   // Guard: future Q nie je dostupný (plán nie je zadaný / Q nie je ukončený)
-  if (q > plnenieCurrentQ()) return;
+  if (q > plnenieMaxQ(PL_STATE.year)) return;
   if (typeof haptic === 'function') haptic('selection');
   var dir = q > PL_STATE.q ? 'r' : 'l';
+  PL_STATE._planDefaultAuto=false;
   PL_STATE.q = q;
   plnenieUpdateQTabs();
   if (PL_STATE.qCache[q]) {
@@ -25220,14 +25299,14 @@ function plnenieSwitchQ(q) {
 }
 
 function plnenieUpdateQTabs() {
-  var curQ = plnenieCurrentQ();
+  var dp=plnenieDefaultPeriod(),curQ=dp.year===PL_STATE.year?dp.q:0,maxQ=plnenieMaxQ(PL_STATE.year);
   document.querySelectorAll('.pl-q-tab').forEach(function(btn){
     var q = parseInt(btn.getAttribute('data-q'));
     btn.classList.toggle('active', q === PL_STATE.q);
     btn.classList.toggle('current', q === curQ);
-    btn.classList.toggle('future', q > curQ);
+    btn.classList.toggle('future', q > maxQ);
     // Disable future Q taby — plán ešte nie je zadaný / Q nie je ukončený
-    if (q > curQ) {
+    if (q > maxQ) {
       btn.disabled = true;
       btn.style.opacity = '.4';
       btn.style.cursor = 'not-allowed';
@@ -25259,7 +25338,7 @@ function plnenieLoadAllQuarters() {
     qs.forEach(function(q) {
       var resp = MOCK_PLNENIE['Q' + q];
       if (resp) {
-        var agg = plnenieBuildAggregates(resp, q);
+        var agg = plnenieBuildAggregates(resp, q, undefined, PL_STATE.year);
         PL_STATE.qCache[q] = { data: resp, aggregates: agg };
         try { dnesRefreshIfOpen(); } catch(e){}
         if (q === PL_STATE.q) {
@@ -25285,7 +25364,7 @@ function plnenieLoadAllQuarters() {
     if (PL_STATE.qCache[q]) return; // už máme z predchádzajúceho loadu
     var cached = _plLsLoad(_plLsKey(year, q));
     if (cached) {
-      PL_STATE.qCache[q] = { data: cached.data, aggregates: plnenieBuildAggregates(cached.data, q) };
+      PL_STATE.qCache[q] = { data: cached.data, aggregates: plnenieBuildAggregates(cached.data, q, undefined, year) };
       if (q === PL_STATE.q) {
         PL_STATE.data = cached.data;
         PL_STATE.aggregates = PL_STATE.qCache[q].aggregates;
@@ -25396,13 +25475,13 @@ function plnenieLoadAllQuarters() {
     plnenieDataTsFetch(function(){
       if (!active()) return;
       var dp = (typeof plnenieDefaultPeriod === 'function') ? plnenieDefaultPeriod() : null;
-      var qOk = !dp || (dp.q === PL_STATE.q && dp.year === PL_STATE.year);
+      var qOk = PL_STATE._planDefaultAuto===false || !dp || (dp.q === PL_STATE.q && dp.year === PL_STATE.year);
       if (!qOk) {
         PL_STATE.year = dp.year;
         currentQ = dp.q;   // aj closure premenná nižšie (priorita/kaskáda vo fetchQuarter)
         if (PL_STATE.qCache[dp.q] && typeof plnenieSwitchQ === 'function') {
           // Správny kvartál už máme v cache — zobraz ho hneď, fetch nižšie len potichu overí.
-          try { plnenieSwitchQ(dp.q); } catch(e){}
+          try { plnenieSwitchQ(dp.q); PL_STATE._planDefaultAuto=true; } catch(e){}
         } else {
           PL_STATE.q = dp.q;
           plnenieUpdateQTabs();
@@ -25476,7 +25555,7 @@ function plnenieAddNoPlanProducts(resp) {
   } catch (e) {}
 }
 
-function plnenieBuildAggregates(resp, q, scopeReps) {
+function plnenieBuildAggregates(resp, q, scopeReps, yearOverride) {
   plnenieAddNoPlanProducts(resp);
   var plan = resp.plan || {};
   var predaje = resp.predaje || {};
@@ -25502,7 +25581,7 @@ function plnenieBuildAggregates(resp, q, scopeReps) {
   // do planEUR a predajeEUR započítavame IBA produkty, kde DANÝ rep má plán > 0.
   // Rep bez plánu na produkt X nekontribuuje svojimi predajmi pre X do svojho %.
   var activeReps = Array.isArray(scopeReps) && scopeReps.length ? scopeReps : plnenieGetActiveReps();
-  var aggYear = (typeof PL_STATE !== 'undefined' && PL_STATE.year) ? PL_STATE.year : (new Date()).getFullYear();
+  var aggYear = yearOverride || ((typeof PL_STATE !== 'undefined' && PL_STATE.year) ? PL_STATE.year : (new Date()).getFullYear());
   var qMonths = { 1:[1,2,3], 2:[4,5,6], 3:[7,8,9], 4:[10,11,12] }[q] || [];
   var repPredictionParts = {};
   function predBasisForProduct(qPlan, parts) {
@@ -26597,7 +26676,7 @@ function plnenieRenderAll() {
   }, 700);
   setTimeout(function(){
     if (PL_STATE.detailRep || !_plnenieSwipeAttached) return;
-    var nextQ = PL_STATE.q + 1, maxQ = plnenieCurrentQ();
+    var nextQ = PL_STATE.q + 1, maxQ = plnenieMaxQ(PL_STATE.year);
     if (nextQ <= maxQ) plnenieEnsureCachedQDom(nextQ);
   }, 1300);
 }
@@ -26853,7 +26932,7 @@ function plnenieInitQSwipe() {
     onDragStart: function() {
       if (PL_STATE.detailRep) return;
       var prevQ = PL_STATE.q - 1, nextQ = PL_STATE.q + 1;
-      var maxQ = plnenieCurrentQ();
+      var maxQ = plnenieMaxQ(PL_STATE.year);
       // Safety net: ak adjacent Q ešte nebol cached (race s pre-cache timer-om), urob to teraz
       if (prevQ >= 1 && !window.PL_DOM_CACHE[prevQ]) plnenieEnsureCachedQDom(prevQ);
       if (nextQ <= maxQ && !window.PL_DOM_CACHE[nextQ]) plnenieEnsureCachedQDom(nextQ);
@@ -26871,7 +26950,7 @@ function plnenieInitQSwipe() {
       var targetQ = PL_STATE.q;
       if (Math.abs(ratio) > 0.20) {
         targetQ = ratio < 0 ? (PL_STATE.q + 1) : (PL_STATE.q - 1);
-        if (targetQ < 1 || targetQ > plnenieCurrentQ()) targetQ = PL_STATE.q;
+        if (targetQ < 1 || targetQ > plnenieMaxQ(PL_STATE.year)) targetQ = PL_STATE.q;
       }
       Array.prototype.forEach.call(document.querySelectorAll('.pl-q-tab'), function(b){
         var bq = parseInt(b.getAttribute('data-q'));
@@ -26885,7 +26964,7 @@ function plnenieInitQSwipe() {
       plnenieUpdateQTabs();
     },
     canPrev: function(){ return !PL_STATE.detailRep && PL_STATE.q > 1; },
-    canNext: function(){ return !PL_STATE.detailRep && PL_STATE.q < plnenieCurrentQ(); },
+    canNext: function(){ return !PL_STATE.detailRep && PL_STATE.q < plnenieMaxQ(PL_STATE.year); },
     onPrev:  function(){ plnenieSwitchQ(PL_STATE.q - 1); },
     onNext:  function(){ plnenieSwitchQ(PL_STATE.q + 1); }
   });
@@ -26910,7 +26989,7 @@ function repPlnenieInitQSwipe() {
     transformTarget: carousel.wrap,
     onDragStart: function() {
       var prevQ = REP_PL_STATE.q - 1, nextQ = REP_PL_STATE.q + 1;
-      var maxQ = plnenieCurrentQ();
+      var maxQ = plnenieMaxQ(REP_PL_STATE.year);
       if (prevQ >= 1 && !window.REP_PL_DOM_CACHE[prevQ]) repPlnenieEnsureCachedQDom(prevQ);
       if (nextQ <= maxQ && !window.REP_PL_DOM_CACHE[nextQ]) repPlnenieEnsureCachedQDom(nextQ);
       carousel.peekPrev.innerHTML = '';
@@ -26925,7 +27004,7 @@ function repPlnenieInitQSwipe() {
       var targetQ = REP_PL_STATE.q;
       if (Math.abs(ratio) > 0.20) {
         targetQ = ratio < 0 ? (REP_PL_STATE.q + 1) : (REP_PL_STATE.q - 1);
-        if (targetQ < 1 || targetQ > plnenieCurrentQ()) targetQ = REP_PL_STATE.q;
+        if (targetQ < 1 || targetQ > plnenieMaxQ(REP_PL_STATE.year)) targetQ = REP_PL_STATE.q;
       }
       Array.prototype.forEach.call(document.querySelectorAll('#rep-pl-q-tabs .pl-q-tab'), function(b){
         var bq = parseInt(b.getAttribute('data-q'));
@@ -26938,7 +27017,7 @@ function repPlnenieInitQSwipe() {
       repPlnenieUpdateQTabs();
     },
     canPrev: function(){ return REP_PL_STATE.q > 1; },
-    canNext: function(){ return REP_PL_STATE.q < plnenieCurrentQ(); },
+    canNext: function(){ return REP_PL_STATE.q < plnenieMaxQ(REP_PL_STATE.year); },
     onPrev:  function(){ repPlnenieSwitchQ(REP_PL_STATE.q - 1); },
     onNext:  function(){ repPlnenieSwitchQ(REP_PL_STATE.q + 1); }
   });
@@ -27835,7 +27914,7 @@ function lbOpenRepDetail(username) {
   var lastQ = lbLastCompletedQ();
   var year = (new Date()).getFullYear();
   if (!(PL_STATE.aggregates && PL_STATE.q === lastQ && PL_STATE.year === year)) {
-    var src = (PL_STATE.qCache && PL_STATE.qCache[lastQ]) ||
+    var src = (PL_STATE.year===year && PL_STATE.qCache && PL_STATE.qCache[lastQ]) ||
               (LB_PLNENIE_CACHE && LB_PLNENIE_CACHE.q === lastQ ? LB_PLNENIE_CACHE : null);
     if (src) {
       PL_STATE.year = year;
@@ -27846,7 +27925,8 @@ function lbOpenRepDetail(username) {
       PL_STATE.qCache[lastQ] = { data: src.data, aggregates: src.aggregates };
     }
   }
-  if (MGR_STATE.subtab !== 'plnenie') mgrSwitchSubtab('plnenie');
+  PL_STATE._planDefaultAuto=false;
+  if (MGR_STATE.subtab !== 'plnenie') mgrSwitchSubtab('plnenie',true);
   plnenieOpenDetail(username);
 }
 
@@ -28333,17 +28413,8 @@ function openRepPlnenie() {
   usageSectionEnter('Plnenie');
   _panelShow('rep-plnenie-overlay');
   satoriGuideQueueHint('plnenie', 550);
-  // Default: DÁTOVÝ kvartál (podľa notif_predaje), nie kalendárny — pri prelome Q sa nemá
-  // skočiť na nový Q, kým doň nepribudli predaje (rovnaká logika ako manažér/gyn).
-  var dp = plnenieDefaultPeriod();
-  REP_PL_STATE.year = dp.year;
-  if (!REP_PL_STATE.loaded || REP_PL_STATE.q !== dp.q) {
-    REP_PL_STATE.q = dp.q;
-  }
+  plnenieApplyDefaultPeriod(REP_PL_STATE,true);
   repPlnenieUpdateQTabs();
-  // Config je autoritatívny (cache môže byť stará) — dotiahni čerstvý dátum a ak posunie
-  // default Q, prekresli otvorené rep Plnenie.
-  if (typeof plnenieRefreshDataTsAndRerender === 'function') setTimeout(plnenieRefreshDataTsAndRerender, 50);
   // Ak máme data v cache — hneď render, inak načítaj
   if (REP_PL_STATE.qCache[REP_PL_STATE.q]) {
     REP_PL_STATE.data = REP_PL_STATE.qCache[REP_PL_STATE.q].data;
@@ -28384,7 +28455,7 @@ function repPlnenieLoad() {
   qs.forEach(function(q) {
     var cached = _plLsLoad(_plRepLsKey(uname, year, q));
     if (cached) {
-      REP_PL_STATE.qCache[q] = { data: cached.data, aggregates: plnenieBuildAggregates(cached.data, q, [uname]) };
+      REP_PL_STATE.qCache[q] = { data: cached.data, aggregates: plnenieBuildAggregates(cached.data, q, [uname],year) };
       if (q === REP_PL_STATE.q) {
         REP_PL_STATE.data = cached.data;
         REP_PL_STATE.aggregates = REP_PL_STATE.qCache[q].aggregates;
@@ -28406,7 +28477,7 @@ function repPlnenieLoad() {
       .then(function(resp) {
         if(!active()) return;
         if (!resp || !resp.ok) throw new Error('No data Q' + q);
-        var agg = plnenieBuildAggregates(resp, q, [uname]);
+        var agg = plnenieBuildAggregates(resp, q, [uname],year);
         var changed = DataStore.set(_plRepLsKey(uname, year, q), resp, { extra: { agg: agg } });
         REP_PL_STATE.qCache[q] = { data: resp, aggregates: agg };
         try { dnesRefreshIfOpen(); } catch(e){}
@@ -28451,9 +28522,10 @@ function repPlnenieLoad() {
 
 function repPlnenieSwitchQ(q) {
   if (q === REP_PL_STATE.q) return;
-  if (q > plnenieCurrentQ()) return;
+  if (q > plnenieMaxQ(REP_PL_STATE.year)) return;
   if (typeof haptic === 'function') haptic('selection');
   var dir = q > REP_PL_STATE.q ? 'r' : 'l';
+  REP_PL_STATE._planDefaultAuto=false;
   REP_PL_STATE.q = q;
   repPlnenieUpdateQTabs();
   if (REP_PL_STATE.qCache[q]) {
@@ -28488,13 +28560,13 @@ function repPlnenieUpdateNavBtn() {
 
 function repPlnenieUpdateQTabs() {
   var tabs = document.querySelectorAll('#rep-pl-q-tabs .pl-q-tab');
-  var curQ = plnenieCurrentQ();
+  var dp=plnenieDefaultPeriod(),curQ=dp.year===REP_PL_STATE.year?dp.q:0,maxQ=plnenieMaxQ(REP_PL_STATE.year);
   tabs.forEach(function(tab) {
     var q = parseInt(tab.getAttribute('data-q'));
     tab.classList.toggle('active', q === REP_PL_STATE.q);
     tab.classList.toggle('current', q === curQ);
-    tab.classList.toggle('future', q > curQ);
-    if (q > curQ) {
+    tab.classList.toggle('future', q > maxQ);
+    if (q > maxQ) {
       tab.disabled = true;
       tab.style.opacity = '.4';
       tab.style.cursor = 'not-allowed';
@@ -28859,7 +28931,7 @@ function repPlnenieRender() {
   }, 700);
   setTimeout(function(){
     if (!_repPlnenieSwipeAttached) return;
-    var nextQ = REP_PL_STATE.q + 1, maxQ = plnenieCurrentQ();
+    var nextQ = REP_PL_STATE.q + 1, maxQ = plnenieMaxQ(REP_PL_STATE.year);
     if (nextQ <= maxQ) repPlnenieEnsureCachedQDom(nextQ);
   }, 1300);
   var username = session.username;
