@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.8';
+var APP_VERSION = '2.89.9';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -450,7 +450,12 @@ function appReadPaint(entry){
   if(!entry.pending && !entry.error){ if(el) el.remove(); return; }
   if(!el){ el=document.createElement('div');el.className='nst-refresh app-read-check';el.setAttribute('data-read-check','');host.parentNode.insertBefore(el,host); }
   el.setAttribute('role','status');
-  el.innerHTML=entry.pending ? '<span class="nst-spin" aria-hidden="true"></span>Overujem aktuálne údaje…' : 'Obnova zlyhala. Zobrazené údaje môžu byť staršie.';
+  var status=entry.pending ? 'pending' : 'error';
+  // Keep the same animated node while polling; replacing it restarts CSS rotation.
+  if(el._appReadStatus!==status){
+    el.innerHTML=entry.pending ? '<span class="nst-spin" aria-hidden="true"></span>Overujem aktuálne údaje…' : 'Obnova zlyhala. Zobrazené údaje môžu byť staršie.';
+    el._appReadStatus=status;
+  }
 }
 function appReadBegin(view){
   if(!view) return null;
