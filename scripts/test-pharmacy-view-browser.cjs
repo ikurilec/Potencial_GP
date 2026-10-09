@@ -34,19 +34,31 @@ const root=path.resolve(__dirname,'..');
    closeAllPanels();document.querySelectorAll('.show').forEach(e=>e.classList.remove('show'));APP_LINE_EPOCH++;IS_DEV=false;
    window.testUser={username:'synthetic-rep',name:'Test',line:'gp',role,session_token:'synthetic'};getSession=()=>window.testUser;
    document.querySelector('.app').style.visibility='visible';document.getElementById('login-screen').style.display='none';document.body.classList.remove('login-active');
+   document.body.classList.add('app-nav','mgr-subtab-plnenie');document.getElementById('mgr-view').style.display='block';
    document.body.classList.toggle('manager-mode',role!=='rep');document.body.classList.toggle('mgr-plnenie-detail-open',role!=='rep');
    lkSetCache('synthetic-rep',rows,false);
-   if(role==='rep'){openLekarne();}else{MGR_STATE.subtab='plnenie';document.getElementById('pl-detail-lekarne').style.display='';document.getElementById('pl-detail-predaje').style.display='none';lkMgrLoadForRep('synthetic-rep');}
-  },{role,rows:[row(1,1),row(4,6),row(5,7),row(6),{...row(0,10),prods:{aflamil_tb:5}}]});
+   if(role==='rep'){openLekarne();}else{MGR_STATE.subtab='plnenie';PL_STATE.detailRep='synthetic-rep';document.getElementById('pl-detail-lekarne').style.display='none';document.getElementById('pl-detail-predaje').style.display='';window.finishSales=appReadBegin(appReadView());plnenieDetailSwitchSubtab('lekarne');}
+  },{role,rows:[row(1,1),row(6,6),{...row(0,7),prods:{aflamil_tb:5}},{...row(0,8),prods:{aflamil_tb:5}}]});
   const selector=role==='rep'?'#lk-list':'#pl-detail-lekarne-body';
   await page.waitForFunction(()=>!!document.querySelector('.nst-spin'));
-  let text=await page.locator(selector).innerText();assert.match(text,/Aug: 6 bal/);assert.match(text,/Okt: 0 bal/);assert.match(text,/Aug 2026 · 6 bal/);
-  const url=await respond({ok:true,rows:[row(1,1),row(4,6),row(5,7),row(9),{...row(0,10),prods:{aflamil_tb:5}}]});assert.equal(url.searchParams.get('fresh'),'1');
-  await page.waitForFunction(sel=>document.querySelector(sel).textContent.includes('Aug: 9 bal'),selector);
+  await page.waitForTimeout(300);assert.equal(await page.locator('[data-read-check]').count(),1,'Only one refresh indicator after switching detail subtab');
+  let text=await page.locator(selector).innerText();assert.match(text,/Jún: 6 bal/);assert.ok(!text.includes('Okt:'));assert.match(text,/Jún 2026 · 6 bal/);
+  const url=await respond({ok:true,rows:[row(1,1),row(9,6),{...row(0,7),prods:{aflamil_tb:5}},{...row(0,8),prods:{aflamil_tb:5}}]});assert.equal(url.searchParams.get('fresh'),'1');
+  await page.waitForFunction(sel=>document.querySelector(sel).textContent.includes('Jún: 9 bal'),selector);
   const detail=await respond({ok:true,rows:[]},'getLekarneDetail');assert.equal(detail.searchParams.get('action'),'getLekarneDetail');
+  if(role!=='rep')await page.evaluate(()=>finishSales());
   await page.waitForFunction(()=>!document.querySelector('.nst-spin'));
   assert.equal(reads.length,0,'No duplicate detail fetch from cache/fresh callbacks');
-  console.log(role+': cache, fresh quantities, report period and completed spinner passed');
+  if(role!=='rep'){
+    assert.equal(await page.locator('#mgr-lk-search').isVisible(),true);
+    await page.locator('#tb-dnes').click({force:true});
+    await page.waitForTimeout(450);
+    assert.equal(await page.locator('#dnes-overlay').isVisible(),true);
+    assert.equal(await page.locator('#mgr-lk-search').isVisible(),false,'No sticky pharmacy controls above Home');
+    assert.equal(await page.evaluate(()=>PL_STATE.detailRep),null);
+    await page.screenshot({path:path.join(root,'.tmp-pharmacy-home-'+role+'.png')});
+  }
+  console.log(role+': lagging report, single spinner, fresh quantities and pharmacy → Home navigation passed');
  }
  assert.deepEqual(errors,[]);await browser.close();
 })().catch(e=>{console.error(e);process.exit(1)});

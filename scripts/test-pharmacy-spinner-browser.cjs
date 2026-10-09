@@ -7,5 +7,7 @@ await page.evaluate(()=>{window.finish=appReadBegin(view);document.querySelector
 await page.waitForTimeout(700);assert.equal(await page.locator('[data-read-check]').count(),0,'Settling while another view is open must remove the spinner and snapshot copies');
 await page.evaluate(()=>{view={key:'pharmacies',host:'#host'};window.a=appReadBegin(view);window.b=appReadBegin(view);a();});
 assert.equal(await page.locator('.nst-spin').count(),1,'Parallel reads must share one spinner');
+await page.evaluate(()=>{view={key:'pharmacies',host:'#other'};appReadPaint(APP_READ_CHECKS.pharmacies);});
+assert.equal(await page.locator('.nst-spin').count(),1,'Changing the active subtab must move the existing indicator, not duplicate it');
 await page.evaluate(()=>b());await page.waitForTimeout(650);assert.equal(await page.locator('.nst-spin').count(),0);
 console.log('Browser: navigation cleanup, snapshot cleanup and parallel pharmacy reads passed');await browser.close();})().catch(e=>{console.error(e);process.exit(1)});

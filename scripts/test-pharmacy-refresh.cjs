@@ -18,3 +18,7 @@ console.log('Pharmacy report window, month normalization, duplicate sums and yea
  x.lkFetch('rep',rows=>delivered.push(rows));releaseNetwork({ok:true,rows:[{fresh:true}]});await new Promise(r=>setImmediate(r));releaseCache({rows:[{old:true}]});await new Promise(r=>setImmediate(r));
  assert.equal(delivered.length,1);assert.equal(cache.rep.rows[0].fresh,true);console.log('Late IndexedDB cannot overwrite fresh pharmacy data');
 })().catch(e=>{console.error(e);process.exitCode=1});
+// Activity must be measured at the latest uploaded report, not unimported calendar months.
+const lagged=c.lkBuildLekarne([{...row(1,1),prods:{aflamil_tb:5}},{...row(5,7),prods:{aflamil_kr:7}},{...row(8,0),prods:{aflamil_tb:8}}]);
+assert.equal(lagged[0].isSleeping,false,'August-active pharmacy must not become sleeping merely because today is October');
+assert.equal(lagged[0].isReaktivacia,true,'Cream reactivation candidate must survive a lagging report');

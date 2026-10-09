@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.11';
+var APP_VERSION = '2.89.12';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -458,7 +458,12 @@ function appReadPaint(entry){
   if(!view || view.key!==entry.view.key) { if(entry.element)entry.element.remove(); return; }
   var host=document.querySelector(view.host);
   if(!host || !host.parentNode) return;
-  var el=host.parentNode.querySelector('[data-read-check]');
+  // A manager detail shares a read scope across subtabs. Keep exactly one
+  // indicator and move it to the currently visible host.
+  var el=host.parentNode.querySelector(':scope > [data-read-check]');
+  if(document.querySelectorAll) document.querySelectorAll('[data-read-check]').forEach(function(other){
+    if(other!==el && other.getAttribute('data-read-check')===entry.view.key)other.remove();
+  });
   if(!entry.pending && !entry.error){ if(el) el.remove(); return; }
   if(!el){ el=document.createElement('div');el.className='nst-refresh app-read-check';el.setAttribute('data-read-check','');host.parentNode.insertBefore(el,host); }
   entry.element=el;
@@ -6026,6 +6031,9 @@ function appRole() {
 // „Domov" ju nechal visieť navrchu a vyzeralo to, že tlačidlo nefunguje.
 // Preto jedno miesto, ktoré pred každým prepnutím upratá všetko ostatné.
 function appNavReset(nechaj) {
+  // Bottom navigation leaves the representative detail immediately. Its sticky
+  // pharmacy controls must not remain above the newly opened root panel.
+  if(document.body.classList.contains('mgr-plnenie-detail-open'))plnenieCloseDetail(true);
   try { closeViac(); } catch (e) {}
   // Tímové plnenie je vlastný panel otvorený z Menu. Pri ťuknutí na fixnú
   // spodnú lištu ho vždy korektne zatvor, aby neostal nad zvolenou sekciou.
@@ -27946,6 +27954,7 @@ function lbOpenRepDetail(username) {
 
 function plnenieOpenDetail(username) {
   if (!username) return;
+  _plDetailCloseRequest++;
   PL_STATE.detailRep = username;
   document.body.classList.add('mgr-plnenie-detail-open');
   satoriGuideQueueHint('rep_detail', 550);
@@ -27965,19 +27974,28 @@ function plnenieOpenDetail(username) {
   window.scrollTo(0, 0);
 }
 
-function plnenieCloseDetail() {
+var _plDetailCloseRequest=0;
+function plnenieCloseDetail(immediate) {
+  var closeRequest=++_plDetailCloseRequest;
   // Ak sme sem prišli z Rebríčka (lbOpenRepDetail prepol subtab a mgrSwitchSubtab
   // si to zapamätala do _mgrPrevSubtab), Späť má vrátiť TAM, nie nechať na hlavnom
   // zozname Plnenia — inak by "Späť" z detailu skočil na inú obrazovku, než z ktorej
   // sa naň prišlo.
-  var _backToLb = (_mgrPrevSubtab === 'leaderboard');
+  var _backToLb = !immediate && (_mgrPrevSubtab === 'leaderboard');
   function _afterClose() {
+    if(closeRequest!==_plDetailCloseRequest)return;
+    if(immediate)_mgrPrevSubtab=null;
     PL_STATE.detailRep = null;
     document.body.classList.remove('mgr-plnenie-detail-open');
     window.scrollTo(0, 0);
     if (_backToLb) { _mgrPrevSubtab = null; mgrSwitchSubtab('leaderboard'); }
   }
   var detailEl = document.getElementById('mgr-plnenie-detail');
+  if(immediate){
+    if(detailEl)detailEl.classList.remove('panel-anim-r','pl-detail-exit-r');
+    _afterClose();
+    return;
+  }
   if (detailEl) {
     detailEl.classList.remove('panel-anim-r');
     void detailEl.offsetWidth;
@@ -36619,6 +36637,8 @@ function lkBuildLekarne(rows) {
     if(y>0 && m>=1 && m<=12 && abs<=calendarAbs)reportAbs=Math.max(reportAbs,abs);
   });
   var reportNow=reportAbs ? {rok:Math.floor((reportAbs-1)/12),mesiac:(reportAbs-1)%12+1} : now;
+  // Sleeping, cream eligibility and trends use the same uploaded reporting period.
+  now=reportNow;
   var nowIdx = now.rok * 100 + now.mesiac;
 
   var lekarne = [];
