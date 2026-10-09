@@ -50,6 +50,3 @@ const root=path.resolve(__dirname,'..');
  }
  assert.deepEqual(errors,[]);await browser.close();
 })().catch(e=>{console.error(e);process.exit(1)});
-
-
-
