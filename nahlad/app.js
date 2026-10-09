@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.10';
+var APP_VERSION = '2.89.11';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -410,7 +410,7 @@ function appReadView(){
     ['pharma-ms-overlay','#pharma-ms-body','market',['getPharmaData','getPharmaGrafData']],
     ['lk-detail','#lk-detail-body','pharmacy-detail',['getLekarneDetail','getGynLekarneDetail','getLekarne']],
     ['okresy-overlay','#okresy-list','districts',['getPharmaData','getConfig']],
-    ['lk-overlay','#lk-list','pharmacies',['getLekarne','getLekarneVariants']],
+    ['lk-overlay','#lk-list','pharmacies',['getLekarne','getLekarneVariants','getLekarneDetail']],
     ['lb-overlay','#lb-body','ranking',['getPlnenieAll','getAllHistory','getHistory']],
     ['hist-overlay','#hist-body','history',['getHistory','bootstrap','getGpOverrides','getAllGpOverrides']],
     ['rep-plnenie-overlay','#rep-pl-q-content','sales',['getPlnenieAll','getConfig']],
@@ -436,19 +436,33 @@ function appReadView(){
     var tab=MGR_STATE.subtab;
     var hosts={plnenie:'#pl-q-content',visits:'#mgr-list-wrap',leaderboard:'#mgr-lb-body',kalendar:'#mgr-cal-content',activity:'#act-body',reporty:'#mgr-reporty-view'};
     var actions={plnenie:['getPlnenieAll','getConfig'],visits:['getAllHistory','getHistory','getReps','bootstrap'],leaderboard:['getPlnenieAll'],kalendar:['getCalEvents'],activity:['getUsageStats','getUsageRepStats'],reporty:['getPlnenieAll','getCennik','getCalEvents','getDohody','getGpOverrides','bootstrap']};
-    if(tab==='plnenie' && document.body.classList.contains('mgr-plnenie-detail-open'))return view('mgr-detail','#pl-detail-predaje',['getPlnenieAll','getPharmaData','getLekarne']);
+    if(tab==='plnenie' && document.body.classList.contains('mgr-plnenie-detail-open')){
+      var pharmacies=document.getElementById('pl-detail-lekarne');
+      return view('mgr-detail',pharmacies && pharmacies.style.display!=='none'?'#pl-detail-lekarne-body':'#pl-detail-predaje',['getPlnenieAll','getPharmaData','getLekarne','getLekarneDetail']);
+    }
     return view('mgr-'+tab,hosts[tab],actions[tab]||[]);
   }
   return null;
 }
 function appReadPaint(entry){
+  // Completed reads must remove their indicator even after navigation. Also
+  // remove copied indicators from carousel snapshots, not just the live node.
+  if((!entry.pending && (!entry.error || !appReadView() || appReadView().key!==entry.view.key)) || !appLineContextActive(entry.ctx)){
+    if(entry.element) entry.element.remove();
+    if(document.querySelectorAll) document.querySelectorAll('[data-read-check]').forEach(function(el){
+      if(el.getAttribute('data-read-check')===entry.view.key) el.remove();
+    });
+    return;
+  }
   var view=appReadView();
-  if(!view || view.key!==entry.view.key || !appLineContextActive(entry.ctx)) return;
+  if(!view || view.key!==entry.view.key) { if(entry.element)entry.element.remove(); return; }
   var host=document.querySelector(view.host);
   if(!host || !host.parentNode) return;
   var el=host.parentNode.querySelector('[data-read-check]');
   if(!entry.pending && !entry.error){ if(el) el.remove(); return; }
   if(!el){ el=document.createElement('div');el.className='nst-refresh app-read-check';el.setAttribute('data-read-check','');host.parentNode.insertBefore(el,host); }
+  entry.element=el;
+  el.setAttribute('data-read-check',entry.view.key);
   el.setAttribute('role','status');
   var status=entry.pending ? 'pending' : 'error';
   // Keep the same animated node while polling; replacing it restarts CSS rotation.
@@ -36030,17 +36044,17 @@ function lkCreamLast3(info, now) {
   var months = (info && info.months) ? info.months : [];
   var byIdx = {};
   months.forEach(function(m) {
-    var idx = (m.rok * 12) + m.mesiac;
-    byIdx[idx] = m;
+    var idx = (Number(m.rok) * 12) + Number(m.mesiac);
+    byIdx[idx] = (byIdx[idx]||0) + (Number(m.prods && m.prods.aflamil_kr)||0);
   });
   var out = [];
-  var currentAbs = (current.rok * 12) + current.mesiac;
+  var currentAbs = (Number(current.rok) * 12) + Number(current.mesiac);
   for (var i = 2; i >= 0; i--) {
     var abs = currentAbs - i;
     var rok = Math.floor((abs - 1) / 12);
     var mesiac = ((abs - 1) % 12) + 1;
     var m = byIdx[abs];
-    var qty = m ? (parseFloat(m.prods && m.prods.aflamil_kr || 0) || 0) : 0;
+    var qty = m || 0;
     out.push({ rok: rok, mesiac: mesiac, qty: qty });
   }
   return out;
@@ -36304,7 +36318,9 @@ function lkCreamContactButtonHtml(l, tab, mode) {
 
 function lkCreamSummaryHtml(l, tab) {
   if (tab !== 'reaktivacia' || !l || !Array.isArray(l.krmLast3)) return '';
-  return '<div class="lk-cream-summary">AFL krém posledné 3 mesiace: ' + lkEsc(lkCreamLast3Text(l.krmLast3)) + '</div>';
+  var period=l.creamReportPeriod;
+  var label=period ? 'AFL krém · 3 mesiace do '+LK_MES_NAMES[period.mesiac]+' '+period.rok+': ' : 'AFL krém posledné 3 mesiace: ';
+  return '<div class="lk-cream-summary">' + lkEsc(label+lkCreamLast3Text(l.krmLast3)) + '</div>';
 }
 
 function lkRecommendationHtml(rec) {
@@ -36489,7 +36505,7 @@ function lkFetch(login, cb) {
   if (typeof IS_DEV !== 'undefined' && IS_DEV) { try { cb(lkDevMockRows()); } catch(e) {} return; }
   var cacheKey = lkCacheKey(login);
   var cachedRows = lkGetCachedRows(cacheKey);
-  var servedCached = false;
+  var servedCached = false, networkFinished = false;
   if (cachedRows) {
     servedCached = true;
     try { cb(cachedRows); } catch(e) {}
@@ -36500,14 +36516,17 @@ function lkFetch(login, cb) {
   _lkInFlight[cacheKey] = [cb];
   if (!servedCached && lkIdbSupported() && cacheKey !== '__all__') {
     lkIdbLoad(cacheKey).then(function(entry) {
-      if (!entry || servedCached) return;
+      if (!entry || servedCached || networkFinished) return;
       servedCached = true;
       LK_STATE.cache[cacheKey] = entry;
       try { cb(entry.rows || []); } catch(e) {}
     });
   }
-  var url = scriptUrl('action=getLekarne&login=' + encodeURIComponent(cacheKey === '__all__' ? '' : cacheKey) + '&creamMonth=' + encodeURIComponent(lkCreamContactMonthKey()) + '&_t=' + Date.now());
-  appQueuedFetchJson(url, { cache: 'no-store' }, undefined, 'background').then(function(data) {
+  var url = scriptUrl('action=getLekarne&login=' + encodeURIComponent(cacheKey === '__all__' ? '' : cacheKey) + '&fresh=1&creamMonth=' + encodeURIComponent(lkCreamContactMonthKey()) + '&_t=' + Date.now());
+  var visibleRead=appReadView();
+  var priority=visibleRead && visibleRead.actions.indexOf('getLekarne')!==-1?'critical':'background';
+  appQueuedFetchJson(url, { cache: 'no-store' }, undefined, priority).then(function(data) {
+    networkFinished=true;
     if(!data || !data.ok || !Array.isArray(data.rows))throw new Error('Pharmacy response unavailable');
     var rows = data.rows;
     lkReconcileCreamContactLocal(cacheKey, rows);
@@ -36516,6 +36535,7 @@ function lkFetch(login, cb) {
     delete _lkInFlight[cacheKey];
     if (!servedCached || changed) cbs.forEach(function(fn){ try { fn(rows); } catch(e){} });
   }).catch(function() {
+    networkFinished=true;
     var cbs = _lkInFlight[cacheKey] || [];
     delete _lkInFlight[cacheKey];
     if (!servedCached) cbs.forEach(function(fn){ try { fn([]); } catch(e){} });
@@ -36583,15 +36603,28 @@ function lkBuildLekarne(rows) {
       byLek[key].creamContacted = true;
       byLek[key].creamContactedAt = r.creamContactedAt || byLek[key].creamContactedAt || '';
     }
-    byLek[key].months.push({ rok: r.rok, mesiac: r.mesiac, prods: r.prods });
+    var year=Number(r.rok),month=Number(r.mesiac);
+    if(!Number.isInteger(year) || year<=0 || !Number.isInteger(month) || month<1 || month>12)return;
+    var months=byLek[key].months;
+    var target=months.filter(function(m){return m.rok===year && m.mesiac===month;})[0];
+    if(!target){target={rok:year,mesiac:month,prods:{}};months.push(target);}
+    Object.keys(r.prods||{}).forEach(function(p){var qty=Number(r.prods[p]);if(Number.isFinite(qty))target.prods[p]=(target.prods[p]||0)+qty;});
   });
 
   var now = lkCurrentYearMonth();
+  // One reporting window for the whole representative's data, including zero
+  // purchases at individual pharmacies. Unimported calendar months are not zero sales.
+  var reportAbs=0, calendarAbs=now.rok*12+now.mesiac;
+  rows.forEach(function(r){var y=Number(r.rok),m=Number(r.mesiac),abs=y*12+m;
+    if(y>0 && m>=1 && m<=12 && abs<=calendarAbs)reportAbs=Math.max(reportAbs,abs);
+  });
+  var reportNow=reportAbs ? {rok:Math.floor((reportAbs-1)/12),mesiac:(reportAbs-1)%12+1} : now;
   var nowIdx = now.rok * 100 + now.mesiac;
 
   var lekarne = [];
   Object.keys(byLek).forEach(function(key) {
     var info = byLek[key];
+    if(!info.months.length)return;
     // Zoradzujem mesiace
     info.months.sort(function(a, b) {
       return (a.rok * 100 + a.mesiac) - (b.rok * 100 + b.mesiac);
@@ -36623,7 +36656,7 @@ function lkBuildLekarne(rows) {
     var buys = PORTFOLIO.filter(function(p){ return buysSet[p]; });
     var missing = PORTFOLIO.filter(function(p){ return !buysSet[p]; });
     var opportunities = lkOpportunityProducts(info, now, PORTFOLIO);
-    var krmLast3 = lkCreamLast3(info, now);
+    var krmLast3 = lkCreamLast3(info, reportNow);
 
     // Klasifikácia — Reagila: spiaca = 6+ mesiacov bez nákupu Reagila produktov (v minulosti brala)
     var isNew = false, isSleeping = false;
@@ -36669,7 +36702,7 @@ function lkBuildLekarne(rows) {
       isNew: isNew, isSleeping: isSleeping,
       isReaktivacia: isReaktivacia, isKrmPotential: isKrmPotential,
       isPriority: isPriority, priorityVol: dobropisMeta.total, priorityCount: dobropisMeta.count, priorityMeta: dobropisMeta,
-      krmMonthsAgo: lastKrmIdx, lastKrmM: lastKrmM, krmLast3: krmLast3, aflTblSachAvg: aflTblSachAvg,
+      krmMonthsAgo: lastKrmIdx, lastKrmM: lastKrmM, krmLast3: krmLast3, creamReportPeriod: reportNow, aflTblSachAvg: aflTblSachAvg,
       allProds: allProds
     });
   });
@@ -36699,15 +36732,6 @@ function openLekarne() {
   var cachedRows = lkGetCachedRows(login);
   if (cachedRows && cachedRows.length > 0) {
     LK_STATE._rows = lkBuildLekarne(cachedRows);
-  }
-  if (!cachedRows && lkIdbSupported()) {
-    lkIdbLoad(login).then(function(entry) {
-      var currentLogin = (getSession() || {}).username || '';
-      if (!entry || !LK_STATE.open || lkCacheKey(currentLogin) !== lkCacheKey(login)) return;
-      LK_STATE.cache[lkCacheKey(login)] = entry;
-      LK_STATE._rows = lkBuildLekarne(entry.rows || []);
-      lkRender();
-    });
   }
   lkSwitchTab(_lkDefTab, null);
   if (!cachedRows || cachedRows.length === 0) {
@@ -37405,13 +37429,17 @@ function lkBuildDevVariants(list) {
   });
 }
 
-var LK_VARIANT_LOADING = false, _lkVariantReq = 0;
+var LK_VARIANT_LOADING = false, _lkVariantReq = 0, _lkVariantLogin = null, _lkVariantCtx = null;
 function lkLoadVariants(login, dataset) {
+  // Cache and fresh callbacks can both arrive while the same detail read runs.
+  if(LK_VARIANT_LOADING && _lkVariantLogin===login && _lkVariantCtx && appLineContextActive(_lkVariantCtx))return;
+  _lkVariantLogin=login;_lkVariantCtx=appLineCapture();
+  var ctx=_lkVariantCtx;
   lkVariantsReset();
   LK_VARIANT_LOADING = true;
   var req = ++_lkVariantReq;
   var done = function() {
-    if (req !== _lkVariantReq) return;   // medzitým sa spustilo novšie načítanie (iný rep / zoznam)
+    if (req !== _lkVariantReq || !appLineContextActive(ctx)) return;   // medzitým sa spustilo novšie načítanie (iný rep / zoznam)
     LK_VARIANT_LOADING = false;
     LK_VARIANT_LOADED = true;
     var sh = document.getElementById('lk-filter-sheet');
@@ -37422,8 +37450,8 @@ function lkLoadVariants(login, dataset) {
     if (d && d.classList.contains('show') && LK_DETAIL_OPEN_KEY) lkOpenDetail(LK_DETAIL_OPEN_KEY, true);
   };
   if (typeof IS_DEV !== 'undefined' && IS_DEV) { lkBuildDevVariants(dataset); done(); return; }
-  appQueuedFetchJson(scriptUrl('action=getLekarneDetail&login=' + encodeURIComponent(login || '') + '&_t=' + Date.now()), { cache: 'no-store' }, undefined, 'background')
-    .then(function(d) { if (req === _lkVariantReq && d && d.ok && d.rows) lkIngestDetail(d.rows); done(); })
+  appQueuedFetchJson(scriptUrl('action=getLekarneDetail&fresh=1&login=' + encodeURIComponent(login || '') + '&_t=' + Date.now()), { cache: 'no-store' }, undefined, 'critical')
+    .then(function(d) { if (appLineContextActive(ctx) && req === _lkVariantReq && d && d.ok && d.rows) lkIngestDetail(d.rows); done(); })
     .catch(function() { done(); });
 }
 
@@ -38048,7 +38076,7 @@ function lkRender() {
     var trendHtml = l.trend === 'up' ? '<span class="lk-trend-up">↑ Rastie</span>' :
                     l.trend === 'dn' ? '<span class="lk-trend-dn">↓ Klesá</span>' : '';
     var lastLbl = LK_MES_NAMES[l.lastM.mesiac] + ' ' + l.lastM.rok;
-    var lastKrmLbl = l.lastKrmM ? (LK_MES_NAMES[l.lastKrmM.mesiac] + ' ' + l.lastKrmM.rok) : '';
+    var lastKrmLbl = l.lastKrmM ? (LK_MES_NAMES[l.lastKrmM.mesiac] + ' ' + l.lastKrmM.rok + ' · ' + Math.round(l.lastKrmM.prods.aflamil_kr || 0) + ' bal.') : '';
     var subHtml = '<b>' + lkEsc(l.okres) + '</b> · ' + lkEsc(l.mesto);
     if (l.isSleeping) subHtml += ' · <span style="color:#EF4444">Posledný nákup: ' + lastLbl + '</span>';
     if (tab === 'reaktivacia' && l.isReaktivacia && lastKrmLbl) subHtml += ' &middot; <span style="color:#D97706">AFL krém naposledy: ' + lastKrmLbl + '</span>';
@@ -38090,7 +38118,8 @@ function lkRender() {
 function lkOpenDetail(key, isRefresh) {
   if (!isRefresh) { try { usageDrill('Lekárne', 'detail lekárne'); } catch(e){} }   // len počet, bez názvu
   var lekarne = [];
-  if (Array.isArray(LK_STATE._rows) && LK_STATE._rows.length) lekarne = lekarne.concat(LK_STATE._rows);
+  var fromManager=document.body.classList.contains('mgr-plnenie-detail-open');
+  if (!fromManager && Array.isArray(LK_STATE._rows) && LK_STATE._rows.length) lekarne = lekarne.concat(LK_STATE._rows);
   if (Array.isArray(LK_MGR_ALL) && LK_MGR_ALL.length) {
     LK_MGR_ALL.forEach(function(row) {
       if (!lekarne.some(function(x){ return x && x.key === row.key; })) lekarne.push(row);
@@ -38219,7 +38248,7 @@ function lkMgrItem(l) {
   var cls = l.isSleeping ? 'sleeping' : (l.isNew ? 'new' : (l.missing.length > 0 ? 'gap' : ''));
   var trendHtml = l.trend === 'up' ? '<span class="lk-trend-up">↑ Rastie</span>' :
                   l.trend === 'dn' ? '<span class="lk-trend-dn">↓ Klesá</span>' : '';
-  var lastKrmLbl = l.lastKrmM ? (LK_MES_NAMES[l.lastKrmM.mesiac] + ' ' + l.lastKrmM.rok) : '';
+  var lastKrmLbl = l.lastKrmM ? (LK_MES_NAMES[l.lastKrmM.mesiac] + ' ' + l.lastKrmM.rok + ' · ' + Math.round(l.lastKrmM.prods.aflamil_kr || 0) + ' bal.') : '';
   var subHtml = '<b>' + lkEsc(l.okres) + '</b> · ' + lkEsc(l.mesto);
   if (l.isSleeping) subHtml += ' · <span style="color:#EF4444">Posledný nákup: ' + lastLbl + '</span>';
   if (l.isReaktivacia && lastKrmLbl) subHtml += ' · <span style="color:#D97706">AFL krém naposledy: ' + lastKrmLbl + '</span>';
@@ -38380,15 +38409,7 @@ function lkMgrLoadForRep(login) {
   } else {
     LK_MGR_STATE.loading = true;
     body.innerHTML = lkSkelHtml();
-    if (lkIdbSupported()) {
-      lkIdbLoad(login).then(function(entry) {
-        if (!entry || LK_MGR_LOGIN !== (login || null)) return;
-        LK_MGR_STATE.loading = false;
-        LK_STATE.cache[lkCacheKey(login)] = entry;
-        LK_MGR_ALL = lkBuildLekarne(entry.rows || []);
-        lkMgrRenderBody(LK_MGR_ALL, '');
-      });
-    }
+
   }
 
   // Per-rep fetch (rýchly, má vlastné SWR v lkFetch) ako primárny zdroj
@@ -38405,7 +38426,7 @@ function lkMgrLoadForRep(login) {
 
 function lkMgrItem(l, tab) {
   var lastLbl = LK_MES_NAMES[l.lastM.mesiac] + ' ' + l.lastM.rok;
-  var lastKrmLbl = l.lastKrmM ? (LK_MES_NAMES[l.lastKrmM.mesiac] + ' ' + l.lastKrmM.rok) : '';
+  var lastKrmLbl = l.lastKrmM ? (LK_MES_NAMES[l.lastKrmM.mesiac] + ' ' + l.lastKrmM.rok + ' · ' + Math.round(l.lastKrmM.prods.aflamil_kr || 0) + ' bal.') : '';
   var cls = l.isSleeping ? 'sleeping' : (l.isNew ? 'new' : (l.missing.length > 0 ? 'gap' : ''));
   var trendHtml = l.trend === 'up' ? '<span class="lk-trend-up">↑ Rastie</span>' :
                   l.trend === 'dn' ? '<span class="lk-trend-dn">↓ Klesá</span>' : '';

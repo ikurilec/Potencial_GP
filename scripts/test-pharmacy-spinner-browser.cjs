@@ -1,0 +1,11 @@
+const fs=require('fs'),assert=require('assert/strict');const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright');
+(async()=>{const browser=await chromium.launch({headless:true});const page=await browser.newPage();
+const src=fs.readFileSync('app.js','utf8');
+await page.setContent('<div id="first"><div id="host"></div></div><div id="second"><div id="other"></div></div>');
+await page.addScriptTag({content:`var view={key:'pharmacies',host:'#host'}, APP_READ_CHECKS={}; function appReadView(){return view}function appLineCapture(){return {}}function appLineContextActive(){return true}`+src.slice(src.indexOf('function appReadPaint('),src.indexOf('function appTrackedRead('))});
+await page.evaluate(()=>{window.finish=appReadBegin(view);document.querySelector('#first').appendChild(document.querySelector('[data-read-check]').cloneNode(true));view={key:'sales',host:'#other'};finish();});
+await page.waitForTimeout(700);assert.equal(await page.locator('[data-read-check]').count(),0,'Settling while another view is open must remove the spinner and snapshot copies');
+await page.evaluate(()=>{view={key:'pharmacies',host:'#host'};window.a=appReadBegin(view);window.b=appReadBegin(view);a();});
+assert.equal(await page.locator('.nst-spin').count(),1,'Parallel reads must share one spinner');
+await page.evaluate(()=>b());await page.waitForTimeout(650);assert.equal(await page.locator('.nst-spin').count(),0);
+console.log('Browser: navigation cleanup, snapshot cleanup and parallel pharmacy reads passed');await browser.close();})().catch(e=>{console.error(e);process.exit(1)});
