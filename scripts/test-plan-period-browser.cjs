@@ -73,5 +73,5 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright');const root
  assert.equal(await page.evaluate(()=>lbLastCompletedQ()),1);assert.equal(await page.evaluate(()=>teamPlnenieYear()),2027);
  assert.equal(await page.evaluate(()=>plnenieMaxQ(2026)),4,'All previous-year quarters remain accessible');
  console.log('Year boundary: fulfilment Q4 2026, leaderboard Q1 and team year 2027 passed');
- assert.deepEqual(errors,[],'No browser JS errors');await browser.close();
+ assert.deepEqual(errors,[],'No browser JS errors');await page.unrouteAll({behavior:'ignoreErrors'});await browser.close();
 })().catch(e=>{console.error(e);process.exit(1)});

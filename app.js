@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.12';
+var APP_VERSION = '2.89.13';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -9820,6 +9820,7 @@ function mgrLineResetSharedData(target){
   // Golem a Reagila používajú spoločné renderery. Ich pracovná pamäť sa preto
   // pri každom prepnutí vynuluje; line-scoped offline cache sa načíta nanovo.
   try {
+    if(typeof REP_LIST_STATE!=='undefined')REP_LIST_STATE={loaded:false,loading:false,fullRosterRequested:false};
     if(typeof PL_STATE !== 'undefined'){
       clearTimeout(PL_STATE._loadWatchdog);
       PL_STATE._loadId=(PL_STATE._loadId||0)+1;
@@ -18359,10 +18360,9 @@ function mgrEnter(roleKey){
 
   MGR_STATE.histFilter = 'all';
   try { setTimeout(mgrSubtabsBalance, 0); setTimeout(mgrSubtabsBalance, 300); } catch(e){}
-  mgrLoadData();
+  // Visits and survey history load when their section is opened, after fulfilment.
   MGR_STATE.detailTab = 'gp';   // default tab v detaile repa
   // Override + súhrn línie + Tuyory + Lonelix v JEDNOM volaní (bootstrap) namiesto 4.
-  try { gpBootstrapMgr(); } catch(e){}
   // Plnenie je default tab — načítaj všetky kvartály hneď pri vstupe
   plnenieLoadAllQuarters();
   // Úvodná obrazovka podľa nastavení manažéra (ak si zvolil inú ako Plnenie)
@@ -21786,7 +21786,9 @@ function buildRepData(reps) {
   // inak by padlo do Golem fallbacku. Pre reagilu ber dáta zo servera vždy ako plné.
   var _brs = (typeof getSession === 'function') ? getSession() : null;
   var _brReagila = !!(_brs && _brs.line === 'reagila');
-  var isFullRoster = _brReagila || all.length >= LB_STATIC_REPS.length;
+  var rosterRole=mgrDetectRole(_brs);
+  var scopedManager=rosterRole==='amwest' || rosterRole==='ameast';
+  var isFullRoster = _brReagila || scopedManager || all.length >= LB_STATIC_REPS.length;
 
   MGR_AM_WEST = west.map(function(r){ return r.login.trim().toLowerCase(); });
   MGR_AM_EAST = east.map(function(r){ return r.login.trim().toLowerCase(); });
@@ -21844,7 +21846,7 @@ function buildRepData(reps) {
   // Ak je manažér práve prihlásený a roster práve dorazil/zmenil sa → načítaj históriu pre
   // správnych repov a prekresli dashboard. (mgrRenderReps neexistuje — to bol no-op; treba
   // mgrLoadReps, inak po neskorom dobehnutí rostera dashboard ostal prázdny.)
-  if (document.body.classList.contains('manager-mode')) {
+  if (document.body.classList.contains('manager-mode') && (MGR_STATE.subtab==='visits' || MGR_STATE.subtab==='reporty')) {
     if (MGR_ALL.length && typeof mgrLoadReps === 'function') mgrLoadReps(MGR_ALL.slice());
     else if (typeof mgrRenderList === 'function') mgrRenderList();
   }
@@ -22170,8 +22172,10 @@ function loadRepList(forceFullRoster) {
   if ((REP_LIST_STATE.loaded || REP_LIST_STATE.loading) && !forceFullRoster) return;
   if (forceFullRoster) REP_LIST_STATE.fullRosterRequested = true;
   REP_LIST_STATE.loading = true;
+  var rosterCtx=appLineCapture();
   appQueuedFetchJson(scriptUrl('action=getRepList' + (forceFullRoster ? '&fullLine=1' : '')), { cache: 'no-store' }, APP_FETCH_TIMEOUT_PRELOAD_MS, 'critical')
     .then(function(data){
+      if(!appLineContextActive(rosterCtx))return;
       REP_LIST_STATE.loading = false;
       if (data.ok && data.reps && data.reps.length) {
         var isFullRoster = buildRepData(data.reps);
@@ -22183,7 +22187,7 @@ function loadRepList(forceFullRoster) {
         if (mgrLb && document.body.classList.contains('mgr-subtab-leaderboard')) lbRender();
       }
     })
-    .catch(function(){ REP_LIST_STATE.loading = false; });
+    .catch(function(){ if(appLineContextActive(rosterCtx))REP_LIST_STATE.loading = false; });
 }
 
 // Pri prihlásení sa Domov neotvára podľa časovača. Zostane za boot obrazovkou,
@@ -22398,6 +22402,32 @@ function appWarmRosterFromCache(){
   } catch(e){ return false; }
 }
 
+// Managers need their authorized roster, not a personal representative history.
+// AM West/East correctly cannot read their own login through getInitData's rep ACL.
+function loadManagerInitData(ctx){
+  REP_LIST_STATE.loading=true;
+  var rosterUrl=scriptUrl('action=getRepList&fresh=1');
+  return appFetchWithRetry(rosterUrl,{
+    retries:1,timeoutMs:20000,priority:'boot',delayFn:function(){return 700;},
+    active:function(){return appLineContextActive(ctx);},
+    fetcher:function(){return appQueuedFetchJson(rosterUrl,{cache:'no-store'},20000,'boot').then(function(data){
+      if(!data || !data.ok || !Array.isArray(data.reps))throw new Error('Manager roster unavailable');
+      return data;
+    });}
+  }).then(function(data){
+    if(!appLineContextActive(ctx))return null;
+    if(!data || !data.ok || !Array.isArray(data.reps))throw new Error('Manager roster unavailable');
+    buildRepData(data.reps);appRosterCacheWrite(data.reps);
+    REP_LIST_STATE.loaded=true;REP_LIST_STATE.loading=false;
+    appBootFinishIfReady();
+    return data;
+  }).catch(function(){
+    if(!appLineContextActive(ctx))return null;
+    REP_LIST_STATE.loading=false;
+    appBootFinishIfReady(true);
+    return null;
+  });
+}
 function loadInitData(username, _lineCtx) {
   _lineCtx = _lineCtx || appLineCapture();
   if(!appLineContextActive(_lineCtx)) return Promise.resolve(null);
@@ -22424,6 +22454,7 @@ function loadInitData(username, _lineCtx) {
     var _blLine = _bls && _bls.line;
     if(_blLine !== 'gyn') bootLoaderShow(); // Golem + reagila (obe cez getInitData); gyn má vlastný v gynEnter
   } catch(e){}
+  if(mgrDetectRole(getSession()||{}))return loadManagerInitData(_lineCtx);
   var rok = (new Date()).getFullYear();
   var q   = plnenieCurrentQ();
   var url = scriptUrl('action=getInitData&reprezentant=' + encodeURIComponent(username)
@@ -24438,7 +24469,8 @@ function mgrSwitchSubtab(tab, preservePeriod) {
     LB_STATE.mode = 'plnenie';
     lbRender();
   }
-  if (tab === 'visits') mgrLoadData();
+  if (tab === 'visits') { mgrLoadData(); try{gpBootstrapMgr();}catch(e){} }
+  if (tab === 'reporty') { try{gpBootstrapMgr();}catch(e){} }
   if (tab === 'kalendar') {
     mgrRenderCalendarView(true);
     setTimeout(function(){ try { satoriGuideMaybeHint('calendar'); } catch(e){} }, 550);
