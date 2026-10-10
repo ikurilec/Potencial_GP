@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.19';
+var APP_VERSION = '2.89.20';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -505,6 +505,7 @@ function appReadView(){
     if(key==='history')params.reprezentant=s.username;
     if(key==='mgr-activity'||key==='gyn-activity'){params.dni=USAGE_VIEW.dni;params.rep=USAGE_VIEW.currentRep||'';}
     if(key==='mgr-reporty'){var period=rptViewPeriod();params.rok=period.year;params.Q=period.q;}
+    if(key==='district-chart' && PHARMA_OKRES_STATE.current){var dc=PHARMA_OKRES_STATE.current;params.produkt=dc.code;params.oblast=dc.oblast;params.okres=dc.r.okres;}
     if(key==='market'){
       var pharma=line==='gyn'?GYN_PHARMA_STATE:PHARMA_STATE;
       params.produkt=line==='gyn'?pharma.produkt:pharma.activeCode;params.oblast=pharma.oblast;
@@ -518,6 +519,7 @@ function appReadView(){
   // Dialógy a rozpracované formuláre nemajú automatickú dátovú obnovu.
   if(shown('nst-compose') || shown('edit-overlay') || shown('gpp-overlay')) return null;
   var panels=[
+    ['pharma-okres-overlay','#pharma-okres-chart-svg','district-chart',['getPharmaOkresGraf']],
     ['sklady-overlay','#sklady-body','stocks',['getStockData']],
     ['nastenka-overlay','#nst-list','board',['getNastenka']],
     ['team-plnenie-overlay','#team-plnenie-body','team',['getTeamPlnenie','getPlnenieAll','getRepList']],
@@ -537,7 +539,7 @@ function appReadView(){
   ];
   // _panelCurrent určuje vrchný panel aj počas animácie medzi obrazovkami.
   var current=typeof _panelCurrent==='undefined'?null:_panelCurrent;
-  var p=panels.filter(function(x){return ['pharma-ms-overlay','lk-detail','pl-prod-sheet'].indexOf(x[0])!==-1 && shown(x[0]);})[0];
+  var p=panels.filter(function(x){return ['pharma-okres-overlay','pharma-ms-overlay','lk-detail','pl-prod-sheet'].indexOf(x[0])!==-1 && shown(x[0]);})[0];
   if(!p) p=panels.filter(function(x){return x[0]===current && shown(x[0]);})[0];
   if(!p) p=panels.filter(function(x){return shown(x[0]);})[0];
   if(p) return view(p[2],p[1],p[3]);
@@ -545,13 +547,13 @@ function appReadView(){
     var nav=GYN_APP.nav;
     var gynPharmacies=document.getElementById('gyn-rd-lekarne');
     if(GYN_APP.detailLogin && gynPharmacies && gynPharmacies.style.display==='block')return view('gyn-lekarne','#gyn-rd-lekarne',['getGynLekarne']);
-    var acts={plnenie:['getPlnenieAll','getRepList'],leaderboard:['getPlnenieAll','getRepList'],kalendar:['getCalEvents'],lekarne:['getGynLekarne'],activity:['getUsageStats','getUsageRepStats']};
+    var acts={reporty:['getPlnenieAll','getCennik','getCalEvents','getDohody','getGynLekarne'],plnenie:['getPlnenieAll','getRepList'],leaderboard:['getPlnenieAll','getRepList'],kalendar:['getCalEvents'],lekarne:['getGynLekarne'],activity:['getUsageStats','getUsageRepStats']};
     return view('gyn-'+nav,'#gyn-content',acts[nav]||[]);
   }
   if(document.body.classList.contains('manager-mode')){
     var tab=MGR_STATE.subtab;
     var hosts={plnenie:'#pl-q-content',visits:'#mgr-list-wrap',leaderboard:'#mgr-lb-body',kalendar:'#mgr-cal-content',activity:'#act-body',reporty:'#mgr-reporty-view'};
-    var actions={plnenie:['getPlnenieAll','getConfig'],visits:['getAllHistory','getHistory','getReps','bootstrap'],leaderboard:['getPlnenieAll'],kalendar:['getCalEvents'],activity:['getUsageStats','getUsageRepStats'],reporty:['getPlnenieAll','getCennik','getCalEvents','getDohody','getGpOverrides','bootstrap']};
+    var actions={plnenie:['getPlnenieAll','getConfig'],visits:['getAllHistory','getHistory','getReps','bootstrap'],leaderboard:['getPlnenieAll'],kalendar:['getCalEvents'],activity:['getUsageStats','getUsageRepStats'],reporty:['getPlnenieAll','getCennik','getCalEvents','getDohody','getGpOverrides','bootstrap','getPharmaData','getPharmaOverview','getGynLekarne']};
     if(tab==='visits'&&MGR_STATE.currentRep&&shown('mgr-detail'))return view('mgr-visits','#mgr-detail',actions.visits);
     if(tab==='plnenie' && document.body.classList.contains('mgr-plnenie-detail-open')){
       var pharmacies=document.getElementById('pl-detail-lekarne');
@@ -1321,11 +1323,15 @@ function appQueuePriority(job){
   return job.prio==='critical'?1:0;
 }
 function appQueueStart(job,background){
+  if(job.waitTimer)clearTimeout(job.waitTimer);
+  job.waitTimer=null;
   job.startedAt=Date.now();
   APP_REQUEST_QUEUE.active++;
   APP_REQUEST_QUEUE.running.push(job);
   if(background)APP_REQUEST_QUEUE.backgroundActive++;
-  appFetchJsonRaw(job.url,job.opts,job.timeoutMs).then(job.resolve,job.reject).then(release,release);
+  var request;
+  try { request=appFetchJsonRaw(job.url,job.opts,job.timeoutMs); } catch(error) { request=Promise.reject(error); }
+  Promise.resolve(request).then(job.resolve,job.reject).then(release,release);
   function release(){
     APP_READ_PERFORMANCE.push({action:job.resource?job.resource.action:'read',line:job.resource&&job.resource.ctx?job.resource.ctx.line:'',waitMs:job.startedAt-job.enqueuedAt,networkMs:Date.now()-job.startedAt});
     if(APP_READ_PERFORMANCE.length>100)APP_READ_PERFORMANCE.shift();
@@ -1334,7 +1340,7 @@ function appQueueStart(job,background){
 }
 function appRequestQueueDrain(){
   APP_REQUEST_QUEUE.items=APP_REQUEST_QUEUE.items.filter(function(job){
-    if(job.resource && job.resource.ctx && !appLineContextActive(job.resource.ctx)){job.reject(new Error("Obsolete read context"));return false;}
+    if(job.resource && job.resource.ctx && !appLineContextActive(job.resource.ctx)){if(job.waitTimer)clearTimeout(job.waitTimer);job.reject(new Error("Obsolete read context"));return false;}
     return true;
   });
   // A previously visible read becomes background when the user navigates away.
@@ -1362,6 +1368,17 @@ function appQueuedFetchJsonRaw(url, opts, timeoutMs, priority, rec){
     job.order=++APP_REQUEST_QUEUE.sequence;
     job.resource=appReadResource(url);
     if(rec) rec.job = job;
+    // Network timeout starts only after dispatch. Bound the preceding queue wait too.
+    // Writes are deliberately excluded: an ambiguous write must never be retried as a read.
+    if(job.resource){
+      job.waitTimer=setTimeout(function(){
+        var i=APP_REQUEST_QUEUE.items.indexOf(job);
+        if(i<0)return;
+        APP_REQUEST_QUEUE.items.splice(i,1);clearTimeout(job.waitTimer);job.waitTimer=null;
+        job.reject(new Error('Čakanie na načítanie údajov prekročilo časový limit.'));
+        appRequestQueueDrain();
+      },priority==='boot'||priority==='critical'?30000:60000);
+    }
     appQueueInsert(job);
     appRequestQueueDrain();
   });
@@ -23095,7 +23112,7 @@ function pharmaOnDataUpdated() {
     // manažér, čo má Reporty práve otvorené, dotiahne trh znova namiesto toho, čo už raz videl.
     if (typeof RPT_VIEW !== 'undefined') {
       RPT_VIEW.pharmaLoadedOblasts = {};
-      if (typeof MGR_STATE !== 'undefined' && MGR_STATE.subtab === 'reporty' && typeof rp2Schedule === 'function') rp2Schedule();
+      if (typeof MGR_STATE !== 'undefined' && MGR_STATE.subtab === 'reporty' && typeof rptViewRefreshPharma === 'function' && rp2Line() !== 'gyn') rptViewRefreshPharma();
     }
   } catch(e){}
 }
@@ -29984,6 +30001,9 @@ function loadPharmaDataNetwork(code, oblast, kvartal) {
           return (parseFloat(o.nas_m1) > 0) || (parseFloat(o.nas_m2) > 0) || (parseFloat(o.nas_m3) > 0);
         });
         var hasData = hasRealSumm || hasRealOkr;
+        if (!hasData && !pharmaIsCurrentKvartal(kvartal)) {
+          throw new Error('Pre toto obdobie nie sú dostupné trhové dáta.');
+        }
         if (!hasData) {
           // Dáta pre tento Q ešte nie sú (IQVIA nenahrané) — skús predchádzajúci Q
           var sheetOpen = (PL_PROD_SHEET_STATE && PL_PROD_SHEET_STATE.open &&
@@ -30018,24 +30038,7 @@ function loadPharmaDataNetwork(code, oblast, kvartal) {
         if (typeof prodSheetUpdateMsCells === 'function') prodSheetUpdateMsCells();
         });
       } else {
-        // ok:false — skús tiež predchádzajúci Q (môže ísť o chýbajúce Q2 dáta)
-        var sheetIsOpenForCode = (PL_PROD_SHEET_STATE && PL_PROD_SHEET_STATE.open &&
-          (PHARMA_CODES[PL_PROD_SHEET_STATE.prodKey] || []).indexOf(code) !== -1);
-        var pharmaOverlayOpenForCode = (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal);
-        if (pharmaOverlayOpenForCode || sheetIsOpenForCode) {
-          var prevKvF = pharmaKvartalPrev(kvartal);
-          if (pharmaOverlayOpenForCode) {
-            var prevQNumF = parseInt(prevKvF.slice(2), 10);
-            var prevYearF = 2000 + parseInt(prevKvF.slice(0, 2), 10);
-            PHARMA_STATE.kvartal = prevKvF;
-            var titleElF = document.getElementById('pharma-ms-title');
-            if (titleElF) {
-              var partsF = titleElF.textContent.split(' · ');
-              if (partsF.length >= 2) { partsF[1] = 'Q' + prevQNumF + ' ' + prevYearF; titleElF.textContent = partsF.join(' · '); }
-            }
-          }
-          loadPharmaData(code, oblast, prevKvF);
-        }
+        throw new Error('Server nevrátil platné trhové dáta.');
       }
     })
     .catch(function() {
@@ -30577,37 +30580,32 @@ function pharmaReplayLine(key) {
 
 var OKGRAF_COLORS = ['#60A5FA','#A78BFA','#FB923C','#F472B6','#34D399','#FCD34D','#F87171','#38BDF8','#818CF8','#6EE7B7','#FCA5A5','#93C5FD','#C4B5FD','#86EFAC','#FDE68A'];
 
-function loadPharmaOkresGrafData(code, oblast, okres, callback) {
-  var ck = code + '_' + oblast + '_' + okres;
-  if (PHARMA_OKRES_STATE.cache[ck]) { callback(PHARMA_OKRES_STATE.cache[ck]); return; }
-  if (PHARMA_OKRES_STATE.loading[ck]) return;
-  PHARMA_OKRES_STATE.loading[ck] = true;
+function loadPharmaOkresGrafData(code, oblast, okres, callback, force) {
+  var owner = appReadOwner(), ctx = appLineCapture();
+  var ck = owner + '|' + code + '_' + oblast + '_' + okres;
+  var cached = PHARMA_OKRES_STATE.cache[ck];
+  if (cached && callback) callback(cached);
+  var previous = PHARMA_OKRES_STATE.loading[ck];
+  if (previous && appLineContextActive(previous.ctx)) { if(callback) previous.waiters.push(callback); return; }
+  var job = {ctx:ctx,waiters:callback?[callback]:[]};
+  PHARMA_OKRES_STATE.loading[ck] = job;
+  function finish(resp) {
+    if (PHARMA_OKRES_STATE.loading[ck] === job) delete PHARMA_OKRES_STATE.loading[ck];
+    if (!appLineContextActive(ctx) || appReadOwner() !== owner) return;
+    var valid = resp && resp.ok && Array.isArray(resp.rows);
+    if (valid) PHARMA_OKRES_STATE.cache[ck] = resp;
+    var result = valid ? resp : cached || null;
+    job.waiters.splice(0).forEach(function(fn) { try { fn(result); } catch(e) {} });
+  }
   if (IS_DEV) {
     var mk = MOCK_PHARMA_OKRES_GRAF[code + '_' + okres] || MOCK_PHARMA_OKRES_GRAF[Object.keys(MOCK_PHARMA_OKRES_GRAF)[0]];
-    var resp = { ok: true, rows: mk.rows.slice() };
-    delete PHARMA_OKRES_STATE.loading[ck];
-    PHARMA_OKRES_STATE.cache[ck] = resp;
-    callback(resp);
-    return;
+    finish({ok:true,rows:mk.rows.slice()}); return;
   }
-  appQueuedFetchJson(pharmaOkresGrafRequestUrl(code, oblast, okres), { cache: 'no-store' }, undefined, 'critical')
-    .then(function(resp) {
-      delete PHARMA_OKRES_STATE.loading[ck];
-      if (resp && resp.ok && resp.rows && resp.rows.length >= 2) {
-        PHARMA_OKRES_STATE.cache[ck] = resp;
-        callback(resp);
-      } else if (resp && resp.ok) {
-        // ok, ale málo riadkov — legitímny stav ("Nedostatok dát."), nie chyba.
-        callback(resp);
-      } else {
-        // resp.ok===false — odlíš od siete/timeoutu, ktoré idú cez .catch().
-        callback(null);
-      }
-    })
-    .catch(function() { delete PHARMA_OKRES_STATE.loading[ck]; callback(null); });
+  var url = pharmaOkresGrafRequestUrl(code, oblast, okres) + (force ? '&fresh=1' : '');
+  appQueuedFetchJson(url, {cache:'no-store'}, 20000, 'critical').then(finish, function() { finish(null); });
 }
 
-function openPharmaOkresChart(r, prodLabel) {
+function openPharmaOkresChart(r, prodLabel, force) {
   if (!r) return;
   try { usageDrill(usageCurrentSection(), 'okres graf: ' + ((r && (r.okres || r.nazov)) || '') + (prodLabel ? ' (' + prodLabel + ')' : '')); } catch(e){}
   var code   = PHARMA_STATE.activeCode;
@@ -30626,7 +30624,9 @@ function openPharmaOkresChart(r, prodLabel) {
   var prevQ  = (q === 1) ? 4 : q - 1;
   var prevYY = (q === 1) ? String(parseInt(yy, 10) - 1).slice(-2) : yy;
 
-  PHARMA_OKRES_STATE.current = { r: r, prodLabel: prodLabel, code: code, oblast: oblast, q: q, yy: yy };
+  var chartCtx = appLineCapture(), chartOwner = appReadOwner();
+  var chart = { r: r, prodLabel: prodLabel, code: code, oblast: oblast, q: q, yy: yy };
+  PHARMA_OKRES_STATE.current = chart;
 
   var overlay = document.getElementById('pharma-okres-overlay');
   var titleEl = document.getElementById('pharma-okres-title');
@@ -30649,7 +30649,7 @@ function openPharmaOkresChart(r, prodLabel) {
   // chybe, resp.ok pri úspechu (aj s málo dátami).
   function onOkresGrafResult(resp) {
     var cur = PHARMA_OKRES_STATE.current;
-    if (!cur || cur.r.okres !== r.okres) return;
+    if (cur !== chart || !appLineContextActive(chartCtx) || appReadOwner() !== chartOwner || !overlay.classList.contains('show')) return;
     var svgElNow = document.getElementById('pharma-okres-chart-svg');
     if (!svgElNow) return;
     if (!resp) {
@@ -30674,9 +30674,9 @@ function openPharmaOkresChart(r, prodLabel) {
   function retryOkresGraf() {
     var svgElNow = document.getElementById('pharma-okres-chart-svg');
     if (svgElNow) svgElNow.innerHTML = '<div style="color:#94A3B8;font-size:13px">Načítavam…</div>';
-    loadPharmaOkresGrafData(code, oblast, r.okres, onOkresGrafResult);
+    loadPharmaOkresGrafData(code, oblast, r.okres, onOkresGrafResult, true);
   }
-  loadPharmaOkresGrafData(code, oblast, r.okres, onOkresGrafResult);
+  loadPharmaOkresGrafData(code, oblast, r.okres, onOkresGrafResult, !!force);
 }
 
 function closePharmaOkresChart() {
@@ -31440,6 +31440,7 @@ function appPtrRefreshCurrent(done){
   case 'gyn-lekarne':var login=GYN_LK.login||GYN_APP.detailLogin||session.username;gynLkFetch(login,function(rows){if(same()&&GYN_LK.login===login){GYN_LK.rows=rows;gynLkRender();}});break;
   case 'ranking':case 'mgr-leaderboard':lbPreloadPlnenie(true);break;
   case 'gyn-leaderboard':delete GYN_LB.dataReady[gynLbLastCompletedQ()];gynLbEnsureData(gynLbLastCompletedQ(),gynPlnenieCacheKey(plnenieCalendarPeriod().year,gynLbLastCompletedQ())+'|lb-fullLine');break;
+  case 'district-chart':var chart=PHARMA_OKRES_STATE.current;if(chart)openPharmaOkresChart(chart.r,chart.prodLabel,true);break;
   case 'market':if(session.line==='gyn')gynPharmaLoad();else{loadPharmaDataNetwork(PHARMA_STATE.activeCode,PHARMA_STATE.oblast,PHARMA_STATE.kvartal);loadPharmaGrafDataFresh(PHARMA_STATE.activeCode,PHARMA_STATE.oblast,function(){if(same())pharmaRender(PHARMA_STATE.activeCode);});}break;
   case 'mgr-activity':case 'gyn-activity':usageRefresh();break;
   case 'mgr-visits':
@@ -31448,7 +31449,7 @@ function appPtrRefreshCurrent(done){
     plnenieGetActiveReps().forEach(function(u){if(Array.isArray(d[u]))MGR_STATE.reps[u]=Object.assign({},MGR_STATE.reps[u]||{},{visits:mgrNormalizeVisits(d[u]),error:false});});
     if(MGR_STATE.currentRep&&document.getElementById('mgr-detail').classList.contains('show'))mgrRenderVisits();else mgrRenderList();
    }).catch(function(){});break;
-  case 'mgr-reporty':var period=rptViewPeriod();rp2EnsureQuarter_(period.q,true);rp2LoadCennik();gynCalSync();break;
+  case 'mgr-reporty':case 'gyn-reporty':var period=rptViewPeriod();rp2EnsureQuarter_(period.q,true);rp2LoadCennik();gynCalSync();if(rp2Line()!=='gyn')rptViewRefreshPharma();break;
   case 'product':if(session.line==='gyn')gynSales();else appCheckSalesQuarter(appRole()==='gp');break;
   case 'board':nstFetch(function(){if(same())nstRender();},'critical',true);break;
   default:return false;
@@ -31763,7 +31764,7 @@ appAttachOverlayPtr({
  getRoot:function(){return appPtrViewRoot(appReadView());},
  getMount:function(){var v=appReadView();return v&&document.querySelector(v.host);},
  scrollTop:function(){var r=appPtrViewRoot(appReadView());return r?r.scrollTop:999;},
- isActive:function(){var v=appReadView();return !!v&&/^(home|sales|mgr-plnenie|mgr-detail|mgr-visits|mgr-reporty|product|gyn-plnenie|team|calendar|mgr-kalendar|gyn-kalendar|pharmacies|pharmacy-detail|mgr-detail-lekarne|gyn-lekarne|ranking|mgr-leaderboard|gyn-leaderboard|market|mgr-activity|gyn-activity|board)$/.test(appPtrViewType(v));},
+ isActive:function(){var v=appReadView();return !!v&&/^(home|sales|mgr-plnenie|mgr-detail|mgr-visits|mgr-reporty|gyn-reporty|product|gyn-plnenie|team|calendar|mgr-kalendar|gyn-kalendar|pharmacies|pharmacy-detail|mgr-detail-lekarne|gyn-lekarne|ranking|mgr-leaderboard|gyn-leaderboard|market|district-chart|mgr-activity|gyn-activity|board)$/.test(appPtrViewType(v));},
  onRefresh:function(done){done();}
 });
 
@@ -33436,8 +33437,41 @@ function rptViewPharmaReadyForScope() {
 // Trhové dáta pre report jedného repa: len jeho oblasť a len produkty s dierou do plánu. Najprv 3 najväčšie diery ('top'),
 // zvyšok (do 6) až keď si manažér otvorí Trh / Teritórium ('all'). Jedna požiadavka na produkt vráti aj predošlý kvartál
 // aj trend (prev=1, graf=1) — rovnaký tvar ako Trhový podiel, takže sa trafí do zahriatej cache servera.
+function rptViewPharmaSelectionKey() {
+  var p = rptViewPeriod();
+  return appReadOwner() + '|' + RPT_VIEW.scope + '|' + rptViewOblasts(rptViewScopeReps()).join(',') + '|' + p.year + 'Q' + p.q;
+}
+function rptViewPharmaStatusHtml() {
+  if (rptViewPharmaReadyForScope()) return '';
+  if (!rptViewOblasts(rptViewScopeReps()).length) return '<div class="rv-empty">Reprezentant nemá priradené územie pre trhové dáta.</div>';
+  var selection = rptViewPharmaSelectionKey();
+  if (RPT_VIEW.pharmaError && RPT_VIEW.pharmaError.selection === selection && !RPT_VIEW.pharmaLoading) {
+    return '<div class="rv-empty">Trhové dáta sa nepodarilo obnoviť. Dostupné údaje zostávajú zobrazené.</div><button type="button" class="rv-q-btn" onclick="rptViewRetryPharma()">↻ Skúsiť znova</button>';
+  }
+  var pg = RPT_VIEW.pharmaProg;
+  return '<div class="rp2-load" style="margin-bottom:10px"><span class="rp2-spin"></span>Načítavam trhové dáta' + (pg && pg.total ? ' (' + pg.done + ' z ' + pg.total + ')' : '') + '…</div>';
+}
+function rptViewRefreshPharma() {
+  if (RPT_VIEW.pharmaBatch) RPT_VIEW.pharmaBatch.cancel();
+  RPT_VIEW.pharmaLoadedOblasts = {}; RPT_VIEW.pharmaError = null; RPT_VIEW.pharmaRefresh = true;
+  rptViewEnsurePharma(RP2_LAST.m); rp2Schedule();
+}
+function rptViewRetryPharma() {
+  appStartManualRefresh();
+  RPT_VIEW.pharmaError = null;
+  rptViewEnsurePharma(RP2_LAST.m);
+  rp2Schedule();
+}
 function rptViewEnsurePharma(model) {
-  if (RPT_VIEW.pharmaLoading || RPT_VIEW.scope !== 'rep') return;
+  if (RPT_VIEW.scope !== 'rep') return;
+  var ctx = appLineCapture(), owner = appReadOwner(), selection = rptViewPharmaSelectionKey();
+  var old = RPT_VIEW.pharmaBatch;
+  if (old && old.selection !== selection) old.cancel();
+  if (RPT_VIEW.pharmaOwner !== owner) {
+    RPT_VIEW.pharmaLoadedOblasts = {}; RPT_VIEW.pharmaError = null; RPT_VIEW.pharmaOwner = owner;
+  }
+  if (RPT_VIEW.pharmaLoading) return;
+  if (RPT_VIEW.pharmaError && RPT_VIEW.pharmaError.selection === selection) return;
   var p = rptViewPeriod(), pk = p.year + 'Q' + p.q, lvl = RPT_VIEW.pharmaWant || 'top';
   var oblasts = rptViewOblasts(rptViewScopeReps());
   var need = oblasts.filter(function(o) { return !RPT_VIEW.pharmaLoadedOblasts[o + '|' + pk + '|' + lvl] && !RPT_VIEW.pharmaLoadedOblasts[o + '|' + pk + '|all']; });
@@ -33446,39 +33480,60 @@ function rptViewEnsurePharma(model) {
   if (!m) { try { m = rp2Model(rptViewScopeReps(), p); } catch (e) {} }
   if (!m || m.empty) return;
   var codes = [];
-  m.prods.filter(function(x) { return x.g100 > 0; }).slice(0, lvl === 'all' ? 6 : 3).forEach(function(x) {
+  // Filter mapped products before taking the limit: unmapped products must not hide market data.
+  m.prods.filter(function(x) { return x.g100 > 0; }).forEach(function(x) {
     var c = rptViewCodeForPlanKey(x.key); if (c && codes.indexOf(c) < 0) codes.push(c);
   });
-  if (!codes.length) { need.forEach(function(o) { RPT_VIEW.pharmaLoadedOblasts[o + '|' + pk + '|' + lvl] = true; }); return; }
-  var kvartal = pharmaKvartalCode(p.year, p.q);
-  var tasks = [];
-  need.forEach(function(o) { codes.forEach(function(code, i) { tasks.push({ o: o, code: code, i: i }); }); });
-  RPT_VIEW.pharmaLoading = true;
-  RPT_VIEW.pharmaProg = { done: 0, total: tasks.length };
-  function finishOne() {
-    RPT_VIEW.pharmaProg.done++;
-    if (RPT_VIEW.pharmaProg.done < RPT_VIEW.pharmaProg.total) { rp2Schedule(); return; }
-    need.forEach(function(o) { RPT_VIEW.pharmaLoadedOblasts[o + '|' + pk + '|' + lvl] = true; });
-    RPT_VIEW.pharmaLoading = false;
+  codes = codes.slice(0, lvl === 'all' ? 6 : 3);
+  if (!codes.length) { need.forEach(function(o) { RPT_VIEW.pharmaLoadedOblasts[o + '|' + pk + '|' + lvl] = true; }); rp2Schedule(); return; }
+  var kvartal = pharmaKvartalCode(p.year, p.q), tasks = [], failed = {};
+  need.forEach(function(o) { codes.forEach(function(code) { tasks.push({ o:o, code:code }); }); });
+  var refresh = !!RPT_VIEW.pharmaRefresh; RPT_VIEW.pharmaRefresh = false;
+  var batch = { selection:selection, done:0, total:tasks.length, ended:false };
+  RPT_VIEW.pharmaBatch = batch; RPT_VIEW.pharmaLoading = true;
+  RPT_VIEW.pharmaProg = batch; RPT_VIEW.pharmaError = null;
+  function current() { return !batch.ended && RPT_VIEW.pharmaBatch === batch && appLineContextActive(ctx) && appReadOwner() === owner && rptViewPharmaSelectionKey() === selection; }
+  function stop(error) {
+    if (batch.ended) return;
+    batch.ended = true; clearTimeout(batch.timer);
+    if (RPT_VIEW.pharmaBatch !== batch) return;
+    RPT_VIEW.pharmaBatch = null; RPT_VIEW.pharmaLoading = false;
+    if (!appLineContextActive(ctx) || appReadOwner() !== owner || rptViewPharmaSelectionKey() !== selection) return;
+    need.forEach(function(o) { if (!error && !failed[o]) RPT_VIEW.pharmaLoadedOblasts[o + '|' + pk + '|' + lvl] = true; });
+    if (error || Object.keys(failed).length) RPT_VIEW.pharmaError = { selection:selection };
     rp2Schedule();
-    // medzitým si manažér mohol otvoriť Trh / Teritórium → dotiahni zvyšok
-    if ((RPT_VIEW.pharmaWant || 'top') !== lvl) setTimeout(function() { rptViewEnsurePharma(RP2_LAST.m); }, 50);
+    if (!RPT_VIEW.pharmaError && (RPT_VIEW.pharmaWant || 'top') !== lvl) setTimeout(function() { if (rptViewPharmaSelectionKey() === selection) rptViewEnsurePharma(RP2_LAST.m); }, 50);
+  }
+  batch.cancel = function() { stop(true); };
+  // Covers queue waiting AND retries, not only the network transfer.
+  batch.timer = setTimeout(function() { stop(true); }, 45000);
+  function finishOne(t, ok) {
+    if (!current()) { stop(true); return; }
+    if (!ok) failed[t.o] = true;
+    batch.done++;
+    if (batch.done === batch.total) stop(false); else rp2Schedule();
   }
   tasks.forEach(function(t) {
     var key = t.code + '_' + t.o + '_' + kvartal;
-    if (PHARMA_STATE.cache[key] && PHARMA_STATE.cache[key].okresy_prev && PHARMA_GRAF_STATE.cache[pharmaGrafCacheKey(t.code, t.o)]) { finishOne(); return; }
-    var url = pharmaDataRequestUrl(t.code, t.o, kvartal, true, true), prio = t.i < 3 ? 'critical' : 'background';
-    appFetchWithRetry(url, {
-      retries: 1, timeoutMs: 30000, priority: prio, delayFn: function() { return 800; },
-      fetcher: function() { return appQueuedFetchJson(url, { cache: 'no-store' }, 30000, prio); }
+    var cached = PHARMA_STATE.cache[key];
+    // Reports use summary + districts only; do not fetch another graph for an already warm cache.
+    if (!refresh && cached && cached.ok && Array.isArray(cached.summary) && Array.isArray(cached.okresy)) { finishOne(t, true); return; }
+    Promise.resolve().then(function() {
+      if (!current()) throw new Error('Obsolete report');
+      // Match the combined payload warmed by the server and reused by the market screen.
+      var url = pharmaDataRequestUrl(t.code, t.o, kvartal, true, true) + (refresh ? '&fresh=1' : '');
+      return appFetchWithRetry(url, { retries:1, timeoutMs:20000, priority:'critical', active:current,
+        delayFn:function() { return 800; },
+        fetcher:function() { return appQueuedFetchJson(url, { cache:'no-store' }, 20000, 'critical'); }
+      });
     }).then(function(resp) {
-      if (resp && resp.ok) {
-        PHARMA_STATE.cache[key] = resp;   // len do pamäte (bez ukladania veľkých JSON do úložiska)
-        if (resp.graf && Array.isArray(resp.graf.rows) && resp.graf.rows.length) {
-          PHARMA_GRAF_STATE.cache[pharmaGrafCacheKey(t.code, t.o)] = { ok: true, produkt: t.code, oblast: t.o, rows: resp.graf.rows };
-        }
+      var ok = resp && resp.ok && Array.isArray(resp.summary) && Array.isArray(resp.okresy);
+      if (ok && current()) {
+        PHARMA_STATE.cache[key] = resp; RP2_SIG = {};
+        if (resp.graf && Array.isArray(resp.graf.rows) && resp.graf.rows.length) PHARMA_GRAF_STATE.cache[pharmaGrafCacheKey(t.code,t.o)] = {ok:true,rows:resp.graf.rows,produkt:t.code,oblast:t.o};
       }
-    }).catch(function() {}).then(finishOne);
+      finishOne(t, !!ok);
+    }).catch(function() { finishOne(t, false); });
   });
 }
 
@@ -33538,6 +33593,7 @@ function rp2QCache_(q) {
 // (gynEnsureQuarterData), Golem/Reagila si ťahajú všetky 4 kvartály naraz cez plnenieLoadAllQuarters.
 function rp2EnsureQuarter_(q,force) {
   if (rp2Line() === 'gyn') { if (typeof gynEnsureQuarterData === 'function') gynEnsureQuarterData(q, function() { rp2Schedule(); },!!force); return; }
+  if (force && PL_STATE.loaded && !PL_STATE.loading) { appCheckSalesQuarter(false, {year:rp2Year_(),q:q}); return; }
   if (!PL_STATE.loaded && !PL_STATE.loading && typeof plnenieLoadAllQuarters === 'function') plnenieLoadAllQuarters();
 }
 
@@ -34438,8 +34494,7 @@ function rp2MarketHtml(reps, m, p) {
   var oblasts = rptViewOblasts(reps), items = [];
   var loadingTxt = '';
   if (!rptViewPharmaReadyForScope()) {
-    var pg = RPT_VIEW.pharmaProg;
-    loadingTxt = '<div class="rp2-load" style="margin-bottom:10px"><span class="rp2-spin"></span>Načítavam trhové dáta' + (pg && pg.total ? ' (' + pg.done + ' z ' + pg.total + ')' : '') + '…</div>';
+    loadingTxt = rptViewPharmaStatusHtml();
   }
   m.prods.forEach(function(x) {
     var code = rptViewCodeForPlanKey(x.key); if (!code) return;
@@ -34628,6 +34683,10 @@ function rvMovementHtml(reps, data, p) {
 // ── Sekcia „Čo riešiť teraz" — akčný panel pre AM aj repa ──
 // Odpovedá na: koľko € chýba, koľko treba mesačne, je to reálne, a čo riešiť ako prvé.
 function rptViewCodeForPlanKey(planKey) {
+  if (rp2Line() === 'reagila') {
+    var mapped = PHARMA_CODES[plnenieNormalizeKey(planKey)];
+    return mapped && mapped.length ? mapped[0] : null;
+  }
   var code = null;
   Object.keys(RPT_PHARMA_PLAN_KEY).forEach(function(c) { if (!code && RPT_PHARMA_PLAN_KEY[c] === planKey) code = c; });
   return code;
@@ -35165,7 +35224,7 @@ function rvTerritoryHtml(reps, data, p) {
   if (!list.length) {
     var pg = RPT_VIEW.pharmaProg;
     return rptViewPharmaReadyForScope() ? '<div class="rv-card"><div class="rv-empty">Okresné trhové dáta nie sú dostupné.</div></div>'
-      : '<div class="rv-card"><div class="rp2-load"><span class="rp2-spin"></span>Načítavam trhové dáta' + (pg && pg.total ? ' (' + pg.done + ' z ' + pg.total + ')' : '') + '…</div></div>';
+      : '<div class="rv-card">' + rptViewPharmaStatusHtml() + '</div>';
   }
   var rows = list.slice(0, 6).map(function(a) {
     var flag = '';
@@ -37114,70 +37173,49 @@ function okresyOpen(ctx, containerId) {
 // `done` je nepovinné — volá ho potiahnutie nadol, aby vedelo, kedy zastaviť
 // krúžok. Zavolá sa aj vtedy, keď medzitým prišla novšia požiadavka.
 function okresyLoadAll(reqId, ver, cont, showLoading, forceNet, done) {
-  function _fin(){ try { if (typeof done === 'function') { var d = done; done = null; d(); } } catch (e) {} }
-  if (showLoading && cont) cont.innerHTML = '<div class="okr-loading">Načítavam okresné dáta…</div>';
-  var codes = okresyCodes();
-  var fresh = {}, got = 0, finished = false;
-  // Predtým sa čakalo na všetkých deväť produktov a až potom sa vykreslilo —
-  // rýchlosť celej obrazovky sa tým rovnala rýchlosti najpomalšieho volania,
-  // s poistkou 20 sekúnd. Teraz sa vykresľuje priebežne: prvý produkt, ktorý
-  // dobehne, už niečo ukáže, ostatné sa dopĺňajú.
-  var paintQueued = false;
-  function paintPartial() {
-    if (finished || paintQueued || reqId !== OKRESY_STATE.reqId) return;
-    paintQueued = true;
-    // Jedno prekreslenie na snímku — deväť odpovedí môže doraziť takmer naraz.
-    requestAnimationFrame(function () {
-      paintQueued = false;
-      if (finished || reqId !== OKRESY_STATE.reqId) return;
-      OKRESY_STATE.byCode = fresh;
-      okresyRender();
-    });
+  function _fin(){ try { if(typeof done==='function'){var d=done;done=null;d();} } catch(e){} }
+  if(OKRESY_STATE._loadBatch)OKRESY_STATE._loadBatch.cancel();
+  OKRESY_STATE._requestedCacheVer=ver||'';
+  var ctx=appLineCapture(),owner=appReadOwner(),oblast=OKRESY_STATE.oblast,kvartal=OKRESY_STATE.kvartal;
+  var codes=okresyCodes(),fresh=Object.assign({},OKRESY_STATE.byCode||{}),got=0,finished=false,failed=false;
+  var batch={};OKRESY_STATE._loadBatch=batch;
+  function active(){return !finished && OKRESY_STATE._loadBatch===batch && reqId===OKRESY_STATE.reqId && appLineContextActive(ctx) && appReadOwner()===owner;}
+  batch.cancel=function(){finished=true;clearTimeout(batch.timer);_fin();};
+  var haveData=Object.keys(fresh).some(function(k){return fresh[k]&&fresh[k].resp;});
+  if(showLoading&&!haveData&&cont)cont.innerHTML='<div class="okr-loading"><span class="rp2-spin"></span>Načítavam okresné dáta…</div>';
+  var paintQueued=false;
+  function paintPartial(){
+    if(!active()||paintQueued)return;paintQueued=true;
+    requestAnimationFrame(function(){paintQueued=false;if(!active())return;OKRESY_STATE.byCode=fresh;okresyRender();});
   }
-  function finish() {
-    if (finished) return;
-    if (reqId !== OKRESY_STATE.reqId) { _fin(); return; }
-    finished = true;
-    OKRESY_STATE.byCode = fresh;
-    OKRESY_STATE._cacheVer = ver || '';
-    okresySaveCache(OKRESY_STATE.oblast, OKRESY_STATE.kvartal, ver);
-    okresyRender();
+  function finish(error){
+    if(!active()){batch.cancel();return;}
+    finished=true;clearTimeout(batch.timer);OKRESY_STATE._loadBatch=null;OKRESY_STATE.byCode=fresh;
+    if(!error&&!failed){OKRESY_STATE._cacheVer=ver||'';okresySaveCache(oblast,kvartal,ver);}
+    var hasRows=Object.keys(fresh).some(function(k){return fresh[k]&&fresh[k].resp;});
+    if(error||failed){
+      if(hasRows){
+        okresyRender();
+        if(cont&&cont.insertAdjacentHTML)cont.insertAdjacentHTML('beforeend','<div class="okr-empty">Obnova niektorých údajov zlyhala. Dostupné údaje zostávajú zobrazené. <button type="button" class="rv-q-btn" onclick="okresyRetryLoading()">↻ Skúsiť znova</button></div>');
+      }else if(cont)appShowErrorCard(cont,{id:'okresy-load',title:'Nepodarilo sa načítať okresné dáta',desc:'Skús načítať údaje znova.'},okresyRetryLoading);
+    }else okresyRender();
     _fin();
   }
-  codes.forEach(function(code) {
-    okresyFetchCode(code, OKRESY_STATE.oblast, OKRESY_STATE.kvartal, reqId, function(resp, rkv) {
-      if (reqId !== OKRESY_STATE.reqId) return;
-      fresh[code] = { resp: resp, kvartal: rkv };
-      got++;
-      if (got >= codes.length) finish();
-      else paintPartial();
-    }, false, forceNet);
+  // A slow first response is still useful. Bound the whole batch, not an early paint timer.
+  batch.timer=setTimeout(function(){finish(true);},60000);
+  if(!codes.length){finish(false);return;}
+  codes.forEach(function(code){
+    okresyFetchCode(code,oblast,kvartal,reqId,function(resp,rkv,error){
+      if(!active())return;
+      if(error)failed=true;else fresh[code]={resp:resp,kvartal:rkv};
+      got++;if(got>=codes.length)finish(false);else paintPartial();
+    },false,forceNet);
   });
-  // Poistka proti visiacemu requestu — po 20 s vyrenderuj čo máme
-  setTimeout(function() {
-    if (reqId !== OKRESY_STATE.reqId || finished) { _fin(); return; }
-    if (Object.keys(fresh).length) {
-      OKRESY_STATE.byCode = fresh;
-      okresyRender();
-    } else if (cont) {
-      // Pri veľmi zlom signáli (9 produktov, max 2 súbežné požiadavky, každá
-      // s vlastným fallbackom na predošlý kvartál) sa vedelo stať, že do 20s
-      // nedorazil ANI JEDEN produkt — predtým appka ticho ostala na
-      // "Načítavam okresné dáta…" navždy, bez chyby aj bez retry.
-      finished = true;
-      appShowErrorCard(cont, {
-        id: 'okresy-load',
-        title: 'Nepodarilo sa načítať okresné dáta',
-        desc: 'Skontroluj pripojenie a skús to znova.'
-      }, function(){ okresyLoadAll(OKRESY_STATE.reqId, ver, cont, true, true); });
-      // _fin() MUSÍ prísť aj tu — inak by potiahnutie-nadol (pull-to-refresh),
-      // ktoré čaká na done(), zostalo točiť krúžok navždy, aj keď obsah už
-      // ukazuje chybovú kartu namiesto dát.
-      _fin();
-      return;
-    }
-    _fin();
-  }, 20000);
+}
+function okresyRetryLoading(){
+  appStartManualRefresh();
+  var cont=document.getElementById(OKRESY_STATE.containerId);
+  okresyLoadAll(OKRESY_STATE.reqId,OKRESY_STATE._requestedCacheVer||OKRESY_STATE._cacheVer||'',cont,false,true);
 }
 
 // ── Trvalá cache Okresov (ľahká — len metadáta; pharma odpovede sú už v per-produkt cache) ──
@@ -37240,8 +37278,10 @@ function okresyReconstruct(meta, oblast) {
 // forceNet = true → obíď per-produkt cache a choď rovno na sieť (pri zmene verzie dát)
 function okresyFetchCode(code, oblast, kvartal, reqId, cb, isPrev, forceNet) {
   if (reqId !== OKRESY_STATE.reqId) return;
+  var ctx = appLineCapture(), owner = appReadOwner();
+  function active(){return reqId===OKRESY_STATE.reqId && appLineContextActive(ctx) && appReadOwner()===owner;}
   var cacheKey = code + '_' + oblast + '_' + kvartal;
-  function deliver(resp) { if (reqId === OKRESY_STATE.reqId) cb(resp, kvartal); }
+  function deliver(resp,error) { if (active()) cb(resp, kvartal,!!error); }
   function hasReal(resp) {
     return resp && Array.isArray(resp.okresy) && resp.okresy.some(function(o) {
       return (parseFloat(o.nas_m1) > 0) || (parseFloat(o.nas_m2) > 0) || (parseFloat(o.nas_m3) > 0);
@@ -37265,30 +37305,35 @@ function okresyFetchCode(code, oblast, kvartal, reqId, cb, isPrev, forceNet) {
   }
 
   function goPrev() {
+    if(!active())return;
     var pk = pharmaKvartalPrev(kvartal);
     if (pk && pk !== kvartal && !isPrev) okresyFetchCode(code, oblast, pk, reqId, cb, true, forceNet);
     else deliver(null);
   }
 
   appQueuedFetchJson(
-    scriptUrl('action=getPharmaData'
-      + '&oblast='  + encodeURIComponent(oblast)
-      + '&produkt=' + encodeURIComponent(code)
-      + '&kvartal=' + encodeURIComponent(kvartal)),
+    pharmaDataRequestUrl(code, oblast, kvartal, true, true),
     { cache: 'no-store' }, undefined, 'critical'
   )
     .then(function(resp) {
+      if(!active())return;
       if (resp && resp.ok && hasReal(resp)) {
         PHARMA_STATE.cache[cacheKey] = resp;
         try { _phPersistSave(code, oblast, kvartal, resp); } catch (e) {}
         deliver(resp);
-      } else if (!isPrev) {
+      } else if (resp && resp.ok && !isPrev && hasReal({okresy:resp.okresy_prev})) {
+        // Combined server cache already contains the previous quarter; no second sheet scan.
+        var prevKv=pharmaKvartalPrev(kvartal), prevResp=Object.assign({},resp,{okresy:resp.okresy_prev,kvartal:prevKv});
+        PHARMA_STATE.cache[code+'_'+oblast+'_'+prevKv]=prevResp;
+        try {_phPersistSave(code,oblast,prevKv,prevResp);}catch(e){}
+        cb(prevResp,prevKv,false);
+      } else if (resp && resp.ok && !isPrev) {
         goPrev();
       } else {
-        deliver(null);
+        deliver(null, !resp || !resp.ok);
       }
     })
-    .catch(function() { if (!isPrev) goPrev(); else deliver(null); });
+    .catch(function() { deliver(null,true); });
 }
 
 // Pivot: byCode (produkt → okresy) → zoznam okresov, každý so všetkými produktami

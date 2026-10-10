@@ -43,7 +43,7 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright');const root
   await setup('gp','rep west');await pull(10,150);await page.waitForTimeout(800);assert.equal(refreshes,before,'Horizontal gesture does not refresh');
   // Exercise actual registered gesture handlers on panels that were missing PTR.
   // Loader behavior is checked independently; here retain fixtures to inspect the ring.
-  const panels=[['team-plnenie-overlay','team-plnenie-body','team'],['golem-cal-overlay','golem-cal-content','calendar'],['lk-detail','lk-detail-body','pharmacy-detail'],['pharma-ms-overlay','pharma-ms-body','market'],['rep-plnenie-overlay','rep-pl-q-content','sales'],['dnes-overlay','dnes-body','home']];
+  const panels=[['pharma-okres-overlay','pharma-okres-chart-svg','district-chart'],['team-plnenie-overlay','team-plnenie-body','team'],['golem-cal-overlay','golem-cal-content','calendar'],['lk-detail','lk-detail-body','pharmacy-detail'],['pharma-ms-overlay','pharma-ms-body','market'],['rep-plnenie-overlay','rep-pl-q-content','sales'],['dnes-overlay','dnes-body','home']];
   for(const [panel,host,type] of panels){
    await page.evaluate(({panel,host})=>{
     document.querySelectorAll('.show').forEach(e=>e.classList.remove('show'));APP_LINE_EPOCH++;
@@ -57,7 +57,7 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright');const root
    assert.deepEqual(await page.evaluate(()=>__ptrSelected),[type]);
    await page.waitForFunction(()=>!document.querySelector('.app-ptr.loading'));
   }
-  for(const [line,tab,type] of [['gp','plnenie','mgr-plnenie'],['gp','kalendar','mgr-kalendar'],['gp','activity','mgr-activity'],['gp','reporty','mgr-reporty'],['gyn','plnenie','gyn-plnenie'],['gyn','kalendar','gyn-kalendar'],['gyn','lekarne','gyn-lekarne']]){
+  for(const [line,tab,type] of [['gp','plnenie','mgr-plnenie'],['gp','kalendar','mgr-kalendar'],['gp','activity','mgr-activity'],['gp','reporty','mgr-reporty'],['gyn','plnenie','gyn-plnenie'],['gyn','kalendar','gyn-kalendar'],['gyn','lekarne','gyn-lekarne'],['gyn','reporty','gyn-reporty']]){
    await page.evaluate(({line,tab})=>{
     document.querySelectorAll('.show').forEach(e=>e.classList.remove('show'));APP_LINE_EPOCH++;
     getSession=()=>({username:'manager-test',role:line==='gyn'?'gyn-am':'bum',line,session_token:'synthetic'});_panelCurrent=null;

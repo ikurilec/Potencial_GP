@@ -3,7 +3,7 @@ const src=fs.readFileSync('app.js','utf8');
 assert.ok(src.includes('function appQueuePriority('),'Queue must consider the currently visible view');
 const part=src.slice(src.indexOf('var APP_REQUEST_QUEUE ='),src.indexOf('// getConfig je čisté čítanie'));
 let view={actions:['getLekarne'],params:{login:'rep-a'}},calls=[],releases=[];
-const c={Promise,URL,location:{href:'https://satori.test/'},appReadView:()=>view,
+const c={setTimeout:()=>({}),clearTimeout:()=>{},Promise,URL,location:{href:'https://satori.test/'},appReadView:()=>view,
  appReadResource:u=>{const p=new URL(u).searchParams;return {action:p.get('action'),params:Object.fromEntries(p),owner:'test'};},
  appRequestMatchesView:(u,v)=>{if(!v)return false;const p=typeof u==='object'?u.params:Object.fromEntries(new URL(u).searchParams);return v.actions.includes(typeof u==='object'?u.action:p.action)&&(!v.params.login||p.login===v.params.login);},
  appFetchJsonRaw:u=>{calls.push(u);return new Promise(resolve=>releases.push(resolve));},appLineCapture:()=>({}),getSession:()=>({username:'test'})};
