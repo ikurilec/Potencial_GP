@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.14';
+var APP_VERSION = '2.89.15';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -35952,6 +35952,7 @@ var LK_PROD_DISPLAY = {
   aflamil:'Aflamil', aflamil_kr:'AFL krém', aflamil_sa:'AFL sáč.', aflamil_tb:'AFL tbl.',
   cavinton:'Cavinton', cavinton_fo:'CAV Forte', cavinton_ij:'CAV inj.', cavinton_tb:'CAV tbl.',
   globifer:'Globifer', junod:'Junod', kogavant:'Kogavant', lonelix:'Lonelix', ossica:'Ossica',
+  lonelix_tb:'Lonelix tablety', lonelix_sr:'Lonelix sirup',
   suprax:'Suprax', suprax_dt:'Suprax DSP', suprax_tb:'Suprax tbl.',
   telexer:'Telexer', terrosa:'Terrosa', vidonorm:'Vidonorm',
   // Reagila línia (kľúče z Lekarne tabu Reagila konvertora)
@@ -36490,7 +36491,7 @@ function lkGetCachedRowsAsync(login) {
   });
 }
 
-function lkPrimeCacheFromRows(rows, persist) {
+function lkPrimeCacheFromRows(rows, persist, startedAt) {
   var grouped = {};
   (rows || []).forEach(function(r) {
     var login = lkCacheKey(r && r.login);
@@ -36505,6 +36506,8 @@ function lkPrimeCacheFromRows(rows, persist) {
     });
   }
   Object.keys(grouped).forEach(function(login) {
+    var existing=LK_STATE.cache[lkCacheKey(login)];
+    if(startedAt && existing && existing.ts>startedAt)return;
     var rows = grouped[login];
     // Prázdne pole uložíme iba do pamäte (nie localStorage) — inak by prepísalo validnú cache
     lkSetCache(login, rows, persist && rows.length > 0);
@@ -36551,6 +36554,29 @@ function lkDevMockRows() {
   return rows;
 }
 
+function lkQueueRead(url, priority, rec) {
+  rec=rec || {};
+  return appTrackedRead(url,{cache:'no-store'},function(u,o){
+    return new Promise(function(resolve,reject){
+      var timer=setTimeout(function(){
+        var index=APP_REQUEST_QUEUE.items.indexOf(rec.job);
+        if(index>=0){
+          APP_REQUEST_QUEUE.items.splice(index,1);
+          rec.job.reject(new Error('Pharmacy queue timeout'));
+          appRequestQueueDrain();
+        }
+      },15000);
+      appQueuedFetchJsonRaw(u,o,45000,priority || 'critical',rec).then(function(data){
+        clearTimeout(timer);resolve(data);
+      },function(error){clearTimeout(timer);reject(error);});
+    });
+  });
+}
+function lkPromoteQueuedRead(rec) {
+  var job=rec && rec.job,index=APP_REQUEST_QUEUE.items.indexOf(job);
+  if(index<0 || job.prio==='critical' || job.prio==='boot')return;
+  APP_REQUEST_QUEUE.items.splice(index,1);job.prio='critical';appQueueInsert(job);
+}
 function lkFetch(login, cb) {
   if (typeof IS_DEV !== 'undefined' && IS_DEV) { try { cb(lkDevMockRows()); } catch(e) {} return; }
   var cacheKey = lkCacheKey(login);
@@ -36561,9 +36587,14 @@ function lkFetch(login, cb) {
     try { cb(cachedRows); } catch(e) {}
   }
   // Fetch práve beží — pridaj callback do fronty
-  if (_lkInFlight[cacheKey]) { _lkInFlight[cacheKey].push(cb); return; }
+  if (_lkInFlight[cacheKey]) {
+    var currentRead=appReadView();
+    if(currentRead && currentRead.actions.indexOf('getLekarne')!==-1)lkPromoteQueuedRead(_lkInFlight[cacheKey].rec);
+    _lkInFlight[cacheKey].push(cb); return;
+  }
   // Spusti nový fetch
   _lkInFlight[cacheKey] = [cb];
+  var rec={};_lkInFlight[cacheKey].rec=rec;
   if (!servedCached && lkIdbSupported() && cacheKey !== '__all__') {
     lkIdbLoad(cacheKey).then(function(entry) {
       if (!entry || servedCached || networkFinished) return;
@@ -36575,7 +36606,7 @@ function lkFetch(login, cb) {
   var url = scriptUrl('action=getLekarne&login=' + encodeURIComponent(cacheKey === '__all__' ? '' : cacheKey) + '&fresh=1&creamMonth=' + encodeURIComponent(lkCreamContactMonthKey()) + '&_t=' + Date.now());
   var visibleRead=appReadView();
   var priority=visibleRead && visibleRead.actions.indexOf('getLekarne')!==-1?'critical':'background';
-  appQueuedFetchJson(url, { cache: 'no-store' }, undefined, priority).then(function(data) {
+  lkQueueRead(url, priority, rec).then(function(data) {
     networkFinished=true;
     if(!data || !data.ok || !Array.isArray(data.rows))throw new Error('Pharmacy response unavailable');
     var rows = data.rows;
@@ -36615,8 +36646,9 @@ function lkFetchAll(cb) {
   if (LK_STATE.allLoaded) { if (cb) cb(true); return; }
   if (LK_STATE.allLoading) { if (cb) LK_STATE.allCallbacks.push(cb); return; }
   LK_STATE.allLoading = true;
+  var startedAt=Date.now();
   if (cb) LK_STATE.allCallbacks.push(cb);
-  appQueuedFetchJson(scriptUrl('action=getLekarneAll&creamMonth=' + encodeURIComponent(lkCreamContactMonthKey()) + '&_t=' + Date.now()), { cache: 'no-store' }, undefined, 'background')
+  lkQueueRead(scriptUrl('action=getLekarneAll&fresh=1&creamMonth=' + encodeURIComponent(lkCreamContactMonthKey()) + '&_t=' + Date.now()), 'background')
     .then(function(data) {
       var ok = !!(data && data.ok && Array.isArray(data.rows));
       var rows = ok ? data.rows : [];
@@ -36629,7 +36661,7 @@ function lkFetchAll(cb) {
           grouped[login].push(r);
         });
         Object.keys(grouped).forEach(function(login){ lkReconcileCreamContactLocal(login, grouped[login]); });
-        lkPrimeCacheFromRows(rows, true);
+        lkPrimeCacheFromRows(rows, true, startedAt);
       }
       LK_STATE.allLoading = false;
       var cbs = LK_STATE.allCallbacks.splice(0);
@@ -37372,7 +37404,11 @@ function lkFilterDataset() {
 
 // Všetky reálne odoberané produkty lekárne (vrátane mimo hlavného portfólia, napr. Telexer)
 function lkBuysAll(l) {
-  return l && l.allProds ? Object.keys(l.allProds) : ((l && l.buys) || []);
+  var products=l && l.allProds ? Object.keys(l.allProds) : ((l && l.buys) || []);
+  return products.filter(function(p){
+    if(p!=='lonelix_tb' && p!=='lonelix_sr')return true;
+    return ((l && l.months) || []).some(function(m){return Number((m.prods || {})[p])>0;});
+  });
 }
 
 // Zoznam produktov do filtra — pevné portfólio línie + čokoľvek reálne odoberané v datasete.
@@ -37380,7 +37416,7 @@ function lkBuysAll(l) {
 function lkFilterProducts() {
   var order = lkIsReagila()
     ? LK_REAGILA_PRODS.slice()
-    : ['aflamil_tb', 'aflamil_sa', 'aflamil_kr', 'suprax', 'vidonorm', 'cavinton_fo', 'telexer', 'globifer', 'kogavant'];
+    : ['aflamil_tb', 'aflamil_sa', 'aflamil_kr', 'suprax', 'vidonorm', 'cavinton_fo', 'telexer', 'globifer', 'kogavant','lonelix','lonelix_tb','lonelix_sr'];
   var seen = {};
   order.forEach(function(p) { seen[p] = 1; });
   lkFilterDataset().forEach(function(l) {
@@ -37493,18 +37529,22 @@ function lkBuildDevVariants(list) {
   });
 }
 
-var LK_VARIANT_LOADING = false, _lkVariantReq = 0, _lkVariantLogin = null, _lkVariantCtx = null;
+var LK_VARIANT_LOADING = false, LK_VARIANT_ERROR = false, _lkVariantReq = 0, _lkVariantLogin = null, _lkVariantCtx = null;
 function lkLoadVariants(login, dataset) {
+  // Reagila má iba súhrnný hárok Lekarne; jej backend nemá getLekarneDetail.
+  if(lkIsReagila()){lkVariantsReset();LK_VARIANT_LOADING=false;LK_VARIANT_ERROR=false;LK_VARIANT_LOADED=true;return;}
   // Cache and fresh callbacks can both arrive while the same detail read runs.
   if(LK_VARIANT_LOADING && _lkVariantLogin===login && _lkVariantCtx && appLineContextActive(_lkVariantCtx))return;
   _lkVariantLogin=login;_lkVariantCtx=appLineCapture();
   var ctx=_lkVariantCtx;
   lkVariantsReset();
   LK_VARIANT_LOADING = true;
+  LK_VARIANT_ERROR = false;
   var req = ++_lkVariantReq;
-  var done = function() {
+  var done = function(error) {
     if (req !== _lkVariantReq || !appLineContextActive(ctx)) return;   // medzitým sa spustilo novšie načítanie (iný rep / zoznam)
     LK_VARIANT_LOADING = false;
+    LK_VARIANT_ERROR = !!error;
     LK_VARIANT_LOADED = true;
     var sh = document.getElementById('lk-filter-sheet');
     if (sh && sh.classList.contains('show')) lkFilterRenderSheet();
@@ -37514,9 +37554,13 @@ function lkLoadVariants(login, dataset) {
     if (d && d.classList.contains('show') && LK_DETAIL_OPEN_KEY) lkOpenDetail(LK_DETAIL_OPEN_KEY, true);
   };
   if (typeof IS_DEV !== 'undefined' && IS_DEV) { lkBuildDevVariants(dataset); done(); return; }
-  appQueuedFetchJson(scriptUrl('action=getLekarneDetail&fresh=1&login=' + encodeURIComponent(login || '') + '&_t=' + Date.now()), { cache: 'no-store' }, undefined, 'critical')
-    .then(function(d) { if (appLineContextActive(ctx) && req === _lkVariantReq && d && d.ok && d.rows) lkIngestDetail(d.rows); done(); })
-    .catch(function() { done(); });
+  lkQueueRead(scriptUrl('action=getLekarneDetail&fresh=1&login=' + encodeURIComponent(login || '') + '&_t=' + Date.now()), 'critical')
+    .then(function(d) {
+      if (!appLineContextActive(ctx) || req !== _lkVariantReq) return;
+      if (!d || !d.ok || !Array.isArray(d.rows)) { done(true); return; }
+      lkIngestDetail(d.rows); done(false);
+    })
+    .catch(function() { done(true); });
 }
 
 function lkFilterToggleVariant(p, v) {
@@ -38200,6 +38244,8 @@ function lkOpenDetail(key, isRefresh, freshPharmacy) {
 
   var body = document.getElementById('lk-detail-body');
   if (!body) return;
+  // Nastav stav rozpadu ešte pred prvým vykreslením histórie.
+  if (!isRefresh && l.login) lkLoadVariants(l.login, [l]);
 
   // Zostav história mesiacov
   // Produkty zvolené vo filtri → zvýrazniť v súhrne aj v rozpade (aby bolo jasné)
@@ -38274,7 +38320,7 @@ function lkOpenDetail(key, isRefresh, freshPharmacy) {
     '<div class="lk-section-lbl">História nákupov</div>' +
     '<div style="background:#fff;border-radius:12px;padding:8px 14px;box-shadow:0 2px 8px rgba(15,23,42,.06)">' +
       // Mesiace sú hneď k dispozícii — balenia (Lekarne_Detail) sa len doplnia, keď dorazia.
-      (!LK_VARIANT_LOADED && LK_VARIANT_LOADING ? '<div class="lk-detail-loading-s" style="padding:6px 0 4px">Dopĺňam rozpad podľa balení…</div>' : '') +
+      (LK_VARIANT_LOADING ? '<div class="lk-detail-loading-s lk-detail-load-status" role="status" aria-live="polite"><span class="nst-spin" aria-hidden="true"></span><span>Načítavam balenia a sily produktov…</span></div>' : LK_VARIANT_ERROR ? '<div class="lk-detail-loading-s lk-detail-load-status" role="status" aria-live="polite">Balenia sa nepodarilo načítať. História nákupov zostáva zobrazená.</div>' : '') +
       (monthsHtml || '<div class="lk-detail-loading-s" style="padding:10px 0">Bez nákupov v sledovanom období.</div>') +
     '</div>';
 
@@ -38288,7 +38334,6 @@ function lkOpenDetail(key, isRefresh, freshPharmacy) {
     lkFetch(detailLogin,function(rows){
       if(appLineContextActive(detailCtx))lkRefreshDetailFromRows(detailLogin,rows);
     });
-    lkLoadVariants(detailLogin,[l]);
   }
 }
 
