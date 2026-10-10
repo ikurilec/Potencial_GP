@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.17';
+var APP_VERSION = '2.89.18';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -1306,6 +1306,10 @@ function appFetchJsonRaw(url, opts, timeoutMs) {
 // preto viac paralelných prefetchov v skutočnosti spomaľovalo prvé dôležité dáta.
 // Dve aktívne požiadavky držia štart plynulý; critical úlohy idú pred preloadmi.
 var APP_REQUEST_QUEUE = { active: 0, backgroundActive:0, max: 2, items: [], running:[], sequence:0 };
+// Bounded, in-memory diagnostics: queue wait and server duration, without URLs,
+// names or credentials. Used to distinguish client waiting from backend latency.
+var APP_READ_PERFORMANCE = [];
+function appReadPerformance(){return APP_READ_PERFORMANCE.map(function(r){return Object.assign({},r);});}
 function appQueuePriority(job){
   if(job.resource && job.resource.ctx && !appLineContextActive(job.resource.ctx))return 0;
   if(job.prio==='boot')return 3;
@@ -1316,13 +1320,22 @@ function appQueuePriority(job){
   return job.prio==='critical'?1:0;
 }
 function appQueueStart(job,background){
+  job.startedAt=Date.now();
   APP_REQUEST_QUEUE.active++;
   APP_REQUEST_QUEUE.running.push(job);
   if(background)APP_REQUEST_QUEUE.backgroundActive++;
   appFetchJsonRaw(job.url,job.opts,job.timeoutMs).then(job.resolve,job.reject).then(release,release);
-  function release(){APP_REQUEST_QUEUE.active--;var i=APP_REQUEST_QUEUE.running.indexOf(job);if(i>=0)APP_REQUEST_QUEUE.running.splice(i,1);appRequestQueueDrain();}
+  function release(){
+    APP_READ_PERFORMANCE.push({action:job.resource?job.resource.action:'read',line:job.resource&&job.resource.ctx?job.resource.ctx.line:'',waitMs:job.startedAt-job.enqueuedAt,networkMs:Date.now()-job.startedAt});
+    if(APP_READ_PERFORMANCE.length>100)APP_READ_PERFORMANCE.shift();
+    APP_REQUEST_QUEUE.active--;var i=APP_REQUEST_QUEUE.running.indexOf(job);if(i>=0)APP_REQUEST_QUEUE.running.splice(i,1);appRequestQueueDrain();
+  }
 }
 function appRequestQueueDrain(){
+  APP_REQUEST_QUEUE.items=APP_REQUEST_QUEUE.items.filter(function(job){
+    if(job.resource && job.resource.ctx && !appLineContextActive(job.resource.ctx)){job.reject(new Error("Obsolete read context"));return false;}
+    return true;
+  });
   // A previously visible read becomes background when the user navigates away.
   APP_REQUEST_QUEUE.backgroundActive=APP_REQUEST_QUEUE.running.filter(function(job){return appQueuePriority(job)===0;}).length;
   while(APP_REQUEST_QUEUE.active < APP_REQUEST_QUEUE.max && APP_REQUEST_QUEUE.items.length){
@@ -1343,6 +1356,7 @@ function appQueueInsert(job){
 function appQueuedFetchJsonRaw(url, opts, timeoutMs, priority, rec){
   return new Promise(function(resolve, reject){
     var job = { url:url, opts:opts || { cache:'no-store' }, timeoutMs:timeoutMs, resolve:resolve, reject:reject };
+    job.enqueuedAt=Date.now();
     job.prio = priority;
     job.order=++APP_REQUEST_QUEUE.sequence;
     job.resource=appReadResource(url);
@@ -1351,34 +1365,49 @@ function appQueuedFetchJsonRaw(url, opts, timeoutMs, priority, rec){
     appRequestQueueDrain();
   });
 }
-// getConfig je čisté čítanie a tú istú hodnotu (notif_predaje, notif_pharma) si počas
-// prihlásenia pýta viac miest naraz (prefetch, checkNotifications, Plnenie, Rebríček…) —
-// meranie 2026-09-19: 8 getConfig na jedno prihlásenie, každé ~2 s v 2-slotovej fronte.
-// Súbežné IDENTICKÉ getConfig (rovnaké URL) sa preto zlúčia do jednej požiadavky; ostatné
-// akcie (zápisy, čítania s vlastnou sémantikou) sa NEZLUČUJÚ. Ak sa zlučuje s ešte
-// nezačatou požiadavkou s nižšou prioritou, požiadavka sa povýši (nikdy nezníži).
-var _cfgInflight = {};
+// getConfig je čisté čítanie; rovnaké pravidlo platí pre povolené dátové GET-y.
+// Zdieľame iba rozbehnutý prenos, nie trvalú odpoveď. Fresh, oprávnenia,
+// všetky vecné parametre aj kontext účtu zostávajú súčasťou identity.
+var _cfgInflight = Object.create(null);
 var APP_PRIO_RANK = { boot: 3, critical: 2 };
+function appReadInflightKey(url,opts,timeoutMs){
+  try {
+    opts=opts||{};
+    if(Object.keys(opts).some(function(k){return k!=='cache'&&k!=='method';}) || (opts.method&&String(opts.method).toUpperCase()!=='GET'))return '';
+    var u=new URL(url,location.href),action=u.searchParams.get('action');
+    if(APP_DATA_READ_ACTIONS.indexOf(action)<0)return '';
+    var pairs=[],seen=Object.create(null),values=Object.create(null),ambiguous=false;
+    u.searchParams.forEach(function(v,k){
+      if(k==='_t'||k==='_check'||k==='_refresh')return;
+      if(Object.prototype.hasOwnProperty.call(values,k)&&values[k]!==v)ambiguous=true;
+      values[k]=v;
+      var pair=JSON.stringify([k,v]);if(k!=='fresh'||!seen[pair]){seen[pair]=true;pairs.push(pair);}
+    });
+    pairs.sort();
+    if(ambiguous)return '';
+    return JSON.stringify([appReadOwner(),appLineCapture(),u.origin+u.pathname,pairs,timeoutMs||APP_FETCH_TIMEOUT_MS,opts.cache||'no-store']);
+  }catch(e){return '';}
+}
+function appReadClone(data){
+  if(data==null)return data;
+  return typeof structuredClone==='function'?structuredClone(data):JSON.parse(JSON.stringify(data));
+}
 function appQueuedFetchJsonUntracked(url, opts, timeoutMs, priority){
-  if(typeof url === 'string' && url.indexOf('action=getConfig&') !== -1){
-    var ex = _cfgInflight[url];
-    if(ex){
-      var qi = ex.job ? APP_REQUEST_QUEUE.items.indexOf(ex.job) : -1;
-      if(qi !== -1 && (APP_PRIO_RANK[priority] || 0) > (APP_PRIO_RANK[ex.job.prio] || 0)){
-        APP_REQUEST_QUEUE.items.splice(qi, 1);
-        ex.job.prio = priority;
-        appQueueInsert(ex.job);
-      }
-      return ex.p;
+  var key=appReadInflightKey(url,opts,timeoutMs);
+  if(!key)return appQueuedFetchJsonRaw(url,opts,timeoutMs,priority);
+  var ex=_cfgInflight[key];
+  if(ex){
+    ex.shared=true;
+    var qi=ex.job?APP_REQUEST_QUEUE.items.indexOf(ex.job):-1;
+    if(qi!==-1 && (APP_PRIO_RANK[priority]||0)>(APP_PRIO_RANK[ex.job.prio]||0)){
+      APP_REQUEST_QUEUE.items.splice(qi,1);ex.job.prio=priority;appQueueInsert(ex.job);appRequestQueueDrain();
     }
-    var rec = {};
-    rec.p = appQueuedFetchJsonRaw(url, opts, timeoutMs, priority, rec);
-    _cfgInflight[url] = rec;
-    var _clr = function(){ if(_cfgInflight[url] === rec) delete _cfgInflight[url]; };
-    rec.p.then(_clr, _clr);
-    return rec.p;
+    return ex.p.then(appReadClone);
   }
-  return appQueuedFetchJsonRaw(url, opts, timeoutMs, priority);
+  var rec={};rec.p=appQueuedFetchJsonRaw(url,opts,timeoutMs,priority,rec);_cfgInflight[key]=rec;
+  function clear(){if(_cfgInflight[key]===rec)delete _cfgInflight[key];}
+  rec.p.then(clear,clear);
+  return rec.p.then(function(data){return rec.shared?appReadClone(data):data;});
 }
 
 // Jednotný retry mechanizmus nad appQueuedFetchJson (F0, boot audit) — predtým
@@ -13439,11 +13468,12 @@ function gynQTabsHtml() {
 }
 
 
-// Preload — všetky 4 Q plnenia paralelne (cache GYN_APP.plCache)
+// Restore all cached quarters; preload the selected and elapsed quarters first.
 function gynPreloadAllQuarters() {
   var year = GYN_APP.year;
   var preloadCtx = appLineCapture();
-  [1,2,3,4].forEach(function(q){
+  var current=GYN_APP.q||Math.ceil((new Date().getMonth()+1)/3);
+  [current].concat([1,2,3,4].filter(function(q){return q!==current;})).forEach(function(q){
     var cacheKey = gynPlnenieCacheKey(year, q);
     if(!GYN_APP.plCache[q]) {
       var persisted = gynCacheRead(cacheKey);
@@ -13452,6 +13482,8 @@ function gynPreloadAllQuarters() {
         GYN_APP.plCache[q] = persisted;
       }
     }
+    var calendar=new Date();
+    if(year>calendar.getFullYear() || (year===calendar.getFullYear() && q>Math.ceil((calendar.getMonth()+1)/3)))return;
     if(GYN_APP.plLoading[q]) return;     // už sa načítava (gynPlnenieShow)
     var reqId = ((GYN_APP._plReqIds[q] || 0) + 1);
     GYN_APP._plReqIds[q] = reqId;
@@ -27668,12 +27700,14 @@ function plneniePreloadProductInsights(oblast, q, year, planProducts, forceRefre
     if (PHARMA_CODES[key] && keys.indexOf(key) < 0) keys.push(key);
   });
   if (!keys.length) return;
-  var preloadKey = oblast + '_' + kvartal + '_' + keys.join('|') + '_' + (forceRefresh ? 'fresh' : 'cache');
+  var insightCtx=appLineCapture(),insightOwner=appReadOwner();
+  var preloadKey = insightOwner + '_' + oblast + '_' + kvartal + '_' + keys.join('|') + '_' + (forceRefresh ? 'fresh' : 'cache');
   var now = Date.now();
   if (_PROD_INSIGHT_PRELOAD_TS[preloadKey] && now - _PROD_INSIGHT_PRELOAD_TS[preloadKey] < 5 * 60 * 1000) return;
   _PROD_INSIGHT_PRELOAD_TS[preloadKey] = now;
   keys.forEach(function(key, idx) {
     setTimeout(function() {
+      if(!appLineContextActive(insightCtx)||appReadOwner()!==insightOwner)return;
       var codes = PHARMA_CODES[key] || [];
       codes.forEach(function(code) {
         if (forceRefresh) {
@@ -43369,7 +43403,7 @@ function gsRender(){
   gsHighlight(false);
 }
 /* ── NÁPOVEDA — príklady podľa role/línie (klik ich rovno vyskúša) ── */
-function gsStatusHtml(){var d=gsData();return d.pending?'<div class="gs-data-status" role="status"><span class="nst-spin" aria-hidden="true"></span>Dopĺňam výsledky vyhľadávania…</div>':d.failed?'<div class="gs-data-status" role="status">Časť údajov sa nepodarilo načítať. Zobrazené sú dostupné výsledky. <button type="button" onclick="gsEnsureData()">Skúsiť znova</button></div>':'';}
+function gsStatusHtml(){var d=gsData();return d.pending?'<div class="gs-data-status" role="status"><span class="nst-spin" aria-hidden="true"></span>Dopĺňam výsledky vyhľadávania…</div>':d.failed?'<div class="gs-data-status" role="status">Časť údajov sa nepodarilo načítať. Zobrazené sú dostupné výsledky. <button type="button" onclick="gsEnsureData(true)">Skúsiť znova</button></div>':'';}
 function gsTipsHtml(){
   var mgr=gsIsMgr(), line=gsLine(), tips=[];
   if(line==='gyn'){
@@ -43454,12 +43488,31 @@ function gsOpen(){
   gsEnsureData();
   try { if(typeof usageTrack==='function') usageTrack('gs_open','',''); } catch(e){}
 }
-// Pri otvorení doťiahni na pozadí chýbajúce dáta (lekárne, história lekárov, kalendár)
-// a po načítaní prestav index + prekresli, ak je panel ešte otvorený → prvé otvorenie
-// nájde naozaj všetko, aj keď sa dáta ešte dosync-ovávali.
-function gsEnsureData(){
+// Empty search opens immediately from the current index. Entity queries replenish
+// missing/expired sources; exact screen routes need no additional network traffic.
+function gsSourceFresh(params,logins){
+ try{
+  var resource=appReadResource(gsLine()==='gyn'?gynScriptUrl(params):scriptUrl(params));
+  if(!resource || !appReadLast(resource) || Date.now()-appReadLast(resource)>=90000)return false;
+  var login=String(resource.params.login||resource.params.reprezentant||'').toLowerCase(),entry;
+  switch(resource.action){
+   case 'getGynLekarne':return Array.isArray(GYN_LK.cache[login]);
+   case 'getLekarne':entry=LK_STATE.cache[lkCacheKey(login)];return !!entry&&Array.isArray(entry.rows);
+   case 'getLekarneAll':entry=LK_STATE.cache[lkCacheKey()];return !!entry&&Array.isArray(entry.rows);
+   case 'getAllHistory':return logins.length>0&&logins.every(function(u){return MGR_STATE.reps[u]&&Array.isArray(MGR_STATE.reps[u].visits)&&MGR_STATE.reps[u].visits.length>0;});
+   case 'getHistory':return Array.isArray(_histAllItems)&&_histAllItems.length>0;
+   case 'getNastenka':return !!NST.loaded&&Array.isArray(NST.posts);
+   case 'getCalEvents':return !!GYN_CAL._everSyncedOk&&Array.isArray(GYN_CAL.events);
+  }
+ }catch(e){}
+ return false;
+}
+function gsEnsureData(force){
  var owner=gsOwner(),ctx=appLineCapture(),data=gsData(),s=gsSession(),line=gsLine(),mgr=gsIsMgr();
- if(data.pending)return;
+ data.times=data.times||{};data.attempts=data.attempts||{};data.reads=data.reads||{};data.errors=data.errors||{};
+ var query=gsNorm((document.getElementById('gs-input')||{}).value||'').trim();
+ var routeOnly=GS.items.some(function(e){return (e.type==='section'||e.type==='action'||e.type==='rep')&&(gsNorm(e.title)===query || (query.length>=3&&e.type==='section'&&gsNorm(e.title).indexOf(query)===0));});
+ if(!force && (query.length<2||routeOnly))return;
  function active(){return owner===gsOwner()&&appLineContextActive(ctx);}
  var snapshot=[];
  function paint(force){
@@ -43474,27 +43527,38 @@ function gsEnsureData(){
   }
  }
  function read(params,consume){
-  data.pending++;
+  var now=Date.now();
+  if(!force&&gsSourceFresh(params,logins))return;
+  if(data.reads[params] || (!force && ((data.times[params] && now-data.times[params]<90000)||(data.attempts[params] && now-data.attempts[params]<20000))))return;
+  data.reads[params]=true;data.attempts[params]=now;data.pending++;
   var url=line==='gyn'?gynScriptUrl(params):scriptUrl(params);
-  var done=false,timer=setTimeout(function(){if(done)return;done=true;data.pending--;if(active()){data.failed++;paint();}},30000);
-  appQueuedFetchJson(url,undefined,20000,'background').then(function(d){if(!done&&active())consume(d);}).catch(function(){if(!done&&active())data.failed++;}).finally(function(){if(done)return;done=true;clearTimeout(timer);data.pending--;paint();});
+  function markFailed(){data.errors[params]=true;data.failed=Object.keys(data.errors).length;}
+  var done=false,timer=setTimeout(function(){if(done)return;done=true;delete data.reads[params];data.pending--;if(active()){markFailed();paint();}},30000);
+  appQueuedFetchJson(url,undefined,20000,'background').then(function(d){if(!done&&active()){consume(d);data.times[params]=Date.now();delete data.errors[params];data.failed=Object.keys(data.errors).length;}}).catch(function(){if(!done&&active())markFailed();}).finally(function(){if(done)return;done=true;clearTimeout(timer);delete data.reads[params];data.pending--;paint();});
  }
  // Fetch via the shared queue, never block immediate cached suggestions.
- data.failed=0;
+ if(force){data.failed=0;data.errors={};}
  var logins=gsAllowedLogins();
+ if(data.roster!==undefined&&data.roster!==logins.join('|')){
+  ['action=getLekarneAll&fresh=1','action=getAllHistory'].forEach(function(key){delete data.times[key];delete data.attempts[key];});
+ }
  data.roster=logins.join('|');
  if(line==='gyn'){
-  logins.forEach(function(login){if(data.pharmacies[login])return;read('action=getGynLekarne&login='+encodeURIComponent(login),function(d){if(!d||!d.ok||!Array.isArray(d.rows))throw Error('Invalid pharmacies');data.pharmacies[login]=d.rows;});});
+  logins.forEach(function(login){read('action=getGynLekarne&login='+encodeURIComponent(login),function(d){if(!d||!d.ok||!Array.isArray(d.rows))throw Error('Invalid pharmacies');data.pharmacies[login]=d.rows;});});
  }else{
   read('action='+(mgr?'getLekarneAll':'getLekarne&login='+encodeURIComponent(s.username))+'&fresh=1',function(d){
+   if(mgr)logins=gsAllowedLogins();
    if(!d||!d.ok||!Array.isArray(d.rows))throw Error('Invalid pharmacies');var grouped={};d.rows.forEach(function(r){var login=String(r.login||(!mgr?s.username:'')).toLowerCase();if(logins.indexOf(login)<0)return;(grouped[login]||(grouped[login]=[])).push(r);});logins.forEach(function(login){data.pharmacies[login]=grouped[login]||[];});
   });
-  if(mgr){read('action=getAllHistory',function(d){if(!d||Array.isArray(d)||d.ok===false)throw Error('Invalid history');logins.forEach(function(login){if(Array.isArray(d[login]))data.history[login]=d[login];});});}
-  else read('action=getHistory&reprezentant='+encodeURIComponent(s.username),function(d){if(!Array.isArray(d))throw Error('Invalid history');data.history[s.username]=d;});
+  if(mgr){read('action=getAllHistory',function(d){if(!d||Array.isArray(d)||d.ok===false)throw Error('Invalid history');gsAllowedLogins().forEach(function(login){if(Array.isArray(d[login]))data.history[login]=d[login];});});}
+  else read('action=getHistory&reprezentant='+encodeURIComponent(s.username),function(d){if(!Array.isArray(d))throw Error('Invalid history');data.history[String(s.username).toLowerCase()]=d;});
  }
  // Existing board/calendar loaders preserve their UI caches and line guards.
- if(typeof nstFetch==='function')nstFetch(paint,'background',true);
- if(typeof gynCalSync==='function')gynCalSync();
+ if(typeof nstFetch==='function' && !NST.loading && (force || (!gsSourceFresh('action=getNastenka',logins)&&(!data.times.board||Date.now()-data.times.board>90000)&&(!data.attempts.board||Date.now()-data.attempts.board>20000)))){
+  // Source loaders already own validation and stale-context protection.
+  data.attempts.board=Date.now();nstFetch(function(){if(active()&&!NST.err&&NST.loaded)data.times.board=Date.now();paint();},'background',true);
+ }
+ if(typeof gynCalSync==='function' && !GYN_CAL._syncing && (force || (!gsSourceFresh('action=getCalEvents',logins)&&(!data.attempts.calendar||Date.now()-data.attempts.calendar>20000)))){data.attempts.calendar=Date.now();gynCalSync();}
  if(!mgr && typeof teamPlneniePreload==='function')teamPlneniePreload();
  if(line==='gyn'&&typeof gynLbEnsureRepList==='function')gynLbEnsureRepList();
  clearInterval(GS.refreshTimer);var ticks=0;
@@ -43503,13 +43567,14 @@ function gsEnsureData(){
 }
 
 function gsClose(){
-  clearInterval(GS.refreshTimer);clearTimeout(_gsMissT);
+  clearInterval(GS.refreshTimer);clearTimeout(GS.inputTimer);clearTimeout(_gsMissT);
   var ov=document.getElementById('gs-overlay'); if(ov) ov.classList.remove('show');
   document.body.classList.remove('gs-open');
 }
 function gsOnInput(){
   GS._expand={};
   gsRender();
+  clearTimeout(GS.inputTimer);GS.inputTimer=setTimeout(function(){gsEnsureData();},180);
   // Meranie sa spúšťa LEN pri písaní používateľa — background re-render (doťahovanie
   // dát) inak časovač stále reštartoval a nikdy sa nezalogovalo.
   if(GS._noHits) gsTrackMiss(gsNorm((document.getElementById('gs-input')||{}).value||''));
