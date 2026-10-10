@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.13';
+var APP_VERSION = '2.89.14';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -37397,6 +37397,18 @@ var LK_VARIANTS_BY_PROD = {};   // produkt → { variant → true }
 var LK_VARIANT_SERIES = {};     // pharmaKey → { produkt → { variant → { 'YYYYMM': ks } } } (detail po mesiacoch)
 var LK_VARIANT_LOADED = false;  // detail (sila/balenie) dokončil načítanie?
 var LK_DETAIL_OPEN_KEY = null;  // kľúč práve otvorenej lekárne v detaile
+var LK_DETAIL_LOGIN = null;
+function lkRefreshDetailFromRows(login, rows) {
+  var detail=document.getElementById('lk-detail');
+  if(!detail || !detail.classList.contains('show') || !LK_DETAIL_OPEN_KEY || lkCacheKey(LK_DETAIL_LOGIN)!==lkCacheKey(login))return;
+  var pharmacy=lkBuildLekarne(rows || []).filter(function(item){return item.key===LK_DETAIL_OPEN_KEY;})[0];
+  if(!pharmacy)return;
+  [LK_STATE._rows,LK_MGR_ALL].forEach(function(list){
+    if(!Array.isArray(list))return;
+    for(var i=0;i<list.length;i++)if(list[i].key===pharmacy.key && lkCacheKey(list[i].login)===lkCacheKey(login))list[i]=pharmacy;
+  });
+  lkOpenDetail(pharmacy.key,true,pharmacy);
+}
 
 function lkVariantsReset() { LK_VARIANT_INDEX = {}; LK_VARIANTS_BY_PROD = {}; LK_VARIANT_SERIES = {}; LK_VARIANT_LOADED = false; }
 
@@ -38167,7 +38179,7 @@ function lkRender() {
   }).join('');
 }
 
-function lkOpenDetail(key, isRefresh) {
+function lkOpenDetail(key, isRefresh, freshPharmacy) {
   if (!isRefresh) { try { usageDrill('Lekárne', 'detail lekárne'); } catch(e){} }   // len počet, bez názvu
   var lekarne = [];
   var fromManager=document.body.classList.contains('mgr-plnenie-detail-open');
@@ -38177,10 +38189,11 @@ function lkOpenDetail(key, isRefresh) {
       if (!lekarne.some(function(x){ return x && x.key === row.key; })) lekarne.push(row);
     });
   }
-  var l = null;
-  for (var i = 0; i < lekarne.length; i++) { if (lekarne[i].key === key) { l = lekarne[i]; break; } }
+  var l = freshPharmacy || null;
+  if(!l)for (var i = 0; i < lekarne.length; i++) { if (lekarne[i].key === key) { l = lekarne[i]; break; } }
   if (!l) return;
   LK_DETAIL_OPEN_KEY = key;
+  LK_DETAIL_LOGIN = l.login;
 
   var titleEl = document.getElementById('lk-detail-title');
   if (titleEl) titleEl.textContent = l.lekaren;
@@ -38269,6 +38282,13 @@ function lkOpenDetail(key, isRefresh) {
   if (d) {
     d.classList.add('show');
     if (!isRefresh) d.scrollTop = 0;
+  }
+  if(!isRefresh && l.login) {
+    var detailCtx=appLineCapture(),detailLogin=l.login;
+    lkFetch(detailLogin,function(rows){
+      if(appLineContextActive(detailCtx))lkRefreshDetailFromRows(detailLogin,rows);
+    });
+    lkLoadVariants(detailLogin,[l]);
   }
 }
 
