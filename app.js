@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.16';
+var APP_VERSION = '2.89.17';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -15437,6 +15437,7 @@ function gynLkRender(){
   if(!listEl) return;
   var data = gynLkBuild(GYN_LK.rows || []);
   GYN_LK._data = data;
+  if(typeof gsFocusGynPharmacy==='function')gsFocusGynPharmacy();
   var products = data.products;
 
   // default tab = prvý produkt
@@ -42588,17 +42589,35 @@ function gsEnabled(){
 // Premietne preferenciu do UI (skryje/ukáže launcher, prípadne zavrie otvorený panel)
 function gsApplyEnabled(){
   try {
+    ['gs-overlay','gs-launcher'].forEach(function(id){var el=document.getElementById(id);if(el&&el.parentNode!==document.body)document.body.appendChild(el);});
     var on=gsEnabled() && !!gsSession();
     document.body.classList.toggle('gs-ready', on);
     if(!on) gsClose();
   } catch(e){}
 }
 function gsLine(){ var s=gsSession(); return (s&&s.line)||'gp'; }
-function gsIsMgr(){ try { return !!mgrDetectRole(gsSession()); } catch(e){ return false; } }
+function gsIsMgr(){ var u=gsSession(); if(!u)return false; if(gsLine()==='gyn')return String(u.role||'').toLowerCase()!=='gyn-rep'; try { return !!mgrDetectRole(u); } catch(e){ return false; } }
+function gsLater(fn,delay){var owner=gsOwner(),ctx=appLineCapture();return setTimeout(function(){if(owner===gsOwner()&&appLineContextActive(ctx))fn();},delay);}
+function gsOwner(){ var u=gsSession()||{};return [gsLine(),u.username||'',u.role||''].join('|').toLowerCase(); }
+function gsNavigate(fn){ if(typeof appNavReset==='function')appNavReset(); if(typeof closeAllPanels==='function')closeAllPanels(); fn(); }
+var GS_DATA={owner:'',pharmacies:{},history:{},pending:0,failed:0};
+function gsData(){ if(GS_DATA.owner!==gsOwner())GS_DATA={owner:gsOwner(),pharmacies:{},history:{},pending:0,failed:0}; return GS_DATA; }
+function gsAllowedLogins(){
+ var u=gsSession()||{};if(!gsIsMgr())return [String(u.username||'').toLowerCase()];
+ if(gsLine()==='gyn')return (GYN_STATE.repList||[]).map(function(r){return String(r.login||r.username||'').toLowerCase();}).filter(Boolean);
+ var roster=typeof plnenieGetActiveReps==='function'?plnenieGetActiveReps():Object.keys(MGR_STATE.reps||{});
+ return (roster||[]).map(function(r){return String(typeof r==='string'?r:r.username||r.login||'').toLowerCase();}).filter(Boolean);
+}
+
 
 /* Synonymá / kľúčové slová k sekciám — aby sadli aj intent-slová (napr. „dovolenka" → Kalendár).
    Kľúč = normalizovaný názov záložky (bez diakritiky). */
 var GS_SECTION_KW = {
+  'domov':'uvod hlavna obrazovka prehlad dnes',
+  'menu':'navigator navigacia viac funkcie',
+  'nastenka':'prispevok prispevky komentar komentare kolegovia oznam fotka',
+  'sklady':'sklad zasoby dostupnost pokrytie balenia distributor',
+  'timove plnenie':'kolegovia tim east west pill pil patch vysledky',
   'kalendar':'dovolenka absencia pn nemocenska volno sviatok dovolenku termin udalost stretnutie planovanie schvalenie navsteva zaznamenat',
   'plnenie':'ciele plan planu predaj predaje obrat percenta vysledky napredovanie',
   'lekarne':'lekaren pharmacy apoteka spiace reaktivacia predaje lekarni',
@@ -42614,38 +42633,33 @@ var GS_SECTION_KW = {
   'lonelix':'lonelix inozin pranobex prieskum dotaznik',
   'apixaban':'apixaban kardiolog internista eliquis prieskum dotaznik'
 };
-/* ── SEKCIE — z viditeľných nav tlačidiel (dedí všetky line/role pravidlá) ── */
+/* ── SEKCIE — aktuálna spodná lišta a spoločný role-aware katalóg Menu ── */
 function gsSections(){
-  var out=[], seen={};
-  ['#rep-nav .rep-nav-btn','#gyn-nav .gyn-nav-btn','#mgr-view .mgr-subtabs .mgr-subtab'].forEach(function(sel){
-    var nodes; try { nodes=document.querySelectorAll(sel); } catch(e){ return; }
-    Array.prototype.forEach.call(nodes, function(btn){
-      try {
-        if(!btn.getClientRects().length) return;                 // skrytý tab → preskoč
-        var lblEl=btn.querySelector('.rn-lbl,.st-lbl');
-        var lbl=((lblEl?lblEl.textContent:btn.textContent)||'').trim();
-        if(!lbl) return;
-        var key=gsNorm(lbl); if(seen[key]) return; seen[key]=1;
-        var icoEl=btn.querySelector('.rn-ico,.st-emoji');
-        var ico=((icoEl?icoEl.textContent:'')||'').trim()||'📄';
-        var kw=lbl+' '+(GS_SECTION_KW[key]||'');
-        out.push({ type:'section', title:lbl, sub:'Sekcia', icon:ico, kw:kw,
-          run:(function(b){ return function(){ try{ b.click(); }catch(e){} }; })(btn) });
-      } catch(e){}
-    });
-  });
-  return out;
+ var out=[],seen={};
+ function add(title,icon,run){var key=gsNorm(title);if(seen[key])return;seen[key]=1;out.push({type:'section',title:title,sub:'Otvoriť obrazovku',icon:icon,kw:title+' '+(GS_SECTION_KW[key]||''),run:run});}
+ add('Domov','🏠',function(){appGoDomov();});
+ add('Plnenie','💊',function(){appGoPlnenie();});
+ add('Kalendár','📅',function(){appGoKalendar();});
+ add('Nástenka','📌',function(){appGoNastenka();});
+ add('Menu','☰',function(){openViac();});
+ (viacDlazdice()||[]).forEach(function(it){
+  if(it.openFn && typeof window[it.openFn]==='function' && !window[it.openFn]())return;
+  // Parse only the application's own route descriptors; never evaluate user data.
+  var m=/^([A-Za-z_$][\w$]*)\((?:'([^']*)')?\)$/.exec(it.fn||'');if(!m)return;
+  add(it.t,it.ic,function(){var open=function(){var fn=window[m[1]];if(typeof fn==='function')fn(m[2]);};if(m[1]==='mgrSwitchSubtab'||m[1]==='gynNavTo')gsNavigate(open);else{if(typeof closeViac==='function')closeViac();open();}});
+ });
+ return out;
 }
 
-/* ── LEKÁRI (Golem/Reagila) ──
-   • reprezentant → z vlastnej histórie (_histAllItems / _histCombined)
-   • manažér/admin → naprieč jeho repmi z MGR_STATE.reps[*].visits (rolovo obmedzené) */
+/* Doctors are indexed only from the current account's authorized history. */
+
 function gsDoctors(){
   var out=[], seen={}; if(gsLine()==='gyn') return out;
   if(gsIsMgr()){
     var reps={}; try { reps=(typeof MGR_STATE!=='undefined'&&MGR_STATE.reps)||{}; } catch(e){}
-    Object.keys(reps).forEach(function(u){
-      var vs=(reps[u]&&reps[u].visits)||[];
+    var allowed=gsAllowedLogins();
+    allowed.forEach(function(u){
+      var vs=gsData().history[u]||(reps[u]&&reps[u].visits)||[];
       var repName=u; try { repName=(typeof MGR_REP_NAMES!=='undefined'&&MGR_REP_NAMES[u])||u; } catch(e){}
       vs.forEach(function(it){
         if(!it) return; var name=String(it.lekar||it.meno||'').trim(); if(!name) return;
@@ -42660,6 +42674,7 @@ function gsDoctors(){
   }
   var items=[];
   try { if(typeof _histCombined==='function') items=_histCombined(); else if(typeof _histAllItems!=='undefined') items=_histAllItems||[]; } catch(e){ items=[]; }
+  items=gsData().history[(gsSession()||{}).username]||items;
   (items||[]).forEach(function(it){
     if(!it) return;
     var name=String(it.lekar||it.meno||'').trim(); if(!name) return;
@@ -42672,7 +42687,7 @@ function gsDoctors(){
 }
 function gsJumpDoctor(name){
   try { if(typeof openHistory==='function') openHistory(); } catch(e){}
-  setTimeout(function(){
+  gsLater(function(){
     var el=document.getElementById('hist-search');
     if(el){ el.value=name; try { if(typeof histRender==='function') histRender(); else if(typeof filterHistory==='function') filterHistory(); } catch(e){} }
   }, 80);
@@ -42681,12 +42696,15 @@ function gsJumpDoctor(name){
 // CSS ho v ostatných subtaboch skrýva cez display:none !important. Preto pred
 // otvorením prepni na visits, inak sa detail „otvorí" do skrytej sekcie (nič nevidno).
 function gsMgrOpenRep(username, after){
+  if(!gsIsMgr()||gsLine()==='gyn'||gsAllowedLogins().indexOf(String(username).toLowerCase())<0)return;
   try {
-    if(typeof mgrSwitchSubtab==='function' && !document.body.classList.contains('mgr-subtab-visits')) mgrSwitchSubtab('visits');
+    gsNavigate(function(){mgrSwitchSubtab('visits');});
   } catch(e){}
-  setTimeout(function(){
+  gsLater(function(){
+    var rows=gsData().history[username];
+    if(rows)MGR_STATE.reps[username]={visits:mgrNormalizeVisits(rows),error:false};
     try { if(typeof mgrOpenRep==='function') mgrOpenRep(username); } catch(e){}
-    if(typeof after==='function') setTimeout(after, 200);
+    if(typeof after==='function') gsLater(after, 200);
   }, 60);
 }
 function gsJumpMgrDoctor(username, name){
@@ -42701,71 +42719,65 @@ function gsJumpMgrDoctor(username, name){
    • manažér/admin → všetky lekárne naprieč repmi (agregované z LK_STATE.cache po lkFetchAll) */
 var GS_PHARM_MGR = [];   // cache agregovaných manažérskych lekární (pre klik → lkOpenDetail)
 function gsAllMgrPharmacies(){
-  var rows=[];
-  try {
-    var c=(typeof LK_STATE!=='undefined' && LK_STATE.cache) || {};
-    // BEZPEČNOSŤ: lkFetchAll cachuje lekárne VŠETKÝCH repov (aj mimo regiónu manažéra).
-    // Preto ber len repov, ktorých má daná rola reálne priradených (MGR_STATE.reps),
-    // inak by napr. AM West videl cez vyhľadávanie lekárne AM East.
-    var allowed={};
-    try { Object.keys((typeof MGR_STATE!=='undefined'&&MGR_STATE.reps)||{}).forEach(function(u){ allowed[String(u).trim().toLowerCase()]=1; }); } catch(e){}
-    var isAdmin=false; try { isAdmin=(mgrDetectRole(gsSession())==='admin'); } catch(e){}
-    Object.keys(c).forEach(function(k){
-      var key=String(k).trim().toLowerCase();
-      if(key==='__all__') return;
-      if(!isAdmin && !allowed[key]) return;          // mimo pôsobnosti roly → preskoč
-      var e=c[k]; if(e && Array.isArray(e.rows)) rows=rows.concat(e.rows);
-    });
-  } catch(e){}
-  if(!rows.length) return [];
-  try { return (typeof lkBuildLekarne==='function') ? lkBuildLekarne(rows) : []; } catch(e){ return []; }
-}
-function gsPharmacies(){
-  var out=[], rows=[], seen={};
-  var mgr=gsIsMgr(), gyn=(gsLine()==='gyn');
-  if(mgr && !gyn){
-    GS_PHARM_MGR = gsAllMgrPharmacies();
-    rows = GS_PHARM_MGR.slice();
-    // fallback: aj práve otvorený per-rep zoznam
-    try { if(typeof LK_MGR_ALL!=='undefined' && Array.isArray(LK_MGR_ALL)) rows=rows.concat(LK_MGR_ALL); } catch(e){}
-  } else {
-    // rep (aj gyn) → vlastné načítané lekárne
-    try { if(typeof LK_STATE!=='undefined' && Array.isArray(LK_STATE._rows)) rows=rows.concat(LK_STATE._rows); } catch(e){}
-  }
-  var mgrPh=(mgr && !gyn);
-  rows.forEach(function(l){
-    if(!l||!l.key||seen[l.key]) return; seen[l.key]=1;
-    var nm=String(l.lekaren||'').trim(); if(!nm) return;
-    var okres=String(l.okres||'').trim(), mesto=String(l.mesto||'').trim();
-    out.push({ type:'pharmacy', title:nm, sub:[okres,mesto].filter(Boolean).join(' · ')||'Lekáreň', icon:'🏪', kw:nm+' '+okres+' '+mesto,
-      run:(function(k){ return function(){ mgrPh ? gsJumpMgrPharmacy(k) : gsJumpPharmacy(k); }; })(l.key) });
-  });
-  return out;
-}
-// lkOpenDetail otvorí samostatnú vrstvu lk-detail (funguje aj bez otvoreného zoznamu).
-// Rep: kľúč je už v LK_STATE._rows (výsledok odtiaľ vznikol). Priame otvorenie sa vyhne
-// race-u s openLekarne, ktoré async resetuje _rows.
-function gsJumpPharmacy(key){
-  try { if(typeof LK_FILTER!=='undefined') LK_FILTER._ctx='rep'; } catch(e){}
-  try { if(typeof lkOpenDetail==='function') lkOpenDetail(key); } catch(e){}
-}
-function gsJumpMgrPharmacy(key){
-  // lkOpenDetail hľadá kľúč v LK_STATE._rows + LK_MGR_ALL → dočasne doň vlož agregované lekárne
-  try {
-    if(typeof LK_MGR_ALL!=='undefined' && Array.isArray(LK_MGR_ALL) && Array.isArray(GS_PHARM_MGR)){
-      GS_PHARM_MGR.forEach(function(l){ if(l && l.key && !LK_MGR_ALL.some(function(x){ return x && x.key===l.key; })) LK_MGR_ALL.push(l); });
-    }
-  } catch(e){}
-  try { if(typeof LK_FILTER!=='undefined') LK_FILTER._ctx='mgr'; } catch(e){}
-  try { if(typeof lkOpenDetail==='function') lkOpenDetail(key); } catch(e){}
+ var out=[];gsAllowedLogins().forEach(function(login){var entry=LK_STATE.cache[login];var rows=gsData().pharmacies[login]||(entry&&entry.rows)||[];out=out.concat(lkBuildLekarne(rows));});return out;
 }
 
-/* Okresy v pôsobnosti používateľa — podľa teritória (REGION_OKRESY), nie všetkých 79.
-   • reprezentant → okresy jeho regiónu (napr. MI = Michalovce, Svidník, Stropkov…)
-   • manažér      → zjednotenie regiónov jeho repov
-   • admin        → všetky
-   Gyn línia má iný model teritórií (BAPI/BAPA), tam ostáva plný zoznam — cieľ (trhový
-   podiel) sa aj tak scope-uje podľa vlastného regiónu používateľa. */
+function gsPharmacies(){
+ var out=[],seen={},gyn=gsLine()==='gyn',mgr=gsIsMgr(),me=String((gsSession()||{}).username||'').toLowerCase();
+ gsAllowedLogins().forEach(function(login){
+  var rows=gsData().pharmacies[login],ph=[];
+  if(gyn){
+   rows=rows||GYN_LK.cache[login]||(GYN_LK.login===login?GYN_LK.rows:[])||[];
+   var by={};rows.forEach(function(r){var key=[r.okres,r.mesto,r.lekaren].join('|||');if(!by[key])by[key]={key:key,lekaren:r.alias||r.lekaren,okres:r.okres,mesto:r.mesto,login:login};});ph=Object.keys(by).map(function(k){return by[k];});
+  }else{
+   var cached=LK_STATE.cache[typeof lkCacheKey==='function'?lkCacheKey(login):login];rows=rows||(cached&&cached.rows);
+   ph=rows?lkBuildLekarne(rows):(!mgr&&LK_STATE.login===me?(LK_STATE._rows||[]):[]);
+  }
+  ph.forEach(function(l){
+   var key=login+'|'+l.key;if(!l||!l.key||seen[key]||!l.lekaren)return;seen[key]=1;
+   out.push({type:'pharmacy',title:l.lekaren,sub:[l.okres,l.mesto,mgr?gsRepName(login):''].filter(Boolean).join(' · ')||'Lekáreň',icon:'🏪',kw:l.lekaren+' '+l.okres+' '+l.mesto+' '+(mgr?gsRepName(login):''),
+    run:function(){if(gyn)gsJumpGynPharmacy(login,l.key);else gsJumpPharmacy(l.key,l,login);}});
+  });
+ });
+ GS_PHARM_MGR=(!gyn&&mgr)?gsAllMgrPharmacies():[];
+ return out;
+}
+function gsJumpPharmacy(key,ph,login){
+ var row=ph||(LK_STATE._rows||[]).concat(GS_PHARM_MGR||[]).filter(function(l){return l.key===key;})[0];
+ if(!row)return;
+ if(gsAllowedLogins().indexOf(String(login||row.login||'').toLowerCase())<0)return;
+ if(typeof LK_FILTER!=='undefined')LK_FILTER._ctx=gsIsMgr()?'mgr':'rep';
+ lkOpenDetail(key,false,row);
+}
+function gsJumpMgrPharmacy(key){gsJumpPharmacy(key);}
+function gsJumpGynPharmacy(login,key){
+ if(gsAllowedLogins().indexOf(login)<0)return;
+ if(gsData().pharmacies[login])GYN_LK.cache[login]=gsData().pharmacies[login];
+ gsNavigate(function(){
+  gynNavTo(gsIsMgr()?'plnenie':'lekarne');
+  if(gsIsMgr()){var r=(GYN_STATE.repList||[]).filter(function(x){return x.login===login;})[0];if(!r)return;gynOpenRepDetail(login,r.meno||r.name,r.region);gynRepDetailSubtab('lekarne');}
+  GS.pendingPharmacy={login:login,key:key,owner:gsOwner(),until:Date.now()+20000};
+  function focus(){
+    var p=GS.pendingPharmacy;
+    if(!p||p.owner!==gsOwner()||Date.now()>p.until){GS.pendingPharmacy=null;return;}
+    if(gsIsMgr()){
+      if(GYN_APP.nav!=='plnenie'||GYN_APP.detailLogin!==login){GS.pendingPharmacy=null;return;}
+      if(document.getElementById('gyn-rd-lekarne'))gynRepDetailSubtab('lekarne',document.querySelector('#gyn-content .pl-sub-tab:nth-child(2)'));
+    }else if(GYN_APP.nav!=='lekarne'){GS.pendingPharmacy=null;return;}
+    gsFocusGynPharmacy();if(GS.pendingPharmacy)setTimeout(focus,150);
+  }
+  focus();
+ });
+}
+function gsFocusGynPharmacy(){
+ var p=GS.pendingPharmacy;if(!p)return;
+ if(p.owner!==gsOwner()||Date.now()>p.until){GS.pendingPharmacy=null;return;}
+ if(GYN_LK.login!==p.login||!document.getElementById('gynlk-list'))return;
+ var data=gynLkBuild(GYN_LK.rows||[]),ph=data.pharmacies.filter(function(l){return l.key===p.key;})[0];
+ if(!ph)return;GS.pendingPharmacy=null;GYN_LK.detailKey=ph.key;GYN_LK.editingName=false;gynLkRender();
+}
+
+
 function gsRegionDistricts(regionCode){
   try {
     var arr=REGION_OKRESY[String(regionCode||'').trim().toUpperCase()];
@@ -42802,7 +42814,7 @@ function gsDistricts(){
   var mgr=gsIsMgr();
   function add(o){ o=String(o||'').trim(); if(!o) return; var k=gsNorm(o); if(seen[k]) return; seen[k]=1;
     out.push({ type:'district', title:o, sub:'Okres', icon:'📍', kw:o,
-      run: mgr ? function(){} : function(){ try{ if(typeof openOkresy==='function') openOkresy(); }catch(e){} } }); }
+      run: function(){if(mgr){var first=gsAllowedLogins()[0];if(first)gsMgrOpenRepOkresy(first,o);}else gsOpenOkresExpanded(o);}  }); }
   if(mgr){
     try { (GS_PHARM_MGR||[]).forEach(function(l){ add(l&&l.okres); }); } catch(e){}
     try { var reps=(typeof MGR_STATE!=='undefined'&&MGR_STATE.reps)||{}; Object.keys(reps).forEach(function(u){ ((reps[u]&&reps[u].visits)||[]).forEach(function(it){ add(it&&it.okres); }); }); } catch(e){}
@@ -42821,6 +42833,8 @@ function gsTitleCase(s){ return String(s||'').replace(/\S+/g,function(w){ return
 function gsProducts(){
   var out=[], seen={}, line=gsLine();
   var names=[];
+  var productContext=typeof prodOrderContext==='function'?prodOrderContext():null;
+  var productKeys={};
   try {
     if(line==='gyn'){
       if(typeof GYN_PRODUCT_LINIA!=='undefined') names=Object.keys(GYN_PRODUCT_LINIA).map(gsTitleCase);
@@ -42832,13 +42846,16 @@ function gsProducts(){
       names=Object.keys(LK_PROD_DISPLAY).filter(function(k){ return reag.indexOf(k)<0; }).map(function(k){ return LK_PROD_DISPLAY[k]||k; });
     }
   } catch(e){}
+  if(productContext && productContext.raw && productContext.raw.length){
+    names=productContext.raw.map(function(key){var label=productContext.label(key);productKeys[label]=key;return label;});
+  }
   var gyn=(line==='gyn'), reg='';
   try { reg=(gsSession()||{}).region||''; } catch(e){}
   names.forEach(function(nm){
-    var base=String(nm).replace(/ (tbl\.|inj\.|krém|sáč\.|Forte|DSP)$/i,'').trim();
+    var base=String(nm).replace(/_/g,' ').trim();
     var kk=gsNorm(base); if(!base||seen[kk]) return; seen[kk]=1;
     out.push({ type:'product', title:base, sub:'Produkt · Plnenie', icon:'💊', kw:base,
-      run:function(){ gsJumpPlnenie(); } });
+      run:function(){ if(productKeys[nm])appGoPlnenieProduct(productKeys[nm]);else appGoPlnenie(); } });
     // gyn: ak má produkt IQVIA dáta trhového podielu → samostatná akcia „Trhový podiel"
     if(gyn){
       var pkey=String(base).toLowerCase();
@@ -42847,52 +42864,46 @@ function gsProducts(){
       // (nie pri obyčajnom napísaní produktu) — drží výsledky čisté. Presný okres rieši kombinácia.
       if(hasMs){
         out.push({ type:'ms', title:'Trhový podiel · '+base, sub:'IQVIA · '+(reg||'BAPI'), icon:'📊', kw:'trhovy podiel market share ms', _needHint:true,
-          run:(function(prodName){ return function(){ try{ if(typeof gynOpenPharma==='function') gynOpenPharma(prodName, reg); }catch(e){} }; })(base) });
+          run:(function(prodName){ return function(){if(gsIsMgr())dnesOpenTeamProduct(productKeys[nm]||prodName,prodName);else gynOpenPharma(prodName,reg);}; })(base) });
       }
     }
   });
-  return out;
-}
-function gsJumpPlnenie(){
-  var line=gsLine();
-  try {
-    if(line==='gyn'){ if(typeof gynNavTo==='function') gynNavTo('plnenie'); return; }
-    if(gsIsMgr()){ if(typeof mgrSwitchSubtab==='function') mgrSwitchSubtab('plnenie'); return; }
-    if(typeof openRepPlnenie==='function') openRepPlnenie();
-  } catch(e){}
-}
-
-/* ── REPREZENTANTI — LEN manažér/admin, rolovo obmedzené dáta ── */
-function gsReps(){
-  var out=[]; if(!gsIsMgr()) return out;
-  if(gsLine()==='gyn'){
-    var reps=[]; try { reps=(typeof GYN_STATE!=='undefined'&&GYN_STATE.repList)||[]; } catch(e){}
-    reps.forEach(function(r){
-      if(!r) return; var nm=String(r.meno||r.name||'').trim(); var login=r.login||'';
-      if(!nm&&!login) return;
-      out.push({ type:'rep', title:nm||login, sub:'Reprezentant'+(r.region?(' · '+r.region):''), icon:'👤', kw:nm+' '+login+' '+(r.region||''),
-        _login:login, _meno:(r.meno||r.name||nm), _region:(r.region||''),
-        run:(function(rr){ return function(){ try{ if(typeof gynOpenRepDetail==='function') gynOpenRepDetail(rr.login, rr.meno||rr.name, rr.region||''); }catch(e){} }; })(r) });
-    });
-  } else {
-    var reps2={}; try { reps2=(typeof MGR_STATE!=='undefined'&&MGR_STATE.reps)||{}; } catch(e){}
-    Object.keys(reps2).forEach(function(u){
-      var nm=u; try { nm=(typeof MGR_REP_NAMES!=='undefined'&&MGR_REP_NAMES[u])||u; } catch(e){}
-      out.push({ type:'rep', title:nm, sub:'Reprezentant · @'+u, icon:'👤', kw:nm+' '+u,
-        _login:u,
-        run:(function(un){ return function(){ gsMgrOpenRep(un); }; })(u) });
+  if(!gyn && typeof PHARMA_CODES!=='undefined'){
+    var allowedProducts=Object.keys(productKeys).map(function(label){return String(productKeys[label]).toLowerCase();});
+    Object.keys(PHARMA_CODES).forEach(function(key){
+      if(allowedProducts.indexOf(key)<0)return;
+      var label=typeof plnenieDisplayName==='function'?plnenieDisplayName(key):key;
+      out.push({type:'ms',title:'Trhový podiel · '+label,sub:gsIsMgr()?'Produkt a reprezentanti':'Trhové dáta vlastného regiónu',icon:'📊',kw:label+' trhovy podiel pharmadata konkurencia ms',run:function(){if(gsIsMgr())dnesOpenTeamProduct(key,label);else openPharmaMs(key,label);}});
     });
   }
   return out;
 }
-// Manažér: otvor Plnenie konkrétneho repa (detail je viditeľný len v subtabe Plnenie)
+function gsJumpPlnenie(){appGoPlnenie();}
+
+function gsReps(){
+ var mgr=gsIsMgr(),gyn=gsLine()==='gyn',reps=[],allowed=gsAllowedLogins();
+ if(mgr){
+  if(gyn)reps=GYN_STATE.repList||[];
+  else reps=allowed.map(function(login){return {login:login,meno:gsRepName(login)};});
+ }else if(typeof teamPlnenieAllowed==='function'&&teamPlnenieAllowed()){
+  reps=(TEAM_PL_STATE.payload||{}).reps||[];
+  if(gyn && !reps.length)reps=(GYN_LB.repList&&GYN_LB.repList.length)?GYN_LB.repList:(GYN_STATE.repList||[]);
+  if(!gyn && !reps.length && typeof LB_ALL_REPS!=='undefined')reps=LB_ALL_REPS.map(function(login){var r=LB_REP_INFO[login]||{};return {username:login,name:r.name||gsRepName(login),region:r.region};});
+ }
+ return reps.filter(function(r){return !mgr||allowed.indexOf(String(r.login||r.username||'').toLowerCase())>=0;}).map(function(r){
+  var login=r.login||r.username,nm=r.meno||r.name||login;
+  return {type:'rep',title:nm,sub:'Reprezentant · Plnenie'+(r.region?' · '+r.region:''),icon:'👤',kw:nm+' '+login+' '+(r.region||''),_login:login,_meno:nm,_region:r.region||'',
+   run:function(){if(!mgr){openTeamPlnenie(login);}else if(gyn){gsNavigate(function(){gynNavTo('plnenie');gynOpenRepDetail(login,nm,r.region||'');});}else gsMgrOpenPlnenie(login);}};
+ });
+}
+
 function gsMgrOpenPlnenie(login){
-  try { if(typeof mgrSwitchSubtab==='function' && !document.body.classList.contains('mgr-subtab-plnenie')) mgrSwitchSubtab('plnenie'); } catch(e){}
-  setTimeout(function(){ try { if(typeof plnenieOpenDetail==='function') plnenieOpenDetail(login); } catch(e){} }, 80);
+  try { appGoPlnenie(); } catch(e){}
+  gsLater(function(){ try { if(typeof plnenieOpenDetail==='function') plnenieOpenDetail(login); } catch(e){} }, 80);
 }
 // Ciele viazané na reprezentanta (kam sa dá pri ňom ísť) — pre manažéra/admina, non-gyn línia.
 function gsRepContext(rep){
-  var out=[]; if(!rep || !rep._login || gsLine()==='gyn') return out;
+  var out=[]; if(!gsIsMgr() || !rep || !rep._login || gsLine()==='gyn') return out;
   var nm=rep.title, login=rep._login;
   out.push({ type:'repctx', title:'Lekári · '+nm, sub:'Návštevy reprezentanta', icon:'📋',
     run:(function(l){ return function(){ gsMgrOpenRep(l); }; })(login) });
@@ -42942,11 +42953,9 @@ function gsCalEvents(){
 function gsJumpCalEvent(ev){
   var line=gsLine();
   try {
-    if(line==='gyn'){ if(typeof gynNavTo==='function') gynNavTo('kalendar'); }
-    else if(gsIsMgr()){ if(typeof mgrSwitchSubtab==='function') mgrSwitchSubtab('kalendar'); }
-    else { if(typeof openGolemKalendar==='function') openGolemKalendar(); }
+    appGoKalendar();
   } catch(e){}
-  setTimeout(function(){
+  gsLater(function(){
     try {
       var dk=ev.dateStart, parts=String(dk).split('-');
       if(parts.length>=2 && typeof GYN_CAL!=='undefined'){ GYN_CAL.y=+parts[0]; GYN_CAL.m=(+parts[1])-1; }
@@ -42959,14 +42968,11 @@ function gsJumpCalEvent(ev){
 function gsActions(){
   var out=[], line=gsLine(), mgr=gsIsMgr();
   function push(title,icon,fn,kw){ out.push({ type:'action', title:title, sub:'Rýchla akcia', icon:icon, kw:kw||title, run:fn }); }
-  if(line==='gyn'){
-    push('Nová udalosť v kalendári','📅',function(){ try{ if(typeof gynNavTo==='function') gynNavTo('kalendar'); }catch(e){} },'nova udalost kalendar termin dovolenka absencia pn volno sviatok stretnutie');
-  } else if(!mgr){
+  if(line!=='gyn' && !mgr){
     push('Nový záznam (Formulár)','📝',function(){ try{ if(typeof repNavToForm==='function') repNavToForm(); }catch(e){} },'novy zaznam formular lekar navsteva');
-    push('Nová udalosť v kalendári','📅',function(){ try{ if(typeof openGolemKalendar==='function') openGolemKalendar(); }catch(e){} },'nova udalost kalendar termin dovolenka absencia pn volno sviatok stretnutie');
-  } else {
-    push('Otvoriť Kalendár','📅',function(){ try{ if(typeof mgrSwitchSubtab==='function') mgrSwitchSubtab('kalendar'); }catch(e){} },'kalendar udalosti dovolenka absencia pn volno schvalenie');
   }
+  push('Udalosti a dovolenky','📅',function(){appGoKalendar();},'nova udalost kalendar termin dovolenka absencia pn volno sviatok stretnutie schvalenie');
+  push('Pridať príspevok','📌',function(){appGoNastenka();nstComposeOpen();},'pridat prispevok fotka nastenka otazka anketa');
   // Univerzálne (všetky role/línie)
   push('Nastavenia','⚙️',function(){ try{ if(typeof openSettings==='function') openSettings(); }catch(e){} },'nastavenia settings profil avatar predvolby');
   push('Odhlásiť sa','🚪',function(){ try{ if(typeof doLogout==='function') doLogout(); }catch(e){} },'odhlasit sa logout odhlasenie');
@@ -42974,9 +42980,11 @@ function gsActions(){
 }
 
 /* ── ZOSTAVENIE INDEXU ── */
+function gsPosts(){return (typeof NST!=='undefined'?NST.posts||[]:[]).filter(function(p){return p&&p.id;}).map(function(p){return {type:'post',title:String(p.text||'Príspevok').replace(/\s+/g,' ').slice(0,110),sub:[p.meno,p.produkt,p.okres].filter(Boolean).join(' · '),icon:'📌',kw:[p.text,p.meno,p.produkt,p.okres].concat((p.comments||[]).map(function(c){return c.text+' '+c.meno;})).join(' '),run:function(){NST._focusThreads=String(p.id);appGoNastenka(p.id);}};});}
+
 function gsBuildIndex(){
-  var idx=[];
-  [gsSections,gsActions,gsCalEvents,gsReps,gsDoctors,gsPharmacies,gsDistricts,gsProducts].forEach(function(fn){
+  var idx=[];GS.indexOwner=gsOwner();
+  [gsSections,gsActions,gsPosts,gsCalEvents,gsReps,gsDoctors,gsPharmacies,gsDistricts,gsProducts].forEach(function(fn){
     try { idx=idx.concat(fn()||[]); } catch(e){}
   });
   // _k vždy obsahuje aj názov — inak by položka s vlastnými kľúčovými slovami
@@ -43072,15 +43080,15 @@ function gsMgrOpenIntent(intentId, login, okresName){
 }
 function gsMgrOpenReport(login){
   try { if(typeof mgrSwitchSubtab==='function') mgrSwitchSubtab('reporty'); } catch(e){}
-  setTimeout(function(){ try { if(typeof rptViewSelectRep==='function') rptViewSelectRep(login); } catch(e){} }, 220);
+  gsLater(function(){ try { if(typeof rptViewSelectRep==='function') rptViewSelectRep(login); } catch(e){} }, 220);
 }
 function gsMgrOpenRepLekarne(login){
   gsMgrOpenPlnenie(login);
-  setTimeout(function(){ try { if(typeof plnenieDetailSwitchSubtab==='function') plnenieDetailSwitchSubtab('lekarne'); } catch(e){} }, 320);
+  gsLater(function(){ try { if(typeof plnenieDetailSwitchSubtab==='function') plnenieDetailSwitchSubtab('lekarne'); } catch(e){} }, 320);
 }
 // Je záložka Reporty pre túto rolu vôbec dostupná? (číta reálnu viditeľnosť tlačidla)
 function gsReportAllowed(){
-  try { var b=document.getElementById('mgr-subtab-reporty-btn'); return !!(b && b.getClientRects().length); } catch(e){ return false; }
+  return gsIsMgr() && gsLine()!=='gyn' && viacDlazdice().some(function(it){return gsNorm(it.t)==='reporty';});
 }
 /* Nájde lekárov/lekárne KONKRÉTNEHO repa podľa zvyšných slov dopytu.
    Vďaka tomu funguje „sabol kurila" (rep + lekár), a pritom samotné „sabol"
@@ -43094,7 +43102,7 @@ function gsRepEntityHits(login, toks){
   }
   // Lekári z jeho návštev
   try {
-    var visits=((typeof MGR_STATE!=='undefined' && MGR_STATE.reps && MGR_STATE.reps[login] && MGR_STATE.reps[login].visits)||[]);
+    var visits=gsData().history[login]||((typeof MGR_STATE!=='undefined' && MGR_STATE.reps && MGR_STATE.reps[login] && MGR_STATE.reps[login].visits)||[]);
     var seenD={};
     visits.forEach(function(it){
       if(!it) return;
@@ -43123,6 +43131,7 @@ function gsRepEntityHits(login, toks){
   return out;
 }
 function gsRepName(login){
+  if(gsLine()==='gyn'){var rep=(GYN_STATE.repList||[]).filter(function(r){return r.login===login;})[0];return rep?(rep.meno||rep.name||login):login;}
   try { return (typeof MGR_REP_NAMES!=='undefined' && MGR_REP_NAMES[login]) || login; } catch(e){ return login; }
 }
 // Poskladá „inteligentné" ciele z kombinácie entít (rep × produkt × okres).
@@ -43153,7 +43162,7 @@ function gsCombo(toks){
     }
     if(line==='gyn'){
       out.push({ type:'combo', title:(prod?prod.title+' · ':'')+rname, sub:'Detail reprezentanta'+(prod?' · plnenie':''), icon:'👤',
-        run:(function(r){ return function(){ try{ if(typeof gynOpenRepDetail==='function') gynOpenRepDetail(r._login, r._meno||r.title, r._region||''); }catch(e){} }; })(rep) });
+        run:(function(r){ return function(){ try{gsNavigate(function(){gynNavTo('plnenie');gynOpenRepDetail(r._login,r._meno||r.title,r._region||'');});}catch(e){} }; })(rep) });
       return out;
     }
     if(prod && dist){
@@ -43181,13 +43190,7 @@ function gsCombo(toks){
   // ── Bez reprezentanta: produkt + okres → trhový podiel ──
   if(prod && dist && line!=='reagila'){
     var pName=prod.title, oName=dist.title;
-    if(line==='gyn'){
-      var hasMs=false; try{ hasMs=!!(typeof GYN_PHARMA_PRODUCTS!=='undefined' && GYN_PHARMA_PRODUCTS[String(pName).toLowerCase()]); }catch(e){}
-      if(!hasMs) return out;
-      out.push({ type:'combo', title:'Trhový podiel · '+pName+' · '+oName, sub:'IQVIA · okres '+oName, icon:'📊',
-        run:function(){ try{ if(typeof gynOpenPharma==='function') gynOpenPharma(pName, reg); }catch(e){} } });
-      return out;
-    }
+    if(line==='gyn')return out;
     if(mgr) return out;   // manažér bez repa nemá vlastnú oblasť → nechaj bežné výsledky
     out.push({ type:'combo', title:'Trhový podiel · '+pName+' · '+oName, sub:'Okres '+oName+' · MS %', icon:'📊',
       run:function(){ gsOpenOkresExpanded(oName); } });
@@ -43197,7 +43200,7 @@ function gsCombo(toks){
 // Manažér: Okresy (MS %) konkrétneho repa + rozbalenie okresu
 function gsMgrOpenRepOkresy(login, okresName){
   gsMgrOpenPlnenie(login);
-  setTimeout(function(){
+  gsLater(function(){
     try { if(typeof plnenieDetailSwitchSubtab==='function') plnenieDetailSwitchSubtab('okresy'); } catch(e){}
     if(okresName) gsExpandOkresWhenReady(okresName);
   }, 320);
@@ -43218,7 +43221,7 @@ function gsExpandOkresWhenReady(okresName){
         }
       }
     } catch(e){}
-    if(tries<25) setTimeout(tryExpand, 140);
+    if(tries<25) gsLater(tryExpand, 140);
   })();
 }
 function gsOpenOkresExpanded(okresName){
@@ -43226,8 +43229,8 @@ function gsOpenOkresExpanded(okresName){
   gsExpandOkresWhenReady(okresName);
 }
 
-var GS_GROUP_ORDER=['section','action','event','rep','doctor','pharmacy','district','product','ms'];
-var GS_GROUP_LABEL={section:'Sekcie',action:'Akcie',event:'Kalendár',rep:'Reprezentanti',doctor:'Lekári',pharmacy:'Lekárne',district:'Okresy',product:'Produkty',ms:'Trhový podiel'};
+var GS_GROUP_ORDER=['section','action','post','event','rep','doctor','pharmacy','district','product','ms'];
+var GS_GROUP_LABEL={section:'Sekcie',action:'Akcie',post:'Nástenka',event:'Kalendár',rep:'Reprezentanti',doctor:'Lekári',pharmacy:'Lekárne',district:'Okresy',product:'Produkty',ms:'Trhový podiel'};
 var GS_GROUP_CAP={section:20,action:12,event:10,rep:8,doctor:8,pharmacy:8,district:6,product:8,ms:8};
 
 /* ── RECENT ──
@@ -43277,15 +43280,15 @@ function gsHi(text, toks){
 }
 function gsRowHtml(e, idx, big){
   var t=GS._toks||[];
-  return '<div class="gs-row'+(big?' gs-row-top':'')+'" data-i="'+idx+'" onclick="gsRunAt('+idx+')" onmousemove="gsSetCur('+idx+')">'
+  return '<button type="button" class="gs-row'+(big?' gs-row-top':'')+'" data-i="'+idx+'" onclick="gsRunAt('+idx+')" onmousemove="gsSetCur('+idx+')">'
     +'<div class="gs-ico">'+gsEsc(e.icon||'📄')+'</div>'
     +'<div class="gs-txt"><div class="gs-title">'+gsHi(e.title,t)+'</div><div class="gs-sub">'+gsHi(e.sub||'',t)+'</div></div>'
-    +'<span class="gs-hint">↵</span></div>';
+    +'<span class="gs-hint" aria-hidden="true">›</span></button>';
 }
 // Riadok „Zobraziť všetky (N)" — rozbalí orezanú skupinu
 function gsMoreHtml(gk, n, idx){
-  return '<div class="gs-more" data-i="'+idx+'" onclick="gsRunAt('+idx+')" onmousemove="gsSetCur('+idx+')">'
-    +'Zobraziť všetky ('+n+') ›</div>';
+  return '<button type="button" class="gs-more" data-i="'+idx+'" onclick="gsRunAt('+idx+')" onmousemove="gsSetCur('+idx+')">'
+    +'Zobraziť všetky ('+n+') ›</button>';
 }
 function gsRender(){
   var res=document.getElementById('gs-results'); if(!res) return;
@@ -43308,7 +43311,7 @@ function gsRender(){
   }
   GS.flat=[]; GS.cur=0;
   if(!list.length && !GS._combos.length){
-    res.innerHTML='<div class="gs-empty"><span class="gs-empty-emoji">🔍</span>Nič sa nenašlo</div>'+gsTipsHtml();
+    res.innerHTML=gsStatusHtml()+'<div class="gs-empty"><span class="gs-empty-emoji">🔍</span>Nič sa nenašlo</div>'+gsTipsHtml();
     GS._noHits=true;
     return;
   }
@@ -43345,7 +43348,7 @@ function gsRender(){
       }
     }
     var rest=list.filter(function(e){ return e!==top; });
-    var QCAP={section:3,action:3,event:4,rep:4,doctor:4,pharmacy:4,district:5,product:4,ms:4};
+    var QCAP={section:3,action:3,post:4,event:4,rep:4,doctor:4,pharmacy:4,district:5,product:4,ms:4};
     var shownTotal=0, MAXTOTAL=14;
     GS_GROUP_ORDER.forEach(function(gk){
       var items=rest.filter(function(e){ return e.type===gk; });
@@ -43362,18 +43365,19 @@ function gsRender(){
       }
     });
   }
-  res.innerHTML=html;
+  res.innerHTML=gsStatusHtml()+html;
   gsHighlight(false);
 }
 /* ── NÁPOVEDA — príklady podľa role/línie (klik ich rovno vyskúša) ── */
+function gsStatusHtml(){var d=gsData();return d.pending?'<div class="gs-data-status" role="status"><span class="nst-spin" aria-hidden="true"></span>Dopĺňam výsledky vyhľadávania…</div>':d.failed?'<div class="gs-data-status" role="status">Časť údajov sa nepodarilo načítať. Zobrazené sú dostupné výsledky. <button type="button" onclick="gsEnsureData()">Skúsiť znova</button></div>':'';}
 function gsTipsHtml(){
   var mgr=gsIsMgr(), line=gsLine(), tips=[];
   if(line==='gyn'){
-    tips=['dovolenka','plnenie','trhový podiel'];
+    tips=['sklady','tímové plnenie','dovolenka','nástenka'];
   } else if(mgr){
-    tips=['reporty '+gsSampleRep(), gsSampleRep()+' vidonorm', gsSampleRep()+' '+gsSampleOkres(), 'dovolenka'];
+    tips=['plnenie '+gsSampleRep(),'sklady','dovolenka','nástenka'];
   } else {
-    tips=['telexer '+gsSampleOkres(), 'dovolenka', 'lekárne', 'nastavenia'];
+    tips=['sklady','dovolenka','lekárne','nástenka'];
   }
   tips=tips.filter(function(t){ return t && t.indexOf('undefined')<0; }).slice(0,4);
   if(!tips.length) return '';
@@ -43414,15 +43418,16 @@ function gsHighlight(scroll){
 function gsSetCur(i){ if(GS.cur!==i){ GS.cur=i; gsHighlight(false); } }
 function gsMove(d){ if(!GS.flat.length) return; GS.cur=(GS.cur+d+GS.flat.length)%GS.flat.length; gsHighlight(true); }
 function gsRunAt(i){
-  var e=GS.flat[i]; if(!e) return;
+  var e=GS.flat[i]; if(!e || GS.indexOwner!==gsOwner()) return;
   if(e._noClose){                            // „Zobraziť všetky" — len rozbalí, panel ostáva
     try{ if(typeof haptic==='function') haptic('selection'); }catch(err){}
     try{ e.run(); }catch(err){}
     return;
   }
+  var runOwner=gsOwner(),runCtx=appLineCapture();
   gsPushRecent(e);
   gsClose();
-  setTimeout(function(){ try{ if(typeof haptic==='function') haptic('light'); }catch(e){} try{ e.run(); }catch(err){} }, 40);
+  setTimeout(function(){if(runOwner!==gsOwner()||!appLineContextActive(runCtx))return;try{if(typeof haptic==='function')haptic('light');e.run();}catch(err){}},40);
 }
 
 /* ── OTVORENIE / ZATVORENIE ── */
@@ -43453,29 +43458,52 @@ function gsOpen(){
 // a po načítaní prestav index + prekresli, ak je panel ešte otvorený → prvé otvorenie
 // nájde naozaj všetko, aj keď sa dáta ešte dosync-ovávali.
 function gsEnsureData(){
-  function rerender(){ var ov=document.getElementById('gs-overlay'); if(ov && ov.classList.contains('show')){ GS.items=gsBuildIndex(); gsRender(); } }
-  // Manažér/admin: všetky lekárne naprieč repmi
-  try {
-    if(gsIsMgr() && typeof lkFetchAll==='function' && typeof LK_STATE!=='undefined' && !LK_STATE.allLoaded){ lkFetchAll(rerender); }
-  } catch(e){}
-  // Golem reprezentant: história lekárov (vrátane Tuyory/Lonelix)
-  try {
-    if(!gsIsMgr() && gsLine()!=='gyn'){
-      var noHist=(typeof _histAllItems==='undefined') || !(_histAllItems && _histAllItems.length);
-      if(noHist && typeof loadHistoryItems==='function'){ var s=gsSession(); if(s && s.username){ loadHistoryItems(s.username).then(rerender); } }
-    }
-  } catch(e){}
-  // Kalendárne udalosti (všetky línie)
-  try {
-    var noEv=(typeof GYN_CAL==='undefined') || !(GYN_CAL.events && GYN_CAL.events.length);
-    if(noEv){
-      if(typeof gynCalSync==='function') gynCalSync();
-      else if(typeof gynCalPrefetch==='function') gynCalPrefetch();
-      setTimeout(rerender, 1300);
-    }
-  } catch(e){}
+ var owner=gsOwner(),ctx=appLineCapture(),data=gsData(),s=gsSession(),line=gsLine(),mgr=gsIsMgr();
+ if(data.pending)return;
+ function active(){return owner===gsOwner()&&appLineContextActive(ctx);}
+ var snapshot=[];
+ function paint(force){
+  if(!active())return;
+  var refs=[NST.posts,NST.posts.length,GYN_CAL.events,GYN_STATE.repList,GYN_STATE.repList.length,TEAM_PL_STATE.payload,data.pending,data.failed];
+  if(force===false && refs.every(function(value,i){return value===snapshot[i];}))return;
+  snapshot=refs;
+  var ov=document.getElementById('gs-overlay');
+  if(ov&&ov.classList.contains('show')){
+    var selected=GS.flat[GS.cur];GS.items=gsBuildIndex();gsRender();
+    if(selected){var i=GS.flat.findIndex(function(e){return e.type===selected.type&&e.title===selected.title&&e.sub===selected.sub;});if(i>=0){GS.cur=i;gsHighlight(false);}}
+  }
+ }
+ function read(params,consume){
+  data.pending++;
+  var url=line==='gyn'?gynScriptUrl(params):scriptUrl(params);
+  var done=false,timer=setTimeout(function(){if(done)return;done=true;data.pending--;if(active()){data.failed++;paint();}},30000);
+  appQueuedFetchJson(url,undefined,20000,'background').then(function(d){if(!done&&active())consume(d);}).catch(function(){if(!done&&active())data.failed++;}).finally(function(){if(done)return;done=true;clearTimeout(timer);data.pending--;paint();});
+ }
+ // Fetch via the shared queue, never block immediate cached suggestions.
+ data.failed=0;
+ var logins=gsAllowedLogins();
+ data.roster=logins.join('|');
+ if(line==='gyn'){
+  logins.forEach(function(login){if(data.pharmacies[login])return;read('action=getGynLekarne&login='+encodeURIComponent(login),function(d){if(!d||!d.ok||!Array.isArray(d.rows))throw Error('Invalid pharmacies');data.pharmacies[login]=d.rows;});});
+ }else{
+  read('action='+(mgr?'getLekarneAll':'getLekarne&login='+encodeURIComponent(s.username))+'&fresh=1',function(d){
+   if(!d||!d.ok||!Array.isArray(d.rows))throw Error('Invalid pharmacies');var grouped={};d.rows.forEach(function(r){var login=String(r.login||(!mgr?s.username:'')).toLowerCase();if(logins.indexOf(login)<0)return;(grouped[login]||(grouped[login]=[])).push(r);});logins.forEach(function(login){data.pharmacies[login]=grouped[login]||[];});
+  });
+  if(mgr){read('action=getAllHistory',function(d){if(!d||Array.isArray(d)||d.ok===false)throw Error('Invalid history');logins.forEach(function(login){if(Array.isArray(d[login]))data.history[login]=d[login];});});}
+  else read('action=getHistory&reprezentant='+encodeURIComponent(s.username),function(d){if(!Array.isArray(d))throw Error('Invalid history');data.history[s.username]=d;});
+ }
+ // Existing board/calendar loaders preserve their UI caches and line guards.
+ if(typeof nstFetch==='function')nstFetch(paint,'background',true);
+ if(typeof gynCalSync==='function')gynCalSync();
+ if(!mgr && typeof teamPlneniePreload==='function')teamPlneniePreload();
+ if(line==='gyn'&&typeof gynLbEnsureRepList==='function')gynLbEnsureRepList();
+ clearInterval(GS.refreshTimer);var ticks=0;
+ GS.refreshTimer=setInterval(function(){var ov=document.getElementById('gs-overlay');if(!active()||!ov||!ov.classList.contains('show')||++ticks>60){clearInterval(GS.refreshTimer);return;}if(!data.pending&&data.roster!==gsAllowedLogins().join('|')){gsEnsureData();return;}paint(false);},500);
+ paint();
 }
+
 function gsClose(){
+  clearInterval(GS.refreshTimer);clearTimeout(_gsMissT);
   var ov=document.getElementById('gs-overlay'); if(ov) ov.classList.remove('show');
   document.body.classList.remove('gs-open');
 }
