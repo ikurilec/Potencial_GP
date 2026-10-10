@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.18';
+var APP_VERSION = '2.89.19';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -513,7 +513,7 @@ function appReadView(){
     if(key==='product' && PL_PROD_SHEET_STATE.activePharmaCode)params.produkt=PL_PROD_SHEET_STATE.activePharmaCode;
     Object.keys(params).forEach(function(k){if(params[k]==null)delete params[k];});
     var path='';try{path=new URL(line==='gyn'?GYN_SCRIPT_URL:line==='reagila'?REAGILA_SCRIPT_URL:SCRIPT_URL,location.href).origin+new URL(line==='gyn'?GYN_SCRIPT_URL:line==='reagila'?REAGILA_SCRIPT_URL:SCRIPT_URL,location.href).pathname;}catch(e){}
-    return { key:appReadOwner()+'|'+key+'|'+JSON.stringify(params),host:host,actions:actions,params:params,path:path,nativeLoading:key==='board' };
+    return { key:appReadOwner()+'|'+key+'|'+JSON.stringify(params),type:key,host:host,actions:actions,params:params,path:path,nativeLoading:key==='board' };
   }
   // Dialógy a rozpracované formuláre nemajú automatickú dátovú obnovu.
   if(shown('nst-compose') || shown('edit-overlay') || shown('gpp-overlay')) return null;
@@ -552,6 +552,7 @@ function appReadView(){
     var tab=MGR_STATE.subtab;
     var hosts={plnenie:'#pl-q-content',visits:'#mgr-list-wrap',leaderboard:'#mgr-lb-body',kalendar:'#mgr-cal-content',activity:'#act-body',reporty:'#mgr-reporty-view'};
     var actions={plnenie:['getPlnenieAll','getConfig'],visits:['getAllHistory','getHistory','getReps','bootstrap'],leaderboard:['getPlnenieAll'],kalendar:['getCalEvents'],activity:['getUsageStats','getUsageRepStats'],reporty:['getPlnenieAll','getCennik','getCalEvents','getDohody','getGpOverrides','bootstrap']};
+    if(tab==='visits'&&MGR_STATE.currentRep&&shown('mgr-detail'))return view('mgr-visits','#mgr-detail',actions.visits);
     if(tab==='plnenie' && document.body.classList.contains('mgr-plnenie-detail-open')){
       var pharmacies=document.getElementById('pl-detail-lekarne');
       var isLk=pharmacies && pharmacies.style.display!=='none';
@@ -31387,13 +31388,14 @@ function appPtrRingHtml() {
 function appPtrEnsure(opt) {
   // Panel s pevným indikátorom v HTML (manažér, gyn) — netreba nič vyrábať.
   if (opt.indicatorId) return document.getElementById(opt.indicatorId);
-  var ov = document.getElementById(opt.overlayId);
+  var ov = opt.getRoot?opt.getRoot():document.getElementById(opt.overlayId);
   if (!ov) return null;
-  var ind = ov.querySelector('.app-ptr');
+  var dynamicHost=opt.getMount?opt.getMount():null;
+  var ind = (dynamicHost||ov).querySelector('.app-ptr');
   if (ind) return ind;
   // Panely si obsah prekresľujú cez innerHTML, čo by vložený indikátor zmazalo.
   // Preto sa vytvára až keď treba, a vždy sa najprv overí, či ešte existuje.
-  var host = opt.mountSelector ? ov.querySelector(opt.mountSelector) : ov.firstElementChild;
+  var host = dynamicHost|| (opt.mountSelector ? ov.querySelector(opt.mountSelector) : ov.firstElementChild);
   if (!host) return null;
   ind = document.createElement('div');
   ind.className = 'app-ptr';
@@ -31404,131 +31406,131 @@ function appPtrEnsure(opt) {
   return ind;
 }
 
-function appAttachOverlayPtr(opt) {
-  var startY = 0, startX = 0, pulling = false, ready = false, dirLocked = false, busy = false;
-  var MIN_MS = opt.minMs || 600;   // aby obnova neblikla a bolo vidieť, že sa niečo dialo
-
-  function ov(){ return opt.overlayId ? document.getElementById(opt.overlayId) : null; }
-
-  // Odkiaľ sa číta poloha skrolu. Panely skrolujú samy seba; manažérsky
-  // a gyn pohľad skrolujú okno.
-  function atTop() {
-    if (typeof opt.scrollTop === 'function') { try { return opt.scrollTop() <= 5; } catch (e) { return false; } }
-    var o = ov();
-    return !!o && o.scrollTop <= 5;
-  }
-
-  function active() {
-    if (busy) return false;
-    if (typeof opt.isActive === 'function') {
-      var okCustom = false;
-      try { okCustom = !!opt.isActive(); } catch (e) { okCustom = false; }
-      if (!okCustom) return false;
-    } else {
-      var o = ov();
-      if (!o || !o.classList.contains('show')) return false;
-    }
-    // Nad panelom môže byť otvorený detail alebo dialóg — vtedy gesto nepatrí jemu.
-    var blocked = opt.blockedBy || [];
-    for (var i = 0; i < blocked.length; i++) {
-      var b = document.getElementById(blocked[i]);
-      if (b && b.classList.contains('show')) return false;
-    }
-    if (typeof opt.extraBlock === 'function') { try { if (opt.extraBlock()) return false; } catch (e) {} }
-    return atTop();
-  }
-
-  function arcEl() {
-    var ind = appPtrEnsure(opt);
-    return ind ? ind.querySelector('.app-ptr-arc') : null;
-  }
-
-  function setArc(pct) {
-    var a = arcEl();
-    if (a) a.style.strokeDashoffset = String(APP_PTR_CIRC * (1 - Math.max(0, Math.min(1, pct))));
-  }
-
-  function close() {
-    var ind = appPtrEnsure(opt);
-    if (!ind) return;
-    ind.classList.add('anim');
-    ind.classList.remove('ready', 'loading');
-    ind.style.height = '0';
-    ind.style.opacity = '0';
-    setArc(0);
-  }
-
-  document.addEventListener('touchstart', function (e) {
-    if (!active()) return;
-    appPtrEnsure(opt);
-    startY = e.touches[0].clientY;
-    startX = e.touches[0].clientX;
-    pulling = false; ready = false; dirLocked = false;
-  }, { passive: true });
-
-  document.addEventListener('touchmove', function (e) {
-    if (!active()) return;
-    var dy = e.touches[0].clientY - startY;
-    var dx = Math.abs(e.touches[0].clientX - startX);
-    if (!dirLocked) {
-      if (Math.abs(dy) < 8 && dx < 8) return;
-      if (dx > Math.abs(dy)) return;   // vodorovný pohyb nie je potiahnutie
-      if (dy <= 0) return;             // musí ísť nadol
-      dirLocked = true; pulling = true;
-    }
-    if (!pulling) return;
-    var ind = appPtrEnsure(opt);
-    if (!ind) return;
-    if (dy <= 0) { pulling = false; close(); return; }
-    var pct = Math.min(dy / APP_PTR_THRESHOLD, 1);
-    // Bez prechodu — indikátor musí ísť presne s prstom, nie za ním.
-    ind.classList.remove('anim');
-    ind.style.height = Math.min(dy * 0.55, 62) + 'px';
-    ind.style.opacity = String(Math.min(0.25 + pct * 0.75, 1));
-    setArc(pct);
-    var nowReady = dy >= APP_PTR_THRESHOLD;
-    if (nowReady !== ready) {
-      ready = nowReady;
-      ind.classList.toggle('ready', ready);
-      // Cuknutie presne v okamihu, keď sa dá pustiť — ako na iPhone.
-      if (ready) { try { haptic('light'); } catch (e) {} }
-    }
-  }, { passive: true });
-
-  document.addEventListener('touchend', function () {
-    if (!pulling) return;
-    pulling = false; dirLocked = false;
-    var ind = appPtrEnsure(opt);
-    if (!ready) { close(); return; }
-    ready = false;
-    if (ind) {
-      // Vlastný strokeDashoffset z ťahania sa musí zmazať, inak by prebil
-      // hodnotu zo štýlu a namiesto točiaceho sa oblúčika by ostal plný krúžok.
-      var a = ind.querySelector('.app-ptr-arc');
-      if (a) a.style.strokeDashoffset = '';
-      ind.classList.add('anim', 'loading');
-      ind.classList.remove('ready');
-      ind.style.height = '58px';
-      ind.style.opacity = '1';
-    }
-    try { haptic('selection'); } catch (e) {}
-    // busy zablokuje ďalšie potiahnutie, kým prvé nedobehne — dve súbežné
-    // načítania by si navzájom prepisovali obsah.
-    busy = true;
-    var done = false, hardStop = false, t0 = Date.now();
-    function finish() {
-      if (done) return;
-      var left = MIN_MS - (Date.now() - t0);
-      if (left > 0 && !hardStop) { setTimeout(finish, left); return; }
-      done = true; busy = false;
-      close();
-    }
-    // Poistka: keby sieť nikdy neodpovedala, krúžok sa musí zastaviť sám.
-    setTimeout(function () { hardStop = true; finish(); }, 12000);
-    try { appStartManualRefresh(); } catch (e) {}
-    try { opt.onRefresh(function () { setTimeout(finish, 250); }); }
-    catch (e) { finish(); }
+var APP_PTR_OWNER=null,APP_PTR_START_EVENT=null,APP_PTR_BUSY={};
+function appPtrViewType(view){return view && (view.type||view.key.split('|')[3])||'';}
+function appPtrViewRoot(view){
+ var host=view&&document.querySelector(view.host);
+ for(var el=host;el&&el!==document.body;el=el.parentElement){
+  var css=getComputedStyle(el);if(/auto|scroll/.test(css.overflowY)&&(el.scrollHeight>el.clientHeight+1||css.position==='fixed'))return el;
+ }
+ return document.scrollingElement||document.documentElement;
+}
+function appPtrRefreshCurrent(done){
+ var view=appReadView(),type=appPtrViewType(view),ctx=appLineCapture(),owner=appReadOwner();
+ var session=getSession()||{},q=GYN_APP.q;
+ function same(){var current=appReadView();return appLineContextActive(ctx)&&owner===appReadOwner()&&current&&current.key===view.key;}
+ function gynSales(){gynEnsureQuarterData(q,function(){if(same()){gynRenderContent(getSession());dnesRefreshIfOpen();}},true);}
+ function pharmacies(){
+  var login=type==='pharmacy-detail'?LK_DETAIL_LOGIN:type==='mgr-detail-lekarne'?PL_STATE.detailRep:LK_STATE.login;
+  login=login||session.username;
+  lkFetch(login,function(rows){if(!same())return;
+   lkRefreshDetailFromRows(login,rows);
+   if(type==='mgr-detail-lekarne'){LK_MGR_ALL=lkBuildLekarne(rows);lkMgrSyncTabs();lkMgrRenderBody(LK_MGR_ALL,LK_MGR_STATE.searchQ);}
+   else if(type==='pharmacies'){LK_STATE._rows=lkBuildLekarne(rows);lkRender();}
   });
+ }
+ switch(type){
+  case 'home':appCheckHome();if(appRole()==='gp')gpHistForceRefresh(session.username,function(){});break;
+  case 'sales':if(!appCheckSalesQuarter(true))repPlnenieLoad();break;
+  case 'mgr-plnenie':case 'mgr-detail':if(!appCheckSalesQuarter(false))plnenieLoadAllQuarters();break;
+  case 'gyn-plnenie':gynSales();break;
+  case 'team':teamPlnenieLoad(true);break;
+  case 'calendar':case 'mgr-kalendar':case 'gyn-kalendar':gynCalSync();break;
+  case 'pharmacies':case 'pharmacy-detail':case 'mgr-detail-lekarne':pharmacies();if(type==='pharmacy-detail')lkLoadVariants(LK_DETAIL_LOGIN||session.username,lkFilterDataset());break;
+  case 'gyn-lekarne':var login=GYN_LK.login||GYN_APP.detailLogin||session.username;gynLkFetch(login,function(rows){if(same()&&GYN_LK.login===login){GYN_LK.rows=rows;gynLkRender();}});break;
+  case 'ranking':case 'mgr-leaderboard':lbPreloadPlnenie(true);break;
+  case 'gyn-leaderboard':delete GYN_LB.dataReady[gynLbLastCompletedQ()];gynLbEnsureData(gynLbLastCompletedQ(),gynPlnenieCacheKey(plnenieCalendarPeriod().year,gynLbLastCompletedQ())+'|lb-fullLine');break;
+  case 'market':if(session.line==='gyn')gynPharmaLoad();else{loadPharmaDataNetwork(PHARMA_STATE.activeCode,PHARMA_STATE.oblast,PHARMA_STATE.kvartal);loadPharmaGrafDataFresh(PHARMA_STATE.activeCode,PHARMA_STATE.oblast,function(){if(same())pharmaRender(PHARMA_STATE.activeCode);});}break;
+  case 'mgr-activity':case 'gyn-activity':usageRefresh();break;
+  case 'mgr-visits':
+   appFetchWithRetry(scriptUrl('action=getAllHistory'),{retries:1,timeoutMs:25000,priority:'critical',delayFn:function(){return 700;},active:same}).then(function(d){
+    if(!same()||!d||d.ok===false||Array.isArray(d))return;
+    plnenieGetActiveReps().forEach(function(u){if(Array.isArray(d[u]))MGR_STATE.reps[u]=Object.assign({},MGR_STATE.reps[u]||{},{visits:mgrNormalizeVisits(d[u]),error:false});});
+    if(MGR_STATE.currentRep&&document.getElementById('mgr-detail').classList.contains('show'))mgrRenderVisits();else mgrRenderList();
+   }).catch(function(){});break;
+  case 'mgr-reporty':var period=rptViewPeriod();rp2EnsureQuarter_(period.q,true);rp2LoadCennik();gynCalSync();break;
+  case 'product':if(session.line==='gyn')gynSales();else appCheckSalesQuarter(appRole()==='gp');break;
+  case 'board':nstFetch(function(){if(same())nstRender();},'critical',true);break;
+  default:return false;
+ }
+ setTimeout(function(){appWaitUntil(function(){
+  if(!same())return true;
+  var entry=APP_READ_CHECKS[view.key];
+  var jobs=APP_REQUEST_QUEUE.items.concat(APP_REQUEST_QUEUE.running);
+  return !(entry&&entry.pending)&&!jobs.some(function(j){return appRequestMatchesView(j.resource||j.url,view);})&&(!/kalendar|calendar/.test(type)||!GYN_CAL._syncing);
+ },55000,done);},200);
+ return true;
+}
+function appAttachOverlayPtr(opt){
+ var startY=0,startX=0,armed=false,pulling=false,ready=false,busy=false,liveIndicator=null,scope=null,ctx=null,owner='',viewKey='';
+ var MIN_MS=opt.minMs||600;
+ function root(){return opt.getRoot?opt.getRoot():opt.overlayId?document.getElementById(opt.overlayId):document.getElementById(opt.indicatorId==='gyn-ptr-indicator'?'gyn-view':'mgr-view');}
+ function allowed(){
+  if(busy||!getSession()||document.body.classList.contains('login-active'))return false;
+  if(opt.isActive){if(!opt.isActive())return false;}else{var o=root();if(!o||!o.classList.contains('show'))return false;}
+  var blocked=(opt.blockedBy||[]).concat(['gs-overlay','nst-compose','edit-overlay','confirm-overlay','session-expired-overlay','gpp-overlay','wn-overlay','av-overlay','settings-overlay','satori-overlay','gyn-cal-sheet','lk-prompt-overlay','lk-confirm-overlay']);
+  for(var i=0;i<blocked.length;i++){var b=document.getElementById(blocked[i]);if(b&&b.classList.contains('show'))return false;}
+  if(opt.extraBlock&&opt.extraBlock())return false;
+  var view=appReadView();return !!view&&view.actions.length>0&&!APP_PTR_BUSY[view.key];
+ }
+ function valid(){var current=appReadView();return ctx&&appLineContextActive(ctx)&&owner===appReadOwner()&&current&&current.key===viewKey;}
+ function close(){
+  if(scope)scope.classList.remove('app-ptr-active');
+  if(!liveIndicator)return;
+  liveIndicator.classList.add('anim');liveIndicator.classList.remove('ready','loading');liveIndicator.style.height='0';liveIndicator.style.opacity='0';
+  var a=liveIndicator.querySelector('.app-ptr-arc');if(a)a.style.strokeDashoffset=String(APP_PTR_CIRC);
+ }
+ function reset(){armed=false;pulling=false;ready=false;if(APP_PTR_OWNER===opt)APP_PTR_OWNER=null;close();}
+ opt.cancelPull=reset;
+ document.addEventListener('touchstart',function(e){
+  if(APP_PTR_START_EVENT!==e){APP_PTR_START_EVENT=e;if(APP_PTR_OWNER&&APP_PTR_OWNER.cancelPull)APP_PTR_OWNER.cancelPull();APP_PTR_OWNER=null;}
+  if(APP_PTR_OWNER||!e.touches||e.touches.length!==1||!allowed())return;
+  if(opt.indicatorId&&!document.getElementById(opt.indicatorId))return;
+  var target=e.target.nodeType===1?e.target:e.target.parentElement;
+  if(!target||target.closest('input,textarea,select,[contenteditable="true"],[role="slider"]'))return;
+  scope=root();var view=appReadView(),host=document.querySelector(view.host);
+  if(!scope||!scope.contains(target)||!host||!scope.contains(host))return;
+  for(var node=target;node&&node!==document.body;node=node.parentElement){
+   if(node.scrollTop>5 && (node===scope||/auto|scroll/.test(getComputedStyle(node).overflowY)))return;
+  }
+  var top=opt.scrollTop?opt.scrollTop():scope.scrollTop;
+  if(top>5)return;
+  var t=e.touches[0];startY=t.clientY;startX=t.clientX;ctx=appLineCapture();owner=appReadOwner();viewKey=view.key;
+  armed=true;pulling=false;ready=false;APP_PTR_OWNER=opt;
+ },{passive:true,capture:true});
+ document.addEventListener('touchmove',function(e){
+  if(APP_PTR_OWNER!==opt||!armed)return;
+  if(!e.touches||e.touches.length!==1||!valid()){reset();return;}
+  var dy=e.touches[0].clientY-startY,dx=Math.abs(e.touches[0].clientX-startX);
+  if(!pulling){
+   if(dy<0 || (dx>=8&&dx>Math.abs(dy))){reset();return;}
+   // Reserve downward motion on its first event. Chrome otherwise hands it to
+   // native scrolling, then emits touchcancel before our threshold is reached.
+   if(dy>0&&dy>=dx&&e.cancelable)e.preventDefault();
+   if(dy<8)return;
+   if(!e.cancelable){reset();return;}
+   pulling=true;liveIndicator=appPtrEnsure(opt);scope.classList.add('app-ptr-active');
+  }
+  if(!liveIndicator||dy<=0){reset();return;}
+  if(e.cancelable)e.preventDefault();
+  var pct=Math.min(dy/APP_PTR_THRESHOLD,1),a=liveIndicator.querySelector('.app-ptr-arc');
+  liveIndicator.classList.remove('anim');liveIndicator.style.height=Math.min(dy*.55,62)+'px';liveIndicator.style.opacity=String(.25+pct*.75);
+  if(a)a.style.strokeDashoffset=String(APP_PTR_CIRC*(1-pct));
+  var next=dy>=APP_PTR_THRESHOLD;if(next!==ready){ready=next;liveIndicator.classList.toggle('ready',ready);if(ready)try{haptic('light');}catch(err){}}
+ },{passive:false,capture:true});
+ document.addEventListener('touchcancel',function(){if(APP_PTR_OWNER===opt)reset();},{passive:true,capture:true});
+ document.addEventListener('touchend',function(e){
+  if(APP_PTR_OWNER!==opt)return;
+  var refresh=pulling&&ready&&valid();APP_PTR_OWNER=null;armed=false;pulling=false;ready=false;
+  if(!refresh){close();return;}
+  if(e.cancelable)e.preventDefault(); // A completed pull must not click its starting button.
+  if(liveIndicator){var a=liveIndicator.querySelector('.app-ptr-arc');if(a)a.style.strokeDashoffset='';liveIndicator.classList.add('anim','loading');liveIndicator.classList.remove('ready');liveIndicator.style.height='58px';liveIndicator.style.opacity='1';}
+  busy=true;var busyKey=viewKey,busyToken={};APP_PTR_BUSY[busyKey]=busyToken;
+  var done=false,t0=Date.now(),timer;
+  function finish(force){if(done)return;var left=MIN_MS-(Date.now()-t0);if(left>0&&!force){setTimeout(finish,left);return;}done=true;clearTimeout(timer);if(APP_PTR_BUSY[busyKey]===busyToken)delete APP_PTR_BUSY[busyKey];busy=false;close();}
+  timer=setTimeout(function(){finish(true);},60000);
+  try{appStartManualRefresh();if(!appPtrRefreshCurrent(finish))opt.onRefresh(finish);}catch(err){finish();}
+ },{passive:false,capture:true});
 }
 
 // ── Ktoré panely obnovu majú ────────────────────────────────────────────
@@ -31756,6 +31758,14 @@ function appAttachOverlayPtr(opt) {
     }
   });
 })();
+
+appAttachOverlayPtr({
+ getRoot:function(){return appPtrViewRoot(appReadView());},
+ getMount:function(){var v=appReadView();return v&&document.querySelector(v.host);},
+ scrollTop:function(){var r=appPtrViewRoot(appReadView());return r?r.scrollTop:999;},
+ isActive:function(){var v=appReadView();return !!v&&/^(home|sales|mgr-plnenie|mgr-detail|mgr-visits|mgr-reporty|product|gyn-plnenie|team|calendar|mgr-kalendar|gyn-kalendar|pharmacies|pharmacy-detail|mgr-detail-lekarne|gyn-lekarne|ranking|mgr-leaderboard|gyn-leaderboard|market|mgr-activity|gyn-activity|board)$/.test(appPtrViewType(v));},
+ onRefresh:function(done){done();}
+});
 
 // ── ANTI-DUPLIKÁT MutationObserver ──
 // Okamžite odstráni akékoľvek duplikáty kľúčových elementov ak sa objavia

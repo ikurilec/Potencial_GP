@@ -1,0 +1,19 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert/strict');const src=fs.readFileSync('app.js','utf8');
+const code=src.slice(src.indexOf('function appPtrRefreshCurrent('),src.indexOf('function appAttachOverlayPtr(',src.indexOf('function appPtrRefreshCurrent(')));
+let type='home',line='gp',calls=[],completed=0;
+const node={classList:{contains:()=>false}};
+const c={Promise,Date,getSession:()=>({username:'rep',line}),appPtrViewType:v=>v.type,appReadView:()=>({key:type,type}),appLineCapture:()=>({}),appReadOwner:()=> 'rep',appLineContextActive:()=>true,
+ GYN_APP:{q:3},GYN_LB:{dataReady:{}},GYN_LK:{login:'rep'},GYN_CAL:{_syncing:false},PL_STATE:{detailRep:'rep'},LK_STATE:{login:'rep'},LK_DETAIL_LOGIN:'rep',LK_MGR_STATE:{searchQ:''},MGR_STATE:{reps:{rep:{visits:[1]}},currentRep:null},PHARMA_STATE:{activeCode:'X',oblast:'TN',kvartal:'2603'},APP_READ_CHECKS:{},APP_REQUEST_QUEUE:{items:[],running:[]},
+ scriptUrl:x=>x,appRole:()=> 'gp',appRequestMatchesView:()=>false,appWaitUntil:(cond,t,cb)=>{assert.equal(cond(),true);cb();},setTimeout:fn=>fn(),document:{getElementById:()=>node},
+ appCheckSalesQuarter:rep=>{calls.push(rep?'repSales':'mgrSales');return true;},gynEnsureQuarterData:(q,cb,force)=>{assert.equal(force,true);calls.push('gynSales');cb();},
+ lkFetch:(login,cb)=>{calls.push('pharmacies:'+login);cb([]);},lkBuildLekarne:()=>[],lkFilterDataset:()=>[],gynLkFetch:(login,cb)=>{calls.push('gynPharmacies:'+login);cb([]);},
+ gynLbLastCompletedQ:()=>3,plnenieCalendarPeriod:()=>({year:2026}),gynPlnenieCacheKey:()=> 'cache',rptViewPeriod:()=>({q:3}),
+ appFetchWithRetry:()=>{calls.push('visits');return Promise.resolve({rep:[]});},plnenieGetActiveReps:()=>['rep'],mgrNormalizeVisits:d=>d};
+for(const name of ['appCheckHome','gpHistForceRefresh','gynRenderContent','dnesRefreshIfOpen','repPlnenieLoad','plnenieLoadAllQuarters','teamPlnenieLoad','gynCalSync','lkRefreshDetailFromRows','lkMgrSyncTabs','lkMgrRenderBody','lkRender','lkLoadVariants','gynLkRender','lbPreloadPlnenie','gynLbEnsureData','gynPharmaLoad','loadPharmaDataNetwork','loadPharmaGrafDataFresh','pharmaRender','usageRefresh','rp2EnsureQuarter_','rp2LoadCennik','nstFetch','nstRender','mgrRenderList','mgrRenderVisits'])c[name]=()=>calls.push(name);
+vm.createContext(c);vm.runInContext(code,c);
+const cases={home:'appCheckHome',sales:'repSales','mgr-plnenie':'mgrSales','mgr-detail':'mgrSales','gyn-plnenie':'gynSales',team:'teamPlnenieLoad',calendar:'gynCalSync','mgr-kalendar':'gynCalSync','gyn-kalendar':'gynCalSync',pharmacies:'pharmacies:rep','pharmacy-detail':'lkLoadVariants','mgr-detail-lekarne':'lkMgrRenderBody','gyn-lekarne':'gynPharmacies:rep',ranking:'lbPreloadPlnenie','mgr-leaderboard':'lbPreloadPlnenie','gyn-leaderboard':'gynLbEnsureData',market:'loadPharmaDataNetwork','mgr-activity':'usageRefresh','gyn-activity':'usageRefresh','mgr-visits':'visits','mgr-reporty':'rp2LoadCennik',product:'repSales',board:'nstFetch'};
+for(const [t,wanted] of Object.entries(cases)){type=t;calls=[];assert.equal(c.appPtrRefreshCurrent(()=>completed++),true,t);assert.ok(calls.includes(wanted),t+' must refresh '+wanted);}
+line='gyn';type='market';calls=[];c.appPtrRefreshCurrent(()=>completed++);assert.ok(calls.includes('gynPharmaLoad'));
+type='product';calls=[];c.appPtrRefreshCurrent(()=>completed++);assert.ok(calls.includes('gynSales'));assert.ok(!calls.includes('mgrSales'),'Gyn product must never use Golem fulfillment state');
+type='tuyory';assert.equal(c.appPtrRefreshCurrent(()=>completed++),false,'Editable questionnaires have no destructive automatic refresh');
+assert.equal(completed,25);console.log('25 refresh routes: correct loaders, preserved pharmacy context, Gyn market/product isolation and completion tracking passed');
