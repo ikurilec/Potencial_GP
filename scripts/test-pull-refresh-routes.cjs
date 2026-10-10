@@ -13,9 +13,9 @@ for(const name of ['appCheckHome','gpHistForceRefresh','gynRenderContent','dnesR
 c.stockForceRefresh=()=>calls.push('stockForceRefresh');c.okresyRetryLoading=()=>calls.push('okresyRetryLoading');c.histRender=()=>calls.push('histRender');
 vm.createContext(c);vm.runInContext(code,c);
 const cases={home:'appCheckHome',sales:'repSales','mgr-plnenie':'mgrSales','mgr-detail':'mgrSales','gyn-plnenie':'gynSales',team:'teamPlnenieLoad',calendar:'gynCalSync','mgr-kalendar':'gynCalSync','gyn-kalendar':'gynCalSync',pharmacies:'pharmacies:rep','pharmacy-detail':'lkLoadVariants','mgr-detail-lekarne':'lkMgrRenderBody','gyn-lekarne':'gynPharmacies:rep',ranking:'lbPreloadPlnenie','mgr-leaderboard':'lbPreloadPlnenie','gyn-leaderboard':'gynLbEnsureData','district-chart':'openPharmaOkresChart',market:'loadPharmaDataNetwork','mgr-activity':'usageRefresh','gyn-activity':'usageRefresh','mgr-visits':'visits','mgr-reporty':'rp2LoadCennik','gyn-reporty':'rp2LoadCennik',product:'repSales',board:'nstFetch'};
-Object.assign(cases,{stocks:'stockForceRefresh',districts:'okresyRetryLoading',history:'gpHistForceRefresh'});
+Object.assign(cases,{stocks:'stockForceRefresh',districts:'okresyRetryLoading','mgr-detail-okresy':'okresyRetryLoading',history:'gpHistForceRefresh'});
 for(const [t,wanted] of Object.entries(cases)){type=t;calls=[];assert.equal(c.appPtrRefreshCurrent(()=>completed++),true,t);assert.ok(calls.includes(wanted),t+' must refresh '+wanted);}
 line='gyn';type='market';calls=[];c.appPtrRefreshCurrent(()=>completed++);assert.ok(calls.includes('gynPharmaLoad'));
 type='product';calls=[];c.appPtrRefreshCurrent(()=>completed++);assert.ok(calls.includes('gynSales'));assert.ok(!calls.includes('mgrSales'),'Gyn product must never use Golem fulfillment state');
 type='tuyory';assert.equal(c.appPtrRefreshCurrent(()=>completed++),false,'Editable questionnaires have no destructive automatic refresh');
-assert.equal(completed,30);console.log('30 refresh routes: correct loaders, preserved pharmacy context, Gyn market/product isolation and completion tracking passed');
+assert.equal(completed,31);console.log('31 refresh routes: correct loaders, preserved pharmacy context, Gyn market/product isolation and completion tracking passed');

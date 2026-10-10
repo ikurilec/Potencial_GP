@@ -54,7 +54,7 @@ const root=path.resolve(__dirname,'..');
    let h=document.getElementById(host);if(!h){h=document.createElement('div');h.id=host;document.getElementById(panel).appendChild(h);}h.innerHTML='<div>Uložené údaje</div>';
    document.getElementById(panel).classList.add('show');_panelCurrent=panel;appReadRefreshVisible();
    const view=appReadView(),flat=Object.fromEntries(Object.entries(view.params).map(([k,v])=>[k,Array.isArray(v)?v[0]:v])),params=new URLSearchParams({action,...flat});
-   const url=scriptUrl(params.toString());await appQueuedFetchJson(url,{cache:'no-store'},5000,'background');
+   const url=scriptUrl(params.toString());await appQueuedFetchJson(url,{cache:'no-store'},5000,'critical');
    appReadRefreshVisible();return {key:view.key,last:appReadSummary(view).last,view};
   },{panel,host,action});
   assert.ok(result.last>0,panel+' must record successful check');

@@ -10,6 +10,7 @@ vm.createContext(c);
 vm.runInContext(source.slice(source.indexOf('var APP_DATA_READ_ACTIONS ='),source.indexOf('var APP_READ_META =')),c);
 vm.runInContext(part,c);
 const url='https://server/exec?action=getStockData&token=secret';
+assert.equal(c.appReadInflightKey(url+'&_planCheck=1',{},20000),c.appReadInflightKey(url+'&_planCheck=2',{},20000),'Plan-check timestamp must not duplicate the same in-flight read');
 async function settle(){for(let i=0;i<10;i++)await Promise.resolve();}
 (async()=>{
  for(const action of c.APP_DATA_READ_ACTIONS){

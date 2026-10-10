@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.21';
+var APP_VERSION = '2.89.22';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -505,6 +505,10 @@ function appReadView(){
     if(key==='pharmacies')params.login=LK_STATE.login||s.username;
     if(key==='mgr-detail')params.login=PL_STATE.detailRep;
     if(key==='mgr-detail-lekarne')params.login=PL_STATE.detailRep;
+    if(key==='mgr-detail-okresy'||key==='districts'){
+      params.oblast=OKRESY_STATE.oblast;
+      params.kvartal=OKRESY_STATE.kvartal?[OKRESY_STATE.kvartal,pharmaKvartalPrev(OKRESY_STATE.kvartal)]:null;
+    }
     if(key==='mgr-detail-lekarne'||key==='pharmacies'||key==='pharmacy-detail')params.creamMonth=lkCreamContactMonthKey();
     if(key==='gyn-lekarne')params.login=GYN_LK.login||s.username;
     if(key==='gyn-lekarne')params.osloveneMonth=gynLkMonthKey();
@@ -565,6 +569,8 @@ function appReadView(){
     if(tab==='plnenie' && document.body.classList.contains('mgr-plnenie-detail-open')){
       var pharmacies=document.getElementById('pl-detail-lekarne');
       var isLk=pharmacies && pharmacies.style.display!=='none';
+      var districts=document.getElementById('pl-detail-okresy');
+      if(districts && districts.style.display!=='none')return view('mgr-detail-okresy','#pl-detail-okresy-body',['getPharmaData','getConfig']);
       return view(isLk?'mgr-detail-lekarne':'mgr-detail',isLk?'#pl-detail-lekarne-body':'#pl-detail-predaje',isLk?['getLekarne','getLekarneDetail']:['getPlnenieAll','getPharmaData']);
     }
     return view('mgr-'+tab,hosts[tab],actions[tab]||[]);
@@ -644,14 +650,17 @@ function appReadBegin(view,resource){
     if(!entry.pending){clearTimeout(entry.timer);entry.timer=setTimeout(function(){appReadPaint(entry);if(!entry.error && APP_READ_CHECKS[view.key]===entry)delete APP_READ_CHECKS[view.key];},400);}
   };
 }
-function appTrackedRead(url, opts, run){
+function appTrackedRead(url, opts, run, priority){
   var view=appReadView(), action='';
   try { action=new URL(url,location.href).searchParams.get('action')||''; } catch(e){}
   var resource=appReadResource(url);
   if(resource){resource.generation=(APP_READ_GENERATIONS[resource.key]||0)+1;APP_READ_GENERATIONS[resource.key]=resource.generation;}
-  if(resource)resource.visible=appRequestMatchesView(resource,view);
-  var end=appRequestMatchesView(resource,view) ? appReadBegin(view,resource) : null;
-  if(end){
+  // Login preloads and polling update Home silently after its explicit check.
+  var matches=appRequestMatchesView(resource,view);
+  var visible=matches && !(view && view.type==='home' && priority==='background');
+  if(resource)resource.visible=visible;
+  var end=visible ? appReadBegin(view,resource) : null;
+  if(matches){
     // Board/calendar changes must be immediate. Heavy reads reuse the server's
     // invalidated cache; explicit pull/retry already carries fresh=1 in its URL.
     if(action!=='getConfig') url+=(url.indexOf('?')===-1?'?':'&')+(action==='getNastenka'||action==='getCalEvents'?'fresh=1&':'')+'_check='+Date.now();
@@ -667,13 +676,13 @@ function appTrackedRead(url, opts, run){
 }
 // Indikátor zostáva aktívny aj medzi automatickými pokusmi.
 function appFetchWithRetry(url, opts){
-  return appTrackedRead(url,undefined,function(u){return appFetchWithRetryRaw(u,opts);});
+  return appTrackedRead(url,undefined,function(u){return appFetchWithRetryRaw(u,opts);},opts && opts.priority);
 }
 function appFetchJson(url, opts, timeoutMs){
   return appTrackedRead(url,opts,function(u,o){return appReadResource(u)?appQueuedFetchJsonUntracked(u,o,timeoutMs,'critical'):appFetchJsonRaw(u,o,timeoutMs);});
 }
 function appQueuedFetchJson(url, opts, timeoutMs, priority){
-  return appTrackedRead(url,opts,function(u,o){return appQueuedFetchJsonUntracked(u,o,timeoutMs,priority);});
+  return appTrackedRead(url,opts,function(u,o){return appQueuedFetchJsonUntracked(u,o,timeoutMs,priority);},priority);
 }
 
 // Overenie jedného zobrazeného kvartálu. Nevyprázdňuje cache ostatných Q.
@@ -709,7 +718,7 @@ function appCheckSalesQuarter(rep,period){
 }
 function appCheckHome(){
   var session=getSession();if(!session)return;
-  plnenieRefreshPlansAndRerender();
+  plnenieRefreshPlansAndRerender(true);
   if(!NST.loading)nstFetch(null,'critical',true);
   stockPreload(true);
   try{gynCalSync();}catch(e){}
@@ -1421,7 +1430,7 @@ function appReadInflightKey(url,opts,timeoutMs){
     if(APP_DATA_READ_ACTIONS.indexOf(action)<0)return '';
     var pairs=[],seen=Object.create(null),values=Object.create(null),ambiguous=false;
     u.searchParams.forEach(function(v,k){
-      if(k==='_t'||k==='_check'||k==='_refresh')return;
+      if(k==='_t'||k==='_check'||k==='_refresh'||k==='_planCheck')return;
       if(Object.prototype.hasOwnProperty.call(values,k)&&values[k]!==v)ambiguous=true;
       values[k]=v;
       var pair=JSON.stringify([k,v]);if(k!=='fresh'||!seen[pair]){seen[pair]=true;pairs.push(pair);}
@@ -23693,6 +23702,9 @@ function lbDataHasVisits() {
 
 function lbLoadData(force){
   lbEnsureLineState();
+  // Today's ranking is sales fulfilment. Its delayed login callback must not
+  // start the retired visits ranking (getAllHistory + per-rep fallback reads).
+  if(LB_STATE.mode==='plnenie'){lbUpdateNavBtn();return;}
   // Reagila nemá rebríček návštev — históriu repov (getHistory × N) neťahaj, je to zbytočné a pomalé.
   if(document.body.classList.contains('reagila-line')) return;
   if(LB_STATE.loading) return;
@@ -24331,6 +24343,7 @@ function plnenieLastPredajeTs() {
 // Fulfilment defaults only. Calendar, leaderboard and team fulfilment keep their own Q.
 var PLNENIE_PLAN_PERIODS = {};
 var PLNENIE_PLAN_CHECKS = {};
+var PLNENIE_PLAN_RECENT = {};
 function plnenieCalendarPeriod(){ var now=new Date();return {q:Math.ceil((now.getMonth()+1)/3),year:now.getFullYear()}; }
 function plneniePlanScope(){ var s=getSession()||{};return 'pl_plan_period_v1_'+(s.line||'gp')+'_'+String(s.username||'_').toLowerCase(); }
 function plneniePlanCandidates(){
@@ -24369,10 +24382,12 @@ function plnenieDefaultPeriod(){
   }
   return plnenieCalendarPeriod();
 }
-function plneniePlansCheck(){
+function plneniePlansCheck(reuseRecent){
   if(typeof IS_DEV!=='undefined'&&IS_DEV)return Promise.resolve(plnenieDefaultPeriod());
   var scope=plneniePlanScope(),ctx=appLineCapture(),checkKey=scope+'|'+ctx.epoch;
   if(PLNENIE_PLAN_CHECKS[checkKey])return PLNENIE_PLAN_CHECKS[checkKey];
+  var recent=PLNENIE_PLAN_RECENT[checkKey];
+  if(reuseRecent && recent && Date.now()-recent.ts<30000 && !(typeof appFreshReadParams==='function' && appFreshReadParams()))return Promise.resolve(recent.period);
   var known=plneniePlanKnown(),s=getSession()||{},list=plneniePlanCandidates();
   function active(){return appLineContextActive(ctx)&&scope===plneniePlanScope();}
   function next(i){
@@ -24394,7 +24409,7 @@ function plneniePlansCheck(){
         gynCacheWrite(gynPlnenieCacheKey(p.year,p.q)+'|lb-fullLine',data);
         if(p.year===plnenieCalendarPeriod().year)GYN_LB.plCache[p.q]=data;
       }
-      if(has)return p;
+      if(has){PLNENIE_PLAN_RECENT[checkKey]={ts:Date.now(),period:p};return p;}
       return next(i+1);
     });
   }
@@ -24425,9 +24440,9 @@ function plnenieSetDefaultState(state,period){
   }
   return changed;
 }
-function plnenieRefreshPlansAndRerender(){
+function plnenieRefreshPlansAndRerender(reuseRecent){
   var ctx=appLineCapture(),scope=plneniePlanScope();
-  return plneniePlansCheck().then(function(dp){
+  return plneniePlansCheck(!!reuseRecent).then(function(dp){
     if(!appLineContextActive(ctx)||scope!==plneniePlanScope())return;
     var s=getSession()||{},state=s.line==='gyn'?GYN_APP:((typeof mgrDetectRole==='function'&&mgrDetectRole(s))?PL_STATE:REP_PL_STATE);
     if(state._planDefaultAuto===false){try{dnesRefreshIfOpen();}catch(e){}return;}
@@ -24463,7 +24478,7 @@ function plnenieApplyDefaultPeriod(state, force) {
   plnenieSetDefaultState(state,plnenieDefaultPeriod());
   if(force){
     var ctx=appLineCapture(),scope=plneniePlanScope();
-    setTimeout(function(){if(appLineContextActive(ctx)&&scope===plneniePlanScope()&&state._planDefaultAuto!==false){plnenieRefreshDataTsAndRerender();plnenieRefreshPlansAndRerender();}},50);
+    setTimeout(function(){if(appLineContextActive(ctx)&&scope===plneniePlanScope()&&state._planDefaultAuto!==false){plnenieRefreshDataTsAndRerender();plnenieRefreshPlansAndRerender(true);}},50);
   }
 }
 // Keep data timestamps for prediction/update labels; they never select the default Q.
@@ -28302,6 +28317,7 @@ function plnenieDetailSwitchSubtab(tab, btn) {
   if (tab === 'okresy' && PL_STATE.detailRep) {
     okresyOpen('mgr', 'pl-detail-okresy-body');
   }
+  appReadRefreshVisible();
 }
 
 var PL_PROD_DOT_COLORS = {
@@ -31457,7 +31473,7 @@ function appPtrRefreshCurrent(done){
  }
  switch(type){
   case 'stocks':stockForceRefresh(function(){if(same())appReadRefreshVisible();});break;
-  case 'districts':okresyRetryLoading();break;
+  case 'districts':case 'mgr-detail-okresy':okresyRetryLoading();break;
   case 'history':gpHistForceRefresh(session.username,function(){if(same())histRender();});break;
   case 'home':appCheckHome();if(appRole()==='gp')gpHistForceRefresh(session.username,function(){});break;
   case 'sales':if(!appCheckSalesQuarter(true))repPlnenieLoad();break;
@@ -31793,7 +31809,7 @@ appAttachOverlayPtr({
  getRoot:function(){return appPtrViewRoot(appReadView());},
  getMount:function(){var v=appReadView();return v&&document.querySelector(v.host);},
  scrollTop:function(){var r=appPtrViewRoot(appReadView());return r?r.scrollTop:999;},
- isActive:function(){var v=appReadView();return !!v&&/^(home|sales|mgr-plnenie|mgr-detail|mgr-visits|mgr-reporty|gyn-reporty|product|gyn-plnenie|team|calendar|mgr-kalendar|gyn-kalendar|pharmacies|pharmacy-detail|mgr-detail-lekarne|gyn-lekarne|ranking|mgr-leaderboard|gyn-leaderboard|market|district-chart|mgr-activity|gyn-activity|board)$/.test(appPtrViewType(v));},
+ isActive:function(){var v=appReadView();return !!v&&/^(home|sales|mgr-plnenie|mgr-detail|mgr-detail-okresy|mgr-visits|mgr-reporty|gyn-reporty|product|gyn-plnenie|team|calendar|mgr-kalendar|gyn-kalendar|pharmacies|pharmacy-detail|mgr-detail-lekarne|gyn-lekarne|ranking|mgr-leaderboard|gyn-leaderboard|market|district-chart|mgr-activity|gyn-activity|board)$/.test(appPtrViewType(v));},
  onRefresh:function(done){done();}
 });
 
@@ -37180,7 +37196,7 @@ function okresyOpen(ctx, containerId) {
   var meta = okresyLoadCacheMeta(oblast, OKRESY_STATE.kvartal);
   var reconstructed = meta ? okresyReconstruct(meta, oblast) : null;
   var haveCache = !!(reconstructed && Object.keys(reconstructed).length >= okresyCodes().length);
-  if (haveCache) {
+  if (reconstructed && Object.keys(reconstructed).length) {
     OKRESY_STATE.byCode = reconstructed;
     OKRESY_STATE._cacheVer = meta.ver || '';
     okresyRender();
@@ -37193,12 +37209,12 @@ function okresyOpen(ctx, containerId) {
   okresyPharmaTsFetch(function(ver) {
     if (reqId !== OKRESY_STATE.reqId) return;
     if (haveCache && meta.ver && ver && meta.ver === ver) return;         // dáta nezmenené → cache je aktuálna
-    var forceNet = !!(haveCache && meta.ver && ver && meta.ver !== ver);  // zmena → obísť starú per-produkt cache
+    var forceNet = !!(meta && meta.ver && ver && meta.ver !== ver);  // aj neúplná cache môže byť stará
     okresyLoadAll(reqId, ver, cont, !haveCache, forceNet);
   });
 }
 
-// Dotiahni všetky produkty a vyrenderuj až keď sú VŠETKY hotové (žiadny postupný render).
+// Dva produkty naraz, priebežný render; nezaťažíme frontu desiatimi čakajúcimi čítaniami.
 // `done` je nepovinné — volá ho potiahnutie nadol, aby vedelo, kedy zastaviť
 // krúžok. Zavolá sa aj vtedy, keď medzitým prišla novšia požiadavka.
 function okresyLoadAll(reqId, ver, cont, showLoading, forceNet, done) {
@@ -37231,20 +37247,27 @@ function okresyLoadAll(reqId, ver, cont, showLoading, forceNet, done) {
     _fin();
   }
   // A slow first response is still useful. Bound the whole batch, not an early paint timer.
-  batch.timer=setTimeout(function(){finish(true);},60000);
+  batch.timer=setTimeout(function(){finish(true);},Math.max(60000,Math.ceil(codes.length/2)*120000));
   if(!codes.length){finish(false);return;}
-  codes.forEach(function(code){
+  var nextCode=0,running=0;
+  function launch(code){
+    running++;
     okresyFetchCode(code,oblast,kvartal,reqId,function(resp,rkv,error){
       if(!active())return;
+      running--;
       if(error)failed=true;else fresh[code]={resp:resp,kvartal:rkv};
-      got++;if(got>=codes.length)finish(false);else paintPartial();
+      got++;if(got>=codes.length)finish(false);else {paintPartial();pump();}
     },false,forceNet);
-  });
+  }
+  function pump(){
+   while(active() && running<2 && nextCode<codes.length)launch(codes[nextCode++]);
+  }
+  pump();
 }
 function okresyRetryLoading(){
   appStartManualRefresh();
   var cont=document.getElementById(OKRESY_STATE.containerId);
-  okresyLoadAll(OKRESY_STATE.reqId,OKRESY_STATE._requestedCacheVer||OKRESY_STATE._cacheVer||'',cont,false,true);
+  okresyLoadAll(++OKRESY_STATE.reqId,OKRESY_STATE._requestedCacheVer||OKRESY_STATE._cacheVer||'',cont,false,true);
 }
 
 // ── Trvalá cache Okresov (ľahká — len metadáta; pharma odpovede sú už v per-produkt cache) ──
@@ -37313,7 +37336,7 @@ function okresyFetchCode(code, oblast, kvartal, reqId, cb, isPrev, forceNet) {
   function deliver(resp,error) { if (active()) cb(resp, kvartal,!!error); }
   function hasReal(resp) {
     return resp && Array.isArray(resp.okresy) && resp.okresy.some(function(o) {
-      return (parseFloat(o.nas_m1) > 0) || (parseFloat(o.nas_m2) > 0) || (parseFloat(o.nas_m3) > 0);
+      return ['nas_m1','nas_m2','nas_m3','nas_pat_m1','nas_pat_m2','nas_pat_m3','tot_pat_m1','tot_pat_m2','tot_pat_m3'].some(function(k){return parseFloat(o[k])>0;});
     });
   }
   if (!forceNet) {
@@ -37340,9 +37363,9 @@ function okresyFetchCode(code, oblast, kvartal, reqId, cb, isPrev, forceNet) {
     else deliver(null);
   }
 
-  appQueuedFetchJson(
+  appFetchWithRetry(
     pharmaDataRequestUrl(code, oblast, kvartal, true, true),
-    { cache: 'no-store' }, undefined, 'critical'
+    {retries:1,timeoutMs:30000,priority:'critical',delayFn:function(){return 700;},active:active}
   )
     .then(function(resp) {
       if(!active())return;
@@ -37356,6 +37379,9 @@ function okresyFetchCode(code, oblast, kvartal, reqId, cb, isPrev, forceNet) {
         PHARMA_STATE.cache[code+'_'+oblast+'_'+prevKv]=prevResp;
         try {_phPersistSave(code,oblast,prevKv,prevResp);}catch(e){}
         cb(prevResp,prevKv,false);
+      } else if (resp && resp.ok && !isPrev && Array.isArray(resp.okresy_prev)) {
+        // The combined response already checked both quarters, including an empty market.
+        deliver(null);
       } else if (resp && resp.ok && !isPrev) {
         goPrev();
       } else {
