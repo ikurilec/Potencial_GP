@@ -6,7 +6,7 @@ const root=path.resolve(__dirname,'..');
  const browser=await chromium.launch({headless:true});
  const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
- let reads=[];
+ let reads=[],holdAll=false;
  await page.route('**/*',async route=>{
   const u=new URL(route.request().url());
   if(u.hostname==='satori.test'){
@@ -17,7 +17,7 @@ const root=path.resolve(__dirname,'..');
    if(!target.startsWith(root+path.sep)||!fs.existsSync(target))return route.abort();
    return route.fulfill({body:fs.readFileSync(target),contentType:file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.html')?'text/html':undefined});
   }
-  if(u.searchParams.get('action')==='getStockData' || u.hostname==='read.test'){
+  if(u.searchParams.get('action')==='getStockData' || u.hostname==='read.test' || (holdAll && u.hostname.includes('script.google') && /^get/.test(u.searchParams.get('action')||''))){
    await new Promise(resolve=>reads.push({route,resolve,url:u}));return;
   }
   if(u.hostname.includes('script.google'))return route.fulfill({json:{ok:true,posts:[],events:[]}});
@@ -36,7 +36,7 @@ const root=path.resolve(__dirname,'..');
    document.querySelectorAll('.show').forEach(e=>e.classList.remove('show'));
    DataStore.set(stockCacheKey_(line),cached);openSklady();
   },{line,role,cached});
-  await page.waitForFunction(()=>!!document.querySelector('#sklady-overlay .app-read-check'));
+  await page.waitForFunction(()=>!!document.querySelector('#sklady-overlay .app-read-check .nst-spin'));
   await page.waitForFunction(()=>SKLADY_STATE.payload && SKLADY_STATE.payload.products.length===1);
  }
  async function nextRead(){for(let i=0;i<50&&!reads.length;i++)await new Promise(r=>setTimeout(r,20));assert.ok(reads.length,'Opening cached stocks must contact the server');return reads.shift();}
@@ -48,12 +48,12 @@ const root=path.resolve(__dirname,'..');
   await page.locator('.sklady-product').click();
   await respond(read,payload(line,22,'2026-10-08'));
   await page.waitForFunction(()=>SKLADY_STATE.payload.products[0].coverageDays===22);
-  await page.waitForFunction(()=>!document.querySelector('#sklady-overlay .app-read-check'));
+  await page.waitForFunction(()=>!document.querySelector('#sklady-overlay .app-read-check .nst-spin'));
   assert.equal(await page.locator('.sklady-pack').count(),1,'Expanded product survives refresh');
   console.log(line+'/'+role+': immediate cache, spinner, fresh data and expansion passed');
  }
  const same=payload('gp',12,'2026-09-28');await open('gp','rep',same);await respond(await nextRead(),same);
- await page.waitForFunction(()=>!document.querySelector('#sklady-overlay .app-read-check'));
+ await page.waitForFunction(()=>!document.querySelector('#sklady-overlay .app-read-check .nst-spin'));
  assert.equal(await page.locator('.sklady-product').count(),1);
  await open('gp','rep',same);
  for(let i=0;i<2;i++){const read=await nextRead();await read.route.abort();read.resolve();}
@@ -68,24 +68,25 @@ const root=path.resolve(__dirname,'..');
  await respond(old,payload('gp',99,'2026-10-08'));
  await page.waitForTimeout(500);
  assert.equal(await page.evaluate(()=>SKLADY_STATE.payload.products[0].coverageDays),26);
+ holdAll=true;
  for(const [id,action] of [['hist-overlay','getHistory'],['rep-plnenie-overlay','getPlnenieAll'],['lk-overlay','getLekarne'],['lb-overlay','getPlnenieAll'],['okresy-overlay','getConfig'],['pharma-ms-overlay','getPharmaData'],['golem-cal-overlay','getCalEvents']]){
   await page.evaluate(({id,action})=>{
    document.querySelectorAll('.show').forEach(e=>e.classList.remove('show'));
    _panelCurrent=id;document.getElementById(id).classList.add('show');
-   appFetchJson('https://read.test/?action='+action).catch(()=>{});
+   appFetchJson(gynScriptUrl('action='+action)).catch(()=>{});
   },{id,action});
   await page.waitForFunction(id=>!!document.querySelector('#'+id+' .app-read-check .nst-spin'),id);
-  await respond(await nextRead(),{ok:true});
-  await page.waitForFunction(id=>!document.querySelector('#'+id+' .app-read-check'),id);
+  await respond(await nextRead(),{ok:true,rows:[],events:[],summary:[],plan:{},predaje:{}});
+  await page.waitForFunction(id=>!document.querySelector('#'+id+' .app-read-check .nst-spin'),id);
   console.log(id+': active read indicator and completion passed');
  }
  // A retry delay must not make the spinner disappear or briefly claim failure.
- await page.evaluate(()=>{appFetchWithRetry('https://read.test/?action=getCalEvents',{retries:1,priority:'critical',delayFn:()=>800}).catch(()=>{});});
+ await page.evaluate(()=>{appFetchWithRetry(gynScriptUrl('action=getCalEvents'),{retries:1,priority:'critical',delayFn:()=>800}).catch(()=>{});});
  const retryFirst=await nextRead();await retryFirst.route.abort();retryFirst.resolve();
  await page.waitForTimeout(500);
  assert.ok(await page.locator('#golem-cal-overlay .app-read-check .nst-spin').count(),'Spinner must span the retry delay');
  await respond(await nextRead(),{ok:true});
- await page.waitForFunction(()=>!document.querySelector('#golem-cal-overlay .app-read-check'));
+ await page.waitForFunction(()=>!document.querySelector('#golem-cal-overlay .app-read-check .nst-spin'));
  // Writes must not be turned into fresh reads or show a background refresh spinner.
  await page.evaluate(()=>{appFetchJson('https://read.test/?action=saveExample',{method:'POST',body:'synthetic'}).catch(()=>{});});
  const write=await nextRead();assert.equal(write.url.searchParams.has('fresh'),false);await respond(write,{ok:true});
@@ -94,7 +95,7 @@ const root=path.resolve(__dirname,'..');
   const read=await nextRead();
   const layout=await page.locator('#sklady-overlay').evaluate(el=>({scroll:el.scrollWidth,width:el.clientWidth,spin:!!el.querySelector('.nst-spin')}));
   assert.ok(layout.scroll<=layout.width,'Stock cards and status must fit a '+width+'px phone');assert.ok(layout.spin);
-  await respond(read,same);await page.waitForFunction(()=>!document.querySelector('#sklady-overlay .app-read-check'));
+  await respond(read,same);await page.waitForFunction(()=>!document.querySelector('#sklady-overlay .app-read-check .nst-spin'));
  }
  assert.deepEqual(errors,[],'No application JavaScript errors');
  console.log('Browser: unchanged response, automatic retry and offline cache fallback passed.');

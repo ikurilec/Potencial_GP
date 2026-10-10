@@ -4,7 +4,7 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT || 'playwright-core');
  const browser=await chromium.launch({headless:true});const page=await browser.newPage();
  await page.setContent('<style>.nst-spin{display:inline-block;width:14px;height:14px;border:2px solid #ddd;border-top-color:blue;border-radius:50%;animation:spin .7s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}</style><div id="host"></div>');
  const src=fs.readFileSync('app.js','utf8');
- await page.addScriptTag({content:'var view={key:"home",host:"#host"};function appReadView(){return view}function appLineContextActive(){return true}'+src.slice(src.indexOf('function appReadPaint('),src.indexOf('function appReadBegin('))});
+ await page.addScriptTag({content:'var view={key:"home",host:"#host"};function appReadView(){return view}function appLineContextActive(){return true}function appReadSummary(){return {last:1,error:false}}function appReadTimeLabel(){return "Overené dnes o 9:42"}'+src.slice(src.indexOf('function appReadPaint('),src.indexOf('function appReadBegin('))});
  const result=await page.evaluate(async()=>{
  const entry={view,ctx:{},pending:1,error:false};appReadPaint(entry);
  const spin=document.querySelector('.nst-spin'),animation=spin.getAnimations()[0];

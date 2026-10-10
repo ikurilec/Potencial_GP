@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.15';
+var APP_VERSION = '2.89.16';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -396,27 +396,142 @@ var DataStore = (function () {
   return { get: get, set: set, refresh: refresh, invalidate: invalidate };
 })();
 
+// Metadata úspešnej kontroly servera; nikdy nie dátum samotného reportu.
+var APP_DATA_READ_ACTIONS = ('getHistory getAllHistory getInitData bootstrap getRepList getReps getLastLogins getManagers getStockData getNastenka getCalEvents getPlnenieAll getTeamPlnenie getPharmaData getPharmaGraf getPharmaGrafData getPharmaOkresGraf getPharmaOverview getLekarne getLekarneAll getLekarneDetail getLekarneVariants getGynLekarne getGynLekarneDetail getLekarneFilters getTuyory getAllTuyory getLonelix getAllLonelix getApixaban getAllApixaban getUsageStats getUsageRepStats getLineStats getOverrides getGpOverrides getAllGpOverrides getDohody getCennik getConfig').split(' ');
+var APP_READ_META = {}, APP_READ_META_LOADED = {}, APP_READ_UI_TIMER = null, APP_READ_GENERATIONS = {}, APP_READ_SAVE_TIMERS = {};
+function appReadOwner(){ var s=getSession()||{};return appLineTag()+'|'+String(s.username||'').toLowerCase()+'|'+String(s.role||'').toLowerCase(); }
+function appReadResource(url){
+  try {
+    var u=new URL(url,location.href), action=u.searchParams.get('action');
+    if(APP_DATA_READ_ACTIONS.indexOf(action)===-1 || !(getSession()||{}).username)return null;
+    var params={};
+    // Allowlist excludes tokens, passwords, timestamps and uploaded/form content.
+    var allowed='login username reprezentant rep dni region oblast produkt kvartal rok Q q fullLine withGraf okres code from to month creamMonth osloveneMonth key period'.split(' ');
+    allowed.forEach(function(k){if(u.searchParams.has(k))params[k]=u.searchParams.get(k);});
+    var owner=appReadOwner(), key=u.origin+u.pathname+'|'+action+'|'+JSON.stringify(params);
+    return {owner:owner,key:owner+'|'+key,action:action,params:params,path:u.origin+u.pathname,ctx:appLineCapture()};
+  } catch(e){return null;}
+}
+function appReadValid(resource,data){
+  if(!resource || data==null || typeof data!=='object' || data.ok===false || data.error)return false;
+  var field={getNastenka:'posts',getStockData:'rows',getCalEvents:'events',getLekarne:'rows',getLekarneAll:'rows',getLekarneDetail:'rows',getGynLekarne:'rows',getTeamPlnenie:'reps',getRepList:'reps'}[resource.action];
+  if(field)return data.ok===true && Array.isArray(data[field]);
+  if(resource.action==='getPlnenieAll')return data.ok===true && !!data.plan && !!data.predaje;
+  if(resource.action==='getPharmaData')return data.ok===true && (Array.isArray(data.summary)||Array.isArray(data.okresy));
+  return data.ok===true || Array.isArray(data) || (!('ok' in data) && !('error' in data));
+}
+function appReadMetaLoad(owner){
+  if(APP_READ_META_LOADED[owner])return;
+  APP_READ_META_LOADED[owner]=true;
+  try {
+    var entries=JSON.parse(localStorage.getItem('satori-read-check-v1:'+owner)||'[]');
+    if(Array.isArray(entries))entries.slice(-180).forEach(function(e){
+      if(e && e.owner===owner && typeof e.key==='string' && e.key.indexOf(owner+'|')===0 && e.params && APP_DATA_READ_ACTIONS.indexOf(e.action)!==-1 && Number.isFinite(e.ts) && e.ts>=0 && e.ts<=Date.now()+60000)APP_READ_META[e.key]=e;
+    });
+  }catch(e){}
+}
+function appReadRemember(resource,time,failed){
+  if(!resource || !appLineContextActive(resource.ctx) || resource.owner!==appReadOwner())return;
+  if(resource.generation && resource.generation!==APP_READ_GENERATIONS[resource.key])return;
+  if(resource.visible && !appRequestMatchesView(resource,appReadView()))return;
+  appReadMetaLoad(resource.owner);
+  var old=APP_READ_META[resource.key];
+  APP_READ_META[resource.key]={owner:resource.owner,key:resource.key,action:resource.action,params:resource.params,path:resource.path,ts:failed?(old?old.ts:0):time,failed:!!failed,attempt:time,visible:!!resource.visible||!!(old&&old.visible)};
+  if(!APP_READ_SAVE_TIMERS[resource.owner])APP_READ_SAVE_TIMERS[resource.owner]=setTimeout(function(){appReadMetaPersist(resource.owner);},250);
+  appReadSchedulePaint();
+}
+function appReadMetaPersist(owner){
+  clearTimeout(APP_READ_SAVE_TIMERS[owner]);delete APP_READ_SAVE_TIMERS[owner];
+  try {
+    var entries=Object.keys(APP_READ_META).map(function(k){return APP_READ_META[k];}).filter(function(e){return e.owner===owner;}).sort(function(a,b){return Number(a.visible)-Number(b.visible)||a.attempt-b.attempt;}).slice(-180);
+    localStorage.setItem('satori-read-check-v1:'+owner,JSON.stringify(entries));
+  }catch(e){}
+}
+function appReadLast(resource){appReadMetaLoad(resource.owner);var e=APP_READ_META[resource.key];return e?e.ts:0;}
+function appReadTimeLabel(time,now){
+  if(!time)return 'Čas overenia zatiaľ nie je známy.';
+  var d=new Date(time),n=new Date(now||Date.now()),today=new Date(n.getFullYear(),n.getMonth(),n.getDate()),yesterday=new Date(today);yesterday.setDate(yesterday.getDate()-1);
+  var day=new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();
+  var date=day===today.getTime()?'dnes':day===yesterday.getTime()?'včera':d.toLocaleDateString('sk-SK');
+  return 'Overené '+date+' o '+d.getHours()+':'+String(d.getMinutes()).padStart(2,'0');
+}
+function appRequestMatchesView(url,view){
+  var r=typeof url==='object'?url:appReadResource(url);
+  if(!r || !view || view.actions.indexOf(r.action)===-1)return false;
+  if(r.owner && r.owner!==appReadOwner())return false;
+  if(r.ctx && !appLineContextActive(r.ctx))return false;
+  if(view.path && r.path!==view.path)return false;
+  return Object.keys(view.params||{}).every(function(k){var values=Array.isArray(view.params[k])?view.params[k]:[view.params[k]];return r.params[k]==null || values.some(function(value){return String(r.params[k])===String(value);});});
+}
+function appReadSummary(view){
+  var owner=appReadOwner();appReadMetaLoad(owner);
+  var entries=Object.keys(APP_READ_META).map(function(k){return APP_READ_META[k];}).filter(function(e){return e.owner===owner && e.action!=='getConfig' && appRequestMatchesView(e,view);});
+  return {last:entries.length?Math.min.apply(null,entries.map(function(e){return e.ts;})):0,error:entries.some(function(e){return e.failed;})};
+}
+function appReadSchedulePaint(){
+  if(APP_READ_UI_TIMER || typeof document==='undefined' || !document.querySelector)return;
+  APP_READ_UI_TIMER=setTimeout(function(){APP_READ_UI_TIMER=null;appReadRefreshVisible();},80);
+}
+function appReadRefreshVisible(){
+  var view=appReadView();
+  document.querySelectorAll('[data-read-check]').forEach(function(el){if(!view || el.getAttribute('data-read-check')!==view.key)el.remove();});
+  if(view && view.host && view.actions.length){
+    var entry=APP_READ_CHECKS[view.key];
+    if(!entry || !appLineContextActive(entry.ctx))entry={view:view,ctx:appLineCapture(),pending:0,error:false};
+    appReadPaint(entry);
+  }
+  if(typeof APP_REQUEST_QUEUE!=='undefined')appRequestQueueDrain();
+}
 // ── Overovanie dát otvorenej sekcie: cache zostáva na obrazovke ──
 var APP_READ_CHECKS = {};
 function appReadView(){
+  if(!getSession() || document.body.classList.contains('login-active'))return null;
   function shown(id){ var el=document.getElementById(id); return el && el.classList.contains('show'); }
-  function view(key, host, actions){ return { key:appLineTag()+'|'+((getSession()||{}).username||'')+'|'+key, host:host, actions:actions }; }
+  function view(key, host, actions){
+    var params={},line=appLineTag(),s=getSession()||{},state=line==='gyn'?GYN_APP:PL_STATE;
+    var sales=key==='sales'||key==='mgr-plnenie'||key==='mgr-detail'||key==='gyn-plnenie'||key==='product'||key==='team';
+    if(key==='sales')state=REP_PL_STATE;
+    if(key==='team')state={year:teamPlnenieYear(),q:teamPlnenieQuarter()};
+    if(sales && state){if(state.year)params.rok=state.year;if(state.q)params.Q=state.q;}
+    if(key==='ranking'||key==='mgr-leaderboard'||key==='gyn-leaderboard'){params.Q=line==='gyn'?gynLbLastCompletedQ():lbLastCompletedQ();params.rok=plnenieCalendarPeriod().year;}
+    if(key==='pharmacy-detail')params.login=LK_DETAIL_LOGIN||s.username;
+    if(key==='pharmacies')params.login=LK_STATE.login||s.username;
+    if(key==='mgr-detail')params.login=PL_STATE.detailRep;
+    if(key==='mgr-detail-lekarne')params.login=PL_STATE.detailRep;
+    if(key==='mgr-detail-lekarne'||key==='pharmacies'||key==='pharmacy-detail')params.creamMonth=lkCreamContactMonthKey();
+    if(key==='gyn-lekarne')params.login=GYN_LK.login||s.username;
+    if(key==='gyn-lekarne')params.osloveneMonth=gynLkMonthKey();
+    if(key==='gyn-plnenie' && GYN_APP.detailLogin)params.login=GYN_APP.detailLogin;
+    if(key==='history')params.reprezentant=s.username;
+    if(key==='mgr-activity'||key==='gyn-activity'){params.dni=USAGE_VIEW.dni;params.rep=USAGE_VIEW.currentRep||'';}
+    if(key==='mgr-reporty'){var period=rptViewPeriod();params.rok=period.year;params.Q=period.q;}
+    if(key==='market'){
+      var pharma=line==='gyn'?GYN_PHARMA_STATE:PHARMA_STATE;
+      params.produkt=line==='gyn'?pharma.produkt:pharma.activeCode;params.oblast=pharma.oblast;
+      params.kvartal=pharma.kvartal?[pharma.kvartal,pharmaKvartalPrev(pharma.kvartal)]:null;
+    }
+    if(key==='product' && PL_PROD_SHEET_STATE.activePharmaCode)params.produkt=PL_PROD_SHEET_STATE.activePharmaCode;
+    Object.keys(params).forEach(function(k){if(params[k]==null)delete params[k];});
+    var path='';try{path=new URL(line==='gyn'?GYN_SCRIPT_URL:line==='reagila'?REAGILA_SCRIPT_URL:SCRIPT_URL,location.href).origin+new URL(line==='gyn'?GYN_SCRIPT_URL:line==='reagila'?REAGILA_SCRIPT_URL:SCRIPT_URL,location.href).pathname;}catch(e){}
+    return { key:appReadOwner()+'|'+key+'|'+JSON.stringify(params),host:host,actions:actions,params:params,path:path,nativeLoading:key==='board' };
+  }
   // Dialógy a rozpracované formuláre nemajú automatickú dátovú obnovu.
   if(shown('nst-compose') || shown('edit-overlay') || shown('gpp-overlay')) return null;
   var panels=[
-    ['sklady-overlay','#sklady-body','stocks',[]],
+    ['sklady-overlay','#sklady-body','stocks',['getStockData']],
+    ['nastenka-overlay','#nst-list','board',['getNastenka']],
     ['team-plnenie-overlay','#team-plnenie-body','team',['getTeamPlnenie','getPlnenieAll','getRepList']],
     ['pl-prod-sheet','#pl-ps-body','product',['getPlnenieAll','getPharmaData','getPharmaGrafData']],
-    ['pharma-ms-overlay','#pharma-ms-body','market',['getPharmaData','getPharmaGrafData']],
+    ['pharma-ms-overlay','#pharma-ms-body','market',['getPharmaData','getPharmaGrafData','getPharmaGraf','getPharmaOkresGraf']],
     ['lk-detail','#lk-detail-body','pharmacy-detail',['getLekarneDetail','getGynLekarneDetail','getLekarne']],
     ['okresy-overlay','#okresy-list','districts',['getPharmaData','getConfig']],
     ['lk-overlay','#lk-list','pharmacies',['getLekarne','getLekarneVariants','getLekarneDetail']],
     ['lb-overlay','#lb-body','ranking',['getPlnenieAll','getAllHistory','getHistory']],
     ['hist-overlay','#hist-body','history',['getHistory','bootstrap','getGpOverrides','getAllGpOverrides']],
     ['rep-plnenie-overlay','#rep-pl-q-content','sales',['getPlnenieAll','getConfig']],
-    ['tuyory-overlay','#tuyory-body','tuyory',['getTuyory']],
-    ['lonelix-overlay','#lonelix-body','lonelix',['getLonelix']],
-    ['apixaban-overlay','#apixaban-body','apixaban',['getApixaban']],
+    ['tuyory-overlay','#tuyory-body','tuyory',['getTuyory','getAllTuyory']],
+    ['lonelix-overlay','#lonelix-body','lonelix',['getLonelix','getAllLonelix']],
+    ['apixaban-overlay','#apixaban-body','apixaban',['getApixaban','getAllApixaban']],
     ['golem-cal-overlay','#golem-cal-content','calendar',['getCalEvents']],
     ['dnes-overlay','#dnes-body','home',['getNastenka','getPlnenieAll','getCalEvents','getHistory','bootstrap','getTeamPlnenie','getStockData']]
   ];
@@ -426,9 +541,10 @@ function appReadView(){
   if(!p) p=panels.filter(function(x){return x[0]===current && shown(x[0]);})[0];
   if(!p) p=panels.filter(function(x){return shown(x[0]);})[0];
   if(p) return view(p[2],p[1],p[3]);
-  if(shown('nastenka-overlay')) return null; // Nástenka má vlastný indikátor aj opakovanie.
   if(shown('gyn-view')){
     var nav=GYN_APP.nav;
+    var gynPharmacies=document.getElementById('gyn-rd-lekarne');
+    if(GYN_APP.detailLogin && gynPharmacies && gynPharmacies.style.display==='block')return view('gyn-lekarne','#gyn-rd-lekarne',['getGynLekarne']);
     var acts={plnenie:['getPlnenieAll','getRepList'],leaderboard:['getPlnenieAll','getRepList'],kalendar:['getCalEvents'],lekarne:['getGynLekarne'],activity:['getUsageStats','getUsageRepStats']};
     return view('gyn-'+nav,'#gyn-content',acts[nav]||[]);
   }
@@ -438,7 +554,8 @@ function appReadView(){
     var actions={plnenie:['getPlnenieAll','getConfig'],visits:['getAllHistory','getHistory','getReps','bootstrap'],leaderboard:['getPlnenieAll'],kalendar:['getCalEvents'],activity:['getUsageStats','getUsageRepStats'],reporty:['getPlnenieAll','getCennik','getCalEvents','getDohody','getGpOverrides','bootstrap']};
     if(tab==='plnenie' && document.body.classList.contains('mgr-plnenie-detail-open')){
       var pharmacies=document.getElementById('pl-detail-lekarne');
-      return view('mgr-detail',pharmacies && pharmacies.style.display!=='none'?'#pl-detail-lekarne-body':'#pl-detail-predaje',['getPlnenieAll','getPharmaData','getLekarne','getLekarneDetail']);
+      var isLk=pharmacies && pharmacies.style.display!=='none';
+      return view(isLk?'mgr-detail-lekarne':'mgr-detail',isLk?'#pl-detail-lekarne-body':'#pl-detail-predaje',isLk?['getLekarne','getLekarneDetail']:['getPlnenieAll','getPharmaData']);
     }
     return view('mgr-'+tab,hosts[tab],actions[tab]||[]);
   }
@@ -447,7 +564,7 @@ function appReadView(){
 function appReadPaint(entry){
   // Completed reads must remove their indicator even after navigation. Also
   // remove copied indicators from carousel snapshots, not just the live node.
-  if((!entry.pending && (!entry.error || !appReadView() || appReadView().key!==entry.view.key)) || !appLineContextActive(entry.ctx)){
+  if(!appLineContextActive(entry.ctx)){
     if(entry.element) entry.element.remove();
     if(document.querySelectorAll) document.querySelectorAll('[data-read-check]').forEach(function(el){
       if(el.getAttribute('data-read-check')===entry.view.key) el.remove();
@@ -455,7 +572,11 @@ function appReadPaint(entry){
     return;
   }
   var view=appReadView();
-  if(!view || view.key!==entry.view.key) { if(entry.element)entry.element.remove(); return; }
+  if(!view || view.key!==entry.view.key) {
+    if(entry.element)entry.element.remove();
+    document.querySelectorAll('[data-read-check]').forEach(function(el){if(el.getAttribute('data-read-check')===entry.view.key)el.remove();});
+    return;
+  }
   var host=document.querySelector(view.host);
   if(!host || !host.parentNode) return;
   // A manager detail shares a read scope across subtabs. Keep exactly one
@@ -464,23 +585,29 @@ function appReadPaint(entry){
   if(document.querySelectorAll) document.querySelectorAll('[data-read-check]').forEach(function(other){
     if(other!==el && other.getAttribute('data-read-check')===entry.view.key)other.remove();
   });
-  if(!entry.pending && !entry.error){ if(el) el.remove(); return; }
+  var summary=appReadSummary(view),failed=entry.error||summary.error;
   if(!el){ el=document.createElement('div');el.className='nst-refresh app-read-check';el.setAttribute('data-read-check','');host.parentNode.insertBefore(el,host); }
   entry.element=el;
   el.setAttribute('data-read-check',entry.view.key);
   el.setAttribute('role','status');
-  var status=entry.pending ? 'pending' : 'error';
+  var status=entry.pending&&!view.nativeLoading?'pending':failed&&!view.nativeLoading?'error':'verified';
+  var timeLabel=appReadTimeLabel(summary.last);
   // Keep the same animated node while polling; replacing it restarts CSS rotation.
   if(el._appReadStatus!==status){
-    el.innerHTML=entry.pending ? '<span class="nst-spin" aria-hidden="true"></span>Overujem aktuálne údaje…' : 'Obnova zlyhala. Zobrazené údaje môžu byť staršie.';
+    el.innerHTML=(status==='pending'?'<span class="nst-spin" aria-hidden="true"></span><span>Overujem aktuálne údaje…</span>':status==='error'?'<span>Obnova zlyhala. Zobrazené údaje môžu byť staršie.</span>':'')+'<span class="app-read-time"></span>';
     el._appReadStatus=status;
   }
+  var timeEl=el.querySelector('.app-read-time');
+  if(timeEl && timeEl.textContent!==timeLabel)timeEl.textContent=timeLabel;
+  el.classList.toggle('app-read-verified',status==='verified');
 }
-function appReadBegin(view){
+function appReadBegin(view,resource){
   if(!view) return null;
   var entry=APP_READ_CHECKS[view.key];
   if(!entry || !appLineContextActive(entry.ctx)) entry=APP_READ_CHECKS[view.key]={view:view,ctx:appLineCapture(),pending:0,error:false,timer:null};
-  entry.pending++;entry.error=false;
+  var resourceKey=resource?resource.key:'manual';
+  entry.failures=entry.failures||{};delete entry.failures[resourceKey];
+  entry.pending++;entry.error=Object.keys(entry.failures).length>0;
   clearTimeout(entry.timer);
   function paint(){
     appReadPaint(entry);
@@ -488,30 +615,39 @@ function appReadBegin(view){
   }
   paint();
   var ended=false;
-  return function(error){
+  return function(error,obsolete){
     if(ended)return;ended=true;
-    entry.pending=Math.max(0,entry.pending-1);entry.error=entry.error||!!error;
+    entry.pending=Math.max(0,entry.pending-1);
+    if(!obsolete){if(error)entry.failures[resourceKey]=true;else delete entry.failures[resourceKey];}
+    entry.error=Object.keys(entry.failures).length>0;
     if(!entry.pending){clearTimeout(entry.timer);entry.timer=setTimeout(function(){appReadPaint(entry);if(!entry.error && APP_READ_CHECKS[view.key]===entry)delete APP_READ_CHECKS[view.key];},400);}
   };
 }
 function appTrackedRead(url, opts, run){
   var view=appReadView(), action='';
   try { action=new URL(url,location.href).searchParams.get('action')||''; } catch(e){}
-  var end=view && view.actions.indexOf(action)!==-1 ? appReadBegin(view) : null;
+  var resource=appReadResource(url);
+  if(resource){resource.generation=(APP_READ_GENERATIONS[resource.key]||0)+1;APP_READ_GENERATIONS[resource.key]=resource.generation;}
+  if(resource)resource.visible=appRequestMatchesView(resource,view);
+  var end=appRequestMatchesView(resource,view) ? appReadBegin(view,resource) : null;
   if(end){
     if(action!=='getConfig') url+=(url.indexOf('?')===-1?'?':'&')+'fresh=1&_check='+Date.now();
     opts=Object.assign({},opts||{},{cache:'no-store'});
   }
   var promise;
-  try { promise=run(url,opts); } catch(e){if(end)end(e);return Promise.reject(e);}
-  return Promise.resolve(promise).then(function(data){if(end)end(!data || data.ok===false);return data;},function(error){if(end)end(error);throw error;});
+  try { promise=run(url,opts); } catch(e){if(resource)appReadRemember(resource,Date.now(),true);if(end)end(e);return Promise.reject(e);}
+  return Promise.resolve(promise).then(function(data){
+    var failed=resource?!appReadValid(resource,data):!data||data.ok===false;
+    if(resource && resource.action!=='getConfig')appReadRemember(resource,Date.now(),failed);
+    if(end)end(failed,resource && resource.generation!==APP_READ_GENERATIONS[resource.key]);return data;
+  },function(error){if(resource && resource.action!=='getConfig')appReadRemember(resource,Date.now(),true);if(end)end(error,resource && resource.generation!==APP_READ_GENERATIONS[resource.key]);throw error;});
 }
 // Indikátor zostáva aktívny aj medzi automatickými pokusmi.
 function appFetchWithRetry(url, opts){
   return appTrackedRead(url,undefined,function(u){return appFetchWithRetryRaw(u,opts);});
 }
 function appFetchJson(url, opts, timeoutMs){
-  return appTrackedRead(url,opts,function(u,o){return appFetchJsonRaw(u,o,timeoutMs);});
+  return appTrackedRead(url,opts,function(u,o){return appReadResource(u)?appQueuedFetchJsonUntracked(u,o,timeoutMs,'critical'):appFetchJsonRaw(u,o,timeoutMs);});
 }
 function appQueuedFetchJson(url, opts, timeoutMs, priority){
   return appTrackedRead(url,opts,function(u,o){return appQueuedFetchJsonUntracked(u,o,timeoutMs,priority);});
@@ -1169,34 +1305,47 @@ function appFetchJsonRaw(url, opts, timeoutMs) {
 // Centrálna fronta čítacích požiadaviek. Apps Script zoraďuje súbežné volania,
 // preto viac paralelných prefetchov v skutočnosti spomaľovalo prvé dôležité dáta.
 // Dve aktívne požiadavky držia štart plynulý; critical úlohy idú pred preloadmi.
-var APP_REQUEST_QUEUE = { active: 0, max: 2, items: [] };
+var APP_REQUEST_QUEUE = { active: 0, backgroundActive:0, max: 2, items: [], running:[], sequence:0 };
+function appQueuePriority(job){
+  if(job.resource && job.resource.ctx && !appLineContextActive(job.resource.ctx))return 0;
+  if(job.prio==='boot')return 3;
+  var view=appReadView();
+  if(appRequestMatchesView(job.resource||job.url,view))return 2;
+  // A read for a previous screen must not outrank the current screen.
+  if(job.resource && view)return 0;
+  return job.prio==='critical'?1:0;
+}
+function appQueueStart(job,background){
+  APP_REQUEST_QUEUE.active++;
+  APP_REQUEST_QUEUE.running.push(job);
+  if(background)APP_REQUEST_QUEUE.backgroundActive++;
+  appFetchJsonRaw(job.url,job.opts,job.timeoutMs).then(job.resolve,job.reject).then(release,release);
+  function release(){APP_REQUEST_QUEUE.active--;var i=APP_REQUEST_QUEUE.running.indexOf(job);if(i>=0)APP_REQUEST_QUEUE.running.splice(i,1);appRequestQueueDrain();}
+}
 function appRequestQueueDrain(){
+  // A previously visible read becomes background when the user navigates away.
+  APP_REQUEST_QUEUE.backgroundActive=APP_REQUEST_QUEUE.running.filter(function(job){return appQueuePriority(job)===0;}).length;
   while(APP_REQUEST_QUEUE.active < APP_REQUEST_QUEUE.max && APP_REQUEST_QUEUE.items.length){
-    var job = APP_REQUEST_QUEUE.items.shift();
-    APP_REQUEST_QUEUE.active++;
-    appFetchJsonRaw(job.url, job.opts, job.timeoutMs)
-      .then(job.resolve, job.reject)
-      .then(function(){ APP_REQUEST_QUEUE.active--; appRequestQueueDrain(); }, function(){ APP_REQUEST_QUEUE.active--; appRequestQueueDrain(); });
+    var index=-1,rank=-1;
+    APP_REQUEST_QUEUE.items.forEach(function(job,i){var p=appQueuePriority(job);if(p===0 && APP_REQUEST_QUEUE.backgroundActive>=1)return;if(p>rank || (p===rank && index>=0 && job.order<APP_REQUEST_QUEUE.items[index].order)){rank=p;index=i;}});
+    if(index<0)return;
+    var job=APP_REQUEST_QUEUE.items.splice(index,1)[0];
+    appQueueStart(job,rank===0);
   }
 }
 function appQueueInsert(job){
-  // 'boot' = presne to, na čo čaká boot obrazovka (roster z getInitData + aktuálny
-  // kvartál Plnenia pre manažéra). Predtým boli obe len 'critical', ktoré sa vkladá
-  // na ZAČIATOK fronty (LIFO) — takže najstaršia critical (getInitData) sa dostala
-  // na rad ako posledná (meranie 2026-09-19: 20–25 s po logine) a boot obrazovka
-  // vždy dorazila na 15 s failsafe. 'boot' ide pred všetky 'critical' (FIFO medzi
-  // sebou); správanie 'critical' a 'background' ostáva nezmenené.
-  if(job.prio === 'boot' || job.prio === 'critical'){
-    var _ins = 0;
-    while(_ins < APP_REQUEST_QUEUE.items.length && APP_REQUEST_QUEUE.items[_ins].prio === 'boot') _ins++;
-    APP_REQUEST_QUEUE.items.splice(_ins, 0, job);
-  }
-  else APP_REQUEST_QUEUE.items.push(job);
+  // Boot dependencies stay ahead of preloads. Equal priorities keep FIFO order;
+  // the drain additionally promotes data needed by the currently visible view.
+  var rank=job.prio==='boot'?3:job.prio==='critical'?2:0,ins=0;
+  while(ins<APP_REQUEST_QUEUE.items.length){var p=APP_REQUEST_QUEUE.items[ins].prio,r=p==='boot'?3:p==='critical'?2:0;if(r<rank)break;ins++;}
+  APP_REQUEST_QUEUE.items.splice(ins,0,job);
 }
 function appQueuedFetchJsonRaw(url, opts, timeoutMs, priority, rec){
   return new Promise(function(resolve, reject){
     var job = { url:url, opts:opts || { cache:'no-store' }, timeoutMs:timeoutMs, resolve:resolve, reject:reject };
     job.prio = priority;
+    job.order=++APP_REQUEST_QUEUE.sequence;
+    job.resource=appReadResource(url);
     if(rec) rec.job = job;
     appQueueInsert(job);
     appRequestQueueDrain();
@@ -43473,3 +43622,26 @@ function gsLpInit(){
 }
 document.addEventListener('DOMContentLoaded', function(){ try{ gsLpInit(); }catch(e){} });
 try { gsLpInit(); } catch(e){}
+// Reconcile status after navigation and DOM redraws; never starts a new read.
+(function appReadInstallObserver(){
+  function install(){
+    if(!document.body || typeof MutationObserver==='undefined')return;
+    new MutationObserver(function(records){
+      if(records.some(function(r){
+        if(r.target.closest && r.target.closest('[data-read-check]'))return false;
+        if(r.type==='attributes' && r.attributeName==='style'){
+          var oldDisplay=(String(r.oldValue||'').match(/(?:^|;)\s*display\s*:\s*([^;]+)/)||[])[1]||'';
+          return oldDisplay.trim()!==r.target.style.display;
+        }
+        if(r.type==='childList')return Array.from(r.addedNodes).concat(Array.from(r.removedNodes)).some(function(n){return n.nodeType===1;});
+        return true;
+      }))appReadSchedulePaint();
+    }).observe(document.body,{subtree:true,childList:true,attributes:true,attributeOldValue:true,attributeFilter:['class','style']});
+    function flush(){Object.keys(APP_READ_SAVE_TIMERS).forEach(appReadMetaPersist);}
+    document.addEventListener('visibilitychange',function(){if(!document.hidden)appReadSchedulePaint();else flush();});
+    window.addEventListener('pagehide',flush);
+    window.addEventListener('pageshow',appReadSchedulePaint);
+    appReadSchedulePaint();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
+})();
