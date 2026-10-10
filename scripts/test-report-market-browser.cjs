@@ -34,6 +34,8 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright'),root=path.
   assert.equal(await page.evaluate(()=>Object.keys(PHARMA_STATE.loading).length),0);
  }
  fail=true;await page.evaluate(()=>rptViewRefreshPharma());await page.waitForFunction(()=>!RPT_VIEW.pharmaLoading);assert.match(await page.locator('#test-market').innerText(),/nepodarilo/);assert.equal(await page.locator('#test-market .rp2-spin').count(),0);
+ const retryStyle=await page.locator('#test-market button').evaluate(el=>{const s=getComputedStyle(el);return {height:el.getBoundingClientRect().height,radius:parseFloat(s.borderRadius),color:s.color,font:s.fontFamily};});
+ assert.ok(retryStyle.height>=44);assert.ok(retryStyle.radius>=18);assert.equal(retryStyle.color,'rgb(255, 255, 255)');assert.match(retryStyle.font,/Outfit/);
  fail=false;await page.locator('#test-market button').click();await page.waitForFunction(()=>!RPT_VIEW.pharmaLoading);assert.match(await page.locator('#test-market').innerText(),/načítané/);
 
  await page.evaluate(()=>{

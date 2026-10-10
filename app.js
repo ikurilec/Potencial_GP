@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.20';
+var APP_VERSION = '2.89.21';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -426,7 +426,12 @@ function appReadMetaLoad(owner){
   try {
     var entries=JSON.parse(localStorage.getItem('satori-read-check-v1:'+owner)||'[]');
     if(Array.isArray(entries))entries.slice(-180).forEach(function(e){
-      if(e && e.owner===owner && typeof e.key==='string' && e.key.indexOf(owner+'|')===0 && e.params && APP_DATA_READ_ACTIONS.indexOf(e.action)!==-1 && Number.isFinite(e.ts) && e.ts>=0 && e.ts<=Date.now()+60000)APP_READ_META[e.key]=e;
+      if(e && e.owner===owner && typeof e.key==='string' && e.key.indexOf(owner+'|')===0 && e.params && APP_DATA_READ_ACTIONS.indexOf(e.action)!==-1 && Number.isFinite(e.ts) && e.ts>=0 && e.ts<=Date.now()+60000){
+        // Older releases persisted prefetch/transient errors without their scope.
+        // Keep their successful timestamp, but let a new visible read establish failure.
+        if(e.failureVisible===undefined)e.failed=false;
+        APP_READ_META[e.key]=e;
+      }
     });
   }catch(e){}
 }
@@ -436,7 +441,7 @@ function appReadRemember(resource,time,failed){
   if(resource.visible && !appRequestMatchesView(resource,appReadView()))return;
   appReadMetaLoad(resource.owner);
   var old=APP_READ_META[resource.key];
-  APP_READ_META[resource.key]={owner:resource.owner,key:resource.key,action:resource.action,params:resource.params,path:resource.path,ts:failed?(old?old.ts:0):time,failed:!!failed,attempt:time,visible:!!resource.visible||!!(old&&old.visible)};
+  APP_READ_META[resource.key]={owner:resource.owner,key:resource.key,action:resource.action,params:resource.params,path:resource.path,ts:failed?(old?old.ts:0):time,failed:!!failed,failureVisible:resource.visible===true,attempt:time,visible:!!resource.visible||!!(old&&old.visible)};
   if(!APP_READ_SAVE_TIMERS[resource.owner])APP_READ_SAVE_TIMERS[resource.owner]=setTimeout(function(){appReadMetaPersist(resource.owner);},250);
   appReadSchedulePaint();
 }
@@ -466,7 +471,8 @@ function appRequestMatchesView(url,view){
 function appReadSummary(view){
   var owner=appReadOwner();appReadMetaLoad(owner);
   var entries=Object.keys(APP_READ_META).map(function(k){return APP_READ_META[k];}).filter(function(e){return e.owner===owner && e.action!=='getConfig' && appRequestMatchesView(e,view);});
-  return {last:entries.length?Math.min.apply(null,entries.map(function(e){return e.ts;})):0,error:entries.some(function(e){return e.failed;})};
+  var visible=entries.filter(function(e){return e.visible;});
+  return {last:visible.length?Math.min.apply(null,visible.map(function(e){return e.ts;})):0,error:entries.some(function(e){return e.failed && e.failureVisible!==false;})};
 }
 function appReadSchedulePaint(){
   if(APP_READ_UI_TIMER || typeof document==='undefined' || !document.querySelector)return;
@@ -491,6 +497,7 @@ function appReadView(){
     var params={},line=appLineTag(),s=getSession()||{},state=line==='gyn'?GYN_APP:PL_STATE;
     var sales=key==='sales'||key==='mgr-plnenie'||key==='mgr-detail'||key==='gyn-plnenie'||key==='product'||key==='team';
     if(key==='sales')state=REP_PL_STATE;
+    if(key==='home'){var homePeriod=plnenieDefaultPeriod();params.rok=homePeriod.year;params.Q=homePeriod.q;}
     if(key==='team')state={year:teamPlnenieYear(),q:teamPlnenieQuarter()};
     if(sales && state){if(state.year)params.rok=state.year;if(state.q)params.Q=state.q;}
     if(key==='ranking'||key==='mgr-leaderboard'||key==='gyn-leaderboard'){params.Q=line==='gyn'?gynLbLastCompletedQ():lbLastCompletedQ();params.rok=plnenieCalendarPeriod().year;}
@@ -597,12 +604,23 @@ function appReadPaint(entry){
   var timeLabel=appReadTimeLabel(summary.last);
   // Keep the same animated node while polling; replacing it restarts CSS rotation.
   if(el._appReadStatus!==status){
-    el.innerHTML=(status==='pending'?'<span class="nst-spin" aria-hidden="true"></span><span>Overujem aktuálne údaje…</span>':status==='error'?'<span>Obnova zlyhala. Zobrazené údaje môžu byť staršie.</span>':'')+'<span class="app-read-time"></span>';
+    el.innerHTML=(status==='pending'?'<span class="nst-spin" aria-hidden="true"></span><span>Overujem aktuálne údaje…</span>':status==='error'?'<span>Obnova zlyhala. Zobrazené údaje môžu byť staršie.</span><button type="button" class="app-err-btn" onclick="appReadRetryCurrent()">↻ Skúsiť znova</button>':'')+'<span class="app-read-time"></span>';
     el._appReadStatus=status;
   }
   var timeEl=el.querySelector('.app-read-time');
   if(timeEl && timeEl.textContent!==timeLabel)timeEl.textContent=timeLabel;
   el.classList.toggle('app-read-verified',status==='verified');
+}
+function appReadRetryCurrent(){
+  appStartManualRefresh();
+  var done=function(){appReadRefreshVisible();};
+  if(appPtrRefreshCurrent(done))return;
+  // Surveys contain editable forms. An explicit retry updates their dashboard
+  // without replacing the form or enabling automatic pull-to-refresh over it.
+  var view=appReadView(),type=appPtrViewType(view);
+  if(type==='tuyory')tuyoryFetchServer(function(){tuyoryRenderDashboard();done();});
+  else if(type==='lonelix')lonelixFetchServer(function(){lonelixRenderDashboard();done();});
+  else if(type==='apixaban')apixFetchServer(function(){apixRenderDashboard();done();});
 }
 function appReadBegin(view,resource){
   if(!view) return null;
@@ -634,7 +652,9 @@ function appTrackedRead(url, opts, run){
   if(resource)resource.visible=appRequestMatchesView(resource,view);
   var end=appRequestMatchesView(resource,view) ? appReadBegin(view,resource) : null;
   if(end){
-    if(action!=='getConfig') url+=(url.indexOf('?')===-1?'?':'&')+'fresh=1&_check='+Date.now();
+    // Board/calendar changes must be immediate. Heavy reads reuse the server's
+    // invalidated cache; explicit pull/retry already carries fresh=1 in its URL.
+    if(action!=='getConfig') url+=(url.indexOf('?')===-1?'?':'&')+(action==='getNastenka'||action==='getCalEvents'?'fresh=1&':'')+'_check='+Date.now();
     opts=Object.assign({},opts||{},{cache:'no-store'});
   }
   var promise;
@@ -663,7 +683,7 @@ function appCheckSalesQuarter(rep,period){
   var year=period?period.year:state.year,q=period?period.q:state.q,ctx=appLineCapture(),user=getSession()||{};
   var login=rep?user.username:null;
   var key=rep?_plRepLsKey(login,year,q):_plLsKey(year,q);
-  var url=scriptUrl('action=getPlnenieAll&rok='+year+'&Q='+q+'&fresh=1&_check='+Date.now());
+  var url=scriptUrl('action=getPlnenieAll&rok='+year+'&Q='+q+'&_check='+Date.now());
   function apply(d){
     if(!appLineContextActive(ctx) || state.year!==year)return;
     var agg=plnenieBuildAggregates(d,q,rep?[login]:undefined,year);
@@ -731,22 +751,27 @@ function pushInit(){
     // Push prišiel kým je appka v POPREDÍ. Service worker (onBackgroundMessage) sa v tomto
     // prípade NESPUSTÍ — o zobrazenie sa musíme postarať tu, inak by notifikácia „zmizla".
     // 1) obnov kalendár (odznak naskočí okamžite), 2) zobraz viditeľný pop-up (ako pri predajoch).
-    try { _fcmMessaging.onMessage(function(payload){
-      try { if (typeof gynCalLiveSync === 'function') gynCalLiveSync(); } catch(e){}
-      try {
-        var d  = (payload && payload.data) || {};
-        var nt = (payload && payload.notification) || {};
-        var title = d.title || nt.title || 'Upozornenie';
-        var body  = d.body  || nt.body  || '';
-        if (title || body) pushShowForegroundBanner(title, body);
-      } catch(e){}
-    }); } catch(e){}
+    try { _fcmMessaging.onMessage(pushHandleForeground); } catch(e){}
     return true;
   } catch(e){ return false; }
 }
 
 // Zobrazí prijatý push ako viditeľný pop-up, keď je appka v popredí (rovnaký vzhľad ako
 // notifikácia o nových predajoch). Pri zatvorenej appke to rieši service worker sám.
+function pushHandleForeground(payload){
+  var user=getSession();if(!user || !user.username)return;
+  var d=(payload&&payload.data)||{},nt=(payload&&payload.notification)||{},kind=String(d.kind||'');
+  var title=d.title||nt.title||'Upozornenie',body=d.body||nt.body||'';
+  var otherLine=d.line && d.line!==appLineTag();
+  if(otherLine)title+=' · '+({gp:'Golem',gyn:'Gynekológia',reagila:'Reagila'}[d.line]||d.line);
+  else {
+    try{if(/^board_/.test(kind))nstFetch(null,'critical',true);
+      else if(/absence|calendar/.test(kind))gynCalSync();
+      else if(kind==='sales_data'||kind==='market_share_data'||kind==='data_update'){appStartManualRefresh();appPtrRefreshCurrent(function(){appReadRefreshVisible();});}
+    }catch(e){}
+  }
+  pushShowForegroundBanner(title,body);
+}
 function pushShowForegroundBanner(title, body){
   try {
     var wrap = document.getElementById('notif-banner-wrap');
@@ -1446,7 +1471,7 @@ function appFetchWithRetryRaw(url, opts){
   opts = opts || {};
   var retries = opts.retries == null ? 3 : opts.retries;
   var attempt = opts._attempt || 0;
-  var doFetch = opts.fetcher || function(){ return appQueuedFetchJson(url, undefined, opts.timeoutMs, opts.priority || 'background'); };
+  var doFetch = opts.fetcher || function(){ return appQueuedFetchJsonUntracked(url, undefined, opts.timeoutMs, opts.priority || 'background'); };
   return doFetch()
     .catch(function(err){
       if(opts.active && !opts.active()) throw err;
@@ -1458,7 +1483,7 @@ function appFetchWithRetryRaw(url, opts){
           var nextOpts = {};
           for(var k in opts){ if(opts.hasOwnProperty(k)) nextOpts[k] = opts[k]; }
           nextOpts._attempt = attempt + 1;
-          appFetchWithRetry(url, nextOpts).then(resolve, reject);
+          appFetchWithRetryRaw(url, nextOpts).then(resolve, reject);
         }, delay);
       });
     });
@@ -7632,7 +7657,8 @@ function settingsCalNotifHtml(s){
     if(golemSettingsIsApprover()) rows.push({ key:'calNotifApprovals', label:'Žiadosti o schválenie absencií', desc:'Push, keď ti niekto pošle žiadosť na schválenie.' });
     if(golemSettingsHasApprover()) rows.push({ key:'calNotifMine',      label:'Rozhodnutia o mojich absenciách', desc:'Push, keď schvaľovateľ rozhodne o tvojej žiadosti.' });
   }
-  if(!rows.length) return '';
+  if(!rows.some(function(r){return r.key==='calNotifMine';}))rows.push({key:'calNotifMine',label:'Rozhodnutia o mojich absenciách',desc:'Upozornenie na rozhodnutie alebo zmenu tvojej absencie.'});
+  rows.push({key:'calNotifEvents',label:'Firemné udalosti v kalendári',desc:'Pridanie, zmena alebo zrušenie udalosti, ktorá je určená aj tebe.'});
   var prefs = userPrefsGet();
   var html = '<div class="set-calnotif-sep"></div>';
   rows.forEach(function(r){
@@ -24351,7 +24377,7 @@ function plneniePlansCheck(){
   function active(){return appLineContextActive(ctx)&&scope===plneniePlanScope();}
   function next(i){
     if(i>=list.length || !active())return Promise.resolve(plnenieDefaultPeriod());
-    var p=list[i],query='action=getPlnenieAll&rok='+p.year+'&Q='+p.q+'&fresh=1&_planCheck='+Date.now();
+    var p=list[i],query='action=getPlnenieAll&rok='+p.year+'&Q='+p.q+'&_planCheck='+Date.now();
     if(s.line==='gyn')query+='&fullLine=1';
     var url=s.line==='gyn'?gynScriptUrl(query):scriptUrl(query);
     return appFetchWithRetry(url,{retries:1,timeoutMs:25000,priority:'critical',delayFn:function(){return 700;},active:active}).then(function(data){
@@ -24799,7 +24825,7 @@ function usageStatsLoad(rep, _retry) {
     priority: 'critical',
     delayFn: function(){ return 800; },
     active: isCurrent,
-    fetcher: function(){ return appQueuedFetchJson(url, { cache: 'no-store' }, 30000, 'critical'); }
+    fetcher: function(){ return appQueuedFetchJsonUntracked(url, { cache: 'no-store' }, 30000, 'critical'); }
   })
     .then(function(data){
       if (settled) return;
@@ -29986,7 +30012,7 @@ function loadPharmaDataNetwork(code, oblast, kvartal) {
     timeoutMs: 30000,
     priority: 'critical',
     delayFn: function(){ return 800; },
-    fetcher: function(){ return appQueuedFetchJson(_phUrl, { cache: 'no-store' }, 30000, 'critical'); }
+    fetcher: function(){ return appQueuedFetchJsonUntracked(_phUrl, { cache: 'no-store' }, 30000, 'critical'); }
   })
     .then(function(resp) {
       delete PHARMA_STATE.loading[cacheKey];
@@ -31430,6 +31456,9 @@ function appPtrRefreshCurrent(done){
   });
  }
  switch(type){
+  case 'stocks':stockForceRefresh(function(){if(same())appReadRefreshVisible();});break;
+  case 'districts':okresyRetryLoading();break;
+  case 'history':gpHistForceRefresh(session.username,function(){if(same())histRender();});break;
   case 'home':appCheckHome();if(appRole()==='gp')gpHistForceRefresh(session.username,function(){});break;
   case 'sales':if(!appCheckSalesQuarter(true))repPlnenieLoad();break;
   case 'mgr-plnenie':case 'mgr-detail':if(!appCheckSalesQuarter(false))plnenieLoadAllQuarters();break;
@@ -33446,7 +33475,7 @@ function rptViewPharmaStatusHtml() {
   if (!rptViewOblasts(rptViewScopeReps()).length) return '<div class="rv-empty">Reprezentant nemá priradené územie pre trhové dáta.</div>';
   var selection = rptViewPharmaSelectionKey();
   if (RPT_VIEW.pharmaError && RPT_VIEW.pharmaError.selection === selection && !RPT_VIEW.pharmaLoading) {
-    return '<div class="rv-empty">Trhové dáta sa nepodarilo obnoviť. Dostupné údaje zostávajú zobrazené.</div><button type="button" class="rv-q-btn" onclick="rptViewRetryPharma()">↻ Skúsiť znova</button>';
+    return '<div class="app-retry-state" role="status"><div>Trhové dáta sa nepodarilo obnoviť. Dostupné údaje zostávajú zobrazené.</div><button type="button" class="app-err-btn" onclick="rptViewRetryPharma()">↻ Skúsiť znova</button></div>';
   }
   var pg = RPT_VIEW.pharmaProg;
   return '<div class="rp2-load" style="margin-bottom:10px"><span class="rp2-spin"></span>Načítavam trhové dáta' + (pg && pg.total ? ' (' + pg.done + ' z ' + pg.total + ')' : '') + '…</div>';
@@ -33506,7 +33535,7 @@ function rptViewEnsurePharma(model) {
   }
   batch.cancel = function() { stop(true); };
   // Covers queue waiting AND retries, not only the network transfer.
-  batch.timer = setTimeout(function() { stop(true); }, 45000);
+  batch.timer = setTimeout(function() { stop(true); }, Math.max(45000, Math.ceil(tasks.length / 2) * 20000 + 15000));
   function finishOne(t, ok) {
     if (!current()) { stop(true); return; }
     if (!ok) failed[t.o] = true;
@@ -33524,7 +33553,7 @@ function rptViewEnsurePharma(model) {
       var url = pharmaDataRequestUrl(t.code, t.o, kvartal, true, true) + (refresh ? '&fresh=1' : '');
       return appFetchWithRetry(url, { retries:1, timeoutMs:20000, priority:'critical', active:current,
         delayFn:function() { return 800; },
-        fetcher:function() { return appQueuedFetchJson(url, { cache:'no-store' }, 20000, 'critical'); }
+        fetcher:function() { return appQueuedFetchJsonUntracked(url, { cache:'no-store' }, 20000, 'critical'); }
       });
     }).then(function(resp) {
       var ok = resp && resp.ok && Array.isArray(resp.summary) && Array.isArray(resp.okresy);
@@ -33611,7 +33640,7 @@ function rp2LoadCennik() {
   };
   appFetchWithRetry(url, {
     retries: 2, timeoutMs: 24000, priority: 'boot', delayFn: function() { return 800; },
-    fetcher: function() { return appQueuedFetchJson(url, { cache: 'no-store' }, 24000, 'boot'); }
+    fetcher: function() { return appQueuedFetchJsonUntracked(url, { cache: 'no-store' }, 24000, 'boot'); }
   }).then(done).catch(function() { done(null); });
 }
 // Cenník produktu: { cena (vážený priemer alebo jediná cena | null), min, max, skus:[{sku,cena,podiel}] } | null
@@ -33820,7 +33849,7 @@ function rp2LoadAbs() {
     rp2Schedule();
   };
   appFetchWithRetry(url, { retries: 1, timeoutMs: 24000, priority: 'critical', delayFn: function() { return 800; },
-    fetcher: function() { return appQueuedFetchJson(url, { cache: 'no-store' }, 24000, 'critical'); } }).then(done).catch(function() { done(null); });
+    fetcher: function() { return appQueuedFetchJsonUntracked(url, { cache: 'no-store' }, 24000, 'critical'); } }).then(done).catch(function() { done(null); });
 }
 function rp2D(t) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(t || '')); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; }
 function rp2AddDays(d, n) { var x = new Date(d.getTime()); x.setDate(x.getDate() + n); return x; }
@@ -33953,7 +33982,7 @@ function rp2LoadOv() {
   RP2_OV.loading = true;
   var url = rp2Url_('action=getPharmaOverview');
   appFetchWithRetry(url, { retries: 1, timeoutMs: 40000, priority: 'background', delayFn: function() { return 800; },
-    fetcher: function() { return appQueuedFetchJson(url, { cache: 'no-store' }, 40000, 'background'); } }).then(function(d) {
+    fetcher: function() { return appQueuedFetchJsonUntracked(url, { cache: 'no-store' }, 40000, 'background'); } }).then(function(d) {
     RP2_OV.loading = false;
     var idx = {};
     if (d && d.ok && Array.isArray(d.rows)) d.rows.forEach(function(r) { idx[r.p + '|' + r.o] = r.m; });
@@ -34103,7 +34132,7 @@ function rp2DohLoad() {
   RP2_DOH.loading = true;
   var url = rp2Url_('action=getDohody');
   appFetchWithRetry(url, { retries: 1, timeoutMs: 24000, priority: 'critical', delayFn: function() { return 800; },
-    fetcher: function() { return appQueuedFetchJson(url, { cache: 'no-store' }, 24000, 'critical'); } }).then(function(d) {
+    fetcher: function() { return appQueuedFetchJsonUntracked(url, { cache: 'no-store' }, 24000, 'critical'); } }).then(function(d) {
     RP2_DOH.loading = false;
     if (d && d.ok && Array.isArray(d.dohody)) { RP2_DOH.list = d.dohody; RP2_DOH.err = false; } else { RP2_DOH.list = RP2_DOH.list || []; RP2_DOH.err = true; }
     rp2Schedule();
@@ -35919,7 +35948,7 @@ function downloadAllReportsPdf() {
     if (!ok) {
       title.textContent = '⚠️ Chyba načítavania';
       sub.innerHTML = 'Trhové dáta sa nepodarilo načítať.<br><br>' +
-        '<button onclick="downloadAllReportsPdf()" style="padding:10px 22px;background:#0C1E35;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">Skúsiť znova</button>' +
+        '<button type="button" class="app-err-btn" onclick="downloadAllReportsPdf()">↻ Skúsiť znova</button>' +
         ' <button onclick="document.getElementById(\'rpt-progress-overlay\').style.display=\'none\'" style="padding:10px 22px;background:#E2E8F0;color:#334155;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-left:8px">Zrušiť</button>';
       return;
     }
@@ -36086,7 +36115,7 @@ function downloadAllReportsPdf() {
   if (!ok) {
     title.textContent = '⚠️ Chyba načítavania';
     sub.innerHTML = 'Trhové dáta sa nepodarilo načítať.<br><br>' +
-      '<button onclick="downloadAllReportsPdf()" style="padding:10px 22px;background:#0C1E35;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">Skúsiť znova</button>' +
+      '<button type="button" class="app-err-btn" onclick="downloadAllReportsPdf()">↻ Skúsiť znova</button>' +
       ' <button onclick="document.getElementById(\'rpt-progress-overlay\').style.display=\'none\'" style="padding:10px 22px;background:#E2E8F0;color:#334155;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-left:8px">Zrušiť</button>';
     bar.style.width = '0%';
     return;
@@ -37196,7 +37225,7 @@ function okresyLoadAll(reqId, ver, cont, showLoading, forceNet, done) {
     if(error||failed){
       if(hasRows){
         okresyRender();
-        if(cont&&cont.insertAdjacentHTML)cont.insertAdjacentHTML('beforeend','<div class="okr-empty">Obnova niektorých údajov zlyhala. Dostupné údaje zostávajú zobrazené. <button type="button" class="rv-q-btn" onclick="okresyRetryLoading()">↻ Skúsiť znova</button></div>');
+        if(cont&&cont.insertAdjacentHTML)cont.insertAdjacentHTML('beforeend','<div class="app-retry-state" role="status"><div>Obnova niektorých údajov zlyhala. Dostupné údaje zostávajú zobrazené.</div><button type="button" class="app-err-btn" onclick="okresyRetryLoading()">↻ Skúsiť znova</button></div>');
       }else if(cont)appShowErrorCard(cont,{id:'okresy-load',title:'Nepodarilo sa načítať okresné dáta',desc:'Skús načítať údaje znova.'},okresyRetryLoading);
     }else okresyRender();
     _fin();
@@ -39748,6 +39777,12 @@ function nstPrime(){
     nstUpdateBadge();
     nstFetch(function(){ nstUpdateBadge(); try { dnesRefreshIfOpen(); } catch(e){} });
     var fromPush = false, pushPost = '';
+    var notificationLine='';
+    try{notificationLine=String(new URLSearchParams(window.location.search).get('pushline')||'');}catch(e){}
+    if(notificationLine && notificationLine!==appLineTag()){
+      pushShowForegroundBanner('Upozornenie z inej línie','Pre zobrazenie otvor líniu '+({gp:'Golem',gyn:'Gynekológia',reagila:'Reagila'}[notificationLine]||notificationLine)+'.');
+      return;
+    }
     try { var _qs = new URLSearchParams(window.location.search); fromPush = _qs.get('nst') === '1'; pushPost = String(_qs.get('post') || ''); } catch(e){}
     if (fromPush && !NST._opened){
       NST._opened = true;
@@ -43458,7 +43493,7 @@ function gsRender(){
   gsHighlight(false);
 }
 /* ── NÁPOVEDA — príklady podľa role/línie (klik ich rovno vyskúša) ── */
-function gsStatusHtml(){var d=gsData();return d.pending?'<div class="gs-data-status" role="status"><span class="nst-spin" aria-hidden="true"></span>Dopĺňam výsledky vyhľadávania…</div>':d.failed?'<div class="gs-data-status" role="status">Časť údajov sa nepodarilo načítať. Zobrazené sú dostupné výsledky. <button type="button" onclick="gsEnsureData(true)">Skúsiť znova</button></div>':'';}
+function gsStatusHtml(){var d=gsData();return d.pending?'<div class="gs-data-status" role="status"><span class="nst-spin" aria-hidden="true"></span>Dopĺňam výsledky vyhľadávania…</div>':d.failed?'<div class="gs-data-status" role="status">Časť údajov sa nepodarilo načítať. Zobrazené sú dostupné výsledky. <button type="button" class="app-err-btn" onclick="gsEnsureData(true)">↻ Skúsiť znova</button></div>':'';}
 function gsTipsHtml(){
   var mgr=gsIsMgr(), line=gsLine(), tips=[];
   if(line==='gyn'){

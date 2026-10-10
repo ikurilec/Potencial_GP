@@ -99,6 +99,26 @@ const root=path.resolve(__dirname,'..');
   if(appReadSummary(appReadView()).last!==last)throw new Error('Stale line epoch advanced verification');
  });
  console.log('Out-of-order responses and stale line epochs cannot overwrite successful verification');
+ for(const line of ['gp','gyn','reagila']){
+  await page.evaluate(async line=>{
+   document.querySelectorAll('.show').forEach(e=>e.classList.remove('show'));APP_LINE_EPOCH++;
+   getSession=()=>({username:'home-recovery',role:'admin',line,session_token:'synthetic'});
+   plnenieDefaultPeriod=()=>({year:2026,q:3});
+   document.getElementById('dnes-overlay').classList.add('show');_panelCurrent='dnes-overlay';
+   document.getElementById('dnes-body').innerHTML='<div>Uložené plnenie Q3</div>';
+   const base=line==='gyn'?gynScriptUrl:scriptUrl;
+   await appTrackedRead(base('action=getPlnenieAll&rok=2026&Q=4'),{},()=>Promise.resolve({ok:false,error:'Background Q4 failure'}));
+   await appTrackedRead(base('action=getPlnenieAll&rok=2026&Q=3'),{},()=>Promise.resolve({ok:true,plan:{},predaje:{}}));
+   appReadRefreshVisible();if(appReadSummary(appReadView()).error)throw Error('Q4 failure poisoned Q3 Home');
+   await appTrackedRead(base('action=getPlnenieAll&rok=2026&Q=3'),{},()=>Promise.reject(Error('temporary offline'))).catch(()=>{});
+   appReadRefreshVisible();
+   window.retryCalled=false;appPtrRefreshCurrent=()=>{window.retryCalled=true;appTrackedRead(base('action=getPlnenieAll&rok=2026&Q=3'),{},()=>Promise.resolve({ok:true,plan:{},predaje:{}})).then(appReadRefreshVisible);return true;};
+  },line);
+  const button=page.locator('[data-read-check] .app-err-btn');await button.click();
+  await page.waitForFunction(()=>window.retryCalled&&!appReadSummary(appReadView()).error);
+  assert.match(await page.locator('#dnes-body').innerText(),/Uložené plnenie Q3/);
+ }
+ console.log('Home Q3 ignores failed Q4 preloads; visible failures retry and recover in all three lines');
  await page.screenshot({path:path.join(root,'.tmp-data-freshness-mobile.png')});
  assert.deepEqual(errors,[]);await page.unrouteAll({behavior:'ignoreErrors'});await browser.close();
 })().catch(e=>{console.error(e);process.exit(1)});
