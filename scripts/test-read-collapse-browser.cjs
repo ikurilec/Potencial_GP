@@ -57,17 +57,23 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright'),root=path.
  await page.evaluate(()=>endRead(true));await page.waitForTimeout(2200);
  assert.equal(await indicator.getAttribute('data-read-status'),'error');assert.ok(await indicator.evaluate(e=>e.getBoundingClientRect().height)>40,'Failed checks remain visible');
  assert.equal(await indicator.locator('button').first().isVisible(),true,'Retry remains reachable');
- await page.evaluate(()=>{APP_READ_CHECKS={};testSuccess();document.querySelector('details.app-read-details').open=true;});
- await page.waitForTimeout(2100);assert.ok(await indicator.evaluate(e=>e.getBoundingClientRect().height)>100,'Expanded details stay open after successful reads');
- await indicator.locator('summary').click();await page.waitForTimeout(2100);
- assert.equal(await indicator.evaluate(e=>e.getBoundingClientRect().height<1),true,'Closed details may dismiss again');
+ await page.evaluate(()=>{APP_READ_CHECKS={};testSuccess();});await indicator.locator('summary').tap();
+ assert.equal(await indicator.locator('details').evaluate(e=>e.open),true,'A finger tap opens the green details');
+ await page.waitForTimeout(1800);assert.ok(await indicator.evaluate(e=>e.getBoundingClientRect().height)>100,'Expanded success stays readable for approximately two seconds');
+ await page.waitForTimeout(900);assert.equal(await indicator.evaluate(e=>e.getBoundingClientRect().height<1),true,'All-green expanded details collapse as well');
+ assert.equal(await indicator.locator('details').evaluate(e=>e.open),true,'Collapse preserves expanded state');
+ await page.evaluate(()=>{window.endRead=appReadBegin(appReadView());});await page.waitForTimeout(320);
+ assert.ok(await indicator.evaluate(e=>e.getBoundingClientRect().height)>100,'New refresh reveals expanded details');
+ assert.equal(await indicator.getAttribute('data-read-status'),'pending');assert.equal(await indicator.locator('details').evaluate(e=>e.open),true);
+ await page.evaluate(()=>endRead(true));await page.waitForTimeout(2600);
+ assert.ok(await indicator.evaluate(e=>e.getBoundingClientRect().height)>100,'Expanded failed checks stay visible');
  await setup();await page.waitForTimeout(2200);assert.ok(await indicator.evaluate(e=>e.getBoundingClientRect().height)>40,'Unknown checks never hide');
  // Accelerate only the hold for the mapping matrix; the full timing/animation is checked above.
  await page.evaluate(()=>{APP_READ_SUCCESS_HOLD_MS=30;});
  const roles={gp:['admin','boss','bum','am west','am east','am','rep west'],gyn:['admin','boss','bum','gyn-manager','gyn-am','asistent','gyn-rep'],reagila:['admin','boss','bum','am west','am east','am','kam']};
  let cases=0;
  for(const line of Object.keys(roles))for(const role of roles[line])for(const screen of ['sklady-overlay','nastenka-overlay','pharma-ms-overlay']){
-  await setup(line,role,screen);await page.evaluate(()=>testSuccess());await page.waitForTimeout(360);
+  await setup(line,role,screen);await page.evaluate(()=>{document.querySelector('.app-read-details').open=true;testSuccess();});await page.waitForTimeout(360);
   assert.equal(await indicator.evaluate(e=>e.getBoundingClientRect().height<1),true,line+' '+role+' '+screen);
   await page.evaluate(()=>{window.endRead=appReadBegin(appReadView());});await page.waitForTimeout(320);
   assert.ok(await indicator.evaluate(e=>e.getBoundingClientRect().height)>40,line+' '+role+' '+screen+': refresh reveals status');

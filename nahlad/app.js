@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.27';
+var APP_VERSION = '2.89.28';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -809,14 +809,12 @@ function appReadPaint(entry){
 // Presentation only: dismissed successes do not change read freshness or dates.
 // Keep it across redraws/short returns, but never across login/line epochs.
 var APP_READ_PRESENTATION = {};
-var APP_READ_SUCCESS_HOLD_MS = 1600;
+var APP_READ_SUCCESS_HOLD_MS = 2000;
 function appReadCollapseEligible(summary,status){
   return status==='verified' && !!summary.last && !summary.pending && !summary.error &&
     (!summary.groups || summary.groups.every(function(g){return g.last>0 && !g.pending && !g.error && g.current!==false;}));
 }
 function appReadCollapseBlocked(el){
-  var details=el.querySelector('.app-read-details');
-  if(details && details.open)return true;
   var active=document.activeElement;
   // Touching a summary need not keep the banner permanently, but keyboard
   // focus must remain visible/reachable until the user moves away.
@@ -858,6 +856,10 @@ function appReadCollapseUpdate(el,entry,summary,status){
     el.addEventListener('toggle',repaint,true);
     el.addEventListener('focusin',repaint);el.addEventListener('focusout',repaint);
   }
+  var details=el.querySelector('.app-read-details'),detailsOpen=!!(details && details.open);
+  // Opening an already green disclosure gives its rows the full reading interval.
+  if(detailsOpen && !state.detailsOpen){clearTimeout(state.timer);state.timer=null;}
+  state.detailsOpen=detailsOpen;
   if(!appReadCollapseEligible(summary,status)){
     clearTimeout(state.timer);state.timer=null;state.signature='';state.collapsed=false;
     appReadCollapseApply(el,false,false);return;

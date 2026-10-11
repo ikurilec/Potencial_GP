@@ -41,11 +41,13 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright');const root
   await setup('gp','rep west');
   await page.evaluate(()=>{appStartManualRefresh();stockForceRefresh(()=>{});});
   await page.waitForFunction(()=>document.querySelector('#sklady-overlay [data-read-check]')?.dataset.readStatus==='verified');
+  await page.evaluate(()=>{document.querySelector('#sklady-overlay .app-read-details').open=true;});
   await page.waitForFunction(()=>document.querySelector('#sklady-overlay [data-read-check]')?.getBoundingClientRect().height<1);
   holdStocks=true;const collapsedStart=refreshes;await pull();
   await page.waitForFunction(()=>document.querySelector('#sklady-overlay [data-read-check]')?.dataset.readStatus==='pending');
   assert.equal(await page.locator('#sklady-overlay [data-read-check]').getAttribute('aria-hidden'),null);
   assert.ok(await page.locator('#sklady-overlay [data-read-check]').evaluate(e=>e.getBoundingClientRect().height)>40);
+  assert.equal(await page.locator('#sklady-overlay .app-read-details').evaluate(e=>e.open),true,'Pull restores previously expanded details');
   assert.match(await page.locator('#sklady-body').innerText(),/Uložené údaje skladu/);
   holdStocks=false;releaseStock();await page.waitForFunction(()=>!document.querySelector('.app-ptr.loading'));
   await page.waitForFunction(()=>document.querySelector('#sklady-overlay [data-read-check]')?.getBoundingClientRect().height<1);
