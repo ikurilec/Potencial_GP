@@ -5,7 +5,7 @@ const c={Promise,IS_DEV:false,PHARMA_STATE:{cache:{},loading:{},activeCode:'A',o
 PL_PROD_SHEET_STATE:{open:false},pharmaGrafCacheKey:(c,o)=>c+'_'+o,pharmaDataRequestUrl:(c,o,q)=>q,
 pharmaIsCurrentKvartal:q=>q==='2604',pharmaKvartalPrev:q=>String(Number(q)-1),
 appFetchWithRetry:u=>{calls.push(u);return Promise.resolve({ok:true,summary:[],okresy:[]});},
-document:{getElementById:()=>null},pharmaGrafFromMain:()=>{},aflamilFamilyMaybeRefresh:()=>{},appShowErrorCard:(id,o)=>errors.push(o),
+document:{getElementById:()=>null},pharmaQuarterMonths:()=>['2610','2611','2612'],_phPersistSave:()=>{},pharmaRender:()=>{c.rendered=true;},pharmaGrafFromMain:()=>{},aflamilFamilyMaybeRefresh:()=>{},appShowErrorCard:(id,o)=>errors.push(o),
 loadPharmaData:(code,o,q)=>c.loadPharmaDataNetwork(code,o,q)};
 vm.createContext(c);vm.runInContext(src.slice(a,b),c);
-(async()=>{c.loadPharmaDataNetwork('A','KE','2604');for(let i=0;i<30;i++)await Promise.resolve();assert.ok(calls.length<=2,'Empty market data recursively fetch ever older quarters');assert.equal(errors.length,1,'Empty history must finish with a visible state');assert.equal(Object.keys(c.PHARMA_STATE.loading).length,0);console.log('Empty quarter fallback is bounded and exits loading');})().catch(e=>{console.error(e);process.exitCode=1;});
+(async()=>{await c.loadPharmaDataNetwork('A','KE','2604');assert.equal(calls.length,1,'Empty market data must not recursively fetch older quarters');assert.equal(errors.length,0,'Valid empty history is a successful check');assert.equal(c.rendered,true,'Empty history must finish with a visible state');assert.equal(c.PHARMA_STATE.cache.A_KE_2604.ok,true);assert.equal(Object.keys(c.PHARMA_STATE.loading).length,0);console.log('Empty quarter is cached, displayed and verified without recursive fetches');})().catch(e=>{console.error(e);process.exitCode=1;});

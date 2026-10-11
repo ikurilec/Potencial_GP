@@ -21,7 +21,7 @@ vm.runInContext(part('function appTrackedRead(', '// Indikátor zostáva'),c);
  assert.equal(c.appReadSummary(view).error,true,'Actual failure of visible data must remain visible');
  c.appReadRemember(real,Date.now());assert.equal(c.appReadSummary(view).error,false,'Successful retry must recover the status');
  let trackedAttempts=0,untrackedAttempts=0;
- Object.assign(c,{appQueuedFetchJson:()=>{trackedAttempts++;return Promise.reject(Error('temporary'));},appQueuedFetchJsonUntracked:()=>{untrackedAttempts++;return untrackedAttempts===1?Promise.reject(Error('temporary')):Promise.resolve({ok:true});},setTimeout:fn=>{fn();return 1;}});
+ Object.assign(c,{appQueuedFetchJson:()=>{trackedAttempts++;return Promise.reject(Error('temporary'));},appQueuedFetchJsonUntracked:()=>{untrackedAttempts++;return untrackedAttempts===1?Promise.reject(Error('temporary')):Promise.resolve({ok:true,plan:{},predaje:{}});},setTimeout:fn=>{fn();return 1;}});
  vm.runInContext(part('function appFetchWithRetryRaw(', '// Registry retry'),c);
  const result=await c.appFetchWithRetryRaw('https://server/exec?action=getPlnenieAll',{retries:1});
  assert.equal(result.ok,true);assert.equal(trackedAttempts,0,'Intermediate retries must not record a final failure');assert.equal(untrackedAttempts,2);

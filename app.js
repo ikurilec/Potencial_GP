@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.28';
+var APP_VERSION = '2.89.29';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -463,7 +463,7 @@ function appReadValid(resource,data){
   var field={getNastenka:'posts',getStockData:'rows',getCalEvents:'events',getLekarne:'rows',getLekarneAll:'rows',getLekarneDetail:'rows',getGynLekarne:'rows',getGynLekarneDetail:'rows',getLekarneFilters:'rows',getPharmaGraf:'rows',getPharmaOkresGraf:'rows',getDohody:'dohody',getTeamPlnenie:'reps',getRepList:'reps'}[resource.action];
   if(field)return data.ok===true && Array.isArray(data[field]);
   if(resource.action==='getPlnenieAll')return data.ok===true && !!data.plan && !!data.predaje;
-  if(resource.action==='getPharmaData')return data.ok===true && (Array.isArray(data.summary)||Array.isArray(data.okresy));
+  if(resource.action==='getPharmaData')return data.ok===true && Array.isArray(data.summary) && Array.isArray(data.okresy);
   return data.ok===true || Array.isArray(data) || (!('ok' in data) && !('error' in data));
 }
 function appReadMetaLoad(owner){
@@ -770,7 +770,9 @@ function appReadPaint(entry){
   if(document.querySelectorAll) document.querySelectorAll('[data-read-check]').forEach(function(other){
     if(other!==el && other.getAttribute('data-read-check')===entry.view.key)other.remove();
   });
-  var summary=appReadSummary(view),failed=entry.error||summary.error;
+  // The result and the section rows must describe the same current resources.
+  // A departed period or an old manual subscriber may still have entry.error.
+  var summary=appReadSummary(view),failed=summary.error || (!summary.groups && entry.error);
   if(!el){ el=document.createElement('div');el.className='nst-refresh app-read-check';el.setAttribute('data-read-check','');host.parentNode.insertBefore(el,host); }
   entry.element=el;
   el.setAttribute('data-read-check',entry.view.key);
@@ -1780,9 +1782,21 @@ function appFetchWithRetryRaw(url, opts){
   var retries = opts.retries == null ? 3 : opts.retries;
   var attempt = opts._attempt || 0;
   var doFetch = opts.fetcher || function(){ return appQueuedFetchJsonUntracked(url, undefined, opts.timeoutMs, opts.priority || 'background'); };
-  return doFetch()
+  return Promise.resolve().then(doFetch)
+    .then(function(data){
+      // Apps Script reports many transient failures as HTTP 200 + ok:false.
+      // Validate reads inside the retry boundary, before recording completion.
+      var resource=typeof appReadResource==='function'?appReadResource(url):null;
+      if(resource && !appReadValid(resource,data)){
+        var error=new Error(data&&data.error?String(data.error):'Server nevrátil platné údaje.');
+        error.noRetry=/^(Unauthorized|Forbidden|Session missing|Session expired)$/i.test(error.message);
+        throw error;
+      }
+      return data;
+    })
     .catch(function(err){
       if(opts.active && !opts.active()) throw err;
+      if(err && err.noRetry) throw err;
       if(attempt >= retries) throw err;
       var delay = opts.delayFn ? opts.delayFn(attempt) : 1500;
       return new Promise(function(resolve, reject){
@@ -7149,24 +7163,26 @@ function stockLoad(onDone){
   var stockUrl = stockRequestUrl();
   var recent=appReadReuse(appReadResource(stockUrl));
   if(recent){SKLADY_STATE.payload=stockNormalizePayload(recent.data,line);stockRender();appReadSchedulePaint();if(typeof onDone==='function')onDone();return;}
-  var finishCheck = appReadBegin(appReadView());
+  var finishCheck = appReadBegin(appReadView(),appReadResource(stockUrl));
   var r = DataStore.refresh(stockCacheKey_(line), {
     maxAgeMs: STOCK_CACHE_MAX_AGE_MS,
     fetcher: function(){
       return appFetchWithRetry(stockUrl+'&fresh=1&_check='+Date.now(), {
         retries:1,timeoutMs:25000,priority:'critical',delayFn:function(){return 700;},
         active:function(){return appLineContextActive(ctx);},
-        fetcher:function(){return appFetchJson(stockUrl+'&fresh=1&_check='+Date.now(), {cache:'no-store'},25000);}
+        fetcher:function(){return appQueuedFetchJsonUntracked(stockUrl+'&fresh=1&_check='+Date.now(), {cache:'no-store'},30000,'critical');}
       }).then(function(payload){
         if (!payload || payload.ok === false || !Array.isArray(payload.rows)) throw new Error((payload && payload.error) || 'stock endpoint unavailable');
         return payload;
       });
     },
-    onFresh: function(payload){
-      if (request !== SKLADY_STATE.request || !SKLADY_STATE.open || !appLineContextActive(ctx)) return;
-      SKLADY_STATE.payload = stockNormalizePayload(payload, line); stockRender();
+    onSettled: function(meta){
+      if(meta.data && request===SKLADY_STATE.request && SKLADY_STATE.open && appLineContextActive(ctx)){
+        SKLADY_STATE.payload=stockNormalizePayload(meta.data,line);stockRender();
+      }
+      if(finishCheck)finishCheck(meta.error);if(typeof onDone==='function')onDone();
+      try{if(appLineContextActive(ctx))dnesRefreshIfOpen();}catch(e){}
     },
-    onSettled: function(meta){ if(finishCheck) finishCheck(meta.error); if(typeof onDone==='function') onDone(); try { if(appLineContextActive(ctx)) dnesRefreshIfOpen(); } catch(e){} },
     onError: function(){
       if (request !== SKLADY_STATE.request || !SKLADY_STATE.open || !appLineContextActive(ctx)) return;
       if (SKLADY_STATE.payload) return;   // cache už niečo ukazuje — tichá revalidácia nesmie zmazať viditeľné dáta
@@ -7188,11 +7204,12 @@ function stockForceRefresh(onDone){appStartManualRefresh();stockLoad(onDone);}
 function stockPreload(force){
   try {
     var line = appLineTag();
+    var ctx=appLineCapture();
     var preloadUrl=stockRequestUrl();
     DataStore[force?'refresh':'get'](stockCacheKey_(line), {
       maxAgeMs: STOCK_CACHE_MAX_AGE_MS,
       fetcher: function(){
-        return appQueuedFetchJson(preloadUrl, { cache:'no-store' }, APP_FETCH_TIMEOUT_PRELOAD_MS, force?'critical':'background').then(function(payload){
+        return appFetchWithRetry(preloadUrl,{retries:1,timeoutMs:30000,priority:force?'critical':'background',active:function(){return appLineContextActive(ctx);},delayFn:function(){return 700;}}).then(function(payload){
           if (!payload || payload.ok === false || !Array.isArray(payload.rows)) throw new Error((payload && payload.error) || 'stock endpoint unavailable');
           return payload;
         });
@@ -30156,6 +30173,7 @@ function openPharmaMs(prodKey, label, oblastOverride, repLoginOverride, periodOv
   PHARMA_STATE.activeCode = codes[0];
   PHARMA_STATE.oblast     = oblast;
   PHARMA_STATE.kvartal    = kvartal;
+  PHARMA_STATE.requestedKvartal = kvartal;
 
   var titleEl   = document.getElementById('pharma-ms-title');
   var subtabsEl = document.getElementById('pharma-ms-subtabs');
@@ -30327,36 +30345,24 @@ function loadPharmaDataNetwork(code, oblast, kvartal, options) {
       if ((!resp || !resp.ok) && PHARMA_STATE.cache[cacheKey]) return;
       if (resp && resp.ok && Array.isArray(resp.summary) && Array.isArray(resp.okresy)) {
         // Skontroluj či dáta obsahujú reálne hodnoty (nie len prázdne riadky)
+        var requestedMonths=pharmaQuarterMonths(kvartal);
         var hasRealSumm = resp.summary && resp.summary.some(function(s){
-          return (parseFloat(s.terit_ms) > 0) || (parseFloat(s.sk_ms) > 0) || (parseFloat(s.terit_pat) > 0) || (parseFloat(s.sk_pat) > 0);
+          return requestedMonths.indexOf(String(s.mesiac))>=0 && ((parseFloat(s.terit_ms) >= 0) || (parseFloat(s.sk_ms) >= 0));
         });
         var hasRealOkr = resp.okresy && resp.okresy.some(function(o){
-          return (parseFloat(o.nas_m1) > 0) || (parseFloat(o.nas_m2) > 0) || (parseFloat(o.nas_m3) > 0) || (parseFloat(o.tot_pat_m1) > 0) || (parseFloat(o.tot_pat_m2) > 0) || (parseFloat(o.tot_pat_m3) > 0);
+          return (parseFloat(o.nas_m1) >= 0) || (parseFloat(o.nas_m2) >= 0) || (parseFloat(o.nas_m3) >= 0) || (parseFloat(o.tot_pat_m1) > 0) || (parseFloat(o.tot_pat_m2) > 0) || (parseFloat(o.tot_pat_m3) > 0);
         });
         var hasData = hasRealSumm || hasRealOkr;
-        if (!hasData && !pharmaIsCurrentKvartal(kvartal)) {
-          throw new Error('Pre toto obdobie nie sú dostupné trhové dáta.');
-        }
         if (!hasData) {
-          // Dáta pre tento Q ešte nie sú (IQVIA nenahrané) — skús predchádzajúci Q
-          var sheetOpen = (PL_PROD_SHEET_STATE && PL_PROD_SHEET_STATE.open &&
-            (PHARMA_CODES[PL_PROD_SHEET_STATE.prodKey] || []).indexOf(code) !== -1);
+          // An empty successful response is verified, not a transport failure.
+          // The renderer can choose only a period actually present in this reply.
+          PHARMA_STATE.cache[cacheKey]=resp;
+          _phPersistSave(code,oblast,kvartal,resp);
           var pharmaOpen = (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal);
-          if (pharmaOpen || sheetOpen) {
-            var prevKv = pharmaKvartalPrev(kvartal);
-            if (pharmaOpen) {
-              var prevQNum = parseInt(prevKv.slice(2), 10);
-              var prevYear = 2000 + parseInt(prevKv.slice(0, 2), 10);
-              PHARMA_STATE.kvartal = prevKv;
-              var titleEl = document.getElementById('pharma-ms-title');
-              if (titleEl) {
-                var parts = titleEl.textContent.split(' · ');
-                if (parts.length >= 2) { parts[1] = 'Q' + prevQNum + ' ' + prevYear; titleEl.textContent = parts.join(' · '); }
-              }
-            }
-            loadPharmaData(code, oblast, prevKv);
-          }
-          return; // neulož prázdny cache — pri ďalšom otvorení skúsi znova
+          if(pharmaOpen)pharmaRender(code);
+          aflamilFamilyMaybeRefresh(code,oblast,kvartal);
+          if(typeof prodSheetUpdateMsCells==='function')prodSheetUpdateMsCells();
+          return resp;
         }
         PHARMA_STATE.cache[cacheKey]=resp;
         var pendingEnrichment=pharmaIsCurrentKvartal(kvartal) && !(Array.isArray(resp.okresy_prev) && resp.kvartal_prev===pharmaKvartalPrev(kvartal));
@@ -30700,7 +30706,7 @@ function buildGrafChartHtml(code, oblast) {
   var n = rows.length;
   var nasVals = rows.map(function(r) {
     var v = parseFloat(r.nas_ms);
-    return (isNaN(v) || v <= 0) ? null : v;
+    return (isNaN(v) || v < 0) ? null : v;
   });
   // trendVals sa nepoužíva — trendová línia je vypnutá
 
@@ -31309,11 +31315,13 @@ function calcLinearTrend(vals) {
 
 function pharmaSwitchTab(code) {
   if (code === PHARMA_STATE.activeCode) return;
+  if (PHARMA_STATE.codes.indexOf(code)<0) return;
   var oldIdx = PHARMA_STATE.codes.indexOf(PHARMA_STATE.activeCode);
   var newIdx = PHARMA_STATE.codes.indexOf(code);
   var dir = newIdx > oldIdx ? 'r' : 'l';
   try { usageDrill('Trhový podiel', 'sub-produkt: ' + code); } catch(e){}
   PHARMA_STATE.activeCode = code;
+  if(PHARMA_STATE.requestedKvartal)pharmaSetDisplayKvartal(PHARMA_STATE.requestedKvartal);
   var subtabsEl = document.getElementById('pharma-ms-subtabs');
   if (subtabsEl) {
     Array.prototype.forEach.call(subtabsEl.querySelectorAll('.pharma-ms-subtab'), function(btn) {
@@ -31483,6 +31491,27 @@ function pharmaDistrictCardHtml(r, dSeries, prodLabel, q, isBoxProduct, district
   return html;
 }
 
+function pharmaSetDisplayKvartal(kvartal){
+  PHARMA_STATE.kvartal=kvartal;
+  var title=document.getElementById('pharma-ms-title');
+  if(title){var parts=title.textContent.split(' · ');if(parts.length>=2){parts[1]='Q'+parseInt(kvartal.slice(2),10)+' '+(2000+parseInt(kvartal.slice(0,2),10));title.textContent=parts.join(' · ');}}
+}
+function pharmaAvailableKvartal(resp,requested){
+  var latest=null;
+  (resp.summary||[]).forEach(function(row){
+    var month=String(row.mesiac||'');if(!/^\d{4}$/.test(month))return;
+    var m=parseInt(month.slice(2),10);if(m<1||m>12)return;
+    if(!(parseFloat(row.terit_ms)>=0 || parseFloat(row.sk_ms)>=0))return;
+    var k=month.slice(0,2)+'0'+Math.ceil(m/3);
+    if(k<=requested && (!latest||k>latest))latest=k;
+  });
+  var previousHasData=Array.isArray(resp.okresy_prev) && resp.okresy_prev.some(function(row){
+    return [row.nas_m1,row.nas_m2,row.nas_m3].some(function(v){return parseFloat(v)>=0;}) ||
+      [row.tot_pat_m1,row.tot_pat_m2,row.tot_pat_m3].some(function(v){return parseFloat(v)>0;});
+  });
+  if(resp.kvartal_prev && resp.kvartal_prev<requested && previousHasData && (!latest||resp.kvartal_prev>latest))latest=resp.kvartal_prev;
+  return latest;
+}
 function pharmaRender(code) {
   var bodyEl = document.getElementById('pharma-ms-body');
   if (!bodyEl) return;
@@ -31503,25 +31532,18 @@ function pharmaRender(code) {
   var hasRealSummData = summArr.some(function(s) {
     if (months.indexOf(s.mesiac) < 0) return false; // len mesiace aktuálneho Q
     var tv = parseFloat(s.terit_ms); var sv = parseFloat(s.sk_ms);
-    return (!isNaN(tv) && tv > 0) || (!isNaN(sv) && sv > 0);
+    return (!isNaN(tv) && tv >= 0) || (!isNaN(sv) && sv >= 0);
   });
   // Okresy môžu existovať ako prázdne riadky (Q2 ešte nenahrané) — kontroluj reálne hodnoty
   var hasRealOkresyData = okresy.some(function(o) {
     var m1 = parseFloat(o.nas_m1), m2 = parseFloat(o.nas_m2), m3 = parseFloat(o.nas_m3);
-    return (!isNaN(m1) && m1 > 0) || (!isNaN(m2) && m2 > 0) || (!isNaN(m3) && m3 > 0);
+    return (!isNaN(m1) && m1 >= 0) || (!isNaN(m2) && m2 >= 0) || (!isNaN(m3) && m3 >= 0) ||
+      parseFloat(o.tot_pat_m1)>0 || parseFloat(o.tot_pat_m2)>0 || parseFloat(o.tot_pat_m3)>0;
   });
   if (!hasRealSummData && !hasRealOkresyData) {
-    var prevKvR = pharmaKvartalPrev(PHARMA_STATE.kvartal);
-    if (prevKvR !== PHARMA_STATE.kvartal) {
-      delete PHARMA_STATE.cache[cacheKey]; // vymaž prázdny cache záznam
-      PHARMA_STATE.kvartal = prevKvR;
-      var prevQNumR = parseInt(prevKvR.slice(2), 10);
-      var prevYearR = 2000 + parseInt(prevKvR.slice(0, 2), 10);
-      var titleElR = document.getElementById('pharma-ms-title');
-      if (titleElR) {
-        var partsR = titleElR.textContent.split(' · ');
-        if (partsR.length >= 2) { partsR[1] = 'Q' + prevQNumR + ' ' + prevYearR; titleElR.textContent = partsR.join(' · '); }
-      }
+    var prevKvR = pharmaAvailableKvartal(d,PHARMA_STATE.kvartal);
+    if (prevKvR && prevKvR !== PHARMA_STATE.kvartal) {
+      pharmaSetDisplayKvartal(prevKvR);
       loadPharmaData(code, PHARMA_STATE.oblast, prevKvR);
       return;
     }
@@ -31537,8 +31559,8 @@ function pharmaRender(code) {
       if (summArr[i].mesiac === m) {
         var tv = parseFloat(summArr[i].terit_ms);
         var sv = parseFloat(summArr[i].sk_ms);
-        if (!isNaN(tv) && tv > 0) { teritVals.push(tv); mTerit[idx] = tv; }
-        if (!isNaN(sv) && sv > 0) { skVals.push(sv); }
+        if (!isNaN(tv) && tv >= 0) { teritVals.push(tv); mTerit[idx] = tv; }
+        if (!isNaN(sv) && sv >= 0) { skVals.push(sv); }
         break;
       }
     }
@@ -31559,7 +31581,8 @@ function pharmaRender(code) {
   var isBoxProduct = code === 'JUN';
   var insightVolumeLabel = isBoxProduct ? 'Objem boxov' : ('Objem pacientov na ' + prodLabel);
 
-  var html = '';
+  var html = (!hasRealSummData && !hasRealOkresyData)
+    ? '<div class="pharma-ms-loading">Pre tento produkt a obdobie zatiaľ nie sú nahraté trhové údaje.</div>' : '';
 
   // ── Tmavá summary karta ──
   html += '<div class="pharma-ms-card">';

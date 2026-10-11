@@ -25,10 +25,17 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright'),root=path.
    if(!host){host=document.createElement('div');host.id=v.host.slice(1);document.getElementById(screen).appendChild(host);}
    host.innerHTML='<div class="dnes-card" data-cached-content>Údaje z pamäte</div>';
    window.testEntry={view:v,ctx:appLineCapture(),pending:0,error:false};
-   window.testSuccess=()=>{
+   window.testResource=()=>{
     const v=appReadView(),params=Object.fromEntries(Object.entries(v.params).map(([k,value])=>[k,Array.isArray(value)?value[0]:value]));
     const url=(appLineTag()==='gyn'?gynScriptUrl:scriptUrl)(new URLSearchParams({action:v.actions[0],...params}).toString());
-    const resource=appReadResource(url);resource.visible=true;resource.reuseVersion=APP_READ_REUSE_VERSION;appReadRemember(resource,Date.now(),false);appReadRefreshVisible();
+    const resource=appReadResource(url);resource.visible=true;resource.reuseVersion=APP_READ_REUSE_VERSION;return resource;
+   };
+   window.testSuccess=()=>{appReadRemember(testResource(),Date.now(),false);appReadRefreshVisible();};
+   // Match production tracking: failures belong to the requested resource and
+   // enter read metadata before the pending subscriber finishes.
+   window.testBegin=()=>{
+    const resource=testResource(),finish=appReadBegin(appReadView(),resource);
+    window.endRead=error=>{appReadRemember(resource,Date.now(),!!error);finish(error);};
    };
    appReadRefreshVisible();
   },{line,role,screen});
@@ -49,7 +56,7 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright'),root=path.
  assert.equal(await indicator.evaluate(e=>e.getBoundingClientRect().height<1),true,'Repeated paints keep successful status dismissed');
  await page.evaluate(()=>{document.querySelector('[data-read-check]').remove();appReadRefreshVisible();});
  assert.equal(await indicator.evaluate(e=>e.getBoundingClientRect().height<1),true,'Redraw must not flash the same successful check');
- await page.evaluate(()=>{window.endRead=appReadBegin(appReadView());});
+ await page.evaluate(()=>testBegin());
  assert.equal(await indicator.getAttribute('aria-hidden'),null,'New refresh restores accessibility');
  await page.waitForTimeout(320);assert.ok(await indicator.evaluate(e=>e.getBoundingClientRect().height)>40);
  assert.equal(await indicator.getAttribute('data-read-status'),'pending');
@@ -62,7 +69,7 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright'),root=path.
  await page.waitForTimeout(1800);assert.ok(await indicator.evaluate(e=>e.getBoundingClientRect().height)>100,'Expanded success stays readable for approximately two seconds');
  await page.waitForTimeout(900);assert.equal(await indicator.evaluate(e=>e.getBoundingClientRect().height<1),true,'All-green expanded details collapse as well');
  assert.equal(await indicator.locator('details').evaluate(e=>e.open),true,'Collapse preserves expanded state');
- await page.evaluate(()=>{window.endRead=appReadBegin(appReadView());});await page.waitForTimeout(320);
+ await page.evaluate(()=>testBegin());await page.waitForTimeout(320);
  assert.ok(await indicator.evaluate(e=>e.getBoundingClientRect().height)>100,'New refresh reveals expanded details');
  assert.equal(await indicator.getAttribute('data-read-status'),'pending');assert.equal(await indicator.locator('details').evaluate(e=>e.open),true);
  await page.evaluate(()=>endRead(true));await page.waitForTimeout(2600);
@@ -75,13 +82,13 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright'),root=path.
  for(const line of Object.keys(roles))for(const role of roles[line])for(const screen of ['sklady-overlay','nastenka-overlay','pharma-ms-overlay']){
   await setup(line,role,screen);await page.evaluate(()=>{document.querySelector('.app-read-details').open=true;testSuccess();});await page.waitForTimeout(360);
   assert.equal(await indicator.evaluate(e=>e.getBoundingClientRect().height<1),true,line+' '+role+' '+screen);
-  await page.evaluate(()=>{window.endRead=appReadBegin(appReadView());});await page.waitForTimeout(320);
+  await page.evaluate(()=>testBegin());await page.waitForTimeout(320);
   assert.ok(await indicator.evaluate(e=>e.getBoundingClientRect().height)>40,line+' '+role+' '+screen+': refresh reveals status');
   assert.equal(await indicator.getAttribute('data-read-status'),'pending');await page.evaluate(()=>endRead());cases++;
  }
  await page.emulateMedia({reducedMotion:'reduce'});await setup();await page.evaluate(()=>testSuccess());await page.waitForTimeout(80);
  assert.equal(await indicator.evaluate(e=>e.getBoundingClientRect().height<1),true,'Reduced-motion collapse');
- await page.setViewportSize({width:320,height:700});await page.evaluate(()=>{window.endRead=appReadBegin(appReadView());});
+ await page.setViewportSize({width:320,height:700});await page.evaluate(()=>testBegin());
  assert.equal(await indicator.evaluate(e=>e.scrollWidth<=e.clientWidth+1),true,'320px loading layout fits');
  await page.screenshot({path:path.join(root,'.tmp-read-collapse-loading.png')});await page.evaluate(()=>endRead());
  assert.deepEqual(errors,[]);await page.unrouteAll({behavior:'ignoreErrors'});await browser.close();

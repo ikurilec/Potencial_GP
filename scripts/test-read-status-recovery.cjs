@@ -10,7 +10,7 @@ for(const file of ['app.js','nahlad/app.js']){
  vm.createContext(c);vm.runInContext(s.slice(s.indexOf('var APP_DATA_READ_ACTIONS'),s.indexOf('// ── Overovanie dát otvorenej sekcie')),c);
  const view={key:'home',type:'home',actions:['getStockData','getPlnenieAll'],params:{rok:2026,Q:3}};
  c.APP_MANUAL_REFRESH_UNTIL=Date.now()+60000;c.APP_READ_CHECKS={};c.appReadView=()=>view;c.appReadPaint=()=>{};
- vm.runInContext(take(s,'appReadBegin')+take(s,'appTrackedRead')+take(s,'appReadTimeout'),c);
+ vm.runInContext(['appReadBegin','appTrackedRead','appReadTimeout'].map(name=>take(s,name)).join('\n'),c);
  const url='https://server/exec?action=getStockData';
  await c.appTrackedRead(url,{},()=>Promise.reject(Error('timeout')),'critical').catch(()=>{});
  assert.equal(c.APP_READ_CHECKS.home.error,true,'A genuine visible failure must be shown');
@@ -47,7 +47,7 @@ for(const file of ['app.js','nahlad/app.js']){
  const rep={...manager,DataStore:{set:()=>true},REP_PL_STATE:{q:3,year:2026,loading:false,_loadId:0,qCache:{}},
   _plRepLsKey:(u,y,q)=>u+y+q,document:{getElementById:()=>({classList:{contains:()=>false}})},repPlnenieUpdateNavBtn:()=>{},repPlnenieRender:()=>{},
   mgrFetchWithRetry:u=>new URLSearchParams(u).get('Q')==='3'?new Promise(r=>selectedDone=r):new Promise(()=>{})};
- vm.createContext(rep);vm.runInContext(take(s,'appReadBatch')+take(s,'repPlnenieLoad'),rep);rep.repPlnenieLoad();
+ vm.createContext(rep);vm.runInContext(['appReadBatch','repPlnenieLoad'].map(name=>take(s,name)).join('\n'),rep);rep.repPlnenieLoad();
  for(let i=0;i<25;i++)await Promise.resolve();
  assert.equal(rep.REP_PL_STATE._currentLoading,true);selectedDone({ok:true,plan:{},predaje:{}});
  for(let i=0;i<25;i++)await Promise.resolve();
