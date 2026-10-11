@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.23';
+var APP_VERSION = '2.89.24';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -447,7 +447,20 @@ function appReadRemember(resource,time,failed){
   if(resource.visible && !appRequestMatchesView(resource,appReadView()))return;
   appReadMetaLoad(resource.owner);
   var old=APP_READ_META[resource.key];
-  APP_READ_META[resource.key]={owner:resource.owner,key:resource.key,action:resource.action,params:resource.params,path:resource.path,ts:failed?(old?old.ts:0):time,failed:!!failed,failureVisible:resource.visible===true,attempt:time,visible:!!resource.visible||!!(old&&old.visible)};
+  var failureVisible=resource.visible===true || (!!failed && !!(old&&old.failed&&old.failureVisible));
+  if(failed && !failureVisible && typeof APP_READ_CHECKS!=='undefined')failureVisible=Object.keys(APP_READ_CHECKS).some(function(key){
+    var check=APP_READ_CHECKS[key];
+    return appLineContextActive(check.ctx) && check.resources && check.resources[resource.key]>0;
+  });
+  APP_READ_META[resource.key]={owner:resource.owner,key:resource.key,action:resource.action,params:resource.params,path:resource.path,ts:failed?(old?old.ts:0):time,failed:!!failed,failureVisible:failureVisible,attempt:time,visible:!!resource.visible||!!(old&&old.visible)};
+  // A silent successful refresh is also a recovery of the displayed resource.
+  // Do not keep the old foreground failure after the actual data have recovered.
+  if(!failed && typeof APP_READ_CHECKS!=='undefined')Object.keys(APP_READ_CHECKS).forEach(function(key){
+    var check=APP_READ_CHECKS[key];
+    if(!appLineContextActive(check.ctx) || !check.failures)return;
+    delete check.failures[resource.key];
+    check.error=Object.keys(check.failures).length>0;
+  });
   if(!APP_READ_SAVE_TIMERS[resource.owner])APP_READ_SAVE_TIMERS[resource.owner]=setTimeout(function(){appReadMetaPersist(resource.owner);},250);
   appReadSchedulePaint();
 }
@@ -639,6 +652,7 @@ function appReadBegin(view,resource){
   var entry=APP_READ_CHECKS[view.key];
   if(!entry || !appLineContextActive(entry.ctx)) entry=APP_READ_CHECKS[view.key]={view:view,ctx:appLineCapture(),pending:0,error:false,timer:null};
   var resourceKey=resource?resource.key:'manual';
+  entry.resources=entry.resources||{};entry.resources[resourceKey]=(entry.resources[resourceKey]||0)+1;
   entry.failures=entry.failures||{};delete entry.failures[resourceKey];
   entry.pending++;entry.error=Object.keys(entry.failures).length>0;
   clearTimeout(entry.timer);
@@ -650,6 +664,8 @@ function appReadBegin(view,resource){
   var ended=false;
   return function(error,obsolete){
     if(ended)return;ended=true;
+    entry.resources[resourceKey]=Math.max(0,(entry.resources[resourceKey]||1)-1);
+    if(!entry.resources[resourceKey])delete entry.resources[resourceKey];
     entry.pending=Math.max(0,entry.pending-1);
     if(!obsolete){if(error)entry.failures[resourceKey]=true;else delete entry.failures[resourceKey];}
     entry.error=Object.keys(entry.failures).length>0;
@@ -663,7 +679,7 @@ function appTrackedRead(url, opts, run, priority){
   if(resource){resource.generation=(APP_READ_GENERATIONS[resource.key]||0)+1;APP_READ_GENERATIONS[resource.key]=resource.generation;}
   // Login preloads and polling update Home silently after its explicit check.
   var matches=appRequestMatchesView(resource,view);
-  var visible=matches && !(view && view.type==='home' && priority==='background');
+  var visible=matches && action!=='getConfig' && !(view && view.type==='home' && (priority==='background'||priority==='boot'));
   if(resource)resource.visible=visible;
   var end=visible ? appReadBegin(view,resource) : null;
   if(matches){
@@ -694,7 +710,7 @@ function appQueuedFetchJson(url, opts, timeoutMs, priority){
 // Overenie jedného zobrazeného kvartálu. Nevyprázdňuje cache ostatných Q.
 function appCheckSalesQuarter(rep,period){
   var state=rep?REP_PL_STATE:PL_STATE;
-  if(!state || state.loading || !state.loaded || !state.data) return false;
+  if(!state || state._currentLoading || !state.loaded || !state.data) return false;
   var year=period?period.year:state.year,q=period?period.q:state.q,ctx=appLineCapture(),user=getSession()||{};
   var login=rep?user.username:null;
   var key=rep?_plRepLsKey(login,year,q):_plLsKey(year,q);
@@ -727,14 +743,14 @@ function appCheckHome(){
   plnenieRefreshPlansAndRerender(true);
   if(!NST.loading)nstFetch(null,'critical',true);
   stockPreload(true);
-  try{gynCalSync();}catch(e){}
+  try{gynCalSync('critical');}catch(e){}
   if(session.line==='gyn'){
     // Rebríček zdieľa fullLine dáta aj s domovskou kartou.
     delete GYN_LB.dataReady[gynLbLastCompletedQ()];
     gynLbEnsureData(gynLbLastCompletedQ(),gynPlnenieCacheKey(plnenieCalendarPeriod().year,gynLbLastCompletedQ())+'|lb-fullLine');
     return;
   }
-  appCheckSalesQuarter(appRole()==='gp');
+  appCheckSalesQuarter(appRole()==='gp'||appRole()==='reagila');
   lbPreloadPlnenie(true);
 }
 
@@ -1362,6 +1378,10 @@ function appQueuePriority(job){
   if(job.resource && job.resource.ctx && !appLineContextActive(job.resource.ctx))return 0;
   if(job.prio==='boot')return 3;
   var view=appReadView();
+  if(job.prio==='background' && job.resource && job.resource.action==='getConfig')return 0;
+  // Home shows several cached sources. Matching a card must not promote every
+  // login preload/poll to foreground and occupy both slots ahead of its check.
+  if(view && view.type==='home' && job.prio==='background')return 0;
   if(appRequestMatchesView(job.resource||job.url,view))return 2;
   // A read for a previous screen must not outrank the current screen.
   if(job.resource && view)return 0;
@@ -1439,7 +1459,7 @@ function appReadTimeout(url, timeoutMs){
   var budget=timeoutMs||APP_FETCH_TIMEOUT_MS;
   try{
     var action=new URL(url,location.href).searchParams.get('action');
-    if(['bootstrap','getPlnenieAll','getPharmaData','getPharmaGraf','getPharmaGrafData','getPharmaOkresGraf'].indexOf(action)>=0)budget=Math.max(budget,30000);
+    if(['bootstrap','getInitData','getRepList','getReps','getHistory','getAllHistory','getPlnenieAll','getPharmaData','getPharmaGraf','getPharmaGrafData','getPharmaOkresGraf','getStockData','getCalEvents','getNastenka'].indexOf(action)>=0)budget=Math.max(budget,30000);
   }catch(e){}
   return budget;
 }
@@ -5214,7 +5234,7 @@ function dnesPlnenieNacitava() {
       return !!(GYN_APP.plLoading && GYN_APP.plLoading[q]);
     }
     if (r === 'mgr') return PL_STATE._currentLoading === true;
-    return !!REP_PL_STATE.loading;
+    return !!REP_PL_STATE._currentLoading;
   } catch (e) { return false; }
 }
 function dnesPlnenieFailed() {
@@ -10100,7 +10120,7 @@ function mgrLineResetSharedData(target){
     }
     if(typeof REP_PL_STATE !== 'undefined'){
       REP_PL_STATE._loadId=(REP_PL_STATE._loadId||0)+1;
-      REP_PL_STATE.loading=false; REP_PL_STATE.loaded=false; REP_PL_STATE.data=null;
+      REP_PL_STATE.loading=false; REP_PL_STATE._currentLoading=false; REP_PL_STATE.loaded=false; REP_PL_STATE.data=null;
       REP_PL_STATE.aggregates=null; REP_PL_STATE.qCache={};
     }
     if(typeof LB_STATE !== 'undefined'){
@@ -17116,7 +17136,7 @@ function gynCalRemoteOn(){ return !(typeof IS_DEV!=='undefined' && IS_DEV) && ty
 function gynCalSig(arr){
   return JSON.stringify((arr||[]).slice().sort(function(a,b){ return (a.id<b.id)?-1:(a.id>b.id)?1:0; }));
 }
-function gynCalSync(){
+function gynCalSync(priority){
   if(!gynCalRemoteOn() || GYN_CAL._syncing) return;
   var syncLine=gynCalLine();
   var syncCtx=appLineCapture();
@@ -17132,7 +17152,7 @@ function gynCalSync(){
       if(elErr) gynKalShow(elErr, getSession());
     }
   }
-  appQueuedFetchJson(gynCalScriptUrl('action=getCalEvents&_t='+Date.now()), undefined, APP_FETCH_TIMEOUT_PRELOAD_MS, 'background')
+  appQueuedFetchJson(gynCalScriptUrl('action=getCalEvents&_t='+Date.now()), undefined, APP_FETCH_TIMEOUT_PRELOAD_MS, priority||'background')
     .then(function(d){
       if(syncLine!==gynCalLine() || !appLineContextActive(syncCtx)) return;
       if(d && d.ok===true && Array.isArray(d.events)){
@@ -24332,11 +24352,11 @@ var PLNENIE_DATA_TS = {};   // notifLineTag() → ISO ts z Google Sheet configu 
 // Autoritatívny zdroj = Google Sheet config (notif_predaje), NIE prefetch/localStorage cache
 // (tá je z času načítania stránky — keď admin odošle notifikáciu neskôr, je stará). Načíta sa
 // čerstvo z configu (per línia), uloží do PLNENIE_DATA_TS + localStorage a vráti či sa zmenil.
-function plnenieDataTsFetch(cb) {
+function plnenieDataTsFetch(cb, priority) {
   if (typeof IS_DEV !== 'undefined' && IS_DEV) { if (cb) cb(false); return; }
   if (typeof notifUrl !== 'function') { if (cb) cb(false); return; }
   var tag = (typeof notifLineTag === 'function') ? notifLineTag() : '';
-  appQueuedFetchJson(notifUrl('action=getConfig&key=notif_predaje'), undefined, undefined, 'boot')
+  appQueuedFetchJson(notifUrl('action=getConfig&key=notif_predaje'), undefined, undefined, priority||'boot')
     .then(function(d){
       var ts = (d && d.ok && d.value) ? String(d.value) : '';
       var prev = PLNENIE_DATA_TS[tag] || '';
@@ -24443,7 +24463,7 @@ function plnenieMaxQ(year){var p=plnenieCalendarPeriod();return year<p.year?4:(y
 function plnenieSetDefaultState(state,period){
   var yearChanged=state.year!==period.year,changed=yearChanged||state.q!==period.q;
   if(yearChanged){
-    state.qCache={};state.plCache={};state.loaded=false;state.loading=false;
+    state.qCache={};state.plCache={};state.loaded=false;state.loading=false;state._currentLoading=false;state._currentLoadFailed=false;
     state._loadId=(state._loadId||0)+1;
     if(typeof window!=='undefined'){window.PL_DOM_CACHE={};window.REP_PL_DOM_CACHE={};}
     if(state._loadWatchdog){clearTimeout(state._loadWatchdog);state._loadWatchdog=null;}
@@ -25770,49 +25790,19 @@ function plnenieLoadAllQuarters() {
       });
   }
 
-  // Skôr než sa čokoľvek fetchne, over si lacným timestampom (notif_predaje), či
-  // PL_STATE.q ešte sedí s aktuálnym dátovým kvartálom. plnenieApplyDefaultPeriod
-  // (volaná skôr pri vstupe do manažéra) mohla PL_STATE.q nastaviť podľa STARÉHO
-  // lokálneho ts (napr. cez noc pribudli nové predaje a appka sa medzitým
-  // nespustila) a jej vlastná oprava o 50 ms (plnenieRefreshDataTsAndRerender) beží
-  // AŽ PO tomto volaní — inak by sa tu vždy stihol zafetchovať starý (nesprávny)
-  // kvartál skôr, než ju niekto stihol opraviť. Overenie tu je autoritatívne a
-  // nezávislé od toho, kto "vyhrá" 50ms oneskorenú opravu inde.
-  //
-  // Predaje sa navyše aktualizujú len niekoľkokrát mesačne (pharma raz mesačne) —
-  // keď je Q v poriadku a máme lokálne všetky štyri kvartály, ťažký getPlnenieAll
-  // pre všetky Q je zbytočný a vôbec sa nevolá.
-  if (typeof plnenieDataTsFetch === 'function') {
-    plnenieDataTsFetch(function(){
-      if (!active()) return;
-      var dp = (typeof plnenieDefaultPeriod === 'function') ? plnenieDefaultPeriod() : null;
-      var qOk = PL_STATE._planDefaultAuto===false || !dp || (dp.q === PL_STATE.q && dp.year === PL_STATE.year);
-      if (!qOk) {
-        PL_STATE.year = dp.year;
-        currentQ = dp.q;   // aj closure premenná nižšie (priorita/kaskáda vo fetchQuarter)
-        if (PL_STATE.qCache[dp.q] && typeof plnenieSwitchQ === 'function') {
-          // Správny kvartál už máme v cache — zobraz ho hneď, fetch nižšie len potichu overí.
-          try { plnenieSwitchQ(dp.q); PL_STATE._planDefaultAuto=true; } catch(e){}
-        } else {
-          PL_STATE.q = dp.q;
-          plnenieUpdateQTabs();
-          plnenieRenderLoading();
-        }
-      }
-      var haveAllQ = qs.every(function(q){ return !!PL_STATE.qCache[q]; });
-      if (qOk && haveAllQ && PL_STATE.loaded) {
-        // Kvartál sedí, nič nechýba, nič sa nezmenilo — žiadny fetch netreba.
-        clearTimeout(PL_STATE._loadWatchdog);
-        PL_STATE._loadWatchdog = null;
-        PL_STATE.loading = false;
-        PL_STATE._currentLoading = false;
-        return;
-      }
-      fetchQuarter(currentQ);
-    });
-  } else {
-    fetchQuarter(currentQ);
-  }
+  // Plans establish the selected period. The optional report-date lookup must
+  // not block its data behind another cold Apps Script execution.
+  var haveAllQ=qs.every(function(q){return !!PL_STATE.qCache[q];});
+  var reusedAll=haveAllQ && PL_STATE.loaded;
+  if(reusedAll){
+    clearTimeout(PL_STATE._loadWatchdog);PL_STATE._loadWatchdog=null;
+    PL_STATE.loading=false;PL_STATE._currentLoading=false;
+  }else fetchQuarter(currentQ);
+  if(typeof plnenieDataTsFetch==='function')plnenieDataTsFetch(function(changed){
+    if(!active())return;
+    if(reusedAll && changed)appCheckSalesQuarter(false,{q:currentQ,year:year});
+    try{dnesRefreshIfOpen();}catch(e){}
+  },'background');
 }
 
 // Agregácia — Slovensko / West / East / per-produkt / per-rep
@@ -28719,6 +28709,7 @@ var REP_PL_STATE = {
   q: 1,
   year: (new Date()).getFullYear(),
   loading: false,
+  _currentLoading: false,
   _loadId: 0,
   _currentLoadFailed: false,
   loaded: false,
@@ -28759,6 +28750,7 @@ function closeRepPlnenie() {
 function repPlnenieLoad() {
   if (REP_PL_STATE.loading) return;
   REP_PL_STATE.loading = true;
+  REP_PL_STATE._currentLoading = true;
   REP_PL_STATE._currentLoadFailed = false;
   var loadId = ++REP_PL_STATE._loadId;
   var loadCtx = appLineCapture();
@@ -28819,6 +28811,11 @@ function repPlnenieLoad() {
       .catch(function() { if(active()) REP_PL_STATE.qCache[q] = REP_PL_STATE.qCache[q] || null; })
       .then(function() {
         if(!active()) return;
+        if(q===REP_PL_STATE.q){
+          REP_PL_STATE._currentLoading=false;
+          REP_PL_STATE._currentLoadFailed=!REP_PL_STATE.loaded;
+          try{dnesRefreshIfOpen();}catch(e){}
+        }
         pending--;
         if (pending === 0) {
           REP_PL_STATE.loading = false;
@@ -31548,7 +31545,7 @@ function appPtrRefreshCurrent(done){
     if(MGR_STATE.currentRep&&document.getElementById('mgr-detail').classList.contains('show'))mgrRenderVisits();else mgrRenderList();
    }).catch(function(){});break;
   case 'mgr-reporty':case 'gyn-reporty':var period=rptViewPeriod();rp2EnsureQuarter_(period.q,true);rp2LoadCennik();gynCalSync();if(rp2Line()!=='gyn')rptViewRefreshPharma();break;
-  case 'product':if(session.line==='gyn')gynSales();else appCheckSalesQuarter(appRole()==='gp');break;
+  case 'product':if(session.line==='gyn')gynSales();else appCheckSalesQuarter(appRole()==='gp'||appRole()==='reagila');break;
   case 'board':nstFetch(function(){if(same())nstRender();},'critical',true);break;
   default:return false;
  }
