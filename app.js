@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.22';
+var APP_VERSION = '2.89.23';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -347,15 +347,20 @@ var DataStore = (function () {
   // prebiehajúceho fetchu pridá ako ďalší odberateľ — fetch beží len raz
   // (dedup zostáva), ale výsledok/chybu dostanú VŠETCI čakajúci volajúci.
   function fetchAndStore(key, opts) {
-    if (inFlight[key]) { inFlight[key].push(opts); return; }
-    inFlight[key] = [opts];
+    var ctx=null,owner='';
+    try { if(typeof appLineCapture==='function')ctx=appLineCapture(); if(typeof appReadOwner==='function')owner=appReadOwner(); } catch(e){}
+    var flightKey = key + '|' + owner + '|' + JSON.stringify(ctx);
+    function active(){ return (!ctx || appLineContextActive(ctx)) && (!owner || appReadOwner() === owner); }
+    if (inFlight[flightKey]) { inFlight[flightKey].push(opts); return; }
+    inFlight[flightKey] = [opts];
     var wasEmpty = !readEntry(key);
     Promise.resolve()
       .then(function () { return opts.fetcher(); })
       .then(function (data) {
-        var subscribers = inFlight[key] || [opts];
-        if (data === undefined || data === null) throw new Error('Empty cache response');
-        delete inFlight[key];
+        var subscribers = inFlight[flightKey] || [opts];
+        if (data === undefined || data === null || data.ok === false || data.error) throw new Error('Invalid cache response');
+        delete inFlight[flightKey];
+        if (!active()) return;
         var changed = set(key, data);
         subscribers.forEach(function(o){
           try { if(changed && o.onFresh) o.onFresh(data, { wasEmpty: wasEmpty }); } catch(e){}
@@ -363,8 +368,9 @@ var DataStore = (function () {
         });
       })
       .catch(function (err) {
-        var subscribers = inFlight[key] || [opts];
-        delete inFlight[key];
+        var subscribers = inFlight[flightKey] || [opts];
+        delete inFlight[flightKey];
+        if (!active()) return;
         subscribers.forEach(function(o){
           try { if(o.onError) o.onError(err); } catch(e){}
           try { if(o.onSettled) o.onSettled({ error:err }); } catch(e){}
@@ -1307,8 +1313,8 @@ var APP_FETCH_TIMEOUT_PRELOAD_MS = 12000;
 var APP_FETCH_TIMEOUT_UPLOAD_MS = 45000;
 
 // fetch + JSON s tvrdým timeoutom (AbortController). Reject pri timeoute, sieti aj nevalidnom JSON.
-function appFetchJsonRaw(url, opts, timeoutMs) {
-  opts = opts || { cache: 'no-store' };
+function appFetchJsonRaw(url, opts, timeoutMs, job) {
+  opts = Object.assign({}, opts || { cache: 'no-store' });
   timeoutMs = timeoutMs || APP_FETCH_TIMEOUT_MS;
   var _t0 = (typeof perfNow === 'function') ? perfNow() : 0;
   return new Promise(function(resolve, reject){
@@ -1322,6 +1328,11 @@ function appFetchJsonRaw(url, opts, timeoutMs) {
       try { perfRecordCall(url, perfNow() - _t0, false, 'timeout'); } catch(e){}
       reject(new Error('timeout'));
     }, timeoutMs);
+    if(job && job.resource)job.cancel=function(){
+      if(settled)return;settled=true;clearTimeout(timer);
+      if(ctrl){try{ctrl.abort();}catch(e){}}
+      reject(new Error('Obsolete read context'));
+    };
     fetch(url, opts)
       .then(function(r){ return r.json(); })
       .then(function(j){
@@ -1364,7 +1375,7 @@ function appQueueStart(job,background){
   APP_REQUEST_QUEUE.running.push(job);
   if(background)APP_REQUEST_QUEUE.backgroundActive++;
   var request;
-  try { request=appFetchJsonRaw(job.url,job.opts,job.timeoutMs); } catch(error) { request=Promise.reject(error); }
+  try { request=appFetchJsonRaw(job.url,job.opts,job.timeoutMs,job); } catch(error) { request=Promise.reject(error); }
   Promise.resolve(request).then(job.resolve,job.reject).then(release,release);
   function release(){
     APP_READ_PERFORMANCE.push({action:job.resource?job.resource.action:'read',line:job.resource&&job.resource.ctx?job.resource.ctx.line:'',waitMs:job.startedAt-job.enqueuedAt,networkMs:Date.now()-job.startedAt});
@@ -1373,6 +1384,9 @@ function appQueueStart(job,background){
   }
 }
 function appRequestQueueDrain(){
+  APP_REQUEST_QUEUE.running.slice().forEach(function(job){
+    if(job.resource && job.resource.ctx && !appLineContextActive(job.resource.ctx) && job.cancel)job.cancel();
+  });
   APP_REQUEST_QUEUE.items=APP_REQUEST_QUEUE.items.filter(function(job){
     if(job.resource && job.resource.ctx && !appLineContextActive(job.resource.ctx)){if(job.waitTimer)clearTimeout(job.waitTimer);job.reject(new Error("Obsolete read context"));return false;}
     return true;
@@ -1421,6 +1435,14 @@ function appQueuedFetchJsonRaw(url, opts, timeoutMs, priority, rec){
 // Zdieľame iba rozbehnutý prenos, nie trvalú odpoveď. Fresh, oprávnenia,
 // všetky vecné parametre aj kontext účtu zostávajú súčasťou identity.
 var _cfgInflight = Object.create(null);
+function appReadTimeout(url, timeoutMs){
+  var budget=timeoutMs||APP_FETCH_TIMEOUT_MS;
+  try{
+    var action=new URL(url,location.href).searchParams.get('action');
+    if(['bootstrap','getPlnenieAll','getPharmaData','getPharmaGraf','getPharmaGrafData','getPharmaOkresGraf'].indexOf(action)>=0)budget=Math.max(budget,30000);
+  }catch(e){}
+  return budget;
+}
 var APP_PRIO_RANK = { boot: 3, critical: 2 };
 function appReadInflightKey(url,opts,timeoutMs){
   try {
@@ -1437,7 +1459,7 @@ function appReadInflightKey(url,opts,timeoutMs){
     });
     pairs.sort();
     if(ambiguous)return '';
-    return JSON.stringify([appReadOwner(),appLineCapture(),u.origin+u.pathname,pairs,timeoutMs||APP_FETCH_TIMEOUT_MS,opts.cache||'no-store']);
+    return JSON.stringify([appReadOwner(),appLineCapture(),u.origin+u.pathname,pairs,appReadTimeout(url,timeoutMs),opts.cache||'no-store']);
   }catch(e){return '';}
 }
 function appReadClone(data){
@@ -1445,6 +1467,7 @@ function appReadClone(data){
   return typeof structuredClone==='function'?structuredClone(data):JSON.parse(JSON.stringify(data));
 }
 function appQueuedFetchJsonUntracked(url, opts, timeoutMs, priority){
+  timeoutMs=appReadTimeout(url,timeoutMs);
   var key=appReadInflightKey(url,opts,timeoutMs);
   if(!key)return appQueuedFetchJsonRaw(url,opts,timeoutMs,priority);
   var ex=_cfgInflight[key];
@@ -1496,6 +1519,22 @@ function appFetchWithRetryRaw(url, opts){
         }, delay);
       });
     });
+}
+
+// Bounded producer for preloads/batches. Avoids queue expiry before a read starts.
+function appReadBatch(tasks, worker, options){
+  options=options||{};
+  var nextIndex=0,results=new Array(tasks.length),count=Math.min(tasks.length,options.concurrency||1);
+  function next(){
+    if(nextIndex>=tasks.length || (options.active && !options.active()))return Promise.resolve();
+    var index=nextIndex++,task=tasks[index];
+    return Promise.resolve().then(function(){
+      if(options.active && !options.active())return null;
+      return worker(task,index);
+    }).then(function(value){results[index]={value:value};},function(error){results[index]={error:error};}).then(next);
+  }
+  var workers=[];for(var i=0;i<count;i++)workers.push(next());
+  return Promise.all(workers).then(function(){return results;});
 }
 
 // Registry retry callbackov — tlačidlo v karte volá appRetry('<id>').
@@ -5781,7 +5820,7 @@ function dnesToggleHomeRanking(ev) {
 // Každé prepnutie línie vytvorí novú dátovú reláciu. Odpovede zo staršej
 // relácie sa môžu zo servera vrátiť neskôr, ale už nesmú meniť živý stav UI.
 var APP_LINE_EPOCH = 0;
-function appLineBumpEpoch(){ APP_LINE_EPOCH += 1; return APP_LINE_EPOCH; }
+function appLineBumpEpoch(){ APP_LINE_EPOCH += 1; if(typeof appRequestQueueDrain==='function')appRequestQueueDrain(); return APP_LINE_EPOCH; }
 function appLineCapture(){ return { line: appLineTag(), epoch: APP_LINE_EPOCH }; }
 function appLineContextActive(ctx){
   return !!ctx && ctx.epoch === APP_LINE_EPOCH && ctx.line === appLineTag();
@@ -10082,6 +10121,11 @@ function mgrLineResetSharedData(target){
       GYN_APP._plReqIds={}; GYN_APP.plLoading={}; GYN_APP._repListLoading=false;
       GYN_APP.detailLogin=null;
     }
+    if(typeof PHARMA_STATE !== 'undefined'){ PHARMA_STATE.cache={}; PHARMA_STATE.loading={}; PHARMA_STATE.requests={}; PHARMA_STATE.revalidated={}; }
+    if(typeof PHARMA_GRAF_STATE !== 'undefined'){ PHARMA_GRAF_STATE.cache={}; PHARMA_GRAF_STATE.loading={}; PHARMA_GRAF_STATE.checkedOnOpen={}; PHARMA_GRAF_WAITERS={}; }
+    if(typeof PHARMA_OKRES_STATE !== 'undefined'){ PHARMA_OKRES_STATE.cache={}; PHARMA_OKRES_STATE.loading={}; }
+    if(typeof GYN_PHARMA_STATE !== 'undefined'){ GYN_PHARMA_STATE.cache={}; GYN_PHARMA_STATE.loading={}; }
+    if(typeof LK_STATE !== 'undefined'){ LK_STATE.cache={}; LK_STATE.allLoaded=false; LK_STATE.allLoading=false; LK_STATE.allCallbacks=[]; LK_STATE.preloadAllStarted=false; _lkInFlight={}; }
     if(typeof NST !== 'undefined'){
       NST._reqId=(NST._reqId||0)+1;
       clearTimeout(NST._loadT);
@@ -12015,7 +12059,7 @@ function gynPlnenieCacheKey(year, q) {
   return 'plnenie|' + gynCacheUserScope() + '|' + year + '|Q' + q;
 }
 function gynPharmaCacheKey(produkt, oblast, kvartal) {
-  return 'pharma|' + String(produkt || '').toLowerCase() + '|' + String(oblast || '').toUpperCase() + '|' + String(kvartal || '');
+  return 'pharma|' + gynCacheUserScope() + '|' + String(produkt || '').toLowerCase() + '|' + String(oblast || '').toUpperCase() + '|' + String(kvartal || '');
 }
 var GYN_HIDE_PRODUCTS = { 'lenzetto': 1 };
 var GYN_VIRTUAL_PRODUCTS = [
@@ -12584,11 +12628,11 @@ function gynEnsureQuarterData(qq, onReady, force){
     fetcher: function(){
       GYN_APP.plLoading[qq] = true;
       return appQueuedFetchJson(gynScriptUrl('action=getPlnenieAll&rok=' + year + '&Q=' + qq), { cache:'no-store' }, undefined, 'critical')
-        .then(function(d){ if(active())delete GYN_APP.plLoading[qq]; return d; },
+        .then(function(d){ if(active())delete GYN_APP.plLoading[qq]; if(!d || !d.ok || !d.plan || !d.predaje)throw new Error('Invalid fulfillment response'); return d; },
               function(err){ if(active())delete GYN_APP.plLoading[qq]; throw err; });
     },
     maxAgeMs: DS_CACHE_MAX_AGE_MS,
-    onFresh: function(d){ if(populate(d)&&onReady)onReady(); }
+    onSettled: function(meta){ if(meta.data && populate(meta.data) && onReady)onReady(); }
   });
   if(r.data && populate(r.data) && onReady)setTimeout(function(){if(active())onReady();},0);
 }
@@ -12906,9 +12950,10 @@ function gynProductDistrictSignals(resp, kvartal){
 // Cielené dotiahnutie pharma dát pre produkty jedného repa (aktuálny + predošlý Q), s prekreslením.
 function gynEnsureRepPharma(region, products, onReady){
   if(!region || !products || !products.length) return;
-  var year = GYN_APP.year, q = GYN_APP.q;
+  var year=GYN_APP.year,q=GYN_APP.q,ctx=appLineCapture(),owner=appReadOwner();
+  function active(){return appLineContextActive(ctx)&&appReadOwner()===owner&&GYN_APP.year===year;}
   var kvs = [gynPharmaKvartal(year, q)];
-  if(q > 1) kvs.push(gynPharmaKvartal(year, q - 1));
+  kvs.push(gynPharmaKvartalPrev(kvs[0]));
   var tasks = [];
   products.forEach(function(p){
     if(p.isVirtual) return;
@@ -12929,14 +12974,13 @@ function gynEnsureRepPharma(region, products, onReady){
     });
   });
   if(!tasks.length) return;  // všetko už máme (cache/localStorage) — žiadny re-render
-  var remaining = tasks.length, any = false;
-  tasks.forEach(function(t){
+  return appReadBatch(tasks,function(t){
+    if(GYN_PHARMA_STATE.cache[t.key] || GYN_PHARMA_STATE.loading[t.key])return;
     GYN_PHARMA_STATE.loading[t.key] = true;
-    appQueuedFetchJson(gynScriptUrl('action=getPharmaData&oblast=' + encodeURIComponent(t.oblast) + '&produkt=' + encodeURIComponent(t.produkt) + '&kvartal=' + encodeURIComponent(t.kvartal)), { cache:'no-store' }, undefined, 'background')
-      .then(function(resp){ delete GYN_PHARMA_STATE.loading[t.key]; if(resp && resp.ok){ GYN_PHARMA_STATE.cache[t.key] = resp; DataStore.set(GYN_CACHE_PREFIX + gynPharmaCacheKey(t.produkt, t.oblast, t.kvartal), resp); any = true; } })
-      .catch(function(){ delete GYN_PHARMA_STATE.loading[t.key]; })
-      .then(function(){ remaining--; if(remaining === 0 && any && onReady) onReady(); });
-  });
+    return appQueuedFetchJson(gynScriptUrl('action=getPharmaData&oblast=' + encodeURIComponent(t.oblast) + '&produkt=' + encodeURIComponent(t.produkt) + '&kvartal=' + encodeURIComponent(t.kvartal)+'&extra=1'), { cache:'no-store' }, 30000, 'background')
+      .then(function(resp){ if(!active())return;delete GYN_PHARMA_STATE.loading[t.key]; if(resp && resp.ok){ GYN_PHARMA_STATE.cache[t.key] = resp; DataStore.set(GYN_CACHE_PREFIX + gynPharmaCacheKey(t.produkt, t.oblast, t.kvartal), resp); if(onReady)onReady(); } })
+      .catch(function(){ if(active())delete GYN_PHARMA_STATE.loading[t.key]; });
+  },{concurrency:1,active:active});
 }
 
 function gynLoginSuccess(username, data) {
@@ -13186,7 +13230,7 @@ function gynLoadRepList(user, _attempt) {
   var loadCtx = appLineCapture();
   function active(){ return loadId === GYN_APP._repListLoadId && appLineContextActive(loadCtx); }
   GYN_APP._repListLoading = true;
-  appQueuedFetchJson(gynScriptUrl('action=getRepList'), undefined, APP_FETCH_TIMEOUT_PRELOAD_MS, 'critical')
+  appQueuedFetchJson(gynScriptUrl('action=getRepList'), undefined, 30000, 'critical')
     .then(function(data){
       if(!active()) return;
       GYN_APP._repListLoading = false;
@@ -13228,7 +13272,7 @@ function gynBootstrap(user) {
   try { gynMsHydrate(localStorage.getItem(gynMsLsKey())); } catch(e){}
   // Okamžite ukáž cache (ak je) — bez vlastného fetchu (plLoading guard). Bootstrap ju obnoví.
   try { gynRenderContent(user); } catch(e){}
-  appQueuedFetchJson(gynScriptUrl('action=bootstrap&rok=' + rok + '&Q=' + q), undefined, APP_FETCH_TIMEOUT_PRELOAD_MS, 'critical')
+  appQueuedFetchJson(gynScriptUrl('action=bootstrap&rok=' + rok + '&Q=' + q), undefined, 30000, 'critical')
     .then(function(d){
       if(!active()) return;
       if(!d || !d.ok) throw new Error('bootstrap fail');
@@ -13525,6 +13569,7 @@ function gynQTabsHtml() {
 function gynPreloadAllQuarters() {
   var year = GYN_APP.year;
   var preloadCtx = appLineCapture();
+  var tasks=[];
   var current=GYN_APP.q||Math.ceil((new Date().getMonth()+1)/3);
   [current].concat([1,2,3,4].filter(function(q){return q!==current;})).forEach(function(q){
     var cacheKey = gynPlnenieCacheKey(year, q);
@@ -13537,16 +13582,24 @@ function gynPreloadAllQuarters() {
     }
     var calendar=new Date();
     if(year>calendar.getFullYear() || (year===calendar.getFullYear() && q>Math.ceil((calendar.getMonth()+1)/3)))return;
-    if(GYN_APP.plLoading[q]) return;     // už sa načítava (gynPlnenieShow)
+    if(GYN_APP.plLoading[q])return;
+    // Recently confirmed quarters do not need another automatic preload on login.
+    var entry=dsRead(GYN_CACHE_PREFIX+cacheKey);
+    if(entry && entry.data && entry.data.ok && entry.ts && Date.now()-entry.ts<5*60*1000)return;
+    tasks.push(q);
+  });
+  return appReadBatch(tasks,function(q){
+    if(GYN_APP.plLoading[q])return;
+    var cacheKey=gynPlnenieCacheKey(year,q);
     var reqId = ((GYN_APP._plReqIds[q] || 0) + 1);
     GYN_APP._plReqIds[q] = reqId;
     function active(){ return appLineContextActive(preloadCtx) && GYN_APP.year===year && GYN_APP._plReqIds[q] === reqId; }
     GYN_APP.plLoading[q] = true;
-    appQueuedFetchJson(gynScriptUrl('action=getPlnenieAll&rok='+year+'&Q='+q), undefined, APP_FETCH_TIMEOUT_PRELOAD_MS, 'background')
+    return appQueuedFetchJson(gynScriptUrl('action=getPlnenieAll&rok='+year+'&Q='+q), undefined, 30000, 'background')
       .then(function(data){
         if(!active()) return;
         delete GYN_APP.plLoading[q];
-        if(!data) return;
+        if(!data || !data.ok || !data.plan || !data.predaje)return;
         gynPreprocessData(data);
         // GYN_CACHE_PREFIX MUSÍ sedieť s gynCacheRead(cacheKey) vyššie — inak by
         // tento zápis skončil na inom localStorage kľúči než z akého sa číta.
@@ -13571,7 +13624,7 @@ function gynPreloadAllQuarters() {
         if(!active()) return;
         delete GYN_APP.plLoading[q];
       });
-  });
+  },{concurrency:1,active:function(){return appLineContextActive(preloadCtx)&&GYN_APP.year===year;}});
 }
 
 // Preload rebríčka na pozadí — plný roster (getRepList fullLine) + plnenie posledného
@@ -13624,10 +13677,11 @@ function gynPlnenieShow(el, user, _attempt) {
   var reqCtx = appLineCapture();
   function active(){ return appLineContextActive(reqCtx) && GYN_APP.year===year && GYN_APP._plReqIds[q] === reqId; }
   GYN_APP.plLoading[q] = true;
-  appFetchJson(gynScriptUrl('action=getPlnenieAll&rok='+GYN_APP.year+'&Q='+q), undefined, 12000)
+  appFetchJson(gynScriptUrl('action=getPlnenieAll&rok='+GYN_APP.year+'&Q='+q), undefined, 30000)
     .then(function(data){
       if(!active()) return;
       delete GYN_APP.plLoading[q];
+      if(!data || !data.ok || !data.plan || !data.predaje)throw new Error('Invalid fulfillment response');
       GYN_APP._currentLoadFailed = false;
       gynPreprocessData(data);
       // GYN_CACHE_PREFIX MUSÍ sedieť s gynCacheRead(cacheKey) vyššie.
@@ -13826,43 +13880,15 @@ function gynOpenProdSheet(prodLabel) {
   gynProdSheetRenderRepList(prodLabel, data);
   gynProdSheetUpdateSkMsHeader(prodLabel);   // SK MS — ak sú dáta už v cache (inak doplní polling)
 
-  // Triggernúť pharma fetche pre všetky regióny repov × aktuálny + prev kvartal
-  // (pre MS bunky v tejto tabuľke). Priorita 'background', nie 'critical' —
-  // toto vie byť aj 20 súbežných požiadaviek (10 oblastí × 2 kvartály), ktoré
-  // sa predtým unshiftovali PRED reálne dôležitý fetch, keď manažér z tejto
-  // tabuľky otvoril detail Trhového podielu jedného produktu — ten musel čakať
-  // za nimi v zdieľanej fronte. Otvorený detail teraz má vždy prednosť.
+  // One background producer per visible product sheet; reuse combined market responses.
   if(GYN_PHARMA_PRODUCTS[pkeyLow]) {
-    var kv = gynPharmaKvartal(q, year); // pozor: gynPharmaKvartal(year, q)
-    kv = gynPharmaKvartal(year, q);
-    var kvPrev = pharmaKvartalPrev(kv);
-    var neededOblasts = {};
-    (GYN_STATE.repList || []).forEach(function(rep){
-      var norm = gynPharmaNormalizeOblast(prodLabel, (rep.region || '').toUpperCase());
-      if(norm) neededOblasts[norm] = true;
-    });
-    [kv, kvPrev].forEach(function(kvartal){
-      Object.keys(neededOblasts).forEach(function(oblast){
-        var key = prodLabel + '|' + oblast + '|' + kvartal;
-        if(!GYN_PHARMA_STATE.cache[key] && !GYN_PHARMA_STATE.loading[key]) {
-          GYN_PHARMA_STATE.loading[key] = true;
-          appQueuedFetchJson(gynScriptUrl(
-            'action=getPharmaData' +
-            '&oblast='  + encodeURIComponent(oblast) +
-            '&produkt=' + encodeURIComponent(prodLabel) +
-            '&kvartal=' + encodeURIComponent(kvartal)
-          ), { cache:'no-store' }, undefined, 'background')
-            .then(function(resp){
-              delete GYN_PHARMA_STATE.loading[key];
-              if(resp && resp.ok) {
-                GYN_PHARMA_STATE.cache[key] = resp;
-                gynCacheWrite(gynPharmaCacheKey(prodLabel, oblast, kvartal), resp);
-              }
-            })
-            .catch(function(){ delete GYN_PHARMA_STATE.loading[key]; });
-        }
+    var sheetCtx=appLineCapture(),neededRegions={};
+    (GYN_STATE.repList||[]).forEach(function(rep){if(rep.region)neededRegions[rep.region.toUpperCase()]=true;});
+    appReadBatch(Object.keys(neededRegions),function(region){
+      return gynEnsureRepPharma(region,[{name:prodLabel}],function(){
+        if(appLineContextActive(sheetCtx) && PL_PROD_SHEET_STATE.open)gynProdSheetUpdateMsCells();
       });
-    });
+    },{concurrency:1,active:function(){return appLineContextActive(sheetCtx)&&PL_PROD_SHEET_STATE.open&&PL_PROD_SHEET_STATE.prodKey===prodLabel;}});
 
     // Polling — aktualizuje MS bunky keď fetche dobehnu
     if(typeof PL_PROD_SHEET_STATE !== 'undefined') {
@@ -14176,11 +14202,8 @@ function gynPharmaErrorHtml(produkt) {
     retryLabel: 'Skúsiť znova'
   });
 }
-// Watchdog — poistka pre prípad, že by gynPharmaLoad() zlyhala úplne ticho
-// (JS chyba a pod.) a nikdy nezavolala gynPharmaShowError() sama. Fetch v
-// gynPharmaLoad() má teraz VLASTNÝ automatický 2. pokus (16s + 0,8s pauza +
-// 16s ≈ 33s), takže watchdog musí byť dlhší než tento celý reťazec — inak by
-// vystrelil skôr a ukázal chybu, kým appka legitímne ešte skúša druhýkrát.
+// Includes queue waiting plus two cold-start attempts. A cached/partial overview
+// cancels this watchdog as soon as it is rendered; historical enrichment is silent.
 function gynPharmaStartWatchdog() {
   if(GYN_PHARMA_STATE._watchdog){ clearTimeout(GYN_PHARMA_STATE._watchdog); }
   GYN_PHARMA_STATE._watchdog = setTimeout(function(){
@@ -14189,7 +14212,7 @@ function gynPharmaStartWatchdog() {
     if(GYN_PHARMA_STATE.open && document.getElementById('gyn-ph-prog-ring')) {
       gynPharmaShowError();
     }
-  }, 75000);
+  }, 110000);
 }
 function gynPharmaShowError() {
   if(GYN_PHARMA_STATE._watchdog){ clearTimeout(GYN_PHARMA_STATE._watchdog); GYN_PHARMA_STATE._watchdog = null; }
@@ -14587,7 +14610,7 @@ function gynPharmaCacheHasPrevOkresy(cached, currentKvartal) {
   if(!needed.length) return true;
   return needed.every(function(q){
     var rows = gynPharmaCachedOkresyForKvartal(cached, q, currentKvartal);
-    return Array.isArray(rows) && rows.length > 0;
+    return Array.isArray(rows);
   });
 }
 
@@ -14669,9 +14692,10 @@ function gynPharmaLoad() {
   var cached = GYN_PHARMA_STATE.cache[key] || _ds.data || null;
   if(cached && !GYN_PHARMA_STATE.cache[key]) GYN_PHARMA_STATE.cache[key] = cached;
 
+  if(cached && cached.ok)gynPharmaRender(cached);
+  if(GYN_PHARMA_STATE.loading[key])return;
   // Cache hit je kompletný až vtedy, keď má okresy pre všetky kvartály zobrazené v 6-mesačnom trende.
   if (gynPharmaCacheHasPrevOkresy(cached, GYN_PHARMA_STATE.kvartal)) {
-    gynPharmaRender(cached);
     if (!GYN_PHARMA_STATE.loading[key]) gynPharmaFetchAndProcess_(key, persistentKey, true);
     return;
   }
@@ -14701,11 +14725,11 @@ function gynPharmaFetchAndProcess_(key, persistentKey, silent) {
         '&kvartal=' + encodeURIComponent(kvartal) +
         '&extra=1'
       ), {
-        retries: 2,  // Apps Script občas vráti prechodné 404 — ďalší pokus už býva z cache
+        retries: 1,  // Apps Script občas vráti prechodné 404 — ďalší pokus už býva z cache
         timeoutMs: 24000,  // studené čítanie hárkov na serveri trvá až ~17 s (meranie 2026-09-19)
         priority: 'critical',
         delayFn: function(){ return 800; },
-        active: function(){ return GYN_PHARMA_STATE.open && (GYN_PHARMA_STATE.produkt + '|' + GYN_PHARMA_STATE.oblast + '|' + GYN_PHARMA_STATE.kvartal) === key; }
+        active: visible
       });
 
   fetchCurrent.then(function(resp){
@@ -14715,12 +14739,15 @@ function gynPharmaFetchAndProcess_(key, persistentKey, silent) {
       if (!silent && visible()) gynPharmaShowError();
       return;
     }
+    if(visible())gynPharmaRender(resp);
     var neededKvartals = resp.metric === 'packs' ? [kvartal] : gynPharmaTrendKvartals(resp.summary);
-    var extra = Object.assign({}, resp.okresy_extra || {});
+    var previous=GYN_PHARMA_STATE.cache[key]||{};
+    var extra = Object.assign({}, previous.okresy_extra || {}, resp.okresy_extra || {});
+    if(resp.kvartal_prev && Array.isArray(resp.okresy_prev))extra[resp.kvartal_prev]=resp.okresy_prev;
     var fetches = neededKvartals.filter(function(q){
       if(q === kvartal) return false;
-      var existing = gynPharmaCachedOkresyForKvartal(resp, q, kvartal);
-      return !(Array.isArray(existing) && existing.length > 0);
+      var existing = extra[q] || gynPharmaCachedOkresyForKvartal(resp, q, kvartal);
+      return !Array.isArray(existing);
     }).map(function(q){
       return appQueuedFetchJson(gynScriptUrl(
         'action=getPharmaData' +
@@ -14736,11 +14763,9 @@ function gynPharmaFetchAndProcess_(key, persistentKey, silent) {
       if(!appLineContextActive(ctx))return;
       delete GYN_PHARMA_STATE.loading[key];
       results.forEach(function(item){
-        if(item.data && item.data.ok && Array.isArray(item.data.okresy) && item.data.okresy.length > 0) {
+        if(item.data && item.data.ok && Array.isArray(item.data.okresy)) {
           extra[item.kvartal] = item.data.okresy;
-        } else {
-          delete extra[item.kvartal];
-        }
+        } // Failure keeps the last successful historical response.
       });
       resp.okresy_extra = extra;
       var legacyPrev = gynPharmaKvartalPrev(kvartal);
@@ -14761,6 +14786,7 @@ function gynPharmaFetchAndProcess_(key, persistentKey, silent) {
       }
     });
   }).catch(function(){
+    if(!appLineContextActive(ctx))return;
     delete GYN_PHARMA_STATE.loading[key];
     if (!silent && visible()) gynPharmaShowError();
   });
@@ -16581,7 +16607,7 @@ function gynLbEnsureRepList(){
     try { gynOpenDnesWhenReady(); } catch(e){}
   }
   GYN_LB.repLoading = true;
-  appQueuedFetchJson(gynScriptUrl('action=getRepList&fullLine=1'), undefined, APP_FETCH_TIMEOUT_PRELOAD_MS, 'critical')
+  appQueuedFetchJson(gynScriptUrl('action=getRepList&fullLine=1'), undefined, 30000, 'critical')
     .then(function(d){
       GYN_LB.repLoading = false;
       gynLbRepListLoaded(d);
@@ -16637,7 +16663,7 @@ function gynLbEnsureData(q, key, _attempt){
   }
   delete GYN_LB.failed[q];
   GYN_LB.plLoading[q] = true;
-  appQueuedFetchJson(gynScriptUrl('action=getPlnenieAll&rok=' + plnenieCalendarPeriod().year + '&Q=' + q + '&fullLine=1'), undefined, APP_FETCH_TIMEOUT_PRELOAD_MS, 'critical')
+  appQueuedFetchJson(gynScriptUrl('action=getPlnenieAll&rok=' + plnenieCalendarPeriod().year + '&Q=' + q + '&fullLine=1'), undefined, 30000, 'critical')
     .then(function(d){
       delete GYN_LB.plLoading[q];
       // Apps Script pri chybe vracia HTTP 200 s {ok:false}. Táto odpoveď nie je
@@ -18689,19 +18715,14 @@ function allHistTrack(p) {
 
 function mgrFetchWithRetry(url, retries, priority){
   retries = retries === undefined ? 3 : retries;
-  // Všetky čítania manažérskej časti zdieľajú frontu. Aktuálny kvartál má
-  // critical prioritu; história a zvyšné Q sa spustia až za ním.
-  // Rovnaký mechanizmus ako loadInitData (appFetchWithRetry), ale s vlastným,
-  // rýchlejším odstupom medzi pokusmi — rieši iný problém (rýchle zotavenie
-  // pre už prihláseného používateľa, nie rozptýlenie náporu po výpadku).
-  // Pozor: plnenieLoadWatchdog (80s) počíta s presne týmto najhorším prípadom
-  // (4 pokusy × 16s timeout + 1,5/3/4,5s odstupy ≈ 73s) — pri zmene delayFn
-  // alebo retries tu treba prepočítať aj watchdog.
+  var ctx=appLineCapture(),owner=appReadOwner(),heavy=false;
+  try{heavy=new URL(url,location.href).searchParams.get('action')==='getPlnenieAll';}catch(e){}
   return appFetchWithRetry(url, {
-    retries: retries,
-    timeoutMs: APP_FETCH_TIMEOUT_MS,
+    retries: heavy ? Math.min(retries,1) : retries,
+    timeoutMs: heavy ? 30000 : APP_FETCH_TIMEOUT_MS,
     priority: priority || 'background',
-    delayFn: function(attempt){ return (attempt + 1) * 1500; } // 1,5s, 3s, 4,5s
+    active:function(){return appLineContextActive(ctx)&&appReadOwner()===owner;},
+    delayFn:function(attempt){return (attempt+1)*1500;}
   });
 }
 
@@ -23127,7 +23148,7 @@ function pharmaOnDataUpdated() {
       PHARMA_STATE.cache = {};
       PHARMA_STATE.revalidated = {};
       if (PHARMA_STATE.open && PHARMA_STATE.activeCode && typeof loadPharmaDataNetwork === 'function') {
-        loadPharmaDataNetwork(PHARMA_STATE.activeCode, PHARMA_STATE.oblast, PHARMA_STATE.kvartal);
+        loadPharmaDataNetwork(PHARMA_STATE.activeCode, PHARMA_STATE.oblast, PHARMA_STATE.kvartal, {withGraf:true});
       }
     }
     if (typeof PHARMA_GRAF_STATE !== 'undefined') PHARMA_GRAF_STATE.cache = {};
@@ -25684,13 +25705,8 @@ function plnenieLoadAllQuarters() {
   // v stave „Načítavam“. Po limite zneplatníme staré requesty a zobrazíme
   // chybovú kartu s opakovaním.
   //
-  // Limit MUSÍ byť dlhší, než najhorší prípad fetchQuarter nižšie (mgrFetchWithRetry
-  // so 4 pokusmi × 16 s + odstupy 1,5/3/4,5 s = cca 73 s) — inak strážny časovač
-  // predčasne označí request za zlyhaný a zvýši _loadId, takže aj neskorší ÚSPEŠNÝ
-  // fetch sa v active() nerozpozná a jeho výsledok sa zahodí (dáta dorazia, ale
-  // Domov ostane na chybovej karte). Presne to sa dialo pri prepnutí na líniu so
-  // studeným Apps Scriptom (napr. Reagila po dlhšom čase) — 35 s bolo menej než
-  // polovica reálneho retry rozpočtu.
+  // Covers the cold-start budget (2 × 30 s), one 30 s queue wait, and retry delay.
+  // Once the selected quarter is available, historical preloads do not block Home.
   function plnenieLoadWatchdog(){
     if (!active() || PL_STATE.loaded || !PL_STATE._currentLoading) return;
     PL_STATE._loadId += 1;
@@ -25701,11 +25717,11 @@ function plnenieLoadAllQuarters() {
     plnenieRenderAll();
     try { dnesRefreshIfOpen(); } catch(e) {}
   }
-  PL_STATE._loadWatchdog = setTimeout(plnenieLoadWatchdog, 80000);
+  PL_STATE._loadWatchdog = setTimeout(plnenieLoadWatchdog, 110000);
 
   function fetchQuarter(q) {
     var url = scriptUrl('action=getPlnenieAll&rok=' + year + '&Q=' + q);
-    mgrFetchWithRetry(url, 3, q === currentQ ? 'boot' : 'background')
+    return mgrFetchWithRetry(url, 3, q === currentQ ? 'boot' : 'background')
       .then(function(resp) {
         if(!active()) return;
         if (!resp || !resp.ok) throw new Error('No data for Q' + q);
@@ -25738,7 +25754,7 @@ function plnenieLoadAllQuarters() {
           if (!PL_STATE.loaded) PL_STATE._currentLoadFailed = true;
           try { dnesRefreshIfOpen(); } catch(e){}
           // Najprv dokonči aktuálny kvartál pre Domov; ostatné Q doplň potom.
-          qs.filter(function(x){ return x !== currentQ; }).forEach(fetchQuarter);
+          appReadBatch(qs.filter(function(x){return x!==currentQ;}),fetchQuarter,{concurrency:1,active:active});
         }
         pending--;
         if (pending === 0) {
@@ -27704,7 +27720,7 @@ function plnenieEnsureInsightPharmaLoaded(key, oblast, q, year) {
   var kvartal = pharmaKvartalCode(year, q);
   PHARMA_CODES[key].forEach(function(code) {
     var ck = code + '_' + oblast + '_' + kvartal;
-    if (!PHARMA_STATE.cache[ck] && !PHARMA_STATE.loading[ck]) loadPharmaData(code, oblast, kvartal);
+    if (!PHARMA_STATE.cache[ck] && !PHARMA_STATE.loading[ck]) loadPharmaDataNetwork(code, oblast, kvartal, {priority:'background',withGraf:true});
     if (!PHARMA_GRAF_STATE.cache[pharmaGrafCacheKey(code, oblast)] && !PHARMA_GRAF_STATE.loading[pharmaGrafCacheKey(code, oblast)]) {
       loadPharmaGrafData(code, oblast, function(){ plnenieProductInsightMaybeRefresh(code, oblast, kvartal); });
     }
@@ -27752,32 +27768,28 @@ function plnenieProductInsightStatusLabel(ctx) {
 
 function plneniePreloadProductInsights(oblast, q, year, planProducts, forceRefresh) {
   if (!oblast || !q || !year || !Array.isArray(planProducts) || !planProducts.length) return;
-  var kvartal = pharmaKvartalCode(year, q);
-  var keys = [];
+  var kvartal = pharmaKvartalCode(year, q), codes = [];
   planProducts.forEach(function(rawKey) {
-    var key = plnenieNormalizeKey(rawKey);
-    if (PHARMA_CODES[key] && keys.indexOf(key) < 0) keys.push(key);
+    (PHARMA_CODES[plnenieNormalizeKey(rawKey)] || []).forEach(function(code){ if(codes.indexOf(code)<0)codes.push(code); });
   });
-  if (!keys.length) return;
-  var insightCtx=appLineCapture(),insightOwner=appReadOwner();
-  var preloadKey = insightOwner + '_' + oblast + '_' + kvartal + '_' + keys.join('|') + '_' + (forceRefresh ? 'fresh' : 'cache');
-  var now = Date.now();
-  if (_PROD_INSIGHT_PRELOAD_TS[preloadKey] && now - _PROD_INSIGHT_PRELOAD_TS[preloadKey] < 5 * 60 * 1000) return;
-  _PROD_INSIGHT_PRELOAD_TS[preloadKey] = now;
-  keys.forEach(function(key, idx) {
-    setTimeout(function() {
-      if(!appLineContextActive(insightCtx)||appReadOwner()!==insightOwner)return;
-      var codes = PHARMA_CODES[key] || [];
-      codes.forEach(function(code) {
-        if (forceRefresh) {
-          loadPharmaDataNetwork(code, oblast, kvartal);
-          loadPharmaGrafDataFresh(code, oblast, function(){ plnenieProductInsightMaybeRefresh(code, oblast, kvartal); });
-        } else {
-          plnenieEnsureInsightPharmaLoaded(key, oblast, q, year);
-        }
-      });
-    }, idx * 180);
-  });
+  if (!codes.length) return;
+  var ctx=appLineCapture(),owner=appReadOwner();
+  var preloadKey=owner+'_'+oblast+'_'+kvartal+'_'+codes.join('|');
+  if(_PROD_INSIGHT_PRELOAD_TS[preloadKey] && Date.now()-_PROD_INSIGHT_PRELOAD_TS[preloadKey]<5*60*1000)return;
+  _PROD_INSIGHT_PRELOAD_TS[preloadKey]=Date.now();
+  var index=0;
+  function next(){
+    if(!appLineContextActive(ctx)||appReadOwner()!==owner||index>=codes.length)return;
+    var code=codes[index++],key=code+'_'+oblast+'_'+kvartal;
+    if(!forceRefresh && PHARMA_STATE.cache[key] && PHARMA_GRAF_STATE.cache[pharmaGrafCacheKey(code,oblast)]){next();return;}
+    // Main response includes the graph; one background slot remains available for navigation.
+    Promise.resolve(loadPharmaDataNetwork(code,oblast,kvartal,{priority:'background',withGraf:true})).then(function(){
+      if(!appLineContextActive(ctx)||appReadOwner()!==owner)return;
+      plnenieProductInsightMaybeRefresh(code,oblast,kvartal);
+      next();
+    },function(){if(appLineContextActive(ctx)&&appReadOwner()===owner){delete _PROD_INSIGHT_PRELOAD_TS[preloadKey];next();}});
+  }
+  setTimeout(next,180);
 }
 
 function plnenieProductInsightHtml(ctx) {
@@ -28779,9 +28791,9 @@ function repPlnenieLoad() {
 
   var pending = qs.length;
   var loadOrder = [REP_PL_STATE.q].concat(qs.filter(function(q){ return q !== REP_PL_STATE.q; }));
-  loadOrder.forEach(function(q) {
+  appReadBatch(loadOrder,function(q) {
     var url = scriptUrl('action=getPlnenieAll&rok=' + year + '&Q=' + q);
-    mgrFetchWithRetry(url, 3, q === REP_PL_STATE.q ? 'critical' : 'background')
+    return mgrFetchWithRetry(url, 3, q === REP_PL_STATE.q ? 'critical' : 'background')
       .then(function(resp) {
         if(!active()) return;
         if (!resp || !resp.ok) throw new Error('No data Q' + q);
@@ -28825,7 +28837,7 @@ function repPlnenieLoad() {
           repPlnenieUpdateNavBtn();
         }
       });
-  });
+  },{concurrency:1,active:active});
 }
 
 function repPlnenieSwitchQ(q) {
@@ -29597,12 +29609,15 @@ function _histLsKey(username) { return 'hist_' + _HIST_LS_V + '_' + ((typeof app
 // ── PharmaGraf localStorage SWR ────────────────────────────────────
 // F2-1: read/write ide priamo cez DataStore.get()/refresh() (loadPharmaGrafData
 // nižšie) — _pgLsKey ostáva ako jediný zdroj kľúča, aby ho obe strany zdieľali.
-var _PG_LS_V = 'v1';
-function _pgLsKey(code, oblast) { return 'ph_graf_' + _PG_LS_V + '_' + pharmaGrafCacheKey(code, oblast); }
+function pharmaPersistentScope(){
+  try{return appReadOwner();}catch(e){return typeof appLineTag==='function'?appLineTag():'gp';}
+}
+var _PG_LS_V = 'v2';
+function _pgLsKey(code, oblast) { return 'ph_graf_' + _PG_LS_V + '_' + pharmaPersistentScope() + '_' + pharmaGrafCacheKey(code, oblast); }
 
 // ── Pharma localStorage SWR ───────────────────────────────────────
-var _PH_LS_V = 'v1';
-function _phLsKey(code, oblast, kvartal) { return 'ph_c_' + _PH_LS_V + '_' + code + '_' + oblast + '_' + kvartal; }
+var _PH_LS_V = 'v2';
+function _phLsKey(code, oblast, kvartal) { return 'ph_c_' + _PH_LS_V + '_' + pharmaPersistentScope() + '_' + code + '_' + oblast + '_' + kvartal; }
 function _phLsLoad(code, oblast, kvartal) {
   var p = dsRead(_phLsKey(code, oblast, kvartal));
   return (p && p.resp) ? p.resp : null;
@@ -29626,7 +29641,7 @@ function _phIdbSupported() {
   return typeof indexedDB !== 'undefined';
 }
 function _phIdbKey(code, oblast, kvartal) {
-  return _PH_LS_V + '_' + code + '_' + oblast + '_' + kvartal;
+  return _phLsKey(code, oblast, kvartal);
 }
 function _phIdbOpen() {
   if (!_phIdbSupported()) return Promise.reject(new Error('indexedDB unavailable'));
@@ -29643,20 +29658,22 @@ function _phIdbOpen() {
   return _PH_IDB_PROMISE;
 }
 function _phIdbLoad(code, oblast, kvartal) {
+  var key=_phIdbKey(code,oblast,kvartal);
   return _phIdbOpen().then(function(db) {
     return new Promise(function(resolve) {
       var tx = db.transaction(_PH_IDB_STORE, 'readonly');
-      var req = tx.objectStore(_PH_IDB_STORE).get(_phIdbKey(code, oblast, kvartal));
+      var req = tx.objectStore(_PH_IDB_STORE).get(key);
       req.onsuccess = function() { resolve(req.result && req.result.resp ? req.result.resp : null); };
       req.onerror = function() { resolve(null); };
     });
   }).catch(function(){ return null; });
 }
 function _phIdbSave(code, oblast, kvartal, resp) {
+  var key=_phIdbKey(code,oblast,kvartal);
   _phIdbOpen().then(function(db) {
     var tx = db.transaction(_PH_IDB_STORE, 'readwrite');
     tx.objectStore(_PH_IDB_STORE).put({
-      key: _phIdbKey(code, oblast, kvartal),
+      key: key,
       resp: resp,
       ts: Date.now()
     });
@@ -29797,6 +29814,8 @@ function pharmaDataRequestUrl(code, oblast, kvartal, withPrev, withGraf){ return
 function pharmaOkresGrafRequestUrl(code, oblast, okres){ return scriptUrl('action=getPharmaOkresGraf&produkt=' + encodeURIComponent(code) + '&oblast=' + encodeURIComponent(oblast) + '&okres=' + encodeURIComponent(okres) + pharmaTeamAccessParams()); }
 
 function pharmaAttachPrevDistrictsForCurrent(code, oblast, kvartal, resp, done) {
+  var ctx=typeof appLineCapture==='function'?appLineCapture():null;
+  function active(){return !ctx||appLineContextActive(ctx);}
   if(!pharmaIsCurrentKvartal(kvartal)) { done(resp); return; }
   var prevKv = pharmaKvartalPrev(kvartal);
   if(!prevKv || prevKv === kvartal) { resp.okresy_prev = resp.okresy_prev || []; done(resp); return; }
@@ -29809,7 +29828,7 @@ function pharmaAttachPrevDistrictsForCurrent(code, oblast, kvartal, resp, done) 
     var lsPrev = _phLsLoad(code, oblast, prevKv);
     if(lsPrev) { PHARMA_STATE.cache[prevKey] = lsPrev; cachedPrev = lsPrev; }
   }
-  if(cachedPrev && Array.isArray(cachedPrev.okresy) && cachedPrev.okresy.length) {
+  if(cachedPrev && Array.isArray(cachedPrev.okresy)) {
     resp.kvartal_prev = prevKv;
     resp.okresy_prev = cachedPrev.okresy;
     done(resp);
@@ -29820,17 +29839,16 @@ function pharmaAttachPrevDistrictsForCurrent(code, oblast, kvartal, resp, done) 
     { cache: 'no-store' }, undefined, 'background'
   )
     .then(function(prevResp){
+      if(!active()){done(resp);return;}
       if(prevResp && prevResp.ok && Array.isArray(prevResp.okresy)) {
         PHARMA_STATE.cache[prevKey] = prevResp;
         _phPersistSave(code, oblast, prevKv, prevResp);
         resp.kvartal_prev = prevKv;
         resp.okresy_prev = prevResp.okresy;
-      } else {
-        resp.okresy_prev = resp.okresy_prev || []; // označiť ako "skúšané, žiadne dáta"
       }
       done(resp);
     })
-    .catch(function(){ resp.okresy_prev = resp.okresy_prev || []; done(resp); });
+    .catch(function(){ done(resp); });
 }
 
 function pharmaOblastFromRegion(region) {
@@ -29928,17 +29946,20 @@ function pharmaRevalidate(code, oblast, kvartal) {
   PHARMA_STATE.revalidated = PHARMA_STATE.revalidated || {};
   if (PHARMA_STATE.revalidated[rk] || PHARMA_STATE.loading[rk]) return;
   PHARMA_STATE.revalidated[rk] = true;
-  loadPharmaDataNetwork(code, oblast, kvartal);
+  loadPharmaDataNetwork(code, oblast, kvartal, {withGraf:true});
 }
 
 function loadPharmaData(code, oblast, kvartal) {
+  var ctx=typeof appLineCapture==='function'?appLineCapture():null;
+  function active(){return !ctx||appLineContextActive(ctx);}
   var cacheKey = code + '_' + oblast + '_' + kvartal;
   if (PHARMA_STATE.cache[cacheKey]) {
     // Zobraz okamžite s tým čo máme — prev Q dotiahni ticho na pozadí
-    pharmaRender(code);
-    pharmaRevalidate(code, oblast, kvartal);   // SWR — dotiahni čerstvé (nový mesiac v Q)
+    pharmaRevalidate(code, oblast, kvartal);
+    pharmaRender(code);   // SWR — dotiahni čerstvé (nový mesiac v Q)
     if(pharmaNeedsPrevDistrictFetch(PHARMA_STATE.cache[cacheKey], kvartal)) {
       pharmaAttachPrevDistrictsForCurrent(code, oblast, kvartal, PHARMA_STATE.cache[cacheKey], function(enrichedResp){
+        if(!active())return;
         PHARMA_STATE.cache[cacheKey] = enrichedResp;
         _phPersistSave(code, oblast, kvartal, enrichedResp);
         aflamilFamilyMaybeRefresh(code, oblast, kvartal);
@@ -29953,16 +29974,17 @@ function loadPharmaData(code, oblast, kvartal) {
   var _lsCached = _phLsLoad(code, oblast, kvartal);
   if (_lsCached) {
     PHARMA_STATE.cache[cacheKey] = _lsCached;
+    pharmaRevalidate(code,oblast,kvartal);
     aflamilFamilyMaybeRefresh(code, oblast, kvartal);
+    if (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal) pharmaRender(code);
     if (pharmaNeedsPrevDistrictFetch(_lsCached, kvartal)) {
       pharmaAttachPrevDistrictsForCurrent(code, oblast, kvartal, _lsCached, function(enrichedResp){
+        if(!active())return;
         PHARMA_STATE.cache[cacheKey] = enrichedResp;
         _phPersistSave(code, oblast, kvartal, enrichedResp);
         aflamilFamilyMaybeRefresh(code, oblast, kvartal);
         pharmaRender(code);
       });
-    } else if (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal) {
-      pharmaRender(code);
     }
     // SWR — localStorage cache je kľúčovaná kvartálom; dotiahni čerstvé dáta na pozadí
     // (inak by sa nový mesiac v rámci Q, napr. máj v Q2, nikdy neprejavil).
@@ -29971,13 +29993,17 @@ function loadPharmaData(code, oblast, kvartal) {
   }
   if (_phIdbSupported()) {
     PHARMA_STATE.loading[cacheKey] = true;
-    _phIdbLoad(code, oblast, kvartal).then(function(idbCached) {
+    _phIdbLoad(code, oblast, kvartal).catch(function(){return null;}).then(function(idbCached) {
+      if(!active())return;
       if (idbCached) {
         delete PHARMA_STATE.loading[cacheKey];
         PHARMA_STATE.cache[cacheKey] = idbCached;
+        pharmaRevalidate(code,oblast,kvartal);
         aflamilFamilyMaybeRefresh(code, oblast, kvartal);
+        if (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal) pharmaRender(code);
         if (pharmaNeedsPrevDistrictFetch(idbCached, kvartal)) {
           pharmaAttachPrevDistrictsForCurrent(code, oblast, kvartal, idbCached, function(enrichedResp){
+        if(!active())return;
             PHARMA_STATE.cache[cacheKey] = enrichedResp;
             _phPersistSave(code, oblast, kvartal, enrichedResp);
             aflamilFamilyMaybeRefresh(code, oblast, kvartal);
@@ -29985,8 +30011,6 @@ function loadPharmaData(code, oblast, kvartal) {
               pharmaRender(code);
             }
           });
-        } else if (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal) {
-          pharmaRender(code);
         }
         pharmaRevalidate(code, oblast, kvartal);   // SWR — dotiahni čerstvé (nový mesiac v Q)
         return;
@@ -29999,9 +30023,16 @@ function loadPharmaData(code, oblast, kvartal) {
   loadPharmaDataNetwork(code, oblast, kvartal);
 }
 
-function loadPharmaDataNetwork(code, oblast, kvartal) {
+function loadPharmaDataNetwork(code, oblast, kvartal, options) {
+  options=options||{};
+  var ctx=typeof appLineCapture==='function'?appLineCapture():null;
+  var owner=typeof appReadOwner==='function'?appReadOwner():'';
+  function active(){return (!ctx||appLineContextActive(ctx)) && (!owner||appReadOwner()===owner);}
+  var priority=options.priority||'critical';
+  PHARMA_STATE.requests=PHARMA_STATE.requests||{};
   var cacheKey = code + '_' + oblast + '_' + kvartal;
-  if (PHARMA_STATE.loading[cacheKey]) return;
+  if (PHARMA_STATE.requests[cacheKey]) return PHARMA_STATE.requests[cacheKey];
+  if (PHARMA_STATE.loading[cacheKey]) return Promise.resolve(null);
   PHARMA_STATE.loading[cacheKey] = true;
 
   // DEV MODE — použij mock dáta namiesto Sheets fetchu
@@ -30018,29 +30049,32 @@ function loadPharmaDataNetwork(code, oblast, kvartal) {
 
   // Trend pýtame v tej istej odpovedi, ak ho ešte nemáme ani nikto iný nesťahuje (jedno volanie namiesto dvoch).
   var _gkMain = pharmaGrafCacheKey(code, oblast);
-  var _wantGraf = !PHARMA_GRAF_STATE.cache[_gkMain] && !PHARMA_GRAF_STATE.loading[_gkMain];
+  var _wantGraf = options.withGraf !== false;
+  var _grafPersistentKey=typeof _pgLsKey==='function'?_pgLsKey(code,oblast):null;
   if (_wantGraf) PHARMA_GRAF_STATE.loading[_gkMain] = true;
-  var _phUrl = pharmaDataRequestUrl(code, oblast, kvartal, pharmaIsCurrentKvartal(kvartal), _wantGraf);
+  var _phUrl = pharmaDataRequestUrl(code, oblast, kvartal, true, _wantGraf);
   // Apps Script občas vráti prechodné 404 alebo studený štart trvá aj 20+ s → viac pokusov a dlhší limit
   // (predtým jediný pokus; pri výpadku hneď chyba).
-  appFetchWithRetry(_phUrl, {
-    retries: 2,
+  var request = appFetchWithRetry(_phUrl, {
+    retries: 1,
     timeoutMs: 30000,
-    priority: 'critical',
+    priority: priority,
+    active: active,
     delayFn: function(){ return 800; },
-    fetcher: function(){ return appQueuedFetchJsonUntracked(_phUrl, { cache: 'no-store' }, 30000, 'critical'); }
+    fetcher: function(){ return appQueuedFetchJsonUntracked(_phUrl, { cache: 'no-store' }, 30000, priority); }
   })
     .then(function(resp) {
+      if(!active())return;
       delete PHARMA_STATE.loading[cacheKey];
-      if (_wantGraf) pharmaGrafFromMain(code, oblast, resp);
+      if (_wantGraf) pharmaGrafFromMain(code, oblast, resp, _gkMain, _grafPersistentKey);
       if ((!resp || !resp.ok) && PHARMA_STATE.cache[cacheKey]) return;
-      if (resp.ok) {
+      if (resp && resp.ok && Array.isArray(resp.summary) && Array.isArray(resp.okresy)) {
         // Skontroluj či dáta obsahujú reálne hodnoty (nie len prázdne riadky)
         var hasRealSumm = resp.summary && resp.summary.some(function(s){
-          return (parseFloat(s.terit_ms) > 0) || (parseFloat(s.sk_ms) > 0);
+          return (parseFloat(s.terit_ms) > 0) || (parseFloat(s.sk_ms) > 0) || (parseFloat(s.terit_pat) > 0) || (parseFloat(s.sk_pat) > 0);
         });
         var hasRealOkr = resp.okresy && resp.okresy.some(function(o){
-          return (parseFloat(o.nas_m1) > 0) || (parseFloat(o.nas_m2) > 0) || (parseFloat(o.nas_m3) > 0);
+          return (parseFloat(o.nas_m1) > 0) || (parseFloat(o.nas_m2) > 0) || (parseFloat(o.nas_m3) > 0) || (parseFloat(o.tot_pat_m1) > 0) || (parseFloat(o.tot_pat_m2) > 0) || (parseFloat(o.tot_pat_m3) > 0);
         });
         var hasData = hasRealSumm || hasRealOkr;
         if (!hasData && !pharmaIsCurrentKvartal(kvartal)) {
@@ -30067,25 +30101,33 @@ function loadPharmaDataNetwork(code, oblast, kvartal) {
           }
           return; // neulož prázdny cache — pri ďalšom otvorení skúsi znova
         }
-        pharmaAttachPrevDistrictsForCurrent(code, oblast, kvartal, resp, function(enrichedResp){
-        PHARMA_STATE.cache[cacheKey] = enrichedResp;
-        _phPersistSave(code, oblast, kvartal, enrichedResp);
-        aflamilFamilyMaybeRefresh(code, oblast, kvartal);
-        if (PHARMA_STATE.activeCode === code &&
-            PHARMA_STATE.oblast     === oblast &&
-            PHARMA_STATE.kvartal    === kvartal) {
-          pharmaRender(code);
-        }
-        // Ak je otvorený product drill-down sheet, updatni MS bunky
-        if (typeof prodSheetUpdateMsCells === 'function') prodSheetUpdateMsCells();
+        PHARMA_STATE.cache[cacheKey]=resp;
+        var pendingEnrichment=pharmaIsCurrentKvartal(kvartal) && !(Array.isArray(resp.okresy_prev) && resp.kvartal_prev===pharmaKvartalPrev(kvartal));
+        if(pendingEnrichment && PHARMA_STATE.activeCode===code && PHARMA_STATE.oblast===oblast && PHARMA_STATE.kvartal===kvartal)pharmaRender(code);
+        return new Promise(function(resolve){
+          pharmaAttachPrevDistrictsForCurrent(code, oblast, kvartal, resp, function(enrichedResp){
+            if(!active()){resolve(null);return;}
+            PHARMA_STATE.cache[cacheKey] = enrichedResp;
+            _phPersistSave(code, oblast, kvartal, enrichedResp);
+            aflamilFamilyMaybeRefresh(code, oblast, kvartal);
+            if (PHARMA_STATE.activeCode === code &&
+                PHARMA_STATE.oblast     === oblast &&
+                PHARMA_STATE.kvartal    === kvartal) {
+              pharmaRender(code);
+            }
+            // Ak je otvorený product drill-down sheet, updatni MS bunky
+            if (typeof prodSheetUpdateMsCells === 'function') prodSheetUpdateMsCells();
+            resolve(enrichedResp);
+          });
         });
       } else {
         throw new Error('Server nevrátil platné trhové dáta.');
       }
     })
     .catch(function() {
+      if(!active())return;
       delete PHARMA_STATE.loading[cacheKey];
-      if (_wantGraf) pharmaGrafFromMain(code, oblast, null);
+      if (_wantGraf) pharmaGrafFromMain(code, oblast, null, _gkMain, _grafPersistentKey);
       if (PHARMA_STATE.cache[cacheKey]) return;
       if (PHARMA_STATE.activeCode === code && PHARMA_STATE.oblast === oblast && PHARMA_STATE.kvartal === kvartal) {
         // F6-5: holá hláška bez akcie nahradená zdieľanou kartou s "Skúsiť znova"
@@ -30106,21 +30148,26 @@ function loadPharmaDataNetwork(code, oblast, kvartal) {
       // ("MS dáta zatiaľ nie sú k dispozícii").
       aflamilFamilyMaybeRefresh(code, oblast, kvartal);
     });
+  PHARMA_STATE.requests[cacheKey]=request;
+  return request.then(function(data){if(active() && PHARMA_STATE.requests[cacheKey]===request)delete PHARMA_STATE.requests[cacheKey];return data;},function(error){if(active() && PHARMA_STATE.requests[cacheKey]===request)delete PHARMA_STATE.requests[cacheKey];throw error;});
 }
 
 // Hlavná odpoveď getPharmaData mohla niesť aj trend (graf=1). Uloží ho do cache a dá vedieť všetkým, čo naň čakajú.
 // Ak trend nepriniesla (starý backend / chyba), čakajúci dostanú samostatný dopyt (pôvodná cesta).
-function pharmaGrafFromMain(code, oblast, resp) {
-  var gk = pharmaGrafCacheKey(code, oblast);
+function pharmaGrafFromMain(code, oblast, resp, graphKey, persistentKey) {
+  var gk = graphKey || pharmaGrafCacheKey(code, oblast);
   delete PHARMA_GRAF_STATE.loading[gk];
   var rows = (resp && resp.ok && resp.graf && Array.isArray(resp.graf.rows)) ? resp.graf.rows : null;
-  if (rows && rows.length) {
+  if (rows) {
     var obj = { ok: true, produkt: code, oblast: oblast, rows: rows };
     PHARMA_GRAF_STATE.cache[gk] = obj;
-    try { DataStore.set(_pgLsKey(code, oblast), obj); } catch(e){}
+    PHARMA_GRAF_STATE.checkedOnOpen=PHARMA_GRAF_STATE.checkedOnOpen||{};
+    PHARMA_GRAF_STATE.checkedOnOpen[gk]=true;
+    try { DataStore.set(persistentKey || _pgLsKey(code, oblast), obj); } catch(e){}
     pharmaGrafFlushWaiters(gk, obj);
     return;
   }
+  if(gk!==pharmaGrafCacheKey(code,oblast)){pharmaGrafFlushWaiters(gk,null);return;}
   var w = PHARMA_GRAF_WAITERS[gk];
   if (w && w.length) {
     delete PHARMA_GRAF_WAITERS[gk];
@@ -30129,7 +30176,9 @@ function pharmaGrafFromMain(code, oblast, resp) {
 }
 
 function loadPharmaGrafData(code, oblast, callback) {
-  var cacheKey = pharmaGrafCacheKey(code, oblast);
+  var cacheKey = pharmaGrafCacheKey(code, oblast),persistentKey=_pgLsKey(code,oblast);
+  var ctx=typeof appLineCapture==='function'?appLineCapture():null,owner=typeof appReadOwner==='function'?appReadOwner():'';
+  function active(){return (!ctx||appLineContextActive(ctx))&&(!owner||appReadOwner()===owner);}
   if (PHARMA_GRAF_STATE.cache[cacheKey]) {
     if (callback) callback(PHARMA_GRAF_STATE.cache[cacheKey]);
     PHARMA_GRAF_STATE.checkedOnOpen=PHARMA_GRAF_STATE.checkedOnOpen||{};
@@ -30142,7 +30191,7 @@ function loadPharmaGrafData(code, oblast, callback) {
   if (PHARMA_GRAF_STATE.loading[cacheKey]) {
     // Ak už máme čerstvú lokálnu kópiu, ukáž ju hneď; inak počkaj na prebiehajúce sťahovanie.
     try {
-      var frLocal = DataStore.get(_pgLsKey(code, oblast), { maxAgeMs: DS_CACHE_MAX_AGE_MS });
+      var frLocal = DataStore.get(persistentKey, { maxAgeMs: DS_CACHE_MAX_AGE_MS });
       if (frLocal && frLocal.data) { PHARMA_GRAF_STATE.cache[cacheKey] = frLocal.data; if (callback) callback(frLocal.data); return; }
     } catch(e){}
     pharmaGrafAddWaiter(cacheKey, callback);
@@ -30160,25 +30209,26 @@ function loadPharmaGrafData(code, oblast, callback) {
   // F2-1: DataStore vráti cache OKAMŽITE aj keď je staršia než DS_CACHE_MAX_AGE_MS
   // (predtým: cache staršia ako 6h sa brala ako chýbajúca, žiadna SWR napriek
   // komentáru) a fetch na revalidáciu spustí na pozadí sám.
-  var r = DataStore.get(_pgLsKey(code, oblast), {
+  var r = DataStore.get(persistentKey, {
     fetcher: function(){
       PHARMA_GRAF_STATE.loading[cacheKey] = true;
       return appQueuedFetchJson(
         pharmaGrafRequestUrl(code, oblast),
         { cache: 'no-store' }, undefined, 'critical'
       ).then(function(resp) {
+        if(!active())throw new Error('Obsolete graph');
         delete PHARMA_GRAF_STATE.loading[cacheKey];
-        // Ak žiadne dáta — nezachovávame v cache, ďalšie otvorenie skúsi znova
-        if (!resp || !resp.ok || !resp.rows || resp.rows.length < 1) throw new Error('no pharma graf data');
+        // Valid empty rows finish loading; malformed replies stay retryable.
+        if (!resp || !resp.ok || !Array.isArray(resp.rows)) throw new Error('no pharma graf data');
         return resp;
-      }, function(err) { delete PHARMA_GRAF_STATE.loading[cacheKey]; throw err; });
+      }, function(err) { if(active())delete PHARMA_GRAF_STATE.loading[cacheKey]; throw err; });
     },
     maxAgeMs: DS_CACHE_MAX_AGE_MS,
-    onFresh: function(resp) { PHARMA_GRAF_STATE.cache[cacheKey] = resp; if (callback) callback(resp); pharmaGrafFlushWaiters(cacheKey, resp); },
+    onSettled: function(meta) { if (!active() || !meta.data) return; PHARMA_GRAF_STATE.cache[cacheKey] = meta.data; if (callback) callback(meta.data); pharmaGrafFlushWaiters(cacheKey, meta.data); },
     // Predtým sa pri zlyhaní fetchu nestalo NIČ — žiadny callback, žiadna chybová
     // hláška. fillGrafChart() po 6s len ticho skryl "Načítavam trend…" a graf sa
     // stratil bez vysvetlenia (nahlásené Ivanom: "v Goleme niekde nenačíta graf").
-    onError: function(){ if (callback) callback(null); pharmaGrafFlushWaiters(cacheKey, null); }
+    onError: function(){ if(!active())return; if (callback) callback(null); pharmaGrafFlushWaiters(cacheKey, null); }
   });
   if (r.data) {
     PHARMA_GRAF_STATE.cache[cacheKey] = r.data;
@@ -30187,7 +30237,9 @@ function loadPharmaGrafData(code, oblast, callback) {
 }
 
 function loadPharmaGrafDataFresh(code, oblast, callback) {
-  var cacheKey = pharmaGrafCacheKey(code, oblast);
+  var cacheKey = pharmaGrafCacheKey(code, oblast),persistentKey=_pgLsKey(code,oblast);
+  var ctx=typeof appLineCapture==='function'?appLineCapture():null,owner=typeof appReadOwner==='function'?appReadOwner():'';
+  function active(){return (!ctx||appLineContextActive(ctx))&&(!owner||appReadOwner()===owner);}
   if (PHARMA_GRAF_STATE.loading[cacheKey]) { pharmaGrafAddWaiter(cacheKey, callback); return; }
 
   if (IS_DEV) {
@@ -30201,22 +30253,23 @@ function loadPharmaGrafDataFresh(code, oblast, callback) {
   PHARMA_GRAF_STATE.loading[cacheKey] = true;
   // Vynútený refresh (napr. retry po chybe) — DataStore.refresh() fetchne vždy,
   // aj keby bola cache ešte fresh, ale zápis/diff ide rovnakou cestou ako get().
-  DataStore.refresh(_pgLsKey(code, oblast), {
+  DataStore.refresh(persistentKey, {
     fetcher: function(){
       return appQueuedFetchJson(
         pharmaGrafRequestUrl(code, oblast),
         { cache: 'no-store' }, undefined, 'critical'
       ).then(function(resp) {
+        if(!active())throw new Error('Obsolete graph');
         delete PHARMA_GRAF_STATE.loading[cacheKey];
-        if (!resp || !resp.ok || !resp.rows || resp.rows.length < 1) throw new Error('no pharma graf data');
+        if (!resp || !resp.ok || !Array.isArray(resp.rows)) throw new Error('no pharma graf data');
         return resp;
-      }, function(err) { delete PHARMA_GRAF_STATE.loading[cacheKey]; throw err; });
+      }, function(err) { if(active())delete PHARMA_GRAF_STATE.loading[cacheKey]; throw err; });
     },
-    onFresh: function(resp) { PHARMA_GRAF_STATE.cache[cacheKey] = resp; if (callback) callback(resp); pharmaGrafFlushWaiters(cacheKey, resp); },
+    onSettled: function(meta) { if (!active() || !meta.data) return; PHARMA_GRAF_STATE.cache[cacheKey] = meta.data; if (callback) callback(meta.data); pharmaGrafFlushWaiters(cacheKey, meta.data); },
     // Rovnaký bug ako v loadPharmaGrafData() pred opravou (2.87.16): bez
     // callback(null) tu ostane "Načítavam trend…" navždy, keď zlyhá aj RETRY
     // (fillGrafChart()'s retry() volá presne túto funkciu).
-    onError: function(){ delete PHARMA_GRAF_STATE.loading[cacheKey]; var fallback=PHARMA_GRAF_STATE.cache[cacheKey]||null; if (callback) callback(fallback); pharmaGrafFlushWaiters(cacheKey, fallback); }
+    onError: function(){ if(!active())return; delete PHARMA_GRAF_STATE.loading[cacheKey]; var fallback=PHARMA_GRAF_STATE.cache[cacheKey]||null; if (callback) callback(fallback); pharmaGrafFlushWaiters(cacheKey, fallback); }
   });
 }
 
@@ -30231,7 +30284,7 @@ function fillGrafChart(code, oblast) {
     PHARMA_GRAF_STATE.checkedOnOpen=PHARMA_GRAF_STATE.checkedOnOpen||{};
     if(!PHARMA_GRAF_STATE.checkedOnOpen[cacheKey])loadPharmaGrafData(code,oblast,function(data){
       var current=document.getElementById('pharma-graf-chart');
-      if(data && current && PHARMA_STATE.activeCode===code && PHARMA_STATE.oblast===oblast)current.innerHTML=buildGrafChartHtml(code,oblast);
+      if(data && current && pharmaGrafCacheKey(code,oblast)===cacheKey && PHARMA_STATE.activeCode===code && PHARMA_STATE.oblast===oblast)current.innerHTML=buildGrafChartHtml(code,oblast);
     });
     return;
   }
@@ -30241,7 +30294,7 @@ function fillGrafChart(code, oblast) {
   // 6s len skryl bez vysvetlenia — nahlásené Ivanom: "v Goleme niekde
   // nenačíta graf").
   function onResult(resp) {
-    if (PHARMA_STATE.activeCode !== code || PHARMA_STATE.oblast !== oblast) return;
+    if (pharmaGrafCacheKey(code,oblast)!==cacheKey || PHARMA_STATE.activeCode !== code || PHARMA_STATE.oblast !== oblast) return;
     var target = document.getElementById('pharma-graf-chart');
     if (!target) return;
     if (!resp) {
@@ -31486,7 +31539,7 @@ function appPtrRefreshCurrent(done){
   case 'ranking':case 'mgr-leaderboard':lbPreloadPlnenie(true);break;
   case 'gyn-leaderboard':delete GYN_LB.dataReady[gynLbLastCompletedQ()];gynLbEnsureData(gynLbLastCompletedQ(),gynPlnenieCacheKey(plnenieCalendarPeriod().year,gynLbLastCompletedQ())+'|lb-fullLine');break;
   case 'district-chart':var chart=PHARMA_OKRES_STATE.current;if(chart)openPharmaOkresChart(chart.r,chart.prodLabel,true);break;
-  case 'market':if(session.line==='gyn')gynPharmaLoad();else{loadPharmaDataNetwork(PHARMA_STATE.activeCode,PHARMA_STATE.oblast,PHARMA_STATE.kvartal);loadPharmaGrafDataFresh(PHARMA_STATE.activeCode,PHARMA_STATE.oblast,function(){if(same())pharmaRender(PHARMA_STATE.activeCode);});}break;
+  case 'market':if(session.line==='gyn')gynPharmaLoad();else{loadPharmaDataNetwork(PHARMA_STATE.activeCode,PHARMA_STATE.oblast,PHARMA_STATE.kvartal,{withGraf:true});loadPharmaGrafDataFresh(PHARMA_STATE.activeCode,PHARMA_STATE.oblast,function(){if(same())pharmaRender(PHARMA_STATE.activeCode);});}break;
   case 'mgr-activity':case 'gyn-activity':usageRefresh();break;
   case 'mgr-visits':
    appFetchWithRetry(scriptUrl('action=getAllHistory'),{retries:1,timeoutMs:25000,priority:'critical',delayFn:function(){return 700;},active:same}).then(function(d){
@@ -33551,25 +33604,25 @@ function rptViewEnsurePharma(model) {
   }
   batch.cancel = function() { stop(true); };
   // Covers queue waiting AND retries, not only the network transfer.
-  batch.timer = setTimeout(function() { stop(true); }, Math.max(45000, Math.ceil(tasks.length / 2) * 20000 + 15000));
+  batch.timer = setTimeout(function() { stop(true); }, Math.max(65000, Math.ceil(tasks.length / 2) * 91000));
   function finishOne(t, ok) {
     if (!current()) { stop(true); return; }
     if (!ok) failed[t.o] = true;
     batch.done++;
     if (batch.done === batch.total) stop(false); else rp2Schedule();
   }
-  tasks.forEach(function(t) {
+  appReadBatch(tasks,function(t) {
     var key = t.code + '_' + t.o + '_' + kvartal;
     var cached = PHARMA_STATE.cache[key];
     // Reports use summary + districts only; do not fetch another graph for an already warm cache.
     if (!refresh && cached && cached.ok && Array.isArray(cached.summary) && Array.isArray(cached.okresy)) { finishOne(t, true); return; }
-    Promise.resolve().then(function() {
+    return Promise.resolve().then(function() {
       if (!current()) throw new Error('Obsolete report');
       // Match the combined payload warmed by the server and reused by the market screen.
       var url = pharmaDataRequestUrl(t.code, t.o, kvartal, true, true) + (refresh ? '&fresh=1' : '');
-      return appFetchWithRetry(url, { retries:1, timeoutMs:20000, priority:'critical', active:current,
+      return appFetchWithRetry(url, { retries:1, timeoutMs:30000, priority:'critical', active:current,
         delayFn:function() { return 800; },
-        fetcher:function() { return appQueuedFetchJsonUntracked(url, { cache:'no-store' }, 20000, 'critical'); }
+        fetcher:function() { return appQueuedFetchJsonUntracked(url, { cache:'no-store' }, 30000, 'critical'); }
       });
     }).then(function(resp) {
       var ok = resp && resp.ok && Array.isArray(resp.summary) && Array.isArray(resp.okresy);
@@ -33579,7 +33632,7 @@ function rptViewEnsurePharma(model) {
       }
       finishOne(t, !!ok);
     }).catch(function() { finishOne(t, false); });
-  });
+  },{concurrency:2,active:current});
 }
 
 function rptViewAnimateBars() {
@@ -36877,6 +36930,8 @@ function lkPromoteQueuedRead(rec) {
 }
 function lkFetch(login, cb) {
   if (typeof IS_DEV !== 'undefined' && IS_DEV) { try { cb(lkDevMockRows()); } catch(e) {} return; }
+  var ctx=appLineCapture(),owner=appReadOwner();
+  function active(){return appLineContextActive(ctx)&&appReadOwner()===owner;}
   var cacheKey = lkCacheKey(login);
   var cachedRows = lkGetCachedRows(cacheKey);
   var servedCached = false, networkFinished = false;
@@ -36895,7 +36950,7 @@ function lkFetch(login, cb) {
   var rec={};_lkInFlight[cacheKey].rec=rec;
   if (!servedCached && lkIdbSupported() && cacheKey !== '__all__') {
     lkIdbLoad(cacheKey).then(function(entry) {
-      if (!entry || servedCached || networkFinished) return;
+      if (!active() || !entry || servedCached || networkFinished) return;
       servedCached = true;
       LK_STATE.cache[cacheKey] = entry;
       try { cb(entry.rows || []); } catch(e) {}
@@ -36906,6 +36961,7 @@ function lkFetch(login, cb) {
   var priority=visibleRead && visibleRead.actions.indexOf('getLekarne')!==-1?'critical':'background';
   lkQueueRead(url, priority, rec).then(function(data) {
     networkFinished=true;
+    if(!active())return;
     if(!data || !data.ok || !Array.isArray(data.rows))throw new Error('Pharmacy response unavailable');
     var rows = data.rows;
     lkReconcileCreamContactLocal(cacheKey, rows);
@@ -36915,6 +36971,7 @@ function lkFetch(login, cb) {
     if (!servedCached || changed) cbs.forEach(function(fn){ try { fn(rows); } catch(e){} });
   }).catch(function() {
     networkFinished=true;
+    if(!active())return;
     var cbs = _lkInFlight[cacheKey] || [];
     delete _lkInFlight[cacheKey];
     if (!servedCached) cbs.forEach(function(fn){ try { fn([]); } catch(e){} });
@@ -36928,7 +36985,7 @@ function lkFetchFresh(login, cb) {
 // Preload ihneď po prihlásení
 function lkPreload() {
   var session = getSession();
-  if (!session || !session.username) return;
+  if (!session || !session.username || (typeof mgrDetectRole==='function' && mgrDetectRole(session))) return;
   lkFetch(session.username, function(){}); // naplní cache, výsledok ignorujeme
 }
 
@@ -36944,10 +37001,12 @@ function lkFetchAll(cb) {
   if (LK_STATE.allLoaded) { if (cb) cb(true); return; }
   if (LK_STATE.allLoading) { if (cb) LK_STATE.allCallbacks.push(cb); return; }
   LK_STATE.allLoading = true;
-  var startedAt=Date.now();
+  var startedAt=Date.now(),ctx=appLineCapture(),owner=appReadOwner();
+  function active(){return appLineContextActive(ctx)&&appReadOwner()===owner;}
   if (cb) LK_STATE.allCallbacks.push(cb);
   lkQueueRead(scriptUrl('action=getLekarneAll&fresh=1&creamMonth=' + encodeURIComponent(lkCreamContactMonthKey()) + '&_t=' + Date.now()), 'background')
     .then(function(data) {
+      if(!active())return;
       var ok = !!(data && data.ok && Array.isArray(data.rows));
       var rows = ok ? data.rows : [];
       if (ok) {
@@ -36966,6 +37025,7 @@ function lkFetchAll(cb) {
       cbs.forEach(function(fn){ try { fn(ok); } catch(e){} });
     })
     .catch(function() {
+      if(!active())return;
       LK_STATE.allLoading = false;
       var cbs = LK_STATE.allCallbacks.splice(0);
       cbs.forEach(function(fn){ try { fn(false); } catch(e){} });

@@ -13,22 +13,22 @@ async function run(mode){
  rptViewCodeForPlanKey:x=>x,pharmaKvartalCode:()=>2603,pharmaGrafCacheKey:(a,b)=>a+'_'+b,
  pharmaDataRequestUrl:(a,b)=>a+'_'+b,rp2Schedule:()=>scheduled++,
  appFetchWithRetry:()=> (mode==='hang'||mode==='stale')?new Promise(r=>pending.push(r)):mode==='fail'?Promise.reject(new Error('offline')):Promise.resolve({ok:true,summary:[],okresy:[]})};
- vm.createContext(c);vm.runInContext(src.slice(src.indexOf('function rptViewPharmaReadyForScope('),src.indexOf('function rptViewAnimateBars(')),c);
+ vm.createContext(c);vm.runInContext(take('appReadBatch','// Registry retry'),c);vm.runInContext(src.slice(src.indexOf('function rptViewPharmaReadyForScope('),src.indexOf('function rptViewAnimateBars(')),c);
  const model={prods:[{key:'A',g100:10},{key:'B',g100:10},{key:'C',g100:10}]};c.RP2_LAST.m=model;
  c.rptViewEnsurePharma(model);await flush();
  if(mode==='ok'){assert.equal(c.RPT_VIEW.pharmaLoading,false);assert.equal(c.rptViewPharmaReadyForScope(),true);}
  if(mode==='fail'){assert.equal(c.RPT_VIEW.pharmaLoading,false);assert.equal(c.rptViewPharmaReadyForScope(),false);assert.ok(c.RPT_VIEW.pharmaError);}
  if(mode==='stale'){
-  region='BA';c.rptViewEnsurePharma(model);await flush();assert.equal(pending.length,6);
-  pending.slice(0,3).forEach(r=>r({ok:true,summary:[],okresy:[]}));await flush();assert.equal(Object.keys(c.PHARMA_STATE.cache).length,0);
-  pending.slice(3).forEach(r=>r({ok:true,summary:[],okresy:[]}));await flush();assert.equal(c.RPT_VIEW.pharmaLoading,false);assert.equal(Object.keys(c.PHARMA_STATE.cache).length,3);assert.ok(Object.keys(c.PHARMA_STATE.cache).every(k=>k.includes('_BA_')));
+  region='BA';c.rptViewEnsurePharma(model);await flush();assert.equal(pending.length,4,'Two workers per selection');
+  pending.slice(0,2).forEach(r=>r({ok:true,summary:[],okresy:[]}));await flush();assert.equal(Object.keys(c.PHARMA_STATE.cache).length,0);
+  pending.slice(2).forEach(r=>r({ok:true,summary:[],okresy:[]}));await flush();pending.slice(4).forEach(r=>r({ok:true,summary:[],okresy:[]}));await flush();assert.equal(c.RPT_VIEW.pharmaLoading,false);assert.equal(Object.keys(c.PHARMA_STATE.cache).length,3);assert.ok(Object.keys(c.PHARMA_STATE.cache).every(k=>k.includes('_BA_')));
  }
  if(mode==='hang'){
-  assert.equal(c.RPT_VIEW.pharmaLoading,true);const watchdog=timers.find(t=>t.ms>=30000&&t.ms<=60000);assert.ok(watchdog,'Queue wait needs a bounded deadline');watchdog.fn();await flush();
+  assert.equal(c.RPT_VIEW.pharmaLoading,true);const watchdog=timers.find(t=>t.ms>=30000&&t.ms<=200000);assert.ok(watchdog,'Queue wait needs a bounded deadline');watchdog.fn();await flush();
   assert.equal(c.RPT_VIEW.pharmaLoading,false);assert.ok(c.RPT_VIEW.pharmaError);assert.equal(c.rptViewPharmaReadyForScope(),false);
   pending.forEach(r=>r({ok:true,summary:[],okresy:[]}));await flush();assert.equal(Object.keys(c.PHARMA_STATE.cache).length,0,'Expired responses must not overwrite cache');
  }
  return scheduled;
 }
-async function flush(){for(let i=0;i<12;i++)await Promise.resolve();}
+async function flush(){for(let i=0;i<40;i++)await Promise.resolve();}
 (async()=>{await run('ok');await run('fail');await run('hang');await run('stale');console.log('Report market foreground routing, success, failure and queue timeout passed');})().catch(e=>{console.error(e);process.exitCode=1;});

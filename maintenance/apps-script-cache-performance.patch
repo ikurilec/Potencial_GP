@@ -1,0 +1,193 @@
+--- a/apps_script/KOD_GOLEM.txt
++++ b/apps_script/KOD_GOLEM.txt
+@@ -36,0 +37,3 @@
++// 30k UTF-16 units stay below the CacheService byte limit, including Slovak text.
++var CACHE_CHUNK_CHARS = 30000;
++var CACHE_CHUNK_MARK = '\u0001CHUNKS:';
+@@ -39,2 +42,24 @@
+-  try { return CacheService.getScriptCache().get(key); } catch (err) { return null; }
+-}
++  key = 'satori-cache-v2:' + key; // Old deployments never see the new chunk manifests.
++  try {
++    var cache = CacheService.getScriptCache(), head = cache.get(key);
++    if (!head) return null;
++    if (head.indexOf(CACHE_CHUNK_MARK) !== 0) return head;
++    var tail = head.substring(CACHE_CHUNK_MARK.length), count, generation = '';
++    if (tail.charAt(0) === '{') {
++      var manifest = JSON.parse(tail);
++      if (manifest.v !== 2 || typeof manifest.gen !== 'string' || !manifest.gen) return null;
++      count = Number(manifest.n); generation = manifest.gen + '#';
++    } else { count = Number(tail); } // Existing Gyn cache remains readable until it expires.
++    if (!(count > 0 && count <= 1000 && count === Math.floor(count))) return null;
++    var keys = [];
++    for (var i = 0; i < count; i++) keys.push(key + '#' + generation + i);
++    var chunks = cache.getAll(keys), out = [];
++    for (var j = 0; j < count; j++) {
++      var part = chunks[keys[j]];
++      if (part === undefined || part === null) return null;
++      out.push(part);
++    }
++    return out.join('');
++  } catch (err) { return null; }
++}
++
+@@ -41,0 +67 @@
++  key = 'satori-cache-v2:' + key;
+@@ -43,5 +69,18 @@
+-    if (text && text.length <= 90000) { // limit CacheService je ~100 KB/kľúč
+-      CacheService.getScriptCache().put(key, text, ttl || CACHE_TTL_SEC);
+-    }
+-  } catch (err) {}
+-}
++    if (!text) return;
++    var cache = CacheService.getScriptCache(), expires = ttl || CACHE_TTL_SEC;
++    if (text.length <= CACHE_CHUNK_CHARS) { cache.put(key, text, expires); return; }
++    // Immutable generations prevent readers from joining chunks from two simultaneous responses.
++    var generation = Utilities.getUuid(), chunks = {}, count = 0, offset = 0;
++    while (offset < text.length) {
++      var end = Math.min(offset + CACHE_CHUNK_CHARS, text.length);
++      var last = text.charCodeAt(end - 1), next = text.charCodeAt(end);
++      if (end < text.length && last >= 0xD800 && last <= 0xDBFF && next >= 0xDC00 && next <= 0xDFFF) end--;
++      chunks[key + '#' + generation + '#' + count++] = text.substring(offset, end);
++      offset = end;
++    }
++    cache.putAll(chunks, expires);
++    // Publish only after all chunks are written. Missing/evicted chunks are a normal cache miss.
++    cache.put(key, CACHE_CHUNK_MARK + JSON.stringify({v:2,n:count,gen:generation}), expires);
++  } catch (err) {} // Optional cache failures never block the response or a user operation.
++}
++
+@@ -49 +88 @@
+-  try { CacheService.getScriptCache().remove(key); } catch (err) {}
++  try { CacheService.getScriptCache().removeAll([key, 'satori-cache-v2:' + key]); } catch (err) {}
+@@ -199 +238,3 @@
+-  try { lock = LockService.getScriptLock(); got = lock.tryLock(20000); } catch (err) {}
++  // The response is ready. An optional cache write must never wait for another request.
++  try { lock = LockService.getScriptLock(); got = lock.tryLock(200); } catch (err) {}
++  if (!got) return; // Never delete/rewrite chunks without exclusive ownership.
+--- a/apps_script/KOD_GYN.txt
++++ b/apps_script/KOD_GYN.txt
+@@ -41,0 +42 @@
++  key = 'satori-cache-v2:' + key; // Old deployments never see the new chunk manifests.
+@@ -43,2 +44 @@
+-    var c = CacheService.getScriptCache();
+-    var head = c.get(key);
++    var cache = CacheService.getScriptCache(), head = cache.get(key);
+@@ -47,2 +47,7 @@
+-    var n = parseInt(head.substring(CACHE_CHUNK_MARK.length), 10);
+-    if (!(n > 0)) return null;
++    var tail = head.substring(CACHE_CHUNK_MARK.length), count, generation = '';
++    if (tail.charAt(0) === '{') {
++      var manifest = JSON.parse(tail);
++      if (manifest.v !== 2 || typeof manifest.gen !== 'string' || !manifest.gen) return null;
++      count = Number(manifest.n); generation = manifest.gen + '#';
++    } else { count = Number(tail); } // Existing Gyn cache remains readable until it expires.
++    if (!(count > 0 && count <= 1000 && count === Math.floor(count))) return null;
+@@ -50,4 +55,4 @@
+-    for (var i = 0; i < n; i++) keys.push(key + '#' + i);
+-    var got = c.getAll(keys), out = [];
+-    for (var j = 0; j < n; j++) {
+-      var part = got[key + '#' + j];
++    for (var i = 0; i < count; i++) keys.push(key + '#' + generation + i);
++    var chunks = cache.getAll(keys), out = [];
++    for (var j = 0; j < count; j++) {
++      var part = chunks[keys[j]];
+@@ -59,0 +65 @@
++
+@@ -60,0 +67 @@
++  key = 'satori-cache-v2:' + key;
+@@ -63,8 +70,17 @@
+-    var c = CacheService.getScriptCache(), t = ttl || DATA_CACHE_TTL_SEC;
+-    if (text.length <= CACHE_CHUNK_CHARS) { c.put(key, text, t); return; }
+-    var n = Math.ceil(text.length / CACHE_CHUNK_CHARS), obj = {};
+-    for (var i = 0; i < n; i++) obj[key + '#' + i] = text.substring(i * CACHE_CHUNK_CHARS, (i + 1) * CACHE_CHUNK_CHARS);
+-    obj[key] = CACHE_CHUNK_MARK + n;
+-    c.putAll(obj, t);
+-  } catch (err) {}
+-}
++    var cache = CacheService.getScriptCache(), expires = ttl || DATA_CACHE_TTL_SEC;
++    if (text.length <= CACHE_CHUNK_CHARS) { cache.put(key, text, expires); return; }
++    // Immutable generations prevent readers from joining chunks from two simultaneous responses.
++    var generation = Utilities.getUuid(), chunks = {}, count = 0, offset = 0;
++    while (offset < text.length) {
++      var end = Math.min(offset + CACHE_CHUNK_CHARS, text.length);
++      var last = text.charCodeAt(end - 1), next = text.charCodeAt(end);
++      if (end < text.length && last >= 0xD800 && last <= 0xDBFF && next >= 0xDC00 && next <= 0xDFFF) end--;
++      chunks[key + '#' + generation + '#' + count++] = text.substring(offset, end);
++      offset = end;
++    }
++    cache.putAll(chunks, expires);
++    // Publish only after all chunks are written. Missing/evicted chunks are a normal cache miss.
++    cache.put(key, CACHE_CHUNK_MARK + JSON.stringify({v:2,n:count,gen:generation}), expires);
++  } catch (err) {} // Optional cache failures never block the response or a user operation.
++}
++
+@@ -192 +208,3 @@
+-  try { lock = LockService.getScriptLock(); got = lock.tryLock(20000); } catch (err) {}
++  // The response is ready. An optional cache write must never wait for another request.
++  try { lock = LockService.getScriptLock(); got = lock.tryLock(200); } catch (err) {}
++  if (!got) return; // Never delete/rewrite chunks without exclusive ownership.
+--- a/apps_script/KOD_REAGILA.txt
++++ b/apps_script/KOD_REAGILA.txt
+@@ -48,0 +49,3 @@
++// 30k UTF-16 units stay below the CacheService byte limit, including Slovak text.
++var CACHE_CHUNK_CHARS = 30000;
++var CACHE_CHUNK_MARK = '\u0001CHUNKS:';
+@@ -51,2 +54,24 @@
+-  try { return CacheService.getScriptCache().get(key); } catch (err) { return null; }
+-}
++  key = 'satori-cache-v2:' + key; // Old deployments never see the new chunk manifests.
++  try {
++    var cache = CacheService.getScriptCache(), head = cache.get(key);
++    if (!head) return null;
++    if (head.indexOf(CACHE_CHUNK_MARK) !== 0) return head;
++    var tail = head.substring(CACHE_CHUNK_MARK.length), count, generation = '';
++    if (tail.charAt(0) === '{') {
++      var manifest = JSON.parse(tail);
++      if (manifest.v !== 2 || typeof manifest.gen !== 'string' || !manifest.gen) return null;
++      count = Number(manifest.n); generation = manifest.gen + '#';
++    } else { count = Number(tail); } // Existing Gyn cache remains readable until it expires.
++    if (!(count > 0 && count <= 1000 && count === Math.floor(count))) return null;
++    var keys = [];
++    for (var i = 0; i < count; i++) keys.push(key + '#' + generation + i);
++    var chunks = cache.getAll(keys), out = [];
++    for (var j = 0; j < count; j++) {
++      var part = chunks[keys[j]];
++      if (part === undefined || part === null) return null;
++      out.push(part);
++    }
++    return out.join('');
++  } catch (err) { return null; }
++}
++
+@@ -53,0 +79 @@
++  key = 'satori-cache-v2:' + key;
+@@ -55,5 +81,18 @@
+-    if (text && text.length <= 90000) { // limit CacheService je ~100 KB/kľúč
+-      CacheService.getScriptCache().put(key, text, ttl || DATA_CACHE_TTL_SEC);
+-    }
+-  } catch (err) {}
+-}
++    if (!text) return;
++    var cache = CacheService.getScriptCache(), expires = ttl || DATA_CACHE_TTL_SEC;
++    if (text.length <= CACHE_CHUNK_CHARS) { cache.put(key, text, expires); return; }
++    // Immutable generations prevent readers from joining chunks from two simultaneous responses.
++    var generation = Utilities.getUuid(), chunks = {}, count = 0, offset = 0;
++    while (offset < text.length) {
++      var end = Math.min(offset + CACHE_CHUNK_CHARS, text.length);
++      var last = text.charCodeAt(end - 1), next = text.charCodeAt(end);
++      if (end < text.length && last >= 0xD800 && last <= 0xDBFF && next >= 0xDC00 && next <= 0xDFFF) end--;
++      chunks[key + '#' + generation + '#' + count++] = text.substring(offset, end);
++      offset = end;
++    }
++    cache.putAll(chunks, expires);
++    // Publish only after all chunks are written. Missing/evicted chunks are a normal cache miss.
++    cache.put(key, CACHE_CHUNK_MARK + JSON.stringify({v:2,n:count,gen:generation}), expires);
++  } catch (err) {} // Optional cache failures never block the response or a user operation.
++}
++
+@@ -179 +218,3 @@
+-  try { lock = LockService.getScriptLock(); got = lock.tryLock(20000); } catch (err) {}
++  // The response is ready. An optional cache write must never wait for another request.
++  try { lock = LockService.getScriptLock(); got = lock.tryLock(200); } catch (err) {}
++  if (!got) return; // Never delete/rewrite chunks without exclusive ownership.

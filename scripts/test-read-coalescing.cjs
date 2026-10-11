@@ -25,6 +25,12 @@ async function settle(){for(let i=0;i<10;i++)await Promise.resolve();}
   let n=calls.length;const a=c.appQueuedFetchJsonUntracked(url,{},20000),b=c.appQueuedFetchJsonUntracked(url+variation,{},20000);
   assert.equal(calls.length,n+2,'Scope/auth/fresh parameters must remain distinct');pending.at(-2).resolve({});pending.at(-1).resolve({});await Promise.all([a,b]);
  }
+ let heavyCount=calls.length;
+ const heavy=url.replace('getStockData','getPlnenieAll');
+ const short=c.appQueuedFetchJsonUntracked(heavy,{},12000,'background');
+ const visible=c.appQueuedFetchJsonUntracked(heavy,{},30000,'critical');
+ assert.equal(calls.length,heavyCount+1,'A cold heavy preload and visible read share a consistent 30-second budget');
+ pending.at(-1).resolve({ok:true});await Promise.all([short,visible]);
  let n=calls.length;const a=c.appQueuedFetchJsonUntracked(url,{},20000);epoch++;const b=c.appQueuedFetchJsonUntracked(url,{},20000);user='other';const d=c.appQueuedFetchJsonUntracked(url,{},20000);
  assert.equal(calls.length,n+3,'Account and line epoch changes must not share reads');pending.slice(-3).forEach(p=>p.resolve({}));await Promise.all([a,b,d]);
  n=calls.length;const failed=c.appQueuedFetchJsonUntracked(url,{},20000).catch(()=>{});pending.at(-1).reject(Error('offline'));await failed;

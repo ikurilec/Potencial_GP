@@ -13,7 +13,7 @@ console.log('Pharmacy report window, month normalization, duplicate sums and yea
 // A late IndexedDB result must not replace the response just received from Sheets.
 (async()=>{
  let releaseCache,releaseNetwork;let delivered=[],cache={};
- const x={IS_DEV:false,_lkInFlight:{},LK_STATE:{cache},lkCacheKey:v=>v,lkGetCachedRows:()=>null,lkIdbSupported:()=>true,lkIdbLoad:()=>new Promise(r=>releaseCache=r),lkCreamContactMonthKey:()=>'',scriptUrl:v=>v,appReadView:()=>({actions:['getLekarne']}),appQueuedFetchJson:(url,opts,t,p)=>{assert.match(url,/fresh=1/);assert.equal(p,'critical');return new Promise(r=>releaseNetwork=r)},lkReconcileCreamContactLocal:()=>{},lkSetCache:(key,rows)=>{cache[key]={rows};return true}};
+ const x={appLineCapture:()=>1,appLineContextActive:()=>true,appReadOwner:()=>"gp|rep",IS_DEV:false,_lkInFlight:{},LK_STATE:{cache},lkCacheKey:v=>v,lkGetCachedRows:()=>null,lkIdbSupported:()=>true,lkIdbLoad:()=>new Promise(r=>releaseCache=r),lkCreamContactMonthKey:()=>'',scriptUrl:v=>v,appReadView:()=>({actions:['getLekarne']}),appQueuedFetchJson:(url,opts,t,p)=>{assert.match(url,/fresh=1/);assert.equal(p,'critical');return new Promise(r=>releaseNetwork=r)},lkReconcileCreamContactLocal:()=>{},lkSetCache:(key,rows)=>{cache[key]={rows};return true}};
  x.lkQueueRead=(url,priority)=>x.appQueuedFetchJson(url,{cache:'no-store'},45000,priority);
  vm.createContext(x);vm.runInContext(src.slice(src.indexOf('function lkFetch(login, cb) {'),src.indexOf('function lkFetchFresh(')),x);
  x.lkFetch('rep',rows=>delivered.push(rows));releaseNetwork({ok:true,rows:[{fresh:true}]});await new Promise(r=>setImmediate(r));releaseCache({rows:[{old:true}]});await new Promise(r=>setImmediate(r));
