@@ -72,7 +72,7 @@ const root=path.resolve(__dirname,'..');
  for(const [id,action] of [['hist-overlay','getHistory'],['rep-plnenie-overlay','getPlnenieAll'],['lk-overlay','getLekarne'],['lb-overlay','getPlnenieAll'],['okresy-overlay','getConfig'],['pharma-ms-overlay','getPharmaData'],['golem-cal-overlay','getCalEvents']]){
   await page.evaluate(({id,action})=>{
    document.querySelectorAll('.show').forEach(e=>e.classList.remove('show'));
-   _panelCurrent=id;document.getElementById(id).classList.add('show');
+   _panelCurrent=id;document.getElementById(id).classList.add('show');appStartManualRefresh();
    appFetchJson(gynScriptUrl('action='+action)).catch(()=>{});
   },{id,action});
   await page.waitForFunction(id=>!!document.querySelector('#'+id+' .app-read-check .nst-spin'),id);
@@ -81,7 +81,7 @@ const root=path.resolve(__dirname,'..');
   console.log(id+': active read indicator and completion passed');
  }
  // A retry delay must not make the spinner disappear or briefly claim failure.
- await page.evaluate(()=>{appFetchWithRetry(gynScriptUrl('action=getCalEvents'),{retries:1,priority:'critical',delayFn:()=>800}).catch(()=>{});});
+ await page.evaluate(()=>{appStartManualRefresh();appFetchWithRetry(gynScriptUrl('action=getCalEvents'),{retries:1,priority:'critical',delayFn:()=>800}).catch(()=>{});});
  const retryFirst=await nextRead();await retryFirst.route.abort();retryFirst.resolve();
  await page.waitForTimeout(500);
  assert.ok(await page.locator('#golem-cal-overlay .app-read-check .nst-spin').count(),'Spinner must span the retry delay');

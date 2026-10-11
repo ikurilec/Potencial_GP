@@ -8,7 +8,7 @@ function harness(file, responses) {
   const calls=[]; let renders=0, home=0;
   const c={ NST:{posts:[{id:'cached'}],_reqId:0}, IS_DEV:false,
     nstUser:()=> 'rep', appLineCapture:()=>({line:'gp'}), appLineContextActive:()=>true,
-    nstUrl:p=>p, APP_FETCH_TIMEOUT_MS:16000,
+    nstUrl:p=>p, appReadResource:()=>null, appReadReuse:()=>null, APP_FETCH_TIMEOUT_MS:16000,
     appFetchJson:(url)=>{calls.push(url); const v=responses.shift(); return v instanceof Error ? Promise.reject(v) : Promise.resolve(v);},
     appQueuedFetchJson:(...a)=>c.appFetchJson(...a),
     nstApply:p=>{c.NST.posts=p;}, nstApplyPeople:()=>{}, nstUpdateBadge:()=>{},

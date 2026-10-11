@@ -47,7 +47,7 @@ const root=path.resolve(__dirname,'..');
   await req.route.fulfill({json:{ok:true,rows:[row(8),row(9)]}});req.resolve();
   await page.waitForFunction(()=>document.getElementById('lk-detail-body').textContent.includes('Sep 26'));
   assert.equal(pending.length,0,'Repainting detail must not start another request');
-  await page.evaluate(()=>{document.getElementById('lk-detail').classList.remove('show');lkOpenDetail(LK_DETAIL_OPEN_KEY);});
+  await page.evaluate(()=>{appStartManualRefresh();document.getElementById('lk-detail').classList.remove('show');lkOpenDetail(LK_DETAIL_OPEN_KEY);});
   await page.waitForTimeout(150);
   const failed=pending.shift();assert.ok(failed);
   await failed.route.fulfill({json:{ok:false,error:'Offline test'}});failed.resolve();

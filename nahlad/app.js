@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.25';
+var APP_VERSION = '2.89.26';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -405,6 +405,41 @@ var DataStore = (function () {
 // Metadata úspešnej kontroly servera; nikdy nie dátum samotného reportu.
 var APP_DATA_READ_ACTIONS = ('getHistory getAllHistory getInitData bootstrap getRepList getReps getLastLogins getManagers getStockData getNastenka getCalEvents getPlnenieAll getTeamPlnenie getPharmaData getPharmaGraf getPharmaGrafData getPharmaOkresGraf getPharmaOverview getLekarne getLekarneAll getLekarneDetail getLekarneVariants getGynLekarne getGynLekarneDetail getLekarneFilters getTuyory getAllTuyory getLonelix getAllLonelix getApixaban getAllApixaban getUsageStats getUsageRepStats getLineStats getOverrides getGpOverrides getAllGpOverrides getDohody getCennik getConfig').split(' ');
 var APP_READ_META = {}, APP_READ_META_LOADED = {}, APP_READ_UI_TIMER = null, APP_READ_GENERATIONS = {}, APP_READ_SAVE_TIMERS = {};
+// Only successful responses from this login are reused. Persistent cache alone
+// is never proof of freshness, and reused data keep their original check time.
+var APP_READ_REUSE = {}, APP_READ_REUSE_VERSION = 0, APP_READ_INSTANCE = Date.now()+'-'+Math.random();
+function appReadReuseMs(action){return /^(getNastenka|getCalEvents)$/.test(action)?30000:300000;}
+function appReadInvalidate(params){
+  var action='';try{action=new URLSearchParams(String(params||'').replace(/^\?/, '')).get('action')||'';}catch(e){}
+  if(!/^(save|set|delete|upsert|create|nastenka|new$|u$)/.test(action))return;
+  APP_READ_REUSE={};APP_READ_REUSE_VERSION++;
+}
+function appReadReuse(resource){
+  if(!resource || resource.reuseSafe===false || (typeof APP_MANUAL_REFRESH_UNTIL!=='undefined' && Date.now()<APP_MANUAL_REFRESH_UNTIL))return null;
+  var saved=APP_READ_REUSE[resource.key],meta=APP_READ_META[resource.key];
+  if(!saved || !appLineContextActive(saved.ctx) || saved.version!==APP_READ_REUSE_VERSION || (meta&&meta.failed) || Date.now()-saved.ts>=appReadReuseMs(resource.action))return null;
+  try{return {data:JSON.parse(saved.json)};}catch(e){delete APP_READ_REUSE[resource.key];return null;}
+}
+function appReadSaveResponse(resource,data){
+  if(!resource || resource.reuseSafe===false || !appLineContextActive(resource.ctx) || resource.owner!==appReadOwner() || resource.reuseVersion!==APP_READ_REUSE_VERSION || resource.generation!==APP_READ_GENERATIONS[resource.key])return;
+  try{
+    var json=JSON.stringify(data);if(json.length>600000)return;
+    APP_READ_REUSE[resource.key]={json:json,ts:Date.now(),ctx:resource.ctx,version:APP_READ_REUSE_VERSION};
+    var keys=Object.keys(APP_READ_REUSE).sort(function(a,b){return APP_READ_REUSE[a].ts-APP_READ_REUSE[b].ts;}),size=keys.reduce(function(n,k){return n+APP_READ_REUSE[k].json.length;},0);
+    while(keys.length>48 || size>3000000){var k=keys.shift();size-=APP_READ_REUSE[k].json.length;delete APP_READ_REUSE[k];}
+  }catch(e){}
+}
+function appReadViewFresh(view){
+  if(!view)return false;
+  var summary=appReadSummary(view),groups=summary.groups||[];
+  return groups.length>0 && groups.filter(function(g){return g.required!==false;}).every(appReadGroupFresh);
+}
+function appReadGroupFresh(g){
+  return g && g.current&&!g.pending&&!g.error&&g.last>0&&Date.now()-g.last<(g.id==='board'||g.id==='calendar'||g.id.indexOf('board|')===0||g.id.indexOf('calendar|')===0?30000:300000);
+}
+function appReadMetaCurrent(e){
+  return e && e.instance===APP_READ_INSTANCE && e.reuseVersion===APP_READ_REUSE_VERSION && appLineContextActive(e.readCtx);
+}
 function appReadOwner(){ var s=getSession()||{};return appLineTag()+'|'+String(s.username||'').toLowerCase()+'|'+String(s.role||'').toLowerCase(); }
 function appReadResource(url){
   try {
@@ -412,16 +447,20 @@ function appReadResource(url){
     if(APP_DATA_READ_ACTIONS.indexOf(action)===-1 || !(getSession()||{}).username)return null;
     var params={};
     // Allowlist excludes tokens, passwords, timestamps and uploaded/form content.
-    var allowed='login username reprezentant rep dni region oblast produkt kvartal rok Q q fullLine withGraf okres code from to month creamMonth osloveneMonth key period'.split(' ');
+    var allowed='login username reprezentant rep dni region oblast produkt kvartal rok Q q fullLine withGraf graf prev team_rep okres code from to month creamMonth osloveneMonth key period parts produkty'.split(' ');
     allowed.forEach(function(k){if(u.searchParams.has(k))params[k]=u.searchParams.get(k);});
     var owner=appReadOwner(), key=u.origin+u.pathname+'|'+action+'|'+JSON.stringify(params);
-    return {owner:owner,key:owner+'|'+key,action:action,params:params,path:u.origin+u.pathname,ctx:appLineCapture()};
+    var noise='action token session_token device_id password fresh _t _ts _v _check _refresh _'.split(' ');
+    // Unknown data parameters must fall through to the server, never reuse a
+    // response with potentially different filters or completeness.
+    var reuseSafe=Array.from(u.searchParams.keys()).every(function(k){return allowed.indexOf(k)!==-1 || noise.indexOf(k)!==-1;});
+    return {owner:owner,key:owner+'|'+key,action:action,params:params,path:u.origin+u.pathname,ctx:appLineCapture(),reuseSafe:reuseSafe};
   } catch(e){return null;}
 }
 function appReadValid(resource,data){
   if(!resource || data==null || typeof data!=='object' || data.ok===false || data.error)return false;
   if(resource.action==='getHistory')return Array.isArray(data);
-  var field={getNastenka:'posts',getStockData:'rows',getCalEvents:'events',getLekarne:'rows',getLekarneAll:'rows',getLekarneDetail:'rows',getGynLekarne:'rows',getTeamPlnenie:'reps',getRepList:'reps'}[resource.action];
+  var field={getNastenka:'posts',getStockData:'rows',getCalEvents:'events',getLekarne:'rows',getLekarneAll:'rows',getLekarneDetail:'rows',getGynLekarne:'rows',getGynLekarneDetail:'rows',getLekarneFilters:'rows',getPharmaGraf:'rows',getPharmaOkresGraf:'rows',getDohody:'dohody',getTeamPlnenie:'reps',getRepList:'reps'}[resource.action];
   if(field)return data.ok===true && Array.isArray(data[field]);
   if(resource.action==='getPlnenieAll')return data.ok===true && !!data.plan && !!data.predaje;
   if(resource.action==='getPharmaData')return data.ok===true && (Array.isArray(data.summary)||Array.isArray(data.okresy));
@@ -445,7 +484,12 @@ function appReadMetaLoad(owner){
 function appReadRemember(resource,time,failed){
   if(!resource || !appLineContextActive(resource.ctx) || resource.owner!==appReadOwner())return;
   if(resource.generation && resource.generation!==APP_READ_GENERATIONS[resource.key])return;
-  if(resource.visible && !appRequestMatchesView(resource,appReadView()))return;
+  if(resource.visible && !appRequestMatchesView(resource,appReadView())){
+    if(failed)return;
+    // A valid reply remains useful after navigation within the same login.
+    // Record its real check time without reviving the departed view's indicator.
+    resource=Object.assign({},resource,{visible:false});
+  }
   appReadMetaLoad(resource.owner);
   var old=APP_READ_META[resource.key];
   var failureVisible=resource.visible===true || (!!failed && !!(old&&old.failed&&old.failureVisible));
@@ -453,7 +497,7 @@ function appReadRemember(resource,time,failed){
     var check=APP_READ_CHECKS[key];
     return appLineContextActive(check.ctx) && check.resources && check.resources[resource.key]>0;
   });
-  APP_READ_META[resource.key]={owner:resource.owner,key:resource.key,action:resource.action,params:resource.params,path:resource.path,ts:failed?(old?old.ts:0):time,failed:!!failed,failureVisible:failureVisible,attempt:time,visible:!!resource.visible||!!(old&&old.visible)};
+  APP_READ_META[resource.key]={owner:resource.owner,key:resource.key,action:resource.action,params:resource.params,path:resource.path,ts:failed?(old?old.ts:0):time,failed:!!failed,failureVisible:failureVisible,attempt:time,visible:!!resource.visible||!!(old&&old.visible),instance:APP_READ_INSTANCE,reuseVersion:resource.reuseVersion,readCtx:resource.ctx};
   // A silent successful refresh is also a recovery of the displayed resource.
   // Do not keep the old foreground failure after the actual data have recovered.
   if(!failed && typeof APP_READ_CHECKS!=='undefined')Object.keys(APP_READ_CHECKS).forEach(function(key){
@@ -490,10 +534,70 @@ function appRequestMatchesView(url,view){
 }
 function appReadSummary(view){
   if(view && view.type==='home')return appReadHomeSummary(view);
+  return appReadSectionSummary(view);
+}
+var APP_READ_SECTION_TYPES = [
+  ['sales','Plány a predaje',['getPlnenieAll','getTeamPlnenie']],
+  ['roster','Zoznam reprezentantov',['getRepList','getReps','getManagers']],
+  ['history','Lekári a návštevy',['getHistory','getAllHistory','getInitData','bootstrap']],
+  ['stocks','Sklady',['getStockData']],['board','Príspevky a komentáre',['getNastenka']],
+  ['calendar','Kalendár a absencie',['getCalEvents']],
+  ['market','Trhové údaje',['getPharmaData','getPharmaOverview']],
+  ['graph','Vývoj a grafy',['getPharmaGraf','getPharmaGrafData','getPharmaOkresGraf']],
+  ['pharmacies','Údaje lekární',['getLekarne','getLekarneAll','getGynLekarne']],
+  ['pharmacy-detail','História a rozpad balení',['getLekarneDetail','getGynLekarneDetail']],
+  ['variants','Rozpad podľa balení',['getLekarneVariants']],['filters','Filtre lekární',['getLekarneFilters']],
+  ['tuyory','Prieskum Tuyory',['getTuyory','getAllTuyory']],['lonelix','Prieskum Lonelix',['getLonelix','getAllLonelix']],
+  ['apixaban','Prieskum Apixaban',['getApixaban','getAllApixaban']],
+  ['activity','Aktivita používateľov',['getUsageStats','getUsageRepStats','getLastLogins']],
+  ['line','Súhrn línie',['getLineStats']],['overrides','Úpravy údajov lekárov',['getOverrides','getGpOverrides','getAllGpOverrides']],
+  ['agreements','Dohody',['getDohody']],['prices','Cenník',['getCennik']],['metadata','Informácie o reportoch',['getConfig']]
+];
+function appReadSectionSummary(view){
+  if(!view)return {last:0,error:false,groups:[]};
   var owner=appReadOwner();appReadMetaLoad(owner);
-  var entries=Object.keys(APP_READ_META).map(function(k){return APP_READ_META[k];}).filter(function(e){return e.owner===owner && e.action!=='getConfig' && appRequestMatchesView(e,view);});
-  var visible=entries.filter(function(e){return e.visible;});
-  return {last:visible.length?Math.min.apply(null,visible.map(function(e){return e.ts;})):0,error:entries.some(function(e){return e.failed && e.failureVisible!==false;})};
+  var entries=Object.keys(APP_READ_META).map(function(k){return APP_READ_META[k];}).filter(function(e){return e.owner===owner && appRequestMatchesView(e,view);});
+  var queue=typeof APP_REQUEST_QUEUE==='undefined'?[]:APP_REQUEST_QUEUE.items.concat(APP_REQUEST_QUEUE.running);
+  var check=typeof APP_READ_CHECKS==='undefined'?null:APP_READ_CHECKS[view.key];
+  var pending=queue.map(function(j){return j.resource||appReadResource(j.url);}).filter(function(r){return appRequestMatchesView(r,view);});
+  if(check && appLineContextActive(check.ctx) && check.resources)Object.keys(check.resources).forEach(function(k){
+    var r=check.resourceInfo&&check.resourceInfo[k];if(check.resources[k]>0 && appRequestMatchesView(r,view))pending.push(r);
+  });
+  var buckets={},primary=(view.actions||[]).find(function(a){return a!=='getConfig';});
+  function identify(r){
+    // Quarter/product/colleague batches must never report another row's success.
+    var p=r.params||{},identity={};
+    ['produkt','code','oblast','kvartal','rok','Q','login','reprezentant','rep','okres','key'].forEach(function(k){if(p[k]!=null && p[k]!=='')identity[k]=p[k];});
+    return JSON.stringify(identity);
+  }
+  function add(type,r,active){
+    var id=type[0]+'|'+identify(r),g=buckets[id];
+    if(!g){
+      var p=r.params||{},label=type[1];
+      if(p.produkt){var product=typeof PHARMA_PROD_LABEL!=='undefined'&&PHARMA_PROD_LABEL[p.produkt]||p.produkt;label+=' · '+product;}
+      if(p.Q)label+=' · Q'+p.Q+(p.rok?' '+p.rok:'');
+      else if(p.kvartal && /^\d{2}0[1-4]$/.test(p.kvartal))label+=' · Q'+p.kvartal.slice(-1)+' 20'+p.kvartal.slice(0,2);
+      g=buckets[id]={id:id,label:label,last:0,pending:false,latest:null,required:type[0]!=='metadata'};
+    }
+    if(active)g.pending=true;
+    else {g.last=Math.max(g.last,r.ts||0);if(!g.latest||r.attempt>g.latest.attempt)g.latest=r;}
+  }
+  APP_READ_SECTION_TYPES.forEach(function(type){
+    var supported=type[2].filter(function(a){return view.actions.indexOf(a)!==-1;});if(!supported.length)return;
+    var matching=entries.filter(function(e){return supported.indexOf(e.action)!==-1;});
+    var running=pending.filter(function(e){return supported.indexOf(e.action)!==-1;});
+    matching.forEach(function(e){add(type,e,false);});running.forEach(function(e){add(type,e,true);});
+    // Optional sections appear when requested; avoid inventing a permanent
+    // loading state for endpoints this role/screen never calls.
+    if(!matching.length&&!running.length&&supported.indexOf(primary)!==-1)add(type,{params:{}},false);
+  });
+  var groups=Object.keys(buckets).map(function(k){var g=buckets[k],e=g.latest;
+    g.error=!!(e&&e.failed&&e.attempt>=g.last);g.visibleError=g.error&&e.failureVisible!==false;
+    g.state=g.pending?'pending':g.error?'error':g.last?'verified':'unknown';g.current=appReadMetaCurrent(e);delete g.latest;return g;
+  });
+  var required=groups.filter(function(g){return g.required;});
+  return {last:required.length&&required.every(function(g){return g.last>0;})?Math.min.apply(null,required.map(function(g){return g.last;})):0,
+    error:groups.some(function(g){return g.required&&g.visibleError;}),pending:groups.some(function(g){return g.pending;}),groups:groups};
 }
 function appReadHomeSummary(view){
   var owner=appReadOwner();appReadMetaLoad(owner);
@@ -518,7 +622,8 @@ function appReadHomeSummary(view){
     var last=matching.reduce(function(t,e){return Math.max(t,e.ts||0);},0);
     var latest=matching.slice().sort(function(a,b){return b.attempt-a.attempt;})[0];
     var pending=queue.some(function(j){return appRequestMatchesView(j.resource||j.url,scope);}) || !!(check && check.resources && Object.keys(check.resources).some(function(k){return check.resources[k]>0 && check.resourceInfo && appRequestMatchesView(check.resourceInfo[k],scope);}));
-    return {id:g.id,label:g.label,last:last,pending:pending,error:!!(latest&&latest.failed&&latest.attempt>=last),visibleError:!!(latest&&latest.failed&&latest.failureVisible!==false&&latest.attempt>=last)};
+    var error=!!(latest&&latest.failed&&latest.attempt>=last);
+    return {id:g.id,label:g.label,last:last,pending:pending,error:error,visibleError:!!(error&&latest.failureVisible!==false),current:appReadMetaCurrent(latest),state:pending?'pending':error?'error':last?'verified':'unknown'};
   });
   // A date describes the whole displayed overview only when every section has
   // a successful check. Never substitute a cache-write time for verification.
@@ -528,6 +633,7 @@ function appReadHomeSummary(view){
 var APP_HOME_CHECK_STARTED = {};
 function appHomeResume(){
   var view=appReadView();if(!view || view.type!=='home')return;
+  if(appReadViewFresh(view))return;
   var key=appReadOwner()+'|'+appLineCapture().epoch,now=Date.now();
   if(APP_HOME_CHECK_STARTED[key] && now-APP_HOME_CHECK_STARTED[key]<60000)return;
   // visibilitychange/pageshow/online can arrive together. Individual loaders
@@ -575,7 +681,8 @@ function appReadView(){
     if(key==='gyn-lekarne')params.osloveneMonth=gynLkMonthKey();
     if(key==='gyn-plnenie' && GYN_APP.detailLogin)params.login=GYN_APP.detailLogin;
     if(key==='history')params.reprezentant=s.username;
-    if(key==='mgr-activity'||key==='gyn-activity'){params.dni=USAGE_VIEW.dni;params.rep=USAGE_VIEW.currentRep||'';}
+    if(key==='mgr-visits' && MGR_STATE.currentRep)params.reprezentant=MGR_STATE.currentRep;
+    if(key==='mgr-activity'||key==='gyn-activity'){params.dni=USAGE_VIEW.dni;params.rep=USAGE_VIEW.currentRep||'';params.login=USAGE_VIEW.currentRep||s.username;}
     if(key==='mgr-reporty'){var period=rptViewPeriod();params.rok=period.year;params.Q=period.q;}
     if(key==='district-chart' && PHARMA_OKRES_STATE.current){var dc=PHARMA_OKRES_STATE.current;params.produkt=dc.code;params.oblast=dc.oblast;params.okres=dc.r.okres;}
     if(key==='market'){
@@ -590,6 +697,7 @@ function appReadView(){
   }
   // Dialógy a rozpracované formuláre nemajú automatickú dátovú obnovu.
   if(shown('nst-compose') || shown('edit-overlay') || shown('gpp-overlay')) return null;
+  if(shown('gs-overlay'))return view('navigator','#gs-results',['getNastenka','getCalEvents','getLekarne','getLekarneAll','getGynLekarne','getHistory','getAllHistory','getTeamPlnenie','getRepList']);
   var panels=[
     ['pharma-okres-overlay','#pharma-okres-chart-svg','district-chart',['getPharmaOkresGraf']],
     ['sklady-overlay','#sklady-body','stocks',['getStockData']],
@@ -597,9 +705,9 @@ function appReadView(){
     ['team-plnenie-overlay','#team-plnenie-body','team',['getTeamPlnenie','getPlnenieAll','getRepList']],
     ['pl-prod-sheet','#pl-ps-body','product',['getPlnenieAll','getPharmaData','getPharmaGrafData']],
     ['pharma-ms-overlay','#pharma-ms-body','market',['getPharmaData','getPharmaGrafData','getPharmaGraf','getPharmaOkresGraf']],
-    ['lk-detail','#lk-detail-body','pharmacy-detail',['getLekarneDetail','getGynLekarneDetail','getLekarne']],
+    ['lk-detail','#lk-detail-body','pharmacy-detail',['getLekarneDetail','getGynLekarneDetail','getLekarne','getLekarneVariants']],
     ['okresy-overlay','#okresy-list','districts',['getPharmaData','getConfig']],
-    ['lk-overlay','#lk-list','pharmacies',['getLekarne','getLekarneVariants','getLekarneDetail']],
+    ['lk-overlay','#lk-list','pharmacies',['getLekarne','getLekarneVariants','getLekarneDetail','getLekarneFilters']],
     ['lb-overlay','#lb-body','ranking',['getPlnenieAll','getAllHistory','getHistory']],
     ['hist-overlay','#hist-body','history',['getHistory','bootstrap','getGpOverrides','getAllGpOverrides']],
     ['rep-plnenie-overlay','#rep-pl-q-content','sales',['getPlnenieAll','getConfig']],
@@ -625,14 +733,14 @@ function appReadView(){
   if(document.body.classList.contains('manager-mode')){
     var tab=MGR_STATE.subtab;
     var hosts={plnenie:'#pl-q-content',visits:'#mgr-list-wrap',leaderboard:'#mgr-lb-body',kalendar:'#mgr-cal-content',activity:'#act-body',reporty:'#mgr-reporty-view'};
-    var actions={plnenie:['getPlnenieAll','getConfig'],visits:['getAllHistory','getHistory','getReps','bootstrap'],leaderboard:['getPlnenieAll'],kalendar:['getCalEvents'],activity:['getUsageStats','getUsageRepStats'],reporty:['getPlnenieAll','getCennik','getCalEvents','getDohody','getGpOverrides','bootstrap','getPharmaData','getPharmaOverview','getGynLekarne']};
+    var actions={plnenie:['getPlnenieAll','getConfig'],visits:['getAllHistory','getHistory','getReps','bootstrap','getLineStats','getOverrides','getTuyory','getAllTuyory','getLonelix','getAllLonelix','getApixaban','getAllApixaban'],leaderboard:['getPlnenieAll'],kalendar:['getCalEvents'],activity:['getUsageStats','getUsageRepStats','getLekarneFilters'],reporty:['getPlnenieAll','getCennik','getCalEvents','getDohody','getGpOverrides','bootstrap','getPharmaData','getPharmaOverview','getGynLekarne']};
     if(tab==='visits'&&MGR_STATE.currentRep&&shown('mgr-detail'))return view('mgr-visits','#mgr-detail',actions.visits);
     if(tab==='plnenie' && document.body.classList.contains('mgr-plnenie-detail-open')){
       var pharmacies=document.getElementById('pl-detail-lekarne');
       var isLk=pharmacies && pharmacies.style.display!=='none';
       var districts=document.getElementById('pl-detail-okresy');
       if(districts && districts.style.display!=='none')return view('mgr-detail-okresy','#pl-detail-okresy-body',['getPharmaData','getConfig']);
-      return view(isLk?'mgr-detail-lekarne':'mgr-detail',isLk?'#pl-detail-lekarne-body':'#pl-detail-predaje',isLk?['getLekarne','getLekarneDetail']:['getPlnenieAll','getPharmaData']);
+      return view(isLk?'mgr-detail-lekarne':'mgr-detail',isLk?'#pl-detail-lekarne-body':'#pl-detail-predaje',isLk?['getLekarne','getLekarneDetail','getLekarneVariants']:['getPlnenieAll','getPharmaData']);
     }
     return view('mgr-'+tab,hosts[tab],actions[tab]||[]);
   }
@@ -667,15 +775,17 @@ function appReadPaint(entry){
   entry.element=el;
   el.setAttribute('data-read-check',entry.view.key);
   el.setAttribute('role','status');
-  var status=entry.pending&&!view.nativeLoading?'pending':failed&&!view.nativeLoading?'error':'verified';
+  var pending=!!entry.pending || (view.type!=='home' && !!summary.pending);
+  var complete=summary.last && (!summary.groups || summary.groups.filter(function(g){return g.required!==false;}).every(function(g){return !g.pending&&!g.error&&g.last;}));
+  var status=pending?'pending':failed?'error':complete?'verified':'unknown';
   var timeLabel=appReadTimeLabel(summary.last);
-  if(summary.groups && !summary.last)timeLabel='Niektoré údaje ešte nemajú úspešné overenie.';
+  if(summary.groups && summary.groups.length>1 && !summary.last)timeLabel='Niektoré údaje ešte nemajú úspešné overenie.';
   if(summary.groups && summary.last && (status!=='verified'||summary.groups.some(function(g){return g.pending||g.error;})))timeLabel=timeLabel.replace('Overené ','Posledné úplné overenie ');
   // Keep the same animated node while polling; replacing it restarts CSS rotation.
   if(el._appReadStatus!==status){
     var previousDetails=el.querySelector('.app-read-details');
     if(previousDetails)el._appReadDetailsOpen=previousDetails.open;
-    el.innerHTML=(status==='pending'?'<span class="nst-spin" aria-hidden="true"></span><span>Overujem aktuálne údaje…</span>':status==='error'?'<span>Obnova zlyhala. Zobrazené údaje môžu byť staršie.</span><button type="button" class="app-err-btn" onclick="appReadRetryCurrent()">↻ Skúsiť znova</button>':'')+'<span class="app-read-time"></span>';
+    el.innerHTML=(status==='pending'&&!view.nativeLoading?'<span class="nst-spin" aria-hidden="true"></span><span>Overujem aktuálne údaje…</span>':status==='error'?'<span class="app-read-mark" aria-hidden="true">!</span><span>Obnova zlyhala. Zobrazené údaje môžu byť staršie.</span><button type="button" class="app-err-btn" onclick="appReadRetryCurrent()">↻ Skúsiť znova</button>':status==='verified'?'<span class="app-read-mark" aria-hidden="true">✓</span>':'')+'<span class="app-read-time"></span>';
     el._appReadStatus=status;
   }
   var timeEl=el.querySelector('.app-read-time');
@@ -685,12 +795,15 @@ function appReadPaint(entry){
     if(!details){details=document.createElement('details');details.className='app-read-details';details.open=!!el._appReadDetailsOpen;details.innerHTML='<summary>Stav údajov</summary><div class="app-read-sections"></div><button type="button" class="app-err-btn" onclick="appReadRetryCurrent()">↻ Overiť teraz</button>';el.appendChild(details);}
     var rows=summary.groups.map(function(g){
       var label=g.pending?'Overujem…':g.error?'Nepodarilo sa obnoviť':g.last?appReadTimeLabel(g.last):'Zatiaľ neoverené';
-      return '<div class="app-read-section"><strong>'+appEsc(g.label)+'</strong><span class="'+(g.error&&!g.pending?'app-read-section-error':'')+'">'+appEsc(label)+'</span>'+(g.pending&&g.last?'<small>'+appEsc(appReadTimeLabel(g.last).replace('Overené ','Posledné overenie '))+'</small>':'')+'</div>';
+      var state=g.pending?'pending':g.error?'error':g.last?'verified':'unknown';
+      var icon=state==='pending'?'<i class="nst-spin" aria-hidden="true"></i>':'<i class="app-read-mark" aria-hidden="true">'+(state==='verified'?'✓':state==='error'?'!':'—')+'</i>';
+      return '<div class="app-read-section" data-read-section="'+appEsc(g.id)+'"><strong>'+appEsc(g.label)+'</strong><span class="app-read-section-status app-read-section-'+state+'">'+icon+appEsc(label)+'</span>'+((g.pending||g.error)&&g.last?'<small>'+appEsc(appReadTimeLabel(g.last).replace('Overené ','Posledné úspešné overenie '))+'</small>':'')+'</div>';
     }).join('');
     var sections=details.querySelector('.app-read-sections');
     if(sections._html!==rows){sections.innerHTML=rows;sections._html=rows;}
   }
   el.classList.toggle('app-read-verified',status==='verified');
+  el.setAttribute('data-read-status',status);
 }
 function appReadRetryCurrent(){
   appStartManualRefresh();
@@ -733,7 +846,8 @@ function appTrackedRead(url, opts, run, priority){
   var view=appReadView(), action='';
   try { action=new URL(url,location.href).searchParams.get('action')||''; } catch(e){}
   var resource=appReadResource(url);
-  if(resource){resource.generation=(APP_READ_GENERATIONS[resource.key]||0)+1;APP_READ_GENERATIONS[resource.key]=resource.generation;}
+  if(resource && typeof appReadReuse==='function'){var saved=appReadReuse(resource);if(saved){appReadSchedulePaint();return Promise.resolve(saved.data);}}
+  if(resource){resource.generation=(APP_READ_GENERATIONS[resource.key]||0)+1;APP_READ_GENERATIONS[resource.key]=resource.generation;resource.reuseVersion=typeof APP_READ_REUSE_VERSION==='undefined'?0:APP_READ_REUSE_VERSION;}
   // Login preloads and polling update Home silently after its explicit check.
   var matches=appRequestMatchesView(resource,view);
   var visible=matches && action!=='getConfig' && !(view && view.type==='home' && (priority==='background'||priority==='boot'));
@@ -750,9 +864,9 @@ function appTrackedRead(url, opts, run, priority){
   try { promise=run(url,opts); } catch(e){if(resource)appReadRemember(resource,Date.now(),true);if(end)end(e);return Promise.reject(e);}
   return Promise.resolve(promise).then(function(data){
     var failed=resource?!appReadValid(resource,data):!data||data.ok===false;
-    if(resource && resource.action!=='getConfig')appReadRemember(resource,Date.now(),failed);
+    if(resource){appReadRemember(resource,Date.now(),failed);if(!failed && typeof appReadSaveResponse==='function')appReadSaveResponse(resource,data);}
     if(end)end(failed,resource && resource.generation!==APP_READ_GENERATIONS[resource.key]);return data;
-  },function(error){if(resource && resource.action!=='getConfig')appReadRemember(resource,Date.now(),true);if(end)end(error,resource && resource.generation!==APP_READ_GENERATIONS[resource.key]);throw error;});
+  },function(error){if(resource)appReadRemember(resource,Date.now(),true);if(end)end(error,resource && resource.generation!==APP_READ_GENERATIONS[resource.key]);throw error;});
 }
 // Indikátor zostáva aktívny aj medzi automatickými pokusmi.
 function appFetchWithRetry(url, opts){
@@ -796,22 +910,24 @@ function appCheckSalesQuarter(rep,period){
   if(result.data && differs(result.data))apply(result.data);
   return true;
 }
-function appCheckHome(){
+function appCheckHome(force){
   var session=getSession();if(!session)return;
+  var view=appReadView(),summary=view&&view.type==='home'?appReadHomeSummary(view):null;
+  function needs(id){var g=summary&&summary.groups.find(function(g){return g.id===id;});return !!force || !g || (!g.pending&&!appReadGroupFresh(g));}
+  if(!force && appReadViewFresh(view)){appReadSchedulePaint();return;}
   APP_HOME_CHECK_STARTED[appReadOwner()+'|'+appLineCapture().epoch]=Date.now();
-  plnenieRefreshPlansAndRerender(true);
-  if(!NST.loading)nstFetch(null,'critical',true);
-  stockPreload(true);
-  try{gynCalSync('critical');}catch(e){}
-  if(appRole()==='gp' && !mgrDetectRole(session))gpHistForceRefresh(session.username,function(){dnesRefreshIfOpen();});
+  if(needs('sales'))plnenieRefreshPlansAndRerender(true);
+  if(needs('board')&&!NST.loading)nstFetch(null,'critical',true);
+  if(needs('stocks'))stockPreload(true);
+  if(needs('calendar'))try{gynCalSync('critical');}catch(e){}
+  if(needs('history')&&appRole()==='gp' && !mgrDetectRole(session))gpHistForceRefresh(session.username,function(){dnesRefreshIfOpen();});
   if(session.line==='gyn'){
     // Rebríček zdieľa fullLine dáta aj s domovskou kartou.
-    delete GYN_LB.dataReady[gynLbLastCompletedQ()];
-    gynLbEnsureData(gynLbLastCompletedQ(),gynPlnenieCacheKey(plnenieCalendarPeriod().year,gynLbLastCompletedQ())+'|lb-fullLine');
+    if(needs('ranking')){delete GYN_LB.dataReady[gynLbLastCompletedQ()];gynLbEnsureData(gynLbLastCompletedQ(),gynPlnenieCacheKey(plnenieCalendarPeriod().year,gynLbLastCompletedQ())+'|lb-fullLine');}
     return;
   }
-  appCheckSalesQuarter(!mgrDetectRole(session));
-  lbPreloadPlnenie(true);
+  if(needs('sales'))appCheckSalesQuarter(!mgrDetectRole(session));
+  if(needs('ranking'))lbPreloadPlnenie(true);
 }
 
 // ── PUSH NOTIFIKÁCIE (Firebase Cloud Messaging) ──
@@ -856,8 +972,8 @@ function pushHandleForeground(payload){
   var otherLine=d.line && d.line!==appLineTag();
   if(otherLine)title+=' · '+({gp:'Golem',gyn:'Gynekológia',reagila:'Reagila'}[d.line]||d.line);
   else {
-    try{if(/^board_/.test(kind))nstFetch(null,'critical',true);
-      else if(/absence|calendar/.test(kind))gynCalSync();
+    try{if(/^board_/.test(kind)){appReadInvalidate('action=saveNastenka');nstFetch(null,'critical',true);}
+      else if(/absence|calendar/.test(kind)){appReadInvalidate('action=upsertCalEvent');gynCalSync();}
       else if(kind==='sales_data'||kind==='market_share_data'||kind==='data_update'){appStartManualRefresh();appPtrRefreshCurrent(function(){appReadRefreshVisible();});}
     }catch(e){}
   }
@@ -1274,6 +1390,7 @@ function appStartManualRefresh(){ APP_MANUAL_REFRESH_UNTIL = Date.now() + 15000;
 function appFreshReadParams(){ return Date.now() < APP_MANUAL_REFRESH_UNTIL ? '&fresh=1&_refresh=' + encodeURIComponent(APP_MANUAL_REFRESH_ID) : ''; }
 
 function scriptUrl(params) {
+  appReadInvalidate(params);
   // Golem render používa scriptUrl(...) priamo. Pre Reagila aj Gyn líniu
   // (session.line) presmeruj všetky tieto volania na ich vlastný backend —
   // tým sa Golem pohľad recykluje 1:1. CHÝBAJÚCA vetva pre 'gyn' bola koreňom
@@ -1361,6 +1478,7 @@ function stockNormalizePayload(payload, line){
 var GYN_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwOZxhmwH9jwGTQroagVzhibavO8XowAQpiryp4567SNfHWevk9UHSwqY_v-zuZd5WQ/exec';
 var GYN_API_TOKEN  = 'gr-gyn-2026';
 function gynScriptUrl(params) {
+  appReadInvalidate(params);
   return GYN_SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(GYN_API_TOKEN) + authSessionParams('gyn') + appFreshReadParams();
 }
 
@@ -1368,6 +1486,7 @@ function gynScriptUrl(params) {
 var REAGILA_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyxFneKum7D0NLWtIQZHochosWtXeWjCZxr9AH_f0TmesIDqe1_jetga_RwDjNWF1-W/exec';
 var REAGILA_API_TOKEN  = 'gr-reagila-2026';
 function reagilaScriptUrl(params) {
+  appReadInvalidate(params);
   return REAGILA_SCRIPT_URL + '?' + params + '&token=' + encodeURIComponent(REAGILA_API_TOKEN) + authSessionParams('reagila') + appFreshReadParams();
 }
 
@@ -4846,6 +4965,7 @@ function _panelShow(newId, isBack) {
   }
   var newEl = document.getElementById(newId);
   if (!newEl) return;
+  var motion=(newEl._panelMotion||0)+1;newEl._panelMotion=motion;
   _panelCurrent = newId;
   _routerSyncHash(newId.replace(/-overlay$/, ''));
   // Persistentný topbar — zvýrazni aktívnu záložku v rep-nav
@@ -4863,14 +4983,14 @@ function _panelShow(newId, isBack) {
   if (prevEl && prevVisible) {
     prevEl.style.zIndex = '1500';
     setTimeout(function(){
-      prevEl.classList.remove('show');
-      prevEl.style.zIndex = '';
-      newEl.style.zIndex = '';
+      // A quick return can reopen this panel before the old slide finishes.
+      if(_panelCurrent!==prevEl.id){prevEl.classList.remove('show');prevEl.style.zIndex='';}
+      if(newEl._panelMotion===motion)newEl.style.zIndex='';
     }, 320);
   } else {
-    setTimeout(function(){ newEl.style.zIndex = ''; }, 380);
+    setTimeout(function(){if(newEl._panelMotion===motion)newEl.style.zIndex='';},380);
   }
-  setTimeout(function(){ newEl.classList.remove('panel-anim-up','panel-anim-l','panel-anim-r'); }, 380);
+  setTimeout(function(){if(newEl._panelMotion===motion)newEl.classList.remove('panel-anim-up','panel-anim-l','panel-anim-r');},380);
 }
 
 function closeAllPanels() {
@@ -6950,6 +7070,8 @@ function stockLoad(onDone){
   var line = appLineTag();
   var ctx = appLineCapture();
   var stockUrl = stockRequestUrl();
+  var recent=appReadReuse(appReadResource(stockUrl));
+  if(recent){SKLADY_STATE.payload=stockNormalizePayload(recent.data,line);stockRender();appReadSchedulePaint();if(typeof onDone==='function')onDone();return;}
   var finishCheck = appReadBegin(appReadView());
   var r = DataStore.refresh(stockCacheKey_(line), {
     maxAgeMs: STOCK_CACHE_MAX_AGE_MS,
@@ -6985,7 +7107,7 @@ function stockLoad(onDone){
 // Vynútené obnovenie (obíde 24h vek cache) — pre potiahnutie nadol aj pre „Skúsiť znova".
 // Bez tohto appka po novom nahratí reportu do Sheets ukazovala starý report celých 24 hodín,
 // lebo DataStore.get() pri „fresh" cache fetch vôbec nespúšťa.
-function stockForceRefresh(onDone){ stockLoad(onDone); }
+function stockForceRefresh(onDone){appStartManualRefresh();stockLoad(onDone);}
 function stockPreload(force){
   try {
     var line = appLineTag();
@@ -24957,6 +25079,7 @@ function usageStatsLoad(rep, _retry) {
 
 // Tlačidlo „Obnoviť": zahodí lokálnu aj serverovú (2 min) cache a načíta dáta nanovo.
 function usageRefresh() {
+  appStartManualRefresh();
   USAGE_VIEW.teamCache = {}; USAGE_VIEW.repCache = {};
   USAGE_VIEW._fresh = true;
   usageStatsLoad(USAGE_VIEW.currentRep || undefined);
@@ -31585,28 +31708,31 @@ function appPtrRefreshCurrent(done){
   case 'stocks':stockForceRefresh(function(){if(same())appReadRefreshVisible();});break;
   case 'districts':case 'mgr-detail-okresy':okresyRetryLoading();break;
   case 'history':gpHistForceRefresh(session.username,function(){if(same())histRender();});break;
-  case 'home':appCheckHome();break;
+  case 'home':appCheckHome(true);break;
   case 'sales':if(!appCheckSalesQuarter(true))repPlnenieLoad();break;
   case 'mgr-plnenie':case 'mgr-detail':if(!appCheckSalesQuarter(false))plnenieLoadAllQuarters();break;
   case 'gyn-plnenie':gynSales();break;
   case 'team':teamPlnenieLoad(true);break;
   case 'calendar':case 'mgr-kalendar':case 'gyn-kalendar':gynCalSync();break;
-  case 'pharmacies':case 'pharmacy-detail':case 'mgr-detail-lekarne':pharmacies();if(type==='pharmacy-detail')lkLoadVariants(LK_DETAIL_LOGIN||session.username,lkFilterDataset());break;
+  case 'pharmacies':case 'pharmacy-detail':case 'mgr-detail-lekarne':pharmacies();lkLoadVariants(type==='mgr-detail-lekarne'?PL_STATE.detailRep:type==='pharmacy-detail'?LK_DETAIL_LOGIN||session.username:LK_STATE.login||session.username,lkFilterDataset());if(type==='pharmacies')lkPresetSync();break;
   case 'gyn-lekarne':var login=GYN_LK.login||GYN_APP.detailLogin||session.username;gynLkFetch(login,function(rows){if(same()&&GYN_LK.login===login){GYN_LK.rows=rows;gynLkRender();}});break;
   case 'ranking':case 'mgr-leaderboard':lbPreloadPlnenie(true);break;
   case 'gyn-leaderboard':delete GYN_LB.dataReady[gynLbLastCompletedQ()];gynLbEnsureData(gynLbLastCompletedQ(),gynPlnenieCacheKey(plnenieCalendarPeriod().year,gynLbLastCompletedQ())+'|lb-fullLine');break;
   case 'district-chart':var chart=PHARMA_OKRES_STATE.current;if(chart)openPharmaOkresChart(chart.r,chart.prodLabel,true);break;
   case 'market':if(session.line==='gyn')gynPharmaLoad();else{loadPharmaDataNetwork(PHARMA_STATE.activeCode,PHARMA_STATE.oblast,PHARMA_STATE.kvartal,{withGraf:true});loadPharmaGrafDataFresh(PHARMA_STATE.activeCode,PHARMA_STATE.oblast,function(){if(same())pharmaRender(PHARMA_STATE.activeCode);});}break;
-  case 'mgr-activity':case 'gyn-activity':usageRefresh();break;
+  case 'mgr-activity':case 'gyn-activity':usageRefresh();if(USAGE_VIEW.currentRep)lkRenderRepFilters(USAGE_VIEW.currentRep);break;
   case 'mgr-visits':
+   if(appLineTag()==='gp'){gpFetchLineStats();gpFetchOverrides();}
+   if(MGR_STATE.currentRep){if(MGR_STATE.detailTab==='tuyory')mgrLoadTuyory();else if(MGR_STATE.detailTab==='lonelix')mgrLoadLonelix();else if(MGR_STATE.detailTab==='apixaban')mgrLoadApix();}
    appFetchWithRetry(scriptUrl('action=getAllHistory'),{retries:1,timeoutMs:25000,priority:'critical',delayFn:function(){return 700;},active:same}).then(function(d){
     if(!same()||!d||d.ok===false||Array.isArray(d))return;
     plnenieGetActiveReps().forEach(function(u){if(Array.isArray(d[u]))MGR_STATE.reps[u]=Object.assign({},MGR_STATE.reps[u]||{},{visits:mgrNormalizeVisits(d[u]),error:false});});
     if(MGR_STATE.currentRep&&document.getElementById('mgr-detail').classList.contains('show'))mgrRenderVisits();else mgrRenderList();
    }).catch(function(){});break;
-  case 'mgr-reporty':case 'gyn-reporty':var period=rptViewPeriod();rp2EnsureQuarter_(period.q,true);rp2LoadCennik();gynCalSync();if(rp2Line()!=='gyn')rptViewRefreshPharma();break;
+  case 'mgr-reporty':case 'gyn-reporty':var period=rptViewPeriod();rp2EnsureQuarter_(period.q,true);rp2LoadCennik();gynCalSync();if(!RP2_DOH.loading)rp2DohLoad();if(rp2Line()!=='gyn')rptViewRefreshPharma();break;
   case 'product':if(session.line==='gyn')gynSales();else appCheckSalesQuarter(appRole()==='gp'||appRole()==='reagila');break;
   case 'board':nstFetch(function(){if(same())nstRender();},'critical',true);break;
+  case 'navigator':gsEnsureData(true);break;
   default:return false;
  }
  setTimeout(function(){appWaitUntil(function(){
@@ -33607,6 +33733,7 @@ function rptViewPharmaStatusHtml() {
   return '<div class="rp2-load" style="margin-bottom:10px"><span class="rp2-spin"></span>Načítavam trhové dáta' + (pg && pg.total ? ' (' + pg.done + ' z ' + pg.total + ')' : '') + '…</div>';
 }
 function rptViewRefreshPharma() {
+  appStartManualRefresh();
   if (RPT_VIEW.pharmaBatch) RPT_VIEW.pharmaBatch.cancel();
   RPT_VIEW.pharmaLoadedOblasts = {}; RPT_VIEW.pharmaError = null; RPT_VIEW.pharmaRefresh = true;
   rptViewEnsurePharma(RP2_LAST.m); rp2Schedule();
@@ -39995,6 +40122,8 @@ function nstFetch(cb, priority, forceFresh){
     return;
   }
   if (!nstUser()){ if (cb) cb(); return; }
+  var recent=appReadReuse(appReadResource(nstUrl('action=getNastenka')));
+  if(recent){NST.loading=false;NST.err='';nstApply(recent.data.posts);if(Array.isArray(recent.data.people))nstApplyPeople(recent.data.people);nstRenderList();nstUpdateBadge();dnesRefreshIfOpen();appReadSchedulePaint();if(cb)cb();return;}
   // Prefetch nesmie zneplatniť obnovu, ktorú používateľ práve otvoril.
   if (priority !== 'critical' && NST.loading && NST._foregroundReq === NST._reqId){
     if (cb) cb();
@@ -43741,6 +43870,7 @@ function gsSourceFresh(params,logins){
  return false;
 }
 function gsEnsureData(force){
+ if(force)appStartManualRefresh();
  var owner=gsOwner(),ctx=appLineCapture(),data=gsData(),s=gsSession(),line=gsLine(),mgr=gsIsMgr();
  data.times=data.times||{};data.attempts=data.attempts||{};data.reads=data.reads||{};data.errors=data.errors||{};
  var query=gsNorm((document.getElementById('gs-input')||{}).value||'').trim();

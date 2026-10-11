@@ -40,12 +40,12 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright'),root=path.
   await page.waitForTimeout(200);
   assert.equal(reads.length,1,line+'/'+role+': cold market opens with one combined request');
   assert.equal(reads[0].searchParams.get('graf'),'1');assert.equal(await page.locator('#pharma-graf-chart svg').count(),1);
-  // Cache is painted synchronously while the next verification remains on the network.
+  // Recent successfully verified data are painted synchronously without another network read.
   await page.evaluate(()=>{closePharmaMs();document.getElementById('pharma-ms-body').innerHTML='';});
   const painted=await page.evaluate(line=>{openPharmaMs(line==='gp'?'aflamil_kr':'reagila','Produkt','KE',null,{q:3,year:2026});return document.getElementById('pharma-ms-body').textContent.includes('TRHOVÝ PODIEL');},line);
   assert.equal(painted,true,'Warm data renders in the opening task, before the server response');
   await page.waitForFunction(()=>!Object.keys(PHARMA_STATE.loading).length);await page.waitForTimeout(50);
-  assert.equal(reads.length,2,'Warm opening verifies once, without a separate graph');
+  assert.equal(reads.length,1,'A short warm return reuses the valid combined response without another graph or verification');
  }
  for(const role of ['gyn-rep','gyn-am','gyn-manager','admin','boss','bum','pm','am','asistent']){
   reads=[];

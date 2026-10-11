@@ -41,7 +41,7 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright');const root
   const ready=readCount;await page.locator('#gs-input').fill('sept');await page.waitForTimeout(300);
   assert.equal(readCount,ready,'Repeated queries reuse successfully loaded sources');
   if(line==='gp'&&role==='rep west'){
-   await page.evaluate(()=>{const d=gsData();Object.keys(d.times).forEach(k=>d.times[k]=Date.now()-91000);Object.keys(d.attempts).forEach(k=>d.attempts[k]=Date.now()-21000);Object.values(APP_READ_META).forEach(e=>e.ts=Date.now()-91000);gsEnsureData();});
+   await page.evaluate(()=>{const d=gsData();Object.keys(d.times).forEach(k=>d.times[k]=Date.now()-91000);Object.keys(d.attempts).forEach(k=>d.attempts[k]=Date.now()-21000);Object.values(APP_READ_META).forEach(e=>e.ts=Date.now()-301000);Object.values(APP_READ_REUSE).forEach(e=>e.ts=Date.now()-301000);gsEnsureData();});
    await page.waitForFunction(()=>gsData().pending===0);
    assert.ok(readCount>ready,'Expired successful sources must be fetched again');
   }

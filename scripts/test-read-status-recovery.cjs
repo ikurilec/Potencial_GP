@@ -9,7 +9,7 @@ for(const file of ['app.js','nahlad/app.js']){
   localStorage:{getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,v)},setTimeout:()=>1,clearTimeout:()=>{},document:{}};
  vm.createContext(c);vm.runInContext(s.slice(s.indexOf('var APP_DATA_READ_ACTIONS'),s.indexOf('// ── Overovanie dát otvorenej sekcie')),c);
  const view={key:'home',type:'home',actions:['getStockData','getPlnenieAll'],params:{rok:2026,Q:3}};
- c.APP_READ_CHECKS={};c.appReadView=()=>view;c.appReadPaint=()=>{};
+ c.APP_MANUAL_REFRESH_UNTIL=Date.now()+60000;c.APP_READ_CHECKS={};c.appReadView=()=>view;c.appReadPaint=()=>{};
  vm.runInContext(take(s,'appReadBegin')+take(s,'appTrackedRead')+take(s,'appReadTimeout'),c);
  const url='https://server/exec?action=getStockData';
  await c.appTrackedRead(url,{},()=>Promise.reject(Error('timeout')),'critical').catch(()=>{});

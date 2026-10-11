@@ -30,7 +30,7 @@ for(const file of ['app.js','nahlad/app.js']){
  plnenieBuildAggregates:d=>({value:d.value}),lbLastCompletedQ:()=>3,lbScopeReps:()=>[],
  plnenieRunSilentRender:fn=>fn(),plnenieRenderAll:()=>rendered++,repPlnenieRender:()=>rendered++,rp2Schedule:()=>{},
  document:{getElementById:()=>({classList:{contains:()=>true}})},dnesRefreshIfOpen:()=>{},prodSheetRenderRepList:()=>{}});
- vm.runInContext(src.slice(src.indexOf('function appCheckSalesQuarter('),src.indexOf('function appCheckHome()')),ctx);
+ vm.runInContext(src.slice(src.indexOf('function appCheckSalesQuarter('),src.indexOf('function appCheckHome(')),ctx);
  ctx.appCheckSalesQuarter(false);await tick();transportResolve({ok:true,value:2});await tick();
  assert.equal(ctx.PL_STATE.data.value,2);assert.equal(ctx.PL_STATE.qCache[2].data.value,9);assert.equal(rendered,1);
  ctx.PL_STATE.data={ok:true,value:1};ctx.PL_STATE.qCache[3]={data:ctx.PL_STATE.data};

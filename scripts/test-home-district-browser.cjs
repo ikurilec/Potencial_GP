@@ -34,7 +34,7 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright');const root
    APP_LINE_EPOCH++;getSession=()=>({username:'home-'+role,role,line,session_token:'synthetic'});document.querySelectorAll('.show').forEach(e=>e.classList.remove('show'));document.getElementById('dnes-overlay').classList.add('show');_panelCurrent='dnes-overlay';
    let pendingResolve;const url=scriptUrl('action=getStockData');let p=appTrackedRead(url,{},()=>new Promise(r=>pendingResolve=r),'background');
    if(APP_READ_CHECKS[appReadView().key]?.pending)throw Error('Background preload restarted Home spinner');pendingResolve({ok:true,rows:[]});await p;
-   p=appTrackedRead(url,{},()=>new Promise(r=>pendingResolve=r),'critical');if(!APP_READ_CHECKS[appReadView().key]?.pending)throw Error('Explicit refresh has no progress');pendingResolve({ok:true,rows:[]});await p;
+   appStartManualRefresh();p=appTrackedRead(url,{},()=>new Promise(r=>pendingResolve=r),'critical');if(!APP_READ_CHECKS[appReadView().key]?.pending)throw Error('Explicit refresh has no progress');pendingResolve({ok:true,rows:[]});await p;
   },{line,role});
  }
  assert.deepEqual(errors,[]);await browser.close();console.log('14 manager scope/load combinations and 15 Home line/role combinations passed');

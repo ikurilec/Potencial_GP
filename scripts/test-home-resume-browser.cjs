@@ -30,7 +30,7 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright'),root=path.
    document.body.classList.toggle('manager-mode',!/rep|kam/.test(role));document.body.classList.toggle('gyn-line',line==='gyn');document.body.classList.toggle('reagila-line',line==='reagila');
    _panelCurrent='dnes-overlay';document.getElementById(_panelCurrent).classList.add('show');
    document.getElementById('dnes-body').innerHTML='<div class="dnes-card">Údaje z pamäte</div>';
-   dnesRefreshIfOpen=()=>{};MGR_STATE.subtab='idle';GYN_APP.nav='idle';
+   dnesRefreshIfOpen=()=>{};dnesRender=()=>{};MGR_STATE.subtab='idle';GYN_APP.nav='idle';
    PL_STATE.q=REP_PL_STATE.q=GYN_APP.q=3;PL_STATE.year=REP_PL_STATE.year=GYN_APP.year=2026;
    PL_STATE._planDefaultAuto=REP_PL_STATE._planDefaultAuto=GYN_APP._planDefaultAuto=true;
    PL_STATE.loaded=REP_PL_STATE.loaded=true;PL_STATE.loading=REP_PL_STATE.loading=REP_PL_STATE._currentLoading=false;
@@ -49,10 +49,36 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright'),root=path.
   assert.match(await page.locator('.app-read-time').innerText(),/dnes/);assert.doesNotMatch(await page.locator('.app-read-time').innerText(),/včera/);
   assert.match(await page.locator('#dnes-body').innerText(),/Údaje z pamäte/);
   await page.waitForFunction(()=>APP_REQUEST_QUEUE.items.length===0&&APP_REQUEST_QUEUE.running.length===0,{timeout:10000});
+  const warmStart=calls.length;
+  const warm=await page.evaluate(()=>{
+   APP_MANUAL_REFRESH_UNTIL=0;
+   const before=appReadHomeSummary(appReadView()).last;
+   appCheckHome();appHomeResume();
+   openSklady();appReadRefreshVisible();
+   const stock={loading:!!APP_READ_CHECKS[appReadView().key]?.pending,status:document.querySelector('[data-read-check]')?.dataset.readStatus};
+   closeSklady();openNastenka();appReadRefreshVisible();
+   const board={loading:NST.loading,status:document.querySelector('[data-read-check]')?.dataset.readStatus};
+   NST.returnToDomov=true;closeNastenka();appReadRefreshVisible();
+   return {stock,board,before,after:appReadHomeSummary(appReadView()).last};
+  });
+  await page.waitForTimeout(120);
+  assert.equal(calls.slice(warmStart).filter(c=>/^get|bootstrap$/.test(c.action)).length,0,line+' '+role+': short return must not repeat successful reads');
+  assert.deepEqual(warm.stock,{loading:false,status:'verified'});assert.deepEqual(warm.board,{loading:false,status:'verified'});assert.equal(warm.before,warm.after,'Warm navigation retains the actual verification time');
+  const collaborativeStart=calls.length;
+  await page.evaluate(()=>{
+   APP_MANUAL_REFRESH_UNTIL=0;
+   for(const e of Object.values(APP_READ_META))if(e.action==='getNastenka'||e.action==='getCalEvents'){e.ts-=31000;const r=APP_READ_REUSE[e.key];if(r)r.ts-=31000;}
+   appCheckHome();
+  });
+  await page.waitForFunction(()=>{const s=appReadHomeSummary(appReadView());return s.groups.filter(g=>g.id==='board'||g.id==='calendar').every(g=>!g.pending&&!g.error&&Date.now()-g.last<1000);});
+  await page.waitForFunction(()=>APP_REQUEST_QUEUE.items.length===0&&APP_REQUEST_QUEUE.running.length===0);
+  const refreshed=calls.slice(collaborativeStart).map(c=>c.action).filter(a=>/^get/.test(a));
+  assert.ok(refreshed.includes('getNastenka')&&refreshed.includes('getCalEvents'));
+  assert.ok(!refreshed.some(a=>['getPlnenieAll','getStockData','getHistory'].includes(a)),'Only stale Home sections should revalidate');
  }
- console.log('21 real Home checks across all three lines, manager roles and representatives: current Q3, calendar Q4 ranking and cache preservation passed');
+ console.log('21 real Home checks across all three lines, manager roles and representatives: current Q3, calendar Q4 ranking, cache preservation and zero repeated reads on Home/stock/board returns passed');
  await page.locator('.app-read-details summary').click();
- failedAction='getStockData';await page.evaluate(()=>{appStartManualRefresh();appCheckHome();});
+ failedAction='getStockData';await page.evaluate(()=>{appStartManualRefresh();appCheckHome(true);});
  await page.waitForFunction(()=>appReadHomeSummary(appReadView()).groups.find(g=>g.id==='stocks').error,{timeout:10000});
  await page.waitForFunction(()=>document.querySelector('.app-read-sections').textContent.includes('Nepodarilo sa obnoviť'));
  assert.match(await page.locator('.app-read-sections').innerText(),/Sklady[\s\S]*Nepodarilo sa obnoviť/);
@@ -62,6 +88,8 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright'),root=path.
  assert.equal(await page.locator('.app-read-details').evaluate(e=>e.open),true,'Details remain expanded during updates');
  await page.waitForFunction(()=>APP_REQUEST_QUEUE.items.length===0&&APP_REQUEST_QUEUE.running.length===0,{timeout:10000});
  const start=calls.length;holdAction='getStockData';
+ // A long absence requires validation; a short navigation return is tested separately.
+ await page.evaluate(()=>{APP_MANUAL_REFRESH_UNTIL=0;Object.values(APP_READ_META).forEach(e=>{e.ts-=300001;});APP_READ_REUSE={};});
  await page.evaluate(()=>{APP_HOME_CHECK_STARTED={};window.dispatchEvent(new Event('pageshow'));window.dispatchEvent(new Event('pageshow'));});
  await page.waitForFunction(()=>appReadHomeSummary(appReadView()).groups.find(g=>g.id==='stocks').pending);
  await page.waitForTimeout(150);assert.match(await page.locator('.app-read-sections').innerText(),/Sklady[\s\S]*Overujem/);

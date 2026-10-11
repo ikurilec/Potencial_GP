@@ -38,7 +38,7 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright'),root=path.
   fail=true;await page.evaluate(async url=>{await appQueuedFetchJson(url,{cache:'no-store'},12000,'critical');appReadRefreshVisible();},url);
   assert.match(await page.locator('[data-read-check]').innerText(),/Obnova zlyhala/,line+' '+role+' '+panel);
   fail=false;await page.evaluate(async url=>{await appQueuedFetchJson(url,{cache:'no-store'},12000,'background');appReadRefreshVisible();},url);
-  assert.equal(await page.locator('[data-read-check] .nst-spin').count(),0);
+  assert.equal(await page.locator('[data-read-check] > .nst-spin').count(),0);
   assert.doesNotMatch(await page.locator('[data-read-check]').innerText(),/Obnova zlyhala/);
   if(panel==='dnes-overlay')assert.ok(await page.evaluate(()=>appReadHomeSummary(appReadView()).groups.find(g=>g.id==='stocks').last)>0,'The recovered stock section has its own successful check; it does not verify every Home section');
   else assert.match(await page.locator('[data-read-check]').innerText(),/Overené/);
@@ -47,8 +47,8 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright'),root=path.
  await setup('gp','admin','dnes-overlay');slowStock=true;
  const cold=page.evaluate(async()=>{await appQueuedFetchJson(scriptUrl('action=getStockData'),{cache:'no-store'},12000,'critical');appReadRefreshVisible();});
  await page.waitForTimeout(12500);
- assert.equal(await page.locator('[data-read-check] .nst-spin').count(),1,'A normal 14-second server reply must not fail at the old 12-second limit');
- await cold;assert.ok(await page.evaluate(()=>appReadHomeSummary(appReadView()).groups.find(g=>g.id==='stocks').last)>Date.now()-30000);assert.equal(await page.locator('[data-read-check] .nst-spin').count(),0);
+ assert.equal(await page.locator('[data-read-check] > .nst-spin').count(),1,'A normal 14-second server reply must not fail at the old 12-second limit');
+ await cold;assert.ok(await page.evaluate(()=>appReadHomeSummary(appReadView()).groups.find(g=>g.id==='stocks').last)>Date.now()-30000);assert.equal(await page.locator('[data-read-check] > .nst-spin').count(),0);
  assert.deepEqual(errors,[]);await page.unrouteAll({behavior:'ignoreErrors'});await browser.close();
  console.log(count+' screen/role/line failure-and-recovery cases and a real 14-second cold Home response passed');
 })().catch(e=>{console.error(e);process.exit(1);});

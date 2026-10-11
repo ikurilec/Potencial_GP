@@ -10,6 +10,7 @@ vm.runInContext(part('function appTrackedRead(', '// Indikátor zostáva'),c);
 (async()=>{
  await c.appTrackedRead('https://server/exec?action=getPlnenieAll&rok=2026&Q=3',{},u=>{requests.push(u);return {ok:true,plan:{},predaje:{}};});
  assert.equal(new URL(requests[0]).searchParams.has('fresh'),false,'Automatic reads must reuse server cache instead of recomputing all Sheets');
+ c.APP_MANUAL_REFRESH_UNTIL=Date.now()+60000;
  await c.appTrackedRead('https://server/exec?action=getPlnenieAll&rok=2026&Q=3&fresh=1',{},u=>{requests.push(u);return {ok:true,plan:{},predaje:{}};});
  assert.equal(new URL(requests[1]).searchParams.get('fresh'),'1','Explicit refresh must still bypass server cache');
  const q4=c.appReadResource('https://server/exec?action=getPlnenieAll&rok=2026&Q=4');c.appReadRemember(q4,Date.now(),true);
