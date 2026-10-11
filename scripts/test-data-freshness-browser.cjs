@@ -12,7 +12,7 @@ const root=path.resolve(__dirname,'..');
    const target=path.resolve(root,file);if(!target.startsWith(root+path.sep)||!fs.existsSync(target))return route.abort();
    return route.fulfill({body:fs.readFileSync(target),contentType:file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.html')?'text/html':undefined});
   }
-  if(u.hostname.includes('script.google'))return route.fulfill({json:invalid?{ok:false,error:'Synthetic refresh failure'}:{ok:true,rows:[],posts:[],events:[],reps:[],summary:[],okresy:[],plan:{},predaje:{}}});
+  if(u.hostname.includes('script.google'))return route.fulfill({json:invalid?{ok:false,error:'Synthetic refresh failure'}:u.searchParams.get('action')==='getHistory'?[]:{ok:true,rows:[],posts:[],events:[],reps:[],summary:[],okresy:[],plan:{},predaje:{}}});
   return route.abort();
  });
  await page.goto('https://satori.test/');await page.waitForFunction(()=>typeof appReadSummary==='function');
@@ -55,9 +55,14 @@ const root=path.resolve(__dirname,'..');
    document.getElementById(panel).classList.add('show');_panelCurrent=panel;appReadRefreshVisible();
    const view=appReadView(),flat=Object.fromEntries(Object.entries(view.params).map(([k,v])=>[k,Array.isArray(v)?v[0]:v])),params=new URLSearchParams({action,...flat});
    const url=scriptUrl(params.toString());await appQueuedFetchJson(url,{cache:'no-store'},5000,'critical');
-   appReadRefreshVisible();return {key:view.key,last:appReadSummary(view).last,view};
+   if(panel==='dnes-overlay')for(const g of appReadHomeSummary(view).groups){
+    const args=g.id==='sales'?{rok:plnenieDefaultPeriod().year,Q:plnenieDefaultPeriod().q}:g.id==='ranking'?{rok:plnenieCalendarPeriod().year,Q:lbLastCompletedQ()}:{};
+    const a={sales:'getPlnenieAll',ranking:'getPlnenieAll',board:'getNastenka',calendar:'getCalEvents',stocks:'getStockData'}[g.id];
+    await appQueuedFetchJson(scriptUrl(new URLSearchParams({action:a,...args}).toString()),{cache:'no-store'},5000,'critical');
+   }
+   appReadRefreshVisible();return {key:view.key,last:appReadSummary(view).last,groups:appReadSummary(view).groups,view};
   },{panel,host,action});
-  assert.ok(result.last>0,panel+' must record successful check');
+  assert.ok(result.last>0,panel+' must record successful check '+JSON.stringify(result.groups||[]));
   assert.match(await page.locator('[data-read-check]').innerText(),/Overené/);
   await page.evaluate(host=>{document.getElementById(host).innerHTML='<div>Prekreslené údaje</div>';appReadRefreshVisible();},host);
   assert.equal(await page.locator('[data-read-check]').count(),1,'DOM redraw must retain exactly one status');
@@ -114,7 +119,7 @@ const root=path.resolve(__dirname,'..');
    appReadRefreshVisible();
    window.retryCalled=false;appPtrRefreshCurrent=()=>{window.retryCalled=true;appTrackedRead(base('action=getPlnenieAll&rok=2026&Q=3'),{},()=>Promise.resolve({ok:true,plan:{},predaje:{}})).then(appReadRefreshVisible);return true;};
   },line);
-  const button=page.locator('[data-read-check] .app-err-btn');await button.click();
+  const button=page.locator('[data-read-check] .app-err-btn').first();await button.click();
   await page.waitForFunction(()=>window.retryCalled&&!appReadSummary(appReadView()).error);
   assert.match(await page.locator('#dnes-body').innerText(),/Uložené plnenie Q3/);
  }

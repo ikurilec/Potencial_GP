@@ -5,6 +5,7 @@ for(const file of ['app.js','nahlad/app.js']){
  const s=fs.readFileSync(file,'utf8'),store=new Map();let epoch=1,user={username:'admin',role:'admin',line:'gp'};
  const c={URL,location:{href:'https://app/'},Date,Promise,Object,Array,Math,JSON,Error,Number,
   getSession:()=>user,appLineTag:()=>user.line,appLineCapture:()=>({line:user.line,epoch}),appLineContextActive:x=>x.epoch===epoch&&x.line===user.line,
+  plnenieDefaultPeriod:()=>({q:3,year:2026}),plnenieCalendarPeriod:()=>({q:4,year:2026}),lbLastCompletedQ:()=>4,gynLbLastCompletedQ:()=>4,
   localStorage:{getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,v)},setTimeout:()=>1,clearTimeout:()=>{},document:{}};
  vm.createContext(c);vm.runInContext(s.slice(s.indexOf('var APP_DATA_READ_ACTIONS'),s.indexOf('// ── Overovanie dát otvorenej sekcie')),c);
  const view={key:'home',type:'home',actions:['getStockData','getPlnenieAll'],params:{rok:2026,Q:3}};

@@ -1,0 +1,13 @@
+# Home verification — 2.89.25
+
+The displayed check time previously used the oldest visible request ever retained for Home. An old history request could keep an administrator's Home at yesterday even after today's stock/calendar/board/sales reads succeeded. Successful silent reads were excluded unless the same resource had previously been foreground. Returning to a suspended PWA only repainted the timestamp and did not request fresh Home data.
+
+Home now tracks the current planned fulfillment quarter separately from the unchanged calendar ranking quarter, plus board, calendar and stocks. Personal GP history is included only for a GP representative; manager identity comes from the session even before shell classes settle. Each section uses its own latest successful server check. A whole-overview date is shown only once all applicable sections have a successful check. Pending or failed checks retain the last successful time. Missing next-quarter plans and valid empty data do not count as failures.
+
+The Satori-styled “Stav údajov” disclosure lists each section, pending verification, last success or failure, and an explicit refresh control. Its expanded state survives progress/status transitions. Pending queue work is visible without adding a polling fetch loop. Resuming Home via visibility/pageshow or restoring connectivity starts a check, deduplicated for one minute and against active Home requests. No timer repeatedly reloads a visible Home.
+
+Cached cards remain visible. Home refresh now includes personal GP history, and malformed history objects cannot falsely advance its successful check time. Existing role access, backend endpoints, notification rules and period behavior remain unchanged. No Apps Script modification or redeployment is required.
+
+Validation: a red regression reproduced yesterday's timestamp after current successful reads; a second reproduced personal-history scope incorrectly applied to an administrator before shell initialization. Unit coverage includes current periods, silent successes, pending work, failure timestamps, account scope and resume deduplication. Browser tests exercise the real Home loaders across 21 line/role combinations, partial stock failure, explicit retry, duplicate resume events, held requests and a 320px viewport. Broader freshness/navigation/spinner and actual login regressions are also run against the release bundle.
+
+Tests use deterministic backend fixtures, not live authenticated user data. Physical-phone suspension, real backend response latency and actual production account outcomes are not proven by these tests. The new per-section status makes a remaining live failure visible without claiming another section's success as its verification.

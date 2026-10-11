@@ -4,6 +4,7 @@ function part(a,b){return src.slice(src.indexOf(a),src.indexOf(b,src.indexOf(a))
 let view={key:'home-q3',type:'home',actions:['getPlnenieAll'],params:{rok:2026,Q:3}},requests=[];
 const c={URL,location:{href:'https://test/'},getSession:()=>({username:'rep',role:'rep west',line:'gp'}),appLineTag:()=> 'gp',appLineCapture:()=>1,appLineContextActive:x=>x===1,localStorage:{getItem:()=>null,setItem:()=>{}},setTimeout:()=>1,clearTimeout:()=>{},document:{},Date,Promise};
 vm.createContext(c);vm.runInContext(part('var APP_DATA_READ_ACTIONS','// ── Overovanie dát otvorenej sekcie'),c);
+c.plnenieDefaultPeriod=()=>({q:3,year:2026});c.plnenieCalendarPeriod=()=>({q:4,year:2026});c.lbLastCompletedQ=c.gynLbLastCompletedQ=()=>4;
 c.appReadView=()=>view;c.appReadBegin=()=>()=>{};
 vm.runInContext(part('function appTrackedRead(', '// Indikátor zostáva'),c);
 (async()=>{

@@ -4,6 +4,7 @@ function fn(name){const a=s.indexOf('function '+name+'('),b=s.indexOf('\nfunctio
 let started=0,now=1000;
 const c={URL,Date:{now:()=>now},Promise,Object,location:{href:'https://app/'},APP_READ_GENERATIONS:{},appReadView:()=>({type:'home'}),appReadResource:()=>({key:'sales',action:'getPlnenieAll'}),appReadLast:()=>900,appRequestMatchesView:()=>true,appReadBegin:()=>{started++;return ()=>{};},appReadRemember:()=>{},appReadValid:()=>true};
 vm.createContext(c);vm.runInContext(fn('appTrackedRead'),c);
+c.appReadSchedulePaint=()=>{};
 const ranking={LB_STATE:{mode:'plnenie',loading:false,data:null},lbEnsureLineState:()=>{},lbUpdateNavBtn:()=>{},document:{body:{classList:{contains:()=>false}},getElementById:()=>null},_lbHsLoad:()=>{throw Error('Obsolete visit ranking preload reached the network/cache path');}};
 vm.createContext(ranking);vm.runInContext(fn('lbLoadData'),ranking);
 assert.doesNotThrow(()=>ranking.lbLoadData(),'Fulfilment ranking must not preload every representative visit history');
