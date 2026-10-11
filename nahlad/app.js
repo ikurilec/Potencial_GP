@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.26';
+var APP_VERSION = '2.89.27';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -804,6 +804,81 @@ function appReadPaint(entry){
   }
   el.classList.toggle('app-read-verified',status==='verified');
   el.setAttribute('data-read-status',status);
+  appReadCollapseUpdate(el,entry,summary,status);
+}
+// Presentation only: dismissed successes do not change read freshness or dates.
+// Keep it across redraws/short returns, but never across login/line epochs.
+var APP_READ_PRESENTATION = {};
+var APP_READ_SUCCESS_HOLD_MS = 1600;
+function appReadCollapseEligible(summary,status){
+  return status==='verified' && !!summary.last && !summary.pending && !summary.error &&
+    (!summary.groups || summary.groups.every(function(g){return g.last>0 && !g.pending && !g.error && g.current!==false;}));
+}
+function appReadCollapseBlocked(el){
+  var details=el.querySelector('.app-read-details');
+  if(details && details.open)return true;
+  var active=document.activeElement;
+  // Touching a summary need not keep the banner permanently, but keyboard
+  // focus must remain visible/reachable until the user moves away.
+  if(active && el.contains(active)){
+    try{return active.matches(':focus-visible');}catch(e){return true;}
+  }
+  return false;
+}
+function appReadCollapseApply(el,collapsed,animate){
+  if(collapsed){
+    if(!el.classList.contains('app-read-collapsed')){
+      if(animate){
+        el.style.height=el.getBoundingClientRect().height+'px';
+        // Commit the natural starting height once; polling never remeasures it.
+        el.getBoundingClientRect();
+      }
+      el.classList.add('app-read-collapsed');
+    }
+    el.setAttribute('aria-hidden','true');el.inert=true;
+  }else{
+    el.classList.remove('app-read-collapsed');el.style.height='';
+    el.removeAttribute('aria-hidden');el.inert=false;
+  }
+}
+function appReadCollapseUpdate(el,entry,summary,status){
+  if(!el.style || !el.addEventListener)return;
+  var key=entry.view.key,state=APP_READ_PRESENTATION[key];
+  if(!state || !appLineContextActive(state.ctx)){
+    if(state)clearTimeout(state.timer);
+    // Visiting many products/colleagues must not grow presentation state forever.
+    var keys=Object.keys(APP_READ_PRESENTATION);
+    if(keys.length>=80){clearTimeout(APP_READ_PRESENTATION[keys[0]].timer);delete APP_READ_PRESENTATION[keys[0]];}
+    state=APP_READ_PRESENTATION[key]={ctx:entry.ctx,signature:'',collapsed:false,timer:null,element:null};
+  }
+  if(state.element!==el){clearTimeout(state.timer);state.timer=null;state.element=el;}
+  if(!el._appReadPresentationBound){
+    el._appReadPresentationBound=true;
+    var repaint=function(){if(typeof appReadSchedulePaint==='function')appReadSchedulePaint();};
+    el.addEventListener('toggle',repaint,true);
+    el.addEventListener('focusin',repaint);el.addEventListener('focusout',repaint);
+  }
+  if(!appReadCollapseEligible(summary,status)){
+    clearTimeout(state.timer);state.timer=null;state.signature='';state.collapsed=false;
+    appReadCollapseApply(el,false,false);return;
+  }
+  var signature=JSON.stringify((summary.groups||[{id:'all',last:summary.last}]).map(function(g){return [g.id,g.last];}).sort(function(a,b){return String(a[0]).localeCompare(String(b[0]));}));
+  if(state.signature!==signature){clearTimeout(state.timer);state.timer=null;state.signature=signature;}
+  if(appReadCollapseBlocked(el)){
+    clearTimeout(state.timer);state.timer=null;state.collapsed=false;appReadCollapseApply(el,false,false);return;
+  }
+  // Silent successes may update timestamps without flashing an already hidden
+  // banner. Pending/error states above always reveal it for a new check.
+  if(state.collapsed){appReadCollapseApply(el,true,false);return;}
+  if(state.timer)return;
+  state.timer=setTimeout(function(){
+    state.timer=null;
+    var view=appReadView();
+    if(APP_READ_PRESENTATION[key]!==state || state.element!==el || !el.isConnected || !appLineContextActive(state.ctx) || !view || view.key!==key)return;
+    // A late request/error can appear between the last paint and this timeout.
+    if(!appReadCollapseEligible(appReadSummary(view),el._appReadStatus) || appReadCollapseBlocked(el))return;
+    state.collapsed=true;appReadCollapseApply(el,true,true);
+  },APP_READ_SUCCESS_HOLD_MS);
 }
 function appReadRetryCurrent(){
   appStartManualRefresh();

@@ -4,14 +4,14 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright');const root
  const browser=await chromium.launch({headless:true});
  for(const device of ['Android','iPhone']){
   const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,userAgent:device==='Android'?'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/130.0.0.0 Mobile Safari/537.36':'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1'});
-  const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));let refreshes=0;
+  const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));let refreshes=0,holdStocks=false,releaseStock;
   await page.route('**/*',async route=>{
    const u=new URL(route.request().url());if(u.hostname==='satori.test'){
     let f=u.pathname==='/'?'index.html':u.pathname.slice(1);if(!process.env.SATORI_TEST_BUILD&&/^dist\/app\..*\.js$/.test(f))f='app.js';if(!process.env.SATORI_TEST_BUILD&&/^dist\/app\..*\.css$/.test(f))f='app.css';
     const p=path.resolve(root,f);if(!p.startsWith(root+path.sep)||!fs.existsSync(p))return route.abort();return route.fulfill({body:fs.readFileSync(p),contentType:f.endsWith('.js')?'application/javascript':f.endsWith('.css')?'text/css':f.endsWith('.html')?'text/html':undefined});
    }
    if(u.hostname.includes('script.google')){
-    if(u.searchParams.get('action')==='getStockData'&&u.searchParams.has('fresh'))refreshes++;
+    if(u.searchParams.get('action')==='getStockData'&&u.searchParams.has('fresh')){refreshes++;if(holdStocks)await new Promise(r=>releaseStock=r);}
     return route.fulfill({json:{ok:true,rows:[],posts:[],events:[],reps:[],plan:{},predaje:{}}});
    }return route.abort();
   });
@@ -36,6 +36,21 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright');const root
    const before=refreshes;await pull();await page.waitForFunction(()=>!document.querySelector('.app-ptr.loading'),{},{timeout:8000});
    assert.equal(refreshes,before+1,device+'/'+line+'/'+role+' trusted downward gesture must refresh exactly once '+JSON.stringify(await page.evaluate(()=>__touchLog.slice(-10))));
   }
+  // A completed banner disappears, then a real finger gesture must restore it
+  // while the new server read is held. Cached content remains visible throughout.
+  await setup('gp','rep west');
+  await page.evaluate(()=>{appStartManualRefresh();stockForceRefresh(()=>{});});
+  await page.waitForFunction(()=>document.querySelector('#sklady-overlay [data-read-check]')?.dataset.readStatus==='verified');
+  await page.waitForFunction(()=>document.querySelector('#sklady-overlay [data-read-check]')?.getBoundingClientRect().height<1);
+  holdStocks=true;const collapsedStart=refreshes;await pull();
+  await page.waitForFunction(()=>document.querySelector('#sklady-overlay [data-read-check]')?.dataset.readStatus==='pending');
+  assert.equal(await page.locator('#sklady-overlay [data-read-check]').getAttribute('aria-hidden'),null);
+  assert.ok(await page.locator('#sklady-overlay [data-read-check]').evaluate(e=>e.getBoundingClientRect().height)>40);
+  assert.match(await page.locator('#sklady-body').innerText(),/Uložené údaje skladu/);
+  holdStocks=false;releaseStock();await page.waitForFunction(()=>!document.querySelector('.app-ptr.loading'));
+  await page.waitForFunction(()=>document.querySelector('#sklady-overlay [data-read-check]')?.getBoundingClientRect().height<1);
+  assert.equal(refreshes,collapsedStart+1,device+': one read after pulling a collapsed status');
+  console.log(device+': successful banner collapses, trusted pull restores pending status with cached content, and completion collapses again');
   await setup('gp','rep west');let before=refreshes;await pull(45);await page.waitForTimeout(150);assert.equal(refreshes,before,'Short pull does not refresh');
   await pull(150,0,true);await page.waitForTimeout(150);assert.equal(refreshes,before,'Cancelled pull does not refresh');
   await page.evaluate(()=>document.getElementById('sklady-overlay').scrollTop=100);await pull();await page.waitForTimeout(150);assert.equal(refreshes,before,'A scrolled panel does not refresh');

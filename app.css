@@ -3613,6 +3613,9 @@ body:not(.manager-mode) .lk-search-wrap{margin-bottom:4px}
 .app-read-section-pending{color:var(--color-text-muted)}
 .app-read-section-unknown{color:var(--color-text-faint)}
 .app-read-section-status .nst-spin{width:12px;height:12px;flex:0 0 12px}
+.app-read-check{box-sizing:border-box;visibility:visible;transition:height .28s cubic-bezier(.4,0,.2,1),padding .28s cubic-bezier(.4,0,.2,1),margin .28s cubic-bezier(.4,0,.2,1),opacity var(--t-base),transform .28s cubic-bezier(.4,0,.2,1),visibility 0s}
+.app-read-check.app-read-collapsed{height:0!important;min-height:0!important;padding:0!important;margin:0!important;overflow:hidden;opacity:0;transform:translateY(-8px);pointer-events:none;visibility:hidden;transition:height .28s cubic-bezier(.4,0,.2,1),padding .28s cubic-bezier(.4,0,.2,1),margin .28s cubic-bezier(.4,0,.2,1),opacity var(--t-base),transform .28s cubic-bezier(.4,0,.2,1),visibility 0s .28s}
+@media(prefers-reduced-motion:reduce){.app-read-check,.app-read-check.app-read-collapsed{transition:none;transform:none}}
 
 /* Keep Chrome/Safari scroll anchoring from fighting a finger-driven refresh. */
 .app-ptr-active{overflow-anchor:none;overscroll-behavior-y:contain}

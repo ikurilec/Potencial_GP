@@ -49,6 +49,7 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright'),root=path.
   assert.match(await page.locator('.app-read-time').innerText(),/dnes/);assert.doesNotMatch(await page.locator('.app-read-time').innerText(),/včera/);
   assert.match(await page.locator('#dnes-body').innerText(),/Údaje z pamäte/);
   await page.waitForFunction(()=>APP_REQUEST_QUEUE.items.length===0&&APP_REQUEST_QUEUE.running.length===0,{timeout:10000});
+  if(line==='gp'&&role==='admin')await page.waitForFunction(()=>document.querySelector('[data-read-check]')?.getBoundingClientRect().height<1);
   const warmStart=calls.length;
   const warm=await page.evaluate(()=>{
    APP_MANUAL_REFRESH_UNTIL=0;
@@ -59,11 +60,12 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright'),root=path.
    closeSklady();openNastenka();appReadRefreshVisible();
    const board={loading:NST.loading,status:document.querySelector('[data-read-check]')?.dataset.readStatus};
    NST.returnToDomov=true;closeNastenka();appReadRefreshVisible();
-   return {stock,board,before,after:appReadHomeSummary(appReadView()).last};
+   return {stock,board,before,after:appReadHomeSummary(appReadView()).last,homeCollapsed:document.querySelector('[data-read-check]')?.getBoundingClientRect().height<1};
   });
   await page.waitForTimeout(120);
   assert.equal(calls.slice(warmStart).filter(c=>/^get|bootstrap$/.test(c.action)).length,0,line+' '+role+': short return must not repeat successful reads');
   assert.deepEqual(warm.stock,{loading:false,status:'verified'});assert.deepEqual(warm.board,{loading:false,status:'verified'});assert.equal(warm.before,warm.after,'Warm navigation retains the actual verification time');
+  if(line==='gp'&&role==='admin')assert.equal(warm.homeCollapsed,true,'Completed Home status stays hidden on a short return');
   const collaborativeStart=calls.length;
   await page.evaluate(()=>{
    APP_MANUAL_REFRESH_UNTIL=0;
