@@ -36,6 +36,15 @@ for(const file of ['app.js','nahlad/app.js']){
  ctx.PL_STATE.data={ok:true,value:1};ctx.PL_STATE.qCache[3]={data:ctx.PL_STATE.data};
  ctx.appCheckSalesQuarter(false);await tick();transportResolve({ok:true,value:2});await tick();
  assert.equal(ctx.PL_STATE.data.value,2,'Persisted fresh cache must repair stale memory even when server data are unchanged');
+ // A refresh must not replace the already visible state with older persisted
+ // data before the server replies, or after a failed server read.
+ ctx.PL_STATE.data={ok:true,value:7};ctx.PL_STATE.qCache[3]={data:ctx.PL_STATE.data};
+ ctx.DataStore.set('sales-2026-3',{ok:true,value:2});let transportReject;
+ ctx.appFetchWithRetry=()=>new Promise((resolve,reject)=>{transportResolve=resolve;transportReject=reject;});
+ ctx.appCheckSalesQuarter(false);
+ assert.equal(ctx.PL_STATE.data.value,7,'Older local cache cannot roll back the visible state when refresh starts');
+ await tick();transportReject(Error('offline'));await tick();
+ assert.equal(ctx.PL_STATE.data.value,7,'Failed refresh cannot roll back the visible state to older local cache');
  ctx.appCheckSalesQuarter(false);await tick();ctx.PL_STATE.q=4;ctx.PL_STATE.data={ok:true,value:44};
  transportResolve({ok:true,value:3});await tick();
  assert.equal(ctx.PL_STATE.data.value,44,'Late response must not change the selected Q');

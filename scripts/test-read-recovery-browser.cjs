@@ -71,7 +71,7 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright'),root=path.
  await page.evaluate(()=>appReadRefreshVisible());
  assert.equal(calls.filter(c=>c.action==='getStockData').length,2,'Persistent stock failure stops after its retry budget');
  assert.equal(await page.locator('[data-read-check]').getAttribute('data-read-status'),'error');assert.match(await page.locator('#sklady-body').innerText(),/Reagila/);
- failAlways=false;await page.locator('[data-read-check] > .app-err-btn').click();
+ failAlways=false;await page.locator('[data-read-check] .app-read-main > .app-err-btn').click();
  await page.waitForFunction(()=>!APP_READ_CHECKS[appReadView().key]?.pending&&!appReadSummary(appReadView()).error);
  await page.evaluate(()=>appReadRefreshVisible());assert.equal(await page.locator('[data-read-check]').getAttribute('data-read-status'),'verified');
  // Opening during preload subscribes to the same result, including unchanged data.

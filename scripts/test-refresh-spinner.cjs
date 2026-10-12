@@ -3,7 +3,7 @@ for(const file of ['app.js','nahlad/app.js']){
  const src=fs.readFileSync(file,'utf8');let element=null,writes=0;
  const parent={querySelector:()=>element,insertBefore:el=>{element=el;}};
  const view={key:'home',host:'#home'};
- const ctx={appReadView:()=>view,appReadSummary:()=>({last:1000,error:false}),appReadTimeLabel:()=> 'Overené dnes o 9:42',appLineContextActive:()=>true,document:{querySelector:()=>({parentNode:parent}),querySelectorAll:()=>[],createElement:()=>({classList:{toggle(){}},querySelector:()=>null,setAttribute(){},remove(){element=null;},set innerHTML(v){writes++;this.html=v;}})}};
+ const ctx={appReadView:()=>view,appReadSummary:()=>({last:1000,error:false}),appReadTimeLabel:()=> 'Overené dnes o 9:42',appLineContextActive:()=>true,document:{querySelector:()=>({parentNode:parent}),querySelectorAll:()=>[],createElement:()=>({children:[],classList:{toggle(){}},querySelector(sel){return this.children.find(child=>sel==='.'+child.className)||null;},appendChild(child){this.children.push(child);},setAttribute(){},remove(){element=null;},set innerHTML(v){writes++;this.content=v;},get html(){return this.content||this.children[0]?.html||'';}})}};
  vm.createContext(ctx);vm.runInContext(src.slice(src.indexOf('function appReadPaint('),src.indexOf('function appReadBegin(')),ctx);
  const entry={view,ctx:{},pending:1,error:false};
  ctx.appReadPaint(entry);const first=element;

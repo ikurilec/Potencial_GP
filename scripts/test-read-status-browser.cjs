@@ -40,6 +40,7 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright'),root=path.
     const data=action==='getHistory'?[]:{ok:true,rows:[],events:[],posts:[],reps:[],summary:[],okresy:[],plan:{},predaje:{}};
     await appTrackedRead(url,{},()=>Promise.resolve(data),'critical');appReadRefreshVisible();
     let el=document.querySelector('[data-read-check]');el.querySelector('details').open=true;
+    const detailsNode=el.querySelector('details'),retryNode=detailsNode.querySelector('button');
     const green={status:el.dataset.readStatus,color:getComputedStyle(el.querySelector('.app-read-section-verified')).color};
     APP_MANUAL_REFRESH_UNTIL=Date.now()+15000;let release;
     const pending=appTrackedRead(url,{},()=>new Promise(r=>release=r),'critical');
@@ -49,13 +50,13 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright'),root=path.
     release({ok:false,error:'Synthetic failure'});await pending;appReadRefreshVisible();
     el=document.querySelector('[data-read-check]');const red={status:el.dataset.readStatus,color:getComputedStyle(el.querySelector('.app-read-section-error')).color,oldDate:el.textContent.includes('Posledné úspešné overenie')};
     await appTrackedRead(url,{},()=>Promise.resolve(data),'critical');appReadRefreshVisible();
-    el=document.querySelector('[data-read-check]');const recovered={status:el.dataset.readStatus,open:el.querySelector('details').open,cache:host.textContent==='Údaje z pamäte',count:document.querySelectorAll('[data-read-check]').length};
+    el=document.querySelector('[data-read-check]');const recovered={status:el.dataset.readStatus,open:el.querySelector('details').open,cache:host.textContent==='Údaje z pamäte',count:document.querySelectorAll('[data-read-check]').length,stableControls:el.querySelector('details')===detailsNode&&detailsNode.querySelector('button')===retryNode};
     return {screen,type:view.type,unknown,green,loading,red,recovered};
    },{line,role,screen});
    assert.equal(result.unknown,'unknown',screen);assert.equal(result.green.status,'verified',screen);assert.equal(result.loading.status,'pending',screen);
    assert.equal(result.loading.spinner,true,screen);assert.equal(result.loading.stable,true,screen);assert.equal(result.loading.open,true,screen);
    assert.equal(result.red.status,'error',screen);assert.notEqual(result.green.color,result.red.color,screen);assert.equal(result.red.oldDate,true,screen);
-   assert.deepEqual(result.recovered,{status:'verified',open:true,cache:true,count:1},screen);cases++;
+   assert.deepEqual(result.recovered,{status:'verified',open:true,cache:true,count:1,stableControls:true},screen);cases++;
   }
  }
  await page.setViewportSize({width:320,height:700});await page.locator('.app-read-details').evaluate(e=>e.open=true);
