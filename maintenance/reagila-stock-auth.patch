@@ -1,0 +1,14 @@
+--- a/apps_script/KOD_REAGILA.txt
++++ b/apps_script/KOD_REAGILA.txt
+@@ -1513,7 +1513,10 @@
+ function stockHandleGet_(ss, e, line) {
+-  var auth = authRequireSession_(ss, e, line);
++  // Reagila login aj ostatné endpointy ukladajú/overujú reláciu pod „gp"
++  // vo VLASTNOM Reagila Sheete. „line" určuje iba skladové riadky/cache;
++  // nesmie sa použiť ako označenie relácie, inak platný login vždy zlyhá.
++  var auth = authRequireSession_(ss, e, 'gp');
+   if (!auth.ok) return auth;
+   var cached = stockCacheGet_(line);
+   if (cached) return cached;
+   var sheet = stockGetSheet_(ss);
+   if (sheet.getLastRow() < 2) return stockCachePut_(line, { ok:true, as_of:'', rows:[] });

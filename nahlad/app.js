@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.30';
+var APP_VERSION = '2.89.31';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -460,7 +460,7 @@ function appReadResource(url){
 function appReadValid(resource,data){
   if(!resource || data==null || typeof data!=='object' || data.ok===false || data.error)return false;
   if(resource.action==='getHistory')return Array.isArray(data);
-  var field={getNastenka:'posts',getStockData:'rows',getCalEvents:'events',getLekarne:'rows',getLekarneAll:'rows',getLekarneDetail:'rows',getGynLekarne:'rows',getGynLekarneDetail:'rows',getLekarneFilters:'rows',getPharmaGraf:'rows',getPharmaOkresGraf:'rows',getDohody:'dohody',getTeamPlnenie:'reps',getRepList:'reps'}[resource.action];
+  var field={getNastenka:'posts',getStockData:'rows',getCalEvents:'events',getLekarne:'rows',getLekarneAll:'rows',getLekarneDetail:'rows',getGynLekarne:'rows',getGynLekarneDetail:'rows',getLekarneFilters:'rows',getPharmaGraf:'rows',getPharmaOkresGraf:'rows',getPharmaOverview:'rows',getDohody:'dohody',getTeamPlnenie:'reps',getRepList:'reps'}[resource.action];
   if(field)return data.ok===true && Array.isArray(data[field]);
   if(resource.action==='getPlnenieAll')return data.ok===true && !!data.plan && !!data.predaje;
   if(resource.action==='getPharmaData')return data.ok===true && Array.isArray(data.summary) && Array.isArray(data.okresy);
@@ -530,6 +530,8 @@ function appRequestMatchesView(url,view){
   if(r.owner && r.owner!==appReadOwner())return false;
   if(r.ctx && !appLineContextActive(r.ctx))return false;
   if(view.path && r.path!==view.path)return false;
+  var scope=view.scopes && view.scopes[r.action];
+  if(scope && !Object.keys(scope).every(function(k){var values=Array.isArray(scope[k])?scope[k]:[scope[k]];return values.some(function(value){return r.params[k]!=null && String(r.params[k])===String(value);});}))return false;
   return Object.keys(view.params||{}).every(function(k){var values=Array.isArray(view.params[k])?view.params[k]:[view.params[k]];return r.params[k]==null || values.some(function(value){return String(r.params[k])===String(value);});});
 }
 function appReadSummary(view){
@@ -663,7 +665,7 @@ function appReadView(){
   if(!getSession() || document.body.classList.contains('login-active'))return null;
   function shown(id){ var el=document.getElementById(id); return el && el.classList.contains('show'); }
   function view(key, host, actions){
-    var params={},line=appLineTag(),s=getSession()||{},state=line==='gyn'?GYN_APP:PL_STATE;
+    var params={},scopes={},line=appLineTag(),s=getSession()||{},state=line==='gyn'?GYN_APP:PL_STATE;
     var sales=key==='sales'||key==='mgr-plnenie'||key==='mgr-detail'||key==='gyn-plnenie'||key==='product'||key==='team';
     if(key==='sales')state=REP_PL_STATE;
     if(key==='home'){var homePeriod=plnenieDefaultPeriod();params.rok=homePeriod.year;params.Q=homePeriod.q;}
@@ -685,7 +687,13 @@ function appReadView(){
     if(key==='history')params.reprezentant=s.username;
     if(key==='mgr-visits' && MGR_STATE.currentRep)params.reprezentant=MGR_STATE.currentRep;
     if(key==='mgr-activity'||key==='gyn-activity'){params.dni=USAGE_VIEW.dni;params.rep=USAGE_VIEW.currentRep||'';params.login=USAGE_VIEW.currentRep||s.username;}
-    if(key==='mgr-reporty'){var period=rptViewPeriod();params.rok=period.year;params.Q=period.q;}
+    if(key==='mgr-reporty'||key==='gyn-reporty'){
+      var period=rptViewPeriod();params.rok=period.year;params.Q=period.q;
+      // Only individual Golem/Reagila reports request market data. Their
+      // status must describe this report, not every earlier market screen.
+      actions=actions.filter(function(a){return !/^getPharma/.test(a) || (RPT_VIEW.scope==='rep' && ((a==='getPharmaData' && line!=='gyn') || (a==='getPharmaOverview' && line==='gp')));});
+      if(actions.indexOf('getPharmaData')!==-1)scopes.getPharmaData=rptViewPharmaReadScope();
+    }
     if(key==='district-chart' && PHARMA_OKRES_STATE.current){var dc=PHARMA_OKRES_STATE.current;params.produkt=dc.code;params.oblast=dc.oblast;params.okres=dc.r.okres;}
     if(key==='market'){
       var pharma=line==='gyn'?GYN_PHARMA_STATE:PHARMA_STATE;
@@ -726,7 +734,8 @@ function appReadView(){
     // The visible territories can change as refreshed plans arrive. That is
     // still the same product screen, so it must not cancel its market refresh.
     var identity=params;if(key==='product'){identity=Object.assign({},params);delete identity.oblast;identity.product=PL_PROD_SHEET_STATE.prodKey||'';}
-    return { key:appReadOwner()+'|'+key+'|'+JSON.stringify(identity),type:key,host:host,actions:actions,params:params,path:path,nativeLoading:key==='board' };
+    if(key==='mgr-reporty'||key==='gyn-reporty')identity=Object.assign({},params,{reportScope:RPT_VIEW.scope,reportRep:RPT_VIEW.scope==='rep'?RPT_VIEW.username:''});
+    return { key:appReadOwner()+'|'+key+'|'+JSON.stringify(identity),type:key,host:host,actions:actions,params:params,scopes:scopes,path:path,nativeLoading:key==='board' };
   }
   // Dialógy a rozpracované formuláre nemajú automatickú dátovú obnovu.
   if(shown('nst-compose') || shown('edit-overlay') || shown('gpp-overlay')) return null;
@@ -33910,6 +33919,22 @@ function rptViewToggleProd(key) {
 
 // Načítaj PharmaData IBA pre oblasti aktuálneho rozsahu (rep = 1 región → rýchle).
 // Loadnuté oblasti si pamätáme, aby sme pri prepínaní nefetchovali znova.
+function rptViewPharmaReadScope() {
+  var p=rptViewPeriod(),selection=rptViewPharmaSelectionKey();
+  return {oblast:rptViewOblasts(rptViewScopeReps()),kvartal:[String(pharmaKvartalCode(p.year,p.q))],
+    produkt:RPT_VIEW.pharmaReadSelection===selection?(RPT_VIEW.pharmaReadCodes||[]).slice():[]};
+}
+function rptViewPharmaCodes(model) {
+  var codes=[],limit=(RPT_VIEW.pharmaWant||'top')==='all'?6:3;
+  function add(code){if(code && codes.indexOf(code)<0)codes.push(code);}
+  // Limit products, then include their individual forms. Aflamil Family
+  // needs both tablets and sachets; the limit must not cut a form in half.
+  (model.prods||[]).filter(function(x){return x.g100>0 && rptViewCodeForPlanKey(x.key);}).slice(0,limit).forEach(function(x){
+    add(rptViewCodeForPlanKey(x.key));
+    if(typeof rp2Line==='function' && rp2Line()==='gp' && typeof RPT_PHARMA_PLAN_KEY!=='undefined')Object.keys(RPT_PHARMA_PLAN_KEY).forEach(function(code){if(RPT_PHARMA_PLAN_KEY[code]===x.key)add(code);});
+  });
+  return codes;
+}
 function rptViewPharmaReadyForScope() {
   if (RPT_VIEW.scope !== 'rep') return false;   // skupina: trhové dáta sa nesťahujú (rýchlosť)
   var p = rptViewPeriod(), pk = p.year + 'Q' + p.q, lvl = RPT_VIEW.pharmaWant || 'top';
@@ -33936,15 +33961,13 @@ function rptViewPharmaStatusHtml() {
 }
 function rptViewRefreshPharma() {
   appStartManualRefresh();
+  if(RPT_VIEW.scope==='rep' && typeof rp2LoadOv==='function')rp2LoadOv(true);
   if (RPT_VIEW.pharmaBatch) RPT_VIEW.pharmaBatch.cancel();
   RPT_VIEW.pharmaLoadedOblasts = {}; RPT_VIEW.pharmaError = null; RPT_VIEW.pharmaRefresh = true;
   rptViewEnsurePharma(RP2_LAST.m); rp2Schedule();
 }
 function rptViewRetryPharma() {
-  appStartManualRefresh();
-  RPT_VIEW.pharmaError = null;
-  rptViewEnsurePharma(RP2_LAST.m);
-  rp2Schedule();
+  rptViewRefreshPharma();
 }
 function rptViewEnsurePharma(model) {
   if (RPT_VIEW.scope !== 'rep') return;
@@ -33959,16 +33982,12 @@ function rptViewEnsurePharma(model) {
   var p = rptViewPeriod(), pk = p.year + 'Q' + p.q, lvl = RPT_VIEW.pharmaWant || 'top';
   var oblasts = rptViewOblasts(rptViewScopeReps());
   var need = oblasts.filter(function(o) { return !RPT_VIEW.pharmaLoadedOblasts[o + '|' + pk + '|' + lvl] && !RPT_VIEW.pharmaLoadedOblasts[o + '|' + pk + '|all']; });
-  if (!need.length) return;
   var m = model;
   if (!m) { try { m = rp2Model(rptViewScopeReps(), p); } catch (e) {} }
   if (!m || m.empty) return;
-  var codes = [];
-  // Filter mapped products before taking the limit: unmapped products must not hide market data.
-  m.prods.filter(function(x) { return x.g100 > 0; }).forEach(function(x) {
-    var c = rptViewCodeForPlanKey(x.key); if (c && codes.indexOf(c) < 0) codes.push(c);
-  });
-  codes = codes.slice(0, lvl === 'all' ? 6 : 3);
+  var codes = rptViewPharmaCodes(m);
+  RPT_VIEW.pharmaReadSelection=selection;RPT_VIEW.pharmaReadCodes=codes.slice();
+  if (!need.length) return;
   if (!codes.length) { need.forEach(function(o) { RPT_VIEW.pharmaLoadedOblasts[o + '|' + pk + '|' + lvl] = true; }); rp2Schedule(); return; }
   var kvartal = pharmaKvartalCode(p.year, p.q), tasks = [], failed = {};
   need.forEach(function(o) { codes.forEach(function(code) { tasks.push({ o:o, code:code }); }); });
@@ -34431,19 +34450,25 @@ function rp2WarnCardHtml(w) {
 
 // ═══ Trhový potenciál území (IQVIA): veľkosť trhu a náš podiel v každej oblasti — základ férového porovnania ═══
 var RP2_OV = { rows: null, loading: false };
-function rp2LoadOv() {
-  if (rp2Line() !== 'gp' || RP2_OV.loading || RP2_OV.rows) return;
+function rp2LoadOv(force) {
+  if (rp2Line() !== 'gp') return;
+  var state=RP2_OV,ctx=appLineCapture(),owner=appReadOwner();
+  if((state.owner && state.owner!==owner) || (state.ctx!=null && !appLineContextActive(state.ctx))){state.rows=null;state.loading=false;}
+  if(!force && (state.loading || state.rows))return;
   if (typeof IS_DEV !== 'undefined' && IS_DEV) { RP2_OV.rows = RP2_OV.rows || {}; return; }
-  RP2_OV.loading = true;
-  var url = rp2Url_('action=getPharmaOverview');
-  appFetchWithRetry(url, { retries: 1, timeoutMs: 40000, priority: 'background', delayFn: function() { return 800; },
-    fetcher: function() { return appQueuedFetchJsonUntracked(url, { cache: 'no-store' }, 40000, 'background'); } }).then(function(d) {
-    RP2_OV.loading = false;
+  var request=(state.request||0)+1;state.request=request;state.loading=true;state.owner=owner;state.ctx=ctx;
+  function current(){return RP2_OV===state && state.request===request && appLineContextActive(ctx) && appReadOwner()===owner;}
+  var priority=force?'critical':'background',url=rp2Url_('action=getPharmaOverview')+(force?'&fresh=1':'');
+  return appFetchWithRetry(url, { retries: 1, timeoutMs: 40000, priority:priority, active:current, delayFn: function() { return 800; },
+    fetcher: function() { return appQueuedFetchJsonUntracked(url, { cache: 'no-store' }, 40000, priority); } }).then(function(d) {
+    if(!current())return;
+    if(!d || d.ok!==true || !Array.isArray(d.rows))throw new Error('Market overview unavailable');
+    state.loading=false;
     var idx = {};
-    if (d && d.ok && Array.isArray(d.rows)) d.rows.forEach(function(r) { idx[r.p + '|' + r.o] = r.m; });
-    RP2_OV.rows = idx;
+    d.rows.forEach(function(r) { idx[r.p + '|' + r.o] = r.m; });
+    state.rows=idx;
     rp2Schedule();
-  }).catch(function() { RP2_OV.loading = false; RP2_OV.rows = {}; });
+  }).catch(function() { if(current()){state.loading=false;rp2Schedule();} });
 }
 function rp2OvStat(months) {
   var n = months.length, mk = 0, ours = 0;
