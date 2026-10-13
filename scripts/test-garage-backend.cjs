@@ -6,14 +6,26 @@ const vm = require('node:vm');
 const extensionPath = path.resolve(__dirname, '../apps_script/KOD_GARAZ.txt');
 assert.ok(fs.existsSync(extensionPath), 'Private Garage Apps Script extension must exist');
 const extension = fs.readFileSync(extensionPath, 'utf8');
-const primaryPath = process.env.SATORI_GOLEM_BACKEND || [path.resolve(__dirname, '../apps_script/KOD_GOLEM.txt'),path.resolve(__dirname, '../../../apps_script/KOD_GOLEM.txt')].find(p=>fs.existsSync(p));
+const ancestors=[];for(let dir=path.resolve(__dirname,'..');;dir=path.dirname(dir)){ancestors.push(path.join(dir,'apps_script/KOD_GOLEM.txt'));if(path.dirname(dir)===dir)break;}
+const primaryPath = process.env.SATORI_GOLEM_BACKEND || ancestors.find(p=>fs.existsSync(p));
 assert.ok(primaryPath,'Set SATORI_GOLEM_BACKEND to the private Golem helper file');
-const primary = fs.readFileSync(primaryPath, 'utf8');
+let primary = fs.readFileSync(primaryPath, 'utf8');
+// Exercise the real installer without writing any private deployment files.
+const installer=fs.readFileSync(path.join(__dirname,'install-garage-backend.cjs'),'utf8'),memoryDir=path.resolve(__dirname,'../.tmp/backend-installer-memory');
+const files=new Map([[path.join(memoryDir,'KOD_GOLEM.txt'),primary],[extensionPath,extension]]);
+vm.runInNewContext(installer,{__dirname,process:{argv:['node','installer',memoryDir]},console:{log(){}},require:name=>name==='node:fs'?{existsSync:p=>files.has(p),readFileSync:p=>{assert.ok(files.has(p),'Installer reads only its fixture');return files.get(p);},writeFileSync:(p,s)=>files.set(p,s),copyFileSync:(a,b)=>files.set(b,files.get(a))}:require(name)});
+primary=files.get(path.join(memoryDir,'KOD_GOLEM.txt'));
+const primaryInstalled=primary;
+vm.runInNewContext(installer,{__dirname,process:{argv:['node','installer',memoryDir]},console:{log(){}},require:name=>name==='node:fs'?{existsSync:p=>files.has(p),readFileSync:p=>files.get(p),writeFileSync:(p,s)=>files.set(p,s),copyFileSync:(a,b)=>files.set(b,files.get(a))}:require(name)});
+assert.equal(files.get(path.join(memoryDir,'KOD_GOLEM.txt')),primaryInstalled,'Installer remains idempotent');
 function functionSource(name, next) { const start=primary.indexOf('function '+name+'('), end=primary.indexOf('function '+next+'(',start); assert.ok(start>=0&&end>start, name+' real helper located'); return primary.slice(start,end); }
 const realAuth = [functionSource('requireToken','pouzValues_').split('var AUTH_SESSION_HOURS')[0],functionSource('pouzValues_','cacheGetText_').split('var CACHE_TTL_SEC')[0],functionSource('authGetSessionsSheet_','authCleanSessions_'),functionSource('authRequireSession_','authLogoutSession_'),functionSource('authGetUser_','authIsGpAdmin_')].join('\n');
+const profileStart=primary.indexOf("    if(action === 'setAvatar') {"),profileEnd=primary.indexOf("    if(action === 'getPlnenie') {",profileStart);
+assert.ok(profileStart>=0&&profileEnd>profileStart,'Real own-profile endpoint branches located');
+const realOwnProfile=functionSource('authIsGpAdmin_','authIsGpAmWest_')+'\nfunction ownProfileEndpoint_(ss,e){var action=e.parameter.action;'+primary.slice(profileStart,profileEnd)+'\nreturn jsonResponse({ok:false});}';
 const plain = v => JSON.parse(JSON.stringify(v));
-let passed=0;
-function test(name,fn) { fn(); passed++; console.log('PASS '+name); }
+let passed=0,failed=0;
+function test(name,fn) { try { fn(); passed++; console.log('PASS '+name); } catch(error) { failed++; console.error('FAIL '+name+'\n'+error.stack); } }
 class FakeSheet {
   constructor(name,env,rows=[]) { this.name=name;this.env=env;this.rows=plain(rows);this.reads=0; }
   getLastRow() { let n=this.rows.length;while(n&&!(this.rows[n-1]||[]).some(x=>x!==''&&x!==null&&x!==undefined))n--;return n; }
@@ -22,13 +34,14 @@ class FakeSheet {
   getRange(r,c,n=1,k=1) { const sheet=this;return {
     getValues(){sheet.reads++;return Array.from({length:n},(_,i)=>Array.from({length:k},(_,j)=>(sheet.rows[r+i-1]||[])[c+j-1]??''));},
     setValues(values){assert.equal(values.length,n); if(sheet.name==='Garage_State'){assert.equal(sheet.env.locked,true,'Garage state writes need central ScriptLock');if(sheet.env.failWrite)throw Error('write failed');sheet.env.stateWrites++;if(sheet.env.duringWrite){const hook=sheet.env.duringWrite;sheet.env.duringWrite=null;hook();}}
-      values.forEach((row,i)=>{assert.equal(row.length,k);sheet.rows[r+i-1]||=[];row.forEach((v,j)=>sheet.rows[r+i-1][c+j-1]=v);});return this;}
+      values.forEach((row,i)=>{assert.equal(row.length,k);sheet.rows[r+i-1]||=[];row.forEach((v,j)=>sheet.rows[r+i-1][c+j-1]=v);});return this;},
+    setValue(value){assert.equal(n,1);assert.equal(k,1);sheet.rows[r-1]||=[];sheet.rows[r-1][c-1]=value;return this;}
   }; }
   appendRow(row){this.rows.push(plain(row));} deleteRow(n){this.rows.splice(n-1,1);} clearContents(){this.rows=[];}
 }
 class FakeSpreadsheet { constructor(id,env){this.id=id;this.env=env;this.sheets={};}getId(){return this.id;}getSheetByName(n){return this.sheets[n]||null;}insertSheet(n){const s=new FakeSheet(n,this.env);this.sheets[n]=s;return s;} }
 function setup() {
-  const env={locked:false,failWrite:false,failFlush:false,stateWrites:0,flushes:0,cache:{},props:{},sends:[],failPush:false,uuid:0,books:{},lockAttempts:[],triggers:[]};
+  const env={locked:false,failWrite:false,failFlush:false,stateWrites:0,flushes:0,cache:{},cacheTtls:{},props:{},sends:[],failPush:false,uuid:0,books:{},lockAttempts:[],triggers:[]};
   for(const line of ['gp','gyn','reagila']){const ss=new FakeSpreadsheet('sheet-'+line,env);env.books[ss.id]=ss;
     const users=[['login','password','name','role'],['admin','not-used','Admin','admin'],['office.a','not-used','Office A','office'],['office.b','not-used','Office B','office'],['rep','not-used','Rep','rep west'],['manager','not-used','Manager',line==='gyn'?'gyn-manager':'am west'],['fleet','not-used','Fleet','fleet']];
     ss.sheets.Pouzivatelia=new FakeSheet('Pouzivatelia',env,users);
@@ -41,11 +54,11 @@ function setup() {
     LockService:{getScriptLock:()=>({tryLock:ms=>{env.lockAttempts.push(ms);if(env.locked)return false;env.locked=true;return true;},waitLock:ms=>{env.lockAttempts.push(ms);if(env.locked)throw Error('busy');env.locked=true;},releaseLock:()=>{env.locked=false;},hasLock:()=>env.locked})},
     PropertiesService:{getScriptProperties:()=>({getProperty:k=>env.props[k]||null})},
     ScriptApp:{getProjectTriggers:()=>env.triggers,newTrigger:name=>({timeBased(){return this;},everyMinutes(n){assert.equal(n,1);return this;},create(){env.triggers.push({getHandlerFunction:()=>name});return env.triggers.at(-1);}})},
-    Utilities:{getUuid:()=>'uuid-'+(++env.uuid),formatDate:(d,tz,pattern)=>{assert.equal(tz,'Europe/Bratislava');return new Intl.DateTimeFormat('en-CA',{timeZone:tz,year:'numeric',month:'2-digit',day:'2-digit'}).format(d);}},
-    cacheGetText_:k=>env.cache[k]||null,cachePutText_:(k,s)=>env.cache[k]=s,cacheBust_:k=>delete env.cache[k],jsonResponse:x=>plain(x),Logger:{log:()=>{}},
+    Utilities:{getUuid:()=>'uuid-'+(++env.uuid),DigestAlgorithm:{SHA_256:'sha256'},computeDigest:(algorithm,s)=>Array.from(require('node:crypto').createHash(algorithm).update(s).digest()),formatDate:(d,tz,pattern)=>{assert.equal(tz,'Europe/Bratislava');return new Intl.DateTimeFormat('en-CA',{timeZone:tz,year:'numeric',month:'2-digit',day:'2-digit'}).format(d);}},
+    cacheGetText_:k=>env.cache[k]||null,cachePutText_:(k,s,ttl)=>{env.cache[k]=s;env.cacheTtls[k]=ttl;},cacheBust_:k=>delete env.cache[k],jsonResponse:x=>plain(x),Logger:{log:()=>{}},
     pushTokenSheet_:ss=>ss.getSheetByName('Push_Tokens')||ss.insertSheet('Push_Tokens'),
     pushSendRows_:(ss,rows,line,title,body,link,event)=>{assert.equal(env.locked,false,'Push must run after releasing transaction lock');env.sends.push({rows:plain(rows),line,title,body,link,event});return {sent:env.failPush||(env.failTokens||[]).some(t=>rows.some(r=>r.token===t))?0:rows.length,total:rows.length};}
-  };vm.createContext(ctx);vm.runInContext(realAuth+'\n'+extension,ctx);return ctx;}
+  };vm.createContext(ctx);vm.runInContext(realAuth+'\n'+realOwnProfile+'\n'+extension,ctx);return ctx;}
   const ctx=context(),ss=env.books['sheet-gp'];
   const request=(user='admin',line='gp',body,params={})=>({parameter:Object.assign({action:'getGarage',token:'test-api',username:user,device_id:'device',session_token:'session-'+user,garage_source_line:line},params),postData:body?{contents:JSON.stringify(body)}:undefined});
   const call=(user,action,body,line='gp',params={})=>ctx.garageHandleAction_(ss,request(user,line,body,Object.assign({action},params)),action);
@@ -167,4 +180,63 @@ test('only a source-authenticated active member can request pending Garage deliv
   assert.equal(f.call('rep','garageDrainPush',{}).code,'NOT_MEMBER');assert.equal(f.call('office.b','garageDrainPush',{}).code,'NOT_MEMBER');assert.equal(f.call('unknown','garageDrainPush',{}).code,'SESSION_EXPIRED');assert.equal(f.call('office.a','garageDrainPush',{},'gp',{session_token:'forged'}).code,'SESSION_EXPIRED');assert.equal(f.env.sends.length,0);
   assert.equal(f.call('office.a','garageDrainPush',{}).ok,true);assert.equal(f.env.sends.length,1);assert.equal(f.env.sends[0].line,'garage');
 });
+test('office accounts may write their own avatar and preferences but no medical reads',()=>{
+  const f=setup();f.ss.sheets.Pouzivatelia.rows[0].push('avatar','nastavenia');for(const action of ['setAvatar','setUserPref']){
+    assert.equal(f.ctx.authRequireSession_(f.ss,f.request('office.a','gp',null,{action}),'gp').ok,true,action);
+    assert.equal(f.ctx.authRequireSession_(f.ss,f.request('office.b','gp',null,{action,session_token:'session-office.a'}),'gp').ok,false,'Other username cannot reuse this session');
+    assert.equal(f.ctx.authRequireSession_(f.ss,f.request('office.a','gp',null,{action,session_token:'forged'}),'gp').ok,false);
+    const config=JSON.stringify({style:'adventurer',seed:'test'}),prefs=JSON.stringify({notifGarage:true});
+    assert.equal(f.ctx.ownProfileEndpoint_(f.ss,f.request('office.a','gp',null,{action,config,prefs})).ok,true,'Real '+action+' write allowed');
+    const before=plain(f.ss.sheets.Pouzivatelia.rows);assert.equal(f.ctx.ownProfileEndpoint_(f.ss,f.request('office.b','gp',null,{action,config,prefs,session_token:'session-office.a'})).ok,false);assert.deepEqual(f.ss.sheets.Pouzivatelia.rows,before,'Another account unchanged');
+    const own=f.ss.sheets.Pouzivatelia.rows.find(r=>r[0]==='office.a');assert.equal(own[action==='setAvatar'?4:5],action==='setAvatar'?config:prefs);
+  }
+  for(const action of ['getInitData','getRepList','getAllHistory','getPharmaData','getPlnenie','getPlnenieAll','getLastLogins','getReps','getNastenka','getCalEvents','getUserPref'])assert.equal(f.ctx.authRequireSession_(f.ss,f.request('office.a','gp',null,{action}),'gp').ok,false,action);
+  assert.ok(primary.includes('avUser !== auth.username && !authIsGpAdmin_(auth.user)'));assert.ok(primary.includes('pUser !== pAuth.username && !authIsGpAdmin_(pAuth.user)'));
+});
+
+test('cached legacy layout is migrated under lock on first read and persisted only once',()=>{
+  const f=setup();f.call('office.a','getGarage');const state=f.ctx.garageReadState_(f.ss);delete state.config.layoutVersion;state.config.slots.forEach((s,i)=>s.number=String(i+1));
+  state.reservations.push({id:'stable-booking',revision:8,owner:'office.a',name:'Office A',date:'2026-10-13',start:'08:00',end:'12:00',spaceId:'b3-1'});
+  state.offers.push({id:'stable-offer',owner:'office.a',date:'2026-10-13',start:'08:00',end:'12:00',spaceId:'b3-1',status:'open'});
+  state.attendance.push({owner:'office.a',date:'2026-10-13',office:true});state.waitlist.push({id:'stable-wait',owner:'office.a',date:'2026-10-13',start:'08:00',end:'12:00'});
+  state.blocks.push({id:'stable-block',date:'2026-10-14',start:'08:00',end:'12:00',spaceId:'b3-2'});
+  state.dedup.push({id:'stable-retry',actor:'office.a',result:{id:'stable-booking'}});state.outbox.push({id:'stable-push',status:'pending',notice:{floor:-1,spaceId:'b1-7',number:'7'}});
+  const records=plain(Object.fromEntries(['members','reservations','offers','attendance','waitlist','blocks','dedup'].map(k=>[k,state[k]]))),ids=state.config.slots.map(s=>s.id);
+  const lock=f.ctx.garageTakeLock_();f.ctx.garageWriteState_(f.ss,state);lock.releaseLock();const writes=f.env.stateWrites,reads=f.ss.sheets.Garage_State.reads;
+  const one=f.call('office.a','getGarage');assert.equal(one.ok,true);assert.deepEqual(one.config.slots.map(s=>s.number),['587','588','590','589','612','613','','']);assert.deepEqual(one.config.slots.map(s=>s.id),plain(ids));
+  assert.ok(f.ss.sheets.Garage_State.reads>reads,'Legacy cached state bypasses cache');assert.equal(f.env.stateWrites,writes+1);const stored=f.ctx.garageReadState_(f.ss);
+  for(const k of Object.keys(records))assert.deepEqual(plain(stored[k]),records[k],k+' preserved');assert.equal(stored.outbox[0].notice.number,'');assert.equal(stored.outbox[0].id,'stable-push');
+  f.call('office.a','getGarage');f.call('office.a','getGarage',null,'gp',{fresh:'1'});assert.equal(f.env.stateWrites,writes+1);
+});
+
+test('migration change is retained when an existing member needs no enrolment',()=>{
+  const f=setup();f.call('office.a','getGarage');const state=f.ctx.garageReadState_(f.ss);delete state.config.layoutVersion;state.config.slots.forEach((s,i)=>s.number=String(i+1));const lock=f.ctx.garageTakeLock_();f.ctx.garageWriteState_(f.ss,state);lock.releaseLock();
+  const writes=f.env.stateWrites;assert.equal(f.call('office.a','garageRegisterPush',{token:'token-existing-member'}).ok,true);assert.equal(f.env.stateWrites,writes+1);assert.equal(f.ctx.garageReadState_(f.ss).config.layoutVersion,2);
+});
+
+test('unnumbered floor push content never invents a numbered space',()=>{
+  for(const number of ['7','8','',undefined]){const f=setup(),body=f.ctx.garagePushContent_({id:'pool',notice:{type:'release',date:'2026-10-13',floor:-1,number,start:'08:00',end:'12:00'}}).body;assert.ok(body.includes('podlažie −1'));assert.ok(!body.includes('miesto '+number));assert.ok(!/miesto (?:7|8|undefined)/.test(body));}
+});
+
+test('celebrations disclose only today or tomorrow active member names from their own source',()=>{
+  const f=setup();f.call('admin','getGarage');const state=f.ctx.garageReadState_(f.ss);
+  state.members.push({id:'office.a',name:'Office A',sourceLine:'gp',role:'office',active:true},{id:'manager',name:'Gyn Manager',sourceLine:'gyn',role:'management',active:true},{id:'rep',name:'Inactive',sourceLine:'reagila',role:'office',active:false});
+  const header=[' Narodeniny ','username','name'];f.ss.sheets.Pouzivatelia.rows=[header,['12.10.1980','office.a','Office A'],['12.10.1970','manager','Wrong source'],['12.10.1960','not-a-member','Non member'],['14.10.1990','admin','Admin']];
+  f.env.books['sheet-gyn'].sheets.Pouzivatelia.rows=[['login','narodeniny'],['manager','1992-10-13'],['rep','1988-10-12']];
+  const context=f.ctx.garageClock_(),list=plain(f.ctx.garageCelebrations_(f.ss,state,context));assert.deepEqual(list,[{id:'office.a',name:'Office A',when:0},{id:'manager',name:'Gyn Manager',when:1}]);
+  assert.ok(list.every(x=>Object.keys(x).sort().join(',')==='id,name,when'));assert.ok(!JSON.stringify(list).includes('1980'));assert.ok(!JSON.stringify(list).includes('1992'));
+  const sourceReads=Object.values(f.env.books).map(book=>book.sheets.Pouzivatelia.reads);f.ctx.garageCelebrations_(f.ss,state,context);assert.deepEqual(Object.values(f.env.books).map(book=>book.sheets.Pouzivatelia.reads),sourceReads);
+  const celebrationKeys=Object.keys(f.env.cacheTtls).filter(k=>k.startsWith('garage:celebrations:'));assert.ok(celebrationKeys.length);assert.ok(celebrationKeys.every(k=>f.env.cacheTtls[k]===300));
+  state.members.find(m=>m.id==='office.a').active=false;assert.deepEqual(plain(f.ctx.garageCelebrations_(f.ss,state,context)),[{id:'manager',name:'Gyn Manager',when:1}]);
+  context.today='2026-10-13';assert.deepEqual(plain(f.ctx.garageCelebrations_(f.ss,state,context)),[{id:'manager',name:'Gyn Manager',when:0},{id:'admin',name:'Admin',when:1}]);
+});
+
+test('birthday parser accepts actual dates, D.M and ISO while optional source failure leaves Garage usable',()=>{
+  const f=setup();assert.equal(f.ctx.garageBirthdayMonthDay_(new f.ctx.Date('1981-10-11T23:30:00Z')),'10-12');
+  for(const raw of ['12.10','12. 10.','12.10.1981','1981-10-12','1981-10-12T00:00:00Z'])assert.equal(f.ctx.garageBirthdayMonthDay_(raw),'10-12',raw);
+  for(const raw of ['31.2.1981','wrong','2026-13-12','12/10/1981',''])assert.equal(f.ctx.garageBirthdayMonthDay_(raw),'',raw);
+  const snapshot=f.call('office.a','getGarage');assert.deepEqual(snapshot.celebrations,[]);const state=f.ctx.garageReadState_(f.ss);state.members.push({id:'manager',name:'Gyn Manager',sourceLine:'gyn',role:'management',active:true});
+  const lock=f.ctx.garageTakeLock_();f.ctx.garageWriteState_(f.ss,state);lock.releaseLock();delete f.env.books['sheet-gyn'];assert.equal(f.call('office.a','getGarage').ok,true);assert.deepEqual(f.call('office.a','getGarage').celebrations,[]);
+});
 console.log(`${passed} Garage backend tests passed`);
+if(failed)process.exitCode=1;

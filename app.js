@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.90.1';
+var APP_VERSION = '2.90.2';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -6854,6 +6854,7 @@ function appTabSyncFromTab(tab) {
 // Dlaždice v menu podľa línie a roly. Nič sa nemaže — všetko, čo daná rola
 // mala vo svojej navigácii, je tu; len o jedno ťuknutie ďalej.
 function viacDlazdice() {
+  if(window.SatoriGarageShell && SatoriGarageShell.active())return SatoriGarageShell.tiles();
   var r = appRole();
   var s = getSession() || {};
   if (r === 'mgr') {
@@ -6912,6 +6913,7 @@ function viacDlazdice() {
 }
 
 function viacLinesHtml() {
+  if(window.SatoriGarageShell && SatoriGarageShell.active())return SatoriGarageShell.linesHtml();
   // Ukáže sa každému s manažérskou rolou (rovnaká podmienka ako v Nastaveniach),
   // nie len tomu, kto už má 2+ línie potvrdené — chýbajúca línia (🔒) sa tu teraz
   // dá rovno dotiahnuť heslom, namiesto toho, aby zo zoznamu jednoducho zmizla.
@@ -6937,6 +6939,7 @@ function viacLinesHtml() {
     }).join('') + '</div>';
 }
 function viacSwitchLine(line) {
+  if(window.SatoriGarageShell && SatoriGarageShell.active()){SatoriGarageShell.switchLine(line);return;}
   if(line==='garage' && window.SatoriGarageBridge){SatoriGarageBridge.open();return;}
   if (!mgrLineSwitchAvailable() || line === mgrCurrentLine()) return;
   if (!mgrLineTargets().some(function (it) { return it.line === line; })) return;
@@ -6957,7 +6960,7 @@ function viacRender() {
       '<div class="viac-me-av">' + av + '</div>' +
       '<div class="viac-me-txt">' +
         '<div class="viac-me-name">' + appEsc(meno) + '</div>' +
-        '<div class="viac-me-sub">' + appEsc(sess.region || 'Satori') + '</div>' +
+        '<div class="viac-me-sub">' + appEsc(window.SatoriGarageShell && SatoriGarageShell.active() ? 'Garáž' : (sess.region || 'Satori')) + '</div>' +
       '</div>' +
       '<button type="button" class="viac-me-btn" onclick="openSettings()" aria-label="Nastavenia">›</button>';
   }
@@ -6970,7 +6973,7 @@ function viacRender() {
            '</button>';
   }).join('');
   body.innerHTML = viacLinesHtml() +
-    '<div class="viac-sec">' + (appRole() === 'gp' ? 'Prehľady a prieskumy' : 'Prehľady') + '</div>' +
+    '<div class="viac-sec">' + (window.SatoriGarageShell && SatoriGarageShell.active() ? 'Garáž' : (appRole() === 'gp' ? 'Prehľady a prieskumy' : 'Prehľady')) + '</div>' +
     '<div class="viac-grid">' + tiles + '</div>' +
     '<div class="viac-list">' +
       '<button type="button" class="viac-item" onclick="openSettings()">' +
@@ -6997,7 +7000,7 @@ function openViac() {
   if (ov) ov.classList.add('show');
   document.body.style.overflow = 'hidden';
   try { repTabSetActive('viac-overlay'); } catch (e) {}
-  satoriGuideQueueHint('menu', 420);
+  if(!(window.SatoriGarageShell && SatoriGarageShell.active()))satoriGuideQueueHint('menu', 420);
 }
 function closeViac() {
   try { usageSectionClose(); } catch (e) {}
@@ -7781,6 +7784,7 @@ function settingsToggleCollapse(id) {
 
 function openSettings(){
   var s = getSession(); if(!s) return;
+  if(window.SatoriGarageShell && SatoriGarageShell.active())closeViac();
   var overlay = document.getElementById('settings-overlay');
   if(!overlay) return;
   renderSettings(s);
@@ -7801,6 +7805,7 @@ function closeSettings(){
 // nie je predvídateľné miesto na návrat.
 function settingsBack(){
   closeSettings();
+  if(window.SatoriGarageShell && SatoriGarageShell.active())return;
   if(document.body.classList.contains('app-nav') && typeof appGoDomov === 'function'){
     try { appGoDomov(); } catch(e){}
   }
@@ -7932,6 +7937,7 @@ function settingsSubmitPasswordChange(){
 
 function renderSettings(s){
   s = s || getSession(); if(!s) return;
+  if(window.SatoriGarageShell && SatoriGarageShell.active()){SatoriGarageShell.renderSettings(s);return;}
   var body = document.getElementById('settings-body');
   if(!body) return;
   var roleLbl = settingsRoleLabel(s);
@@ -20495,6 +20501,7 @@ function initEdgeSwipeBack() {
 // používajú jeden poriadok vrstiev. Toto gesto však priebežne posúva aktuálnu vrstvu pod
 // prstom — nepôsobí preto ako oneskorené kliknutie po pustení prsta.
 function teamPlnenieOwnsBack(){
+  if(window.SatoriGarageBridge && SatoriGarageBridge.isOpen())return false;
   if (typeof TEAM_PL_STATE === 'undefined' || !TEAM_PL_STATE.open) return false;
   // Trhový podiel a graf okresu sú vnorené nad detailom kolegu. Musia sa
   // zatvoriť prvé; inak by potiahnutie preskočilo ich obrazovku a zavrelo tím.
@@ -20522,6 +20529,7 @@ function globalSwipeBackIsIOS() {
 
 function globalSwipeBackResolveVisualTarget(layer) {
   if (!layer) return null;
+  if(layer.id==='satori-garage-shared' && window.SatoriGarageShell){var shared=SatoriGarageShell.sharedBackLayer();return shared?document.getElementById(shared.id):null;}
   var id = layer.id;
   var direct = document.getElementById(id);
   if (direct) return direct;

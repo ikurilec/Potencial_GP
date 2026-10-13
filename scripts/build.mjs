@@ -65,7 +65,7 @@ async function buildTarget(name, { dir, cachePrefix }, gc) {
   writeFileSync(resolve(dist, jsName), jsOut);
   writeFileSync(resolve(dist, cssName), cssOut);
   const modules=[];
-  for(const [stem,loader] of [['garage','css'],['garage','js'],['garage-integration','js']]){
+  for(const [stem,loader] of [['garage','css'],['garage-model','js'],['garage','js'],['garage-shell','js'],['garage-integration','js']]){
     const out=await minify(resolve(dir,`${stem}.${loader}`),loader);
     const file=`${stem}.${hash8(out)}.${loader}`;
     writeFileSync(resolve(dist,file),out);modules.push({stem,loader,file,hash:hash8(out)});
@@ -87,12 +87,9 @@ async function buildTarget(name, { dir, cachePrefix }, gc) {
   const matched = cssRe.test(idx) && jsRe.test(idx);
   idx = idx.replace(cssRe, `href="dist/${cssName}"`);
   idx = idx.replace(jsRe, `src="dist/${jsName}"`);
-  for(const mod of modules){
-    const attribute=mod.loader==='css'?'href':'src';
-    const re=new RegExp(attribute+'="(?:dist/)?'+mod.stem+'\\.(?:[0-9a-f]{8}\\.)?'+mod.loader+'"');
-    if(re.test(idx))idx=idx.replace(re,`${attribute}="dist/${mod.file}"`);
-    else idx=idx.replace('</head>',(mod.loader==='css'?`<link rel="stylesheet" href="dist/${mod.file}">`:`<script defer src="dist/${mod.file}"></script>`)+'\n</head>');
-  }
+  // Rebuild module tags together to preserve dependency order on first install too.
+  idx=idx.replace(/<(?:script\b[^>]*src|link\b[^>]*href)="(?:dist\/)?garage(?:-model|-shell|-integration)?\.(?:[0-9a-f]{8}\.)?(?:js|css)"[^>]*>(?:<\/script>)?\s*/g,'');
+  idx=idx.replace('</head>',modules.map(mod=>mod.loader==='css'?`<link rel="stylesheet" href="dist/${mod.file}">`:`<script defer src="dist/${mod.file}"></script>`).join('\n')+'\n</head>');
   if (!matched) {
     console.error(`[${name}] POZOR: index.html sa nezmenil — odkaz na app.css/app.js sa nenašiel presným tvarom, skontroluj ručne.`);
     process.exit(1);
@@ -107,7 +104,7 @@ async function buildTarget(name, { dir, cachePrefix }, gc) {
   // Every module participates: a Garage-only change must replace the PWA shell too.
   const moduleAssets=modules.map(m=>`'./dist/${m.file}'`).join(',\n  ');
   sw=sw.replace(/(var APP_SHELL = \[)([\s\S]*?)(\];)/,function(_,start,body,end){
-    const entries=body.split(',').map(x=>x.trim()).filter(x=>x&&!/dist\/garage(?:-integration)?\./.test(x));
+    const entries=body.split(',').map(x=>x.trim()).filter(x=>x&&!/dist\/garage(?:-model|-shell|-integration)?\./.test(x));
     return start+'\n  '+entries.join(',\n  ')+',\n  '+moduleAssets+'\n'+end;
   });
   const cacheTag = hash8(Buffer.from(jsHash+cssHash+modules.map(m=>m.hash).join('')));

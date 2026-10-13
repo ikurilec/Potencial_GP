@@ -74,7 +74,7 @@
   }
   function configure(){
     if(configured||!w.SatoriGarage)return;configured=true;
-    w.SatoriGarage.configure({transport:transport,getSession:me,getLineTargets:targets,switchLine:function(line){if(line==='garage')return open();if(officeOnly())return;if(resumeMedical(line))return;close();if(line===(me().line||'gp'))return;w.mgrSwitchLine(line);},exit:function(){if(!resumeMedical((me()&&me().line)||'gp'))close();},logout:function(){w.doLogout();},registerPush:registerPush});
+    w.SatoriGarage.configure({transport:transport,getSession:me,getLineTargets:targets,sharedOverlayOpen:sharedOverlayOpen,headerMarkup:function(data,s){return w.SatoriGarageShell?w.SatoriGarageShell.headerMarkup(data,s):'';},afterRender:function(){if(w.SatoriGarageShell)w.SatoriGarageShell.afterRender();},switchLine:function(line){if(line==='garage')return open();if(officeOnly())return;if(resumeMedical(line))return;close();if(line===(me().line||'gp'))return;w.mgrSwitchLine(line);},exit:function(){if(!resumeMedical((me()&&me().line)||'gp'))close();},logout:function(){w.doLogout();},registerPush:registerPush});
   }
   function resumeMedical(line){
     var s=me();if(!s||!s.garage_start||officeOnly(s))return false;
@@ -91,6 +91,7 @@
   }
   function close(){if(w.SatoriGarage)w.SatoriGarage.close();}
   function isOpen(){return !!(w.SatoriGarage&&w.SatoriGarage.isOpen());}
+  function sharedOverlayOpen(){return ['logout-overlay','settings-overlay','viac-overlay','av-overlay','av-confirm-overlay','pwd-change-overlay'].some(function(id){var modal=w.document.getElementById(id);return modal&&modal.classList.contains('show');});}
   function reset(){generation++;controllers.forEach(function(ctrl){ctrl.abort();});controllers.clear();if(w.SatoriGarage)w.SatoriGarage.reset();}
   function bootstrap(s){
     configure();if(!officeOnly(s)&&!(s&&s.garage_start&&canAccess(s))){
@@ -112,11 +113,13 @@
     if(w.SatoriGarage)w.SatoriGarage.handlePush(d);
     if(typeof w.pushShowForegroundBanner==='function')w.pushShowForegroundBanner(d.title||'Garáž',d.body||'V Garáži sa zmenili rezervácie.');return true;
   }
-  w.SatoriGarageBridge={canAccess:canAccess,canAccessSession:canAccessSession,checkLoginAccess:checkLoginAccess,resumeMedical:resumeMedical,officeOnly:officeOnly,open:open,close:close,isOpen:isOpen,isSaving:function(){return saving>0;},reset:reset,bootstrap:bootstrap,handlePush:handlePush,transport:transport,targets:targets};
+  w.SatoriGarageBridge={canAccess:canAccess,canAccessSession:canAccessSession,checkLoginAccess:checkLoginAccess,resumeMedical:resumeMedical,officeOnly:officeOnly,open:open,close:close,isOpen:isOpen,isSaving:function(){return saving>0;},reset:reset,bootstrap:bootstrap,handlePush:handlePush,transport:transport,targets:targets,registerPush:registerPush};
   configure();
   if(w.document&&typeof w._backRegister==='function'){
-    w._backRegister('satori-garage',function(){if(w.SatoriGarage&&typeof w.SatoriGarage.back==='function')w.SatoriGarage.back();else if(!officeOnly())close();},function(){var modal=w.document.getElementById('logout-overlay');if(modal&&modal.classList.contains('show'))return false;return isOpen();});
+    w._backRegister('satori-garage',function(){if(w.SatoriGarage&&typeof w.SatoriGarage.back==='function')w.SatoriGarage.back();else if(!officeOnly())close();},function(){return !sharedOverlayOpen()&&isOpen();});
     // It sits above the previous medical view, which may retain its show class underneath.
+    if(w._backLayers&&w._backLayers.length)w._backLayers.unshift(w._backLayers.pop());
+    w._backRegister('satori-garage-shared',function(){if(w.SatoriGarageShell)w.SatoriGarageShell.handleSharedBack();},function(){return isOpen()&&w.SatoriGarageShell&&w.SatoriGarageShell.sharedOverlayOpen();});
     if(w._backLayers&&w._backLayers.length)w._backLayers.unshift(w._backLayers.pop());
   }
 })(window);

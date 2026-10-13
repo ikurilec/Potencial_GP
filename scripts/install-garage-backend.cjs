@@ -15,9 +15,12 @@ replaceOnce("    if (action === 'logUsage') return usageHandleLog_(ss, e, 'gp');
 source=source.replace(/action === 'garageAction' \|\| action === 'garageRegisterPush'(?! \|\| action === 'garageDrainPush')/g,"action === 'garageAction' || action === 'garageRegisterPush' || action === 'garageDrainPush'");
 if(!source.includes('office account is restricted to Garage'))replaceOnce("      return { ok: true, username: username, user: authGetUser_(ss, username) };", `      var sessionUser=authGetUser_(ss, username);
       var sessionRole=String(sessionUser&&sessionUser.role||'').trim().toLowerCase().replace(/[_-]+/g,' ');
-      if(/^(office|office user|fleet|fleet manager|parking manager|garaz|garáž)$/.test(sessionRole) && ['getGarage','garageAction','garageRegisterPush','logoutSession','changePassword'].indexOf(String(e.parameter.action||''))<0)return {ok:false,error:'Forbidden: office account is restricted to Garage'};
+      if(/^(office|office user|fleet|fleet manager|parking manager|garaz|garáž)$/.test(sessionRole) && ['getGarage','garageAction','garageRegisterPush','garageDrainPush','logoutSession','changePassword','setAvatar','setUserPref'].indexOf(String(e.parameter.action||''))<0)return {ok:false,error:'Forbidden: office account is restricted to Garage'};
       return { ok: true, username: username, user: sessionUser };`);
-source=source.replace("['getGarage','garageAction','garageRegisterPush','logoutSession','changePassword']","['getGarage','garageAction','garageRegisterPush','garageDrainPush','logoutSession','changePassword']");
+// Upgrade an already installed restriction as well. Both personal endpoints
+// authenticate username/device/session together and bind writes to that username.
+source=source.replace(/\['getGarage','garageAction','garageRegisterPush',(?:'garageDrainPush',)?'logoutSession','changePassword'(?:,'setAvatar','setUserPref')?\]/g,"['getGarage','garageAction','garageRegisterPush','garageDrainPush','logoutSession','changePassword','setAvatar','setUserPref']");
+if(!source.includes('avUser !== auth.username && !authIsGpAdmin_(auth.user)')||!source.includes('pUser !== pAuth.username && !authIsGpAdmin_(pAuth.user)'))throw new Error('Own-profile session binding missing');
 // Same phone/user retains independent medical and Garage subscriptions.
 // A token reused by a DIFFERENT account is reassigned, avoiding account leakage.
 const start=source.indexOf('function pushUpsertToken_('),end=source.indexOf('function pushRemoveTokens_(',start);
