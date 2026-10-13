@@ -107,6 +107,31 @@ var SatoriGarageModel = (function () {
     if (!replacement || previous.date !== replacement.date || !samePlace || !overlaps(previous, replacement)) return [releaseNotice(previous, state)];
     var out = []; if (previous.start < replacement.start) out.push(releaseNotice(Object.assign({}, previous, { end: replacement.start < previous.end ? replacement.start : previous.end }), state)); if (replacement.end < previous.end) out.push(releaseNotice(Object.assign({}, previous, { start: replacement.end > previous.start ? replacement.end : previous.start }), state)); return out;
   }
+  function clearOwnWaiting(state, m, day) { state.waitlist = state.waitlist.filter(function (x) { return x.owner !== m.id || x.date !== day; }); }
+  function autoParking(state, m, day, times, context, notices) {
+    var previous = state.reservations.filter(function (r) { return r.owner === m.id && r.date === day; }), result = { date: day, start: times.start, end: times.end }, eligible = state.config.slots.filter(function (s) { return s.active && (s.floor === -3 || s.floor === -1) && slotAllowed(s, m); }).sort(function (a, b) { return (a.floor === -3 ? 0 : 1) - (b.floor === -3 ? 0 : 1) || a.order - b.order; });
+    var covering = previous.find(function (r) { return r.start <= times.start && r.end >= times.end && eligible.some(function (s) { return s.id === r.spaceId; }); });
+    if (covering) { clearOwnWaiting(state, m, day); result.status = 'existing'; result.reservationId = covering.id; result.spaceId = covering.spaceId; return result; }
+    if (eligible.length) {
+      var preferred = previous.length && eligible.find(function (s) { return s.id === previous[0].spaceId; });
+      if (preferred) eligible = [preferred].concat(eligible.filter(function (s) { return s.id !== preferred.id; }));
+      var id = previous.length ? previous[0].id : uniqueId(state, context, 'r');
+      for (var i = 0; i < eligible.length; i++) {
+        // Shared −1 allocation may repack other rows. Each attempt therefore runs
+        // on a separate trial; an unavailable extension never destroys old parking.
+        var trial = copy({ config: state.config, members: state.members, reservations: state.reservations, blocks: state.blocks }), reservation = { id: id, revision: previous.length ? previous[0].revision + 1 : 1, date: day, owner: m.id, name: m.name, spaceId: eligible[i].id, start: times.start, end: times.end };
+        trial.reservations = trial.reservations.filter(function (r) { return r.owner !== m.id || r.date !== day; });
+        try { allocation(trial, reservation, []); }
+        catch (error) { if (['CONFLICT','RESTRICTED','INVALID_SPACE'].indexOf(error.code) >= 0) continue; throw error; }
+        trial.reservations.push(reservation); state.reservations = trial.reservations;
+        previous.forEach(function (r) { freedIntervals(r, reservation, state).forEach(function (n) { notices.push(n); }); });
+        clearOwnWaiting(state, m, day); result.status = 'reserved'; result.reservationId = reservation.id; result.spaceId = reservation.spaceId; return result;
+      }
+      clearOwnWaiting(state, m, day); state.waitlist.push({ date: day, owner: m.id, start: times.start, end: times.end }); result.status = previous.length ? 'partlyWaiting' : 'waiting';
+    } else { clearOwnWaiting(state, m, day); result.status = 'restricted'; }
+    if (previous.length) result.existingReservations = copy(previous);
+    return result;
+  }
   function poolBlockReleases(previous, beforeBlocks, state) {
     var ids = state.config.slots.filter(function (s) { return s.floor === -1; }).map(function (s) { return s.id; }), relevant = function (b) { return ids.indexOf(b.spaceId) >= 0 && overlaps(b, previous); }, before = beforeBlocks.filter(relevant), after = state.blocks.filter(relevant), points = [previous.start, previous.end], out = [];
     before.concat(after).forEach(function (b) { points.push(b.start > previous.start ? b.start : previous.start, b.end < previous.end ? b.end : previous.end); });
@@ -130,15 +155,22 @@ var SatoriGarageModel = (function () {
     if (cid) { var previous = (state.dedup || []).find(function (x) { return x.id === cid; }); if (previous) { if (previous.fingerprint !== fingerprint) fail('COMMAND_REUSED', 'Identifikátor požiadavky už bol použitý pre inú zmenu.'); return { result: copy(previous.result), notifications: [], duplicate: true }; } }
     var next = copy(state), notices = [], result = null, times, day, row;
     if (command === 'attendanceSet') {
-      if (!Array.isArray(p.dates) || !p.dates.length || p.dates.length > 30 || typeof p.office !== 'boolean') fail('INVALID_PAYLOAD', 'Vyberte dni dochádzky.');
-      var dates = p.dates.map(function (d) { return inWindow(d, context); }).filter(function (d, i, a) { return a.indexOf(d) === i; }); times = interval(p, next.config);
+      if (!Array.isArray(p.dates) || !p.dates.length || p.dates.length > 30 || typeof p.office !== 'boolean' || (p.parking !== undefined && typeof p.parking !== 'boolean')) fail('INVALID_PAYLOAD', 'Vyberte dni dochádzky a stav parkovania.');
+      if ((p.start !== undefined && (typeof p.start !== 'string' || !p.start)) || (p.end !== undefined && (typeof p.end !== 'string' || !p.end))) fail('INVALID_TIME', 'Zadajte platný čas dochádzky.');
+      var dates = p.dates.map(function (d) { return inWindow(d, context); }).filter(function (d, i, a) { return a.indexOf(d) === i; }), days = []; times = interval(p, next.config);
       dates.forEach(function (d) {
+        var parkingDay = { date: d, status: 'officeOnly', start: times.start, end: times.end };
+        if (!p.office || p.parking === false) {
+          clearOwnWaiting(next, m, d);
+          next.reservations = next.reservations.filter(function (x) { if (x.owner === m.id && x.date === d) { notices.push(releaseNotice(x, next)); return false; } return true; });
+        } else if (p.parking === true) parkingDay = autoParking(next, m, d, times, context, notices);
         if (p.office) {
           var covering = { start: times.start, end: times.end }; next.reservations.filter(function (r) { return r.owner === m.id && r.date === d; }).forEach(function (r) { if (r.start < covering.start) covering.start = r.start; if (r.end > covering.end) covering.end = r.end; });
           next.attendance = next.attendance.filter(function (x) { return x.owner !== m.id || x.date !== d; }); ensureAttendance(next, m, d, covering);
         }
-        else { next.attendance = next.attendance.filter(function (x) { return x.owner !== m.id || x.date !== d; }); next.reservations = next.reservations.filter(function (x) { if (x.owner === m.id && x.date === d) { notices.push(releaseNotice(x, next)); return false; } return true; }); }
-      }); result = { dates: dates, office: p.office };
+        else next.attendance = next.attendance.filter(function (x) { return x.owner !== m.id || x.date !== d; });
+        days.push(parkingDay);
+      }); result = { dates: dates, office: p.office }; if (p.parking !== undefined) { result.parking = p.parking; result.days = days; }
     } else if (command === 'reservationSave') {
       day = inWindow(p.date, context); times = interval(p, next.config);
       row = p.id ? next.reservations.find(function (x) { return x.id === p.id; }) : null;

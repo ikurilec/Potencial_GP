@@ -5,7 +5,7 @@
 // ║  cache-first pre ostatné assety (rýchly štart, offline ready).║
 // ╚══════════════════════════════════════════════════════════════╝
 
-var CACHE_NAME = 'potencial-nahlad-v3e038be8';
+var CACHE_NAME = 'potencial-nahlad-v94531e0a';
 // Názvy súborov nižšie aj CACHE_NAME vyššie píše "node scripts/build.mjs" —
 // nemeniť ručne, prepíše sa to pri ďalšom builde. Hash v názve = odtlačok
 // obsahu app.js/app.css, nie čísla verzie — zmení sa len keď sa obsah zmení.
@@ -15,12 +15,18 @@ var APP_SHELL = [
   './apple-touch-icon.png',
   './satori-notification-icon.png',
   './dist/app.2b29cb92.css',
-  './dist/app.efafb199.js',
-  './dist/garage.b02054b6.css',
-  './dist/garage-model.049f8c9a.js',
-  './dist/garage.6f3ef3c0.js',
-  './dist/garage-shell.3d196625.js',
-  './dist/garage-integration.e202116d.js'
+  './dist/app.be257cb3.js',
+  './dist/garage.969f0b94.css',
+  './dist/garage-model.81b2a7d9.js',
+  './dist/garage-cars.714d2208.js',
+  './dist/garage.86c1e0d2.js',
+  './dist/garage-shell.5f72260f.js',
+  './dist/garage-integration.e202116d.js',
+  './assets/garage/cars/skoda-kodiaq.b00b26bc.webp',
+  './assets/garage/cars/skoda-octavia-combi.62b405ea.webp',
+  './assets/garage/cars/skoda-octavia-sedan.5d259ed1.webp',
+  './assets/garage/cars/toyota-rav4.f0294f80.webp',
+  './assets/garage/cars/volkswagen-arteon-shooting-brake.e4dc991d.webp'
 ];
 
 self.addEventListener('install', function(event){
