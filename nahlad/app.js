@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.92.0';
+var APP_VERSION = '2.92.1';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -20534,6 +20534,7 @@ function globalSwipeBackIsIOS() {
 
 function globalSwipeBackResolveVisualTarget(layer) {
   if (!layer) return null;
+  if(layer.id==='satori-garage'&&window.SatoriGarageTimePicker&&SatoriGarageTimePicker.isOpen())return document.getElementById('garage-time-picker');
   if(layer.id==='satori-garage-shared' && window.SatoriGarageShell){var shared=SatoriGarageShell.sharedBackLayer();return shared?document.getElementById(shared.id):null;}
   var id = layer.id;
   var direct = document.getElementById(id);
@@ -32043,6 +32044,9 @@ function appPtrRefreshCurrent(done){
 function appAttachOverlayPtr(opt){
  var startY=0,startX=0,armed=false,pulling=false,ready=false,busy=false,liveIndicator=null,scope=null,ctx=null,owner='',viewKey='';
  var MIN_MS=opt.minMs||600;
+ function currentView(){return opt.getView?opt.getView():appReadView();}
+ function currentOwner(){return opt.getOwner?opt.getOwner():appReadOwner();}
+ function contextActive(value){return opt.contextActive?opt.contextActive(value):appLineContextActive(value);}
  function root(){return opt.getRoot?opt.getRoot():opt.overlayId?document.getElementById(opt.overlayId):document.getElementById(opt.indicatorId==='gyn-ptr-indicator'?'gyn-view':'mgr-view');}
  function allowed(){
   if(busy||!getSession()||document.body.classList.contains('login-active'))return false;
@@ -32050,9 +32054,9 @@ function appAttachOverlayPtr(opt){
   var blocked=(opt.blockedBy||[]).concat(['gs-overlay','nst-compose','edit-overlay','confirm-overlay','session-expired-overlay','gpp-overlay','wn-overlay','av-overlay','settings-overlay','satori-overlay','gyn-cal-sheet','lk-prompt-overlay','lk-confirm-overlay']);
   for(var i=0;i<blocked.length;i++){var b=document.getElementById(blocked[i]);if(b&&b.classList.contains('show'))return false;}
   if(opt.extraBlock&&opt.extraBlock())return false;
-  var view=appReadView();return !!view&&view.actions.length>0&&!APP_PTR_BUSY[view.key];
+  var view=currentView();return !!view&&view.actions.length>0&&!APP_PTR_BUSY[view.key];
  }
- function valid(){var current=appReadView();return ctx&&appLineContextActive(ctx)&&owner===appReadOwner()&&current&&current.key===viewKey;}
+ function valid(){var current=currentView();return ctx&&contextActive(ctx)&&owner===currentOwner()&&current&&current.key===viewKey;}
  function close(){
   if(scope)scope.classList.remove('app-ptr-active');
   if(!liveIndicator)return;
@@ -32067,14 +32071,14 @@ function appAttachOverlayPtr(opt){
   if(opt.indicatorId&&!document.getElementById(opt.indicatorId))return;
   var target=e.target.nodeType===1?e.target:e.target.parentElement;
   if(!target||target.closest('input,textarea,select,[contenteditable="true"],[role="slider"]'))return;
-  scope=root();var view=appReadView(),host=document.querySelector(view.host);
+  scope=root();var view=currentView(),host=document.querySelector(view.host);
   if(!scope||!scope.contains(target)||!host||!scope.contains(host))return;
   for(var node=target;node&&node!==document.body;node=node.parentElement){
    if(node.scrollTop>5 && (node===scope||/auto|scroll/.test(getComputedStyle(node).overflowY)))return;
   }
   var top=opt.scrollTop?opt.scrollTop():scope.scrollTop;
   if(top>5)return;
-  var t=e.touches[0];startY=t.clientY;startX=t.clientX;ctx=appLineCapture();owner=appReadOwner();viewKey=view.key;
+  var t=e.touches[0];startY=t.clientY;startX=t.clientX;ctx=opt.captureContext?opt.captureContext():appLineCapture();owner=currentOwner();viewKey=view.key;
   armed=true;pulling=false;ready=false;APP_PTR_OWNER=opt;
  },{passive:true,capture:true});
  document.addEventListener('touchmove',function(e){
@@ -32113,6 +32117,9 @@ function appAttachOverlayPtr(opt){
 }
 
 // ── Ktoré panely obnovu majú ────────────────────────────────────────────
+// Garage has its own scroll root and authenticated view scope; medical appReadView intentionally skips it.
+appAttachOverlayPtr({getRoot:function(){return document.getElementById('satori-garage');},getMount:function(){return document.querySelector('#satori-garage .garage-inner');},isActive:function(){return !!(window.SatoriGarage&&SatoriGarage.isOpen());},getView:function(){return window.SatoriGarage&&SatoriGarage.getRefreshContext?SatoriGarage.getRefreshContext():null;},getOwner:function(){var v=window.SatoriGarage&&SatoriGarage.getRefreshContext?SatoriGarage.getRefreshContext():null;return v&&v.owner||'';},captureContext:function(){return SatoriGarage.getRefreshContext();},contextActive:function(ctx){var current=SatoriGarage.getRefreshContext();return !!current&&current.key===ctx.key;},extraBlock:function(){return !SatoriGarage.canRefresh();},onRefresh:function(done){Promise.resolve(SatoriGarage.refresh(true)).then(done,done);}});
+
 // Manažérsky zoznam a gyn línia majú vlastnú staršiu obsluhu; tá ostáva.
 // Formuláre (Tuyory, Lonelix, Apixaban) obnovu zámerne nemajú — potiahnutie
 // počas vypĺňania by prepísalo rozpísaný prieskum.

@@ -65,7 +65,7 @@ async function buildTarget(name, { dir, cachePrefix }, gc) {
   writeFileSync(resolve(dist, jsName), jsOut);
   writeFileSync(resolve(dist, cssName), cssOut);
   const modules=[];
-  for(const [stem,loader] of [['garage','css'],['garage-model','js'],['garage-cars','js'],['garage','js'],['garage-shell','js'],['garage-integration','js']]){
+  for(const [stem,loader] of [['garage','css'],['garage-model','js'],['garage-availability','js'],['garage-cars','js'],['garage-time-picker','js'],['garage','js'],['garage-shell','js'],['garage-integration','js']]){
     const out=await minify(resolve(dir,`${stem}.${loader}`),loader);
     const file=`${stem}.${hash8(out)}.${loader}`;
     writeFileSync(resolve(dist,file),out);modules.push({stem,loader,file,hash:hash8(out)});
@@ -88,7 +88,7 @@ async function buildTarget(name, { dir, cachePrefix }, gc) {
   idx = idx.replace(cssRe, `href="dist/${cssName}"`);
   idx = idx.replace(jsRe, `src="dist/${jsName}"`);
   // Rebuild module tags together to preserve dependency order on first install too.
-  idx=idx.replace(/<(?:script\b[^>]*src|link\b[^>]*href)="(?:dist\/)?garage(?:-model|-cars|-shell|-integration)?\.(?:[0-9a-f]{8}\.)?(?:js|css)"[^>]*>(?:<\/script>)?\s*/g,'');
+  idx=idx.replace(/<(?:script\b[^>]*src|link\b[^>]*href)="(?:dist\/)?garage(?:-model|-availability|-cars|-time-picker|-shell|-integration)?\.(?:[0-9a-f]{8}\.)?(?:js|css)"[^>]*>(?:<\/script>)?\s*/g,'');
   idx=idx.replace('</head>',modules.map(mod=>mod.loader==='css'?`<link rel="stylesheet" href="dist/${mod.file}">`:`<script defer src="dist/${mod.file}"></script>`).join('\n')+'\n</head>');
   if (!matched) {
     console.error(`[${name}] POZOR: index.html sa nezmenil — odkaz na app.css/app.js sa nenašiel presným tvarom, skontroluj ručne.`);
@@ -106,7 +106,7 @@ async function buildTarget(name, { dir, cachePrefix }, gc) {
   for(const file of carAssets){if(!/^assets\/garage\/cars\/[a-z0-9-]+\.[a-f0-9]{8}\.webp$/.test(file)||!readFileSync(resolve(dir,file)).length)throw new Error('Missing or invalid car asset: '+file);}
   const moduleAssets=modules.map(m=>`'./dist/${m.file}'`).concat(carAssets.map(file=>`'./${file}'`)).join(',\n  ');
   sw=sw.replace(/(var APP_SHELL = \[)([\s\S]*?)(\];)/,function(_,start,body,end){
-    const entries=body.split(',').map(x=>x.trim()).filter(x=>x&&!/dist\/garage(?:-model|-cars|-shell|-integration)?\.|assets\/garage\/cars\//.test(x));
+    const entries=body.split(',').map(x=>x.trim()).filter(x=>x&&!/dist\/garage(?:-model|-availability|-cars|-time-picker|-shell|-integration)?\.|assets\/garage\/cars\//.test(x));
     return start+'\n  '+entries.join(',\n  ')+',\n  '+moduleAssets+'\n'+end;
   });
   const cacheTag = hash8(Buffer.from(jsHash+cssHash+modules.map(m=>m.hash).join('')+carAssets.join('')));
