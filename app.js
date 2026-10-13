@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.90.0';
+var APP_VERSION = '2.90.1';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -10508,6 +10508,7 @@ function mgrSwitchLine(target){
   if(typeof SatoriGarageBridge!=='undefined'){
     if(target==='garage'){SatoriGarageBridge.open();return;}
     if(SatoriGarageBridge.officeOnly())return;
+    if(SatoriGarageBridge.resumeMedical(target))return;
     if(SatoriGarageBridge.isOpen())SatoriGarageBridge.close();
   }
   var cur = mgrCurrentLine();
@@ -10825,6 +10826,8 @@ function lineWritePrefsRemote(line, userObj, prefsObj){
 // (rovnaká hodnota všade = žiadny konflikt pri čítaní na inom zariadení).
 function lineRememberAllLines(username, line){
   lineSetPref(username, line);
+  // Garage is a virtual interface; older medical backends accept only real lines.
+  if(line==='garage')return;
   var d = (typeof mgrGetDual === 'function') ? mgrGetDual() : null;
   if(!d) return;
   ['gp','gyn','reagila'].forEach(function(L){
@@ -10861,6 +10864,7 @@ function lineReadPrefFromLogin(dataMap){
   return '';
 }
 function lineChooserMeta(line){
+  if(line === 'garage')  return { label:'Garáž', emoji:'🚘', desc:'Parkovanie a kancelária' };
   if(line === 'gyn')     return { label:'Gynekológia', emoji:'🌸', desc:'Gynekologická línia' };
   if(line === 'reagila') return { label:'Reagila',     emoji:'💊', desc:'Reagila línia' };
   return { label:'Golem', emoji:'🩺', desc:'Všeobecní lekári (GP)' };
@@ -10869,6 +10873,16 @@ function lineChooserMeta(line){
 // Neoverené timeouty nesmú používateľa dostať na obrazovku s nekonečným
 // „načítavam…“ — pomalá línia sa doplní do dual session na pozadí.
 function lineShouldShowChooser(avail){ return (avail || []).length >= 2; }
+function lineGarageLoginSource(username,dataMap){
+  if(typeof SatoriGarageBridge==='undefined'||!dataMap)return '';
+  return ['gp','gyn','reagila'].find(function(line){var d=dataMap[line];return d&&d.ok&&SatoriGarageBridge.canAccessSession(Object.assign({},d,{username:username,line:line}));})||'';
+}
+function lineLoginChoices(username,lines,dataMap){var out=(lines||[]).filter(function(line){return line!=='garage';});if(lineGarageLoginSource(username,dataMap))out.push('garage');return out;}
+function enterGarageFromLogin(username,dataMap){
+  var source=lineGarageLoginSource(username,dataMap);if(!source)return false;
+  var user=source==='gyn'?mgrBuildGynUser(username,dataMap[source]):source==='reagila'?mgrBuildReagilaUser(username,dataMap[source]):mgrBuildGpUser(username,dataMap[source]);
+  user.garage_start=true;setSession(user);SatoriGarageBridge.bootstrap(user);return true;
+}
 var _lineChooserCtx = null;
 // Línia, ktorá prvýkrát zlyhala, sa hneď (automaticky, na pozadí) skúša ešte raz —
 // pozri retryOne()/lineRetryFailedSilently(). Bez tohto príznaku výber ukazoval
@@ -10881,16 +10895,17 @@ var _lineRetryInFlight = {};
 // prišiel o Golem. Teraz sa ukážu ako „načítavam…" a keď dobehnú, samy sa
 // odomknú. Nikdy sa nestane, že línia z výberu ticho zmizne.
 function showLineChooser(username, lines, dataMap, pending, failed){
+  lines=lineLoginChoices(username,lines,dataMap);
   var keepRemember = false;
   try { var oldCb=document.getElementById('line-remember-cb'); keepRemember=!!(oldCb&&oldCb.checked); } catch(e){}
   _lineChooserCtx = { username: username, data: dataMap, lines: lines.slice(),
                       pending: (pending || []).slice(), failed: (failed || []).slice() };
-  loginScreenSetExclusive(false);
+  loginScreenSetExclusive(true);
   var ls = document.getElementById('login-screen'); if(ls) ls.classList.remove('show');
   var ov = document.getElementById('line-chooser-screen');
   if(!ov){ ov = document.createElement('div'); ov.id = 'line-chooser-screen'; ov.className = 'login-screen'; document.body.appendChild(ov); }
   var nm = (dataMap.gp && dataMap.gp.name) || (dataMap.gyn && dataMap.gyn.name) || (dataMap.reagila && dataMap.reagila.name) || username;
-  var poradie = ['gp', 'gyn', 'reagila'];
+  var poradie = ['gp', 'gyn', 'reagila', 'garage'];
   var vsetky = poradie.filter(function (ln) {
     return lines.indexOf(ln) !== -1 || (pending || []).indexOf(ln) !== -1 || (failed || []).indexOf(ln) !== -1;
   });
@@ -10921,7 +10936,7 @@ function showLineChooser(username, lines, dataMap, pending, failed){
       '<div class="login-card-title">Vitaj, ' + lineChooserEsc(nm) + ' <span class="login-wave">👋</span></div>' +
       '<div class="login-card-sub">Máš prístup do viacerých rozhraní — ktoré chceš zobraziť?</div>' +
       '<div class="line-choose-list">' + btns + '</div>' +
-      '<label class="line-remember"><input type="checkbox" id="line-remember-cb"><span>Zapamätať a nabudúce otvárať rovno toto rozhranie</span></label>' +
+      '<label class="line-remember"><input type="checkbox" id="line-remember-cb"><span>Zapamätať a nabudúce otvárať rovno toto rozhranie na tomto zariadení</span></label>' +
       '<div class="login-help" style="margin-top:14px">Voľbu kedykoľvek zmeníš v Nastaveniach.</div>' +
     '</div>';
   ov.classList.add('show');
@@ -10948,6 +10963,8 @@ function lineChooserResolve(line, data){
 function lineChooserAdd(line, data){ lineChooserResolve(line, data); }
 function pickLine(line){
   var ctx = _lineChooserCtx; if(!ctx) return;
+  if(ctx.lines.indexOf(line)===-1)return;
+  if(line==='garage'&&!lineGarageLoginSource(ctx.username,ctx.data))return;
   var cb = document.getElementById('line-remember-cb');
   if(cb && cb.checked) lineRememberAllLines(ctx.username, line);
   var ov = document.getElementById('line-chooser-screen'); if(ov) ov.classList.remove('show');
@@ -10956,6 +10973,7 @@ function pickLine(line){
 }
 // Vstup do konkrétnej línie z login response (priorita gp > gyn > reagila pri priamom vstupe)
 function enterLineFromLogin(username, line, data){
+  if(line === 'garage')return enterGarageFromLogin(username,data);
   if(line === 'gyn'){ gynLoginSuccess(username, data.gyn); }
   else if(line === 'reagila'){ var rd = data.reagila; rd.line = 'reagila'; loginSuccess(username, rd.name, rd.role, rd.region, rd); }
   else { loginSuccess(username, data.gp.name, data.gp.role, data.gp.region, data.gp); }
@@ -11003,6 +11021,7 @@ function loginTryStoredCredential(){
   } catch(e){}
 }
 
+var _loginAttemptId=0;
 function doLogin() {
   var userEl = document.getElementById('login-user');
   var passEl = document.getElementById('login-pass');
@@ -11024,6 +11043,7 @@ function doLogin() {
     errEl.classList.add('show');
     return;
   }
+  var attemptId=++_loginAttemptId;
 
   btn.disabled = true;
   btn.textContent = 'Prihlasujem...';
@@ -11058,7 +11078,15 @@ function doLogin() {
   var dataMap = {gp:null,gyn:null,reagila:null};
   var settled = {gp:false,gyn:false,reagila:false};
   var retryStarted = {gp:false,gyn:false,reagila:false};
-  var uiFinished = false, successGraceTimer = null;
+  var uiFinished = false, successGraceTimer = null, garageProbes={}, garagePrefWaiting=false, garagePrefWaited=false;
+  function probeGarage(line,data){
+    if(!data||!data.ok||typeof SatoriGarageBridge==='undefined'||garageProbes[line]||SatoriGarageBridge.canAccessSession(Object.assign({},data,{username:username,line:line})))return;
+    garageProbes[line]=SatoriGarageBridge.checkLoginAccess(username,line,data).then(function(allowed){
+      if(!allowed||attemptId!==_loginAttemptId||dataMap[line]!==data)return;
+      data.garage_access=true;
+      if(uiFinished){lineMergeLoginSuccess(username,line,data);var active=getSession();if(active&&String(active.username).toLowerCase()===username&&(active.line||'gp')===line){active.garage_access=true;setSession(active);}lineChooserResolve(line,data);}
+    }).catch(function(){});
+  }
 
   function vals(){
     return {
@@ -11079,14 +11107,21 @@ function doLogin() {
     var one={gp:{ok:false},gyn:{ok:false},reagila:{ok:false}};
     one[line]=dataMap[line]._failed ? dataMap[line] : {ok:false,_failed:true,_retryExplicit:true};
     lineRetryFailedSilently(username,password,one,function(ln,d){
+      if(attemptId!==_loginAttemptId)return;
+      if(d&&d.ok){dataMap[ln]=d;probeGarage(ln,d);}
       delete _lineRetryInFlight[ln];
       lineChooserResolve(ln,d);
     },300);
   }
   function finishUi(){
-    if(uiFinished) return;
+    if(uiFinished||attemptId!==_loginAttemptId) return;
     var avail=availLines();
     if(!avail.length && !allSettled()) return;
+    if(garagePrefWaiting&&!lineGarageLoginSource(username,dataMap))return;
+    if(!garagePrefWaited&&(lineGetPref(username)==='garage'||avail.length===1)&&!lineGarageLoginSource(username,dataMap)){
+      var checks=Object.keys(garageProbes).map(function(line){return garageProbes[line];});
+      if(checks.length){garagePrefWaited=true;garagePrefWaiting=true;Promise.allSettled(checks).then(function(){garagePrefWaiting=false;finishUi();});return;}
+    }
     uiFinished=true;
     clearTimeout(successGraceTimer);
     btn.disabled = false;
@@ -11129,7 +11164,8 @@ function doLogin() {
     // Explicitne zrušené na TOMTO zariadení → nikdy nepozeraj na server (ten môže mať
     // stále starú hodnotu, ak sa "zabudni" nestihlo zapísať do všetkých línií — F6-x).
     var _pref = (_localPref === LINE_PREF_NONE) ? '' : (_localPref || lineReadPrefFromLogin(dataMap));
-    if(_pref && avail.indexOf(_pref) !== -1) {
+    var choices=lineLoginChoices(username,avail,dataMap);
+    if(_pref && choices.indexOf(_pref) !== -1) {
       lineSetPref(username, _pref);   // zrkadli do localStorage pre rýchle/offline čítanie
       enterLineFromLogin(username, _pref, dataMap);
       return;
@@ -11137,7 +11173,7 @@ function doLogin() {
     // Viac línií (vrátane admina) → výber rozhrania. Ukáže sa aj vtedy, keď
     // je hotová jedna línia a ďalšia sa ešte doťahuje — inak by človek vošiel
     // do jedinej, ktorá stihla, a o druhej by sa nedozvedel.
-    if(lineShouldShowChooser(avail)) {
+    if(lineShouldShowChooser(choices)) {
       showLineChooser(username, avail, dataMap, caka, []);
       return;
     }
@@ -11145,9 +11181,10 @@ function doLogin() {
     enterLineFromLogin(username, avail[0], dataMap);
   }
   function onLineResult(line,data){
-    if(settled[line]) return;
+    if(settled[line]||attemptId!==_loginAttemptId) return;
     settled[line]=true;
     dataMap[line]=data || {ok:false};
+    probeGarage(line,dataMap[line]);
     if(uiFinished){
       if(dataMap[line].ok){ lineMergeLoginSuccess(username,line,dataMap[line]); lineChooserResolve(line,dataMap[line]); }
       else { retryOne(line); lineChooserResolve(line,dataMap[line]); }
