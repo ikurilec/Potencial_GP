@@ -1,7 +1,7 @@
 /* Garáž is a virtual Satori interface; the authenticated medical session stays intact. */
 (function (w) {
   'use strict';
-  var configured=false, generation=0, controllers=new Set(), pushPromise=null, seenPush={}, pendingLink='', saving=0, grants=new Map(), restorePromise=null;
+  var configured=false, generation=0, controllers=new Set(), pushPromise=null, seenPush={}, pendingLink='', saving=0, grants=new Map(), restorePromise=null, accessProbes=new Map(), accessChecks=new Map();
   function me(){return typeof w.getSession==='function'?w.getSession():null;}
   function id(s){return String(s&&s.username||'').trim().toLowerCase();}
   function role(s){return String(s&&s.role||'').trim().toLowerCase().replace(/[_-]+/g,' ').replace(/\s+/g,' ');}
@@ -18,18 +18,39 @@
     if(!canAccessSession(s)&&dual&&id(dual)===owner){var allowed=['gyn','reagila'].find(function(key){return alive(dual[key],owner)&&canAccessSession(dual[key]);});if(allowed)return {session:dual[allowed],line:allowed,owner:owner};}
     return {session:s,line:line,owner:owner};
   }
+  function applyAccessRecord(record,allowed){
+    var active=me(),dual=typeof w.mgrGetDual==='function'?w.mgrGetDual():null;
+    function update(data,line){if(!data||id(data)&&id(data)!==record.owner||grantKey(Object.assign({},data,{username:record.owner}),line)!==record.key)return false;data.garage_access=allowed===true;if(allowed||record.status==='denied')delete data.garage_error;else data.garage_error=record.error;return true;}
+    if(active&&id(active)===record.owner&&update(active,active.line||'gp')&&typeof w.setSession==='function')w.setSession(active);
+    if(dual&&id(dual)===record.owner){['gp','gyn','reagila'].forEach(function(line){update(dual[line],line);});if(typeof w.mgrSetDual==='function')w.mgrSetDual(dual);}
+    var ctx=w._lineChooserCtx;if(ctx&&String(ctx.username).toLowerCase()===record.owner)['gp','gyn','reagila'].forEach(function(line){update(ctx.data[line],line);});
+  }
+  function accessCandidates(username,dataMap){
+    var active=me(),ctx=w._lineChooserCtx,owner=String(username||id(active)||ctx&&ctx.username||'').trim().toLowerCase(),out=new Map();
+    function add(line,data){if(!data||id(data)&&id(data)!==owner)return;var candidate=Object.assign({},data,{username:owner,line:line,ok:true});if(!alive(candidate,owner))return;var key=grantKey(candidate,line);out.set(key,{line:line,data:candidate,key:key});}
+    if(dataMap)['gp','gyn','reagila'].forEach(function(line){add(line,dataMap[line]);});
+    else {if(active&&id(active)===owner)add(active.line||'gp',active);var dual=typeof w.mgrGetDual==='function'?w.mgrGetDual():null;if(dual&&id(dual)===owner)['gp','gyn','reagila'].forEach(function(line){add(line,dual[line]);});if(ctx&&String(ctx.username).toLowerCase()===owner)['gp','gyn','reagila'].forEach(function(line){add(line,ctx.data[line]);});}
+    return Array.from(out.values());
+  }
+  function accessUiState(username,dataMap){var rows=accessCandidates(username,dataMap),records=rows.map(function(row){return accessChecks.get(row.key);}).filter(Boolean);if(records.some(function(r){return r.status==='allowed';}))return {status:'allowed'};if(records.some(function(r){return r.status==='checking';}))return {status:'checking'};if(records.some(function(r){return r.status==='failed';}))return {status:'failed'};return {status:'unknown'};}
+  function retryAccess(){var active=me(),key=active&&grantKey(active),epoch=generation,rows=accessCandidates().filter(function(row){var r=accessChecks.get(row.key);return r&&r.status==='failed';});return Promise.allSettled(rows.map(function(row){return checkLoginAccess(id(row.data),row.line,row.data);})).then(function(results){var current=me();if(rows.length&&epoch===generation&&key&&current&&grantKey(current)===key&&officeOnly(current)&&canAccess()&&!isOpen())bootstrap(current);return results;});}
   async function checkLoginAccess(username,line,data){
     var owner=String(username||'').trim().toLowerCase(),s=Object.assign({},data,{username:owner,line:line});
     if(!owner||!data||!data.ok||!alive(s,owner)||['gp','gyn','reagila'].indexOf(line)<0)return false;
-    data.garage_access=false;grants.delete(grantKey(s,line));
-    var epoch=generation,ctrl=new AbortController(),u=new URL(w.SCRIPT_URL,w.location.href);
-    u.searchParams.set('action','getGarage');u.searchParams.set('token',w.API_TOKEN);u.searchParams.set('username',owner);
-    u.searchParams.set('device_id',data.device_id||w.authDeviceId());u.searchParams.set('session_token',data.session_token);u.searchParams.set('garage_source_line',line);u.searchParams.set('_garage',String(Date.now()));
-    controllers.add(ctrl);var timer=setTimeout(function(){ctrl.abort();},5000);
-    try{var res=await w.fetch(u.href,{cache:'no-store',signal:ctrl.signal});if(!res.ok)throw new Error('Prístup do Garáže sa nepodarilo overiť.');var snap=await res.json();if(epoch!==generation)throw new Error('Prihlásenie sa zmenilo.');
-      if(snap&&snap.ok){if(!snap.me||String(snap.me.id||'').trim().toLowerCase()!==owner)throw new Error('Server vrátil údaje iného používateľa.');grants.set(grantKey(s,line),true);data.garage_access=true;return true;}
-      if(snap&&snap.code==='NOT_MEMBER')return false;var message=snap&&snap.error||'Prístup do Garáže sa nepodarilo overiť.';if(/unknown action|unsupported.*action/i.test(message))message='Garáž ešte nie je nasadená na serveri. Správca musí aktualizovať Golem Apps Script.';throw new Error(message);
-    }catch(e){if(e.name==='AbortError')throw new Error('Prístup do Garáže sa nepodarilo overiť. Skontroluj spojenie a skús znova.');throw e;}finally{clearTimeout(timer);controllers.delete(ctrl);}
+    var key=grantKey(s,line),epoch=generation;data.garage_access=false;
+    if(accessProbes.has(key)){var existing=await accessProbes.get(key);if(epoch!==generation)throw new Error('Prihlásenie sa zmenilo.');data.garage_access=existing;return existing;}
+    grants.delete(key);var record={key:key,owner:owner,line:line,status:'checking',error:''};accessChecks.set(key,record);refreshAccessUi();
+    async function attempt(timeout){
+      var ctrl=new AbortController(),u=new URL(w.SCRIPT_URL,w.location.href);u.searchParams.set('action','getGarage');u.searchParams.set('token',w.API_TOKEN);u.searchParams.set('username',owner);u.searchParams.set('device_id',data.device_id||w.authDeviceId());u.searchParams.set('session_token',data.session_token);u.searchParams.set('garage_source_line',line);u.searchParams.set('_garage',String(Date.now()));
+      controllers.add(ctrl);var timer=setTimeout(function(){ctrl.abort();},timeout);
+      try{var res=await w.fetch(u.href,{cache:'no-store',signal:ctrl.signal});if(epoch!==generation)throw Object.assign(new Error('Prihlásenie sa zmenilo.'),{terminal:true});if(!res.ok)throw Object.assign(new Error('Prístup do Garáže sa nepodarilo overiť.'),{terminal:res.status>=400&&res.status<500&&res.status!==429});var snap=await res.json();if(epoch!==generation)throw Object.assign(new Error('Prihlásenie sa zmenilo.'),{terminal:true});
+        if(snap&&snap.ok){if(!snap.me||String(snap.me.id||'').trim().toLowerCase()!==owner)throw Object.assign(new Error('Server vrátil údaje iného používateľa.'),{terminal:true});return true;}
+        if(snap&&snap.code==='NOT_MEMBER')return false;var message=snap&&snap.error||'Prístup do Garáže sa nepodarilo overiť.',terminal=/unknown action|unsupported.*action|session|forbidden|unauthori[sz]ed|prihlás/i.test(message)||/^(UNKNOWN_ACTION|UNAUTHORIZED|SESSION_EXPIRED|IDENTITY_MISMATCH)$/.test(snap&&snap.code||'');if(/unknown action|unsupported.*action/i.test(message))message='Garáž ešte nie je nasadená na serveri. Správca musí aktualizovať Golem Apps Script.';throw Object.assign(new Error(message),{terminal:terminal});
+      }finally{clearTimeout(timer);controllers.delete(ctrl);}
+    }
+    var task=(async function(){try{var allowed;try{allowed=await attempt(10000);}catch(e){if(epoch!==generation||e.terminal)throw e;allowed=await attempt(20000);}if(epoch!==generation)throw new Error('Prihlásenie sa zmenilo.');record.status=allowed?'allowed':'denied';if(allowed)grants.set(key,true);else grants.delete(key);data.garage_access=allowed;applyAccessRecord(record,allowed);refreshAccessUi();return allowed;
+      }catch(e){if(epoch!==generation)throw new Error('Prihlásenie sa zmenilo.');record.status='failed';record.error=e.name==='AbortError'?'Prístup do Garáže sa nepodarilo overiť. Skontroluj spojenie a skús znova.':e.message;data.garage_error=record.error;applyAccessRecord(record,false);refreshAccessUi();throw new Error(record.error);}
+    })();accessProbes.set(key,task);try{return await task;}finally{if(accessProbes.get(key)===task)accessProbes.delete(key);}
   }
   async function transport(action,payload,options){
     if(['getGarage','getGarageUsers','garageAction','garageRegisterPush','garageDrainPush'].indexOf(action)<0)throw new Error('Nepodporovaná akcia Garáže.');
@@ -59,7 +80,7 @@
   function currentSource(auth){var s=me(),dual=typeof w.mgrGetDual==='function'?w.mgrGetDual():null;return !!(s&&((s.line||'gp')===auth.line&&grantKey(s)===auth.key||dual&&id(dual)===auth.owner&&dual[auth.line]&&grantKey(dual[auth.line],auth.line)===auth.key));}
   function refreshAccessUi(){try{if(typeof w.mgrRenderLineSwitch==='function')w.mgrRenderLineSwitch();if(typeof w.viacRender==='function'&&w.document.getElementById('viac-overlay')&&w.document.getElementById('viac-overlay').classList.contains('show'))w.viacRender();var ctx=w._lineChooserCtx;if(ctx&&typeof w.showLineChooser==='function')w.showLineChooser(ctx.username,ctx.lines.filter(function(line){return line!=='garage';}),ctx.data,ctx.pending,ctx.failed);}catch(e){}}
   function revoke(owner){
-    generation++;restorePromise=null;controllers.forEach(function(ctrl){ctrl.abort();});
+    generation++;restorePromise=null;accessProbes.clear();accessChecks.clear();controllers.forEach(function(ctrl){ctrl.abort();});
     grants.forEach(function(value,key){if(JSON.parse(key)[0]===owner)grants.delete(key);});
     var s=me(),dual=typeof w.mgrGetDual==='function'?w.mgrGetDual():null,resume=!!(s&&s.garage_start&&!officeOnly(s));
     if(s&&id(s)===owner){s.garage_access=false;delete s.garage_start;if(typeof w.setSession==='function')w.setSession(s);}
@@ -125,7 +146,7 @@
   function close(){if(w.SatoriGarage)w.SatoriGarage.close();}
   function isOpen(){return !!(w.SatoriGarage&&w.SatoriGarage.isOpen());}
   function sharedOverlayOpen(){return ['logout-overlay','settings-overlay','viac-overlay','av-overlay','av-confirm-overlay','pwd-change-overlay'].some(function(id){var modal=w.document.getElementById(id);return modal&&modal.classList.contains('show');});}
-  function reset(){generation++;grants.clear();restorePromise=null;controllers.forEach(function(ctrl){ctrl.abort();});controllers.clear();if(w.SatoriGarage)w.SatoriGarage.reset();}
+  function reset(){generation++;grants.clear();restorePromise=null;accessProbes.clear();accessChecks.clear();controllers.forEach(function(ctrl){ctrl.abort();});controllers.clear();if(w.SatoriGarage)w.SatoriGarage.reset();}
   function bootstrap(s){
     configure();if(!canAccess()||!officeOnly(s)&&!(s&&s.garage_start&&canAccess())){
       try{var query=new URL(w.location.href).searchParams,key=id(s)+'|'+generation+'|'+(query.get('date')||'');if(query.get('garage')==='1'&&canAccess(s)&&pendingLink!==key){pendingLink=key;setTimeout(function(){if(id(me())===id(s))open({date:query.get('date')||''});},600);}}catch(e){}return false;
@@ -146,8 +167,10 @@
     if(w.SatoriGarage)w.SatoriGarage.handlePush(d);
     if(typeof w.pushShowForegroundBanner==='function')w.pushShowForegroundBanner(d.title||'Garáž',d.body||'V Garáži sa zmenili rezervácie.');return true;
   }
-  w.SatoriGarageBridge={canAccess:canAccess,canAccessSession:canAccessSession,checkLoginAccess:checkLoginAccess,restore:restore,users:users,resumeMedical:resumeMedical,officeOnly:officeOnly,open:open,close:close,isOpen:isOpen,isSaving:function(){return saving>0;},reset:reset,bootstrap:bootstrap,handlePush:handlePush,transport:transport,targets:targets,registerPush:registerPush};
+  w.SatoriGarageBridge={canAccess:canAccess,canAccessSession:canAccessSession,checkLoginAccess:checkLoginAccess,accessUiState:accessUiState,retryAccess:retryAccess,restore:restore,users:users,resumeMedical:resumeMedical,officeOnly:officeOnly,open:open,close:close,isOpen:isOpen,isSaving:function(){return saving>0;},reset:reset,bootstrap:bootstrap,handlePush:handlePush,transport:transport,targets:targets,registerPush:registerPush};
   configure();
+  if(typeof w.addEventListener==='function')w.addEventListener('online',retryAccess);
+  if(w.document&&typeof w.document.addEventListener==='function')w.document.addEventListener('visibilitychange',function(){if(!w.document.hidden&&(!w.navigator||w.navigator.onLine!==false))retryAccess();});
   if(w.document&&typeof w._backRegister==='function'){
     w._backRegister('satori-garage',function(){if(w.SatoriGarage&&typeof w.SatoriGarage.back==='function')w.SatoriGarage.back();else if(!officeOnly())close();},function(){return !sharedOverlayOpen()&&isOpen();});
     // It sits above the previous medical view, which may retain its show class underneath.

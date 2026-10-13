@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.92.1';
+var APP_VERSION = '2.92.2';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -6919,7 +6919,7 @@ function viacLinesHtml() {
   // dá rovno dotiahnuť heslom, namiesto toho, aby zo zoznamu jednoducho zmizla.
   var lineMgr = typeof mgrDetectRole === 'function' && !!mgrDetectRole(getSession());
   // Nemanažér (napr. KAM v Reagile) vidí výber línií, len ak už má 2+ línie v dual session.
-  if (!lineMgr && !(typeof mgrLineSwitchAvailable === 'function' && mgrLineSwitchAvailable())) return '';
+  if (!lineMgr && !(typeof mgrLineSwitchAvailable === 'function' && mgrLineSwitchAvailable())) return garageAccessRecoveryMarkup('',null,true);
   var dual = mgrGetDual() || {};
   var current = mgrCurrentLine();
   var lines = [{line:'gp',label:'Golem'}, {line:'gyn',label:'Gynekológia'}, {line:'reagila',label:'Reagila'}];
@@ -6936,7 +6936,7 @@ function viacLinesHtml() {
       }
       return '<button type="button" class="viac-line' + (active ? ' active' : '') + '" data-viac-line="' + it.line + '" aria-pressed="' + active + '" onclick="viacSwitchLine(\'' + it.line + '\')">' +
         '<span>' + it.label + '</span><span class="viac-line-mark" aria-hidden="true">' + (active ? '✓' : '›') + '</span></button>';
-    }).join('') + '</div>';
+    }).join('') + '</div>'+garageAccessRecoveryMarkup('',null,true);
 }
 function viacSwitchLine(line) {
   if(window.SatoriGarageShell && SatoriGarageShell.active()){SatoriGarageShell.switchLine(line);return;}
@@ -7364,7 +7364,7 @@ document.addEventListener('click', function (ev) {
   var t = ev.target && ev.target.closest ? ev.target.closest('#viac-overlay [onclick]') : null;
   if (!t) return;
   // Prepínač sám uprace starú líniu; oneskorený cleanup by zavrel nový Domov.
-  if (t.hasAttribute('data-viac-line')) return;
+  if (t.hasAttribute('data-viac-line') || t.hasAttribute('data-garage-access-retry')) return;
   // Manažér a gyn prepínajú z menu vlastné záložky vo svojom pohľade — ten
   // je pod panelmi, takže sa musia zavrieť, inak sa navonok nestane nič.
   var r = (typeof appRole === 'function') ? appRole() : 'gp';
@@ -10879,6 +10879,13 @@ function lineChooserMeta(line){
 // Neoverené timeouty nesmú používateľa dostať na obrazovku s nekonečným
 // „načítavam…“ — pomalá línia sa doplní do dual session na pozadí.
 function lineShouldShowChooser(avail){ return (avail || []).length >= 2; }
+function garageAccessRecoveryMarkup(username,dataMap,menu){
+  if(!window.SatoriGarageBridge||typeof SatoriGarageBridge.accessUiState!=='function')return '';
+  var state=SatoriGarageBridge.accessUiState(username,dataMap).status;
+  if(state==='checking')return '<p class="login-help" role="status" aria-live="polite">Overujem ďalšie rozhrania…</p>';
+  if(state!=='failed')return '';
+  return '<div class="garage-access-recovery"><p class="login-help" role="status">Niektoré rozhrania sa nepodarilo overiť.</p><button type="button" class="'+(menu?'viac-line':'line-choose-btn')+'" data-garage-access-retry onclick="SatoriGarageBridge.retryAccess()"><span>↻ Overiť dostupné rozhrania</span></button></div>';
+}
 function lineGarageLoginSource(username,dataMap){
   if(typeof SatoriGarageBridge==='undefined'||!dataMap)return '';
   return ['gp','gyn','reagila'].find(function(line){var d=dataMap[line];return d&&d.ok&&SatoriGarageBridge.canAccessSession(Object.assign({},d,{username:username,line:line}));})||'';
@@ -10941,7 +10948,7 @@ function showLineChooser(username, lines, dataMap, pending, failed){
     '<div class="login-card" style="margin-top:auto;margin-bottom:auto">' +
       '<div class="login-card-title">Vitaj, ' + lineChooserEsc(nm) + ' <span class="login-wave">👋</span></div>' +
       '<div class="login-card-sub">Máš prístup do viacerých rozhraní — ktoré chceš zobraziť?</div>' +
-      '<div class="line-choose-list">' + btns + '</div>' +
+      '<div class="line-choose-list">' + btns + '</div>' + garageAccessRecoveryMarkup(username,dataMap,false) +
       '<label class="line-remember"><input type="checkbox" id="line-remember-cb"><span>Zapamätať a nabudúce otvárať rovno toto rozhranie na tomto zariadení</span></label>' +
       '<div class="login-help" style="margin-top:14px">Voľbu kedykoľvek zmeníš v Nastaveniach.</div>' +
     '</div>';
