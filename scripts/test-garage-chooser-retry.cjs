@@ -36,6 +36,7 @@ async function check(prefix) {
     loginSuccess() {throw new Error('The chooser must remain open.');},
     gynLoginSuccess() {throw new Error('The chooser must remain open.');},
     SatoriGarageBridge: {
+      reset() {},
       officeOnly: () => false,
       canAccessSession: session => session.garage_access === true,
       async checkLoginAccess(username, line) {probes.push(line); return line === 'gyn';}
@@ -61,19 +62,20 @@ async function check(prefix) {
   console.log((prefix || 'live') + ': regular member on silent login retry passed');
 }
 
-function checkTargets(prefix) {
+async function checkTargets(prefix) {
   const root = path.resolve(__dirname, '..', prefix);
   const current = {username: 'member', role: 'rep', session_token: 'gp-token'};
   const dual = {username: 'member', gp: current, gyn: {username: 'member', role: 'rep', session_token: 'gyn-token', line: 'gyn', garage_access: true}};
-  const c = {Date, Set, getSession: () => current, mgrGetDual: () => dual};
+  const c = {Date, Set, URL, AbortController, setTimeout, clearTimeout, location:{href:'https://satori.test/'}, SCRIPT_URL:'https://satori.test/api',API_TOKEN:'fixture',authDeviceId:()=> 'fixture',fetch:async()=>({ok:true,json:async()=>({ok:true,me:{id:'member'}})}),getSession: () => current, mgrGetDual: () => dual};
   c.window = c;
   vm.createContext(c);
   vm.runInContext(fs.readFileSync(path.join(root, 'garage-integration.js'), 'utf8'), c);
+  await c.SatoriGarageBridge.checkLoginAccess('member','gyn',Object.assign(dual.gyn,{ok:true}));
   assert.equal(c.SatoriGarageBridge.canAccess(), true, prefix + ' Dual source grants Garage access.');
   assert.ok(c.SatoriGarageBridge.targets().some(target => target.line === 'garage'), prefix + ' Eligible dual source must also add the Garage target.');
   console.log((prefix || 'live') + ': Garage target with membership on another line passed');
 }
 
 (async () => {
-  for (const prefix of ['', 'nahlad']) {await check(prefix); checkTargets(prefix);}
+  for (const prefix of ['', 'nahlad']) {await check(prefix); await checkTargets(prefix);}
 })().catch(error => {console.error(error); process.exitCode = 1;});

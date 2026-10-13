@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.91.0';
+var APP_VERSION = '2.92.0';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -10883,7 +10883,7 @@ function lineGarageLoginSource(username,dataMap){
   if(typeof SatoriGarageBridge==='undefined'||!dataMap)return '';
   return ['gp','gyn','reagila'].find(function(line){var d=dataMap[line];return d&&d.ok&&SatoriGarageBridge.canAccessSession(Object.assign({},d,{username:username,line:line}));})||'';
 }
-function lineLoginChoices(username,lines,dataMap){var out=(lines||[]).filter(function(line){return line!=='garage';});if(lineGarageLoginSource(username,dataMap))out.push('garage');return out;}
+function lineLoginChoices(username,lines,dataMap){var out=(lines||[]).filter(function(line){return line!=='garage'&&!(typeof SatoriGarageBridge!=='undefined'&&SatoriGarageBridge.officeOnly(dataMap[line]));});if(lineGarageLoginSource(username,dataMap))out.push('garage');return out;}
 function enterGarageFromLogin(username,dataMap){
   var source=lineGarageLoginSource(username,dataMap);if(!source)return false;
   var user=source==='gyn'?mgrBuildGynUser(username,dataMap[source]):source==='reagila'?mgrBuildReagilaUser(username,dataMap[source]):mgrBuildGpUser(username,dataMap[source]);
@@ -11050,6 +11050,7 @@ function doLogin() {
     return;
   }
   var attemptId=++_loginAttemptId;
+  if(typeof SatoriGarageBridge!=='undefined')SatoriGarageBridge.reset();
 
   btn.disabled = true;
   btn.textContent = 'Prihlasujem...';
@@ -11086,12 +11087,12 @@ function doLogin() {
   var retryStarted = {gp:false,gyn:false,reagila:false};
   var uiFinished = false, successGraceTimer = null, garageProbes={}, garagePrefWaiting=false, garagePrefWaited=false;
   function probeGarage(line,data){
-    if(!data||!data.ok||typeof SatoriGarageBridge==='undefined'||garageProbes[line]||SatoriGarageBridge.canAccessSession(Object.assign({},data,{username:username,line:line})))return;
+    if(!data||!data.ok||typeof SatoriGarageBridge==='undefined'||garageProbes[line])return;
     garageProbes[line]=SatoriGarageBridge.checkLoginAccess(username,line,data).then(function(allowed){
-      if(!allowed||attemptId!==_loginAttemptId||dataMap[line]!==data)return;
-      data.garage_access=true;
-      if(uiFinished){lineMergeLoginSuccess(username,line,data);var active=getSession();if(active&&String(active.username).toLowerCase()===username&&(active.line||'gp')===line){active.garage_access=true;setSession(active);}lineChooserResolve(line,data);}
-    }).catch(function(){});
+      if(attemptId!==_loginAttemptId||dataMap[line]!==data)return;
+      data.garage_access=allowed===true;
+      if(uiFinished){lineMergeLoginSuccess(username,line,data);var active=getSession();if(active&&String(active.username).toLowerCase()===username&&(active.line||'gp')===line&&active.session_token===data.session_token){active.garage_access=data.garage_access;setSession(active);}lineChooserResolve(line,data);}
+    }).catch(function(e){if(attemptId===_loginAttemptId&&dataMap[line]===data){data.garage_access=false;data.garage_error=e.message;}});
   }
 
   function vals(){
@@ -11124,7 +11125,8 @@ function doLogin() {
     var avail=availLines();
     if(!avail.length && !allSettled()) return;
     if(garagePrefWaiting&&!lineGarageLoginSource(username,dataMap))return;
-    if(!garagePrefWaited&&(lineGetPref(username)==='garage'||avail.length===1)&&!lineGarageLoginSource(username,dataMap)){
+    var officeLine=avail.find(function(line){return typeof SatoriGarageBridge!=='undefined'&&SatoriGarageBridge.officeOnly(dataMap[line]);});
+    if(!garagePrefWaited&&(officeLine||lineGetPref(username)==='garage'||avail.length===1)&&!lineGarageLoginSource(username,dataMap)){
       var checks=Object.keys(garageProbes).map(function(line){return garageProbes[line];});
       if(checks.length){garagePrefWaited=true;garagePrefWaiting=true;Promise.allSettled(checks).then(function(){garagePrefWaiting=false;finishUi();});return;}
     }
@@ -11157,8 +11159,9 @@ function doLogin() {
 
     loginRememberCredentials(username, password);
     // Office accounts do not need to choose or bootstrap a medical line.
-    if(gpData.ok && typeof SatoriGarageBridge!=='undefined' && SatoriGarageBridge.officeOnly(gpData)){
-      enterLineFromLogin(username,'gp',dataMap);return;
+    if(officeLine){
+      if(dataMap[officeLine].garage_access===true&&lineGarageLoginSource(username,dataMap)){enterGarageFromLogin(username,dataMap);return;}
+      errEl.textContent=dataMap[officeLine].garage_error||'Nemáš aktívny prístup do Garáže. Obráť sa na správcu.';errEl.classList.add('show');haptic('error');return;
     }
 
     // Zapamätaná voľba: miestna voľba je zámer používateľa z posledného nastavenia
@@ -11746,7 +11749,7 @@ function loginScreenSetExclusive(active) {
   }
 }
 
-function initLogin() {
+function initLogin(garageChecked) {
   // Zobraz správu o aktualizácii ak treba
   if(localStorage.getItem('potencial_gp_update_msg') === '1') {
     localStorage.removeItem('potencial_gp_update_msg');
@@ -11756,6 +11759,7 @@ function initLogin() {
     }
   }
   var session = getSession();
+  if(!garageChecked&&typeof SatoriGarageBridge!=='undefined'&&session&&SatoriGarageBridge.restore(session,function(){initLogin(true);} ))return;
   if(typeof SatoriGarageBridge!=='undefined' && session && SatoriGarageBridge.bootstrap(session))return;
   loginScreenSetExclusive(!(session && session.username));
   if(!(session && session.username)){
@@ -13427,6 +13431,7 @@ function gynLoginSuccess(username, data) {
   if (data.session_token) user.session_token = String(data.session_token || '');
   if (data.session_expires_at) user.session_expires_at = String(data.session_expires_at || '');
   if (data.device_id) user.device_id = String(data.device_id || '');
+  user.garage_access=data.garage_access===true;
   setSession(user);
   try { nstResetForActiveLine(); nstPrime(); } catch(e){}
   // Výber konkurentov pre MS graf — localStorage (instant) + zo Sheets (login response)

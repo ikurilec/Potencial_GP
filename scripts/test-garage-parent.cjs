@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const dir=process.env.SATORI_APPS_SCRIPT_DIR||path.resolve(__dirname,'../../../apps_script'),src=fs.readFileSync(path.join(dir,'KOD_GOLEM.txt'),'utf8');
-assert.ok(src.includes("if (action === 'getGarage') return garageHandleAction_(ss, e, action);"),'Golem must route the online Garage read');
+assert.ok(src.includes("if (action === 'getGarage' || action === 'getGarageUsers') return garageHandleAction_(ss, e, action);"),'Golem must route the online Garage read');
 assert.ok(src.includes("if (action === 'garageAction' || action === 'garageRegisterPush' || action === 'garageDrainPush') return garageHandleAction_(ss, e, action);"),'Golem must route authenticated Garage writes and separate push delivery');
 assert.ok(src.includes('function garageHandleAction_('),'Complete Golem deployment file must include Garage implementation');
 const fn=src.slice(src.indexOf('function pushUpsertToken_('),src.indexOf('function pushRemoveTokens_('));

@@ -11,6 +11,8 @@ var SatoriGarageModel = (function () {
   }
   function text(value, max) { return String(value || '').trim().slice(0, max || 160); }
   function vehicle(value) { var v = value || {}, brand = String(v.brand || '').trim(), color = String(v.color || '#64748b').toLowerCase(); if (brand.length > 60 || /[\u0000-\u001f\u007f]/.test(brand) || !/^#[0-9a-f]{6}$/.test(color)) fail('INVALID_VEHICLE', 'Zadajte značku auta do 60 znakov a platnú farbu.'); return { brand: brand, color: color }; }
+  function fleetName(value) { if (typeof value !== 'string' || !value.trim() || value.trim().length > 120 || /[\u0000-\u001f\u007f]/.test(value)) fail('INVALID_PAYLOAD', 'Zadajte celé meno osoby do 120 znakov.'); return value.trim(); }
+  function fleetVehicle(value) { if (!value || typeof value !== 'object' || Array.isArray(value) || typeof value.brand !== 'string' || !value.brand.trim() || value.brand.trim().length > 60 || /[\u0000-\u001f\u007f]/.test(value.brand) || typeof value.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(value.color)) fail('INVALID_VEHICLE', 'Zadajte značku auta do 60 znakov a platnú farbu.'); return vehicle(value); }
   function date(value) {
     var v = String(value || '');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || !isFinite(Date.parse(v + 'T00:00:00Z')) || new Date(v + 'T00:00:00Z').toISOString().slice(0, 10) !== v) fail('INVALID_DATE', 'Dátum nie je platný.');
@@ -22,10 +24,19 @@ var SatoriGarageModel = (function () {
   function interval(p, config) { var start = clock(p.start || config.defaultStart), end = clock(p.end || config.defaultEnd); if (start >= end) fail('INVALID_TIME', 'Koniec musí byť neskôr ako začiatok.'); return { start: start, end: end }; }
   function overlaps(a, b) { return a.date === b.date && a.start < b.end && b.start < a.end; }
   function member(state, id) { return state.members.find(function (m) { return m.id === id && m.active !== false; }); }
-  function actorMember(state, actor) { var m = member(state, login(actor && actor.id)); if (!m) fail('NOT_MEMBER', 'Nemáte aktívny prístup do Garáže.'); return m; }
+  function actorMember(state, actor) { var m = member(state, login(actor && actor.id)); if (!m || m.access === false) fail('NOT_MEMBER', 'Nemáte aktívny prístup do Garáže.'); return m; }
   function canAdmin(m) { return m.role === 'admin' || m.role === 'fleet'; }
   function admin(m) { if (!canAdmin(m)) fail('FORBIDDEN', 'Túto zmenu môže urobiť iba správca Garáže.'); }
   function own(row, m) { if (!row) fail('NOT_FOUND', 'Záznam už neexistuje. Obnovte údaje.'); if (row.owner !== m.id) fail('FORBIDDEN', 'Môžete upraviť iba svoje záznamy.'); }
+  function isFleet(row) { return row.kind === 'fleet'; }
+  function reservationKind(payload, row, m) {
+    if (payload.kind === 'fleet' || (row && isFleet(row))) admin(m);
+    if (payload.kind !== undefined && payload.kind !== 'personal' && payload.kind !== 'fleet') fail('INVALID_PAYLOAD', 'Vyberte platný druh rezervácie.');
+    var kind = row ? (isFleet(row) ? 'fleet' : 'personal') : (payload.kind || 'personal');
+    if (row && payload.kind !== undefined && payload.kind !== kind) fail('INVALID_PAYLOAD', 'Druh existujúcej rezervácie nemôžete zmeniť.');
+    return kind;
+  }
+  function personalOverlap(a, b) { return a.owner === b.owner && !isFleet(a) && !isFleet(b); }
   function slotAllowed(slot, m) { return (!slot.allowedMembers || !slot.allowedMembers.length || slot.allowedMembers.indexOf(m.id) >= 0) && (!slot.allowedRoles || !slot.allowedRoles.length || slot.allowedRoles.indexOf(m.role) >= 0); }
   function slotFor(state, id, m) { var slot = state.config.slots.find(function (s) { return s.id === id && s.active; }); if (!slot) fail('INVALID_SPACE', 'Parkovacie miesto nie je dostupné.'); if (m && !slotAllowed(slot, m)) fail('RESTRICTED', 'Na toto parkovacie miesto nemáte oprávnenie.'); return slot; }
   var REAL_NUMBERS = ['587', '588', '590', '589', '612', '613'];
@@ -58,7 +69,11 @@ var SatoriGarageModel = (function () {
       for (var q = 0; q < connected.length; q++) nodes.forEach(function (n, i) { if (!selected[i] && (n.row === connected[q] || overlaps(n.row, connected[q]))) { selected[i] = true; connected.push(n.row); } });
       nodes = nodes.filter(function (_, i) { return selected[i]; });
     }
-    nodes.forEach(function (n) { if (n.block) return; var m = member(state, n.row.owner); if (!m) fail('NOT_MEMBER', 'Rezervácia nemá aktívneho používateľa.'); n.allowed = slots.filter(function (s) { return slotAllowed(s, m); }).map(function (s) { return s.id; }); if (!n.allowed.length) fail('RESTRICTED', 'Na parkovanie na −1 nemáte oprávnenie.'); });
+    nodes.forEach(function (n) { if (n.block) return; var m = member(state, n.row.owner); if (!m) fail('NOT_MEMBER', 'Rezervácia nemá aktívneho používateľa.');
+      // Retained cars of revoked accounts still occupy their assigned capacity
+      // unit even if their source role no longer permits new parking there.
+      n.allowed = m.access === false ? ids.filter(function (id) { return id === n.row.spaceId; }) : slots.filter(function (s) { return slotAllowed(s, m); }).map(function (s) { return s.id; });
+      if (!n.allowed.length) fail('RESTRICTED', 'Na parkovanie na −1 nemáte oprávnenie.'); });
     return { slots: slots, nodes: nodes };
   }
   function repackPool(state, day, additions, ignored) {
@@ -77,23 +92,26 @@ var SatoriGarageModel = (function () {
     }
     components.forEach(function (assignment) { assignment.forEach(function (a) { if (!nodes[a.index].block) nodes[a.index].row.spaceId = a.id; }); });
   }
-  function poolAvailability(state, actor, request) {
+  function poolAvailability(state, actor, request, context) {
     var result = { capacity: 0, available: 0, canReserve: false };
     try {
       var p = request || {}, slots = poolSlots(state); result.capacity = slots.length;
-      var m = actorMember(state, actor), day = date(p.date), times = interval(p, state.config), target = Object.assign({ date: day }, times), copyState = copy({ config: state.config, members: state.members, reservations: state.reservations, blocks: state.blocks || [] }), events = [], maximum = 0, count = 0;
+      var m = actorMember(state, actor), row = p.id ? state.reservations.find(function (r) { return r.id === p.id; }) : null;
+      if (p.id) own(row, m); var kind = reservationKind(p, row, m);
+      var bounds = context || (state.serverDate ? { today: state.serverDate } : null), day = bounds ? inWindow(p.date, bounds) : date(p.date), times = interval(p, state.config), target = Object.assign({ date: day }, times), copyState = copy({ config: state.config, members: state.members, reservations: state.reservations, blocks: state.blocks || [] }), events = [], maximum = 0, count = 0;
+      if (row && bounds) inWindow(row.date, bounds);
       if (slots.length) poolNodes(state, day, [], p.id ? [p.id] : [], [target]).nodes.forEach(function (n) { if (overlaps(n.row, target)) { events.push({ time: n.row.start < times.start ? times.start : n.row.start, delta: 1 }, { time: n.row.end > times.end ? times.end : n.row.end, delta: -1 }); } });
       events.sort(function (a, b) { return a.time.localeCompare(b.time) || a.delta - b.delta; }).forEach(function (e) { count += e.delta; maximum = Math.max(maximum, count); });
       result.available = Math.max(0, slots.length - maximum);
-      var eligible = slots.find(function (s) { return slotAllowed(s, m); }); if (!eligible) fail('RESTRICTED', 'Na parkovanie na −1 nemáte oprávnenie.'); var r = Object.assign({ id: p.id || '__capacity_preview__', owner: m.id, date: day, spaceId: eligible.id }, times); allocation(copyState, r, p.id ? [p.id] : []); result.canReserve = true;
+      var eligible = slots.find(function (s) { return slotAllowed(s, m); }); if (!eligible) fail('RESTRICTED', 'Na parkovanie na −1 nemáte oprávnenie.'); var r = Object.assign({ id: p.id || '__capacity_preview__', owner: m.id, date: day, spaceId: eligible.id }, times); if (kind === 'fleet') r.kind = 'fleet'; allocation(copyState, r, p.id ? [p.id] : []); result.canReserve = true;
     } catch (e) { result.code = e.code || 'CONFLICT'; result.message = e.message; }
     return result;
   }
   function allocation(state, r, ignore) {
     var m = member(state, r.owner); if (!m) fail('NOT_MEMBER', 'Príjemca nemá aktívny prístup do Garáže.'); var target = slotFor(state, r.spaceId);
-    if (target.floor === -1) { if (state.reservations.some(function (x) { return ignore.indexOf(x.id) < 0 && x.owner === r.owner && overlaps(x, r); })) fail('CONFLICT', 'V tomto čase už máte inú rezerváciu parkovania.'); repackPool(state, r.date, [r], ignore); return; }
+    if (target.floor === -1) { if (state.reservations.some(function (x) { return ignore.indexOf(x.id) < 0 && personalOverlap(x, r) && overlaps(x, r); })) fail('CONFLICT', 'V tomto čase už máte inú rezerváciu parkovania.'); repackPool(state, r.date, [r], ignore); return; }
     slotFor(state, r.spaceId, m);
-    if (state.reservations.some(function (x) { return ignore.indexOf(x.id) < 0 && overlaps(x, r) && (x.spaceId === r.spaceId || x.owner === r.owner); }) || state.blocks.some(function (b) { return b.spaceId === r.spaceId && overlaps(b, r); })) fail('CONFLICT', 'Miesto alebo osoba má v tomto čase inú rezerváciu.');
+    if (state.reservations.some(function (x) { return ignore.indexOf(x.id) < 0 && overlaps(x, r) && (x.spaceId === r.spaceId || personalOverlap(x, r)); }) || state.blocks.some(function (b) { return b.spaceId === r.spaceId && overlaps(b, r); })) fail('CONFLICT', 'Miesto alebo osoba má v tomto čase inú rezerváciu.');
   }
   function uniqueId(state, context, prefix) { var used = state.reservations.concat(state.offers, state.blocks, state.audit); for (var i = 0; i < 20; i++) { var v = prefix + '-' + String(context.id ? context.id() : state.version + '-' + i); if (!used.some(function (x) { return x.id === v; })) return v; } fail('ID_FAILURE', 'Záznam sa nepodarilo vytvoriť. Skúste znova.'); }
   function ensureAttendance(state, m, day, times) {
@@ -109,7 +127,7 @@ var SatoriGarageModel = (function () {
   }
   function clearOwnWaiting(state, m, day) { state.waitlist = state.waitlist.filter(function (x) { return x.owner !== m.id || x.date !== day; }); }
   function autoParking(state, m, day, times, context, notices) {
-    var previous = state.reservations.filter(function (r) { return r.owner === m.id && r.date === day; }), result = { date: day, start: times.start, end: times.end }, eligible = state.config.slots.filter(function (s) { return s.active && (s.floor === -3 || s.floor === -1) && slotAllowed(s, m); }).sort(function (a, b) { return (a.floor === -3 ? 0 : 1) - (b.floor === -3 ? 0 : 1) || a.order - b.order; });
+    var previous = state.reservations.filter(function (r) { return r.owner === m.id && r.date === day && !isFleet(r); }), result = { date: day, start: times.start, end: times.end }, eligible = state.config.slots.filter(function (s) { return s.active && (s.floor === -3 || s.floor === -1) && slotAllowed(s, m); }).sort(function (a, b) { return (a.floor === -3 ? 0 : 1) - (b.floor === -3 ? 0 : 1) || a.order - b.order; });
     var covering = previous.find(function (r) { return r.start <= times.start && r.end >= times.end && eligible.some(function (s) { return s.id === r.spaceId; }); });
     if (covering) { clearOwnWaiting(state, m, day); result.status = 'existing'; result.reservationId = covering.id; result.spaceId = covering.spaceId; return result; }
     if (eligible.length) {
@@ -120,7 +138,7 @@ var SatoriGarageModel = (function () {
         // Shared −1 allocation may repack other rows. Each attempt therefore runs
         // on a separate trial; an unavailable extension never destroys old parking.
         var trial = copy({ config: state.config, members: state.members, reservations: state.reservations, blocks: state.blocks }), reservation = { id: id, revision: previous.length ? previous[0].revision + 1 : 1, date: day, owner: m.id, name: m.name, spaceId: eligible[i].id, start: times.start, end: times.end };
-        trial.reservations = trial.reservations.filter(function (r) { return r.owner !== m.id || r.date !== day; });
+        trial.reservations = trial.reservations.filter(function (r) { return r.owner !== m.id || r.date !== day || isFleet(r); });
         try { allocation(trial, reservation, []); }
         catch (error) { if (['CONFLICT','RESTRICTED','INVALID_SPACE'].indexOf(error.code) >= 0) continue; throw error; }
         trial.reservations.push(reservation); state.reservations = trial.reservations;
@@ -162,10 +180,10 @@ var SatoriGarageModel = (function () {
         var parkingDay = { date: d, status: 'officeOnly', start: times.start, end: times.end };
         if (!p.office || p.parking === false) {
           clearOwnWaiting(next, m, d);
-          next.reservations = next.reservations.filter(function (x) { if (x.owner === m.id && x.date === d) { notices.push(releaseNotice(x, next)); return false; } return true; });
+          next.reservations = next.reservations.filter(function (x) { if (x.owner === m.id && x.date === d && !isFleet(x)) { notices.push(releaseNotice(x, next)); return false; } return true; });
         } else if (p.parking === true) parkingDay = autoParking(next, m, d, times, context, notices);
         if (p.office) {
-          var covering = { start: times.start, end: times.end }; next.reservations.filter(function (r) { return r.owner === m.id && r.date === d; }).forEach(function (r) { if (r.start < covering.start) covering.start = r.start; if (r.end > covering.end) covering.end = r.end; });
+          var covering = { start: times.start, end: times.end }; next.reservations.filter(function (r) { return r.owner === m.id && r.date === d && !isFleet(r); }).forEach(function (r) { if (r.start < covering.start) covering.start = r.start; if (r.end > covering.end) covering.end = r.end; });
           next.attendance = next.attendance.filter(function (x) { return x.owner !== m.id || x.date !== d; }); ensureAttendance(next, m, d, covering);
         }
         else next.attendance = next.attendance.filter(function (x) { return x.owner !== m.id || x.date !== d; });
@@ -175,23 +193,26 @@ var SatoriGarageModel = (function () {
       day = inWindow(p.date, context); times = interval(p, next.config);
       row = p.id ? next.reservations.find(function (x) { return x.id === p.id; }) : null;
       if (p.id) { own(row, m); inWindow(row.date, context); if (Number(p.revision) !== row.revision) fail('STALE', 'Rezervácia sa medzitým zmenila. Obnovte údaje.'); }
+      var kind = reservationKind(p, row, m), guestName = kind === 'fleet' ? fleetName(p.name) : m.name, guestVehicle = kind === 'fleet' ? fleetVehicle(p.vehicle) : null;
       var spaceId = text(p.spaceId, 80); if (p.floor !== undefined) { if (Number(p.floor) !== -1 || (spaceId && slotFor(next, spaceId).floor !== -1)) fail('INVALID_SPACE', 'Vyberte platné parkovanie.'); var eligible = poolSlots(next).find(function (s) { return slotAllowed(s, m); }); if (!eligible) fail('RESTRICTED', 'Na parkovanie na −1 nemáte oprávnenie.'); spaceId = eligible.id; }
-      var reservation = { id: row ? row.id : uniqueId(next, context, 'r'), revision: row ? row.revision + 1 : 1, date: day, owner: m.id, name: m.name, spaceId: spaceId, start: times.start, end: times.end };
+      var reservation = { id: row ? row.id : uniqueId(next, context, 'r'), revision: row ? row.revision + 1 : 1, date: day, owner: m.id, name: guestName, spaceId: spaceId, start: times.start, end: times.end };
+      if (kind === 'fleet') { reservation.kind = 'fleet'; reservation.vehicle = guestVehicle; reservation.creatorName = m.name; }
       allocation(next, reservation, row ? [row.id] : []);
       if (row) { notices = notices.concat(freedIntervals(row, reservation, next)); next.reservations = next.reservations.filter(function (x) { return x.id !== row.id; }); }
-      next.reservations.push(reservation); ensureAttendance(next, m, day, times); result = reservation;
+      next.reservations.push(reservation); if (kind !== 'fleet') ensureAttendance(next, m, day, times); result = reservation;
     } else if (command === 'reservationCancel') {
       if (!Array.isArray(p.ids) || !p.ids.length || p.ids.length > 60) fail('INVALID_PAYLOAD', 'Vyberte rezervácie na zrušenie.');
       var ids = p.ids.filter(function (id, i, a) { return a.indexOf(id) === i; });
-      ids.forEach(function (id) { var x = next.reservations.find(function (r) { return r.id === id; }); own(x, m); inWindow(x.date, context); notices.push(releaseNotice(x, next)); });
+      ids.forEach(function (id) { var x = next.reservations.find(function (r) { return r.id === id; }), owner = x && next.members.find(function (u) { return u.id === x.owner; }); if (!(x && canAdmin(m) && owner && (owner.access === false || owner.active === false))) own(x, m); inWindow(x.date, context); notices.push(releaseNotice(x, next)); });
       next.reservations = next.reservations.filter(function (r) { return ids.indexOf(r.id) < 0; }); result = { ids: ids };
     } else if (command === 'offerCreate') {
       var fromId = p.fromReservationId || p.reservationId, toId = p.toReservationId || p.otherReservationId, to = login(p.to || p.recipient), recipient = member(next, to);
-      if (!recipient || recipient.id === m.id) fail('INVALID_MEMBER', 'Vyberte iného aktívneho člena Garáže.');
+      if (!recipient || recipient.access === false || recipient.id === m.id) fail('INVALID_MEMBER', 'Vyberte iného aktívneho člena Garáže.');
       if (p.type !== 'transfer' && p.type !== 'swap') fail('INVALID_PAYLOAD', 'Vyberte odovzdanie alebo výmenu.');
       var fromReservation = next.reservations.find(function (r) { return r.id === fromId; }); own(fromReservation, m); inWindow(fromReservation.date, context);
       var other = null;
       if (p.type === 'swap') { other = next.reservations.find(function (r) { return r.id === toId; }); if (!other || other.owner !== to) fail('INVALID_OFFER', 'Vyberte rezerváciu adresáta výmeny.'); inWindow(other.date, context); }
+      if (isFleet(fromReservation) || (other && isFleet(other))) fail('FORBIDDEN', 'Rezervácie ďalších áut nie je možné odovzdať ani vymeniť.');
       var expiresAt = p.expiresAt || new Date(Date.parse(context.now) + 7 * 86400000).toISOString();
       if (!isFinite(Date.parse(expiresAt)) || Date.parse(expiresAt) <= Date.parse(context.now) || Date.parse(expiresAt) > Date.parse(context.now) + 30 * 86400000) fail('INVALID_OFFER', 'Platnosť ponuky nie je platná.');
       result = { id: uniqueId(next, context, 'o'), type: p.type, from: m.id, to: to, fromReservationId: fromReservation.id, fromRevision: fromReservation.revision, toReservationId: other ? other.id : null, toRevision: other ? other.revision : null, status: 'pending', expiresAt: new Date(expiresAt).toISOString() }; next.offers.push(result);
@@ -206,9 +227,10 @@ var SatoriGarageModel = (function () {
         if (Date.parse(offer.expiresAt) <= Date.parse(context.now)) fail('EXPIRED', 'Platnosť ponuky vypršala.');
         var first = next.reservations.find(function (r) { return r.id === offer.fromReservationId; }), second = offer.type === 'swap' ? next.reservations.find(function (r) { return r.id === offer.toReservationId; }) : null;
         if (!first || first.owner !== offer.from || first.revision !== offer.fromRevision || (offer.type === 'swap' && (!second || second.owner !== offer.to || second.revision !== offer.toRevision))) fail('STALE', 'Pôvodné rezervácie sa zmenili. Vytvorte novú ponuku.');
+        if (isFleet(first) || (second && isFleet(second))) fail('FORBIDDEN', 'Rezervácie ďalších áut nie je možné odovzdať ani vymeniť.');
         inWindow(first.date, context); if (second) inWindow(second.date, context);
         var changed = [Object.assign({}, first, { owner: offer.to, name: m.name, revision: first.revision + 1 })];
-        if (second) { var donor = member(next, offer.from); if (!donor) fail('NOT_MEMBER', 'Odosielateľ už nie je aktívnym členom.'); changed.push(Object.assign({}, second, { owner: offer.from, name: donor.name, revision: second.revision + 1 })); }
+        if (second) { var donor = member(next, offer.from); if (!donor || donor.access === false) fail('NOT_MEMBER', 'Odosielateľ už nie je aktívnym členom.'); changed.push(Object.assign({}, second, { owner: offer.from, name: donor.name, revision: second.revision + 1 })); }
         var ignored = changed.map(function (r) { return r.id; }); next.reservations = next.reservations.filter(function (r) { return ignored.indexOf(r.id) < 0; }).concat(changed); changed.forEach(function (r) { allocation(next, r, [r.id]); });
         if (changed.length > 1 && overlaps(changed[0], changed[1]) && (changed[0].owner === changed[1].owner || changed[0].spaceId === changed[1].spaceId)) fail('CONFLICT', 'Výmena by vytvorila prekrývajúce sa rezervácie.');
         changed.forEach(function (r) { ensureAttendance(next, member(next, r.owner), r.date, r); });
@@ -233,12 +255,14 @@ var SatoriGarageModel = (function () {
       if ((p.id && login(p.id) !== m.id) || (p.login && login(p.login) !== m.id)) fail('FORBIDDEN', 'Môžete upraviť iba svoje auto.');
       row = next.members.find(function (x) { return x.id === m.id; }); row.vehicle = vehicle(p.vehicle); result = { id: m.id, vehicle: row.vehicle };
     } else if (command === 'memberSave') {
-      admin(m); var id = login(p.id || p.login), old = next.members.find(function (x) { return x.id === id; }), role = p.role || (old && old.role) || 'office', weeklyDays = Number(p.weeklyDays === undefined ? (old ? old.weeklyDays : 0) : p.weeklyDays);
-      if (ROLES.indexOf(role) < 0 || [0, 3, 4].indexOf(weeklyDays) < 0 || (p.active !== undefined && typeof p.active !== 'boolean')) fail('INVALID_MEMBER', 'Profil Garáže nie je platný.');
-      if (m.role !== 'admin' && (role === 'admin' || (old && old.role === 'admin'))) fail('FORBIDDEN', 'Administrátorskú rolu môže nastaviť iba administrátor.');
-      if (id === m.id && (p.active === false || role !== m.role)) fail('FORBIDDEN', 'Vlastné správcovské oprávnenie nemôžete zrušiť.');
+      admin(m); var id = login(p.id || p.login), old = next.members.find(function (x) { return x.id === id; }), source = context.bindableMember;
+      if (source && login(source.id) !== id) fail('INVALID_MEMBER', 'Zdrojový účet sa nezhoduje s vybraným členom.');
+      var role = source ? source.role : p.role || (old && old.role) || 'office', weeklyDays = Number(source ? source.weeklyDays : p.weeklyDays === undefined ? (old ? old.weeklyDays : 0) : p.weeklyDays);
+      if (ROLES.indexOf(role) < 0 || [0, 1, 2, 3, 4, 5].indexOf(weeklyDays) < 0 || (p.active !== undefined && typeof p.active !== 'boolean') || (p.access !== undefined && typeof p.access !== 'boolean')) fail('INVALID_MEMBER', 'Profil Garáže nie je platný.');
+      if (m.role !== 'admin' && (p.role === 'admin' || role === 'admin' || (old && old.role === 'admin'))) fail('FORBIDDEN', 'Administrátorskú rolu môže nastaviť iba administrátor.');
+      if (id === m.id && (p.active === false || p.access === false || role !== m.role)) fail('FORBIDDEN', 'Vlastné správcovské oprávnenie nemôžete zrušiť.');
       if (p.active === false && next.reservations.some(function (r) { return r.owner === id && r.date >= context.today; })) fail('MEMBER_IN_USE', 'Člen má dnešné alebo budúce parkovanie. Najprv musí zrušiť svoje rezervácie.');
-      result = { id: id, name: text((context.bindableMember && context.bindableMember.name) || p.name || (old && old.name) || id, 120), role: role, weeklyDays: weeklyDays, active: p.active !== false, sourceLine: (context.bindableMember && context.bindableMember.sourceLine) || p.sourceLine || (old && old.sourceLine) || 'gp', vehicle: vehicle(p.vehicle === undefined ? (old && old.vehicle) : p.vehicle) };
+      result = { id: id, name: text((source && source.name) || p.name || (old && old.name) || id, 120), role: role, weeklyDays: weeklyDays, active: p.active === undefined ? (p.access === true || !old || old.active !== false) : p.active, access: p.access === undefined ? (old ? old.access !== false : false) : p.access, sourceLine: (source && source.sourceLine) || p.sourceLine || (old && old.sourceLine) || 'gp', vehicle: vehicle(p.vehicle === undefined ? (old && old.vehicle) : p.vehicle) };
       next.members = next.members.filter(function (x) { return x.id !== id; }); next.members.push(result);
       if (old && old.role !== role) {
         try {
@@ -263,7 +287,7 @@ var SatoriGarageModel = (function () {
     return { result: copy(result), notifications: notices, duplicate: false };
   }
   function snapshot(state, actor, context) {
-    var m = actorMember(state, actor), w = windowFor(context.today), publicMember = function (x) { return { id: x.id, name: x.name, role: x.role, weeklyDays: Number(x.weeklyDays || 0), active: x.active !== false, sourceLine: x.sourceLine || 'gp', vehicle: vehicle(x.vehicle) }; };
+    var m = actorMember(state, actor), w = windowFor(context.today), publicMember = function (x) { return { id: x.id, name: x.name, role: x.role, weeklyDays: Number(x.weeklyDays || 0), active: x.active !== false, access: x.access !== false, sourceLine: x.sourceLine || 'gp', vehicle: vehicle(x.vehicle) }; };
     var inRange = function (x) { return x.date >= w.start && x.date <= w.end; };
     var me = publicMember(m); me.canAdmin = canAdmin(m);
     return { ok: true, version: state.version, serverDate: context.today, window: w, me: me, config: copy(state.config), members: state.members.filter(function (x) { return x.active !== false || canAdmin(m); }).map(publicMember), attendance: copy(state.attendance.filter(inRange)), reservations: copy(state.reservations.filter(inRange)), offers: state.offers.filter(function (x) { return canAdmin(m) || x.from === m.id || x.to === m.id; }).map(function (x) { return { id: x.id, type: x.type, from: x.from, to: x.to, fromReservationId: x.fromReservationId, toReservationId: x.toReservationId, status: x.status === 'pending' && Date.parse(x.expiresAt) <= Date.parse(context.now) ? 'expired' : x.status, expiresAt: x.expiresAt }; }), waitlist: copy(state.waitlist.filter(inRange)), blocks: copy(state.blocks.filter(inRange)), audit: canAdmin(m) ? copy(state.audit.slice(-200)) : [] };
