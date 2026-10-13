@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.89.31';
+var APP_VERSION = '2.90.0';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -663,6 +663,8 @@ function appReadRefreshVisible(){
 var APP_READ_CHECKS = {};
 function appReadView(){
   if(!getSession() || document.body.classList.contains('login-active'))return null;
+  // Garage owns its lightweight status and polling; hidden medical views must not refresh.
+  if(typeof SatoriGarageBridge!=='undefined' && SatoriGarageBridge.isOpen())return null;
   function shown(id){ var el=document.getElementById(id); return el && el.classList.contains('show'); }
   function view(key, host, actions){
     var params={},scopes={},line=appLineTag(),s=getSession()||{},state=line==='gyn'?GYN_APP:PL_STATE;
@@ -1036,6 +1038,7 @@ function appCheckSalesQuarter(rep,period){
   return true;
 }
 function appCheckHome(force){
+  if(typeof SatoriGarageBridge!=='undefined' && (SatoriGarageBridge.isOpen() || SatoriGarageBridge.officeOnly()))return;
   var session=getSession();if(!session)return;
   var view=appReadView(),summary=view&&view.type==='home'?appReadHomeSummary(view):null;
   function needs(id){var g=summary&&summary.groups.find(function(g){return g.id===id;});return !!force || !g || (!g.pending&&!appReadGroupFresh(g));}
@@ -1092,6 +1095,8 @@ function pushInit(){
 // notifikácia o nových predajoch). Pri zatvorenej appke to rieši service worker sám.
 function pushHandleForeground(payload){
   var user=getSession();if(!user || !user.username)return;
+  if(typeof SatoriGarageBridge!=='undefined' && SatoriGarageBridge.handlePush(payload))return;
+  if(typeof SatoriGarageBridge!=='undefined' && SatoriGarageBridge.officeOnly())return;
   var d=(payload&&payload.data)||{},nt=(payload&&payload.notification)||{},kind=String(d.kind||'');
   var title=d.title||nt.title||'Upozornenie',body=d.body||nt.body||'';
   var otherLine=d.line && d.line!==appLineTag();
@@ -1327,6 +1332,7 @@ var _swRegistration = null;   // F1-2: uchováme registráciu, aby checkForUpdat
 // 'app-main-tab-history' sa vynecháva zámerne — tá je "otvorená" takmer vždy
 // (stačí čo i len prepnúť hlavnú záložku) a reload by tak takmer nikdy neprešiel potichu.
 function _isAppBusy(){
+  if(typeof SatoriGarageBridge!=='undefined' && SatoriGarageBridge.isSaving())return true;
   if (document.querySelector(
     '.send-popup.show,.confirm-overlay.show,.wn-overlay.show,' +
     '.detail-overlay.show,.hist-overlay.show,.restore-overlay.show,.edit-overlay.show'
@@ -6671,6 +6677,8 @@ function appNavReset(nechaj) {
 
 // Domov je panel nad všetkým — manažérovi aj gyn sa otvorí nad ich pohľadom.
 function appGoDomov() {
+  if(typeof SatoriGarageBridge!=='undefined' && SatoriGarageBridge.officeOnly()){SatoriGarageBridge.open();return;}
+  if(typeof SatoriGarageBridge!=='undefined' && SatoriGarageBridge.isOpen())SatoriGarageBridge.close();
   appNavigaciaZaznam();
   if (typeof _appTrackMainTab === 'function') _appTrackMainTab('domov');
   appNavReset('domov');
@@ -6913,10 +6921,11 @@ function viacLinesHtml() {
   var dual = mgrGetDual() || {};
   var current = mgrCurrentLine();
   var lines = [{line:'gp',label:'Golem'}, {line:'gyn',label:'Gynekológia'}, {line:'reagila',label:'Reagila'}];
+  if(typeof SatoriGarageBridge!=='undefined' && SatoriGarageBridge.canAccess())lines.push({line:'garage',label:'Garáž'});
   return '<div class="viac-sec" id="viac-lines-label">Línia</div>' +
     '<div class="viac-lines" role="group" aria-labelledby="viac-lines-label">' +
     lines.map(function (it) {
-      var has = !!dual[it.line];
+      var has = it.line === 'garage' || !!dual[it.line];
       var active = it.line === current;
       if (!has) {
         if (!lineMgr) return '';
@@ -6928,6 +6937,7 @@ function viacLinesHtml() {
     }).join('') + '</div>';
 }
 function viacSwitchLine(line) {
+  if(line==='garage' && window.SatoriGarageBridge){SatoriGarageBridge.open();return;}
   if (!mgrLineSwitchAvailable() || line === mgrCurrentLine()) return;
   if (!mgrLineTargets().some(function (it) { return it.line === line; })) return;
   mgrSwitchLine(line);
@@ -9900,6 +9910,7 @@ function satoriGuideToggleEnabled(){
 }
 function satoriGuideBack(){ if(SATORI_GUIDE_STATE.step > 0) satoriGuideSetStep(SATORI_GUIDE_STATE.step - 1); else satoriGuideSkip(); }
 function satoriGuideSchedule(){
+  if(typeof SatoriGarageBridge!=='undefined' && (SatoriGarageBridge.isOpen() || SatoriGarageBridge.officeOnly()))return;
   clearTimeout(SATORI_GUIDE_STATE.scheduleTimer);
   var began = Date.now(); SATORI_GUIDE_STATE.scheduled = true;
   (function waitForSafeMoment(){
@@ -10082,6 +10093,8 @@ function setSession(user) {
 }
 
 function clearSession() {
+  if(typeof SatoriGarageBridge!=='undefined')SatoriGarageBridge.reset();
+  document.body.classList.remove('garage-office-only');
   try {
     sessionStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(SESSION_KEY);
@@ -10101,6 +10114,7 @@ function clearSession() {
 
 // Spoločné parsovanie pohlavia + avatara + session tokenov z login response
 function mgrParseLoginExtras(user, data){
+  if(data.garage_access===true)user.garage_access=true;
   var rawG = String(data.pohlavie || data.gender || '').trim().toLowerCase();
   if (rawG === 'm' || rawG === 'muz' || rawG === 'muž' || rawG === 'male') user.gender = 'male';
   else if (rawG === 'z' || rawG === 'f' || rawG === 'zena' || rawG === 'žena' || rawG === 'female') user.gender = 'female';
@@ -10126,7 +10140,7 @@ function mgrBuildReagilaUser(username, data){
   return mgrParseLoginExtras({ username: username, name: data.name, role: data.role, region: data.region || '', line: 'reagila' }, data);
 }
 // Aktuálna línia podľa živej session ('gp' = Golem, 'gyn', 'reagila')
-function mgrCurrentLine(){ var s = getSession(); return (s && s.line) ? s.line : 'gp'; }
+function mgrCurrentLine(){ if(typeof SatoriGarageBridge!=='undefined' && SatoriGarageBridge.isOpen())return 'garage';var s = getSession(); return (s && s.line) ? s.line : 'gp'; }
 
 // Dual session držíme primárne v PAMÄTI — localStorage na iPhone býva plný (cache) a setItem
 // ticho zlyhá. Pamäť prežije in-place prepínanie (nereloadujeme), localStorage je len záloha.
@@ -10252,6 +10266,7 @@ function mgrStoreDualIfEligible(username, gpData, gynData, reagilaData){
 }
 // Prepínač línie je dostupný, ak má používateľ v dual session 2+ línie.
 function mgrLineSwitchAvailable(){
+  if(typeof SatoriGarageBridge!=='undefined' && SatoriGarageBridge.canAccess() && !SatoriGarageBridge.officeOnly())return true;
   var d = mgrGetDual();
   if(!d) return false;
   var n = (d.gp ? 1 : 0) + (d.gyn ? 1 : 0) + (d.reagila ? 1 : 0);
@@ -10259,6 +10274,7 @@ function mgrLineSwitchAvailable(){
 }
 // Zoznam línií, do ktorých sa dá prepnúť (všetky v dual okrem aktuálnej)
 function mgrLineTargets(){
+  if(typeof SatoriGarageBridge!=='undefined' && SatoriGarageBridge.canAccess())return SatoriGarageBridge.targets().filter(function(t){return t.line!==mgrCurrentLine();});
   var d = mgrGetDual(); if(!d) return [];
   var cur = mgrCurrentLine();
   return [
@@ -10374,6 +10390,7 @@ function mgrToggleLine(){
   if(t) mgrSwitchLine(t.line);
 }
 function mgrLineLabel(line){
+  if(line==='garage')return 'Garáž';
   return line === 'gyn' ? 'Gynekológia' : line === 'reagila' ? 'Reagila' : 'Golem';
 }
 function mgrLineTransitionStart(target){
@@ -10488,6 +10505,11 @@ function mgrLineResetSharedData(target){
 // Prepnutie línie IN-PLACE bez reloadu (iOS PWA reload = biela obrazovka).
 // Golem aj Reagila bežia v .app (líšia sa body.reagila-line + dátami), Gyn má #gyn-view.
 function mgrSwitchLine(target){
+  if(typeof SatoriGarageBridge!=='undefined'){
+    if(target==='garage'){SatoriGarageBridge.open();return;}
+    if(SatoriGarageBridge.officeOnly())return;
+    if(SatoriGarageBridge.isOpen())SatoriGarageBridge.close();
+  }
   var cur = mgrCurrentLine();
   if(target === cur) return;
   var d = mgrGetDual();
@@ -10644,6 +10666,8 @@ function loginSuccess(username, name, role, region, extra) {
     }
   }
   setSession(user);
+  if(extra && extra.garage_access===true){user.garage_access=true;setSession(user);}
+  if(typeof SatoriGarageBridge!=='undefined' && SatoriGarageBridge.bootstrap(user))return;
   try { nstResetForActiveLine(); } catch(e){}
   // Prednačítanie Nástenky sa posúva o tick: v prázdnej fronte by hneď obsadilo slot
   // a getInitData (boot) by čakal ~2 s. Zaradí sa až po boot požiadavkách nižšie.
@@ -11091,6 +11115,10 @@ function doLogin() {
     }
 
     loginRememberCredentials(username, password);
+    // Office accounts do not need to choose or bootstrap a medical line.
+    if(gpData.ok && typeof SatoriGarageBridge!=='undefined' && SatoriGarageBridge.officeOnly(gpData)){
+      enterLineFromLogin(username,'gp',dataMap);return;
+    }
 
     // Zapamätaná voľba: miestna voľba je zámer používateľa z posledného nastavenia
     // na tomto zariadení a musí mať prednosť pred oneskoreným/stale údajom zo Sheetu.
@@ -11655,6 +11683,7 @@ document.addEventListener('visibilitychange', function() {
     var s = getSession();
     if(s) {
       refreshSession();
+      if(typeof SatoriGarageBridge!=='undefined' && (SatoriGarageBridge.isOpen() || SatoriGarageBridge.officeOnly()))return;
       if(Object.keys(PHARMA_STATE.cache).length === 0) {
         plnenieApplyDefaultPeriod(REP_PL_STATE);
       }
@@ -11684,6 +11713,7 @@ function initLogin() {
     }
   }
   var session = getSession();
+  if(typeof SatoriGarageBridge!=='undefined' && session && SatoriGarageBridge.bootstrap(session))return;
   loginScreenSetExclusive(!(session && session.username));
   if(!(session && session.username)){
     loginPrefillUser();
@@ -13371,6 +13401,7 @@ function gynLoginSuccess(username, data) {
 }
 
 function gynEnter(user) {
+  if(typeof SatoriGarageBridge!=='undefined' && SatoriGarageBridge.bootstrap(user))return;
   // Každý vstup je samostatná načítacia relácia. Po návrate z inej línie
   // nesmie prežiť žiadny starý loading flag ani oneskorená odpoveď.
   GYN_APP._bootstrapId=(GYN_APP._bootstrapId||0)+1;
@@ -17551,6 +17582,7 @@ function gynCalPrefetch(){
 // (3) jemný polling kým je appka otvorená. gynCalSync má _syncing guard (žiadne stacky)
 // a po fetchi sám aktualizuje odznak + re-renderuje kalendár, ak je práve otvorený.
 function gynCalLiveOn(){
+  if(typeof SatoriGarageBridge!=='undefined' && (SatoriGarageBridge.isOpen() || SatoriGarageBridge.officeOnly()))return false;
   if(typeof IS_DEV!=='undefined' && IS_DEV) return false;
   var s=(typeof getSession==='function')?getSession():null;
   if(!s || !s.username) return false;
@@ -23438,6 +23470,7 @@ function warmUpBackends(){
 
 // Spustí sa hneď pri načítaní stránky (ešte pred prihlásením) — výsledky čakajú v cache
 function prefetchNotifications() {
+  if(typeof SatoriGarageBridge!=='undefined' && SatoriGarageBridge.officeOnly())return;
   if (IS_DEV) return;
   NOTIF_TYPES.forEach(function(n) {
     var cfgKey = 'notif_' + n.key;
@@ -31902,6 +31935,9 @@ function appPtrViewRoot(view){
  return document.scrollingElement||document.documentElement;
 }
 function appPtrRefreshCurrent(done){
+ if(typeof SatoriGarageBridge!=='undefined' && SatoriGarageBridge.isOpen()){
+  Promise.resolve(SatoriGarage.refresh(true)).then(function(){if(done)done();},function(){if(done)done();});return true;
+ }
  var view=appReadView(),type=appPtrViewType(view),ctx=appLineCapture(),owner=appReadOwner();
  var session=getSession()||{},q=GYN_APP.q;
  function same(){var current=appReadView();return appLineContextActive(ctx)&&owner===appReadOwner()&&current&&current.key===view.key;}
@@ -40265,6 +40301,7 @@ function nstResetForActiveLine(){
   NST.people = nstLoadPeople(); NST.replyBox = null; NST.replyOpen = {}; NST.mMap = {};
 }
 function nstPrime(){
+  if(typeof SatoriGarageBridge!=='undefined' && (SatoriGarageBridge.isOpen() || SatoriGarageBridge.officeOnly()))return;
   try {
     if (!nstUser()) return;
     if (NST._primed) return;
@@ -43207,6 +43244,7 @@ function gsSession(){ try { return getSession(); } catch(e){ return null; } }
 /* Zapnuté/vypnuté globálne vyhľadávanie — preferencia sa ukladá do Sheetu
    (stĺpec „nastavenia", kľúč globalSearch) cez userPrefsSet. Default = zapnuté. */
 function gsEnabled(){
+  if(typeof SatoriGarageBridge!=='undefined' && (SatoriGarageBridge.isOpen() || SatoriGarageBridge.officeOnly()))return false;
   try { var p=(typeof userPrefsGet==='function')?userPrefsGet():{}; return p.globalSearch!==false; } catch(e){ return true; }
 }
 // Premietne preferenciu do UI (skryje/ukáže launcher, prípadne zavrie otvorený panel)

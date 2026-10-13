@@ -1,0 +1,21 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+const root=path.resolve(__dirname,'..'),file=path.join(root,'garage-integration.js');
+assert.ok(fs.existsSync(file),'Online Garage bridge must exist');
+let session={username:'office.test',role:'office',session_token:'session-office',device_id:'dev-1'},dual=null,opened=0,closed=0,configured,calls=[];
+const classes=new Set(),elements={};
+const context={console,URL,URLSearchParams,AbortController,setTimeout,clearTimeout,Promise,Date,Error,location:{href:'https://example.test/index.html'},navigator:{onLine:true},document:{readyState:'complete',body:{classList:{add:x=>classes.add(x),remove:x=>classes.delete(x),contains:x=>classes.has(x)}},addEventListener(){},getElementById:x=>elements[x]||null,querySelector(){return null;}},getSession:()=>session,mgrGetDual:()=>dual,authDeviceId:()=> 'dev-1',SCRIPT_URL:'https://script.google.com/macros/s/central/exec',API_TOKEN:'fixture-api',fetch:async(url,options)=>{calls.push({url,options});return {ok:true,json:async()=>({ok:true,me:{id:session.username}})};},SatoriGarage:{configure:x=>configured=x,open:()=>{opened++;return Promise.resolve();},close:()=>{closed++;},isOpen:()=>opened>closed,reset(){}},mgrDetectRole:s=>/^(admin|boss|bum|pm|am)$/.test(s.role)?s.role:null};
+context.window=context;vm.createContext(context);vm.runInContext(fs.readFileSync(file,'utf8'),context);
+const bridge=context.SatoriGarageBridge;
+(async()=>{
+ assert.ok(bridge.officeOnly());assert.ok(bridge.canAccess());assert.equal(bridge.bootstrap(session),true);assert.equal(opened,1);
+ assert.equal(configured.getLineTargets().length,1,'office cannot enter medical dashboards');
+ await configured.transport('getGarage',null,{fresh:true});let req=new URL(calls.pop().url);assert.equal(req.pathname,'/macros/s/central/exec');assert.equal(req.searchParams.get('garage_source_line'),'gp');assert.equal(req.searchParams.get('session_token'),'session-office');
+ session={username:'admin.test',role:'admin',line:'reagila',session_token:'rea-token',device_id:'dev-1'};dual={username:'admin.test',gp:{username:'admin.test',role:'admin',session_token:'gp-token',device_id:'dev-1'},reagila:session};
+ const payload={commandId:'same-command',command:'reservationCancel',payload:{ids:['r1']}};await configured.transport('garageAction',payload);let call=calls.pop();req=new URL(call.url);assert.equal(req.searchParams.get('session_token'),'gp-token');assert.equal(req.searchParams.get('garage_source_line'),'gp');assert.equal(call.options.method,'POST');assert.equal(JSON.parse(call.options.body).commandId,'same-command');assert.equal(call.options.headers['Content-Type'],'text/plain;charset=utf-8');assert.equal(session.line,'reagila');
+ dual.gp.username='different.test';await configured.transport('getGarage');req=new URL(calls.pop().url);assert.equal(req.searchParams.get('session_token'),'rea-token');assert.equal(req.searchParams.get('garage_source_line'),'reagila');
+ session={username:'rep.test',role:'rep west',session_token:'rep-token'};assert.equal(bridge.canAccess(),false);assert.equal(bridge.bootstrap(session),false);
+ session={username:'office.test',role:'office',session_token:'office-token'};let finish;context.fetch=()=>new Promise(r=>{finish=r;});const pending=configured.transport('garageAction',{commandId:'pending-command',command:'reservationCancel',payload:{ids:['r1']}});assert.equal(bridge.isSaving(),true,'PWA update must wait even when the Garage view closes during a write');finish({ok:true,json:async()=>({ok:true,snapshot:{me:{id:'office.test'}}})});await pending;assert.equal(bridge.isSaving(),false);
+ session=null;await assert.rejects(configured.transport('getGarage'),/prihlás/i);
+ for(const name of ['app.js','nahlad/app.js']){const source=fs.readFileSync(path.join(root,name),'utf8');assert.match(source,/SatoriGarageBridge\.bootstrap\(user\)/,'fresh office login routes to Garage');assert.match(source,/SatoriGarageBridge\.bootstrap\(session\)/,'restored office session routes to Garage');assert.match(source,/SatoriGarageBridge\.handlePush\(payload\)/,'garage push routes independently');}
+ console.log('Garage: shared authenticated transport, office-only boot and owner isolation passed');
+})().catch(e=>{console.error(e);process.exitCode=1;});

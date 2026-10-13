@@ -4,10 +4,11 @@ function fn(src,name){const start=src.indexOf('function '+name+'(');assert.ok(st
 for(const [file,line,prefix] of [['KOD_GOLEM.txt','gp','gp'],['KOD_GYN.txt','gyn','gyn'],['KOD_REAGILA.txt','reagila','gp']]){
  const src=fs.readFileSync(path.join(backend,file),'utf8'),roles=['admin','boss','bum','pm','am west','am east','am','rep west','rep east','kam','asistent'];
  const rows=roles.map((r,i)=>['u'+i,line,'token'+i,r]).concat([['other','other-line','token-other','rep'],['author',line,'token-author','rep']]);
- let calls=[],deleted=[];const sheet={getLastRow:()=>rows.length+1,getRange:()=>({getValues:()=>rows}),deleteRow:r=>deleted.push(r)};
+ let calls=[],deleted=[];const sheet={getLastRow:()=>rows.length+1,getRange:(row,col,n)=>({getValues:()=>n===1?[rows[row-2]]:rows}),deleteRow:r=>deleted.push(r)};
  const c={PUSH_LINE:line,NST_APP_URL_:'https://satori.test/',pushTokenSheet_:()=>sheet,pushSendRows_:(ss,r,l,t,b,url,event)=>{calls.push({r,l,event});return {sent:r.length};},pushSendToLogin_:(ss,l,login,t,b,url,event)=>calls.push({login,l,event}),nstMutedLogins_:()=>({u2:true}),nstMentionList_:s=>s.split(',').filter(Boolean),pushTeamAbsenceMutedLogins_:()=>({u3:true}),Logger:{log:()=>{}},FCM_PROJECT_ID:'test',fcmGetAccessToken_:()=> 'synthetic',pushLogDelivery_:()=>{}};
  c[prefix+'CalApproverLogins_']=()=>['u4','u5'];c.gynFindAmLogins_=()=>['u4','u5'];c[prefix+'UserPref_']=()=>true;c[prefix+'FmtRangeSk_']=()=> 'range';c[prefix.toUpperCase()+'_CAL_ABSENCE']={dovolenka:1,ocr:1,paragraf:1,administrativa:1,nahradne_volno:1};c[prefix.toUpperCase()+'_CAL_TYPE_LABELS']={dovolenka:'Dovolenka'};
  vm.createContext(c);
+ c.LockService={getScriptLock:()=>({tryLock:()=>true,releaseLock(){}})};
  vm.runInContext(fn(src,'pushMessagePayload_'),c);
  const payload=c.pushMessagePayload_('synthetic','title','body','https://satori.test/?cal=1','absence_request',line);
  assert.equal(payload.message.data.line,line);assert.equal(new URL(payload.message.data.link).searchParams.get('pushline'),line);
@@ -35,7 +36,7 @@ for(const [file,line,prefix] of [['KOD_GOLEM.txt','gp','gp'],['KOD_GYN.txt','gyn
  calls=[];c[prefix+'CalNotifyOnChange_']({},{...corporate,type:'poznamka',visibility:'all'},null,'author');assert.equal(calls.length,0,'Personal note is not a team notification');
  // A permission/payload/server error is not proof that a device token expired.
  c.pushMessagePayload_=()=>({});c.UrlFetchApp={fetchAll:()=>[400,403,404,404,503].map((code,i)=>({getResponseCode:()=>code,getContentText:()=>JSON.stringify({error:{details:i===3?[{'@type':'type.googleapis.com/google.firebase.fcm.v1.FcmError',errorCode:'UNREGISTERED'}]:[]}})}))};
- vm.runInContext(fn(src,'pushSendRows_'),c);c.pushSendRows_({},[2,3,4,5,6].map(rowIdx=>({rowIdx,token:'synthetic'})),line,'t','b','l','test','test');
+ vm.runInContext(fn(src,'pushSendRows_'),c);c.pushSendRows_({},[2,3,4,5,6].map(rowIdx=>({rowIdx,token:rows[rowIdx-2][2]})),line,'t','b','l','test','test');
  assert.deepEqual(deleted,[5],'Only confirmed UNREGISTERED token is removed');
  new vm.Script(src,{filename:file});
  console.log(file+': all roles, line/mute/author isolation, absence transitions and token retention passed');

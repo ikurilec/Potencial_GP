@@ -18,7 +18,7 @@ var messaging = firebase.messaging();
 var SATORI_PUSH_ICON_URL = new URL('../satori-notification-icon.png?v=2.88.7', self.registration.scope).href;
 
 // Data-only správy (bez 'notification' poľa) → notifikáciu zostavíme tu, žiadne duplicity.
-messaging.onBackgroundMessage(function(payload) {
+function showSatoriBackgroundMessage(payload) {
   var d = (payload && payload.data) || {};
   var title = d.title || 'Satori';
   // Každá správa má vlastný tag — rovnaký tag by staršiu neprečítanú notifikáciu PREPÍSAL
@@ -32,6 +32,21 @@ messaging.onBackgroundMessage(function(payload) {
     data: { link: d.link || 'https://ikurilec.github.io/Potencial_GP/' }
   };
   return self.registration.showNotification(title, options);
+}
+// Garage commits keep a stable event ID across delivery retries. Persist a small
+// receipt so a restarted worker cannot alert twice after the same server commit.
+var garagePushQueue = Promise.resolve();
+messaging.onBackgroundMessage(function(payload) {
+  var d=(payload&&payload.data)||{};
+  if(d.line!=='garage'||!/^garage_/.test(String(d.kind||'')))return showSatoriBackgroundMessage(payload);
+  var run=function(){return caches.open('satori-garage-push-receipts-v1').then(async function(cache){
+    var key=new URL('../garage-push-receipts/'+encodeURIComponent(d.kind),self.registration.scope).href;
+    if(await cache.match(key))return;
+    await showSatoriBackgroundMessage(payload);
+    await cache.put(key,new Response('1'));
+    var keys=await cache.keys();if(keys.length>200)await Promise.all(keys.slice(0,keys.length-200).map(function(k){return cache.delete(k);}));
+  });};
+  garagePushQueue=garagePushQueue.then(run,run);return garagePushQueue;
 });
 
 // Klik na notifikáciu → otvor/zameraj appku.

@@ -1,0 +1,12 @@
+'use strict';
+const fs = require('node:fs');
+const path = require('node:path');
+const root = path.resolve(__dirname, '..');
+const model = fs.readFileSync(path.join(root, 'garage-model.js'), 'utf8');
+const target = path.join(root, 'apps_script/KOD_GARAZ.txt');
+const source = fs.readFileSync(target, 'utf8');
+const begin = '// GARAGE_MODEL_BEGIN', end = '// GARAGE_MODEL_END';
+const a = source.indexOf(begin), b = source.indexOf(end);
+if (a < 0 || b <= a) throw Error('Garage backend domain markers missing');
+fs.writeFileSync(target, source.slice(0, a + begin.length) + '\n' + model + '\n' + source.slice(b), 'utf8');
+console.log('Garage backend embedded domain refreshed');

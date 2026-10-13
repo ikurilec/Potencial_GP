@@ -12,7 +12,7 @@ for(const line of ['GOLEM','GYN','REAGILA']){
   scSheet_:()=>{accessed++;assert.equal(got,true,'Never write durable cache without holding the lock');return {getLastRow:()=>1,getMaxRows:()=>100,getRange:()=>({setValues:rows=>written.push(rows)})};},scDeleteRows_:()=>{}};
  assert.match(s,/^var DATA_CACHE_TTL_SEC = 7200;/m,'Backend TTL definition must remain present');
  const constants=s.split('\n').filter(l=>/^var (CACHE_TTL_SEC|DATA_CACHE_TTL_SEC|CACHE_CHUNK_CHARS|CACHE_CHUNK_MARK|FORCE_FRESH_READ_)\s*=/.test(l)).join('\n');
- vm.createContext(c);vm.runInContext(constants+take('scPut_')+take('cacheGetText_')+take('cachePutText_')+take('bigPutText_'),c);
+ vm.createContext(c);vm.runInContext([constants,take('scPut_'),take('cacheGetText_'),take('cachePutText_'),take('bigPutText_')].join('\n'),c);
  c.bigPutText_({},'busy','prepared response',1000);
  assert.ok(wait<=250,'An optional cache write must not delay a prepared response by 20 seconds');
  assert.equal(accessed,0,'Busy durable cache is skipped');assert.equal(c.cacheGetText_('busy'),'prepared response','Fast cache is still populated');assert.equal(released,0);
