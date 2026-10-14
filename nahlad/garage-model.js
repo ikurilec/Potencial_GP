@@ -136,9 +136,27 @@ var SatoriGarageModel = (function () {
     var out = []; if (previous.start < replacement.start) out.push(releaseNotice(Object.assign({}, previous, { end: replacement.start < previous.end ? replacement.start : previous.end }), state)); if (replacement.end < previous.end) out.push(releaseNotice(Object.assign({}, previous, { start: replacement.end > previous.start ? replacement.end : previous.start }), state)); return out;
   }
   function clearOwnWaiting(state, m, day) { state.waitlist = state.waitlist.filter(function (x) { return x.owner !== m.id || x.date !== day; }); }
-  function autoParking(state, m, day, times, context, notices) {
-    var previous = state.reservations.filter(function (r) { return r.owner === m.id && r.date === day && !isFleet(r); }), result = { date: day, start: times.start, end: times.end }, eligible = state.config.slots.filter(function (s) { return s.active && (s.floor === -3 || s.floor === -1) && slotAllowed(s, m); }).sort(function (a, b) { return (a.floor === -3 ? 0 : 1) - (b.floor === -3 ? 0 : 1) || a.order - b.order; });
-    var covering = previous.find(function (r) { return r.start <= times.start && r.end >= times.end && eligible.some(function (s) { return s.id === r.spaceId; }); });
+  function parkingTargets(state, m, chosen) {
+    var eligible = state.config.slots.filter(function (s) { return s.active && (s.floor === -3 || s.floor === -1) && slotAllowed(s, m); }).sort(function (a, b) { return (a.floor === -3 ? 0 : 1) - (b.floor === -3 ? 0 : 1) || a.order - b.order; });
+    if (chosen === undefined) return eligible;
+    if (typeof chosen !== 'string' || !chosen) fail('INVALID_SPACE', 'Vyberte platné parkovanie.');
+    if (chosen === 'pool:-1') { var pool = eligible.filter(function (s) { return s.floor === -1; }); if (!pool.length) fail('RESTRICTED', 'Parkovanie na −1 nie je dostupné pre tento účet.'); return pool; }
+    var slot = slotFor(state, chosen, m); if (slot.floor !== -3) fail('INVALID_SPACE', 'Na −1 vyberte spoločné parkovanie bez čísla.'); return [slot];
+  }
+  function attendanceParkingChoices(state, actor, request, context) {
+    var m = actorMember(state, actor), p = request || {}, bounds = context || { today: state.serverDate };
+    if (!Array.isArray(p.dates) || !p.dates.length || p.dates.length > 30) fail('INVALID_PAYLOAD', 'Vyberte dni príchodu.');
+    var dates = p.dates.map(function (d) { return inWindow(d, bounds); }), times = interval(p, state.config), eligible = parkingTargets(state, m), choices = eligible.filter(function (s) { return s.floor === -3; }).map(function (s) { return { value: s.id, label: 'Miesto ' + s.number + ' · −3' }; });
+    if (eligible.some(function (s) { return s.floor === -1; })) choices.push({ value: 'pool:-1', label: 'Parkovanie na −1' });
+    return choices.filter(function (choice) {
+      var trial = copy({ config: state.config, members: state.members, reservations: state.reservations, blocks: state.blocks || [] });
+      trial.reservations = trial.reservations.filter(function (r) { return r.owner !== m.id || dates.indexOf(r.date) < 0 || isFleet(r); });
+      return dates.every(function (day) { var target = parkingTargets(trial, m, choice.value)[0], r = Object.assign({ id: '__attendance_preview__', owner: m.id, date: day, spaceId: target.id }, times); try { allocation(trial, r, []); return true; } catch (e) { if (['CONFLICT','RESTRICTED','INVALID_SPACE'].indexOf(e.code) >= 0) return false; throw e; } });
+    });
+  }
+  function autoParking(state, m, day, times, context, notices, chosen) {
+    var previous = state.reservations.filter(function (r) { return r.owner === m.id && r.date === day && !isFleet(r); }), result = { date: day, start: times.start, end: times.end }, eligible = parkingTargets(state, m, chosen);
+    var covering = previous.find(function (r) { return (chosen === undefined ? r.start <= times.start && r.end >= times.end : r.start === times.start && r.end === times.end) && eligible.some(function (s) { return s.id === r.spaceId; }); });
     if (covering) { clearOwnWaiting(state, m, day); result.status = 'existing'; result.reservationId = covering.id; result.spaceId = covering.spaceId; return result; }
     if (eligible.length) {
       var preferred = previous.length && eligible.find(function (s) { return s.id === previous[0].spaceId; });
@@ -155,6 +173,7 @@ var SatoriGarageModel = (function () {
         previous.forEach(function (r) { freedIntervals(r, reservation, state).forEach(function (n) { notices.push(n); }); });
         clearOwnWaiting(state, m, day); result.status = 'reserved'; result.reservationId = reservation.id; result.spaceId = reservation.spaceId; return result;
       }
+      if (chosen !== undefined) fail('CONFLICT', 'Vybrané miesto už nie je voľné na ' + day + ' v čase ' + times.start + ' – ' + times.end + '. Obnovte dostupnosť a vyberte iné miesto.');
       clearOwnWaiting(state, m, day); state.waitlist.push({ date: day, owner: m.id, start: times.start, end: times.end }); result.status = previous.length ? 'partlyWaiting' : 'waiting';
     } else { clearOwnWaiting(state, m, day); result.status = 'restricted'; }
     if (previous.length) result.existingReservations = copy(previous);
@@ -185,13 +204,17 @@ var SatoriGarageModel = (function () {
     if (command === 'attendanceSet') {
       if (!Array.isArray(p.dates) || !p.dates.length || p.dates.length > 30 || typeof p.office !== 'boolean' || (p.parking !== undefined && typeof p.parking !== 'boolean')) fail('INVALID_PAYLOAD', 'Vyberte dni dochádzky a stav parkovania.');
       if ((p.start !== undefined && (typeof p.start !== 'string' || !p.start)) || (p.end !== undefined && (typeof p.end !== 'string' || !p.end))) fail('INVALID_TIME', 'Zadajte platný čas dochádzky.');
+      if (p.spaces !== undefined && (!p.spaces || typeof p.spaces !== 'object' || Array.isArray(p.spaces) || !p.office || p.parking !== true || p.spaceId !== undefined)) fail('INVALID_PAYLOAD', 'Vyberte platné miesta pre dni príchodu autom.');
+      if (p.spaceId !== undefined && (!p.office || p.parking !== true)) fail('INVALID_PAYLOAD', 'Miesto môžete vybrať iba pri príchode autom.');
+      if (p.spaceId !== undefined) parkingTargets(next, m, p.spaceId);
       var dates = p.dates.map(function (d) { return inWindow(d, context); }).filter(function (d, i, a) { return a.indexOf(d) === i; }), days = []; times = interval(p, next.config);
+      if (p.spaces !== undefined) Object.keys(p.spaces).forEach(function (d) { if (dates.indexOf(d) < 0) fail('INVALID_PAYLOAD', 'Výber miesta nepatrí medzi vybrané dni.'); parkingTargets(next, m, p.spaces[d]); });
       dates.forEach(function (d) {
         var parkingDay = { date: d, status: 'officeOnly', start: times.start, end: times.end };
         if (!p.office || p.parking === false) {
           clearOwnWaiting(next, m, d);
           next.reservations = next.reservations.filter(function (x) { if (x.owner === m.id && x.date === d && !isFleet(x)) { notices.push(releaseNotice(x, next)); return false; } return true; });
-        } else if (p.parking === true) parkingDay = autoParking(next, m, d, times, context, notices);
+        } else if (p.parking === true) parkingDay = autoParking(next, m, d, times, context, notices, p.spaces !== undefined && Object.prototype.hasOwnProperty.call(p.spaces, d) ? p.spaces[d] : p.spaceId);
         if (p.office) {
           var covering = { start: times.start, end: times.end }; next.reservations.filter(function (r) { return r.owner === m.id && r.date === d && !isFleet(r); }).forEach(function (r) { if (r.start < covering.start) covering.start = r.start; if (r.end > covering.end) covering.end = r.end; });
           next.attendance = next.attendance.filter(function (x) { return x.owner !== m.id || x.date !== d; }); ensureAttendance(next, m, d, covering);
@@ -302,6 +325,6 @@ var SatoriGarageModel = (function () {
     var me = publicMember(m); me.canAdmin = canAdmin(m);
     return { ok: true, version: state.version, serverDate: context.today, window: w, me: me, config: copy(state.config), members: state.members.filter(function (x) { return x.active !== false || canAdmin(m); }).map(publicMember), attendance: copy(state.attendance.filter(inRange)), reservations: copy(state.reservations.filter(inRange)), offers: state.offers.filter(function (x) { return canAdmin(m) || x.from === m.id || x.to === m.id; }).map(function (x) { return { id: x.id, type: x.type, from: x.from, to: x.to, fromReservationId: x.fromReservationId, toReservationId: x.toReservationId, status: x.status === 'pending' && Date.parse(x.expiresAt) <= Date.parse(context.now) ? 'expired' : x.status, expiresAt: x.expiresAt }; }), waitlist: copy(state.waitlist.filter(inRange)), blocks: copy(state.blocks.filter(inRange)), audit: canAdmin(m) ? copy(state.audit.slice(-200)) : [] };
   }
-  return { createState: createState, apply: apply, snapshot: snapshot, windowFor: windowFor, validateCommandId: commandId, migrateLayout: migrateLayout, layoutNeedsMigration: layoutNeedsMigration, poolAvailability: poolAvailability };
+  return { createState: createState, apply: apply, snapshot: snapshot, windowFor: windowFor, validateCommandId: commandId, migrateLayout: migrateLayout, layoutNeedsMigration: layoutNeedsMigration, poolAvailability: poolAvailability, attendanceParkingChoices: attendanceParkingChoices };
 }());
 if (typeof module !== 'undefined' && module.exports) module.exports = SatoriGarageModel;

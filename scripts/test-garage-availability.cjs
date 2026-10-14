@@ -38,7 +38,13 @@ function oracle(rows, capacity, units, interval = INTERVAL) {
     if (last && last[1] === start && last[2] === available) last[1] = end; else out.push([start, end, available]);
   });
   return { available: Math.min(...values), windows: out };
-}
+}test('four-hour clock reflects full parking duration independently of displayed interval', () => {
+  for(const slot of ['b3-1','b1-7'])for(const [start,end,expected] of [['08:00','12:00',true],['08:00','12:01',false],['08:00','11:59',true],['08:00','16:00',false],['17:00','19:00',true]]){const s=setup();booking(s,slot,start,end);const original=JSON.stringify(s);for(const interval of [INTERVAL,{start:'09:00',end:'10:00'}])assert.equal(day(s,DATE,interval).shortReservation,expected,slot+' '+start+'-'+end);assert.equal(JSON.stringify(s),original);}
+});
+test('clock ignores blocks, attendance only, other dates and inactive numbered slots', () => {
+  const s=setup();block(s,'b3-1','09:00','10:00');s.attendance=[{owner:'u0',date:DATE,start:'08:00',end:'10:00'}];booking(s,'b3-2','08:00','10:00',{date:'2026-10-15'});s.config.slots.find(x=>x.id==='b3-3').active=false;booking(s,'b3-3','08:00','09:00');assert.equal(day(s).shortReservation,false);booking(s,'b1-7','12:00','13:00',{kind:'fleet',owner:'u11'});assert.equal(day(s).shortReservation,true);
+});
+
 test('UMD API exposes a pure day function', () => assert.equal(typeof A.day, 'function'));
 test('eight active physical places are free for an empty in-window day', () => {
   const r = day(setup()); assert.equal(r.known, true); assert.equal(r.capacity, 8); assert.equal(r.available, 8); assert.equal(r.partial, false);

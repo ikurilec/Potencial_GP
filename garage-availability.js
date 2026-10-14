@@ -136,7 +136,13 @@
       places.push({ id: 'pool--1', number: '', floor: -1, label: 'Parkovanie na −1', capacity: poolSlots.length, available: preview.available, partial: poolPartial, availableWholeInterval: preview.available > 0, bookings: poolRows.map(booked), blocks: poolBlocks.map(blocked), freeWindows: pooledWindows(poolRows, units, poolSlots.length, interval) });
       availableTotal += preview.available; if (poolPartial) partial = true;
     }
-    return { known: true, capacity: active.length, available: availableTotal, partial: partial, places: places };
+    // The clock describes the ORIGINAL reservation duration for this day,
+    // independently of the displayed interval. Blocks never count as arrivals.
+    var shortReservation = places.some(function (place) { return place.bookings.some(function (row) {
+      var duration=(Number(row.end.slice(0,2))*60+Number(row.end.slice(3)))-(Number(row.start.slice(0,2))*60+Number(row.start.slice(3)));
+      return duration>0 && duration<=240;
+    }); });
+    return { known: true, capacity: active.length, available: availableTotal, partial: partial, shortReservation: shortReservation, places: places };
   }
   return { day: day };
 }));
