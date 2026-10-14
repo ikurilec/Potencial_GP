@@ -32,7 +32,17 @@
     else {if(active&&id(active)===owner)add(active.line||'gp',active);var dual=typeof w.mgrGetDual==='function'?w.mgrGetDual():null;if(dual&&id(dual)===owner)['gp','gyn','reagila'].forEach(function(line){add(line,dual[line]);});if(ctx&&String(ctx.username).toLowerCase()===owner)['gp','gyn','reagila'].forEach(function(line){add(line,ctx.data[line]);});}
     return Array.from(out.values());
   }
-  function accessUiState(username,dataMap){var rows=accessCandidates(username,dataMap),records=rows.map(function(row){return accessChecks.get(row.key);}).filter(Boolean);if(records.some(function(r){return r.status==='allowed';}))return {status:'allowed'};if(records.some(function(r){return r.status==='checking';}))return {status:'checking'};if(records.some(function(r){return r.status==='failed';}))return {status:'failed'};return {status:'unknown'};}
+  var ACCESS_HINT_PREFIX='satori_garage_access_hint_v1_';
+  // Layout hint only: never used by canAccessSession, source or transport.
+  function rememberAccessHint(owner,line,allowed){try{w.localStorage.setItem(ACCESS_HINT_PREFIX+line+'_'+owner,JSON.stringify({allowed:allowed===true,checkedAt:Date.now()}));}catch(e){}}
+  function knownAccessHint(owner,line){try{
+    var raw=w.localStorage.getItem(ACCESS_HINT_PREFIX+line+'_'+owner),now=Date.now(),ttl=30*86400000;
+    if(raw){var hint=JSON.parse(raw);return hint.allowed===true&&Number(hint.checkedAt)>0&&now>=Number(hint.checkedAt)&&now-Number(hint.checkedAt)<ttl;}
+    // Migrate the display hint from an existing Garage cache after the update.
+    var saved=JSON.parse(w.localStorage.getItem('satori_garage_snapshot_v1_'+owner)||'null'),member=saved&&saved.snapshot&&saved.snapshot.me,binding=saved&&saved.snapshot&&Array.isArray(saved.snapshot.members)&&saved.snapshot.members.find(function(m){return m.id===owner;});
+    return !!(saved&&saved.snapshot.ok&&member&&member.id===owner&&member.access!==false&&binding&&binding.sourceLine===line&&binding.active!==false&&binding.access!==false&&Number(saved.savedAt)>0&&now>=Number(saved.savedAt)&&now-Number(saved.savedAt)<ttl);
+  }catch(e){return false;}}
+  function accessUiState(username,dataMap){var rows=accessCandidates(username,dataMap),records=rows.map(function(row){return accessChecks.get(row.key);}).filter(Boolean),known=rows.some(function(row){var record=accessChecks.get(row.key);return (!record||record.status!=='denied')&&knownAccessHint(id(row.data),row.line);});if(records.some(function(r){return r.status==='allowed';}))return {status:'allowed',known:true};if(records.some(function(r){return r.status==='checking';}))return {status:'checking',known:known};if(records.some(function(r){return r.status==='failed';}))return {status:'failed',known:known};return {status:'unknown',known:known};}
   function retryAccess(){var active=me(),key=active&&grantKey(active),epoch=generation,rows=accessCandidates().filter(function(row){var r=accessChecks.get(row.key);return r&&r.status==='failed';});return Promise.allSettled(rows.map(function(row){return checkLoginAccess(id(row.data),row.line,row.data);})).then(function(results){var current=me();if(rows.length&&epoch===generation&&key&&current&&grantKey(current)===key&&officeOnly(current)&&canAccess()&&!isOpen())bootstrap(current);return results;});}
   async function checkLoginAccess(username,line,data){
     var owner=String(username||'').trim().toLowerCase(),s=Object.assign({},data,{username:owner,line:line});
@@ -48,7 +58,7 @@
         if(snap&&snap.code==='NOT_MEMBER')return false;var message=snap&&snap.error||'Prístup do Garáže sa nepodarilo overiť.',terminal=/unknown action|unsupported.*action|session|forbidden|unauthori[sz]ed|prihlás/i.test(message)||/^(UNKNOWN_ACTION|UNAUTHORIZED|SESSION_EXPIRED|IDENTITY_MISMATCH)$/.test(snap&&snap.code||'');if(/unknown action|unsupported.*action/i.test(message))message='Garáž ešte nie je nasadená na serveri. Správca musí aktualizovať Golem Apps Script.';throw Object.assign(new Error(message),{terminal:terminal});
       }finally{clearTimeout(timer);controllers.delete(ctrl);}
     }
-    var task=(async function(){try{var allowed;try{allowed=await attempt(10000);}catch(e){if(epoch!==generation||e.terminal)throw e;allowed=await attempt(20000);}if(epoch!==generation)throw new Error('Prihlásenie sa zmenilo.');record.status=allowed?'allowed':'denied';if(allowed)grants.set(key,true);else grants.delete(key);data.garage_access=allowed;applyAccessRecord(record,allowed);refreshAccessUi();return allowed;
+    var task=(async function(){try{var allowed;try{allowed=await attempt(10000);}catch(e){if(epoch!==generation||e.terminal)throw e;allowed=await attempt(20000);}if(epoch!==generation)throw new Error('Prihlásenie sa zmenilo.');record.status=allowed?'allowed':'denied';rememberAccessHint(owner,line,allowed);if(allowed)grants.set(key,true);else grants.delete(key);data.garage_access=allowed;applyAccessRecord(record,allowed);refreshAccessUi();return allowed;
       }catch(e){if(epoch!==generation)throw new Error('Prihlásenie sa zmenilo.');record.status='failed';record.error=e.name==='AbortError'?'Prístup do Garáže sa nepodarilo overiť. Skontroluj spojenie a skús znova.':e.message;data.garage_error=record.error;applyAccessRecord(record,false);refreshAccessUi();throw new Error(record.error);}
     })();accessProbes.set(key,task);try{return await task;}finally{if(accessProbes.get(key)===task)accessProbes.delete(key);}
   }
@@ -80,6 +90,7 @@
   function currentSource(auth){var s=me(),dual=typeof w.mgrGetDual==='function'?w.mgrGetDual():null;return !!(s&&((s.line||'gp')===auth.line&&grantKey(s)===auth.key||dual&&id(dual)===auth.owner&&dual[auth.line]&&grantKey(dual[auth.line],auth.line)===auth.key));}
   function refreshAccessUi(){try{if(typeof w.mgrRenderLineSwitch==='function')w.mgrRenderLineSwitch();if(typeof w.viacRender==='function'&&w.document.getElementById('viac-overlay')&&w.document.getElementById('viac-overlay').classList.contains('show'))w.viacRender();var ctx=w._lineChooserCtx;if(ctx&&typeof w.showLineChooser==='function')w.showLineChooser(ctx.username,ctx.lines.filter(function(line){return line!=='garage';}),ctx.data,ctx.pending,ctx.failed);}catch(e){}}
   function revoke(owner){
+    ['gp','gyn','reagila'].forEach(function(line){rememberAccessHint(owner,line,false);});
     generation++;restorePromise=null;accessProbes.clear();accessChecks.clear();controllers.forEach(function(ctrl){ctrl.abort();});
     grants.forEach(function(value,key){if(JSON.parse(key)[0]===owner)grants.delete(key);});
     var s=me(),dual=typeof w.mgrGetDual==='function'?w.mgrGetDual():null,resume=!!(s&&s.garage_start&&!officeOnly(s));

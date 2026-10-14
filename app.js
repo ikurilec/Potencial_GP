@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.92.6';
+var APP_VERSION = '2.92.7';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -10911,10 +10911,11 @@ function lineChooserMeta(line){
 function lineShouldShowChooser(avail){ return (avail || []).length >= 2; }
 function garageAccessRecoveryMarkup(username,dataMap,menu){
   if(!window.SatoriGarageBridge||typeof SatoriGarageBridge.accessUiState!=='function')return '';
-  var state=SatoriGarageBridge.accessUiState(username,dataMap).status;
+  var accessState=SatoriGarageBridge.accessUiState(username,dataMap),state=accessState.status;
+  if(state==='checking'&&accessState.known){return menu?'<button type="button" class="viac-line" disabled aria-busy="true"><span>🚘 Garáž</span><span>Overujem prístup…</span></button>':'';}
   if(state==='checking')return '<p class="login-help" role="status" aria-live="polite">Overujem ďalšie rozhrania…</p>';
   if(state!=='failed')return '';
-  return '<div class="garage-access-recovery"><p class="login-help" role="status">Niektoré rozhrania sa nepodarilo overiť.</p><button type="button" class="'+(menu?'viac-line':'line-choose-btn')+'" data-garage-access-retry onclick="SatoriGarageBridge.retryAccess()"><span>↻ Overiť dostupné rozhrania</span></button></div>';
+  return (menu&&accessState.known?'<button type="button" class="viac-line" disabled><span>🚘 Garáž</span><span>Overenie zlyhalo</span></button>':'')+'<div class="garage-access-recovery"><p class="login-help" role="status">Niektoré rozhrania sa nepodarilo overiť.</p><button type="button" class="'+(menu?'viac-line':'line-choose-btn')+'" data-garage-access-retry onclick="SatoriGarageBridge.retryAccess()"><span>↻ Overiť dostupné rozhrania</span></button></div>';
 }
 function lineGarageLoginSource(username,dataMap){
   if(typeof SatoriGarageBridge==='undefined'||!dataMap)return '';
@@ -10948,14 +10949,16 @@ function showLineChooser(username, lines, dataMap, pending, failed){
   var ov = document.getElementById('line-chooser-screen');
   if(!ov){ ov = document.createElement('div'); ov.id = 'line-chooser-screen'; ov.className = 'login-screen'; document.body.appendChild(ov); }
   var nm = (dataMap.gp && dataMap.gp.name) || (dataMap.gyn && dataMap.gyn.name) || (dataMap.reagila && dataMap.reagila.name) || username;
+  var garageState=typeof SatoriGarageBridge!=='undefined'&&typeof SatoriGarageBridge.accessUiState==='function'?SatoriGarageBridge.accessUiState(username,dataMap):{status:'unknown'};
+  var garagePending=lines.indexOf('garage')===-1&&garageState.known&&(garageState.status==='checking'||garageState.status==='failed');
   var poradie = ['gp', 'gyn', 'reagila', 'garage'];
   var vsetky = poradie.filter(function (ln) {
-    return lines.indexOf(ln) !== -1 || (pending || []).indexOf(ln) !== -1 || (failed || []).indexOf(ln) !== -1;
+    return lines.indexOf(ln) !== -1 || (ln==='garage'&&garagePending) || (pending || []).indexOf(ln) !== -1 || (failed || []).indexOf(ln) !== -1;
   });
   var btns = vsetky.map(function(ln){
     var m = lineChooserMeta(ln);
     var caka = lines.indexOf(ln) === -1;
-    var zlyhala = (failed || []).indexOf(ln) !== -1;
+    var zlyhala = (failed || []).indexOf(ln) !== -1 || ln==='garage'&&garagePending&&garageState.status==='failed';
     caka = caka && !zlyhala;
     // Prvé zlyhanie hneď spustí tichý pokus na pozadí (retryOne) — kým beží,
     // línia nie je natrvalo mŕtva, len sa to (zatiaľ) nedarí. Bez tohto
@@ -10964,24 +10967,26 @@ function showLineChooser(username, lines, dataMap, pending, failed){
     var skusaZnova = zlyhala && !!_lineRetryInFlight[ln];
     var mrtva = zlyhala && !skusaZnova;
     var stateCls = caka ? ' caka' : skusaZnova ? ' caka skusa-znova' : mrtva ? ' zlyhala' : '';
-    var descTxt = caka ? 'načítavam…' : skusaZnova ? 'skúšam znova…' : mrtva ? 'server neodpovedal' : m.desc;
+    var descTxt = ln==='garage'&&garagePending ? (zlyhala?'Prístup sa nepodarilo overiť':'Overujem prístup…') : caka ? 'načítavam…' : skusaZnova ? 'skúšam znova…' : mrtva ? 'server neodpovedal' : m.desc;
     return '<button type="button" class="line-choose-btn' + stateCls + '"' +
              ' id="line-choose-' + ln + '"' +
-             ((caka || skusaZnova || mrtva) ? ' disabled' : ' onclick="pickLine(\'' + ln + '\')"') + '>' +
+             ((caka || skusaZnova || mrtva) ? ' disabled'+(caka||skusaZnova?' aria-busy="true"':'') : ' onclick="pickLine(\'' + ln + '\')"') + '>' +
              '<span class="line-choose-emoji">' + m.emoji + '</span>' +
              '<span class="line-choose-txt"><span class="line-choose-lbl">' + lineChooserEsc(m.label) + '</span>' +
              '<span class="line-choose-desc">' + lineChooserEsc(descTxt) + '</span></span>' +
              ((caka || skusaZnova) ? '<span class="line-choose-spin"></span>' : mrtva ? '<span class="line-choose-arrow">!</span>' : '<span class="line-choose-arrow">→</span>') +
            '</button>';
   }).join('');
-  ov.innerHTML =
-    '<div class="login-card" style="margin-top:auto;margin-bottom:auto">' +
+  var cardMarkup =
       '<div class="login-card-title">Vitaj, ' + lineChooserEsc(nm) + ' <span class="login-wave">👋</span></div>' +
       '<div class="login-card-sub">Máš prístup do viacerých rozhraní — ktoré chceš zobraziť?</div>' +
       '<div class="line-choose-list">' + btns + '</div>' + garageAccessRecoveryMarkup(username,dataMap,false) +
       '<label class="line-remember"><input type="checkbox" id="line-remember-cb"><span>Zapamätať a nabudúce otvárať rovno toto rozhranie na tomto zariadení</span></label>' +
-      '<div class="login-help" style="margin-top:14px">Voľbu kedykoľvek zmeníš v Nastaveniach.</div>' +
-    '</div>';
+      '<div class="login-help" style="margin-top:14px">Voľbu kedykoľvek zmeníš v Nastaveniach.</div>';
+  // Preserve the entrance animation and card position while access checks finish.
+  var existingCard=ov.querySelector&&ov.querySelector('.login-card');
+  if(existingCard)existingCard.innerHTML=cardMarkup;
+  else ov.innerHTML='<div class="login-card" style="margin-top:auto;margin-bottom:auto">'+cardMarkup+'</div>';
   ov.classList.add('show');
   try { var newCb=document.getElementById('line-remember-cb'); if(newCb) newCb.checked=keepRemember; } catch(e){}
 }
