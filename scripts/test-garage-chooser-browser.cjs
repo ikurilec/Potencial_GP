@@ -20,9 +20,9 @@ try{for(const prefix of (process.env.SATORI_SOURCE_TEST?['']:['','nahlad/']))for
  await page.goto('https://satori.test/'+prefix+'index.html');await page.locator('#login-user').fill('chooser.fixture');await page.locator('#login-pass').fill('fixture-password');await page.locator('#login-btn').click();
  if(scenario.office){
    if(!scenario.garage){await page.waitForSelector('#login-err.show');assert.match(await page.locator('#login-err').innerText(),/prístup/i);assert.equal(await page.locator('#satori-garage').count(),0);assert.deepEqual(actions.filter(a=>/^(getInitData|getPlnenie|getPharma|getLekarne|getNastenka|getCalEvents|getAllHistory)/.test(a.action)),[]);assert.deepEqual(errors,[]);await context.close();console.log(prefix+scenario.name+' passed');continue;}
-   await page.waitForSelector('[data-garage-action="attendance-save"]');const count=actions.length;restored=true;await page.reload();
+   await page.waitForSelector('[data-garage-action="attendance-open"]');const count=actions.length;restored=true;await page.reload();
    if(scenario.revokeOnReload){await page.waitForSelector('#login-err.show');assert.match(await page.locator('#login-err').innerText(),/prístup/i);assert.equal(await page.evaluate(()=>SatoriGarageBridge.canAccess()),false);}
-   else await page.waitForSelector('[data-garage-action="attendance-save"]');
+   else await page.waitForSelector('[data-garage-action="attendance-open"]');
    assert.deepEqual(actions.slice(count).filter(a=>/^(getInitData|getPlnenie|getPharma|getLekarne|getNastenka|getCalEvents|getAllHistory)/.test(a.action)),[]);assert.deepEqual(errors,[]);await context.close();console.log(prefix+scenario.name+' passed');continue;
  }
  await page.waitForSelector('#line-chooser-screen.show',{timeout:2000});
@@ -30,7 +30,7 @@ try{for(const prefix of (process.env.SATORI_SOURCE_TEST?['']:['','nahlad/']))for
  if(!scenario.garage){await page.waitForTimeout(300);assert.equal(await page.locator('#line-choose-garage').count(),0);await context.close();continue;}
  await page.waitForSelector('#line-choose-garage');assert.match(await page.locator('#line-choose-garage').innerText(),/Garáž.*Parkovanie a kancelária/s);
  if(scenario.name==='all-managers'&&!prefix){fs.mkdirSync(path.join(root,'.tmp'),{recursive:true});await page.screenshot({path:path.join(root,'.tmp','garage-login-2.90.1.png')});}
- await page.locator('#line-remember-cb').check();const before=actions.length;await page.locator('#line-choose-garage').click();await page.waitForSelector('[data-garage-action="attendance-save"]');
+ await page.locator('#line-remember-cb').check();const before=actions.length;await page.locator('#line-choose-garage').click();await page.waitForSelector('[data-garage-action="attendance-open"]');
  assert.equal(await page.evaluate(()=>getSession().line||'gp'),scenario.source);assert.equal(await page.evaluate(()=>getSession().garage_start),true);
  assert.equal(await page.evaluate(()=>localStorage.getItem('line_pref_chooser.fixture')),'garage');
  assert.deepEqual(actions.slice(before).filter(a=>/^(getInitData|getPlnenie|getPharma|getLekarne|getNastenka|getCalEvents|getAllHistory)/.test(a.action)),[],'direct Garage entry must not load medical data');
@@ -39,7 +39,7 @@ try{for(const prefix of (process.env.SATORI_SOURCE_TEST?['']:['','nahlad/']))for
  if(scenario.name==='all-managers'&&!prefix)await page.screenshot({path:path.join(root,'.tmp','garage-profile-2.90.1.png')});
  const count=actions.length;restored=true;await page.reload();
  if(scenario.revokeOnReload){await page.waitForFunction(()=>getSession()&&getSession().garage_start===undefined&&!SatoriGarageBridge.canAccess());assert.equal(await page.locator('#satori-garage').count(),0);assert.ok(actions.slice(count).some(a=>/getInitData|getPlnenie|getRepList|getCalEvents|getAllHistory/.test(a.action)));assert.deepEqual(errors,[]);await context.close();console.log(prefix+scenario.name+' passed');continue;}
- await page.waitForSelector('[data-garage-action="attendance-save"]');assert.deepEqual(actions.slice(count).filter(a=>/^(getInitData|getPlnenie|getPharma|getLekarne|getNastenka|getCalEvents|getAllHistory)/.test(a.action)),[],'restored Garage session must not load medical data');
+ await page.waitForSelector('[data-garage-action="attendance-open"]');assert.deepEqual(actions.slice(count).filter(a=>/^(getInitData|getPlnenie|getPharma|getLekarne|getNastenka|getCalEvents|getAllHistory)/.test(a.action)),[],'restored Garage session must not load medical data');
  await page.getByRole('button',{name:'Menu Garáže'}).click();await page.locator('#viac-body .viac-line').filter({hasText:{gp:'Golem',gyn:'Gynekológia',reagila:'Reagila'}[scenario.source]}).click();await page.waitForFunction(()=>!document.getElementById('satori-garage'));await page.waitForTimeout(300);assert.equal(await page.evaluate(()=>getSession().garage_start),undefined);assert.ok(actions.slice(count).some(a=>/getInitData|getPlnenie|getRepList|getCalEvents|getAllHistory/.test(a.action)),'return resumes the real medical bootstrap');
  assert.deepEqual(errors,[],scenario.name+' '+prefix);await context.close();console.log(prefix+scenario.name+' passed');
 }console.log('Garage login: live/preview role choices, member discovery, remembered entry, restored sessions, back and 320px profile visibility passed');}finally{await browser.close();}

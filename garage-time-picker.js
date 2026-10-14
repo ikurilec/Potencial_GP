@@ -83,6 +83,7 @@
     document.body.style.overflow = current.bodyOverflow;
     document.documentElement.style.overflow = current.htmlOverflow;
     if (current.returnFocus && current.returnFocus.isConnected && typeof current.returnFocus.focus === 'function') current.returnFocus.focus({ preventScroll: true });
+    if (typeof current.options.onClose === 'function') current.options.onClose();
   }
   function open(options) {
     options = options || {};

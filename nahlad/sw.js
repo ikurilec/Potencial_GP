@@ -5,7 +5,7 @@
 // ║  cache-first pre ostatné assety (rýchly štart, offline ready).║
 // ╚══════════════════════════════════════════════════════════════╝
 
-var CACHE_NAME = 'potencial-nahlad-vfb179ed3';
+var CACHE_NAME = 'potencial-nahlad-va6b51ad3';
 // Názvy súborov nižšie aj CACHE_NAME vyššie píše "node scripts/build.mjs" —
 // nemeniť ručne, prepíše sa to pri ďalšom builde. Hash v názve = odtlačok
 // obsahu app.js/app.css, nie čísla verzie — zmení sa len keď sa obsah zmení.
@@ -15,14 +15,14 @@ var APP_SHELL = [
   './apple-touch-icon.png',
   './satori-notification-icon.png',
   './dist/app.2b29cb92.css',
-  './dist/app.1cacde0a.js',
-  './dist/garage.31925a23.css',
+  './dist/app.3aeb7590.js',
+  './dist/garage.ba42bd2e.css',
   './dist/garage-model.42f197ea.js',
   './dist/garage-availability.671f84d0.js',
   './dist/garage-cars.714d2208.js',
-  './dist/garage-time-picker.89cf7731.js',
-  './dist/garage.448a056a.js',
-  './dist/garage-shell.5f72260f.js',
+  './dist/garage-time-picker.c065afca.js',
+  './dist/garage.8d02e529.js',
+  './dist/garage-shell.0b061aa5.js',
   './dist/garage-integration.09292a54.js',
   './assets/garage/cars/skoda-kodiaq.b00b26bc.webp',
   './assets/garage/cars/skoda-octavia-combi.62b405ea.webp',
