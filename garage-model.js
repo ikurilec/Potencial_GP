@@ -10,7 +10,17 @@ var SatoriGarageModel = (function () {
     return v;
   }
   function text(value, max) { return String(value || '').trim().slice(0, max || 160); }
-  function vehicle(value) { var v = value || {}, brand = String(v.brand || '').trim(), color = String(v.color || '#64748b').toLowerCase(); if (brand.length > 60 || /[\u0000-\u001f\u007f]/.test(brand) || !/^#[0-9a-f]{6}$/.test(color)) fail('INVALID_VEHICLE', 'Zadajte značku auta do 60 znakov a platnú farbu.'); return { brand: brand, color: color }; }
+  function vehicle(value) {
+    var v=value||{},brand=String(v.brand||'').trim(),color=String(v.color||'#64748b').toLowerCase();
+    if(brand.length>60||/[\u0000-\u001f\u007f]/.test(brand)||!/^#[0-9a-f]{6}$/.test(color)||v.kind!==undefined&&v.kind!=='other')fail('INVALID_VEHICLE','Zadajte model auta do 60 znakov a platnú farbu.');
+    var out={brand:brand,color:color};
+    if(v.kind==='other'){
+      var raw=typeof v.plate==='string'?v.plate:'',plate=raw.trim().toUpperCase().replace(/ +/g,' ');
+      if(!brand||/[\u0000-\u001f\u007f]/.test(raw)||!/^[- A-Z0-9\u00C0-\u024F]{2,20}$/.test(plate))fail('INVALID_VEHICLE','Pri inom aute vyplňte model a platnú ŠPZ do 20 znakov.');
+      out.kind='other';out.plate=plate;
+    }
+    return out;
+  }
   function fleetName(value) { if (typeof value !== 'string' || !value.trim() || value.trim().length > 120 || /[\u0000-\u001f\u007f]/.test(value)) fail('INVALID_PAYLOAD', 'Zadajte celé meno osoby do 120 znakov.'); return value.trim(); }
   function fleetVehicle(value) { if (!value || typeof value !== 'object' || Array.isArray(value) || typeof value.brand !== 'string' || !value.brand.trim() || value.brand.trim().length > 60 || /[\u0000-\u001f\u007f]/.test(value.brand) || typeof value.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(value.color)) fail('INVALID_VEHICLE', 'Zadajte značku auta do 60 znakov a platnú farbu.'); return vehicle(value); }
   function date(value) {
