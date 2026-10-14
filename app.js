@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.92.2';
+var APP_VERSION = '2.92.3';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -1367,11 +1367,12 @@ var _swUpdateTimer = null;
 function _applySwUpdate(){
   if(_isAppBusy()){
     _swUpdatePending = true;
+    showUpdateBanner(window._serverVersion);
   } else {
     if(_swUpdateTimer) return;
     _swUpdatePending = false;
     showSwToast('Aktualizujem appku…');
-    _swUpdateTimer = setTimeout(function(){ _swUpdateTimer = null; appReload(); }, 1500);
+    _swUpdateTimer = setTimeout(function(){ _swUpdateTimer = null; if(_isAppBusy()){_swUpdatePending=true;showUpdateBanner(window._serverVersion);return;} appReload(); }, 1500);
   }
 }
 
@@ -1450,18 +1451,26 @@ function checkForUpdate(){
   } catch(e){}
 }
 
+function appUpdateBannerLayout(){
+  var bar=document.getElementById('update-bar');if(!bar||!bar.classList.contains('show'))return;
+  document.body.classList.add('app-update-visible');document.body.style.setProperty('--app-update-height',Math.ceil(bar.getBoundingClientRect().height)+'px');
+}
+window.addEventListener('resize',appUpdateBannerLayout);
+document.addEventListener('satori-garage-open',appUpdateBannerLayout);
 function showUpdateBanner(serverVer){
   var bar = document.getElementById('update-bar');
   if(!bar) return;
   bar.innerHTML = '<span class="update-bar-icon">⬇</span>Nová verzia: <strong>'+(serverVer||'?')+'</strong> (máte <strong>'+APP_VERSION+'</strong>) — ťuknúť pre update';
-  if(bar.classList.contains('show')) return;
+  if(bar.classList.contains('show')){appUpdateBannerLayout();return;}
   bar.classList.add('show');
+  appUpdateBannerLayout();
   try { if(navigator.vibrate) navigator.vibrate(30); } catch(e){}
 }
 
 // Klik na banner → tvrdý reload s cache-bust URL parametrom.
 // Bez SW, bez caches API — čisto cez prehliadač.
 function applyUpdate(){
+  if(typeof SatoriGarageBridge!=='undefined'&&SatoriGarageBridge.isSaving()){showSwToast('Najprv dokončíme uloženie rezervácie. Potom môžete aktualizovať.');return;}
   var bar = document.getElementById('update-bar');
   if(bar){
     bar.innerHTML = '<span class="update-bar-icon">&#9203;</span>Aktualizujem apku...';
