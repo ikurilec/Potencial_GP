@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.92.4';
+var APP_VERSION = '2.92.5';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -1109,7 +1109,7 @@ function pushHandleForeground(payload){
   }
   pushShowForegroundBanner(title,body);
 }
-function pushShowForegroundBanner(title, body){
+function pushShowForegroundBanner(title, body, action){
   try {
     var wrap = document.getElementById('notif-banner-wrap');
     if (!wrap) {
@@ -1154,6 +1154,14 @@ function pushShowForegroundBanner(title, body){
     };
     inner.appendChild(iconEl);
     inner.appendChild(txtEl);
+    if(action && typeof action.onOpen === 'function'){
+      var openBtn = document.createElement('button');
+      openBtn.type = 'button';
+      openBtn.className = 'notif-banner-close';
+      openBtn.textContent = action.label || 'Otvoriť';
+      openBtn.onclick = function(){ btn.onclick(); action.onOpen(); };
+      inner.appendChild(openBtn);
+    }
     inner.appendChild(btn);
     wrap.appendChild(inner);
     try { haptic && haptic('light'); } catch(e){}

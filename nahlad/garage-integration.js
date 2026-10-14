@@ -165,7 +165,7 @@
     }
     if(d.link){try{d=Object.assign({},d,{date:new URL(d.link,w.location.href).searchParams.get('date')||d.date});}catch(e){}}
     if(w.SatoriGarage)w.SatoriGarage.handlePush(d);
-    if(typeof w.pushShowForegroundBanner==='function')w.pushShowForegroundBanner(d.title||'Garáž',d.body||'V Garáži sa zmenili rezervácie.');return true;
+    if(typeof w.pushShowForegroundBanner==='function'){var gen=generation,isOffer=/^garage_offer(?:_|-)/.test(String(d.kind||''));w.pushShowForegroundBanner(d.title||'Garáž',d.body||'V Garáži sa zmenili rezervácie.',{label:isOffer?'Zobraziť ponuku':'Otvoriť Garáž',onOpen:function(){if(gen===generation&&owner===id(me())&&canAccess())open(isOffer?{view:'offers',date:d.date}:{date:d.date});}});}return true;
   }
   w.SatoriGarageBridge={canAccess:canAccess,canAccessSession:canAccessSession,checkLoginAccess:checkLoginAccess,accessUiState:accessUiState,retryAccess:retryAccess,restore:restore,users:users,resumeMedical:resumeMedical,officeOnly:officeOnly,open:open,close:close,isOpen:isOpen,isSaving:function(){return saving>0;},reset:reset,bootstrap:bootstrap,handlePush:handlePush,transport:transport,targets:targets,registerPush:registerPush};
   configure();

@@ -52,7 +52,7 @@ function setup(options={}) {
   }
   env.props.GARAGE_GYN_SHEET_ID='sheet-gyn';env.props.GARAGE_REAGILA_SHEET_ID='sheet-reagila';
   const fixed='2026-10-12T07:00:00Z';class FixedDate extends Date{constructor(...args){super(...(args.length?args:[env.now||fixed]));}static now(){return Date.parse(env.now||fixed);}}
-  function context(){const ctx={Date:FixedDate,console,JSON,Math,Error,API_TOKEN:'test-api',_pouzMemo:null,AUTH_SESSION_REMEMBER_DAYS:30,AUTH_SESSION_HOURS:12,FORCE_FRESH_READ_:false,
+  function context(){const ctx={Date:FixedDate,console,JSON,Math,Error,API_TOKEN:'test-api',SHEET_ID:'sheet-gp',_pouzMemo:null,AUTH_SESSION_REMEMBER_DAYS:30,AUTH_SESSION_HOURS:12,FORCE_FRESH_READ_:false,
     SpreadsheetApp:{openById:id=>{if(!env.books[id])throw Error('no spreadsheet');return env.books[id];},flush:()=>{if(env.failFlush)throw Error('flush failed');env.flushes++;}},
     LockService:{getScriptLock:()=>({tryLock:ms=>{env.lockAttempts.push(ms);if(env.locked)return false;env.locked=true;return true;},waitLock:ms=>{env.lockAttempts.push(ms);if(env.locked)throw Error('busy');env.locked=true;},releaseLock:()=>{env.locked=false;},hasLock:()=>env.locked})},
     PropertiesService:{getScriptProperties:()=>({getProperty:k=>env.props[k]||null})},
@@ -362,5 +362,23 @@ test('birthday parser accepts actual dates, D.M and ISO while optional source fa
   const snapshot=f.call('office.a','getGarage');assert.deepEqual(snapshot.celebrations,[]);const state=f.ctx.garageReadState_(f.ss);state.members.push({id:'manager',name:'Gyn Manager',sourceLine:'gyn',role:'management',active:true});
   const lock=f.ctx.garageTakeLock_();f.ctx.garageWriteState_(f.ss,state);lock.releaseLock();delete f.env.books['sheet-gyn'];assert.deepEqual(plain(f.ctx.garageCelebrations_(f.ss,state,f.ctx.garageClock_())),[]);
 });
+
+test('offer notifications target only the receiver, durable retry and response target both parties',()=>{
+ const f=setup();f.ss.sheets.Push_Tokens=new FakeSheet('Push_Tokens',f.env,[['login','line','token','updated_at'],['office.a','garage','token-a','date'],['office.b','garage','token-b','date'],['office.b','gp','medical-b','date'],['manager','garage','unrelated-manager','date']]);
+ const reservation=f.mutate('office.a','reservationSave',{date:'2026-10-13',spaceId:'b3-1'}).result;
+ const payload={type:'transfer',fromReservationId:reservation.id,to:'office.b'},offer=f.mutate('office.a','offerCreate',payload,'offer-command');assert.equal(offer.ok,true);assert.equal(offer.pushPending,true);assert.equal(f.ctx.garageReadState_(f.ss).reservations[0].owner,'office.a');assert.equal(f.env.sends.length,0);
+ const pending=f.ctx.garageReadState_(f.ss).outbox;assert.equal(pending.length,1);assert.deepEqual(plain(pending[0].notice.audience),['office.b']);
+ assert.equal(f.mutate('office.a','offerCreate',payload,'offer-command').ok,true);assert.equal(f.ctx.garageReadState_(f.ss).outbox.length,1,'Retry must not enqueue duplicate offer');
+ f.env.failPush=true;f.ctx.garageDrainOutbox_(f.ss);assert.deepEqual(f.env.sends.flatMap(x=>x.rows).map(x=>x.token),['token-b']);assert.equal(f.ctx.garageReadState_(f.ss).outbox[0].status,'pending');
+ f.env.now='2026-10-12T07:01:01Z';f.env.failPush=false;f.ctx.garageRetryPushOutbox();assert.equal(f.ctx.garageReadState_(f.ss).outbox[0].status,'done');assert.ok(f.env.sends.every(x=>x.line==='garage'&&x.rows.every(r=>r.token==='token-b')));assert.ok(f.env.sends.every(x=>x.link.includes('garage=1')&&x.link.includes('date=2026-10-13')));
+ const sent=f.env.sends.length;f.ctx.garageRetryPushOutbox();assert.equal(f.env.sends.length,sent,'Successful delivery must not repeat');
+ const accepted=f.mutate('office.b','offerRespond',{id:offer.result.id,response:'accept'},'accept-command');assert.equal(accepted.ok,true);assert.equal(f.ctx.garageReadState_(f.ss).reservations[0].owner,'office.b');f.ctx.garageDrainOutbox_(f.ss);assert.deepEqual(f.env.sends.slice(sent).flatMap(x=>x.rows).map(x=>x.token).sort(),['token-a','token-b']);
+ const done=f.env.sends.length;assert.equal(f.mutate('office.b','offerRespond',{id:offer.result.id,response:'accept'},'accept-command').ok,true);f.ctx.garageDrainOutbox_(f.ss);assert.equal(f.env.sends.length,done);
+});
+test('an offer is available in the recipient snapshot even without a push subscription',()=>{
+ const f=setup(),r=f.mutate('office.a','reservationSave',{date:'2026-10-13',spaceId:'b3-1'}).result;
+ const o=f.mutate('office.a','offerCreate',{type:'transfer',fromReservationId:r.id,to:'office.b'});assert.equal(o.ok,true);assert.equal(f.call('office.b','getGarage').offers[0].id,o.result.id);assert.equal(f.call('manager','getGarage').offers.length,0);f.ctx.garageDrainOutbox_(f.ss);assert.equal(f.env.sends.length,0);
+});
+
 console.log(`${passed} Garage backend tests passed`);
 if(failed)process.exitCode=1;
