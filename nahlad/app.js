@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.92.5';
+var APP_VERSION = '2.92.6';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -2844,6 +2844,9 @@ function usageDetectScreen() {
   function shown(id) { var x = document.getElementById(id); return !!(x && (x.classList.contains('show') || (x.style && x.style.display && x.style.display !== 'none' && getComputedStyle(x).display !== 'none'))); }
   try {
     if (document.body.classList.contains('login-active')) return null;   // prihlasovacia obrazovka
+    // Garage covers mounted medical views without changing the source session.
+    var garage = document.getElementById('satori-garage');
+    if (garage && getComputedStyle(garage).display !== 'none') return { section: 'Garáž', detail: '' };
     // ── vrstvy navrchu (detaily / modály nad panelom) ──
     if (shown('pharma-okres-overlay')) return { section: 'Trhový podiel · graf okresu', detail: '' };
     if (shown('pharma-ms-overlay')) {
@@ -2892,9 +2895,10 @@ function usageCurrentSection() {
 // Časovač: drží zaznamenanú sekciu v súlade s tým, čo je naozaj na obrazovke. Prepne až keď rozdiel trvá
 // dva behy po sebe (~3 s) — aby nekmital medzi ručnými volaniami usageSectionEnter a detektorom.
 var _usageSyncPending = '';
-function usageSyncScreen() {
+var _usageSessionClearing = false;
+function usageSyncScreen(force) {
   try {
-    if (document.hidden) return;
+    if (_usageSessionClearing || document.hidden) return;
     var s = (typeof getSession === 'function') ? getSession() : null;
     if (!s || !s.username || s.role === 'admin') return;
     var cur = usageDetectScreen();
@@ -2902,12 +2906,16 @@ function usageSyncScreen() {
     var act = USAGE.active;
     var want = usageCanonSection(cur.section);
     if (act && usageCanonSection(act.section) === want) { _usageSyncPending = ''; return; }
-    if (_usageSyncPending !== want) { _usageSyncPending = want; return; }
+    if (!force && _usageSyncPending !== want) { _usageSyncPending = want; return; }
     _usageSyncPending = '';
     usageSectionEnter(cur.section, cur.detail);
   } catch(e){}
 }
 setInterval(usageSyncScreen, 1500);
+// Commit the screen boundary immediately; periodic sync must not attribute
+// the first or final Garage seconds to the medical view underneath it.
+document.addEventListener('satori-garage-open', function(){ usageSyncScreen(true); });
+document.addEventListener('satori-garage-close', function(){ usageSyncScreen(true); });
 
 // Globálny zachytávač klikov — zaznamená každé ťuknutie na klikateľný prvok.
 document.addEventListener('click', function(e){
@@ -10116,18 +10124,23 @@ function setSession(user) {
 }
 
 function clearSession() {
-  if(typeof SatoriGarageBridge!=='undefined')SatoriGarageBridge.reset();
-  document.body.classList.remove('garage-office-only');
+  if (_usageSessionClearing) return;
+  _usageSessionClearing = true;
   try {
-    sessionStorage.removeItem(SESSION_KEY);
-    localStorage.removeItem(SESSION_KEY);
-    // Vyčisti aj dual-line store (pamäť + storage), aby iný používateľ na tom istom zariadení nevidel admin prepínač
-    if(typeof MGR_DUAL_MEM !== 'undefined') MGR_DUAL_MEM = null;
-    localStorage.removeItem(MGR_DUAL_KEY);
-    sessionStorage.removeItem(MGR_DUAL_KEY);
-  } catch(e){}
-  try { document.body.classList.remove('gs-ready','gs-open'); var _gsov=document.getElementById('gs-overlay'); if(_gsov) _gsov.classList.remove('show'); } catch(e){}
-  stopNotifPolling();
+    if (document.getElementById('satori-garage')) { try { usageSectionClose(); } catch(e){} }
+    if(typeof SatoriGarageBridge!=='undefined')SatoriGarageBridge.reset();
+    document.body.classList.remove('garage-office-only');
+    try {
+      sessionStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(SESSION_KEY);
+      // Vyčisti aj dual-line store (pamäť + storage), aby iný používateľ na tom istom zariadení nevidel admin prepínač
+      if(typeof MGR_DUAL_MEM !== 'undefined') MGR_DUAL_MEM = null;
+      localStorage.removeItem(MGR_DUAL_KEY);
+      sessionStorage.removeItem(MGR_DUAL_KEY);
+    } catch(e){}
+    try { document.body.classList.remove('gs-ready','gs-open'); var _gsov=document.getElementById('gs-overlay'); if(_gsov) _gsov.classList.remove('show'); } catch(e){}
+    stopNotifPolling();
+  } finally { _usageSessionClearing = false; _usageSyncPending = ''; }
 }
 
 // ═══ ADMIN PREPÍNAČ LÍNIE (Golem ↔ Gyn) ═══
@@ -25975,6 +25988,7 @@ function usageSectionIcon(sec) {
   if (s === 'Dnes')               return '🏠';
   if (s === 'Menu')               return '☰';
   if (s === 'Nástenka')           return '📌';
+  if (s === 'Garáž')              return '🅿️';
   if (s === 'Sklady')             return '📦';
   if (s === 'Okresy')             return '🗺️';
   if (s === 'Reporty')            return '📑';
