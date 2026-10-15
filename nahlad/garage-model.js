@@ -21,6 +21,15 @@ var SatoriGarageModel = (function () {
     }
     return out;
   }
+  function avatarConfig(value) {
+    try {
+      if (typeof value === 'string') { if (value.length > 2000) return null; value = JSON.parse(value); }
+      if (!value || typeof value !== 'object' || Array.isArray(value) || value.style !== 'adventurer') return null;
+      var out = { style:'adventurer' }, keys = ['hair','hairColor','eyes','eyebrows','mouth','skinColor','glasses','glassesProbability','earrings','earringsProbability','features','featuresProbability','gender'];
+      keys.forEach(function (key) { var v = value[key]; if ((typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') && /^[a-zA-Z0-9#_,.-]{1,120}$/.test(String(v))) out[key] = v; });
+      return out;
+    } catch (e) { return null; }
+  }
   function fleetName(value) { if (typeof value !== 'string' || !value.trim() || value.trim().length > 120 || /[\u0000-\u001f\u007f]/.test(value)) fail('INVALID_PAYLOAD', 'Zadajte celé meno osoby do 120 znakov.'); return value.trim(); }
   function fleetVehicle(value) { if (!value || typeof value !== 'object' || Array.isArray(value) || typeof value.brand !== 'string' || !value.brand.trim() || value.brand.trim().length > 60 || /[\u0000-\u001f\u007f]/.test(value.brand) || typeof value.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(value.color)) fail('INVALID_VEHICLE', 'Zadajte značku auta do 60 znakov a platnú farbu.'); return vehicle(value); }
   function date(value) {
@@ -320,11 +329,11 @@ var SatoriGarageModel = (function () {
     return { result: copy(result), notifications: notices, duplicate: false };
   }
   function snapshot(state, actor, context) {
-    var m = actorMember(state, actor), w = windowFor(context.today), publicMember = function (x) { return { id: x.id, name: x.name, role: x.role, weeklyDays: Number(x.weeklyDays || 0), active: x.active !== false, access: x.access !== false, sourceLine: x.sourceLine || 'gp', vehicle: vehicle(x.vehicle) }; };
+    var m = actorMember(state, actor), w = windowFor(context.today), publicMember = function (x) { return { id: x.id, name: x.name, role: x.role, weeklyDays: Number(x.weeklyDays || 0), active: x.active !== false, access: x.access !== false, sourceLine: x.sourceLine || 'gp', vehicle: vehicle(x.vehicle), avatar: avatarConfig(x.avatar) }; };
     var inRange = function (x) { return x.date >= w.start && x.date <= w.end; };
     var me = publicMember(m); me.canAdmin = canAdmin(m);
     return { ok: true, version: state.version, serverDate: context.today, window: w, me: me, config: copy(state.config), members: state.members.filter(function (x) { return x.active !== false || canAdmin(m); }).map(publicMember), attendance: copy(state.attendance.filter(inRange)), reservations: copy(state.reservations.filter(inRange)), offers: state.offers.filter(function (x) { return canAdmin(m) || x.from === m.id || x.to === m.id; }).map(function (x) { return { id: x.id, type: x.type, from: x.from, to: x.to, fromReservationId: x.fromReservationId, toReservationId: x.toReservationId, status: x.status === 'pending' && Date.parse(x.expiresAt) <= Date.parse(context.now) ? 'expired' : x.status, expiresAt: x.expiresAt }; }), waitlist: copy(state.waitlist.filter(inRange)), blocks: copy(state.blocks.filter(inRange)), audit: canAdmin(m) ? copy(state.audit.slice(-200)) : [] };
   }
-  return { createState: createState, apply: apply, snapshot: snapshot, windowFor: windowFor, validateCommandId: commandId, migrateLayout: migrateLayout, layoutNeedsMigration: layoutNeedsMigration, poolAvailability: poolAvailability, attendanceParkingChoices: attendanceParkingChoices };
+  return { createState: createState, avatarConfig: avatarConfig, apply: apply, snapshot: snapshot, windowFor: windowFor, validateCommandId: commandId, migrateLayout: migrateLayout, layoutNeedsMigration: layoutNeedsMigration, poolAvailability: poolAvailability, attendanceParkingChoices: attendanceParkingChoices };
 }());
 if (typeof module !== 'undefined' && module.exports) module.exports = SatoriGarageModel;

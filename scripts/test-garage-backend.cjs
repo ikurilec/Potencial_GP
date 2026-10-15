@@ -380,5 +380,14 @@ test('an offer is available in the recipient snapshot even without a push subscr
  const o=f.mutate('office.a','offerCreate',{type:'transfer',fromReservationId:r.id,to:'office.b'});assert.equal(o.ok,true);assert.equal(f.call('office.b','getGarage').offers[0].id,o.result.id);assert.equal(f.call('manager','getGarage').offers.length,0);f.ctx.garageDrainOutbox_(f.ss);assert.equal(f.env.sends.length,0);
 });
 
+test('Garage avatars follow bound source for all viewers, update/remove and expose only safe avatar fields',()=>{
+ const f=setup(),cfg={style:'adventurer',hair:'short01',hairColor:'b85820',eyes:'variant02',mouth:'variant03',password:'never-copy',session_token:'never-copy',nested:{secret:true}};
+ function avatar(line,id,value){const sheet=f.env.books['sheet-'+line].sheets.Pouzivatelia;let index=sheet.rows[0].indexOf('avatar');if(index<0){index=sheet.rows[0].length;sheet.rows[0].push('avatar');}sheet.rows.find(r=>r[0]===id)[index]=value;}
+ avatar('gp','office.a',JSON.stringify(cfg));avatar('gyn','manager',JSON.stringify({...cfg,hair:'long03'}));let st=f.ctx.garageReadState_(f.ss);st.members.find(m=>m.id==='manager').sourceLine='gyn';saveState(f,st);
+ for(const viewer of ['admin','office.a','fleet']){const snap=f.call(viewer,'getGarage'),a=snap.members.find(m=>m.id==='office.a').avatar,b=snap.members.find(m=>m.id==='manager').avatar;assert.equal(a.hair,'short01');assert.equal(b.hair,'long03');assert.equal(a.password,undefined);assert.equal(a.session_token,undefined);assert.equal(a.nested,undefined);}
+ const before=f.env.stateWrites;f.call('admin','getGarage');assert.equal(f.env.stateWrites,before,'No redundant state writes for unchanged avatar');avatar('gp','office.a','');assert.equal(f.call('admin','getGarage').members.find(m=>m.id==='office.a').avatar,null);avatar('gyn','manager','{broken');assert.equal(f.call('admin','getGarage').members.find(m=>m.id==='manager').avatar,null);
+ avatar('reagila','manager',JSON.stringify({...cfg,hair:'short07'}));st=f.ctx.garageReadState_(f.ss);st.members.find(m=>m.id==='manager').sourceLine='reagila';saveState(f,st);assert.equal(f.call('admin','getGarage').members.find(m=>m.id==='manager').avatar.hair,'short07');
+});
+
 console.log(`${passed} Garage backend tests passed`);
 if(failed)process.exitCode=1;
