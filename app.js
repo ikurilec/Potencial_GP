@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.92.13';
+var APP_VERSION = '2.92.14';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -1354,10 +1354,10 @@ function _isAppBusy(){
   return false;
 }
 
-// Reload pri aktualizácii. Len clearSession + update_msg + location.reload.
+// Reload pri aktualizácii zachová platné prihlásenie.
 // SW (network-first, no-store) stiahne čerstvý index.html zo servera.
-// Po reloade DOMContentLoaded deteguje zmenu verzie a initLogin zobrazí
-// login screen so zelenou hláškou "Aplikácia bola aktualizovaná".
+// Po reloade DOMContentLoaded zaznamená verziu a initLogin obnoví platnú
+// session. Správu o aktualizácii ukáže iba na prihlasovacej obrazovke.
 function appReload(){
   // Guard: zapamätaj že sme už reloadovali pre túto serverovú verziu (prežije reload v tom istom tabe).
   // Zabráni nekonečnému reload-loopu keby SW omylom servíroval starú HTML.
@@ -20479,17 +20479,18 @@ document.addEventListener('visibilitychange', function(){
 document.addEventListener('DOMContentLoaded', function(){
   try { golemCalRefreshNavDay(); } catch(e){}
   try { gynCalLivePollStart(); } catch(e){}   // živé obnovenie odznaku kalendára kým je appka otvorená
-  // ── Kontrola verzie appky (po aktualizácii logout + info) ──
+  // ── Kontrola verzie appky (aktualizácia zachová platnú session) ──
   // KRITICKÉ: všetky zápisy cez lsSafeSet — keď je localStorage plný (admin preload
   // PharmaData), surový setItem by vyhodil QuotaExceededError a zhodil celý štart
   // → sivá obrazovka. lsSafeSet pri plnom localStorage uvoľní cache a zapíše znova.
   var storedVersion = '';
   try { storedVersion = localStorage.getItem('potencial_gp_version') || ''; } catch(e){}
   if(storedVersion && storedVersion !== APP_VERSION) {
-    // Nová verzia — odhlásiť a informovať
-    try { clearSession(); } catch(e){}
+    // Verzia aplikácie nie je platnosť prihlásenia. getSession() naďalej
+    // odmieta vypršané/neplatné tokeny; oprávnenia overí príslušný backend.
+    // Platnú zapamätanú session nesmieme pri každom update vymazávať.
     lsSafeSet('potencial_gp_version', APP_VERSION);
-    lsSafeSet('potencial_gp_update_msg', '1');
+    if(!getSession()) lsSafeSet('potencial_gp_update_msg', '1');
   } else {
     lsSafeSet('potencial_gp_version', APP_VERSION);
   }
