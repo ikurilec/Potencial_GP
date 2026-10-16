@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.92.14';
+var APP_VERSION = '2.92.15';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -12300,7 +12300,7 @@ function gynMsBuildCompTableHtml(produkt, compLines, trendRows) {
   // Tabuľka ukazuje len posledné 3 mesiace (posledný nahraný + 2 dozadu) ako okresy
   var tblRows = trendRows.slice(-3);
   var yymms = tblRows.map(function(s){ return parseInt(s.mesiac, 10); });
-  function pct(v){ var n = parseFloat(v); return (!isNaN(n) && n > 0) ? n.toFixed(2) + '%' : '—'; }
+  function pct(v){ var n = parseFloat(v); return (!isNaN(n) && n >= 0) ? n.toFixed(2) + '%' : '—'; }
   var head = '<tr><th>Produkt <span class="gyn-pharma-ms-sublbl">MS%</span></th>' +
     tblRows.map(function(s){ return '<th>' + gynEsc(_gynMonthLabel(s.mesiac).split(" '")[0]) + '</th>'; }).join('') + '</tr>';
   var rows = '<tr class="ours"><td>' + gynEsc(produkt) + '</td>' +
@@ -12528,7 +12528,7 @@ function gynPlnenieCacheKey(year, q) {
   return 'plnenie|' + gynCacheUserScope() + '|' + year + '|Q' + q;
 }
 function gynPharmaCacheKey(produkt, oblast, kvartal) {
-  return 'pharma|' + gynCacheUserScope() + '|' + String(produkt || '').toLowerCase() + '|' + String(oblast || '').toUpperCase() + '|' + String(kvartal || '');
+  return 'pharma-ms2|' + gynCacheUserScope() + '|' + String(produkt || '').toLowerCase() + '|' + String(oblast || '').toUpperCase() + '|' + String(kvartal || '');
 }
 var GYN_HIDE_PRODUCTS = { 'lenzetto': 1 };
 var GYN_VIRTUAL_PRODUCTS = [
@@ -15291,6 +15291,24 @@ function _gynMonthLabel(yymm) {
   return (labels[mo] || ('M'+mo)) + ' \'' + (yr < 10 ? '0'+yr : yr);
 }
 
+// Teritoriálna séria vlastnej pill značky je rovnaká v každom produktovom detaile.
+// Okresné grafy majú vlastné série; tento helper ich nemení.
+function gynPharmaCanonicalComps(resp, lines) {
+  var data = resp && resp.territory_summary;
+  var brands = ['drovelis','maitalon','mistra','belara','daylette','daylla','evra','azalia'];
+  var product = String(GYN_PHARMA_STATE.produkt || '').trim().toLowerCase();
+  if (!data || data.version !== 1 || data.market !== 'pill' || String(data.oblast || '').toUpperCase() !== String(GYN_PHARMA_STATE.oblast || '').toUpperCase() || brands.indexOf(product) < 0) return lines;
+  return lines.map(function(line){
+    var name = String(line.name || '').trim().toLowerCase();
+    if (brands.indexOf(name) < 0) return line;
+    var source = data.series && data.series[name], months = {};
+    Object.keys(source || {}).forEach(function(month){
+      var value = source[month];
+      if (typeof value === 'number' && isFinite(value) && value >= 0 && value <= 1) months[month] = value * 100;
+    });
+    return Object.assign({}, line, { byYymm: months });
+  });
+}
 function gynPharmaRender(resp) {
   // Úspech — zruš watchdog aj progress animáciu.
   if(GYN_PHARMA_STATE._watchdog){ clearTimeout(GYN_PHARMA_STATE._watchdog); GYN_PHARMA_STATE._watchdog = null; }
@@ -15432,6 +15450,7 @@ function gynPharmaRender(resp) {
     });
     return { name: name, byYymm: byYymm };
   });
+  compLines = gynPharmaCanonicalComps(resp, compLines);
   var isLevosertProduct = !isPackMetric && String(GYN_PHARMA_STATE.produkt || '').trim().toLowerCase() === 'levosert';
   var isLevosertShareMode = isLevosertProduct &&
     Object.keys(_gynPharmaSelectedKeys || {}).some(function(k){ return /^k\d+$/.test(k); });

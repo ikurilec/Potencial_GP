@@ -1,0 +1,25 @@
+diff --git a/apps_script/KOD_GYN.txt b/apps_script/KOD_GYN.txt
+index ea0e343..f4a7ac6 100644
+--- a/apps_script/KOD_GYN.txt
++++ b/apps_script/KOD_GYN.txt
+@@ -1191 +1191 @@ function gynPharmaCacheKey_(ss, oblast, produkt, kvartal, extra) {
+-  return 'gynPh|' + [oblast, produkt, kvartal, extra ? 'x' : ''].join('|') + '|' + scTag_(ss, ['PharmaData_Summary', 'PharmaData_Okresy', 'Gyn_Pacienti']);
++  return 'gynPh-ms2|' + [oblast, produkt, kvartal, extra ? 'x' : ''].join('|') + '|' + scTag_(ss, ['PharmaData_Summary', 'PharmaData_Okresy', 'Gyn_Pacienti']);
+@@ -1226,0 +1227,5 @@ function gynPharmaCompute_(ss, oblast, produkt, kvartal, wantExtra) {
++  // Vlastné pill značky musia mať rovnaký teritoriálny MS aj ako konkurenti.
++  // Summary už čítame raz: žiadne ďalšie čítanie ani okresný priemer percent.
++  var pillBrands = ['drovelis','maitalon','mistra','belara','daylette','daylla','evra','azalia'];
++  var pillMarket = /PI$/.test(oblast) && pillBrands.indexOf(String(produkt).trim().toLowerCase()) >= 0;
++  var territorySeries = {};
+@@ -1236 +1240,0 @@ function gynPharmaCompute_(ss, oblast, produkt, kvartal, wantExtra) {
+-        if (String(r[siP] || '').trim() !== produkt) continue;
+@@ -1237,0 +1242,7 @@ function gynPharmaCompute_(ss, oblast, produkt, kvartal, wantExtra) {
++        var rowProduct = String(r[siP] || '').trim(), brand = rowProduct.toLowerCase();
++        var month = String(r[siM] || '').trim(), rawMs = r[siT], ms = parseFloat(rawMs);
++        if (pillMarket && pillBrands.indexOf(brand) >= 0 && /^\d{4}$/.test(month) && Number(month.slice(2)) >= 1 && Number(month.slice(2)) <= 12 && rawMs !== '' && rawMs != null && isFinite(ms) && ms >= 0 && ms <= 1) {
++          if (!territorySeries[brand]) territorySeries[brand] = {};
++          if (!Object.prototype.hasOwnProperty.call(territorySeries[brand], month)) territorySeries[brand][month] = ms;
++        }
++        if (rowProduct !== produkt) continue;
+@@ -1323,0 +1335 @@ function gynPharmaCompute_(ss, oblast, produkt, kvartal, wantExtra) {
++  if (pillMarket) pharmaOut.territory_summary = { version: 1, market: 'pill', oblast: oblast, series: territorySeries };
