@@ -389,5 +389,16 @@ test('Garage avatars follow bound source for all viewers, update/remove and expo
  avatar('reagila','manager',JSON.stringify({...cfg,hair:'short07'}));st=f.ctx.garageReadState_(f.ss);st.members.find(m=>m.id==='manager').sourceLine='reagila';saveState(f,st);assert.equal(f.call('admin','getGarage').members.find(m=>m.id==='manager').avatar.hair,'short07');
 });
 
+test('same-day bookings notify other subscribed members once, with current content and stable deep link',()=>{
+ const f=setup();f.env.now='2026-10-16T08:00:00Z';for(const id of ['office.a','office.b','manager','fleet'])f.call(id,'garageRegisterPush',{token:'token-'+id});f.mutate('admin','memberSave',{id:'office.b',access:false});const p={dates:['2026-10-16','2026-10-17'],office:true,parking:true,start:'08:00',end:'12:00'};const out=f.mutate('office.a','attendanceSet',p,'same-day-push');assert.equal(out.ok,true);assert.equal(out.pushPending,true);let state=f.ctx.garageReadState_(f.ss),items=state.outbox.filter(x=>x.notice.type==='reservation');assert.equal(items.length,1);assert.ok(!items[0].notice.audience.includes('office.a'));f.ctx.garageDrainOutbox_(f.ss);assert.deepEqual(f.env.sends.map(s=>s.rows[0].login).sort(),['fleet','manager']);assert.ok(f.env.sends.every(s=>s.title.includes('dnešná rezervácia')&&s.body.includes('Office A')&&s.body.includes('08:00–12:00')&&s.link.includes('date=2026-10-16')));f.mutate('office.a','attendanceSet',p,'same-day-push');f.ctx.garageDrainOutbox_(f.ss);assert.equal(f.env.sends.length,2);
+});
+test('today notices expire at Bratislava midnight and never send after that day',()=>{
+ const f=setup();f.env.now='2026-10-16T21:59:00Z';f.call('office.b','garageRegisterPush',{token:'token-office-b'});assert.equal(f.mutate('office.a','reservationSave',{date:'2026-10-16',spaceId:'b3-1',start:'08:00',end:'12:00'}).ok,true);f.env.now='2026-10-16T22:00:00Z';f.ctx.garageDrainOutbox_(f.ss);assert.equal(f.env.sends.length,0);assert.equal(f.ctx.garageReadState_(f.ss).outbox.find(x=>x.notice.type==='reservation').status,'done');
+ const crossing=setup();crossing.env.now='2026-10-16T21:59:00Z';for(const id of ['office.b','manager'])crossing.call(id,'garageRegisterPush',{token:'token-'+id});crossing.mutate('office.a','reservationSave',{date:'2026-10-16',spaceId:'b3-1',start:'08:00',end:'12:00'});crossing.env.afterPush=()=>crossing.env.now='2026-10-16T22:00:00Z';crossing.ctx.garageDrainOutbox_(crossing.ss);assert.equal(crossing.env.sends.length,1,'No second send after crossing midnight');
+});
+test('failed today notice retries durably and floor -1 content does not invent a place number',()=>{
+ const f=setup();f.env.now='2026-10-16T08:00:00Z';f.call('office.b','garageRegisterPush',{token:'token-office-b'});f.mutate('office.a','reservationSave',{date:'2026-10-16',floor:-1,start:'08:00',end:'12:00'});f.env.failPush=true;f.ctx.garageDrainOutbox_(f.ss);assert.equal(f.ctx.garageReadState_(f.ss).outbox.find(x=>x.notice.type==='reservation').status,'pending');f.env.failPush=false;f.env.now='2026-10-16T08:02:00Z';f.ctx.garageDrainOutbox_(f.ss);assert.equal(f.ctx.garageReadState_(f.ss).outbox.find(x=>x.notice.type==='reservation').status,'done');assert.ok(f.env.sends.every(s=>!s.body.includes('miesto ')));assert.equal(f.env.sends.length,2);
+});
+
 console.log(`${passed} Garage backend tests passed`);
 if(failed)process.exitCode=1;

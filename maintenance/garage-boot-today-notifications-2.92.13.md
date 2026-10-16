@@ -1,0 +1,11 @@
+# Satori 2.92.13 — prihlásenie do Garáže a dnešné rezervácie
+
+Office účty s prístupom iba do Garáže používajú spoločnú načítavaciu obrazovku Satori pri prvom aj obnovenom prihlásení. Obrazovka sa zatvorí po vykreslení použiteľných údajov vrátane platnej lokálnej cache. Chyba prvého načítania sprístupní obnovu v Garáži. Dokončenie staršieho otvorenia ani oneskorené skrytie loadera nesmie zatvoriť obrazovku novšieho prihlásenia alebo iného rozhrania. Pri overovaní obnovenej relácie prihlasovacie CSS loader neskrýva.
+
+Po skutočnom vytvorení parkovacej rezervácie na dnešný bratislavský dátum dostanú ostatní aktívni členovia Garáže so zapnutými upozorneniami notifikáciu. Platí pre automatické pridelenie pri nahlásení príchodu, konkrétne miesto z mapy aj ďalšie auto správcu/fleet managera. Správa obsahuje meno, miesto alebo poschodie a čas; otvorí príslušný deň Garáže. Budúce dni, samotný príchod bez auta, čakacia listina bez rezervácie, nezmenené uloženie a opakovanie rovnakého príkazu nové upozornenie nevytvárajú. Existujúca budúca rezervácia presunutá na dnešok upozornenie vytvorí.
+
+Notifikácie využívajú existujúcu trvalú frontu, deduplikáciu a opakovanie po chybe. Dnešná notifikácia sa po zmene bratislavského dátumu ďalej nerozosiela. Kontrola sa opakuje aj pred jednotlivým odoslaním pri prechode cez polnoc. Pôvodca, neaktívni členovia a členovia bez prístupu nie sú adresátmi.
+
+Overenie: 62 zdrojových regresných sád, 54 backendových prípadov v rámci nich, prehliadačové testy zostavenej živej aj náhľadovej aplikácie pre prvé prihlásenie, obnovenie, cache, odmietnutý prístup, chybu servera a opakované otvorenie loadera. Syntetická notifikácia v prehliadači overila banner, potlačenie duplicity aj otvorenie správneho dňa. Regresia spoločnej hlavičky pre office/admin prešla. Reálna systémová notifikácia na fyzickom telefóne nebola v tomto teste odoslaná.
+
+Centrálny Golem Apps Script bol 16. 10. 2026 úspešne aktualizovaný na verziu 144, pri zachovaní existujúcej URL a oprávnení. Zmenený bol iba úsek rozšírenia Garáže; medicínska časť, rezervácie, účty, konfigurácia parkovacieho poradia a pomocné jednorazové skripty zostali zachované. Gyn/Reagila Apps Scripty sa nemenia. Frontend a metadata aktualizácie: 2.92.13 na živej aj náhľadovej adrese.

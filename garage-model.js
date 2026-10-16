@@ -323,6 +323,12 @@ var SatoriGarageModel = (function () {
     } else if (command === 'blockDelete') {
       admin(m); row = next.blocks.find(function (x) { return x.id === p.id; }); if (!row) fail('NOT_FOUND', 'Blokácia už neexistuje.'); inWindow(row.date, context); var oldBlocks = next.blocks; next.blocks = next.blocks.filter(function (x) { return x.id !== row.id; }); notices = notices.concat(slotFor(next, row.spaceId).floor === -1 ? poolBlockReleases(row, oldBlocks, next) : [releaseNotice(row, next)]); result = { id: row.id };
     } else fail('UNKNOWN_COMMAND', 'Táto operácia nie je podporovaná.');
+    if (command === 'attendanceSet' || command === 'reservationSave') {
+      var audience = next.members.filter(function (u) { return u.id !== m.id && u.active !== false && u.access !== false; }).map(function (u) { return u.id; });
+      next.reservations.filter(function (r) { return r.date === context.today && !state.reservations.some(function (old) { return old.id === r.id && old.date === context.today; }); }).forEach(function (r) {
+        if (audience.length) notices.push(Object.assign(releaseNotice(r, next), { type:'reservation', audience:audience, name:r.name || m.name }));
+      });
+    }
     next.version++; next.audit.push({ id: uniqueId(next, context, 'a'), actor: m.id, name: m.name, time: context.now, command: command, version: next.version }); next.audit = next.audit.slice(-1000);
     if (cid) { next.dedup = (next.dedup || []).concat([{ id: cid, fingerprint: fingerprint, result: copy(result), time: context.now }]).slice(-1000); }
     Object.keys(state).forEach(function (k) { delete state[k]; }); Object.keys(next).forEach(function (k) { state[k] = next[k]; });

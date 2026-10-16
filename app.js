@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.92.12';
+var APP_VERSION = '2.92.13';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -23079,6 +23079,7 @@ function bootLoaderShow(force){
     '<div class="boot-brand">SATORI</div>';
     document.body.appendChild(el);
   }
+  el._bootEpoch = (_bootLoader.epoch || 0) + 1; _bootLoader.epoch = el._bootEpoch;
   var gEl = document.getElementById('boot-greet'); if(gEl) gEl.textContent = _bootGreeting();
   var aEl = document.getElementById('boot-avatar'); if(aEl){ try { aEl.innerHTML = _bootAvatarHtml(); } catch(e){} }
   el.classList.remove('boot-hide');
@@ -23102,6 +23103,7 @@ function bootLoaderDone(){
   clearTimeout(_bootLoader.timer); clearTimeout(_bootLoader.failsafe);
   var el = document.getElementById('boot-loader');
   if(!el) return;
+  var bootEpoch = el._bootEpoch;
   bootLoaderSet(100);
   try {
     var bootApp = document.querySelector('.app');
@@ -23112,11 +23114,12 @@ function bootLoaderDone(){
     }
   } catch(e){}
   setTimeout(function(){
+    if(el._bootEpoch !== bootEpoch) return;
     el.classList.add('boot-hide');
     setTimeout(function(){
       // Úplne odstráň z DOM (nie len display:none) — iOS inak po celoobrazovkovom
       // fixed overlayi vie nechať sticky/fixed hlavičku zle prekreslenú (presvitá).
-      if(el.parentNode) el.parentNode.removeChild(el);
+      if(el._bootEpoch === bootEpoch && el.parentNode) el.parentNode.removeChild(el);
     }, 400);
   }, 320);
 }
