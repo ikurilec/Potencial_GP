@@ -145,4 +145,26 @@ body.garage-mode #update-bar.show{position:fixed;top:calc(env(safe-area-inset-to
  .garage-tabs button[aria-current="page"]{background:transparent;color:var(--color-primary);box-shadow:none}.garage-tabs button[aria-current="page"]::after{content:"";position:absolute;top:0;left:30%;right:30%;height:3px;border-radius:0 0 3px 3px;background:var(--color-primary)}
  .garage-tabs button[aria-current="page"] .garage-tab-badge{background:var(--color-primary);color:#fff}}
 @media(min-width:760px){.garage-tabs button::before{display:none}.garage-tabs .garage-tab-badge{position:static}}
+/* Offers: grouped by what needs doing, cards with avatar, mini parking tickets and a state colour. */
+.garage-offers-group .garage-section-head{margin-bottom:var(--space-2)}
+.garage-offer{display:block;position:relative;margin-top:var(--space-3);padding:var(--space-3) var(--space-3) var(--space-3) var(--space-4);border:1px solid var(--color-border);border-left:5px solid var(--color-text-soft);border-radius:var(--radius-lg);background:var(--color-surface)}
+.garage-offer.status-pending{border-left-color:#f59e0b;background:#fffbeb}.garage-offer.status-accepted{border-left-color:#16a34a;background:#f0fdf4}.garage-offer.history{background:var(--color-surface-2)}.garage-offer.history.status-accepted{background:#f7fdf9}
+.garage-offer-head{display:flex;align-items:center;gap:var(--space-3);min-width:0}.garage-offer-avatar{width:40px;height:40px}.garage-offer-who{flex:1;min-width:0}.garage-offer-who h3{margin:0;font-size:15px;overflow-wrap:anywhere}.garage-offer-who p{margin:2px 0 0;font-size:12px}
+.garage-offer-type{flex-shrink:0;border-radius:var(--radius-full,999px);border:1px solid var(--color-border);background:#fff;padding:2px 10px;font:700 11px var(--font-display);color:var(--color-text-muted)}
+.garage-offer-swap{display:flex;align-items:stretch;gap:var(--space-2);margin:var(--space-3) 0 0;flex-wrap:wrap}.garage-offer-swap>.garage-mini-ticket{flex:1 1 140px;min-width:0}
+.garage-offer-arrow{align-self:center;font:800 22px var(--font-display);color:var(--color-primary)}.garage-offer-to{align-self:center;font:700 14px var(--font-display);color:var(--color-navy)}
+.garage-mini-ticket{margin-top:var(--space-3)}.garage-offer-swap .garage-mini-ticket{margin-top:0}
+.garage-mini-label{display:block;margin-bottom:4px;font:700 11px var(--font-display);letter-spacing:.04em;text-transform:uppercase;color:var(--color-text-muted)}
+.garage-mini-body{display:flex;align-items:center;gap:var(--space-2);border:1px solid #bbf7d0;border-radius:var(--radius-base);background:#fff;overflow:hidden}
+.garage-mini-plate{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:58px;align-self:stretch;padding:6px 8px;background:#16a34a;color:#fff}.garage-mini-plate b{font:800 10px var(--font-display);letter-spacing:.08em;opacity:.9}.garage-mini-plate strong{font:800 22px/1.1 var(--font-display)}
+.garage-mini-text{display:flex;flex-direction:column;min-width:0;padding:6px 8px 6px 0}.garage-mini-text span{font:700 13px var(--font-display);color:var(--color-navy)}.garage-mini-text small{font-size:11px;color:var(--color-text-muted)}
+.garage-offer-foot{display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);flex-wrap:wrap;margin-top:var(--space-3)}.garage-offer-foot .garage-muted{font-size:12px}
+.garage-offer.status-pending .garage-offer-status{background:#fef3c7;color:#92400e}.garage-offer.status-accepted .garage-offer-status{background:#dcfce7;color:#15803d}.garage-offer.history:not(.status-accepted) .garage-offer-status{background:#e2e8f0;color:#475569}
+.garage-offer .garage-record-actions{margin-top:var(--space-3);max-width:none;width:100%}.garage-offer .garage-record-actions .garage-button{min-height:46px;font-size:14px}
+.garage-offer.incoming .garage-record-actions [data-response="accept"]{flex:2}
+.garage-offers-history{padding:0}.garage-offers-history>summary{padding:var(--space-3) var(--space-4)}.garage-offers-history>.garage-offer{margin-left:var(--space-3);margin-right:var(--space-3)}.garage-offers-history[open]>:last-child{margin-bottom:var(--space-3)}
+.garage-offers-clear{padding-top:var(--space-3);padding-bottom:var(--space-3)}.garage-offers-clear p{margin:0}
+.garage-notify-strip{display:flex;flex-direction:column;gap:var(--space-2)}.garage-notify-strip strong{display:block;font:700 14px var(--font-display);color:var(--color-navy)}.garage-notify-strip span{font-size:12px;color:var(--color-text-muted)}.garage-notify-strip .garage-button{width:100%}
+.garage-offer-swap.swap{flex-direction:column;align-items:stretch}.garage-offer-swap.swap>.garage-mini-ticket{flex:0 0 auto}.garage-offer-swap.swap .garage-offer-arrow{transform:rotate(90deg);line-height:1;margin:2px 0}
+@media(min-width:520px){.garage-offer-swap.swap{flex-direction:row}.garage-offer-swap.swap>.garage-mini-ticket{flex:1 1 0}.garage-offer-swap.swap .garage-offer-arrow{transform:none;margin:0}}
 
