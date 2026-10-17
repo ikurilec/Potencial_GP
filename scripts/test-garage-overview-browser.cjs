@@ -1,6 +1,7 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
-const root=path.resolve(__dirname,'..');
-const {chromium}=require(process.env.SATORI_PLAYWRIGHT||path.resolve(root,'../../node_modules/playwright-core'));
+// Preview first: SATORI_APP_DIR=. checks the live root once the change is promoted.
+const repo=path.resolve(__dirname,'..'),root=path.resolve(repo,process.env.SATORI_APP_DIR||'nahlad');
+const {chromium}=require(process.env.SATORI_PLAYWRIGHT||path.resolve(repo,'../../node_modules/playwright-core'));
 const day='2026-10-12';
 function member(id,name){return {id,name,role:'office',weeklyDays:3,active:true};}
 function fixture(){
