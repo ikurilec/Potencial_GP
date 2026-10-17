@@ -7,7 +7,7 @@
  'use strict';
  let options={},root=null,dialog=null,focusBefore=null,poll=null,readPromise=null,controller=null,epoch=0;
  let owner='',snapshot=null,view='planning',selectedDate='',calendarMonth='',floor=-3,start='08:00',end='16:30',picked=new Set();
- let calendarInteracted=false,explicitDate='',noticeTone='success',watched='';
+ let calendarInteracted=false,explicitDate='',noticeTone='success',watched='',toast=null,toastTimer=0,lastMutation=null;
  let bookingMonth='',bookingStart='',bookingEnd='',bookingParking=true,bookingSpaces={},choiceMemo=null;
  let manualPromise=null,availabilityMemo=new Map(),pendingRoute=null;
  let users=[],usersLoading=false,usersError='',usersPromise=null,usersGeneration=0;
@@ -83,20 +83,47 @@
   }catch(e){if(!same(who,gen))return;if(e&&e.name==='AbortError')return;readError=friendly(e);stale=!!snapshot;if(e&&e.code==='IDENTITY_MISMATCH'){snapshot=null;render();}}
   finally{if(epoch===gen){loading=false;readPromise=null;controller=null;renderStatus();}}})();return readPromise;
  }
- function identityLost(){pendingRoute=null;if(global.SatoriGarageTimePicker)global.SatoriGarageTimePicker.close();manualPromise=null;epoch++;if(controller)controller.abort();readPromise=null;controller=null;loading=false;busy=false;intent=null;snapshot=null;watched='';owner='';readError='Prihlásený účet sa zmenil. Znovu otvorte Garáž po prihlásení.';closeDialog();render();}
+ function identityLost(){hideToast();pendingRoute=null;if(global.SatoriGarageTimePicker)global.SatoriGarageTimePicker.close();manualPromise=null;epoch++;if(controller)controller.abort();readPromise=null;controller=null;loading=false;busy=false;intent=null;snapshot=null;watched='';owner='';readError='Prihlásený účet sa zmenil. Znovu otvorte Garáž po prihlásení.';closeDialog();render();}
  function commandId(){return global.crypto&&crypto.randomUUID?crypto.randomUUID():'garage-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+'-'+Math.random().toString(36).slice(2);}
+ // Visible progress for every write: a top banner says what is happening, then success or a retryable failure.
+ const TOAST_ICON={busy:'<i class="garage-toast-spin"></i>',success:'✓',warn:'!',error:'×'};
+ function hideToast(){clearTimeout(toastTimer);if(toast){toast.hidden=true;toast.innerHTML='';}}
+ function removeToast(){clearTimeout(toastTimer);if(toast){toast.remove();toast=null;}}
+ function showToast(kind,title,sub,retry){
+  clearTimeout(toastTimer);
+  if(!toast||!toast.isConnected){toast=document.createElement('div');toast.id='garage-toast';toast.setAttribute('role',kind==='error'?'alert':'status');toast.setAttribute('aria-live',kind==='error'?'assertive':'polite');toast.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.hasAttribute('data-garage-toast-close'))hideToast();else if(b.hasAttribute('data-garage-toast-retry')&&lastMutation&&!busy){const m=lastMutation;mutate(m.command,m.payload,m.success);}});document.body.appendChild(toast);}
+  toast.setAttribute('role',kind==='error'?'alert':'status');toast.setAttribute('aria-live',kind==='error'?'assertive':'polite');toast.className='garage-toast '+kind;toast.hidden=false;
+  toast.innerHTML='<span class="garage-toast-icon" aria-hidden="true">'+TOAST_ICON[kind]+'</span><div class="garage-toast-text"><strong>'+esc(title)+'</strong>'+(sub?'<span>'+esc(sub)+'</span>':'')+'</div>'+(retry?'<button type="button" class="garage-toast-retry" data-garage-toast-retry>Skúsiť znova</button>':'')+(kind==='busy'?'':'<button type="button" class="garage-toast-close" data-garage-toast-close aria-label="Zavrieť">×</button>');
+  if(kind!=='busy')toastTimer=setTimeout(hideToast,kind==='error'?12000:kind==='warn'?7000:4500);
+ }
+ function busyText(command,p){p=p||{};
+  switch(command){
+   case 'attendanceSet':return p.office===false?'Ruším príchod…':(arr(p.dates).length>1?'Potvrdzujem príchody':'Potvrdzujem príchod')+(p.parking!==false?' a hľadám parkovanie…':'…');
+   case 'reservationSave':return p.id?'Ukladám zmenu parkovania…':'Rezervujem miesto v garáži…';
+   case 'reservationCancel':return 'Uvoľňujem miesto…';
+   case 'waitlistSet':return p.enabled?'Zaraďujem vás na čakaciu listinu…':'Odhlasujem vás z čakacej listiny…';
+   case 'offerCreate':return 'Odosielam ponuku…';
+   case 'offerRespond':return p.response==='accept'?'Prijímam ponuku…':p.response==='decline'?'Odmietam ponuku…':'Sťahujem ponuku…';
+   case 'memberProfileSave':return 'Ukladám vaše auto…';
+   case 'memberSave':return 'Ukladám prístup do Garáže…';
+   case 'configSave':return 'Ukladám nastavenia…';
+   case 'blockSave':return 'Ukladám blokovanie…';
+   case 'blockDelete':return 'Rušim blokovanie…'.replace('Rušim','Ruším');
+   default:return 'Ukladám zmenu…';}
+ }
  async function mutate(command,payload,success){
   if(busy)return false;if(!usable()){identityLost();return false;}
-  if(!online()){mutationError='Na uloženie potrebujete internetové pripojenie. Po pripojení skúste znova.';renderStatus();dialogError(mutationError);return false;}
-  if(!snapshot){mutationError='Najprv načítajte aktuálne údaje Garáže.';renderStatus();return false;}
+  lastMutation={command,payload,success};
+  if(!online()){mutationError='Na uloženie potrebujete internetové pripojenie. Po pripojení skúste znova.';renderStatus();dialogError(mutationError);showToast('error','Bez pripojenia',mutationError,true);return false;}
+  if(!snapshot){mutationError='Najprv načítajte aktuálne údaje Garáže.';renderStatus();showToast('error','Údaje ešte nie sú načítané',mutationError);return false;}
   const signature=JSON.stringify({command,payload});if(!intent||intent.signature!==signature)intent={signature,id:commandId()};
-  const who=owner,gen=epoch,id=intent.id;busy=true;mutationError='';notice='';updateBusy();renderStatus();dialogError('');
+  const who=owner,gen=epoch,id=intent.id;busy=true;mutationError='';notice='';updateBusy();renderStatus();dialogError('');showToast('busy',busyText(command,payload),'Počkajte, prosím.');
   try{
    const result=await options.transport('garageAction',{commandId:id,command,payload},{fresh:true,priority:'mutation'});
-   if(!same(who,gen)){if(root&&epoch===gen)identityLost();return false;}
+   if(!same(who,gen)){hideToast();if(root&&epoch===gen)identityLost();return false;}
    if(!result||result.ok!==true)throw Object.assign(new Error(result&&result.error||'Zmena sa nepotvrdila. Skúste to znova.'),{code:result&&result.code});
-   applySnapshot(result.snapshot,true);stale=false;readError='';intent=null;noticeTone='success';notice=typeof success==='function'?success(result.result||{}):success||'Zmena bola uložená.';if(command==='attendanceSet'){arr(payload.dates).forEach(d=>picked.delete(d));}busy=false;closeDialog();render();if(pendingRoute){const route=pendingRoute;pendingRoute=null;open(route);}return true;
-  }catch(e){if(!same(who,gen))return false;pendingRoute=null;mutationError=friendly(e);dialogError(mutationError);renderStatus();return false;}
+   applySnapshot(result.snapshot,true);stale=false;readError='';intent=null;noticeTone='success';notice=typeof success==='function'?success(result.result||{}):success||'Zmena bola uložená.';if(command==='attendanceSet'){arr(payload.dates).forEach(d=>picked.delete(d));}busy=false;showToast(noticeTone==='stale'?'warn':'success',notice);lastMutation=null;closeDialog();render();if(pendingRoute){const route=pendingRoute;pendingRoute=null;open(route);}return true;
+  }catch(e){if(!same(who,gen)){hideToast();return false;}pendingRoute=null;mutationError=friendly(e);dialogError(mutationError);renderStatus();showToast('error','Nepodarilo sa to dokončiť',mutationError+(/skúste|skúsiť/i.test(mutationError)?'':' Skúste to znova.'),true);return false;}
   finally{if(same(who,gen)){busy=false;updateBusy();renderStatus();}}
  }
  function dates(){if(!snapshot)return [];const out=[];for(let i=0,d=snapshot.window.start;i<30&&d<=snapshot.window.end;i++,d=addDays(d,1))out.push(d);return out;}
@@ -375,9 +402,9 @@
  function open(request){request=request||{};if(root){if(owner!==sessionOwner()){reset();return open(request);}if(validCalendarDate(request.date)||request.view==='offers'){if(busy){pendingRoute={date:request.date,view:request.view};return Promise.resolve();}closeDialog();}applyDate(request.date);if(request.view==='offers'){if(snapshot)setView('offers');else{view='offers';render();}}return read(true);}owner=sessionOwner();if(!owner)return false;epoch++;manualPromise=null;availabilityMemo.clear();users=[];usersLoading=false;usersError='';usersPromise=null;usersGeneration++;snapshot=null;readError='';mutationError='';notice='';view=request.view==='offers'?'offers':'planning';picked=new Set();watched='';floor=-3;bookingMonth='';bookingStart='';bookingEnd='';bookingParking=true;bookingSpaces={};choiceMemo=null;noticeTone='success';selectedDate=validCalendarDate(request.date)?request.date:'';explicitDate=selectedDate;calendarInteracted=false;calendarMonth='';lastUpdated=0;const saved=cached();if(saved){try{applySnapshot(saved.snapshot,false);lastUpdated=saved.savedAt||0;stale=true;}catch(e){snapshot=null;}}else stale=false;
   root=document.createElement('section');root.id='satori-garage';root.setAttribute('aria-label','Satori Garáž');root.className='garage-overlay';document.body.appendChild(root);document.body.classList.add('garage-mode');root.addEventListener('error',peopleAvatarError,true);root.addEventListener('click',onClick);root.addEventListener('change',onChange);root.addEventListener('input',e=>{if(e.target.id==='garage-user-search')renderUsersList(e.target.value);if(e.target.id==='garage-vehicle-model'||e.target.id==='garage-vehicle-plate')updateVehiclePreview();});root.addEventListener('submit',onSubmit);document.addEventListener('keydown',keydown);document.addEventListener('visibilitychange',visibility);global.addEventListener('avatar-changed',peopleAvatarsRefresh);global.addEventListener('online',connectivity);global.addEventListener('offline',connectivity);render();emit('satori-garage-open');poll=setInterval(()=>{if(usable()&&online()&&!document.hidden&&!busy)read(true,true);},POLL_MS);return read(true);
  }
- function close(){if(global.SatoriGarageTimePicker)global.SatoriGarageTimePicker.close();if(!root)return;epoch++;manualPromise=null;pendingRoute=null;availabilityMemo.clear();if(controller)controller.abort();controller=null;readPromise=null;busy=false;closeDialog();if(poll)clearInterval(poll);poll=null;document.removeEventListener('keydown',keydown);document.removeEventListener('visibilitychange',visibility);global.removeEventListener('avatar-changed',peopleAvatarsRefresh);global.removeEventListener('online',connectivity);global.removeEventListener('offline',connectivity);root.remove();root=null;document.body.classList.remove('garage-mode');emit('satori-garage-close');loading=false;intent=null;}
+ function close(){removeToast();if(global.SatoriGarageTimePicker)global.SatoriGarageTimePicker.close();if(!root)return;epoch++;manualPromise=null;pendingRoute=null;availabilityMemo.clear();if(controller)controller.abort();controller=null;readPromise=null;busy=false;closeDialog();if(poll)clearInterval(poll);poll=null;document.removeEventListener('keydown',keydown);document.removeEventListener('visibilitychange',visibility);global.removeEventListener('avatar-changed',peopleAvatarsRefresh);global.removeEventListener('online',connectivity);global.removeEventListener('offline',connectivity);root.remove();root=null;document.body.classList.remove('garage-mode');emit('satori-garage-close');loading=false;intent=null;}
  function reset(){close();epoch++;owner='';snapshot=null;calendarMonth='';calendarInteracted=false;explicitDate='';watched='';picked=new Set();intent=null;mutationError='';notice='';readError='';users=[];usersPromise=null;usersGeneration++;}
- async function enableNotifications(){if(!options.registerPush||!usable()||busy)return;if(!online()){mutationError='Zapnutie upozornení vyžaduje internetové pripojenie.';renderStatus();return;}const who=owner,gen=epoch;try{const result=await options.registerPush();if(!same(who,gen))return;if(result===false||result&&result.ok===false)throw new Error(result&&result.error||'Upozornenia sa nepodarilo zapnúť. Skontrolujte povolenie v prehliadači.');notice='Upozornenia Garáže boli aktivované.';mutationError='';render();}catch(e){if(same(who,gen)){mutationError=friendly(e);renderStatus();}}}
+ async function enableNotifications(){if(!options.registerPush||!usable()||busy)return;if(!online()){mutationError='Zapnutie upozornení vyžaduje internetové pripojenie.';renderStatus();return;}const who=owner,gen=epoch;showToast('busy','Zapínam upozornenia…','Počkajte, prosím.');try{const result=await options.registerPush();if(!same(who,gen))return;if(result===false||result&&result.ok===false)throw new Error(result&&result.error||'Upozornenia sa nepodarilo zapnúť. Skontrolujte povolenie v prehliadači.');notice='Upozornenia Garáže boli aktivované.';mutationError='';showToast('success',notice);render();}catch(e){if(same(who,gen)){mutationError=friendly(e);renderStatus();showToast('error','Upozornenia sa nepodarilo zapnúť',mutationError);}else hideToast();}}
   function getRefreshContext(){return usable()?{key:'garage|'+owner+'|'+epoch+'|'+view,owner,epoch,host:'#garage-content',actions:['getGarage']}:null;}
  function canRefresh(){return usable()&&!busy&&!dialog&&!(global.SatoriGarageTimePicker&&global.SatoriGarageTimePicker.isOpen())&&!sharedOverlayOpen();}
  function refresh(force){if(manualPromise)return manualPromise;if(!usable()||busy)return Promise.resolve();const who=owner,gen=epoch;notice='';noticeTone='success';const tasks=[read(force!==false)];if(view==='admin'&&snapshot&&snapshot.me.canAdmin)tasks.push(loadUsers(true));const promise=Promise.allSettled(tasks).then(()=>{if(same(who,gen)&&!readError&&!(view==='admin'&&usersError)&&!stale&&online()){notice='Údaje boli obnovené.';noticeTone='success';}}).finally(()=>{if(same(who,gen)&&manualPromise===promise){manualPromise=null;renderStatus();}});manualPromise=promise;renderStatus();return promise;}
