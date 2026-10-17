@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.92.23';
+var APP_VERSION = '2.92.24';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -19009,8 +19009,8 @@ var MGR_REP_NAMES = {
   'v.dzurilla':   'Viktor Dzurilla',
   'am.west':      'AM West'
 };
-var MGR_AM_WEST = ['j.bohovic','v.hatinova','v.hromadkova','z.lescis','j.krkoska','i.kozakova'];
-var MGR_AM_EAST = ['k.czidor','r.fekiacova','l.macakova','z.lapsan','m.sabol','a.makis'];
+var MGR_AM_WEST = ['j.bohovic','v.hatinova','v.hromadkova','z.lescis','k.czidor','i.kozakova'];
+var MGR_AM_EAST = ['j.krkoska','r.fekiacova','l.macakova','z.lapsan','m.sabol','a.makis'];
 var MGR_ALL = MGR_AM_WEST.concat(MGR_AM_EAST);
 
 var MGR_ROLE_CFG = {
