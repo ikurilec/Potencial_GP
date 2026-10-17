@@ -790,6 +790,10 @@
   .viac-line:not(.active):hover{background:#E4EBF5;color:#13294B}
   .viac-line-mark{font-size:16px;line-height:1;flex-shrink:0}
   .viac-line:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+  .viac-line-pending{cursor:default;opacity:.78}.viac-line-pending:disabled{color:#48627E}.viac-line-pending.failed{color:#B45309}
+  .viac-spin{display:block;width:14px;height:14px;border:2px solid #B6C3D6;border-top-color:#13294B;border-radius:50%;animation:viacSpin .8s linear infinite}
+  @keyframes viacSpin{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.viac-spin{animation:none;border-top-color:#B6C3D6}}
   .viac-tile{display:flex;flex-direction:column;align-items:flex-start;gap:9px;background:#fff;
     border:1px solid var(--color-border);border-radius:var(--radius-md);padding:13px 12px;font-family:inherit;text-align:left;
     cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .15s,border-color .15s}

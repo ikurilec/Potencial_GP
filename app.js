@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.92.17';
+var APP_VERSION = '2.92.23';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -6944,7 +6944,10 @@ function viacLinesHtml() {
   // dá rovno dotiahnuť heslom, namiesto toho, aby zo zoznamu jednoducho zmizla.
   var lineMgr = typeof mgrDetectRole === 'function' && !!mgrDetectRole(getSession());
   // Nemanažér (napr. KAM v Reagile) vidí výber línií, len ak už má 2+ línie v dual session.
-  if (!lineMgr && !(typeof mgrLineSwitchAvailable === 'function' && mgrLineSwitchAvailable())) return garageAccessRecoveryMarkup('',null,true);
+  if (!lineMgr && !(typeof mgrLineSwitchAvailable === 'function' && mgrLineSwitchAvailable())) {
+    var onlyPending = garageMenuPendingLine('',null);
+    return (onlyPending ? '<div class="viac-sec" id="viac-lines-label">Línia</div><div class="viac-lines" role="group" aria-labelledby="viac-lines-label">' + onlyPending + '</div>' : '') + garageAccessRecoveryMarkup('',null,true);
+  }
   var dual = mgrGetDual() || {};
   var current = mgrCurrentLine();
   var lines = [{line:'gp',label:'Golem'}, {line:'gyn',label:'Gynekológia'}, {line:'reagila',label:'Reagila'}];
@@ -6961,7 +6964,7 @@ function viacLinesHtml() {
       }
       return '<button type="button" class="viac-line' + (active ? ' active' : '') + '" data-viac-line="' + it.line + '" aria-pressed="' + active + '" onclick="viacSwitchLine(\'' + it.line + '\')">' +
         '<span>' + it.label + '</span><span class="viac-line-mark" aria-hidden="true">' + (active ? '✓' : '›') + '</span></button>';
-    }).join('') + '</div>'+garageAccessRecoveryMarkup('',null,true);
+    }).join('') + garageMenuPendingLine('',null) + '</div>'+garageAccessRecoveryMarkup('',null,true);
 }
 function viacSwitchLine(line) {
   if(window.SatoriGarageShell && SatoriGarageShell.active()){SatoriGarageShell.switchLine(line);return;}
@@ -10909,13 +10912,20 @@ function lineChooserMeta(line){
 // Neoverené timeouty nesmú používateľa dostať na obrazovku s nekonečným
 // „načítavam…“ — pomalá línia sa doplní do dual session na pozadí.
 function lineShouldShowChooser(avail){ return (avail || []).length >= 2; }
+// Menu line shown while Garage access is being verified: same look as the other lines, disabled.
+function garageMenuPendingLine(username,dataMap){
+  if(!window.SatoriGarageBridge||typeof SatoriGarageBridge.accessUiState!=='function'||SatoriGarageBridge.canAccess())return '';
+  var st=SatoriGarageBridge.accessUiState(username,dataMap),failed=st.status==='failed';
+  if(!st.known||(st.status!=='checking'&&!failed))return '';
+  return '<button type="button" class="viac-line viac-line-pending'+(failed?' failed':'')+'" data-viac-line-pending="garage" disabled'+(failed?'':' aria-busy="true"')+' aria-label="Garáž, '+(failed?'overenie prístupu zlyhalo':'overujem prístup')+'"><span>Garáž</span><span class="viac-line-mark" aria-hidden="true">'+(failed?'!':'<i class="viac-spin"></i>')+'</span></button>';
+}
 function garageAccessRecoveryMarkup(username,dataMap,menu){
   if(!window.SatoriGarageBridge||typeof SatoriGarageBridge.accessUiState!=='function')return '';
   var accessState=SatoriGarageBridge.accessUiState(username,dataMap),state=accessState.status;
-  if(state==='checking'&&accessState.known){return menu?'<button type="button" class="viac-line" disabled aria-busy="true"><span>🚘 Garáž</span><span>Overujem prístup…</span></button>':'';}
+  if(state==='checking'&&accessState.known)return '';
   if(state==='checking')return '<p class="login-help" role="status" aria-live="polite">Overujem ďalšie rozhrania…</p>';
   if(state!=='failed')return '';
-  return (menu&&accessState.known?'<button type="button" class="viac-line" disabled><span>🚘 Garáž</span><span>Overenie zlyhalo</span></button>':'')+'<div class="garage-access-recovery"><p class="login-help" role="status">Niektoré rozhrania sa nepodarilo overiť.</p><button type="button" class="'+(menu?'viac-line':'line-choose-btn')+'" data-garage-access-retry onclick="SatoriGarageBridge.retryAccess()"><span>↻ Overiť dostupné rozhrania</span></button></div>';
+  return '<div class="garage-access-recovery"><p class="login-help" role="status">Niektoré rozhrania sa nepodarilo overiť.</p><button type="button" class="'+(menu?'viac-line':'line-choose-btn')+'" data-garage-access-retry onclick="SatoriGarageBridge.retryAccess()"><span>↻ Overiť dostupné rozhrania</span></button></div>';
 }
 function lineGarageLoginSource(username,dataMap){
   if(typeof SatoriGarageBridge==='undefined'||!dataMap)return '';

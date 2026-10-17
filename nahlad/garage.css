@@ -194,4 +194,7 @@ body.garage-mode #update-bar.show{position:fixed;top:calc(env(safe-area-inset-to
 .garage-tabs button[aria-busy="true"]::before{content:none}
 @keyframes garageSpin{to{transform:rotate(360deg)}}@keyframes garageToastIn{from{opacity:0;transform:translate(-50%,-8px)}to{opacity:1;transform:translate(-50%,0)}}
 @media(prefers-reduced-motion:reduce){.garage-toast{animation:none}.garage-toast-spin,.garage-overlay button[aria-busy="true"]::before,.garage-dialog-overlay button[aria-busy="true"]::before{animation:none}}
+/* Hardening: any number of tabs in one row, long place numbers, tab bar out of the keyboard's way. */
+@media(max-width:759px){.garage-tabs{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}.garage-typing .garage-tabs{display:none}.garage-typing.garage-overlay{padding-bottom:calc(env(safe-area-inset-bottom,0px) + var(--space-6))}}
+.garage-ticket-number.long{font-size:30px}.garage-mini-plate strong.long{font-size:15px}
 
