@@ -116,3 +116,11 @@ body.garage-mode #update-bar.show{position:fixed;top:calc(env(safe-area-inset-to
 #garage-private-vehicle[hidden]{display:none}#garage-private-vehicle{margin-top:var(--space-4)}#garage-vehicle-plate{text-transform:uppercase}
 
 .garage-person-initials{overflow:hidden}.garage-person-avatar-img{display:block;width:100%;height:100%;object-fit:cover;background:#fff}
+/* Occupancy tint, own waiting marker and followed colleague in the month overview. */
+.garage-day.cap-full:not(.selected){background:#fef2f2;border-color:#fecaca}.garage-day.cap-partial:not(.selected):not(.has-office){border-color:#fde68a}.garage-day.cap-free:not(.selected):not(.has-office){border-color:#bbf7d0}
+.garage-day.has-waiting i{color:#b45309}.garage-day.has-waiting.selected i{color:#fff}
+.garage-day.has-colleague::before{content:'';position:absolute;left:5px;top:5px;width:8px;height:8px;border-radius:50%;background:#7c3aed}.garage-day.has-colleague.selected::before{box-shadow:0 0 0 2px #fff}
+.garage-selection-legend i.colleague{background:#7c3aed;border-radius:50%}
+.garage-capacity-key{display:flex;flex-wrap:wrap;gap:6px}.garage-capacity-key b{border-radius:6px;padding:1px 6px;font:700 11px var(--font-display)}.garage-capacity-key .free{color:#15803d;background:#dcfce7}.garage-capacity-key .partial{color:#92400e;background:#fef3c7}.garage-capacity-key .full{color:#b91c1c;background:#fee2e2}
+.garage-colleague-card .garage-section-head{margin-bottom:4px}.garage-colleague-card h2{margin:0;font-size:16px}.garage-colleague-days{list-style:none;margin:var(--space-3) 0 var(--space-2);padding:0;display:grid;gap:6px}.garage-colleague-day{width:100%;min-height:44px;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--color-border);border-radius:var(--radius-base);background:var(--color-surface-2);color:var(--color-text);cursor:pointer;text-align:left}.garage-colleague-day strong{font-size:13px}.garage-colleague-day span{font-size:12px;color:var(--color-text-muted);white-space:nowrap}
+.garage-waiting-count{margin:var(--space-2) 0}
