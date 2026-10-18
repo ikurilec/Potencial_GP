@@ -12,7 +12,7 @@ const root=path.resolve(__dirname,'..');
    mgrFetchWithRetry=url=>url.includes('getManagers')?(window.profileRequests++,new Promise(r=>window.resolveProfiles=r)):url.includes('getLastLogins')?Promise.resolve({}):new Promise(()=>{});
    USAGE_VIEW.line='gp';USAGE_VIEW.bodyId='identity-fixture';USAGE_VIEW.currentRep=null;
    let body=document.getElementById('identity-fixture');if(!body){body=document.createElement('div');body.id='identity-fixture';document.body.appendChild(body);}body.style.cssText='display:block;max-width:450px;padding:16px;background:#e9ecf3';
-   document.querySelectorAll('body > :not(#identity-fixture)').forEach(e=>e.style.display='none');
+   document.body.className='';window.scrollTo(0,0);document.querySelectorAll('body > :not(#identity-fixture)').forEach(e=>e.style.display='none');
    const reps={};['kam','second','l.faber','e.starostova','v.dzurilla','j.gavlak'].forEach(login=>reps[login]={opens:2,timeS:120,last:new Date().toISOString(),sections:{Plnenie:2}});window.identityFixture={ok:true,reps,team:{},push:{},today:'2026-10-18'};
    mgrLoadReps(MGR_ALL);usageLoadManagers();usageRenderTeam(identityFixture);
   },line);
@@ -26,7 +26,7 @@ const root=path.resolve(__dirname,'..');
   const card=login=>page.locator('.act-rep').filter({has:page.locator('.act-rep-avatar[data-username="'+login+'"]')});
   await page.waitForFunction(()=>document.querySelector('#identity-fixture').textContent.includes('Lenka Fáber'));
   for(const [login,name,initials,hasAvatar] of [['l.faber','Lenka Fáber','LF',true],['e.starostova','Eva Starostová','ES',false],['v.dzurilla','Viktor Dzurilla','VD',true],['j.gavlak','Juraj Gavlák','JG',false],['second','Ľudmila Hricová','ĽH',false]]){
-   assert.equal(await card(login).locator('.act-rep-nametxt').innerText(),name);assert.equal(await card(login).locator('.avatar-img').count(),hasAvatar?1:0);if(!hasAvatar)assert.equal(await card(login).locator('.act-rep-avatar').innerText(),initials);
+   assert.ok(await card(login).isVisible(),'Identity card is visible in the mobile UI');assert.equal(await card(login).locator('.act-rep-nametxt').innerText(),name);assert.equal(await card(login).locator('.avatar-img').count(),hasAvatar?1:0);if(!hasAvatar)assert.equal(await card(login).locator('.act-rep-avatar').innerText(),initials);
   }
   await page.evaluate(()=>{USERS_LOCAL.second={name:'Ľudmila Hricová Nová',avatar:{style:'adventurer',hair:'long02'}};avatarRefreshAllInDom();});assert.equal(await card('second').locator('.act-rep-nametxt').innerText(),'Ľudmila Hricová Nová');assert.equal(await card('second').locator('.avatar-img').count(),1);
   await page.evaluate(()=>{localStorage.setItem('avatar_cfg_j.gavlak',JSON.stringify({style:'adventurer',hair:'short02'}));window.dispatchEvent(new CustomEvent('avatar-changed',{detail:{username:'j.gavlak'}}));});assert.equal(await card('j.gavlak').locator('.avatar-img').count(),1,'Avatar changes update the already rendered activity card');
