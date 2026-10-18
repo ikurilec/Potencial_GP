@@ -64,4 +64,4 @@ Pred živou migráciou sa uloží overiteľná obnova zmenených riadkov/metadá
 
 ## Stav
 
-Tento dokument je pripravený na kontrolu pred implementáciou. Potvrdené je rozdelenie štyroch reprezentantov a zamýšľané AM podľa Golemu. Kód nového rozdelenia zatiaľ nie je implementovaný ani nasadený a žiadny živý účet, schvaľovateľ ani oprávnenie sa pri príprave tohto návrhu nezmenili.
+Lokálny frontend, súkromný Reagila Apps Script a oba súkromné konvertory sú implementované. Verzia aplikácie je 2.92.26; rozdelenie predvolene ostáva vypnuté. Prešli syntetické testy štyroch KAM, oboch AM a manažmentu, serverovej autorizácie, notifikácií, fyzických riadkov histórie, spoločného rebríčka, oddeľovania cache a oneskorených odpovedí reportov. Žiadny živý účet, schvaľovateľ ani oprávnenie sa pri implementácii nezmenili. Reagila redeploy, osobné zadanie Haninho hesla správcom, potvrdená aktivácia a živé overenie zostávajú samostatnými poslednými krokmi; pripravený postup je v súkromnom priečinku apps_script/REAGILA_WEST_EAST_POSTUP.md.

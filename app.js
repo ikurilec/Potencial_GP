@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.92.25';
+var APP_VERSION = '2.92.26';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -7727,10 +7727,14 @@ function settingsRoleLabel(s){
     return (typeof GYN_ROLE_LABEL !== 'undefined' && GYN_ROLE_LABEL[s.role]) || s.role || '';
   }
   if(s.line === 'reagila'){
-    switch(s.role){
+    switch(String(s.role || '').toLowerCase().trim()){
       case 'admin': return 'Admin';
       case 'pm':    return 'Produktový manažér';
       case 'bum':   return 'Business Unit Manager';
+      case 'am west':
+      case 'amwest': return 'Area Manager West';
+      case 'am east':
+      case 'ameast': return 'Area Manager East';
       case 'am':    return 'Area Manager';
       case 'boss':  return 'Vedenie';
       case 'asistent': return 'Asistent';
@@ -10153,6 +10157,7 @@ function clearSession() {
 
 // Spoločné parsovanie pohlavia + avatara + session tokenov z login response
 function mgrParseLoginExtras(user, data){
+  if (user.line === 'reagila') reagilaLoginTeamExtras(user, data);
   if(data.garage_access===true)user.garage_access=true;
   var rawG = String(data.pohlavie || data.gender || '').trim().toLowerCase();
   if (rawG === 'm' || rawG === 'muz' || rawG === 'muž' || rawG === 'male') user.gender = 'male';
@@ -10177,6 +10182,87 @@ function mgrBuildGynUser(username, data){
 }
 function mgrBuildReagilaUser(username, data){
   return mgrParseLoginExtras({ username: username, name: data.name, role: data.role, region: data.region || '', line: 'reagila' }, data);
+}
+function reagilaLoginTeamExtras(user, data){
+  data = data || {};
+  user.reagila_team_split = typeof data.team_split_enabled === 'boolean' ? data.team_split_enabled : data.reagila_team_split === true;
+  var team = String(data.tim || '').trim().toLowerCase();
+  user.tim = team === 'west' || team === 'east' ? team : '';
+  return user;
+}
+function reagilaTeamSplitEnabled(user){
+  var s = user || getSession() || {};
+  return s.line === 'reagila' && s.reagila_team_split === true;
+}
+function reagilaTeamClassSync(user){
+  document.body.classList.toggle('reagila-team-split', reagilaTeamSplitEnabled(user));
+}
+var REAGILA_COMPARISON_ROSTER = null;
+function reagilaCanOpenRep(username) {
+  return !reagilaTeamSplitEnabled() || plnenieGetActiveReps().indexOf(username) !== -1;
+}
+function reagilaComparisonReps() {
+  var st = REAGILA_COMPARISON_ROSTER;
+  if (!reagilaTeamSplitEnabled() || !st || st.owner !== appReadOwner() || !appLineContextActive(st.ctx) || !Array.isArray(st.rows)) return null;
+  return st.rows.map(function(r){ return r.login; });
+}
+function reagilaMergeComparisonProfiles() {
+  if (!reagilaComparisonReps()) return;
+  REAGILA_COMPARISON_ROSTER.rows.forEach(function(r){
+    var u = r.login, old = USERS_LOCAL[u] || {}, info = LB_REP_INFO[u] || {};
+    // Only public identity metadata: comparisons never widen private working scope.
+    var av = r.avatar || null;
+    try { if (typeof av === 'string') av = JSON.parse(av); } catch(e){ av = null; }
+    if (av && !AVATAR_SCHEMAS[av.style]) av = null;
+    var name = r.meno || info.name || u;
+    var rawGender = String(r.pohlavie || '').trim().toLowerCase();
+    var gender = ['m','muz','muž','male'].indexOf(rawGender) >= 0 ? 'male' : ['z','f','zena','žena','female'].indexOf(rawGender) >= 0 ? 'female' : null;
+    var color = LB_COLOR_PALETTE[strHash(u) % LB_COLOR_PALETTE.length];
+    MGR_REP_NAMES[u] = name;
+    LB_REP_INFO[u] = Object.assign({}, info, {name:name,region:r.region || '',color:color,avatar:av,gender:gender,tim:r.tim || ''});
+    USERS_LOCAL[u] = Object.assign({}, old, {name:name,region:r.region || '',avatar:av,gender:gender,tim:r.tim || ''});
+  });
+}
+function reagilaEnsureComparisonRoster(force) {
+  if (!reagilaTeamSplitEnabled()) return Promise.resolve(null);
+  var owner = appReadOwner(), ctx = appLineCapture(), old = REAGILA_COMPARISON_ROSTER;
+  if (old && old.owner === owner && appLineContextActive(old.ctx)) {
+    if (old.pending) return old.pending;
+    if (!force && old.rows && Date.now() - old.at < 300000) return Promise.resolve(old.rows);
+  }
+  var st = {owner:owner,ctx:ctx,rows:old && old.owner === owner && appLineContextActive(old.ctx) ? old.rows : null,at:0,pending:null};
+  REAGILA_COMPARISON_ROSTER = st;
+  function active(){ return REAGILA_COMPARISON_ROSTER === st && appReadOwner() === owner && appLineContextActive(ctx) && reagilaTeamSplitEnabled(); }
+  st.pending = appQueuedFetchJson(scriptUrl('action=getRepList&fullLine=1'), {cache:'no-store'}, 25000, 'critical').then(function(data){
+    if (!active()) return null;
+    if (!data || !data.ok || !Array.isArray(data.reps)) throw new Error('Comparison roster unavailable');
+    st.rows = data.reps.filter(function(r){return r && r.login;}).map(function(r){
+      return {login:r.login,meno:r.meno,region:r.region,tim:r.tim,pohlavie:r.pohlavie,avatar:r.avatar};
+    });
+    st.at = Date.now();
+    reagilaMergeComparisonProfiles();
+    try { avatarRefreshAllInDom(); } catch(e){}
+    try { lbRender(); } catch(e){}
+    return st.rows;
+  }).catch(function(){ return active() ? st.rows : null; }).then(function(rows){st.pending=null;return rows;});
+  return st.pending;
+}
+function reagilaDataCacheScope() {
+  if (!reagilaTeamSplitEnabled()) return '';
+  var s = getSession() || {};
+  return '|split-v1|' + encodeURIComponent([s.username,s.role,s.tim].join('|'));
+}
+function _plLbLsKey(year, q) {
+  return _plLsKey(year, q) + (reagilaTeamSplitEnabled() ? '|comparison' : '');
+}
+
+function reagilaSyncTeamCapability(data){
+  var s = getSession();
+  if (!s || s.line !== 'reagila' || !data || typeof data.team_split_enabled !== 'boolean') return;
+  var before = String(s.reagila_team_split) + '|' + String(s.tim || '');
+  reagilaLoginTeamExtras(s, {team_split_enabled:data.team_split_enabled,tim:data.tim === undefined ? s.tim : data.tim});
+  if (before !== String(s.reagila_team_split) + '|' + String(s.tim || '')) setSession(s);
+  reagilaTeamClassSync(s);
 }
 // Aktuálna línia podľa živej session ('gp' = Golem, 'gyn', 'reagila')
 function mgrCurrentLine(){ if(typeof SatoriGarageBridge!=='undefined' && SatoriGarageBridge.isOpen())return 'garage';var s = getSession(); return (s && s.line) ? s.line : 'gp'; }
@@ -10527,6 +10613,7 @@ function mgrLineResetSharedData(target){
       GYN_APP._plReqIds={}; GYN_APP.plLoading={}; GYN_APP._repListLoading=false;
       GYN_APP.detailLogin=null;
     }
+    if(typeof rp2ResetReadState === 'function')rp2ResetReadState();
     if(typeof PHARMA_STATE !== 'undefined'){ PHARMA_STATE.cache={}; PHARMA_STATE.loading={}; PHARMA_STATE.requests={}; PHARMA_STATE.revalidated={}; PHARMA_STATE.generations={}; }
     if(typeof PHARMA_GRAF_STATE !== 'undefined'){ PHARMA_GRAF_STATE.cache={}; PHARMA_GRAF_STATE.loading={}; PHARMA_GRAF_STATE.checkedOnOpen={}; PHARMA_GRAF_WAITERS={}; }
     if(typeof PHARMA_OKRES_STATE !== 'undefined'){ PHARMA_OKRES_STATE.cache={}; PHARMA_OKRES_STATE.loading={}; }
@@ -10631,7 +10718,8 @@ function reagilaClearGolemStatics(){
   try {
     MGR_REP_NAMES = {}; LB_REP_INFO = {}; USERS_LOCAL = {};
     MGR_AM_WEST = []; MGR_AM_EAST = []; MGR_ALL = []; LB_ALL_REPS = [];
-    ['bum','admin','boss','pm','am','asistent'].forEach(function(k){ if(MGR_ROLE_CFG[k]) MGR_ROLE_CFG[k].reps = []; });
+    ['bum','admin','boss','pm','am','asistent','amwest','ameast'].forEach(function(k){ if(MGR_ROLE_CFG[k]) MGR_ROLE_CFG[k].reps = []; });
+    reagilaTeamClassSync();
     try { reagilaApplyPharmaMaps_(); } catch(e){}
     try { LB_STATE.mode = 'plnenie'; } catch(e){}
     try { PL_PRODUCT_ORDER = ['reagila','cavinton','boxarid','fingolimod','dmf','yaxwer','pazopanib','lunaldin']; } catch(e){}
@@ -10674,12 +10762,13 @@ function loginSuccess(username, name, role, region, extra) {
   // Žiadny „Golem flash" po prihlásení do Reagily — vyprázdni statické Golem zoznamy
   // reprezentantov, kým nedobehne Reagila getRepList/getPlnenieAll (loading namiesto Golem mien).
   if (user.line === 'reagila') {
+    reagilaLoginTeamExtras(user, extra);
     try {
       MGR_REP_NAMES = {}; LB_REP_INFO = {}; USERS_LOCAL = {};
       MGR_AM_WEST = []; MGR_AM_EAST = []; MGR_ALL = []; LB_ALL_REPS = [];
       // cfg.reps držia VLASTNÉ referencie na starý Golem zoznam — vyprázdni ich tiež,
       // inak mgrEnter načíta Golem repov. buildRepData ich potom naplní Reagila rostrom.
-      ['bum','admin','boss','pm','am','asistent'].forEach(function(k){ if(MGR_ROLE_CFG[k]) MGR_ROLE_CFG[k].reps = []; }); try { reagilaApplyPharmaMaps_(); } catch(e){} try { LB_STATE.mode = 'plnenie'; } catch(e){} try { PL_PRODUCT_ORDER = ['reagila','cavinton','boxarid','fingolimod','dmf','yaxwer','pazopanib','lunaldin']; } catch(e){}
+      ['bum','admin','boss','pm','am','asistent','amwest','ameast'].forEach(function(k){ if(MGR_ROLE_CFG[k]) MGR_ROLE_CFG[k].reps = []; }); try { reagilaApplyPharmaMaps_(); } catch(e){} try { LB_STATE.mode = 'plnenie'; } catch(e){} try { PL_PRODUCT_ORDER = ['reagila','cavinton','boxarid','fingolimod','dmf','yaxwer','pazopanib','lunaldin']; } catch(e){}
     } catch(e){}
   }
   // Extra dáta z login response (pohlavie + avatar)
@@ -11669,6 +11758,7 @@ function appOpenDefaultScreen() {
 }
 
 function updateHdrForUser(user) {
+  reagilaTeamClassSync(user);
   // Spodná lišta patrí každému prihlásenému — všetkým trom líniám aj všetkým
   // rolám. Trieda sa pridáva tu, lebo updateHdrForUser() beží po prihlásení
   // v každej línii.
@@ -21688,6 +21778,8 @@ function lbEnsureLineState() {
 
 function lbScopeReps() {
   lbEnsureLineState();
+  var comparison = reagilaComparisonReps();
+  if (comparison) return comparison.slice();
   if (Array.isArray(LB_ALL_REPS) && LB_ALL_REPS.length) return LB_ALL_REPS.slice();
   if (Array.isArray(MGR_ALL) && MGR_ALL.length) return MGR_ALL.slice();
   return [];
@@ -22622,6 +22714,8 @@ function buildRepData(reps) {
     }
   } catch(e){}
 
+  try { reagilaMergeComparisonProfiles(); } catch(e){}
+
   // Re-fill všetkých avatar containerov ktoré sú už v DOM
   // (Plnenie, manažér zoznam, atď. mohli byť renderované PRED tým ako prišli avatar dáta zo Sheets)
   try { avatarRefreshAllInDom(); } catch(e){}
@@ -22918,6 +23012,7 @@ function avatarRefreshAllInDom() {
 }
 
 function loadRepList(forceFullRoster) {
+  if (forceFullRoster && reagilaTeamSplitEnabled()) return reagilaEnsureComparisonRoster(true);
   if ((REP_LIST_STATE.loaded || REP_LIST_STATE.loading) && !forceFullRoster) return;
   if (forceFullRoster) REP_LIST_STATE.fullRosterRequested = true;
   REP_LIST_STATE.loading = true;
@@ -22925,6 +23020,7 @@ function loadRepList(forceFullRoster) {
   appQueuedFetchJson(scriptUrl('action=getRepList' + (forceFullRoster ? '&fullLine=1' : '')), { cache: 'no-store' }, APP_FETCH_TIMEOUT_PRELOAD_MS, 'critical')
     .then(function(data){
       if(!appLineContextActive(rosterCtx))return;
+      reagilaSyncTeamCapability(data);
       REP_LIST_STATE.loading = false;
       if (data.ok && data.reps && data.reps.length) {
         var isFullRoster = buildRepData(data.reps);
@@ -23133,7 +23229,7 @@ function bootLoaderDone(){
 var APP_ROSTER_CACHE_PREFIX = 'satori_roster_v1:';
 function appRosterCacheKey(){
   var s = getSession() || {};
-  return APP_ROSTER_CACHE_PREFIX + [s.line || 'gp', s.username || '', s.role || '', s.region || ''].join('|').toLowerCase();
+  return APP_ROSTER_CACHE_PREFIX + [s.line || 'gp', s.username || '', s.role || '', s.region || ''].join('|').toLowerCase() + (s.line === 'reagila' ? '|teams:' + (s.reagila_team_split === true ? 'split' : 'legacy') : '');
 }
 // F2-1: read/write cez DataStore.get()/set() — predtým vlastný JSON.parse/lsSafeSet
 // s vlastným tvarom záznamu ({ts, reps}), teraz rovnaký mechanizmus ako všade inde.
@@ -23169,6 +23265,7 @@ function loadManagerInitData(ctx){
   }).then(function(data){
     if(!appLineContextActive(ctx))return null;
     if(!data || !data.ok || !Array.isArray(data.reps))throw new Error('Manager roster unavailable');
+    reagilaSyncTeamCapability(data);
     buildRepData(data.reps);appRosterCacheWrite(data.reps);
     REP_LIST_STATE.loaded=true;REP_LIST_STATE.loading=false;
     appBootFinishIfReady();
@@ -23274,6 +23371,7 @@ function loadInitData(username, _lineCtx) {
 
       // RepList
       if(data.repList && data.repList.length) {
+        reagilaSyncTeamCapability(data);
         appRosterCacheWrite(data.repList);
         var initFullRoster = buildRepData(data.repList);
         REP_LIST_STATE.loaded = !!initFullRoster;
@@ -23824,6 +23922,7 @@ function dismissNotifBanner(id, lsKey, serverTs) {
 
 function lbPreloadPlnenie(force) {
   lbEnsureLineState();
+  if (reagilaTeamSplitEnabled()) reagilaEnsureComparisonRoster(force);
   var lastQ = lbLastCompletedQ();
   if (lastQ < 1) return;
   // Cache je platná len pre TO Q, s ktorým bola naplnená — "je tam niečo" nestačí.
@@ -23832,21 +23931,21 @@ function lbPreloadPlnenie(force) {
   // ROOT CAUSE (Ivan, 13.9.): LB_PLNENIE_CACHE bola len v pamäti — po reloade
   // stránky vždy prázdna, hoci localStorage mal správne dáta (z Plnenia alebo
   // z predošlej session), takže Rebríček musel vždy čakať na plný sieťový fetch.
-  // Rovnaký kľúč ako PL_STATE.qCache (_plLsKey) — obe ťahajú identickú
-  // celolíniovú odpoveď z getPlnenieAll pre dané Q, netreba druhú kópiu cache.
-  var lsCached = _plLsLoad(_plLsKey(year, lastQ));
+  // Staršie línie zdieľajú kľúč s Plnením. Aktivované Reagila tímy majú
+  // samostatný porovnávací kľúč viazaný na aktuálny účet a jeho tím.
+  var lsCached = _plLsLoad(_plLbLsKey(year, lastQ));
   if(lsCached) LB_PLNENIE_CACHE = { q: lastQ, data: lsCached.data, aggregates: plnenieBuildAggregates(lsCached.data, lastQ, lbScopeReps()) };
   LB_PLNENIE_LOADING = true;
   var loadId = ++LB_PLNENIE_LOAD_ID;
   var loadCtx = appLineCapture();
   function active(){ return loadId === LB_PLNENIE_LOAD_ID && appLineContextActive(loadCtx); }
-  var url = scriptUrl('action=getPlnenieAll&rok=' + year + '&Q=' + lastQ);
+  var url = scriptUrl('action=getPlnenieAll&rok=' + year + '&Q=' + lastQ + (reagilaTeamSplitEnabled() ? '&fullLine=1' : ''));
   mgrFetchWithRetry(url, 3)
     .then(function(resp) {
       if(!active()) return;
       if (!resp || !resp.ok) throw new Error('No data');
       var agg = plnenieBuildAggregates(resp, lastQ, lbScopeReps());
-      DataStore.set(_plLsKey(year, lastQ), resp, { extra: { agg: agg } });
+      DataStore.set(_plLbLsKey(year, lastQ), resp, { extra: { agg: agg } });
       LB_PLNENIE_CACHE = { q: lastQ, data: resp, aggregates: agg };
     })
     .catch(function() {
@@ -24148,10 +24247,11 @@ function lbRenderPlnenie(body) {
     var lastName = rep.name.split(' ').pop();
     var cls = pctCls(rep.pct);
     var av = lbAvatarContent(rep.username, rep.name, isFirst ? 68 : 46);
+    var _lbOwnDetail = _lbCanOpenDetail && reagilaCanOpenRep(rep.username);
     var _lbSafeU = String(rep.username).replace(/'/g, "\\'");
-    var _lbClickAttr = _lbCanOpenDetail ? ' onclick="lbOpenRepDetail(\'' + _lbSafeU + '\')" role="button" tabindex="0"' : (_lbCanOpenTeam ? ' onclick="teamPlnenieOpenFromLeaderboard(\'' + _lbSafeU + '\')" role="button" tabindex="0"' : '');
+    var _lbClickAttr = _lbOwnDetail ? ' onclick="lbOpenRepDetail(\'' + _lbSafeU + '\')" role="button" tabindex="0"' : (_lbCanOpenTeam ? ' onclick="teamPlnenieOpenFromLeaderboard(\'' + _lbSafeU + '\')" role="button" tabindex="0"' : '');
     podiumHtml +=
-      '<div class="lb-p-item' + ((_lbCanOpenDetail || _lbCanOpenTeam) ? ' lb-clickable' : '') + ' ' + podiumClasses[pi] + '"' + _lbClickAttr + '>' +
+      '<div class="lb-p-item' + ((_lbOwnDetail || _lbCanOpenTeam) ? ' lb-clickable' : '') + ' ' + podiumClasses[pi] + '"' + _lbClickAttr + '>' +
         (isFirst ? '<span class="lb-p-crown">\uD83D\uDC51</span>' : '') +
         '<div class="lb-p-avatar' + (av.hasAvatar ? ' has-avatar' : '') + '" data-username="' + rep.username + '" style="background:' + rep.color + '">' +
           av.html +
@@ -24172,10 +24272,11 @@ function lbRenderPlnenie(body) {
     var isMe = rep.username === myUsername;
     var cls = pctCls(rep.pct);
     var av2 = lbAvatarContent(rep.username, rep.name, 34);
+    var _lbOwnDetail = _lbCanOpenDetail && reagilaCanOpenRep(rep.username);
     var _lbSafeU2 = String(rep.username).replace(/'/g, "\\'");
-    var _lbClickAttr2 = _lbCanOpenDetail ? ' onclick="lbOpenRepDetail(\'' + _lbSafeU2 + '\')" role="button" tabindex="0"' : (_lbCanOpenTeam ? ' onclick="teamPlnenieOpenFromLeaderboard(\'' + _lbSafeU2 + '\')" role="button" tabindex="0"' : '');
+    var _lbClickAttr2 = _lbOwnDetail ? ' onclick="lbOpenRepDetail(\'' + _lbSafeU2 + '\')" role="button" tabindex="0"' : (_lbCanOpenTeam ? ' onclick="teamPlnenieOpenFromLeaderboard(\'' + _lbSafeU2 + '\')" role="button" tabindex="0"' : '');
     listHtml +=
-      '<div class="lb-row' + (isMe ? ' me' : '') + ((_lbCanOpenDetail || _lbCanOpenTeam) ? ' lb-clickable' : '') + '"' + _lbClickAttr2 + '>' +
+      '<div class="lb-row' + (isMe ? ' me' : '') + ((_lbOwnDetail || _lbCanOpenTeam) ? ' lb-clickable' : '') + '"' + _lbClickAttr2 + '>' +
         '<div class="lb-rank">' + rank + '</div>' +
         '<div class="lb-avatar' + (av2.hasAvatar ? ' has-avatar' : '') + '" data-username="' + rep.username + '" style="background:' + rep.color + '">' + av2.html + '</div>' +
         '<div class="lb-info">' +
@@ -24801,8 +24902,8 @@ var _PL_LS_V = 'v1';
 // Cache kľúče MUSIA obsahovať líniu — inak Golem a Reagila zdieľajú plnenie cache
 // a appka ukáže dáta z inej línie (bug: rebríček ťahal Golem čísla).
 function _plLineTag() { var s = (typeof getSession==='function') ? getSession() : null; return (s && s.line) ? s.line : 'gp'; }
-function _plLsKey(year, q) { return 'pl_c_' + _PL_LS_V + '_' + _plLineTag() + '_' + year + '_' + q; }
-function _plRepLsKey(uname, year, q) { return 'pl_rc_' + _PL_LS_V + '_' + _plLineTag() + '_' + (uname || '_') + '_' + year + '_' + q; }
+function _plLsKey(year, q) { return 'pl_c_' + _PL_LS_V + '_' + _plLineTag() + '_' + year + '_' + q + reagilaDataCacheScope(); }
+function _plRepLsKey(uname, year, q) { return 'pl_rc_' + _PL_LS_V + '_' + _plLineTag() + '_' + (uname || '_') + '_' + year + '_' + q + reagilaDataCacheScope(); }
 function _plLsLoad(key) {
   var p = dsRead(key);
   return (p && p.data) ? p : null;
@@ -27370,7 +27471,7 @@ function plnenieRenderRepList() {
       color: 'linear-gradient(135deg,#64748B,#475569)'
     };
     var initials = mgrInitials(info.name);
-    var regionLbl = document.body.classList.contains('reagila-line') ? ''
+    var regionLbl = document.body.classList.contains('reagila-line') && !reagilaTeamSplitEnabled() ? ''
                   : (MGR_AM_WEST.indexOf(r.username) !== -1) ? 'West'
                   : (MGR_AM_EAST.indexOf(r.username) !== -1) ? 'East' : '';
     var meta = (regionLbl ? regionLbl + (info.region ? ' · ' + info.region : '') : (info.region || ''));
@@ -28745,7 +28846,7 @@ function plnenieRepActionSummaryHtml(opts) {
 // dáta pre aktuálny Q (napr. Ivan nikdy neotvoril Plnenie tab túto session),
 // požičiaj si ich odtiaľ, nech detail neukáže zbytočne "Chyba načítania".
 function lbOpenRepDetail(username) {
-  if (!username || appRole() !== 'mgr') return;
+  if (!username || appRole() !== 'mgr' || !reagilaCanOpenRep(username)) return;
   var lastQ = lbLastCompletedQ();
   var year = (new Date()).getFullYear();
   if (!(PL_STATE.aggregates && PL_STATE.q === lastQ && PL_STATE.year === year)) {
@@ -28766,7 +28867,7 @@ function lbOpenRepDetail(username) {
 }
 
 function plnenieOpenDetail(username) {
-  if (!username) return;
+  if (!username || !reagilaCanOpenRep(username)) return;
   _plDetailCloseRequest++;
   PL_STATE.detailRep = username;
   document.body.classList.add('mgr-plnenie-detail-open');
@@ -28959,8 +29060,8 @@ function plnenieRenderDetail() {
     region: '',
     color: 'linear-gradient(135deg,#64748B,#475569)'
   };
-  // Reagila nemá west/east → ukáž len región (bez team labelu)
-  var regionLbl = document.body.classList.contains('reagila-line') ? ''
+  // Pred aktiváciou Reagila ostáva jedným tímom; potom má bežné West/East označenia.
+  var regionLbl = document.body.classList.contains('reagila-line') && !reagilaTeamSplitEnabled() ? ''
                 : (MGR_AM_WEST.indexOf(username) !== -1) ? 'West'
                 : (MGR_AM_EAST.indexOf(username) !== -1) ? 'East' : '';
   var sub = (regionLbl ? regionLbl + (info.region ? ' · ' + info.region : '') : (info.region || '')) + ' · @' + username;
@@ -33920,13 +34021,17 @@ function rptViewOpen() {
 function rptViewAllowedScopes() {
   var r = MGR_STATE.role;
   if (rp2Line() === 'gyn') return [['rep','Reprezentant'],['pill','PILL'],['patch','PATCH'],['sk','Celá línia']];
-  if (rp2Line() === 'reagila') return [['rep','Reprezentant'],['sk','Celá línia']];   // Reagila nemá rozdelenie West/East
+  if (rp2Line() === 'reagila' && !reagilaTeamSplitEnabled()) return [['rep','Reprezentant'],['sk','Celá línia']];
   if (r === 'amwest') return [['rep','Reprezentant'],['west','AM West']];
   if (r === 'ameast') return [['rep','Reprezentant'],['east','AM East']];
-  return [['rep','Reprezentant'],['west','AM West'],['east','AM East'],['sk','Celé SK']];
+  return [['rep','Reprezentant'],['west','AM West'],['east','AM East'],['sk',rp2Line()==='reagila'?'Celá línia':'Celé SK']];
 }
 
 function rptViewScopeReps() {
+  if (rp2Line() === 'reagila' && reagilaTeamSplitEnabled()) {
+    if (!rptViewAllowedScopes().some(function(scope){ return scope[0] === RPT_VIEW.scope; })) return [];
+    if (RPT_VIEW.scope === 'rep' && rp2ActiveReps_().indexOf(RPT_VIEW.username) < 0) return [];
+  }
   switch (RPT_VIEW.scope) {
     case 'west': return MGR_AM_WEST.slice();
     case 'east': return MGR_AM_EAST.slice();
@@ -33952,7 +34057,7 @@ function rptViewScopeSub(reps, p) {
   if (RPT_VIEW.scope === 'rep') {
     var u = RPT_VIEW.username;
     var region = (USERS_LOCAL[u] && USERS_LOCAL[u].region) || '—';
-    if (rp2Line() === 'reagila' || rp2Line() === 'gyn') return 'Región ' + region;
+    if (rp2Line() === 'gyn' || (rp2Line() === 'reagila' && !reagilaTeamSplitEnabled())) return 'Región ' + region;
     var g = MGR_AM_WEST.indexOf(u) >= 0 ? 'West' : 'East';
     return 'Región ' + region + ' · ' + g;
   }
@@ -34294,12 +34399,34 @@ function rp2EnsureQuarter_(q,force) {
   if (!PL_STATE.loaded && !PL_STATE.loading && typeof plnenieLoadAllQuarters === 'function') plnenieLoadAllQuarters();
 }
 
+// Reportové dáta patria konkrétnemu účtu a dátovej relácii línie.
+function rp2ResetReadState() {
+  if (typeof RP2 !== 'undefined' && RP2) {
+    RP2._readGeneration = (RP2._readGeneration || 0) + 1;
+    RP2._readScope = '';
+    RP2.ceny = null; RP2.cenyRep = {}; RP2.cenyLoading = false; RP2.cenyErr = false;
+  }
+  if (typeof RP2_ABS !== 'undefined' && RP2_ABS) { RP2_ABS.events = null; RP2_ABS.loading = false; RP2_ABS.err = false; }
+  if (typeof RP2_DOH !== 'undefined' && RP2_DOH) { RP2_DOH.list = null; RP2_DOH.loading = false; RP2_DOH.err = false; RP2_DOH.draft = null; RP2_DOH.busy = false; }
+  if (typeof RP2_LAST !== 'undefined' && RP2_LAST) { RP2_LAST.m = null; RP2_LAST.p = null; }
+  if (typeof _rp2Timer !== 'undefined') { clearTimeout(_rp2Timer); _rp2Timer = null; }
+}
+function rp2ReadStart() {
+  var ctx = appLineCapture(), owner = appReadOwner();
+  var scope = owner + '|' + JSON.stringify(ctx);
+  if (RP2._readScope !== scope) { rp2ResetReadState(); RP2._readScope = scope; }
+  var generation = RP2._readGeneration;
+  return function() { return RP2._readScope === scope && RP2._readGeneration === generation && appLineContextActive(ctx) && appReadOwner() === owner; };
+}
+
 function rp2LoadCennik() {
+  var active = rp2ReadStart();
   if (RP2.cenyLoading) return;
   if (typeof IS_DEV !== 'undefined' && IS_DEV) { if (!RP2.ceny) RP2.ceny = {}; return; }
   RP2.cenyLoading = true;
   var url = (rp2Line() === 'gyn') ? gynScriptUrl('action=getCennik') : rp2Url_('action=getCennik');
   var done = function(r) {
+    if (!active()) return;
     RP2.cenyLoading = false;
     RP2.cenyErr = !(r && r.ok);
     RP2.ceny = (r && r.ok && r.ceny) ? r.ceny : (RP2.ceny || {});
@@ -34307,7 +34434,7 @@ function rp2LoadCennik() {
     rp2Schedule();
   };
   appFetchWithRetry(url, {
-    retries: 2, timeoutMs: 24000, priority: 'boot', delayFn: function() { return 800; },
+    retries: 2, timeoutMs: 24000, priority: 'boot', active: active, delayFn: function() { return 800; },
     fetcher: function() { return appQueuedFetchJsonUntracked(url, { cache: 'no-store' }, 24000, 'boot'); }
   }).then(done).catch(function() { done(null); });
 }
@@ -34506,17 +34633,19 @@ function rp2DistrictIdeas(reps, prods, p) {
 var RP2_ABS = { events: null, loading: false, err: false };
 var RP2_ABS_TYPES = { dovolenka: 'dovolenka', paragraf: 'paragraf', administrativa: 'administratíva', ocr: 'OČR', nahradne_volno: 'náhradné voľno' };
 function rp2LoadAbs() {
+  var active = rp2ReadStart();
   if (RP2_ABS.loading) return;
   if (typeof IS_DEV !== 'undefined' && IS_DEV) { if (!RP2_ABS.events) RP2_ABS.events = []; return; }
   RP2_ABS.loading = true;
   var url = gynCalScriptUrl('action=getCalEvents&_t=' + Date.now());
   var done = function(d) {
+    if (!active()) return;
     RP2_ABS.loading = false;
     if (d && d.ok && Array.isArray(d.events)) { RP2_ABS.events = d.events.map(function(e) { try { return gynCalNormEvent(e); } catch (x) { return e; } }); RP2_ABS.err = false; }
     else { RP2_ABS.events = RP2_ABS.events || []; RP2_ABS.err = true; }
     rp2Schedule();
   };
-  appFetchWithRetry(url, { retries: 1, timeoutMs: 24000, priority: 'critical', delayFn: function() { return 800; },
+  appFetchWithRetry(url, { retries: 1, timeoutMs: 24000, priority: 'critical', active: active, delayFn: function() { return 800; },
     fetcher: function() { return appQueuedFetchJsonUntracked(url, { cache: 'no-store' }, 24000, 'critical'); } }).then(done).catch(function() { done(null); });
 }
 function rp2D(t) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(t || '')); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; }
@@ -34801,21 +34930,25 @@ function rp2CompareHtml(m, reps, p) {
 var RP2_DOH = { list: null, loading: false, err: false, draft: null, busy: false };
 var RP2_LAST = { m: null, p: null };
 function rp2DohLoad() {
+  var active = rp2ReadStart();
   if (RP2_DOH.loading) return;
   if (typeof IS_DEV !== 'undefined' && IS_DEV) { if (!RP2_DOH.list) RP2_DOH.list = []; return; }
   RP2_DOH.loading = true;
   var url = rp2Url_('action=getDohody');
-  appFetchWithRetry(url, { retries: 1, timeoutMs: 24000, priority: 'critical', delayFn: function() { return 800; },
+  appFetchWithRetry(url, { retries: 1, timeoutMs: 24000, priority: 'critical', active: active, delayFn: function() { return 800; },
     fetcher: function() { return appQueuedFetchJsonUntracked(url, { cache: 'no-store' }, 24000, 'critical'); } }).then(function(d) {
+    if (!active()) return;
     RP2_DOH.loading = false;
     if (d && d.ok && Array.isArray(d.dohody)) { RP2_DOH.list = d.dohody; RP2_DOH.err = false; } else { RP2_DOH.list = RP2_DOH.list || []; RP2_DOH.err = true; }
     rp2Schedule();
-  }).catch(function() { RP2_DOH.loading = false; RP2_DOH.list = RP2_DOH.list || []; RP2_DOH.err = true; rp2Schedule(); });
+  }).catch(function() { if (!active()) return; RP2_DOH.loading = false; RP2_DOH.list = RP2_DOH.list || []; RP2_DOH.err = true; rp2Schedule(); });
 }
 function rp2DohSave(d, done) {
+  var active = rp2ReadStart();
   RP2_DOH.busy = true; rp2Schedule();
   var url = rp2Url_('action=saveDohoda&d=' + encodeURIComponent(JSON.stringify(d)));
   appQueuedFetchJson(url, { cache: 'no-store' }, 24000, 'critical').then(function(r) {
+    if (!active()) return;
     RP2_DOH.busy = false;
     if (r && r.ok && r.dohoda) {
       var l = RP2_DOH.list || (RP2_DOH.list = []), i = -1;
@@ -34825,7 +34958,7 @@ function rp2DohSave(d, done) {
       if (done) done(true);
     } else { try { showSwToast('Nepodarilo sa uložiť dohodu'); } catch (e) {} if (done) done(false); }
     rp2Schedule();
-  }).catch(function() { RP2_DOH.busy = false; try { showSwToast('Nepodarilo sa uložiť dohodu'); } catch (e) {} if (done) done(false); rp2Schedule(); });
+  }).catch(function() { if (!active()) return; RP2_DOH.busy = false; try { showSwToast('Nepodarilo sa uložiť dohodu'); } catch (e) {} if (done) done(false); rp2Schedule(); });
 }
 function rp2DohForRep(u, p) {
   return (RP2_DOH.list || []).filter(function(d) { return String(d.rep).toLowerCase() === String(u).toLowerCase(); });
@@ -34894,13 +35027,16 @@ function rp2DohStav(id, stav) {
   rp2DohSave({ id: d.id, rep: d.rep, rok: d.rok, q: d.q, produkt: d.produkt, typ: d.typ, ciel: d.ciel, termin: d.termin, poznamka: d.poznamka, stav: stav });
 }
 function rp2DohDel(id) {
+  var active = rp2ReadStart();
   var run = function() {
+    if (!active()) return;
     var url = rp2Url_('action=deleteDohoda&id=' + encodeURIComponent(id));
     appQueuedFetchJson(url, { cache: 'no-store' }, 24000, 'critical').then(function(r) {
+      if (!active()) return;
       if (r && r.ok) { RP2_DOH.list = (RP2_DOH.list || []).filter(function(x) { return x.id !== id; }); try { showSwToast('Dohoda zmazaná'); } catch (e) {} }
       else { try { showSwToast('Nepodarilo sa zmazať (zmazať môže autor alebo admin)'); } catch (e) {} }
       rp2Schedule();
-    }).catch(function() { try { showSwToast('Nepodarilo sa zmazať'); } catch (e) {} });
+    }).catch(function() { if (!active()) return; try { showSwToast('Nepodarilo sa zmazať'); } catch (e) {} });
   };
   if (typeof lkConfirm === 'function') lkConfirm('Zmazať dohodu?', 'Dohoda sa natrvalo odstráni.', 'Zmazať', run); else run();
 }

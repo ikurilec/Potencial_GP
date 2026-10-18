@@ -27,19 +27,26 @@ for(const config of configs){
  const sessions=sheet();const stocks=sheet([headers,...['gp','reagila','gyn'].flatMap(line=>[stockRow(line,'2026-09-28',5),stockRow(line,'2026-10-12',30)])]);
  const own=book({Pouzivatelia:users,Sessions:sessions,...(config.line==='gp'?{Sklady:stocks}:{})});
  const shared=book({Sklady:stocks});let stockOpens=0,uuid=0;
- const memory=new Map(),ctx={Date,JSON,Math,Number,String,Object,Array,Error,
-  PropertiesService:{getScriptProperties:()=>({getProperty:()=>null})},
+ const properties={},memory=new Map(),ctx={Date,JSON,Math,Number,String,Object,Array,Error,
+  PropertiesService:{getScriptProperties:()=>({getProperty:key=>properties[key]||null})},
   CacheService:{getScriptCache:()=>({get:k=>memory.get(k)||null,put:(k,v)=>memory.set(k,v)})},
   LockService:{getScriptLock:()=>({waitLock:()=>{},releaseLock:()=>{}})},
   Utilities:{getUuid:()=>config.line+'-test-'+(++uuid)},Logger:{log:()=>{}},
   ContentService:{MimeType:{JSON:'application/json',TEXT:'text/plain'},createTextOutput:text=>({text,setMimeType(){return this;}})},
   SpreadsheetApp:{getActive:()=>own,openById:id=>{if(id===ctx.SHEET_ID)return own;if(id===ctx.STOCK_SOURCE_SHEET_ID){stockOpens++;return shared;}throw Error('Unexpected sheet');}}
  };
- vm.createContext(ctx);vm.runInContext(fs.readFileSync(file,'utf8'),ctx,{filename:path.basename(file)});
+ vm.createContext(ctx);vm.runInContext(fs.readFileSync(config.file==='REAGILA'&&process.env.SATORI_REAGILA_SCRIPT||file,'utf8'),ctx,{filename:path.basename(file)});
  function call(parameters){const out=ctx.doGet({parameter:parameters});try{return JSON.parse(out.text);}catch(e){throw Error(config.file+' returned non-JSON: '+out.text);}}
  const fixture={config,ctx,own,users,sessions,stocks,memory,call};contexts.push(fixture);
  for(const role of config.roles){
   const username='stock-test-'+role.replace(/\s/g,'-');users.appendRow([username,'synthetic-password','Test User',role,'KE','KE']);
+  const teamAM=config.file==='REAGILA'&&/^am (west|east)$/.test(role);
+  if(teamAM){
+   delete properties.REAGILA_TEAM_SPLIT_ENABLED;
+   const staged=call({action:'login',username,password:'synthetic-password',device_id:'test-device',remember:'1'});
+   assert.equal(staged.ok,false,'Staged team AM cannot gain stock or any other Reagila data before activation');
+   properties.REAGILA_TEAM_SPLIT_ENABLED='true';
+  }
   const login=call({action:'login',username,password:'synthetic-password',device_id:'test-device',remember:'1'});
   assert.equal(login.ok,true,config.file+' login: '+role);
   assert.equal(sessions.rows.at(-1)[3],config.sessionLine,'Stock auth must match the namespace actually written by login');
@@ -65,6 +72,7 @@ for(const config of configs){
   assert.equal(call(req).rows[0].coverage_days,42,'Explicit refresh checks the newest sheet values');freshRow[8]=30;
   assert.equal(call({...req,action:'logoutSession'}).ok,true);
   assert.equal(call({...req,fresh:'0'}).ok,false,'Logged-out tokens cannot read cached stock data');
+  delete properties.REAGILA_TEAM_SPLIT_ENABLED;
  }
  console.log(config.file+': login → stocks → refresh → logout passed for '+config.roles.length+' roles');
 }

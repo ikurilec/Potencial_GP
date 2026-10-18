@@ -1759,7 +1759,7 @@
   body.mgr-subtab-reporty .mgr-plnenie-view,
   body.mgr-subtab-reporty .mgr-leaderboard-view,
   body.mgr-subtab-reporty .mgr-activity-view{display:none !important}
-  body.reagila-line .mgr-subtab[data-tab="reporty"]{display:none !important}
+  body.reagila-line:not(.reagila-team-split) .mgr-subtab[data-tab="reporty"]{display:none !important}
   .rv-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch;margin-bottom:12px}
   .rv-ctrl-group{background:#fff;border:1.5px solid var(--color-border);border-radius:var(--radius-md);padding:8px 10px 9px;box-shadow:0 2px 8px rgba(12,30,53,.05)}
   .rv-ctrl-rep{flex:1;min-width:210px}
@@ -1937,8 +1937,8 @@
   body.reagila-line .mgr-subtab[data-tab="visits"]{ display:none !important; }
   /* „Aktivita" subtab NEskrývame — JS ho zobrazí len adminovi (mgrEnter: roleKey==='admin').
      Reagila admin tak vidí: Plnenie · Rebríček · Aktivita */
-  /* Reagila nemá west/east split — skry regionálne karty (Slovensko sumár ostáva) */
-  body.reagila-line .pl-regions{ display:none !important; }
+  /* Do aktivácie nového rozdelenia Reagila ostáva bez regionálnych kariet. */
+  body.reagila-line:not(.reagila-team-split) .pl-regions{ display:none !important; }
   /* Golem-špecifická hláška o schvaľovaní teritoriálnych plánov — pre Reagilu skry */
   body.reagila-line #pl-no-plan-notice{ display:none !important; }
   /* PDF mesačné reporty sú Golem-only (AM West/East, Golem produkty) — v Reagile skry */

@@ -2,11 +2,14 @@ const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('ass
 const backend=process.env.SATORI_BACKEND_DIR||path.resolve('../..','apps_script');
 function fn(src,name){const start=src.indexOf('function '+name+'(');assert.ok(start>=0,name);const end=src.indexOf('\n}',start);return src.slice(start,end+2);}
 for(const [file,line,prefix] of [['KOD_GOLEM.txt','gp','gp'],['KOD_GYN.txt','gyn','gyn'],['KOD_REAGILA.txt','reagila','gp']]){
- const src=fs.readFileSync(path.join(backend,file),'utf8'),roles=['admin','boss','bum','pm','am west','am east','am','rep west','rep east','kam','asistent'];
+ const src=fs.readFileSync(file==='KOD_REAGILA.txt'&&process.env.SATORI_REAGILA_SCRIPT||path.join(backend,file),'utf8'),roles=['admin','boss','bum','pm','am west','am east','am','rep west','rep east','kam','asistent'];
  const rows=roles.map((r,i)=>['u'+i,line,'token'+i,r]).concat([['other','other-line','token-other','rep'],['author',line,'token-author','rep']]);
  let calls=[],deleted=[];const sheet={getLastRow:()=>rows.length+1,getRange:(row,col,n)=>({getValues:()=>n===1?[rows[row-2]]:rows}),deleteRow:r=>deleted.push(r)};
  const c={PUSH_LINE:line,NST_APP_URL_:'https://satori.test/',pushTokenSheet_:()=>sheet,pushSendRows_:(ss,r,l,t,b,url,event)=>{calls.push({r,l,event});return {sent:r.length};},pushSendToLogin_:(ss,l,login,t,b,url,event)=>calls.push({login,l,event}),nstMutedLogins_:()=>({u2:true}),nstMentionList_:s=>s.split(',').filter(Boolean),pushTeamAbsenceMutedLogins_:()=>({u3:true}),Logger:{log:()=>{}},FCM_PROJECT_ID:'test',fcmGetAccessToken_:()=> 'synthetic',pushLogDelivery_:()=>{}};
  c[prefix+'CalApproverLogins_']=()=>['u4','u5'];c.gynFindAmLogins_=()=>['u4','u5'];c[prefix+'UserPref_']=()=>true;c[prefix+'FmtRangeSk_']=()=> 'range';c[prefix.toUpperCase()+'_CAL_ABSENCE']={dovolenka:1,ocr:1,paragraf:1,administrativa:1,nahradne_volno:1};c[prefix.toUpperCase()+'_CAL_TYPE_LABELS']={dovolenka:'Dovolenka'};
+ // This suite covers legacy line/mute delivery. Active team visibility is exercised
+ // against the whole script by test-reagila-team-split.cjs.
+ c.gpCalVisibleTo_=()=>true;c.authGetUser_=()=>({});
  vm.createContext(c);
  c.LockService={getScriptLock:()=>({tryLock:()=>true,releaseLock(){}})};
  vm.runInContext(fn(src,'pushMessagePayload_'),c);

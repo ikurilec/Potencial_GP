@@ -1,0 +1,18 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+function take(s,n){const a=s.indexOf('function '+n+'(');assert.ok(a>=0,'Missing '+n);const b=s.indexOf('\nfunction ',a+1);return s.slice(a,b<0?undefined:b).split('\n//')[0];}
+(async()=>{for(const file of ['app.js','nahlad/app.js']){
+ const src=fs.readFileSync(file,'utf8');let line='reagila',epoch=1,owner='reagila|west-am|am west',resolve,requests=0,url='';
+ const c={console,Promise,Date,REAGILA_COMPARISON_ROSTER:null,MGR_ALL:['m.sibert','z.bernatova'],LB_ALL_REPS:['m.sibert','z.bernatova'],MGR_REP_NAMES:{},LB_REP_INFO:{},USERS_LOCAL:{'m.sibert':{schvalovatel:'h.madaraszova'}},AVATAR_SCHEMAS:{adventurer:{}},_PL_LS_V:1,
+  plnenieGetActiveReps:()=>['m.sibert','z.bernatova'],getSession:()=>({line,username:owner.split('|')[1],role:'am west',tim:'west',reagila_team_split:true}),appReadOwner:()=>owner,appLineCapture:()=>({line,epoch}),appLineContextActive:x=>x.line===line&&x.epoch===epoch,lbEnsureLineState:()=>{},_plLineTag:()=>line,scriptUrl:s=>s,appQueuedFetchJson:s=>{url=s;requests++;return new Promise(r=>resolve=r);},avatarRefreshAllInDom:()=>{},lbRender:()=>{}};
+ vm.createContext(c);vm.runInContext(['reagilaTeamSplitEnabled','reagilaCanOpenRep','reagilaComparisonReps','reagilaMergeComparisonProfiles','reagilaEnsureComparisonRoster','lbScopeReps','reagilaDataCacheScope','_plLsKey','_plRepLsKey','_plLbLsKey','settingsRoleLabel'].map(n=>take(src,n)).join('\n'),c);
+ assert.equal(c.reagilaCanOpenRep('m.sibert'),true);assert.equal(c.reagilaCanOpenRep('l.hricova'),false);
+ c.LB_COLOR_PALETTE=['#123456'];c.strHash=()=>0;
+ const first=c.reagilaEnsureComparisonRoster(),joined=c.reagilaEnsureComparisonRoster();assert.equal(requests,1);assert.match(url,/fullLine=1/);
+ resolve({ok:true,reps:[{login:'m.sibert',meno:'Michaela Sibert',region:'BA',tim:'west',schvalovatel:'must-not-import'},{login:'z.bernatova',meno:'Zuzana Bernátová',region:'SE',tim:'west'},{login:'l.hricova',meno:'Ľudmila Hricová',region:'ST',tim:'east'},{login:'p.papcun',meno:'Peter Papcun',region:'VY',tim:'east',reagila_ms_vyber:'private'}]});await first;await joined;
+ assert.equal(c.lbScopeReps().length,4,'Common ranking has four even when work roster has two');assert.equal(c.MGR_ALL.length,2,'Comparison does not widen working roster');assert.equal(c.USERS_LOCAL['m.sibert'].schvalovatel,'h.madaraszova');assert.equal(c.USERS_LOCAL['p.papcun'].reagila_ms_vyber,undefined);assert.equal(c.LB_REP_INFO['p.papcun'].name,'Peter Papcun');
+ const work=c._plLsKey(2026,3),cmp=c._plLbLsKey(2026,3),personal=c._plRepLsKey('m.sibert',2026,3);assert.notEqual(work,cmp);owner='reagila|east-am|am east';assert.notEqual(c._plLsKey(2026,3),work);assert.notEqual(c._plRepLsKey('m.sibert',2026,3),personal);assert.notEqual(c._plLbLsKey(2026,3),cmp);assert.equal(c.reagilaComparisonReps(),null,'Other account cannot reuse comparison metadata');
+ const late=c.reagilaEnsureComparisonRoster();line='gp';epoch++;c.MGR_REP_NAMES={};resolve({ok:true,reps:[{login:'foreign',meno:'Wrong line'}]});await late;assert.equal(c.MGR_REP_NAMES.foreign,undefined);
+ assert.equal(c.settingsRoleLabel({line:'reagila',role:'am west'}),'Area Manager West');assert.equal(c.settingsRoleLabel({line:'reagila',role:'am east'}),'Area Manager East');
+ assert.match(take(src,'lbPreloadPlnenie'),/reagilaEnsureComparisonRoster\(/);assert.match(take(src,'lbPreloadPlnenie'),/_plLbLsKey\(/);assert.match(take(src,'plnenieRenderRepList'),/!reagilaTeamSplitEnabled\(\)/);
+ console.log(file+': four-person comparison independent of work scope,public profile projection,account/line quarantine,cache purpose separation and AM labels passed');
+}})().catch(e=>{console.error(e);process.exit(1);});
