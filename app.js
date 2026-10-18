@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.92.24';
+var APP_VERSION = '2.92.25';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -13628,8 +13628,9 @@ function gynApplyUsersList(users) {
     }
     var lk = String(u.login || '').toLowerCase();
     if (lk && !USERS_LOCAL[lk]) USERS_LOCAL[lk] = { name: u.meno || u.name || lk, region: u.region, gender: g, avatar: av };
-    else if (lk) { if(!USERS_LOCAL[lk].name) USERS_LOCAL[lk].name = u.meno || u.name || lk; if(av && !USERS_LOCAL[lk].avatar) USERS_LOCAL[lk].avatar = av; }
+    else if (lk) { USERS_LOCAL[lk].name = u.meno || u.name || USERS_LOCAL[lk].name || lk; USERS_LOCAL[lk].avatar = av; }
   });
+  try { usageRefreshIdentityDom(); } catch(e){}
 }
 function gynUsersLsKey() { return 'users|' + gynCacheUserScope(); }
 // Okamžitá hydratácia z localStorage — volaj hneď pri vstupe do gyn línie,
@@ -19283,8 +19284,9 @@ function mgrLoadReps(repList){
   // (tie sa pri prepnutí nezrušia, len ďalej pribúdajú s 'background' prioritou —
   // presne preto tento zoznam vedel ostať navždy na "Načítavam…", keď sa fronta
   // pri opakovanom prepínaní línií nastrádala).
+  var metadataCtx = appLineCapture(), metadataOwner = appReadOwner();
   var managersPromise = (MGR_STATE.role)
-    ? mgrFetchWithRetry(scriptUrl('action=getManagers'), undefined, 'critical').catch(function(){ return []; })
+    ? usageLoadManagers()
     : Promise.resolve([]);
 
   var loginPromise = mgrFetchWithRetry(scriptUrl('action=getLastLogins'), undefined, 'critical').catch(function(){ return {}; });
@@ -19297,40 +19299,8 @@ function mgrLoadReps(repList){
     .catch(function(){ return null; });
 
   Promise.all([loginPromise, managersPromise, allHistPromise]).then(function(meta){
+    if (!appLineContextActive(metadataCtx) || appReadOwner() !== metadataOwner) return;
     MGR_STATE.lastLogins = meta[0] || {};
-    MGR_STATE.managers = meta[1] || [];
-    (function(){
-      var mgrs = MGR_STATE.managers;
-      if(!mgrs || !mgrs.length) return;
-      mgrs.forEach(function(mgr){
-        var mgrUsername = String((mgr && mgr.username) || '').trim().toLowerCase();
-        if(!mgrUsername) return;
-        var mgrName = String((mgr && mgr.name) || '').trim();
-        if(mgrName) MGR_REP_NAMES[mgrUsername] = mgrName;
-      });
-    })();
-    // Sync avatar configov manažérov do localStorage — aby avatarGetConfig() ich vedel nájsť
-    // (USERS_LOCAL obsahuje len reps; manažéri sú v separátnom MGR_STATE.managers poli)
-    (function(){
-      var mgrs = MGR_STATE.managers;
-      if(!mgrs || !mgrs.length) return;
-      mgrs.forEach(function(mgr){
-        if(!mgr.username) return;
-        var mgrUsername = String(mgr.username).trim().toLowerCase();
-        try {
-          var raw = String(mgr.avatar || '').trim();
-          if(raw){
-            var p = JSON.parse(raw);
-            if(p && p.style && typeof AVATAR_SCHEMAS !== 'undefined' && AVATAR_SCHEMAS[p.style]){
-              localStorage.setItem('avatar_cfg_' + mgrUsername, JSON.stringify(p));
-              return;
-            }
-          }
-          // Prázdny/neplatný avatar v Sheets — vymazať prípadnú starú cache
-          localStorage.removeItem('avatar_cfg_' + mgrUsername);
-        } catch(e){}
-      });
-    })();
     var allHist = meta[2];
 
     if(allHist && typeof allHist === 'object' && !Array.isArray(allHist)){
@@ -22508,10 +22478,12 @@ window.addEventListener('avatar-changed', function(ev) {
         el.classList.contains('mgr-avatar') || el.classList.contains('mgr-davatar') ||
         el.classList.contains('dhdr-avatar') || el.classList.contains('pl-ps-avatar') ||
         el.classList.contains('pl-rep-avatar') || el.classList.contains('gyn-rep-avatar') ||
-        el.classList.contains('hdr-avatar') || el.classList.contains('set-avatar')) {
+        el.classList.contains('hdr-avatar') || el.classList.contains('set-avatar') ||
+        el.classList.contains('act-rep-avatar') || el.classList.contains('act-dhdr-avatar')) {
       avatarFillElement(el, { username: u, name: name, color: color });
     }
   });
+  try { usageRefreshIdentityDom(); } catch(e){}
   // Update header hint (bodka na koliesku) — vypne sa po nastavení avatara
   try { hdrAvatarUpdateHint(); } catch(e){}
 });
@@ -22942,6 +22914,7 @@ function avatarRefreshAllInDom() {
       } catch(e){}
     });
   });
+  try { usageRefreshIdentityDom(); } catch(e){}
 }
 
 function loadRepList(forceFullRoster) {
@@ -25294,19 +25267,70 @@ function usageRepList() {
   return out;
 }
 function usageRepName(login) {
+  login = String(login || '').trim().toLowerCase();
   if (USAGE_VIEW.line === 'gyn') {
-    var r = ((typeof GYN_STATE !== 'undefined' && GYN_STATE.repList) || []).filter(function(x){ return String(x.login || '').toLowerCase() === login; })[0];
-    if (r) return r.meno || r.login || login;
+    var r = ((typeof GYN_STATE !== 'undefined' && GYN_STATE.repList) || []).filter(function(x){ return String(x.login || '').trim().toLowerCase() === login; })[0];
+    if (r && (r.meno || r.name)) return r.meno || r.name;
     // Manažéri (AM/PM/BUM) nie sú v repList — hľadaj v plnom userList
-    var u = ((typeof GYN_STATE !== 'undefined' && GYN_STATE.userList) || []).filter(function(x){ return String(x.login || '').toLowerCase() === login; })[0];
-    return (u && (u.meno || u.login)) || login;
+    var u = ((typeof GYN_STATE !== 'undefined' && GYN_STATE.userList) || []).filter(function(x){ return String(x.login || '').trim().toLowerCase() === login; })[0];
+    if (u && (u.meno || u.name)) return u.meno || u.name;
+    var gu = typeof USERS_LOCAL !== 'undefined' && USERS_LOCAL[login];
+    return (gu && (gu.name || gu.meno)) || 'Používateľ';
   }
-  if (typeof MGR_REP_NAMES !== 'undefined' && MGR_REP_NAMES[login]) return MGR_REP_NAMES[login];
   if (typeof MGR_STATE !== 'undefined' && MGR_STATE.managers) {
     var m = MGR_STATE.managers.filter(function(x){ return String(x.username || '').trim().toLowerCase() === login; })[0];
-    if (m) return m.name || m.username || login;
+    if (m && (m.name || m.meno)) return m.name || m.meno;
   }
-  return login;
+  var rep = (typeof USERS_LOCAL !== 'undefined' && USERS_LOCAL[login]) || (typeof LB_REP_INFO !== 'undefined' && LB_REP_INFO[login]);
+  if (rep && (rep.name || rep.meno)) return rep.name || rep.meno;
+  if (typeof MGR_REP_NAMES !== 'undefined' && MGR_REP_NAMES[login]) return MGR_REP_NAMES[login];
+  var session = getSession();
+  if (session && String(session.username || '').trim().toLowerCase() === login && session.name) return session.name;
+  return 'Používateľ';
+}
+// Profily manažérov nepotrebujú čakať na históriu návštev. Jeden zdieľaný
+// request obslúži úvodné načítanie aj Aktivitu; odpoveď patrí iba svojej relácii.
+var USAGE_MANAGER_PROFILES = null;
+function usageApplyManagers(rows) {
+  if (!Array.isArray(rows)) return;
+  MGR_STATE.managers = rows.filter(function(m){ return m && String(m.username || '').trim(); }).map(function(m){
+    return Object.assign({}, m, {username:String(m.username).trim().toLowerCase()});
+  });
+  MGR_STATE.managers.forEach(function(m){
+    if (m.name) MGR_REP_NAMES[m.username] = String(m.name).trim();
+    try {
+      var config = typeof m.avatar === 'object' ? m.avatar : JSON.parse(m.avatar || 'null');
+      if (config && config.style && AVATAR_SCHEMAS[config.style]) localStorage.setItem('avatar_cfg_' + m.username, JSON.stringify(config));
+      else localStorage.removeItem('avatar_cfg_' + m.username);
+    } catch(e){ try { localStorage.removeItem('avatar_cfg_' + m.username); } catch(ignore){} }
+  });
+  try { avatarRefreshAllInDom(); } catch(e){ usageRefreshIdentityDom(); }
+}
+function usageLoadManagers(force) {
+  if (appLineTag() === 'gyn' || (typeof IS_DEV !== 'undefined' && IS_DEV)) return Promise.resolve(MGR_STATE.managers || []);
+  var owner = appReadOwner(), ctx = appLineCapture(), state = USAGE_MANAGER_PROFILES;
+  if (!state || state.owner !== owner || !appLineContextActive(state.ctx)) state = USAGE_MANAGER_PROFILES = {owner:owner,ctx:ctx,at:0,pending:null,rows:null};
+  if (state.pending) return state.pending;
+  if (!force && state.rows && Date.now() - state.at < 180000) return Promise.resolve(state.rows);
+  state.pending = mgrFetchWithRetry(scriptUrl('action=getManagers'), undefined, 'critical').then(function(rows){
+    if (USAGE_MANAGER_PROFILES !== state || !appLineContextActive(ctx) || appReadOwner() !== owner) return [];
+    if (!Array.isArray(rows)) return [];
+    state.rows = rows; state.at = Date.now(); usageApplyManagers(rows); return rows;
+  }).catch(function(){ return state.rows || []; }).then(function(rows){ state.pending = null; return rows; });
+  return state.pending;
+}
+function usageRefreshIdentityDom() {
+  if ((USAGE_VIEW.line === 'gyn') !== (appLineTag() === 'gyn')) return;
+  var body = usageBody(); if (!body) return;
+  body.querySelectorAll('.act-rep-avatar[data-username],.act-dhdr-avatar[data-username]').forEach(function(el){
+    var login = el.getAttribute('data-username'), name = usageRepName(login);
+    var card = el.closest('.act-rep,.act-dhdr');
+    var label = card && card.querySelector('.act-rep-nametxt,.act-dhdr-name');
+    if (label) label.textContent = name;
+    if (card && card.classList.contains('act-rep')) card.setAttribute('aria-label', 'Zobraziť aktivitu ' + name);
+    el.setAttribute('data-name', name);
+    try { avatarFillElement(el, {username:login,name:name,size:el.classList.contains('act-dhdr-avatar')?54:42,color:el.style.background}); } catch(e){}
+  });
 }
 // Rola používateľa (pre štítok v zozname) — z managers/roster, inak prázdne.
 function usageRepRole(login) {
@@ -25335,6 +25359,7 @@ function usageSetPeriod(dni, btn) {
 var _usageLoadToken = 0;
 function usageStatsLoad(rep, _retry) {
   USAGE_VIEW.currentRep = rep || null;
+  if (USAGE_VIEW.line !== 'gyn') usageLoadManagers(!!USAGE_VIEW._fresh);
   var body = usageBody();
   // DOM ešte nemusí byť pripravený (re-render línie/tabu tesne predtým) — skús znova,
   // namiesto tichého návratu, ktorý by nechal placeholder "Načítavam…" navždy.
