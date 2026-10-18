@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.92.26';
+var APP_VERSION = '2.92.27';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -24853,6 +24853,8 @@ var PL_PRODUCT_LABELS = {
   'junod':                 'Junod',
   'kogavant':              'Kogavant',
   'lonelix':               'Lonelix',
+  'lonelix_sr':            'Lonelix sirup',
+  'lonelix_tb':            'Lonelix tbl.',
   'ossica':                'Ossica',
   'suprax':                'Suprax',
   'telexer':               'Telexer',
@@ -26469,9 +26471,9 @@ var PL_FAMILY_DEFS = {
 function plnenieFamilyDef(key) { return (key && PL_FAMILY_DEFS[key]) || null; }
 function plnenieFamilyKeys() { return Object.keys(PL_FAMILY_DEFS); }
 
-// Produkty BEZ plánu v Goleme (Terrosa): predaje aj PharmaData existujú, plán nie. Zobrazia sa ako karta
+// Produkty BEZ plánu v Goleme (Terrosa a formy Lonelixu). Zobrazia sa ako karta
 // s € predaja (bez %, bez cieľa) pre reprezentanta aj manažéra a do celkového plnenia sa nepočítajú.
-var PL_GOLEM_NOPLAN_PRODUCTS = ['terrosa'];
+var PL_GOLEM_NOPLAN_PRODUCTS = ['terrosa','lonelix_sr','lonelix_tb'];
 function plnenieIsGolemNoPlan(key) { return PL_GOLEM_NOPLAN_PRODUCTS.indexOf(plnenieNormalizeKey(key)) >= 0; }
 // Doplní do zoznamu produktov (resp.planProducts) tie bez plánu, ktoré majú predaje. Idempotentné; volá sa pri
 // každom zostavení agregátov, takže platí pre všetky pohľady, ktoré čítajú tú istú odpoveď (aj z cache).
@@ -26494,9 +26496,9 @@ function plnenieBuildAggregates(resp, q, scopeReps, yearOverride) {
   var predaje = resp.predaje || {};
   var planProducts = resp.planProducts || [];
 
-  // Zoznam produktov — IBA z Plan sheetu.
-  // Predaje mimo Plan (napr. Globifer/Lonelix/Ossica/Terrosa) do Plnenia nepatria,
-  // pretože bez plánu sa plnenie nedá zmysluplne počítať.
+  // Zoznam produktov z Plánu a povolené výnimky bez plánu.
+  // Schválené produkty bez plánu sa doplnia iba na zobrazenie predajov.
+  // Percentá a súčty plnenia stále počítajú výhradne produkty s plánom > 0.
   var allProdsMap = {};
   planProducts.forEach(function(p){ allProdsMap[plnenieNormalizeKey(p)] = p; });
   var allProdKeys = Object.keys(allProdsMap);
@@ -27026,12 +27028,17 @@ function prodSheetRenderRepList() {
       pSales = parseFloat(rSales[planKey]); if (isNaN(pSales)) pSales = 0;
       subSales = predajeSubKey ? (parseFloat(rSales[predajeSubKey]) || 0) : null;
     }
-    if (pPlan > 0) {
-      repData.push({ username: rep, planEUR: pPlan, predajeEUR: pSales, pct: pSales / pPlan * 100, subSales: subSales });
+    if (pPlan > 0 || (plnenieIsGolemNoPlan(planKey) && pSales !== 0)) {
+      repData.push({ username: rep, planEUR: pPlan, predajeEUR: pSales, pct: pPlan > 0 ? pSales / pPlan * 100 : null, subSales: subSales });
     }
   });
   // Vždy zoradiť podľa % plnenia plánu (kombinovaného) — aj pri subtabe Tablety/Sáčky
-  repData.sort(function(a, b){ return b.pct - a.pct; });
+  repData.sort(function(a, b){
+    if (a.pct === null && b.pct === null) return b.predajeEUR - a.predajeEUR;
+    if (a.pct === null) return 1;
+    if (b.pct === null) return -1;
+    return b.pct - a.pct;
+  });
 
   // Helper: terit MS z cache
   function getTeritMs(oblast) {
@@ -27128,6 +27135,8 @@ function prodSheetRenderRepList() {
       var subAmt = r.subSales || 0;
       eurHtml = (subAmt > 0 ? plnenieFormatEUR(subAmt) : '—') +
                 (r.predajeEUR > 0 ? ' / ' + plnenieFormatEUR(r.predajeEUR) : '');
+    } else if (r.planEUR <= 0) {
+      eurHtml = plnenieFormatEUR(r.predajeEUR);
     } else {
       eurHtml = r.predajeEUR > 0
         ? plnenieFormatEUR(r.predajeEUR) + ' / ' + plnenieFormatEUR(r.planEUR)
@@ -27161,7 +27170,7 @@ function prodSheetRenderRepList() {
         msHtml +
       '</div>' +
       '<div class="pl-ps-right">' +
-        '<div class="pl-ps-pct ' + plnenieColorClass(r.pct) + '" data-pct="' + r.pct.toFixed(4) + '">0,00%</div>' +
+        (r.pct === null ? '<div class="pl-ps-pct">Bez plánu</div>' : '<div class="pl-ps-pct ' + plnenieColorClass(r.pct) + '" data-pct="' + r.pct.toFixed(4) + '">0,00%</div>') +
         '<div class="pl-ps-eur">' + mgrEscape(eurHtml) + '</div>' +
         predHtml +
       '</div>' +
@@ -28974,6 +28983,8 @@ var PL_PROD_DOT_COLORS = {
   'globifer':            '#FB923C',
   'kogavant':            '#2DD4BF',
   'lonelix':             '#F472B6',
+  'lonelix_sr':          '#F472B6',
+  'lonelix_tb':          '#DB2777',
   'ossica':              '#4ADE80',
   'terrosa':             '#E879F9',
   // ── Reagila línia ──
@@ -28990,7 +29001,7 @@ var PL_PROD_DOT_COLORS = {
 var PL_PRODUCT_ORDER = [
   'aflamil', 'aflamil_kr', 'aflamil_tablety_sacky',
   'suprax', 'vidonorm', 'cavinton forte', 'cavinton',
-  'telexer', 'globifer', 'junod', 'kogavant', 'lonelix', 'ossica', 'terrosa'
+  'telexer', 'globifer', 'junod', 'kogavant', 'lonelix', 'lonelix_sr', 'lonelix_tb', 'ossica', 'terrosa'
 ];
 
 function plnenieSortProducts(planProducts) {
