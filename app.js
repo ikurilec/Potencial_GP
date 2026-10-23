@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.92.34';
+var APP_VERSION = '2.92.35';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -38098,6 +38098,7 @@ function okresyOpen(ctx, containerId) {
   OKRESY_STATE.containerId = containerId || (OKRESY_STATE.ctx === 'mgr' ? 'pl-detail-okresy-body' : 'okresy-list');
   OKRESY_STATE.byCode = {};
   OKRESY_STATE.expandedName = null;
+  OKRESY_STATE._navigatorTarget = null;
   OKRESY_STATE._districts = [];
   OKRESY_STATE.detail = null;
   var reqId = (++OKRESY_STATE.reqId);
@@ -38385,6 +38386,7 @@ function okresyRender() {
   if (!cont) return;
   var districts = okresyBuildDistricts();
   OKRESY_STATE._districts = districts;
+  if(OKRESY_STATE.expandedName){var selected=gsNorm(OKRESY_STATE.expandedName),match=districts.filter(function(d){return gsNorm(d.name)===selected;})[0];if(match)OKRESY_STATE.expandedName=match.name;}
   // Ak je otvorený detail okresu, neprepisuj ho zoznamom (dobiehajúce fetchy len aktualizujú dáta)
   if (OKRESY_STATE.detail) return;
 
@@ -38447,6 +38449,10 @@ function okresyRender() {
   if (done < total)
     html += '<div class="okr-more"><span class="okr-more-dot"></span>Načítavam ďalšie produkty — ' + done + ' z ' + total + '</div>';
   cont.innerHTML = html;
+  if(OKRESY_STATE._navigatorTarget&&gsNorm(OKRESY_STATE.expandedName)===OKRESY_STATE._navigatorTarget&&cont.querySelector('.okr-item.open')){
+    var request=OKRESY_STATE.reqId,ctx=appLineCapture(),target=OKRESY_STATE._navigatorTarget;OKRESY_STATE._navigatorTarget=null;
+    requestAnimationFrame(function(){if(!OKRESY_STATE.open||request!==OKRESY_STATE.reqId||!appLineContextActive(ctx)||gsNorm(OKRESY_STATE.expandedName)!==target)return;var item=cont.querySelector('.okr-item.open');if(item)item.scrollIntoView({block:'nearest'});});
+  }
 }
 
 function okresyToggle(dIdx) {
@@ -43883,25 +43889,36 @@ function gsAllowedDistricts(){
   if(!out.length){ try { OKRESY.forEach(add); } catch(e){} }
   return out;
 }
-/* ── OKRESY ──
-   • reprezentant → z vlastných dát (LK_STATE._rows + história), klik → openOkresy
-   • manažér → z agregovaných lekární + návštev repov; klik nie je (manažér nemá záložku Okresy) */
+// Resolve districts only within the live authorized roster; never choose its first member.
+function gsRepDistricts(login){
+  if(gsAllowedLogins().indexOf(String(login).toLowerCase())<0)return [];
+  var local=(typeof USERS_LOCAL!=='undefined'&&USERS_LOCAL[login])||{},info=(typeof LB_REP_INFO!=='undefined'&&LB_REP_INFO[login])||{},rep=(MGR_STATE.reps||{})[login]||{};
+  var region=String(local.region||info.region||rep.region||'').trim().toUpperCase(),mapped=gsRegionDistricts(region);
+  if(mapped.length)return mapped.slice();
+  var out=[],seen={};function add(row){var name=String(row&&row.okres||'').trim(),key=gsNorm(name);if(name&&!seen[key]){seen[key]=true;out.push(name);}}
+  var data=gsData(),cached=LK_STATE.cache&&LK_STATE.cache[typeof lkCacheKey==='function'?lkCacheKey(login):login];
+  (data.pharmacies[login]||(cached&&cached.rows)||[]).forEach(add);
+  (data.history[login]||rep.visits||[]).forEach(add);
+  // Non-Golem territory codes can be backed by their actual cached market rows.
+  if(region&&typeof PHARMA_STATE!=='undefined')Object.keys(PHARMA_STATE.cache||{}).forEach(function(key){var marker='_'+region+'_',at=key.lastIndexOf(marker);if(at<0||!/^\d{4}$/.test(key.slice(at+marker.length)))return;var cached=PHARMA_STATE.cache[key];(cached&&cached.okresy||[]).forEach(add);});
+  return out;
+}
+function gsDistrictRepCandidates(name){var wanted=gsNorm(name);return gsAllowedLogins().filter(function(login){return gsRepDistricts(login).some(function(d){return gsNorm(d)===wanted;});});}
+/* District results carry the representative whose territory actually contains them. */
 function gsDistricts(){
-  var out=[], seen={}; if(gsLine()==='gyn') return out;
-  var mgr=gsIsMgr();
-  function add(o){ o=String(o||'').trim(); if(!o) return; var k=gsNorm(o); if(seen[k]) return; seen[k]=1;
-    out.push({ type:'district', title:o, sub:'Okres', icon:'📍', kw:o,
-      run: function(){if(mgr){var first=gsAllowedLogins()[0];if(first)gsMgrOpenRepOkresy(first,o);}else gsOpenOkresExpanded(o);}  }); }
-  if(mgr){
-    try { (GS_PHARM_MGR||[]).forEach(function(l){ add(l&&l.okres); }); } catch(e){}
-    try { var reps=(typeof MGR_STATE!=='undefined'&&MGR_STATE.reps)||{}; Object.keys(reps).forEach(function(u){ ((reps[u]&&reps[u].visits)||[]).forEach(function(it){ add(it&&it.okres); }); }); } catch(e){}
-  } else {
-    try { if(typeof LK_STATE!=='undefined' && Array.isArray(LK_STATE._rows)) LK_STATE._rows.forEach(function(l){ add(l&&l.okres); }); } catch(e){}
-    try { var items=(typeof _histAllItems!=='undefined')?(_histAllItems||[]):[]; items.forEach(function(it){ add(it&&it.okres); }); } catch(e){}
+  var out=[],seen={};if(gsLine()==='gyn')return out;
+  var mgr=gsIsMgr(),routes={};
+  if(mgr)gsAllowedLogins().forEach(function(login){gsRepDistricts(login).forEach(function(name){var key=gsNorm(name);if(!routes[key])routes[key]={name:name,logins:[]};if(routes[key].logins.indexOf(login)<0)routes[key].logins.push(login);});});
+  function add(o){o=String(o||'').trim();var key=gsNorm(o);if(!o||seen[key])return;seen[key]=true;
+    if(mgr){var route=routes[key];if(!route)return;route.logins.forEach(function(login){out.push({type:'district',title:o,sub:'Okres · '+gsRepName(login),icon:'📍',kw:o+' '+gsRepName(login),_login:login,run:function(){gsMgrOpenRepOkresy(login,o);}});});}
+    else out.push({type:'district',title:o,sub:'Okres',icon:'📍',kw:o,run:function(){gsOpenOkresExpanded(o);}});
   }
-  // Doplň okresy jeho TERITÓRIA — aby sa dal nájsť aj okres, kde zatiaľ nemá dáta
-  // (napr. Svidník v regióne MI), ale nie okresy mimo jeho pôsobnosti.
-  try { gsAllowedDistricts().forEach(add); } catch(e){}
+  if(mgr)Object.keys(routes).forEach(function(key){add(routes[key].name);});
+  else{
+    if(typeof LK_STATE!=='undefined'&&Array.isArray(LK_STATE._rows))LK_STATE._rows.forEach(function(l){add(l&&l.okres);});
+    if(typeof _histAllItems!=='undefined')(_histAllItems||[]).forEach(function(it){add(it&&it.okres);});
+    gsAllowedDistricts().forEach(add);
+  }
   return out;
 }
 
@@ -44222,6 +44239,7 @@ function gsCombo(toks){
   // ── S reprezentantom (len manažér/admin — rep sám seba nehľadá) ──
   if(rep && mgr && rep._login){
     var login=rep._login, rname=rep.title;
+    if(dist&&line!=='gyn'&&gsDistrictRepCandidates(dist.title).indexOf(login)<0)return out;
     // Rep + meno lekára/lekárne („sabol kurila") — hľadá LEN v jeho dátach, takže
     // samotné meno repa jeho lekármi nezaplaví, ale spolu ich nájde.
     if(c.rest.length && line!=='gyn'){
@@ -44276,30 +44294,22 @@ function gsCombo(toks){
 }
 // Manažér: Okresy (MS %) konkrétneho repa + rozbalenie okresu
 function gsMgrOpenRepOkresy(login, okresName){
+  if(gsAllowedLogins().indexOf(String(login).toLowerCase())<0)return;
+  if(okresName&&gsDistrictRepCandidates(okresName).indexOf(login)<0)return;
   gsMgrOpenPlnenie(login);
   gsLater(function(){
+    if(PL_STATE.detailRep!==login)return;
     try { if(typeof plnenieDetailSwitchSubtab==='function') plnenieDetailSwitchSubtab('okresy'); } catch(e){}
     if(okresName) gsExpandOkresWhenReady(okresName);
   }, 320);
 }
 // Počká, kým sa okresné dáta vykreslia, a rozbalí hľadaný okres (rep aj mgr kontext).
 function gsExpandOkresWhenReady(okresName){
-  var nn=gsNorm(okresName), tries=0;
-  (function tryExpand(){
-    tries++;
-    try {
-      var ds=(typeof OKRESY_STATE!=='undefined' && OKRESY_STATE._districts)||[];
-      for(var i=0;i<ds.length;i++){
-        var dn=gsNorm(ds[i].name||'');
-        if(dn===nn || dn.indexOf(nn)>=0 || nn.indexOf(dn)>=0){
-          OKRESY_STATE.expandedName=ds[i].name;
-          if(typeof okresyRender==='function') okresyRender();
-          return;
-        }
-      }
-    } catch(e){}
-    if(tries<25) gsLater(tryExpand, 140);
-  })();
+  if(!okresName||!OKRESY_STATE.open)return;
+  var wanted=gsNorm(okresName),match=(OKRESY_STATE._districts||[]).filter(function(d){return gsNorm(d.name)===wanted;})[0];
+  OKRESY_STATE.expandedName=match?match.name:String(okresName).trim();
+  OKRESY_STATE._navigatorTarget=wanted;
+  if(typeof okresyRender==='function')okresyRender();
 }
 function gsOpenOkresExpanded(okresName){
   try { if(typeof openOkresy==='function') openOkresy(); } catch(e){}
@@ -44322,8 +44332,8 @@ function gsRecent(){ try { return JSON.parse(localStorage.getItem(gsRecentKey())
 function gsPushRecent(e){
   if(e.type==='section'||e.type==='action'||e.type==='combo'||e.type==='repctx') return;
   try {
-    var r=gsRecent().filter(function(x){ return !(x.type===e.type && gsNorm(x.title)===gsNorm(e.title)); });
-    r.unshift({ type:e.type, title:e.title });
+    var r=gsRecent().filter(function(x){ return !(x.type===e.type && gsNorm(x.title)===gsNorm(e.title)&&(!e._login||!x.login||x.login===e._login)); });
+    var recent={type:e.type,title:e.title};if(e._login)recent.login=e._login;r.unshift(recent);
     localStorage.setItem(gsRecentKey(), JSON.stringify(r.slice(0,8)));
   } catch(err){}
 }
@@ -44363,7 +44373,7 @@ function gsIcon(e){
   return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(paths[key]||paths.menu)+'</svg>';
 }
 function gsClearQuery(){var input=document.getElementById('gs-input');if(input){input.value='';gsOnInput();input.focus({preventScroll:true});}}
-function gsClearRecent(){try{localStorage.removeItem(gsRecentKey());}catch(e){}gsRender();var input=document.getElementById('gs-input');if(input)input.focus({preventScroll:true});}
+function gsClearRecent(){try{localStorage.removeItem(gsRecentKey());}catch(e){}gsRender();var modal=document.querySelector('#gs-overlay .gs-modal');if(modal)modal.focus({preventScroll:true});}
 function gsToggleAll(){GS.showAll=!GS.showAll;gsRender();var toggle=document.getElementById('gs-all-toggle');if(toggle)toggle.focus({preventScroll:true});}
 function gsViewport(){var overlay=document.getElementById('gs-overlay');if(overlay&&window.visualViewport)overlay.style.setProperty('--gs-viewport-height',window.visualViewport.height+'px');}
 function gsRowHtml(e, idx, big, shortcut){
@@ -44387,7 +44397,7 @@ function gsRender(){
   if(!q){
     var rec=gsRecent(), recItems=[];
     rec.forEach(function(r){
-      var hit=GS.items.filter(function(e){ return e.type===r.type && gsNorm(e.title)===gsNorm(r.title); })[0];
+      var hit=GS.items.filter(function(e){ return e.type===r.type && gsNorm(e.title)===gsNorm(r.title)&&(!r.login||e._login===r.login); })[0];
       if(hit && recItems.indexOf(hit)<0){ hit._rec=true; recItems.push(hit); }
     });
     var base=GS.items.filter(function(e){ return e.type==='section'||e.type==='action'; });
@@ -44524,7 +44534,7 @@ function gsRunAt(i){
 }
 
 /* ── OTVORENIE / ZATVORENIE ── */
-function gsOpen(){
+function gsOpen(focusSearch){
   if(!gsSession() || !gsEnabled()) return;
   GS._expand={};GS.showAll=false;GS.returnFocus=document.activeElement;
   GS.items=gsBuildIndex();
@@ -44533,19 +44543,11 @@ function gsOpen(){
   ov.classList.add('show');
   var lineLabel=document.getElementById('gs-line');if(lineLabel)lineLabel.textContent={gp:'Golem',gyn:'Gynekológia',reagila:'Reagila'}[gsLine()]||'Satori';
   gsViewport();if(window.visualViewport)window.visualViewport.addEventListener('resize',gsViewport);
-  // KLÁVESNICA NA MOBILE: focus musí prebehnúť SYNCHRÓNNE v rámci user-gesta (ťuknutia).
-  // Keby bol v setTimeout, iOS Safari reťaz gesta zruší a klávesnica sa neotvorí.
-  // void offsetHeight vynúti prepočet štýlu, aby input v práve zobrazenom overlayi
-  // už nebol display:none — inak Safari focus odmietne.
-  void ov.offsetHeight;
-  var inp=document.getElementById('gs-input');
-  if(inp){
-    inp.value='';
-    try { inp.focus({ preventScroll:true }); } catch(e){ try { inp.focus(); } catch(e2){} }
-  }
+  // Opening shortcuts does not start text editing or summon the mobile keyboard.
+  var inp=document.getElementById('gs-input');if(inp)inp.value='';
   gsRender();
-  // Poistka pre prehliadače, kde prvý pokus neprejde (napr. počas animácie)
-  var openOwner=gsOwner();setTimeout(function(){try{if(inp&&ov.classList.contains('show')&&openOwner===gsOwner()&&!ov.contains(document.activeElement))inp.focus({preventScroll:true});}catch(e){}},80);
+  var focusTarget=focusSearch===true?inp:ov.querySelector('.gs-modal');
+  if(focusTarget)try{focusTarget.focus({preventScroll:true});}catch(e){}
   gsEnsureData();
   try { if(typeof usageTrack==='function') usageTrack('gs_open','',''); } catch(e){}
 }
@@ -44661,7 +44663,7 @@ document.addEventListener('keydown', function(ev){
   if((ev.ctrlKey||ev.metaKey) && (ev.key==='k'||ev.key==='K')){
     if(!gsSession() || !gsEnabled()) return;
     ev.preventDefault();
-    if(document.body.classList.contains('gs-open')) gsClose(); else gsOpen();
+    if(document.body.classList.contains('gs-open')) gsClose(); else gsOpen(true);
   }
 });
 // Launcher zobraz, ak je používateľ prihlásený A má vyhľadávanie zapnuté v nastaveniach
