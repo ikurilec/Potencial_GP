@@ -11,7 +11,7 @@ function harness(file, responses) {
     nstUrl:p=>p, appReadResource:()=>null, appReadReuse:()=>null, APP_FETCH_TIMEOUT_MS:16000,
     appFetchJson:(url)=>{calls.push(url); const v=responses.shift(); return v instanceof Error ? Promise.reject(v) : Promise.resolve(v);},
     appQueuedFetchJson:(...a)=>c.appFetchJson(...a),
-    nstApply:p=>{c.NST.posts=p;}, nstApplyPeople:()=>{}, nstUpdateBadge:()=>{},
+    nstApply:p=>{c.NST.posts=p;}, nstApplyPeople:()=>{}, nstUpdateBadge:()=>{}, appReadSchedulePaint:()=>{},
     nstRenderList:()=>renders++, dnesRefreshIfOpen:()=>home++,
     clearTimeout:()=>{}, setTimeout:fn=>{queueMicrotask(fn); return 1;}, Date, Array, Error, navigator:{onLine:true}
   };
@@ -21,6 +21,8 @@ function harness(file, responses) {
 (async()=>{
  for(const file of ['app.js','nahlad/app.js']) {
   const source=fs.readFileSync(file,'utf8');
+  const warm=harness(file,[{ok:true,posts:[{id:'new-on-open'}]}]);warm.c.appReadReuse=()=>({data:{ok:true,posts:[{id:'cached'}]}});
+  warm.c.nstFetch(null,'critical',true);await tick();assert.equal(warm.calls.length,1,'Opening Board must bypass even a just-verified cache');assert.equal(warm.c.NST.posts[0].id,'new-on-open');
   const list={innerHTML:'',querySelectorAll:()=>[]}; let retry;
   const ui={NST:{posts:[{id:'cached'}],err:'offline',loading:false},
     document:{getElementById:()=>list,activeElement:null}, nstFiltered:()=>ui.NST.posts,
@@ -74,6 +76,12 @@ function harness(file, responses) {
   race.c.nstFetch(null,'background');
   resolve({ok:true,posts:[{id:'latest'}]}); await tick();
   assert.equal(race.c.NST.posts[0].id,'latest',file+': background preload must not invalidate foreground');
+  const closed=harness(file,[]);let completeClosed,seen=0;const classes=new Set(),overlay={classList:{add:x=>classes.add(x),remove:x=>classes.delete(x),contains:x=>classes.has(x)}};
+  Object.assign(closed.c,{document:{getElementById:()=>overlay,body:{style:{},classList:{contains:()=>false}}},_panelCurrent:'dnes-overlay',nstRender(){},nstComposeClose(){},nstMarkSeen(){seen++;}});
+  closed.c.appFetchJson=()=>new Promise(r=>completeClosed=r);
+  vm.runInContext(source.slice(source.indexOf('function openNastenka(){'),source.indexOf('// ── Načítanie zo Sheetu',source.indexOf('function openNastenka(){'))),closed.c);
+  closed.c.openNastenka();closed.c.closeNastenka();const seenAtClose=seen;completeClosed({ok:true,posts:[{id:'arrived-after-close'}]});await tick();
+  assert.equal(closed.c.NST.loading,false,'Closing during a read must not leave loading stuck');assert.equal(closed.c.NST.posts[0].id,'arrived-after-close','A completed read updates the shared Home source after closing');assert.equal(seen,seenAtClose,'Posts that arrived after closing must not be marked read');
  }
  console.log('Board refresh regression scenarios passed for both apps.');
 })().catch(e=>{console.error(e);process.exit(1);});

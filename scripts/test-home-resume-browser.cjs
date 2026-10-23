@@ -1,7 +1,7 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright'),root=path.resolve(__dirname,'..');
 (async()=>{
- const browser=await chromium.launch({headless:true}),page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true}),errors=[],calls=[];
+ const browser=await chromium.launch({headless:true,executablePath:process.env.SATORI_CHROME}),page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true}),errors=[],calls=[];
  let failedAction='',holdAction='',release;
  page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/*',async route=>{
@@ -57,14 +57,14 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright'),root=path.
    appCheckHome();appHomeResume();
    openSklady();appReadRefreshVisible();
    const stock={loading:!!APP_READ_CHECKS[appReadView().key]?.pending,status:document.querySelector('[data-read-check]')?.dataset.readStatus};
-   closeSklady();openNastenka();appReadRefreshVisible();
+   closeSklady();const homeCollapsedBeforeBoard=document.querySelector('[data-read-check]')?.getBoundingClientRect().height<1;openNastenka();appReadRefreshVisible();
    const board={loading:NST.loading,status:document.querySelector('[data-read-check]')?.dataset.readStatus};
    NST.returnToDomov=true;closeNastenka();appReadRefreshVisible();
-   return {stock,board,before,after:appReadHomeSummary(appReadView()).last,homeCollapsed:document.querySelector('[data-read-check]')?.getBoundingClientRect().height<1};
+   return {stock,board,before,after:appReadHomeSummary(appReadView()).last,homeCollapsed:homeCollapsedBeforeBoard};
   });
   await page.waitForTimeout(120);
-  assert.equal(calls.slice(warmStart).filter(c=>/^get|bootstrap$/.test(c.action)).length,0,line+' '+role+': short return must not repeat successful reads');
-  assert.deepEqual(warm.stock,{loading:false,status:'verified'});assert.deepEqual(warm.board,{loading:false,status:'verified'});assert.equal(warm.before,warm.after,'Warm navigation retains the actual verification time');
+  assert.deepEqual(calls.slice(warmStart).filter(c=>/^get|bootstrap$/.test(c.action)).map(c=>c.action),['getNastenka'],line+' '+role+': Board entry checks immediately without repeating unrelated sources');
+  assert.deepEqual(warm.stock,{loading:false,status:'verified'});assert.equal(warm.board.loading,true);assert.equal(warm.before,warm.after,'Warm navigation retains the actual verification time');
   if(line==='gp'&&role==='admin')assert.equal(warm.homeCollapsed,true,'Completed Home status stays hidden on a short return');
   const collaborativeStart=calls.length;
   await page.evaluate(()=>{
@@ -78,7 +78,7 @@ const {chromium}=require(process.env.SATORI_PLAYWRIGHT||'playwright'),root=path.
   assert.ok(refreshed.includes('getNastenka')&&refreshed.includes('getCalEvents'));
   assert.ok(!refreshed.some(a=>['getPlnenieAll','getStockData','getHistory'].includes(a)),'Only stale Home sections should revalidate');
  }
- console.log('21 real Home checks across all three lines, manager roles and representatives: current Q3, calendar Q4 ranking, cache preservation and zero repeated reads on Home/stock/board returns passed');
+ console.log('21 real Home checks: current Q3, Q4 ranking, cache preservation, fresh Board entries and no unrelated rechecks passed');
  await page.locator('.app-read-details summary').click();
  failedAction='getStockData';await page.evaluate(()=>{appStartManualRefresh();appCheckHome(true);});
  await page.waitForFunction(()=>appReadHomeSummary(appReadView()).groups.find(g=>g.id==='stocks').error,{timeout:10000});
