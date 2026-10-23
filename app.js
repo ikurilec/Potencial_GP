@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.92.32';
+var APP_VERSION = '2.92.33';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -10213,6 +10213,13 @@ function clearSession() {
   if (_usageSessionClearing) return;
   _usageSessionClearing = true;
   try {
+    // Hide signed-in views before Garage/boot teardown can reveal the base form.
+    // Navigation may be delayed on a mobile connection; login owns every frame.
+    try {
+      loginScreenSetExclusive(true);
+      var login = document.getElementById('login-screen'); if(login) login.classList.add('show');
+      var chooser = document.getElementById('line-chooser-screen'); if(chooser) chooser.classList.remove('show');
+    } catch(e){}
     if (document.getElementById('satori-garage')) { try { usageSectionClose(); } catch(e){} }
     if(typeof SatoriGarageBridge!=='undefined')SatoriGarageBridge.reset();
     document.body.classList.remove('garage-office-only');
