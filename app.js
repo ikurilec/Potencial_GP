@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.92.28';
+var APP_VERSION = '2.92.29';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -969,6 +969,7 @@ function appReadBegin(view,resource){
   };
 }
 function appTrackedRead(url, opts, run, priority){
+  if(typeof appCacheResetAfterReload==='function')appCacheResetAfterReload();
   var view=appReadView(), action='';
   try { action=new URL(url,location.href).searchParams.get('action')||''; } catch(e){}
   var resource=appReadResource(url);
@@ -1534,8 +1535,39 @@ function authSessionParams() {
 // obídu krátku cache a jedinečný identifikátor zabráni vráteniu starej odpovede.
 var APP_MANUAL_REFRESH_UNTIL = 0;
 var APP_MANUAL_REFRESH_ID = '';
-function appStartManualRefresh(){ APP_MANUAL_REFRESH_UNTIL = Date.now() + 15000; APP_MANUAL_REFRESH_ID = String(Date.now()); }
-function appFreshReadParams(){ return Date.now() < APP_MANUAL_REFRESH_UNTIL ? '&fresh=1&_refresh=' + encodeURIComponent(APP_MANUAL_REFRESH_ID) : ''; }
+var APP_CACHE_RESET_ACTIVE_OWNER = '';
+function appStartManualRefresh(){ APP_CACHE_RESET_ACTIVE_OWNER = ''; APP_MANUAL_REFRESH_UNTIL = Date.now() + 15000; APP_MANUAL_REFRESH_ID = String(Date.now()); }
+function appFreshReadParams(){ appCacheResetAfterReload();return Date.now() < APP_MANUAL_REFRESH_UNTIL ? '&fresh=1&_refresh=' + encodeURIComponent(APP_MANUAL_REFRESH_ID) : ''; }
+
+// Lokálne vymazanie pamäte nesmie po reloade znovu uložiť starú serverovú
+// odpoveď. Jednorazový zámer platí iba pre ten istý účet, rolu a líniu v tejto karte.
+function appCacheResetRemember(){
+  try {
+    var s=getSession();if(!s || !s.username)return;
+    sessionStorage.setItem('satori_cache_reset_once',JSON.stringify({owner:appReadOwner(),instance:APP_READ_INSTANCE,until:Date.now()+300000,id:String(Date.now())}));
+  }catch(e){}
+}
+function appCacheResetAfterReload(){
+  try {
+    if(typeof APP_CACHE_RESET_ACTIVE_OWNER!=='undefined' && APP_CACHE_RESET_ACTIVE_OWNER && APP_CACHE_RESET_ACTIVE_OWNER!==appReadOwner()){
+      APP_CACHE_RESET_ACTIVE_OWNER='';APP_MANUAL_REFRESH_UNTIL=0;APP_MANUAL_REFRESH_ID='';
+    }
+    var raw=sessionStorage.getItem('satori_cache_reset_once');if(!raw)return;
+    var reset=JSON.parse(raw),now=Date.now();
+    if(!reset || !(reset.until>now) || reset.until>now+300000 || typeof reset.owner!=='string'){
+      sessionStorage.removeItem('satori_cache_reset_once');return;
+    }
+    if(reset.instance===APP_READ_INSTANCE)return;
+    var s=getSession();if(!s || !s.username)return;
+    sessionStorage.removeItem('satori_cache_reset_once');
+    if(reset.owner!==appReadOwner())return;
+    // Rozpočtom pokryj aj pomalý štart mobilu; ďalšie štarty už používajú cache.
+    APP_MANUAL_REFRESH_UNTIL=Math.max(APP_MANUAL_REFRESH_UNTIL,now+90000);
+    APP_MANUAL_REFRESH_ID=String(reset.id||now);
+    APP_CACHE_RESET_ACTIVE_OWNER=reset.owner;
+    APP_READ_REUSE={};
+  }catch(e){try{sessionStorage.removeItem('satori_cache_reset_once');}catch(ignore){}}
+}
 
 function scriptUrl(params) {
   appReadInvalidate(params);
@@ -1814,6 +1846,7 @@ function appReadClone(data){
   return typeof structuredClone==='function'?structuredClone(data):JSON.parse(JSON.stringify(data));
 }
 function appQueuedFetchJsonUntracked(url, opts, timeoutMs, priority){
+  if(typeof appCacheResetAfterReload==='function')appCacheResetAfterReload();
   // An explicit retry must bypass the server cache too, including custom
   // fetchers. Scope it to the visible read; writes and other preloads stay intact.
   if(typeof APP_MANUAL_REFRESH_UNTIL!=='undefined' && Date.now()<APP_MANUAL_REFRESH_UNTIL && typeof appReadView==='function' && typeof appReadResource==='function'){
@@ -9121,7 +9154,7 @@ function settingsClearCache(){
   try { haptic('success'); } catch(e){}
   // Soft reload — vynúti čerstvé načítanie dát zo servera. Session ostáva (nie je v cache
   // prefixoch), takže používateľ zostáva prihlásený. NEpoužívame appReload() — ten odhlasuje.
-  setTimeout(function(){ try { location.reload(); } catch(e){} }, 900);
+  setTimeout(function(){ appCacheResetRemember();try { location.reload(); } catch(e){} }, 900);
 }
 
 var _currentDetailIdx = -1;
