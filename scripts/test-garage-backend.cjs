@@ -32,6 +32,7 @@ function test(name,fn) { try { fn(); passed++; console.log('PASS '+name); } catc
 class FakeSheet {
   constructor(name,env,rows=[]) { this.name=name;this.env=env;this.rows=plain(rows);this.reads=0; }
   getLastRow() { let n=this.rows.length;while(n&&!(this.rows[n-1]||[]).some(x=>x!==''&&x!==null&&x!==undefined))n--;return n; }
+  getLastColumn(){return Math.max(0,...this.rows.map(r=>r.length));}
   getDataRange() { return this.getRange(1,1,Math.max(this.getLastRow(),1),Math.max(1,...this.rows.map(x=>x.length))); }
   setFrozenRows() {} getMaxRows(){return 1000;} getMaxColumns(){return 26;} insertRowsAfter(){} insertColumnsAfter(){}
   getRange(r,c,n=1,k=1) { const sheet=this;return {
@@ -57,12 +58,17 @@ function setup(options={}) {
     LockService:{getScriptLock:()=>({tryLock:ms=>{env.lockAttempts.push(ms);if(env.locked)return false;env.locked=true;return true;},waitLock:ms=>{env.lockAttempts.push(ms);if(env.locked)throw Error('busy');env.locked=true;},releaseLock:()=>{env.locked=false;},hasLock:()=>env.locked})},
     PropertiesService:{getScriptProperties:()=>({getProperty:k=>env.props[k]||null})},
     ScriptApp:{getProjectTriggers:()=>env.triggers,newTrigger:name=>({timeBased(){return this;},everyMinutes(n){assert.equal(n,1);return this;},create(){env.triggers.push({getHandlerFunction:()=>name});return env.triggers.at(-1);}})},
-    Utilities:{getUuid:()=>'uuid-'+(++env.uuid),DigestAlgorithm:{SHA_256:'sha256'},computeDigest:(algorithm,s)=>Array.from(require('node:crypto').createHash(algorithm).update(s).digest()),formatDate:(d,tz,pattern)=>{assert.equal(tz,'Europe/Bratislava');return new Intl.DateTimeFormat('en-CA',{timeZone:tz,year:'numeric',month:'2-digit',day:'2-digit'}).format(d);}},
+    Utilities:{Charset:{UTF_8:'utf8'},getUuid:()=>'uuid-'+(++env.uuid),DigestAlgorithm:{SHA_256:'sha256'},computeDigest:(algorithm,s)=>Array.from(require('node:crypto').createHash(algorithm).update(s).digest()),formatDate:(d,tz,pattern)=>{assert.equal(tz,'Europe/Bratislava');return new Intl.DateTimeFormat('en-CA',{timeZone:tz,year:'numeric',month:'2-digit',day:'2-digit'}).format(d);}},
     cacheGetText_:k=>env.cache[k]||null,cachePutText_:(k,s,ttl)=>{env.cache[k]=s;env.cacheTtls[k]=ttl;},cacheBust_:k=>delete env.cache[k],jsonResponse:x=>plain(x),Logger:{log:()=>{}},
     pushTokenSheet_:ss=>ss.getSheetByName('Push_Tokens')||ss.insertSheet('Push_Tokens'),
     pushSendRows_:(ss,rows,line,title,body,link,event)=>{assert.equal(env.locked,false,'Push must run after releasing transaction lock');env.sends.push({rows:plain(rows),line,title,body,link,event});if(env.afterPush){const hook=env.afterPush;env.afterPush=null;hook();}return {sent:env.failPush||(env.failTokens||[]).some(t=>rows.some(r=>r.token===t))?0:rows.length,total:rows.length};}
   };vm.createContext(ctx);vm.runInContext(realAuth+'\n'+realOwnProfile+'\n'+extension,ctx);return ctx;}
   const ctx=context(),ss=env.books['sheet-gp'];
+  for(const [key,book] of Object.entries(env.books)){
+    const tab=book.sheets.Sessions,col=ctx.authCredentialColumn_(tab,true);
+    for(const row of tab.rows.slice(1)){ctx._pouzMemo=null;row[col]=ctx.authCredentialStamp_(book,row[0],row[3],row[2]);}
+  }
+  ctx._pouzMemo=null;
   const request=(user='admin',line='gp',body,params={})=>({parameter:Object.assign({action:'getGarage',token:'test-api',username:user,device_id:'device',session_token:'session-'+user,garage_source_line:line},params),postData:body?{contents:JSON.stringify(body)}:undefined});
   const call=(user,action,body,line='gp',params={})=>ctx.garageHandleAction_(ss,request(user,line,body,Object.assign({action},params)),action);
   const mutate=(user,command,payload,commandId='command-'+(++env.uuid))=>call(user,'garageAction',{commandId,command,payload});
@@ -82,19 +88,19 @@ test('new accounts require explicit access and only GP admin bootstraps',()=>{
 });
 test('GP admin bootstrap stops after configuration and additional admins require explicit access',()=>{
   const f=setup({ungranted:true});assert.equal(f.call('admin','getGarage').ok,true);
-  f.ss.sheets.Pouzivatelia.rows.push(['admin.two','secret','Druhý admin','admin']);const session=plain(f.ss.sheets.Sessions.rows[1]);session[0]='admin.two';session[2]='session-admin.two';f.ss.sheets.Sessions.rows.push(session);
+  f.ss.sheets.Pouzivatelia.rows.push(['admin.two','secret','Druhý admin','admin']);const session=plain(f.ss.sheets.Sessions.rows[1]);session[0]='admin.two';session[2]='session-admin.two';f.ctx._pouzMemo=null;session[f.ctx.authCredentialColumn_(f.ss.sheets.Sessions,false)]=f.ctx.authCredentialStamp_(f.ss,session[0],session[3],session[2]);f.ss.sheets.Sessions.rows.push(session);
   assert.equal(f.call('admin.two','getGarage').code,'NOT_MEMBER');assert.equal(f.call('admin','getGarageUsers').users.find(u=>u.key==='gp:admin.two').access,false);
   assert.equal(f.mutate('admin','memberSave',{id:'admin.two',sourceLine:'gp',access:true}).ok,true);assert.equal(f.call('admin.two','getGarage').ok,true);
   const state=f.ctx.garageReadState_(f.ss);state.members.find(m=>m.id==='admin').access=false;saveState(f,state);assert.equal(f.call('admin','getGarage').code,'NOT_MEMBER');
 });
 test('completed GP admin bootstrap never reopens after all existing admin access is removed',()=>{
   const f=setup({ungranted:true});assert.equal(f.call('admin','getGarage').ok,true);const state=f.ctx.garageReadState_(f.ss);state.members.find(m=>m.id==='admin').access=false;saveState(f,state);assert.equal(f.call('admin','getGarage').code,'NOT_MEMBER');
-  f.ss.sheets.Pouzivatelia.rows.push(['admin.recovery','secret','Obnova admin','admin']);const session=plain(f.ss.sheets.Sessions.rows[1]);session[0]='admin.recovery';session[2]='session-admin.recovery';f.ss.sheets.Sessions.rows.push(session);assert.equal(f.call('admin.recovery','getGarage').code,'NOT_MEMBER');assert.equal(f.ctx.garageReadState_(f.ss).config.accessBootstrapDone,true);
+  f.ss.sheets.Pouzivatelia.rows.push(['admin.recovery','secret','Obnova admin','admin']);const session=plain(f.ss.sheets.Sessions.rows[1]);session[0]='admin.recovery';session[2]='session-admin.recovery';f.ctx._pouzMemo=null;session[f.ctx.authCredentialColumn_(f.ss.sheets.Sessions,false)]=f.ctx.authCredentialStamp_(f.ss,session[0],session[3],session[2]);f.ss.sheets.Sessions.rows.push(session);assert.equal(f.call('admin.recovery','getGarage').code,'NOT_MEMBER');assert.equal(f.ctx.garageReadState_(f.ss).config.accessBootstrapDone,true);
   assert.equal(f.call('admin','getGarage').code,'NOT_MEMBER');
 });
 test('existing admins restored in Sheets keep access while new bootstrap remains permanently closed',()=>{
   const f=setup({ungranted:true});assert.equal(f.call('admin','getGarage').ok,true);f.ss.sheets.Pouzivatelia.rows.find(r=>r[0]==='admin')[3]='rep west';assert.equal(f.call('admin','getGarage').me.canAdmin,false);
-  f.ss.sheets.Pouzivatelia.rows.push(['admin.new','secret','Nový admin','admin']);const session=plain(f.ss.sheets.Sessions.rows[1]);session[0]='admin.new';session[2]='session-admin.new';f.ss.sheets.Sessions.rows.push(session);assert.equal(f.call('admin.new','getGarage').code,'NOT_MEMBER');
+  f.ss.sheets.Pouzivatelia.rows.push(['admin.new','secret','Nový admin','admin']);const session=plain(f.ss.sheets.Sessions.rows[1]);session[0]='admin.new';session[2]='session-admin.new';f.ctx._pouzMemo=null;session[f.ctx.authCredentialColumn_(f.ss.sheets.Sessions,false)]=f.ctx.authCredentialStamp_(f.ss,session[0],session[3],session[2]);f.ss.sheets.Sessions.rows.push(session);assert.equal(f.call('admin.new','getGarage').code,'NOT_MEMBER');
   f.ss.sheets.Pouzivatelia.rows.find(r=>r[0]==='admin')[3]='admin';assert.equal(f.call('admin','getGarage').me.canAdmin,true);assert.equal(f.call('admin.new','getGarage').code,'NOT_MEMBER');
 });
 test('same login in another management source cannot inherit canonical GP admin membership',()=>{
@@ -106,7 +112,7 @@ test('same login in another management source cannot inherit canonical GP admin 
 });
 test('migration permanently closes bootstrap when any historical admin profile exists',()=>{
   const f=setup(),state=f.ctx.garageReadState_(f.ss);delete state.config.accessBootstrapDone;state.members.find(m=>m.id==='admin').access=false;saveState(f,state);assert.equal(f.call('office.a','getGarage').ok,true);assert.equal(f.ctx.garageReadState_(f.ss).config.accessBootstrapDone,true);
-  f.ss.sheets.Pouzivatelia.rows.push(['admin.new','secret','Nový admin','admin']);const session=plain(f.ss.sheets.Sessions.rows[1]);session[0]='admin.new';session[2]='session-admin.new';f.ss.sheets.Sessions.rows.push(session);assert.equal(f.call('admin.new','getGarage').code,'NOT_MEMBER');assert.equal(f.call('admin','getGarage').code,'NOT_MEMBER');
+  f.ss.sheets.Pouzivatelia.rows.push(['admin.new','secret','Nový admin','admin']);const session=plain(f.ss.sheets.Sessions.rows[1]);session[0]='admin.new';session[2]='session-admin.new';f.ctx._pouzMemo=null;session[f.ctx.authCredentialColumn_(f.ss.sheets.Sessions,false)]=f.ctx.authCredentialStamp_(f.ss,session[0],session[3],session[2]);f.ss.sheets.Sessions.rows.push(session);assert.equal(f.call('admin.new','getGarage').code,'NOT_MEMBER');assert.equal(f.call('admin','getGarage').code,'NOT_MEMBER');
 });
 test('admin directory reads all source accounts with safe projection and explicit source binding',()=>{
   const f=setup();for(const line of ['gp','gyn','reagila']){const sheet=f.env.books['sheet-'+line].sheets.Pouzivatelia;sheet.rows[0].push('avatar','narodeniny','session_token');sheet.rows[1].push('private-avatar','1980-01-01','secret-session');sourceDays(f,line,'rep',2);}
@@ -400,5 +406,14 @@ test('failed today notice retries durably and floor -1 content does not invent a
  const f=setup();f.env.now='2026-10-16T08:00:00Z';f.call('office.b','garageRegisterPush',{token:'token-office-b'});f.mutate('office.a','reservationSave',{date:'2026-10-16',floor:-1,start:'08:00',end:'12:00'});f.env.failPush=true;f.ctx.garageDrainOutbox_(f.ss);assert.equal(f.ctx.garageReadState_(f.ss).outbox.find(x=>x.notice.type==='reservation').status,'pending');f.env.failPush=false;f.env.now='2026-10-16T08:02:00Z';f.ctx.garageDrainOutbox_(f.ss);assert.equal(f.ctx.garageReadState_(f.ss).outbox.find(x=>x.notice.type==='reservation').status,'done');assert.ok(f.env.sends.every(s=>!s.body.includes('miesto ')));assert.equal(f.env.sends.length,2);
 });
 
+test('central Garage rejects edited passwords from each source before reading state',()=>{
+ for(const line of ['gp','gyn','reagila']){
+  const f=setup(),source=f.env.books['sheet-'+line],username='office.a';
+  f.ctx._pouzMemo=null;assert.equal(f.ctx.authRequireSession_(source,f.request(username,line),line==='gyn'?'gyn':'gp').ok,true);
+  source.sheets.Pouzivatelia.rows.find(r=>r[0]===username)[1]='edited-password';
+  assert.equal(f.call(username,'getGarage',null,line).code,'SESSION_EXPIRED');
+  assert.equal(f.call('office.b','getGarage').ok,true,'Unrelated account keeps working');
+ }
+});
 console.log(`${passed} Garage backend tests passed`);
 if(failed)process.exitCode=1;

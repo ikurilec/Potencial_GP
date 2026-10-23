@@ -5,9 +5,10 @@ const dirs=[process.env.SATORI_APPS_SCRIPT_DIR,process.env.SATORI_BACKEND_DIR,pa
 
 function sheet(initial=[]){
  const rows=initial.map(row=>row.slice());
- return {rows,getLastRow:()=>rows.length,
+ return {rows,getLastRow:()=>rows.length,getLastColumn:()=>Math.max(0,...rows.map(r=>r.length)),
   getDataRange:()=>({getValues:()=>rows.map(row=>row.slice())}),
   getRange:(r,c,n=1,m=1)=>({
+   setValue:v=>{(rows[r-1]??=[])[c-1]=v;},
    getValues:()=>Array.from({length:n},(_,i)=>Array.from({length:m},(_,j)=>rows[r-1+i]?.[c-1+j]??'')),
    setValues:values=>values.forEach((row,i)=>row.forEach((v,j)=>{(rows[r-1+i]??=[])[c-1+j]=v;}))
   }),appendRow:row=>rows.push(row.slice()),deleteRow:r=>rows.splice(r-1,1),setFrozenRows:()=>{}};
@@ -31,7 +32,7 @@ for(const config of configs){
   PropertiesService:{getScriptProperties:()=>({getProperty:key=>properties[key]||null})},
   CacheService:{getScriptCache:()=>({get:k=>memory.get(k)||null,put:(k,v)=>memory.set(k,v)})},
   LockService:{getScriptLock:()=>({waitLock:()=>{},releaseLock:()=>{}})},
-  Utilities:{getUuid:()=>config.line+'-test-'+(++uuid)},Logger:{log:()=>{}},
+  Utilities:{getUuid:()=>config.line+'-test-'+(++uuid),Charset:{UTF_8:'utf8'},DigestAlgorithm:{SHA_256:'sha256'},computeDigest:(alg,s)=>Array.from(require('node:crypto').createHash(alg).update(s).digest())},Logger:{log:()=>{}},
   ContentService:{MimeType:{JSON:'application/json',TEXT:'text/plain'},createTextOutput:text=>({text,setMimeType(){return this;}})},
   SpreadsheetApp:{getActive:()=>own,openById:id=>{if(id===ctx.SHEET_ID)return own;if(id===ctx.STOCK_SOURCE_SHEET_ID){stockOpens++;return shared;}throw Error('Unexpected sheet');}}
  };

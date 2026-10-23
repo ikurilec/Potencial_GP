@@ -10,6 +10,11 @@
   function canAccessSession(s){return !!(s&&alive(s,id(s))&&s.garage_access===true&&grants.get(grantKey(s))===true);}
   function canAccess(s){if(s)return canAccessSession(s);s=me();if(canAccessSession(s))return true;var dual=typeof w.mgrGetDual==='function'?w.mgrGetDual():null;return !!(s&&dual&&id(dual)===id(s)&&['gp','gyn','reagila'].some(function(line){return dual[line]&&id(dual[line])===id(s)&&canAccessSession(dual[line]);}));}
   function alive(s,owner){var expiry=Number(s&&s.session_expires_at)||Date.parse(s&&s.session_expires_at||'');return !!(s&&id(s)===owner&&s.session_token&&(!expiry||expiry>Date.now()));}
+  function forgetSession(s,line){
+    var key=grantKey(s,line);grants.delete(key);accessProbes.delete(key);accessChecks.set(key,{key:key,owner:id(s),line:line,status:'denied',error:''});
+    rememberAccessHint(id(s),line,false);
+    var chooser=w._lineChooserCtx;if(chooser&&String(chooser.username).toLowerCase()===id(s)&&chooser.data&&chooser.data[line]&&chooser.data[line].session_token===s.session_token)delete chooser.data[line];
+  }
   function source(){
     var s=me(),owner=id(s);if(!s||!alive(s,owner))throw new Error('Prihlásenie vypršalo. Prihlás sa znova.');
     var dual=typeof w.mgrGetDual==='function'?w.mgrGetDual():null;
@@ -56,6 +61,7 @@
       controllers.add(ctrl);var timer=setTimeout(function(){ctrl.abort();},timeout);
       try{var res=await w.fetch(u.href,{cache:'no-store',signal:ctrl.signal});if(epoch!==generation)throw Object.assign(new Error('Prihlásenie sa zmenilo.'),{terminal:true});if(!res.ok)throw Object.assign(new Error('Prístup do Garáže sa nepodarilo overiť.'),{terminal:res.status>=400&&res.status<500&&res.status!==429});var snap=await res.json();if(epoch!==generation)throw Object.assign(new Error('Prihlásenie sa zmenilo.'),{terminal:true});
         if(snap&&snap.ok){if(!snap.me||String(snap.me.id||'').trim().toLowerCase()!==owner)throw Object.assign(new Error('Server vrátil údaje iného používateľa.'),{terminal:true});return true;}
+        if(typeof w.appHandleSessionRejection==='function'&&w.appHandleSessionRejection(u.href,snap))throw Object.assign(new Error('Prihlásenie vypršalo. Prihlás sa znova.'),{terminal:true});
         if(snap&&snap.code==='NOT_MEMBER')return false;var message=snap&&snap.error||'Prístup do Garáže sa nepodarilo overiť.',terminal=/unknown action|unsupported.*action|session|forbidden|unauthori[sz]ed|prihlás/i.test(message)||/^(UNKNOWN_ACTION|UNAUTHORIZED|SESSION_EXPIRED|IDENTITY_MISMATCH)$/.test(snap&&snap.code||'');if(/unknown action|unsupported.*action/i.test(message))message='Garáž ešte nie je nasadená na serveri. Správca musí aktualizovať Golem Apps Script.';throw Object.assign(new Error(message),{terminal:terminal});
       }finally{clearTimeout(timer);controllers.delete(ctrl);}
     }
@@ -79,6 +85,10 @@
     try{
       var res=await w.fetch(u.href,init);if(!res.ok)throw new Error('Server Garáže neodpovedal. Skús obnoviť údaje.');
       var data=await res.json();if(epoch!==generation||id(me())!==auth.owner||!currentSource(auth))throw new Error('Prihlásený používateľ sa zmenil.');
+      if(typeof w.appHandleSessionRejection==='function'&&w.appHandleSessionRejection(u.href,data)){
+        if(read&&!opt._authRetry&&me()&&canAccess())return transport(action,payload,Object.assign({},opt,{_authRetry:true}));
+        throw new Error('Prihlásenie vypršalo. Prihlás sa znova.');
+      }
       if(!data||data.ok!==true){if(data&&data.code==='NOT_MEMBER')revoke(auth.owner);var message=data&&data.error||'Garáž sa nepodarilo načítať. Skús znova.';if(/unknown action|unsupported.*action/i.test(message))message='Garáž ešte nie je nasadená na serveri. Správca musí aktualizovať Golem Apps Script.';var e=new Error(message);e.code=data&&data.code;throw e;}
       var snap=action==='getGarage'?data:data.snapshot;if(snap&&(!snap.me||String(snap.me.id||'').trim().toLowerCase()!==auth.owner))throw new Error('Server vrátil údaje iného používateľa. Prihlás sa znova.');
       // Notification delivery runs in a different request AFTER the committed
@@ -184,7 +194,7 @@
     if(w.SatoriGarage)w.SatoriGarage.handlePush(d);
     if(typeof w.pushShowForegroundBanner==='function'){var gen=generation,isOffer=/^garage_offer(?:_|-)/.test(String(d.kind||''));w.pushShowForegroundBanner(d.title||'Garáž',d.body||'V Garáži sa zmenili rezervácie.',{label:isOffer?'Zobraziť ponuku':'Otvoriť Garáž',onOpen:function(){if(gen===generation&&owner===id(me())&&canAccess())open(isOffer?{view:'offers',date:d.date}:{date:d.date});}});}return true;
   }
-  w.SatoriGarageBridge={canAccess:canAccess,canAccessSession:canAccessSession,checkLoginAccess:checkLoginAccess,accessUiState:accessUiState,retryAccess:retryAccess,restore:restore,users:users,resumeMedical:resumeMedical,officeOnly:officeOnly,open:open,close:close,isOpen:isOpen,isSaving:function(){return saving>0;},reset:reset,bootstrap:bootstrap,handlePush:handlePush,transport:transport,targets:targets,registerPush:registerPush};
+  w.SatoriGarageBridge={forgetSession:forgetSession,canAccess:canAccess,canAccessSession:canAccessSession,checkLoginAccess:checkLoginAccess,accessUiState:accessUiState,retryAccess:retryAccess,restore:restore,users:users,resumeMedical:resumeMedical,officeOnly:officeOnly,open:open,close:close,isOpen:isOpen,isSaving:function(){return saving>0;},reset:reset,bootstrap:bootstrap,handlePush:handlePush,transport:transport,targets:targets,registerPush:registerPush};
   configure();
   if(typeof w.addEventListener==='function')w.addEventListener('online',retryAccess);
   if(w.document&&typeof w.document.addEventListener==='function')w.document.addEventListener('visibilitychange',function(){if(!w.document.hidden&&(!w.navigator||w.navigator.onLine!==false))retryAccess();});

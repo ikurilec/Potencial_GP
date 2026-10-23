@@ -1,0 +1,12 @@
+'use strict';
+const path=require('node:path'),assert=require('node:assert/strict');
+const backend=process.env.SATORI_APPS_SCRIPT_DIR||path.resolve(__dirname,'../../../apps_script');
+const core=require(path.resolve(backend,'../Sklady/sklady_konverter_core.js'));
+const rows=[['PM','SUKL','Liek'],['PM','TEST001','TUYORY 20 mg filmom obalené tablety','',120,18,0,0,0,0,0,0,25,30,20],['PM','TEST002','Tuyory 40 mg tablety','',50,32,0,0,0,0,0,0,10,15,5]];
+const result=core.normalizeStockReport(rows,{asOf:'2026-10-19'});
+const tuyory=result.rows.filter(r=>r.product_key==='tuyory');
+assert.equal(tuyory.length,2,'Each Tuyory packaging must be exported');assert.ok(tuyory.every(r=>r.line==='gp'&&r.product==='Tuyory'&&r.availability==='available'));
+assert.equal(tuyory[0].distributor_units,120);assert.equal(tuyory[0].coverage_days,18);assert.equal(tuyory[1].po_confirmed,5);
+const absent=core.normalizeStockReport([],{asOf:'2026-10-19'}).rows.filter(r=>r.product_key==='tuyory');
+assert.equal(absent.length,1);assert.equal(absent[0].availability,'missing_in_report','Missing report data is never converted to zero stock');
+console.log('Tuyory: GP only, packaging, quantities, coverage, missing data passed');

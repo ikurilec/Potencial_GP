@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.92.29';
+var APP_VERSION = '2.92.30';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -1688,6 +1688,34 @@ var APP_FETCH_TIMEOUT_PRELOAD_MS = 12000;
 var APP_FETCH_TIMEOUT_UPLOAD_MS = 45000;
 
 // fetch + JSON s tvrdým timeoutom (AbortController). Reject pri timeoute, sieti aj nevalidnom JSON.
+// A late response from an old login/another line must never end the current
+// session. Only an authenticated request made with this exact credential can.
+function appHandleSessionRejection(url, data) {
+  if (!data || data.ok !== false || (data.code !== 'SESSION_EXPIRED' && !/^Session (expired|missing)$/.test(String(data.error || '')))) return false;
+  try {
+    var s = getSession(); if (!s || !s.session_token) return false;
+    var u = new URL(url), base = u.origin + u.pathname, line = s.line || 'gp';
+    var gp = new URL(SCRIPT_URL), gyn = new URL(GYN_SCRIPT_URL), rea = new URL(REAGILA_SCRIPT_URL);
+    var garageLine = u.searchParams.get('garage_source_line');
+    var requestLine = garageLine || (base === gp.origin + gp.pathname ? 'gp' : base === gyn.origin + gyn.pathname ? 'gyn' : base === rea.origin + rea.pathname ? 'reagila' : '');
+    if (['gp','gyn','reagila'].indexOf(requestLine) < 0 || (garageLine && base !== gp.origin + gp.pathname)) return false;
+    var dual = typeof mgrGetDual === 'function' ? mgrGetDual() : null;
+    var credential = requestLine === line ? s : dual && dual.username === s.username ? dual[requestLine] : null;
+    if (!credential || u.searchParams.get('username') !== s.username || u.searchParams.get('session_token') !== credential.session_token ||
+        u.searchParams.get('device_id') !== credential.device_id) return false;
+    if (requestLine !== line) {
+      if (typeof SatoriGarageBridge !== 'undefined' && typeof SatoriGarageBridge.forgetSession === 'function') SatoriGarageBridge.forgetSession(credential, requestLine);
+      delete dual[requestLine];
+      if (typeof mgrSetDual === 'function') mgrSetDual(dual);
+      return true;
+    }
+    clearSession();
+    if (typeof bootLoaderDone === 'function') bootLoaderDone();
+    showSessionExpiredModal();
+    return true;
+  } catch(e) { return false; }
+}
+
 function appFetchJsonRaw(url, opts, timeoutMs, job) {
   opts = Object.assign({}, opts || { cache: 'no-store' });
   timeoutMs = timeoutMs || APP_FETCH_TIMEOUT_MS;
@@ -1714,6 +1742,7 @@ function appFetchJsonRaw(url, opts, timeoutMs, job) {
         if (settled) return;
         settled = true; clearTimeout(timer);
         try { perfRecordCall(url, perfNow() - _t0, true); } catch(e){}
+        appHandleSessionRejection(url, j);
         resolve(j);
       })
       .catch(function(e){
@@ -11427,7 +11456,7 @@ function showSessionExpiredModal(diagCode) {
     if (diagCode) { diagEl.textContent = 'Diagnostika: ' + diagCode; diagEl.style.display = ''; }
     else { diagEl.textContent = ''; diagEl.style.display = 'none'; }
   }
-  if(overlay) overlay.classList.add('show');
+  if(overlay) { overlay.style.zIndex = '2147483000'; overlay.classList.add('show'); }
 }
 
 // ── Slovenský kalendár menín (index 0 nepoužitý; '' = deň bez menín → sviatok nižšie) ──
