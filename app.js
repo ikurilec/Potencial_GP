@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.92.31';
+var APP_VERSION = '2.92.32';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -560,7 +560,8 @@ var APP_READ_SECTION_TYPES = [
   ['apixaban','Prieskum Apixaban',['getApixaban','getAllApixaban']],
   ['activity','Aktivita používateľov',['getUsageStats','getUsageRepStats','getLastLogins']],
   ['line','Súhrn línie',['getLineStats']],['overrides','Úpravy údajov lekárov',['getOverrides','getGpOverrides','getAllGpOverrides']],
-  ['agreements','Dohody',['getDohody']],['prices','Cenník',['getCennik']],['metadata','Informácie o reportoch',['getConfig']]
+  // Config polling supplies internal update notices, not displayed business data.
+  ['agreements','Dohody',['getDohody']],['prices','Cenník',['getCennik']]
 ];
 // A poll is real network work, but does not restart a completed verification.
 // Initial checks, explicit foreground reads and recovery remain visible.
