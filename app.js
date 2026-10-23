@@ -32,7 +32,7 @@ function appEsc(x) {
 // ║  CACHE_NAME v sw.js aj hash v názve súborov píše sám build     ║
 // ║  krok (npm run build) — nemeniť ručne.                         ║
 // ╚══════════════════════════════════════════════════════════════╝
-var APP_VERSION = '2.92.33';
+var APP_VERSION = '2.92.34';
 
 // ── Nainštalovaná PWA na iOS — trieda na <html> ──
 // Appka má apple-mobile-web-app-status-bar-style: black-translucent, takže po
@@ -758,7 +758,8 @@ function appReadView(){
   }
   // Dialógy a rozpracované formuláre nemajú automatickú dátovú obnovu.
   if(shown('nst-compose') || shown('edit-overlay') || shown('gpp-overlay')) return null;
-  if(shown('gs-overlay'))return view('navigator','#gs-results',['getNastenka','getCalEvents','getLekarne','getLekarneAll','getGynLekarne','getHistory','getAllHistory','getTeamPlnenie','getRepList']);
+  // Search owns its concise inline source state, not a second page verification panel.
+  if(shown('gs-overlay'))return null;
   var panels=[
     ['pharma-okres-overlay','#pharma-okres-chart-svg','district-chart',['getPharmaOkresGraf']],
     ['sklady-overlay','#sklady-body','stocks',['getStockData']],
@@ -44354,11 +44355,22 @@ function gsHi(text, toks){
   if(open) out+='</b>';
   return out;
 }
-function gsRowHtml(e, idx, big){
+function gsIcon(e){
+  var keys={'Domov':'home','Plnenie':'sales','Kalendár':'calendar','Nástenka':'board','Menu':'menu','Sklady':'stock','Lekárne':'pharmacy','Lekári':'doctor','Rebríček':'ranking','Nastavenia':'settings'};
+  var paths={home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"/>',sales:'<path d="M4 20h16M7 16V9m5 7V4m5 12v-5"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 11h18m-13 5h2m4 0h2"/>',board:'<path d="m8 3 8 0-1 6 4 4H5l4-4Zm4 10v8"/>',menu:'<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',stock:'<path d="m3 7 9-4 9 4v10l-9 4-9-4Zm0 0 9 4 9-4M12 11v10M7 5l9 4"/>',pharmacy:'<path d="M4 21V6h16v15M2 21h20M8 21v-6h8v6M9 10h6m-3-3v6"/>',doctor:'<path d="M5 3v6a4 4 0 0 0 8 0V3M3 3h4m4 0h4m-6 10v3a5 5 0 0 0 10 0v-2"/><circle cx="19" cy="11" r="3"/>',ranking:'<path d="M8 3h8v7a4 4 0 0 1-8 0ZM8 5H4v3a4 4 0 0 0 4 4m8-7h4v3a4 4 0 0 1-4 4m-4 2v6m-4 1h8"/>',rep:'<circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>',district:'<path d="M20 10c0 6-8 11-8 11S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',product:'<path d="m9 4-5 5a6 6 0 0 0 8 8l5-5a6 6 0 0 0-8-8Zm-3 3 8 8"/>',settings:'<circle cx="12" cy="12" r="4"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2"/>',action:'<path d="m13 2-9 12h7l-1 8 10-13h-7Z"/>'};
+  if(e.type==='rep'&&e._login&&typeof avatarHtml==='function')return avatarHtml({username:e._login,name:e.title,size:36});
+  var key=keys[e.title]||({event:'calendar',post:'board',doctor:'doctor',pharmacy:'pharmacy',repctx:'rep',combo:'sales',ms:'sales'}[e.type])||e.type;
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(paths[key]||paths.menu)+'</svg>';
+}
+function gsClearQuery(){var input=document.getElementById('gs-input');if(input){input.value='';gsOnInput();input.focus({preventScroll:true});}}
+function gsClearRecent(){try{localStorage.removeItem(gsRecentKey());}catch(e){}gsRender();var input=document.getElementById('gs-input');if(input)input.focus({preventScroll:true});}
+function gsToggleAll(){GS.showAll=!GS.showAll;gsRender();var toggle=document.getElementById('gs-all-toggle');if(toggle)toggle.focus({preventScroll:true});}
+function gsViewport(){var overlay=document.getElementById('gs-overlay');if(overlay&&window.visualViewport)overlay.style.setProperty('--gs-viewport-height',window.visualViewport.height+'px');}
+function gsRowHtml(e, idx, big, shortcut){
   var t=GS._toks||[];
-  return '<button type="button" class="gs-row'+(big?' gs-row-top':'')+'" data-i="'+idx+'" onclick="gsRunAt('+idx+')" onmousemove="gsSetCur('+idx+')">'
-    +'<div class="gs-ico">'+gsEsc(e.icon||'📄')+'</div>'
-    +'<div class="gs-txt"><div class="gs-title">'+gsHi(e.title,t)+'</div><div class="gs-sub">'+gsHi(e.sub||'',t)+'</div></div>'
+  return '<button type="button" class="gs-row'+(big?' gs-row-top':'')+(shortcut?' gs-shortcut':'')+'" data-i="'+idx+'" onclick="gsRunAt('+idx+')" onmousemove="gsSetCur('+idx+')">'
+    +'<div class="gs-ico" aria-hidden="true">'+gsIcon(e)+'</div>'
+    +'<div class="gs-txt"><div class="gs-title">'+gsHi(e.title,t)+'</div>'+(shortcut||e.type==='section'?'':'<div class="gs-sub">'+gsHi(e.sub||GS_GROUP_LABEL[e.type]||'',t)+'</div>')+'</div>'
     +'<span class="gs-hint" aria-hidden="true">›</span></button>';
 }
 // Riadok „Zobraziť všetky (N)" — rozbalí orezanú skupinu
@@ -44368,7 +44380,9 @@ function gsMoreHtml(gk, n, idx){
 }
 function gsRender(){
   var res=document.getElementById('gs-results'); if(!res) return;
-  var q=gsNorm((document.getElementById('gs-input')||{}).value||'');
+  var q=gsNorm((document.getElementById('gs-input')||{}).value||'').trim();
+  var clear=document.getElementById('gs-clear');if(clear)clear.hidden=!q;
+  GS.items.forEach(function(e){e._rec=false;});
   var list; GS._combos=[]; GS._toks=q?gsTokens(q):[]; GS._noHits=false;
   if(!q){
     var rec=gsRecent(), recItems=[];
@@ -44387,25 +44401,28 @@ function gsRender(){
   }
   GS.flat=[]; GS.cur=0;
   if(!list.length && !GS._combos.length){
-    res.innerHTML=gsStatusHtml()+'<div class="gs-empty"><span class="gs-empty-emoji">🔍</span>Nič sa nenašlo</div>'+gsTipsHtml();
+    res.innerHTML=gsStatusHtml()+'<div class="gs-empty"><strong>Nenašli sme zhodu</strong><p>Skús meno, názov lekárne alebo funkciu.</p></div>'+gsTipsHtml();
     GS._noHits=true;
     return;
   }
   var html='';
   if(!q){
-    var recent=list.filter(function(e){ return e._rec; });
+    var primary=['Domov','Plnenie','Kalendár','Nástenka','Sklady','Menu'],used=[];
+    html+='<h2 class="gs-group-hd">Kam chceš ísť?</h2><div class="gs-shortcuts">';
+    primary.forEach(function(title){var e=list.filter(function(x){return x.type==='section'&&x.title===title;})[0];if(e){html+=gsRowHtml(e,GS.flat.length,false,true);GS.flat.push(e);used.push(e);}});
+    html+='</div>';
+    var recent=list.filter(function(e){return e._rec;}).slice(0,3);
     if(recent.length){
-      html+='<div class="gs-group-hd">Nedávne</div>';
-      recent.forEach(function(e){ html+=gsRowHtml(e, GS.flat.length); GS.flat.push(e); });
+      html+='<div class="gs-group-heading"><h2 class="gs-group-hd">Nedávno otvorené</h2><button type="button" class="gs-text-btn" onclick="gsClearRecent()">Vymazať</button></div><div class="gs-list">';
+      recent.forEach(function(e){html+=gsRowHtml(e,GS.flat.length);GS.flat.push(e);});html+='</div>';
     }
-    var rest=list.filter(function(e){ return !e._rec; });
-    GS_GROUP_ORDER.forEach(function(gk){
-      var items=rest.filter(function(e){ return e.type===gk; });
-      if(!items.length) return;
-      html+='<div class="gs-group-hd">'+GS_GROUP_LABEL[gk]+'</div>';
-      items.forEach(function(e){ html+=gsRowHtml(e, GS.flat.length); GS.flat.push(e); });
-    });
-    html+=gsTipsHtml();
+    var rest=list.filter(function(e){return used.indexOf(e)<0&&!e._rec;});
+    if(rest.length){
+      var toggle={_noClose:true,title:'Ďalšie funkcie',run:gsToggleAll};
+      html+='<button type="button" id="gs-all-toggle" class="gs-more" data-i="'+GS.flat.length+'" onclick="gsRunAt('+GS.flat.length+')" aria-expanded="'+!!GS.showAll+'" aria-controls="gs-functions">'+(GS.showAll?'Menej funkcií':'Ďalšie funkcie')+'<span aria-hidden="true">'+(GS.showAll?'⌃':'⌄')+'</span></button>';GS.flat.push(toggle);
+      html+='<div id="gs-functions" class="gs-functions"'+(GS.showAll?'':' hidden')+'>';
+      if(GS.showAll)rest.forEach(function(e){html+=gsRowHtml(e,GS.flat.length);GS.flat.push(e);});html+='</div>';
+    }
   } else {
     // iPhone-style: Top Hit (najlepšia zhoda) + sprísnené, prehľadné skupiny.
     var top = GS._combos[0] || list[0] || null;
@@ -44458,7 +44475,7 @@ function gsTipsHtml(){
   tips=tips.filter(function(t){ return t && t.indexOf('undefined')<0; }).slice(0,4);
   if(!tips.length) return '';
   return '<div class="gs-tips"><div class="gs-tips-hd">Skús napríklad</div>'+
-    tips.map(function(t){ return '<span class="gs-tip" onclick="gsTryTip(\''+gsEsc(t).replace(/'/g,"\\'")+'\')">🔎 <b>'+gsEsc(t)+'</b></span>'; }).join('')+
+    tips.map(function(t){ return '<button type="button" class="gs-tip" onclick="gsTryTip(\''+gsEsc(t).replace(/'/g,"\\'")+'\')">'+gsEsc(t)+'</button>'; }).join('')+
     '</div>';
 }
 function gsSampleRep(){
@@ -44473,7 +44490,7 @@ function gsSampleOkres(){
 }
 function gsTryTip(t){
   var inp=document.getElementById('gs-input');
-  if(inp){ inp.value=t; gsRender(); try{ inp.focus(); }catch(e){} }
+  if(inp){ inp.value=t; gsOnInput(); try{ inp.focus(); }catch(e){} }
 }
 /* ── MERANIE NEÚSPEŠNÝCH HĽADANÍ — čo ľudia hľadajú a nenájdu (na doplnenie synoným) ── */
 var _gsMissT=null, _gsMissLast='';
@@ -44509,11 +44526,13 @@ function gsRunAt(i){
 /* ── OTVORENIE / ZATVORENIE ── */
 function gsOpen(){
   if(!gsSession() || !gsEnabled()) return;
-  GS._expand={};
+  GS._expand={};GS.showAll=false;GS.returnFocus=document.activeElement;
   GS.items=gsBuildIndex();
   var ov=document.getElementById('gs-overlay'); if(!ov) return;
   document.body.classList.add('gs-open');
   ov.classList.add('show');
+  var lineLabel=document.getElementById('gs-line');if(lineLabel)lineLabel.textContent={gp:'Golem',gyn:'Gynekológia',reagila:'Reagila'}[gsLine()]||'Satori';
+  gsViewport();if(window.visualViewport)window.visualViewport.addEventListener('resize',gsViewport);
   // KLÁVESNICA NA MOBILE: focus musí prebehnúť SYNCHRÓNNE v rámci user-gesta (ťuknutia).
   // Keby bol v setTimeout, iOS Safari reťaz gesta zruší a klávesnica sa neotvorí.
   // void offsetHeight vynúti prepočet štýlu, aby input v práve zobrazenom overlayi
@@ -44526,7 +44545,7 @@ function gsOpen(){
   }
   gsRender();
   // Poistka pre prehliadače, kde prvý pokus neprejde (napr. počas animácie)
-  setTimeout(function(){ try{ if(inp && document.activeElement!==inp) inp.focus({preventScroll:true}); }catch(e){} }, 80);
+  var openOwner=gsOwner();setTimeout(function(){try{if(inp&&ov.classList.contains('show')&&openOwner===gsOwner()&&!ov.contains(document.activeElement))inp.focus({preventScroll:true});}catch(e){}},80);
   gsEnsureData();
   try { if(typeof usageTrack==='function') usageTrack('gs_open','',''); } catch(e){}
 }
@@ -44613,6 +44632,9 @@ function gsClose(){
   clearInterval(GS.refreshTimer);clearTimeout(GS.inputTimer);clearTimeout(_gsMissT);
   var ov=document.getElementById('gs-overlay'); if(ov) ov.classList.remove('show');
   document.body.classList.remove('gs-open');
+  if(window.visualViewport)window.visualViewport.removeEventListener('resize',gsViewport);
+  var previous=GS.returnFocus;GS.returnFocus=null;
+  if(previous&&previous.isConnected&&!document.body.classList.contains('login-active'))try{previous.focus({preventScroll:true});}catch(e){}
 }
 function gsOnInput(){
   GS._expand={};
@@ -44631,6 +44653,11 @@ function gsOnKey(ev){
   else if(k==='Escape'){ ev.preventDefault(); gsClose(); }
 }
 document.addEventListener('keydown', function(ev){
+  var overlay=document.getElementById('gs-overlay');
+  if(overlay&&overlay.classList.contains('show')){
+    if(ev.key==='Escape'){ev.preventDefault();gsClose();return;}
+    if(ev.key==='Tab'){var controls=Array.from(overlay.querySelectorAll('input,button')).filter(function(e){return !e.disabled&&!e.hidden&&e.getClientRects().length;});var first=controls[0],last=controls[controls.length-1];if(ev.shiftKey&&document.activeElement===first){ev.preventDefault();last.focus();}else if(!ev.shiftKey&&document.activeElement===last){ev.preventDefault();first.focus();}}
+  }
   if((ev.ctrlKey||ev.metaKey) && (ev.key==='k'||ev.key==='K')){
     if(!gsSession() || !gsEnabled()) return;
     ev.preventDefault();
